@@ -25,7 +25,7 @@ package com.oracle.truffle.espresso.staticobject;
 import com.oracle.truffle.api.impl.asm.ClassVisitor;
 import com.oracle.truffle.api.impl.asm.FieldVisitor;
 import com.oracle.truffle.api.impl.asm.Type;
-import com.oracle.truffle.espresso.staticobject.StaticShapeBuilder.ExtendedProperty;
+import com.oracle.truffle.espresso.staticobject.StaticShape.ExtendedProperty;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodHandles.Lookup;

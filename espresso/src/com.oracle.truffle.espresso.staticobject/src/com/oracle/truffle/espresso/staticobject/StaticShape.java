@@ -26,6 +26,9 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import sun.misc.Unsafe;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.util.HashMap;
+import java.util.Objects;
 
 public abstract class StaticShape<T> {
     protected static final Unsafe UNSAFE = getUnsafe();
@@ -37,8 +40,8 @@ public abstract class StaticShape<T> {
         this.storageClass = storageClass;
     }
 
-    public static StaticShapeBuilder newBuilder() {
-        return new StaticShapeBuilder();
+    public static Builder newBuilder() {
+        return new Builder();
     }
 
     protected final void setFactory(T factory) {
@@ -80,6 +83,96 @@ public abstract class StaticShape<T> {
             return (Unsafe) theUnsafeInstance.get(Unsafe.class);
         } catch (Exception e) {
             throw new RuntimeException("exception while trying to get Unsafe.theUnsafe via reflection:", e);
+        }
+    }
+
+    public static final class Builder {
+        private final HashMap<String, ExtendedProperty> extendedProperties = new HashMap<>();
+
+        Builder() {
+        }
+
+        public Builder property(StaticProperty property, String name, boolean isFinal) {
+            Objects.requireNonNull(property);
+            if (extendedProperties.containsKey(name)) {
+                throw new IllegalArgumentException("This builder already contains a property named '" + name + "'");
+            }
+            for (ExtendedProperty extendedProperty : extendedProperties.values()) {
+                if (extendedProperty.property.equals(property)) {
+                    throw new IllegalArgumentException("This builder already contains this property");
+                }
+            }
+            extendedProperties.put(name, new ExtendedProperty(property, name, isFinal));
+            return this;
+        }
+
+        public StaticShape<DefaultStaticObject.DefaultStaticObjectFactory> build() {
+            // The classloader that loaded the default superClass must be able to load the default
+            // factory.
+            // Therefore, we can't use java.lang.Object as default superClass.
+            return build(DefaultStaticObject.class, DefaultStaticObject.DefaultStaticObjectFactory.class);
+        }
+
+        public <T> StaticShape<T> build(StaticShape<T> parentShape) {
+            Objects.requireNonNull(parentShape);
+            ShapeGenerator<T> sg = ShapeGenerator.getShapeGenerator(parentShape);
+            return build(sg, parentShape);
+
+        }
+
+        public <T> StaticShape<T> build(Class<?> superClass, Class<T> factoryInterface) {
+            validate(factoryInterface, superClass);
+            ShapeGenerator<T> sg = ShapeGenerator.getShapeGenerator(superClass, factoryInterface);
+            return build(sg, null);
+        }
+
+        private <T> StaticShape<T> build(ShapeGenerator<T> sg, StaticShape<T> parentShape) {
+            StaticShape<T> shape = sg.generateShape(parentShape, extendedProperties.values());
+            for (ExtendedProperty extendedProperty : extendedProperties.values()) {
+                extendedProperty.property.initShape(shape);
+            }
+            return shape;
+        }
+
+        private static void validate(Class<?> storageFactoryInterface, Class<?> storageSuperClass) {
+            if (!storageFactoryInterface.isInterface()) {
+                throw new RuntimeException(storageFactoryInterface.getName() + " must be an interface.");
+            }
+            for (Method m : storageFactoryInterface.getMethods()) {
+                if (!m.getReturnType().isAssignableFrom(storageSuperClass)) {
+                    throw new RuntimeException("The return type of '" + m.getReturnType().getName() + " " + storageFactoryInterface.getName() + "." + m.toString() + "' is not assignable from '" +
+                                    storageSuperClass.getName() + "'");
+                }
+                try {
+                    storageSuperClass.getDeclaredConstructor(m.getParameterTypes());
+                } catch (NoSuchMethodException e) {
+                    throw new RuntimeException("Method '" + m.toString() + "' does not match any constructor in '" + storageSuperClass.getName() + "'", e);
+                }
+            }
+        }
+    }
+
+    static final class ExtendedProperty {
+        private final StaticProperty property;
+        private final String name;
+        private final boolean isFinal;
+
+        ExtendedProperty(StaticProperty property, String name, boolean isFinal) {
+            this.property = property;
+            this.name = name;
+            this.isFinal = isFinal;
+        }
+
+        StaticProperty getProperty() {
+            return property;
+        }
+
+        String getName() {
+            return name;
+        }
+
+        boolean isFinal() {
+            return isFinal;
         }
     }
 }

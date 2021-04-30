@@ -35,7 +35,7 @@ import com.oracle.truffle.api.impl.asm.ClassWriter;
 import com.oracle.truffle.api.impl.asm.Label;
 import com.oracle.truffle.api.impl.asm.MethodVisitor;
 import com.oracle.truffle.api.impl.asm.Type;
-import com.oracle.truffle.espresso.staticobject.StaticShapeBuilder.ExtendedProperty;
+import com.oracle.truffle.espresso.staticobject.StaticShape.ExtendedProperty;
 import org.graalvm.collections.Pair;
 
 import static com.oracle.truffle.api.impl.asm.Opcodes.ACC_FINAL;

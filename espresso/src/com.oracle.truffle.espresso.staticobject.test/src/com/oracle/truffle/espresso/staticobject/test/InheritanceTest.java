@@ -27,7 +27,6 @@ import com.oracle.truffle.espresso.staticobject.DefaultStaticObject.DefaultStati
 import com.oracle.truffle.espresso.staticobject.StaticProperty;
 import com.oracle.truffle.espresso.staticobject.StaticPropertyKind;
 import com.oracle.truffle.espresso.staticobject.StaticShape;
-import com.oracle.truffle.espresso.staticobject.StaticShapeBuilder;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
@@ -44,7 +43,7 @@ public class InheritanceTest {
 
     @Test
     public void baseClassInheritance() throws NoSuchFieldException {
-        StaticShapeBuilder builder = StaticShape.newBuilder();
+        StaticShape.Builder builder = StaticShape.newBuilder();
         StaticProperty property = new StaticProperty(StaticPropertyKind.Int);
         builder.property(property, "field1", false);
         StaticShape<CustomStaticObjectFactory> shape = builder.build(CustomStaticObject.class, CustomStaticObjectFactory.class);
@@ -68,7 +67,7 @@ public class InheritanceTest {
 
     @Test
     public void baseShapeInheritance() throws NoSuchFieldException, IllegalAccessException {
-        StaticShapeBuilder b1 = StaticShape.newBuilder();
+        StaticShape.Builder b1 = StaticShape.newBuilder();
         StaticProperty s1p1 = new StaticProperty(StaticPropertyKind.Int);
         StaticProperty s1p2 = new StaticProperty(StaticPropertyKind.Int);
         b1.property(s1p1, "field1", false);
@@ -76,7 +75,7 @@ public class InheritanceTest {
         // StaticShape s1 declares 2 properties: s1p1 and s1p2
         StaticShape<DefaultStaticObjectFactory> s1 = b1.build();
 
-        StaticShapeBuilder b2 = StaticShape.newBuilder();
+        StaticShape.Builder b2 = StaticShape.newBuilder();
         StaticProperty s2p1 = new StaticProperty(StaticPropertyKind.Int);
         b2.property(s2p1, "field1", false);
         // StaticShape s2:

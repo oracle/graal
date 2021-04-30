@@ -26,7 +26,7 @@ import com.oracle.truffle.api.impl.asm.ClassVisitor;
 import com.oracle.truffle.api.impl.asm.ClassWriter;
 import com.oracle.truffle.api.impl.asm.MethodVisitor;
 import com.oracle.truffle.api.impl.asm.Type;
-import com.oracle.truffle.espresso.staticobject.StaticShapeBuilder.ExtendedProperty;
+import com.oracle.truffle.espresso.staticobject.StaticShape.ExtendedProperty;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;

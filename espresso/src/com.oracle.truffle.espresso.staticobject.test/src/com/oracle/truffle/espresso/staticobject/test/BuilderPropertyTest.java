@@ -27,7 +27,6 @@ import com.oracle.truffle.espresso.staticobject.DefaultStaticObject.DefaultStati
 import com.oracle.truffle.espresso.staticobject.StaticProperty;
 import com.oracle.truffle.espresso.staticobject.StaticPropertyKind;
 import com.oracle.truffle.espresso.staticobject.StaticShape;
-import com.oracle.truffle.espresso.staticobject.StaticShapeBuilder;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
@@ -38,7 +37,7 @@ import java.lang.reflect.Modifier;
 public class BuilderPropertyTest {
     @Test
     public void sameBuilderSameProperty() {
-        StaticShapeBuilder builder = StaticShape.newBuilder();
+        StaticShape.Builder builder = StaticShape.newBuilder();
         StaticProperty property = new StaticProperty(StaticPropertyKind.Int);
         builder.property(property, "p1", false);
         try {
@@ -52,7 +51,7 @@ public class BuilderPropertyTest {
 
     @Test
     public void sameBuilderSameName() throws IllegalArgumentException {
-        StaticShapeBuilder builder = StaticShape.newBuilder();
+        StaticShape.Builder builder = StaticShape.newBuilder();
         StaticProperty p1 = new StaticProperty(StaticPropertyKind.Int);
         StaticProperty p2 = new StaticProperty(StaticPropertyKind.Int);
         builder.property(p1, "p1", false);
@@ -67,8 +66,8 @@ public class BuilderPropertyTest {
 
     @Test
     public void differentBuildersSameProperty() {
-        StaticShapeBuilder b1 = StaticShape.newBuilder();
-        StaticShapeBuilder b2 = StaticShape.newBuilder();
+        StaticShape.Builder b1 = StaticShape.newBuilder();
+        StaticShape.Builder b2 = StaticShape.newBuilder();
         StaticProperty property = new StaticProperty(StaticPropertyKind.Int);
         b1.property(property, "p1", false);
         b2.property(property, "p2", false);
@@ -86,7 +85,7 @@ public class BuilderPropertyTest {
     public void propertyName() throws NoSuchFieldException {
         Assume.assumeFalse(StorageLayout.ARRAY_BASED);
 
-        StaticShapeBuilder builder = StaticShape.newBuilder();
+        StaticShape.Builder builder = StaticShape.newBuilder();
         StaticProperty property = new StaticProperty(StaticPropertyKind.Int);
         String propertyName = "p1";
         builder.property(property, propertyName, false);
@@ -100,7 +99,7 @@ public class BuilderPropertyTest {
     public void propertyFinal() throws NoSuchFieldException {
         Assume.assumeFalse(StorageLayout.ARRAY_BASED);
 
-        StaticShapeBuilder builder = StaticShape.newBuilder();
+        StaticShape.Builder builder = StaticShape.newBuilder();
         StaticProperty p1 = new StaticProperty(StaticPropertyKind.Int);
         StaticProperty p2 = new StaticProperty(StaticPropertyKind.Int);
         String p1Name = "p1";
@@ -119,7 +118,7 @@ public class BuilderPropertyTest {
     public void propertyKind() throws NoSuchFieldException {
         Assume.assumeFalse(StorageLayout.ARRAY_BASED);
 
-        StaticShapeBuilder builder = StaticShape.newBuilder();
+        StaticShape.Builder builder = StaticShape.newBuilder();
         for (StaticPropertyKind kind : StaticPropertyKind.values()) {
             builder.property(new StaticProperty(kind), kind.name(), false);
         }

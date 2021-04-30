@@ -26,7 +26,6 @@ import com.oracle.truffle.espresso.staticobject.DefaultStaticObject;
 import com.oracle.truffle.espresso.staticobject.StaticProperty;
 import com.oracle.truffle.espresso.staticobject.StaticPropertyKind;
 import com.oracle.truffle.espresso.staticobject.StaticShape;
-import com.oracle.truffle.espresso.staticobject.StaticShapeBuilder;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.BeforeClass;
@@ -159,7 +158,7 @@ public class PropertyAccessTest {
 
     @Theory
     public void correctAccessors(TestDescriptor descriptor) {
-        StaticShapeBuilder builder = StaticShape.newBuilder();
+        StaticShape.Builder builder = StaticShape.newBuilder();
         StaticProperty property = new StaticProperty(descriptor.kind);
         builder.property(property, "property", false);
         StaticShape<DefaultStaticObject.DefaultStaticObjectFactory> shape = builder.build();
@@ -178,7 +177,7 @@ public class PropertyAccessTest {
     public void wrongAccessors(TestDescriptor expectedDescriptor, TestDescriptor actualDescriptor) {
         Assume.assumeFalse(expectedDescriptor.equals(actualDescriptor));
 
-        StaticShapeBuilder builder = StaticShape.newBuilder();
+        StaticShape.Builder builder = StaticShape.newBuilder();
         StaticProperty property = new StaticProperty(expectedDescriptor.kind);
         builder.property(property, "property", false);
         StaticShape<DefaultStaticObject.DefaultStaticObjectFactory> shape = builder.build();

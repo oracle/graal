@@ -24,7 +24,6 @@ package com.oracle.truffle.espresso.staticobject;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.espresso.staticobject.StaticShapeBuilder.ExtendedProperty;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
