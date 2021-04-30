@@ -124,18 +124,18 @@ public final class Target_java_lang_ref_Reference {
 
         @Specialization
         boolean doCached(@Host(java.lang.ref.Reference.class) StaticObject self,
-                         @CachedContext(EspressoLanguage.class) EspressoContext context,
-                         @Cached("create(context.getMeta().java_lang_ref_Reference_enqueue.getCallTargetNoSubstitution())") DirectCallNode originalEnqueue) {
+                        @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @Cached("create(context.getMeta().java_lang_ref_Reference_enqueue.getCallTargetNoSubstitution())") DirectCallNode originalEnqueue) {
             if (context.getJavaVersion().java9OrLater()) {
                 /*
-                 * In java 9 or later, the referent field is cleared. We must replicate this behavior on
-                 * our own implementation.
+                 * In java 9 or later, the referent field is cleared. We must replicate this
+                 * behavior on our own implementation.
                  */
                 Meta meta = context.getMeta();
                 if (InterpreterToVM.instanceOf(self, meta.java_lang_ref_WeakReference) //
-                        || InterpreterToVM.instanceOf(self, meta.java_lang_ref_SoftReference) //
-                        || InterpreterToVM.instanceOf(self, meta.java_lang_ref_PhantomReference) //
-                        || InterpreterToVM.instanceOf(self, meta.java_lang_ref_FinalReference)) {
+                                || InterpreterToVM.instanceOf(self, meta.java_lang_ref_SoftReference) //
+                                || InterpreterToVM.instanceOf(self, meta.java_lang_ref_PhantomReference) //
+                                || InterpreterToVM.instanceOf(self, meta.java_lang_ref_FinalReference)) {
                     EspressoReference ref = (EspressoReference) meta.HIDDEN_HOST_REFERENCE.getHiddenObject(self);
                     if (ref != null) {
                         ref.clear();

@@ -105,6 +105,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         final boolean hasReceiver;
         final TypeMirror nameProvider;
         final TypeMirror versionFilter;
+
         public SubstitutorHelper(EspressoProcessor processor, Element target, String targetClassName, String guestMethodName, List<String> guestTypeNames, String returnType,
                         boolean hasReceiver, TypeMirror nameProvider, TypeMirror versionFilter) {
             super(processor, target);

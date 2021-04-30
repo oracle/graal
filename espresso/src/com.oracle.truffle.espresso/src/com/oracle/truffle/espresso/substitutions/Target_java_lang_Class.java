@@ -69,8 +69,9 @@ public final class Target_java_lang_Class {
         abstract @Host(Class.class) StaticObject execute(@Host(String.class) StaticObject name);
 
         @Specialization
-        @Host(Class.class) StaticObject withContext(@Host(String.class) StaticObject name,
-                                            @CachedContext(EspressoLanguage.class) EspressoContext context) {
+        @Host(Class.class)
+        StaticObject withContext(@Host(String.class) StaticObject name,
+                        @CachedContext(EspressoLanguage.class) EspressoContext context) {
             Meta meta = context.getMeta();
             String hostName = meta.toHostString(name);
             switch (hostName) {

@@ -183,8 +183,8 @@ public final class Target_java_lang_Thread {
         @Specialization
         @TruffleBoundary
         void doCached(@Host(Thread.class) StaticObject self,
-                      @CachedContext(EspressoLanguage.class) EspressoContext context,
-                      @Cached("create(context.getMeta().java_lang_Thread_exit.getCallTarget())") DirectCallNode threadExit) {
+                        @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @Cached("create(context.getMeta().java_lang_Thread_exit.getCallTarget())") DirectCallNode threadExit) {
             Meta meta = context.getMeta();
             if (context.multiThreadingEnabled()) {
                 // Thread.start() is synchronized.
@@ -345,9 +345,10 @@ public final class Target_java_lang_Thread {
         abstract @Host(typeName = "Ljava/lang/Thread$State;") StaticObject execute(@Host(Thread.class) StaticObject self);
 
         @Specialization
-        @Host(typeName = "Ljava/lang/Thread$State;") StaticObject execute(@Host(Thread.class) StaticObject self,
-                                                                          @CachedContext(EspressoLanguage.class) EspressoContext context,
-                                                                          @Cached("create(context.getMeta().sun_misc_VM_toThreadState.getCallTarget())") DirectCallNode toThreadState) {
+        @Host(typeName = "Ljava/lang/Thread$State;")
+        StaticObject execute(@Host(Thread.class) StaticObject self,
+                        @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @Cached("create(context.getMeta().sun_misc_VM_toThreadState.getCallTarget())") DirectCallNode toThreadState) {
             Meta meta = context.getMeta();
             return (StaticObject) toThreadState.call(meta.java_lang_Thread_threadStatus.getInt(self));
         }

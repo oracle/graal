@@ -63,9 +63,9 @@ public final class Target_sun_launcher_LauncherHelper {
 
         @Specialization
         void doCached(boolean printToStderr,
-                    @CachedContext(EspressoLanguage.class) EspressoContext context,
-                    @Cached("create(context.getMeta().sun_launcher_LauncherHelper_printHelpMessage.getCallTargetNoSubstitution())") DirectCallNode originalPrintHelpMessage,
-                    @Cached("create(context.getMeta().java_io_PrintStream_println.getCallTarget())") DirectCallNode println) {
+                        @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @Cached("create(context.getMeta().sun_launcher_LauncherHelper_printHelpMessage.getCallTargetNoSubstitution())") DirectCallNode originalPrintHelpMessage,
+                        @Cached("create(context.getMeta().java_io_PrintStream_println.getCallTarget())") DirectCallNode println) {
             Meta meta = context.getMeta();
             // Init output stream and print original help message
             originalPrintHelpMessage.call(printToStderr);

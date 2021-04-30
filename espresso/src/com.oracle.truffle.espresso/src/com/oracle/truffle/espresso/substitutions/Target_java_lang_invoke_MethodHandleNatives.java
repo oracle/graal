@@ -295,16 +295,17 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
     static abstract class ResolveOverload extends Node {
 
         abstract @Host(typeName = "Ljava/lang/invoke/MemberName;") StaticObject execute(
-                @Host(typeName = "Ljava/lang/invoke/MemberName;") StaticObject self,
-                @Host(value = Class.class) StaticObject caller,
-                boolean speculativeResolve);
+                        @Host(typeName = "Ljava/lang/invoke/MemberName;") StaticObject self,
+                        @Host(value = Class.class) StaticObject caller,
+                        boolean speculativeResolve);
 
         @Specialization
-        @Host(typeName = "Ljava/lang/invoke/MemberName;") StaticObject doCached(
-                @Host(typeName = "Ljava/lang/invoke/MemberName;") StaticObject self,
-                @Host(value = Class.class) StaticObject caller,
-                boolean speculativeResolve,
-                @Cached Resolve resolve) {
+        @Host(typeName = "Ljava/lang/invoke/MemberName;")
+        StaticObject doCached(
+                        @Host(typeName = "Ljava/lang/invoke/MemberName;") StaticObject self,
+                        @Host(value = Class.class) StaticObject caller,
+                        boolean speculativeResolve,
+                        @Cached Resolve resolve) {
             try {
                 return resolve.execute(self, caller);
             } catch (EspressoException e) {
@@ -320,30 +321,31 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
     static abstract class Resolve extends Node {
 
         /**
-         * Complete resolution of a memberName, full with method lookup, flags overwriting and planting
-         * target.
+         * Complete resolution of a memberName, full with method lookup, flags overwriting and
+         * planting target.
          *
          * @param memberName The memberName to resolve
-         * @param caller     the class that commands the resolution
+         * @param caller the class that commands the resolution
          * @return The resolved memberName. Note that it should be the same reference as self
          */
         abstract @Host(typeName = "Ljava/lang/invoke/MemberName;") StaticObject execute(
-                @Host(typeName = "Ljava/lang/invoke/MemberName;") StaticObject memberName,
-                @Host(value = Class.class) StaticObject caller);
+                        @Host(typeName = "Ljava/lang/invoke/MemberName;") StaticObject memberName,
+                        @Host(value = Class.class) StaticObject caller);
 
         @Specialization
-        @Host(typeName = "Ljava/lang/invoke/MemberName;") StaticObject doCached(
-                @Host(typeName = "Ljava/lang/invoke/MemberName;") StaticObject memberName,
-                @Host(value = Class.class) StaticObject caller,
-                @CachedContext(EspressoLanguage.class) EspressoContext context,
-                @Cached("create(context.getMeta().java_lang_invoke_MemberName_getSignature.getCallTarget())") DirectCallNode getSignature,
-                @Cached BranchProfile isMethodProfile,
-                @Cached BranchProfile isFieldProfile,
-                @Cached BranchProfile isConstructorProfile,
-                @Cached BranchProfile noMethodNameProfile,
-                @Cached BranchProfile isSignaturePolymorphicIntrinsicProfile,
-                @Cached BranchProfile isInvokeStaticOrInterfaceProfile,
-                @Cached BranchProfile isInvokeVirtualOrSpecialProfile) {
+        @Host(typeName = "Ljava/lang/invoke/MemberName;")
+        StaticObject doCached(
+                        @Host(typeName = "Ljava/lang/invoke/MemberName;") StaticObject memberName,
+                        @Host(value = Class.class) StaticObject caller,
+                        @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @Cached("create(context.getMeta().java_lang_invoke_MemberName_getSignature.getCallTarget())") DirectCallNode getSignature,
+                        @Cached BranchProfile isMethodProfile,
+                        @Cached BranchProfile isFieldProfile,
+                        @Cached BranchProfile isConstructorProfile,
+                        @Cached BranchProfile noMethodNameProfile,
+                        @Cached BranchProfile isSignaturePolymorphicIntrinsicProfile,
+                        @Cached BranchProfile isInvokeStaticOrInterfaceProfile,
+                        @Cached BranchProfile isInvokeVirtualOrSpecialProfile) {
             Meta meta = context.getMeta();
             // TODO(Garcia) Perhaps perform access checks ?
             if (meta.HIDDEN_VMTARGET.getHiddenObject(memberName) != null) {
@@ -380,13 +382,13 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
 
             PolySigIntrinsics mhMethodId = None;
             if (((flags & ALL_KINDS) == MN_IS_METHOD) &&
-                    (defKlass.getType() == Type.java_lang_invoke_MethodHandle || defKlass.getType() == Type.java_lang_invoke_VarHandle)) {
+                            (defKlass.getType() == Type.java_lang_invoke_MethodHandle || defKlass.getType() == Type.java_lang_invoke_VarHandle)) {
                 if (refKind == REF_invokeVirtual ||
-                        refKind == REF_invokeSpecial ||
-                        refKind == REF_invokeStatic) {
+                                refKind == REF_invokeSpecial ||
+                                refKind == REF_invokeStatic) {
                     PolySigIntrinsics iid = MethodHandleIntrinsics.getId(methodName, defKlass);
                     if (iid != None &&
-                            ((refKind == REF_invokeStatic) == (iid.isStaticPolymorphicSignature()))) {
+                                    ((refKind == REF_invokeStatic) == (iid.isStaticPolymorphicSignature()))) {
                         mhMethodId = iid;
                     }
                 }

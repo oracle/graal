@@ -52,8 +52,8 @@ public class SubstitutionHelper {
         this.target = target;
         // If the target is a node, obtain the abstract execute* method.
         ExecutableElement targetMethod = isNodeTarget()
-                ? EspressoProcessor.findNodeExecute(getNodeTarget())
-                : getMethodTarget();
+                        ? EspressoProcessor.findNodeExecute(getNodeTarget())
+                        : getMethodTarget();
         this.hasMetaInjection = processor.hasMetaInjection(targetMethod);
         this.hasProfileInjection = processor.hasProfileInjection(targetMethod);
     }

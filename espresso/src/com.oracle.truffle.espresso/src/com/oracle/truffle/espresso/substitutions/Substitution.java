@@ -58,7 +58,7 @@ import java.lang.annotation.Target;
      *
      * <p>
      * The receiver's type is never part of the substituted method signature. For instance method
-     * substitutions the implementation the receiver parameter (<i>this</i>) must be present.
+     * substitutions, the receiver parameter (<i>this</i>) must be present.
      *
      * <h3>Example substitution for {@link Object#hashCode() Object#hashCode()I}</h3>
      *

@@ -62,10 +62,12 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
     @Substitution(methodName = "isNull")
     static abstract class IsNull extends Node {
         static final int LIMIT = 4;
+
         abstract boolean execute(@Host(Object.class) StaticObject receiver);
+
         @Specialization
         boolean cached(@Host(Object.class) StaticObject receiver,
-                       @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
             return interop.isNull(unwrap(receiver));
         }
     }
@@ -81,11 +83,12 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
     @Substitution(methodName = "isBoolean")
     static abstract class IsBoolean extends Node {
         static final int LIMIT = 4;
+
         abstract boolean execute(@Host(Object.class) StaticObject receiver);
 
         @Specialization
         boolean doCached(@Host(Object.class) StaticObject receiver,
-                       @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
             return interop.isBoolean(unwrap(receiver));
         }
     }
@@ -100,13 +103,14 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
     @Throws(UnsupportedMessageException.class)
     static abstract class AsBoolean extends Node {
         static final int LIMIT = 4;
+
         abstract boolean execute(@Host(Object.class) StaticObject receiver);
 
         @Specialization
         boolean doCached(@Host(Object.class) StaticObject receiver,
-                          @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                          @CachedContext(EspressoLanguage.class) EspressoContext context,
-                          @Cached BranchProfile error) {
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @Cached BranchProfile error) {
             try {
                 return interop.asBoolean(unwrap(receiver));
             } catch (InteropException e) {
