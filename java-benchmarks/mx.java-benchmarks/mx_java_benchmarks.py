@@ -258,7 +258,7 @@ class PetClinicWrkBenchmarkSuite(BasePetClinicBenchmarkSuite, mx_sdk_benchmark.B
         return "petclinic-wrk"
 
     def benchmarkList(self, bmSuiteArgs):
-        return ["tiny"]
+        return ["mixed-tiny", "mixed-small", "mixed-medium", "mixed-large", "mixed-huge"]
 
     def defaultWorkloadPath(self, benchmark):
         return os.path.join(self.applicationDist(), "workloads", benchmark + ".wrk")
@@ -353,7 +353,7 @@ class TikaWrkBenchmarkSuite(BaseTikaBenchmarkSuite, mx_sdk_benchmark.BaseWrkBenc
         return "tika-wrk"
 
     def benchmarkList(self, bmSuiteArgs):
-        return ["odt", "pdf"]
+        return ["odt-tiny", "odt-small", "odt-medium", "odt-large", "odt-huge", "pdf-tiny", "pdf-small", "pdf-medium", "pdf-large", "pdf-huge"]
 
     def defaultWorkloadPath(self, benchmark):
         return os.path.join(self.applicationDist(), "workloads", benchmark + ".wrk")
@@ -433,7 +433,7 @@ class ShopCartJMeterBenchmarkSuite(BaseShopCartBenchmarkSuite, mx_sdk_benchmark.
         return "shopcart-jmeter"
 
     def benchmarkList(self, bmSuiteArgs):
-        return ["tiny", "small", "large"]
+        return ["tiny"]
 
     def defaultWorkloadPath(self, benchmark):
         return os.path.join(self.applicationDist(), "workloads", benchmark + ".jmx")
@@ -452,7 +452,7 @@ class ShopCartWrkBenchmarkSuite(BaseShopCartBenchmarkSuite, mx_sdk_benchmark.Bas
         return "shopcart-wrk"
 
     def benchmarkList(self, bmSuiteArgs):
-        return ["tiny"]
+        return ["mixed-tiny", "mixed-small", "mixed-medium", "mixed-large", "mixed-huge"]
 
     def defaultWorkloadPath(self, benchmark):
         return os.path.join(self.applicationDist(), "workloads", benchmark + ".wrk")

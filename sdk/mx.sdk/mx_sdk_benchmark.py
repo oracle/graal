@@ -199,9 +199,9 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
         :rtype: str
         """
 
-        if len(self.benchSuiteName().split('-')) < 2:
+        if len(self.benchSuiteName().split('-', 1)) < 2:
             mx.abort("Invalid benchmark suite name: " + self.benchSuiteName())
-        return self.benchSuiteName().split("-")[0]
+        return self.benchSuiteName().split("-", 1)[0]
 
     def defaultWorkloadPath(self, benchmarkName):
         """Returns the workload configuration path.
@@ -308,7 +308,7 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
     def run_stage(self, vm, stage, server_command, out, err, cwd, nonZeroIsFatal):
         if 'image' in stage:
             # For image stages, we just run the given command
-            return super(BaseMicroserviceBenchmarkSuite, self).run_stage(stage, server_command, out, err, cwd, nonZeroIsFatal)
+            return super(BaseMicroserviceBenchmarkSuite, self).run_stage(vm, stage, server_command, out, err, cwd, nonZeroIsFatal)
         else:
             if stage == 'run':
                 # Do all benchmarking (startup, peak, latency) on a single image that is started and shut down multiple times.
@@ -504,7 +504,7 @@ class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
                     "bench-suite": self.benchSuiteName(),
                     "metric.name": "warmup-throughput",
                     "metric.value": ("<throughput>", float),
-                    "metric.unit": "requests/s",
+                    "metric.unit": "op/s",
                     "metric.better": "higher",
                 }
             ),
@@ -515,7 +515,7 @@ class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
                     "bench-suite": self.benchSuiteName(),
                     "metric.name": "peak-throughput",
                     "metric.value": ("<throughput>", float),
-                    "metric.unit": "requests/s",
+                    "metric.unit": "op/s",
                     "metric.better": "higher",
                 }
             ),
