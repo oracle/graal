@@ -923,8 +923,8 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return getContext().getMethodHandleIntrinsics().createIntrinsicNode(this, accessingKlass, mname, signature);
     }
 
-    public Method forceSplit(byte[] code) {
-        Method result = new Method(this, getCodeAttribute().forceSplit(code));
+    public Method forceSplit() {
+        Method result = new Method(this, getCodeAttribute());
         FrameDescriptor frameDescriptor = new FrameDescriptor();
         EspressoRootNode root = EspressoRootNode.create(frameDescriptor, new BytecodeNode(result.getMethodVersion(), frameDescriptor));
         result.getMethodVersion().callTarget = Truffle.getRuntime().createCallTarget(root);
