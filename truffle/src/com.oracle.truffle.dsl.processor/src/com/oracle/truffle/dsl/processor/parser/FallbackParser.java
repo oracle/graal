@@ -47,6 +47,7 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.type.DeclaredType;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.model.CachedParameterSpec;
 import com.oracle.truffle.dsl.processor.model.MethodSpec;
 import com.oracle.truffle.dsl.processor.model.NodeData;
 import com.oracle.truffle.dsl.processor.model.NodeExecutionData;
@@ -63,7 +64,13 @@ public class FallbackParser extends NodeMethodParser<SpecializationData> {
 
     @Override
     public MethodSpec createSpecification(ExecutableElement method, AnnotationMirror mirror) {
-        return createDefaultMethodSpec(method, mirror, true, null);
+        MethodSpec spec = createDefaultMethodSpec(method, mirror, true, null);
+        spec.getAnnotations().add(new CachedParameterSpec(types.Cached));
+        spec.getAnnotations().add(new CachedParameterSpec(types.CachedLibrary));
+        spec.getAnnotations().add(new CachedParameterSpec(types.CachedContext));
+        spec.getAnnotations().add(new CachedParameterSpec(types.CachedLanguage));
+        spec.getAnnotations().add(new CachedParameterSpec(types.Bind));
+        return spec;
     }
 
     @Override
