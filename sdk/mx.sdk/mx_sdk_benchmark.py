@@ -155,7 +155,7 @@ def measureTimeToFirstResponse(bmSuite):
         try:
             req = lib.urlopen(url)
             if req.getcode() == 200:
-                startTime = mx.runStartTime
+                startTime = mx.run_start_time
                 finishTime = datetime.datetime.now()
                 msToFirstResponse = (finishTime - startTime).total_seconds() * 1000
                 bmSuite.timeToFirstResponseOutput = "First response received in {} ms".format(msToFirstResponse)
