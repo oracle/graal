@@ -83,7 +83,7 @@ public abstract class LLVMDLSym extends LLVMIntrinsic {
         return LLVMNativePointer.createNull();
     }
 
-    @Specialization(guards = "(isRtld_Default(libraryHandle))")
+    @Specialization(guards = "(isRtldDefault(libraryHandle))")
     protected Object doDefaultHandle(@SuppressWarnings("unused") LLVMNativePointer libraryHandle,
                     @SuppressWarnings("unused") LLVMPointer symbolName,
                     @SuppressWarnings("unused") @Cached() LLVMReadStringNode readStr,
@@ -93,7 +93,7 @@ public abstract class LLVMDLSym extends LLVMIntrinsic {
         return ctx.getSymbol(symbol);
     }
 
-    protected boolean isRtld_Default(LLVMNativePointer libraryHandle) {
+    protected boolean isRtldDefault(LLVMNativePointer libraryHandle) {
         PlatformCapability<?> sysContextExt = LLVMLanguage.getLanguage().getCapability(PlatformCapability.class);
         return sysContextExt.isDefaultDLSymFlagSet(libraryHandle.asNative());
     }
