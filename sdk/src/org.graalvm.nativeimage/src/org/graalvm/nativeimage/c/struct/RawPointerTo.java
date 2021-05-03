@@ -80,11 +80,7 @@ import org.graalvm.word.WordBase;
  * to not alias. The parameter cannot be used together with the {@link UniqueLocationIdentity}
  * annotation, which is another way of providing a location identity for the memory access.
  *
-<<<<<<< HEAD
- * @since 21.1
-=======
  * @since 21.2
->>>>>>> upstream/master
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})
@@ -94,11 +90,7 @@ public @interface RawPointerTo {
      * The value type, as a reference to a Java interface that is annotated with
      * {@link RawStructure} or {@link RawPointerTo}.
      *
-<<<<<<< HEAD
-     * @since 21.1
-=======
      * @since 21.2
->>>>>>> upstream/master
      */
     Class<? extends WordBase> value() default WordBase.class;
 }
