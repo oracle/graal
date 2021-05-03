@@ -217,14 +217,17 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
         return false;
     }
 
-    double updateWeight(long currentTime) {
+    /**
+     * @return false if the target reference is null (i.e. if the target was garbage-collected.
+     */
+    boolean updateWeight(long currentTime) {
         OptimizedCallTarget target = targetRef.get();
         if (target == null) {
-            return -1.0;
+            return false;
         }
         long elapsed = currentTime - lastTime;
         if (elapsed < 1_000_000) {
-            return lastWeight;
+            return true;
         }
         int count = target.getCallAndLoopCount();
         double weight = rate(count, elapsed) * count;
@@ -232,7 +235,7 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
         lastCount = count;
         lastWeight = weight;
         assert weight >= 0.0 : "weight must be positive";
-        return weight;
+        return true;
     }
 
     private double rate(int count, long elapsed) {

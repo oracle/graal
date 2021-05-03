@@ -85,24 +85,16 @@ public class TraversingBlockingQueue implements BlockingQueue<Runnable> {
         while (it.hasNext()) {
             Runnable entry = it.next();
             CompilationTask task = task(entry);
-            // updateWeight returns a negative number only if the task's target does not exist
-            if (task.isCancelled() || task.updateWeight(time) < 0) {
+            // updateWeight returns false only if the task's target does not exist
+            if (task.isCancelled() || !task.updateWeight(time)) {
                 continue;
             }
             if (max == null || task.isHigherPriorityThan(task(max))) {
                 max = entry;
             }
         }
-        return removeAndReturn(max);
-    }
-
-    private synchronized Runnable removeAndReturn(Runnable max) {
         // entries.remove can only return false if a sleeping thread takes the only element
-        if (entries.remove(max)) {
-            return max;
-        } else {
-            return null;
-        }
+        return entries.remove(max) ? max : null;
     }
 
     @Override
