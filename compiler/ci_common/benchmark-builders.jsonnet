@@ -84,6 +84,7 @@
   for suite in bench.groups.profiled_suites
   ]),
 
+  // Microservices
   local microservice_builds = std.flattenArrays([
     [
     cc.daily + hw.x52 + jdk + cc.libgraal + suite,

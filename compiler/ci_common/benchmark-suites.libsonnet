@@ -17,7 +17,7 @@
     jmh_micros_suites:: std.set([$.micros_graal_dist, $.micros_misc_graal_dist , $.micros_shootout_graal_dist], keyF=uniq_key),
     graal_internals_suites:: std.set([$.micros_graal_whitebox], keyF=uniq_key),
     special_suites:: std.set([$.renaissance_0_10, $.specjbb2015_full_machine], keyF=uniq_key),
-    microservice_suites:: std.set([$.microservice_benchmarks], keyF=uniq_key),
+    microservice_suites:: std.set([$.microservice_benchmarks_jmeter, $.microservice_benchmarks_wrk], keyF=uniq_key),
 
     main_suites:: std.set(self.open_suites + self.spec_suites + self.legacy_suites, keyF=uniq_key),
     all_suites:: std.set(self.main_suites + self.jmh_micros_suites + self.special_suites, keyF=uniq_key),
@@ -168,8 +168,8 @@
     forks_timelimit:: "06:00:00"
   },
 
-  // Microservice microbenchmarks
-  microservice_benchmarks: cc.compiler_benchmark + c.heap.default + {
+  // JMeter microservice microbenchmarks
+  microservice_benchmarks_jmeter: cc.compiler_benchmark + c.heap.default + {
     suite:: "microservice_benchmarks",
     packages+: {
       "python3": "==3.6.5",
@@ -177,8 +177,42 @@
     },
     run+: [
       c.hwlocIfNuma(self.is_numa, $.mx_benchmark + ["shopcart-jmeter:large"] + $.bench_arguments, node=self.numa_nodes[0]),
-      c.hwlocIfNuma(self.is_numa, $.mx_benchmark + ["petclinic-jmeter:tiny"] + $.bench_arguments, node=self.numa_nodes[0]),
-      c.hwlocIfNuma(self.is_numa, $.mx_benchmark + ["tika-wrk:odt"] + $.bench_arguments, node=self.numa_nodes[0])
+      c.hwlocIfNuma(self.is_numa, $.mx_benchmark + ["petclinic-jmeter:tiny"] + $.bench_arguments, node=self.numa_nodes[0])
+    ],
+    timelimit: "1:00:00"
+  },
+
+  // wrk microservice microbenchmarks
+  microservice_benchmarks_wrk: cc.compiler_benchmark + c.heap.default + {
+    suite:: "microservice_benchmarks",
+    packages+: {
+      "python3": "==3.6.5",
+      "pip:psutil": "==5.8.0"
+    },
+    run+: [
+      // shopcart
+      c.hwlocIfNuma(self.is_numa, $.mx_benchmark + ["shopcart-wrk:mixed-tiny"] +    $.bench_arguments + ["-Xms32m",   "-Xmx112m",  "-XX:ActiveProcessorCount=1",  "-XX:MaxDirectMemorySize=128m"], node=self.numa_nodes[0]),
+      c.hwlocIfNuma(self.is_numa, $.mx_benchmark + ["shopcart-wrk:mixed-small"] +   $.bench_arguments + ["-Xms64m",   "-Xmx224m",  "-XX:ActiveProcessorCount=2",  "-XX:MaxDirectMemorySize=256m"], node=self.numa_nodes[0]),
+      c.hwlocIfNuma(self.is_numa, $.mx_benchmark + ["shopcart-wrk:mixed-medium"] +  $.bench_arguments + ["-Xms128m",  "-Xmx512m",  "-XX:ActiveProcessorCount=4",  "-XX:MaxDirectMemorySize=512m"], node=self.numa_nodes[0]),
+      c.hwlocIfNuma(self.is_numa, $.mx_benchmark + ["shopcart-wrk:mixed-large"] +   $.bench_arguments + ["-Xms512m",  "-Xmx3072m", "-XX:ActiveProcessorCount=16", "-XX:MaxDirectMemorySize=2048m"], node=self.numa_nodes[0]),
+      c.hwlocIfNuma(self.is_numa, $.mx_benchmark + ["shopcart-wrk:mixed-huge"] +    $.bench_arguments + ["-Xms1024m", "-Xmx8192m", "-XX:ActiveProcessorCount=32", "-XX:MaxDirectMemorySize=4096m"], node=self.numa_nodes[0]),
+
+      // tika-odt
+      c.hwlocIfNuma(self.is_numa, $.mx_benchmark + ["tika-wrk:odt-tiny"] +          $.bench_arguments + ["-Xms32m",   "-Xmx112m",  "-XX:ActiveProcessorCount=1"], node=self.numa_nodes[0]),
+      c.hwlocIfNuma(self.is_numa, $.mx_benchmark + ["tika-wrk:odt-small"] +         $.bench_arguments + ["-Xms64m",   "-Xmx250m",  "-XX:ActiveProcessorCount=2"], node=self.numa_nodes[0]),
+      c.hwlocIfNuma(self.is_numa, $.mx_benchmark + ["tika-wrk:odt-medium"] +        $.bench_arguments + ["-Xms128m",  "-Xmx600m",  "-XX:ActiveProcessorCount=4"], node=self.numa_nodes[0]),
+
+      // tika-pdf
+      c.hwlocIfNuma(self.is_numa, $.mx_benchmark + ["tika-wrk:pdf-tiny"] +          $.bench_arguments + ["-Xms20m",   "-Xmx80m",   "-XX:ActiveProcessorCount=1"], node=self.numa_nodes[0]),
+      c.hwlocIfNuma(self.is_numa, $.mx_benchmark + ["tika-wrk:pdf-small"] +         $.bench_arguments + ["-Xms40m",   "-Xmx200m",  "-XX:ActiveProcessorCount=2"], node=self.numa_nodes[0]),
+      c.hwlocIfNuma(self.is_numa, $.mx_benchmark + ["tika-wrk:pdf-medium"] +        $.bench_arguments + ["-Xms80m",   "-Xmx500m",  "-XX:ActiveProcessorCount=4"], node=self.numa_nodes[0]),
+
+      // petclinic
+      c.hwlocIfNuma(self.is_numa, $.mx_benchmark + ["petclinic-wrk:mixed-tiny"] +   $.bench_arguments + ["-Xms32m",  "-Xmx100m",  "-XX:ActiveProcessorCount=1"], node=self.numa_nodes[0]),
+      c.hwlocIfNuma(self.is_numa, $.mx_benchmark + ["petclinic-wrk:mixed-small"] +  $.bench_arguments + ["-Xms40m",  "-Xmx128m",  "-XX:ActiveProcessorCount=2"], node=self.numa_nodes[0]),
+      c.hwlocIfNuma(self.is_numa, $.mx_benchmark + ["petclinic-wrk:mixed-medium"] + $.bench_arguments + ["-Xms80m",  "-Xmx256m",  "-XX:ActiveProcessorCount=4"], node=self.numa_nodes[0]),
+      c.hwlocIfNuma(self.is_numa, $.mx_benchmark + ["petclinic-wrk:mixed-large"] +  $.bench_arguments + ["-Xms320m", "-Xmx1280m", "-XX:ActiveProcessorCount=16"], node=self.numa_nodes[0]),
+      c.hwlocIfNuma(self.is_numa, $.mx_benchmark + ["petclinic-wrk:mixed-huge"] +   $.bench_arguments + ["-Xms640m", "-Xmx3072m", "-XX:ActiveProcessorCount=32"], node=self.numa_nodes[0]),
     ],
     timelimit: "3:00:00"
   },
