@@ -95,7 +95,7 @@ public final class ArityException extends InteropException {
                 expected = expectedMinArity + "-" + expectedMaxArity;
             }
         }
-        return String.format("Arity error - actual %s, expected %s", given, expected);
+        return String.format("Arity error - expected: %s actual: %s", expected, given);
     }
 
     /**
