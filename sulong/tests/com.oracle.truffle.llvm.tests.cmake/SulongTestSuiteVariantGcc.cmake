@@ -36,7 +36,7 @@ macro(setupCompiler)
     requireVariable(DRAGONEGG_LLVMAS)
     setCompilerConfig(CMAKE_C_COMPILER ${DRAGONEGG_GCC})
     # reset in order to create a log message
-    setCompilerConfig(DRAGONEGG_LLVMA ${DRAGONEGG_LLVMAS})
+    setCompilerConfig(DRAGONEGG_LLVMAS ${DRAGONEGG_LLVMAS})
     # https://gitlab.kitware.com/cmake/community/-/wikis/doc/cmake/Build-Rules
     set(CMAKE_LL_LINK_EXECUTABLE "${DRAGONEGG_LLVMAS} <OBJECTS> -o <TARGET>")
     noFortranSupport()

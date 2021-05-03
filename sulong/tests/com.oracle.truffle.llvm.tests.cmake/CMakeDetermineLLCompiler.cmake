@@ -43,4 +43,4 @@ configure_file(${SULONG_MODULE_PATH}/CMakeLLCompiler.cmake.in
   ${CMAKE_PLATFORM_INFO_DIR}/CMakeLLCompiler.cmake
   @ONLY
   )
-set(CMAKE_LL_COMPILER_ENV_VAR "LLVM_AS")
+set(CMAKE_LL_COMPILER_ENV_VAR "LLVM_LINK")

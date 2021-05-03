@@ -29,11 +29,12 @@
  */
 package com.oracle.truffle.llvm.parser.coff;
 
-import com.oracle.truffle.llvm.parser.filereader.ObjectFileReader;
-import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
+import java.nio.charset.StandardCharsets;
+
 import org.graalvm.polyglot.io.ByteSequence;
 
-import java.nio.charset.StandardCharsets;
+import com.oracle.truffle.llvm.parser.filereader.ObjectFileReader;
+import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 
 /**
  * @see <a href=
@@ -111,18 +112,41 @@ public final class CoffFile {
      */
     public static final class ImageFileHeader {
         static final short IMAGE_FILE_MACHINE_AMD64 = (short) 0x8664;
+        static final int NUMBER_OF_SYMBOLS = 8;
         static final int SIZE_OF_OPTIONAL_HEADER_OFFSET = 16;
         static final int IMAGE_SIZEOF_FILE_HEADER = 20;
+        /**
+         * @see <a href=
+         *      "https://docs.microsoft.com/en-gb/windows/win32/debug/pe-format?redirectedfrom=MSDN#coff-symbol-table">COFF
+         *      Symbol Table</a>
+         */
+        static final int SIZE_OF_SYMBOL_TABLE_RECORD = 18;
 
         private static ImageFileHeader createImageFileHeader(ObjectFileReader reader) {
             int headerStartOffset = reader.getPosition();
             short machine = reader.getShort();
             checkIdent(machine);
             short numberOfSections = reader.getShort();
-            reader.setPosition(headerStartOffset + ImageFileHeader.SIZE_OF_OPTIONAL_HEADER_OFFSET);
+            /* int dateTimeStamp = */ reader.getInt();
+            int pointerToSymbolTable = reader.getInt();
+            int numberOfSymbols = reader.getInt();
             short sizeOfOptionalHeader = reader.getShort();
             int firstSection = headerStartOffset + ImageFileHeader.IMAGE_SIZEOF_FILE_HEADER + Short.toUnsignedInt(sizeOfOptionalHeader);
-            return new ImageFileHeader(numberOfSections, firstSection);
+            int stringTablePosition = getStringTablePosition(pointerToSymbolTable, numberOfSymbols);
+            return new ImageFileHeader(numberOfSections, firstSection, stringTablePosition);
+        }
+
+        /**
+         * <quote>Immediately following the COFF symbol table is the COFF string table. The position
+         * of this table is found by taking the symbol table address in the COFF header and adding
+         * the number of symbols multiplied by the size of a symbol.</quote>
+         * 
+         * @see <a href=
+         *      "https://docs.microsoft.com/en-gb/windows/win32/debug/pe-format?#coff-string-table">COFF
+         *      String Table</a>
+         */
+        private static int getStringTablePosition(int pointerToSymbolTable, int numberOfSymbols) {
+            return pointerToSymbolTable + numberOfSymbols * SIZE_OF_SYMBOL_TABLE_RECORD;
         }
 
         private static void checkIdent(short magic) {
@@ -132,11 +156,13 @@ public final class CoffFile {
         }
 
         private final short numberOfSections;
-        private int firstSection;
+        private final int firstSection;
+        private final int stringTablePosition;
 
-        ImageFileHeader(short numberOfSections, int firstSection) {
+        ImageFileHeader(short numberOfSections, int firstSection, int stringTablePosition) {
             this.numberOfSections = numberOfSections;
             this.firstSection = firstSection;
+            this.stringTablePosition = stringTablePosition;
         }
 
         @Override
@@ -189,13 +215,6 @@ public final class CoffFile {
             this.name = name;
             this.sizeOfRawData = sizeOfRawData;
             this.pointerToRawData = pointerToRawData;
-            verifyValidName();
-        }
-
-        private void verifyValidName() {
-            if (name.startsWith("/")) {
-                throw new LLVMParserException("Long Section Names in COFF are not supported");
-            }
         }
 
         public String getName() {
@@ -222,7 +241,7 @@ public final class CoffFile {
         int startOffset = reader.getPosition();
         byte[] nameBytes = new byte[ImageSectionHeader.IMAGE_SIZEOF_SHORT_NAME];
         reader.get(nameBytes);
-        String name = parseName(nameBytes);
+        String name = parseName(nameBytes, reader);
         reader.setPosition(startOffset + ImageSectionHeader.SIZE_OF_RAW_DATA_OFFSET);
         int sizeOfRawData = reader.getInt();
         int pointerToRawData = reader.getInt();
@@ -241,7 +260,31 @@ public final class CoffFile {
      * 
      * @see ImageSectionHeader
      */
-    private static String parseName(byte[] nameBytes) {
+    private String parseName(byte[] nameBytes, ObjectFileReader reader) {
+        String s = nameBytesToString(nameBytes);
+        if (s.startsWith("/")) {
+            int stringTableOffset = Integer.parseInt(s.substring(1));
+            return readStringTableOffset(stringTableOffset, reader);
+        }
+        return s;
+    }
+
+    /**
+     * @see <a href=
+     *      "https://docs.microsoft.com/en-gb/windows/win32/debug/pe-format?#coff-string-table">COFF
+     *      String Table</a>
+     */
+    private String readStringTableOffset(int offset, ObjectFileReader reader) {
+        int start = header.stringTablePosition + offset;
+        reader.setPosition(start);
+        for (byte b = reader.getByte(); b != 0; b = reader.getByte()) {
+            // increment position
+        }
+        int end = reader.getPosition();
+        return reader.getString(start, end, StandardCharsets.UTF_8);
+    }
+
+    private static String nameBytesToString(byte[] nameBytes) {
         // strip trailing '\0's
         int length = 0;
         while (length < nameBytes.length && nameBytes[length] != 0x0) {

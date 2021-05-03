@@ -396,7 +396,7 @@ class BootstrapToolchainLauncherBuildTask(mx.BuildTask):
 
     def contents(self, tool, exe):
         # platform support
-        all_params = '"%*"' if mx.is_windows() else '"$@"'
+        all_params = '%*' if mx.is_windows() else '"$@"'
         _quote = _quote_windows if mx.is_windows() else pipes.quote
         # build command line
         java = mx.get_jdk().java
@@ -557,12 +557,20 @@ class AbstractSulongNativeProject(mx.NativeProject):  # pylint: disable=too-many
 
 
 class CMakeMixin(object):
+    @staticmethod
+    def config_entry(key, value):
+        value_substitute = mx_subst.path_substitutions.substitute(value)
+        if mx.is_windows():
+            # cmake does not like backslashes
+            value_substitute = value_substitute.replace("\\", "/")
+        return '-D{}={}'.format(key, value_substitute)
+
     def __init__(self, *args, **kwargs):
         super(CMakeMixin, self).__init__(*args, **kwargs)
         self._cmake_config_raw = kwargs.pop('cmakeConfig', {})
 
     def cmake_config(self):
-        return ['-D{}={}'.format(k, mx_subst.path_substitutions.substitute(v).replace('{{}}', '$')) for k, v in sorted(self._cmake_config_raw.items())]
+        return [CMakeMixin.config_entry(k, v.replace('{{}}', '$')) for k, v in sorted(self._cmake_config_raw.items())]
 
 
 class CMakeProject(CMakeMixin, AbstractSulongNativeProject):  # pylint: disable=too-many-ancestors
@@ -642,7 +650,7 @@ class CMakeNinjaProject(CMakeMixin, mx_native.NinjaProject):  # pylint: disable=
         # explicitly set ninja executable if not on path
         cmake_make_program = 'CMAKE_MAKE_PROGRAM'
         if cmake_make_program not in cmake_config and mx_native.Ninja.binary != 'ninja':
-            cmake_config.append('-D{}={}'.format(cmake_make_program, mx_native.Ninja.binary))
+            cmake_config.append(CMakeMixin.config_entry(cmake_make_program, mx_native.Ninja.binary))
 
         # cmake will always create build.ninja - there is nothing we can do about it ATM
         cmdline = ["-G", "Ninja", source_dir] + cmake_config
@@ -786,21 +794,14 @@ class SulongCMakeTestSuite(SulongTestSuiteMixin, CMakeNinjaProject):  # pylint: 
         _config['CMAKE_INSTALL_PREFIX'] = self._install_dir
         _config['SULONG_PROJECT_NAME'] = self.name
         _config['SULONG_ENABLED_LANGUAGES'] = ';'.join(self._get_languages())
-        # _config['SULONG_VARIANTS'] = ';'.join(self.getVariants())
-        # _config['SULONG_BUILD_REF'] = 'YES' if self.buildRef else 'NO'
         _config['SULONG_BUILD_SHARED_OBJECT'] = 'YES' if self.buildSharedObject else 'NO'
-        # _config['SO_EXT'] = mx.add_lib_suffix("")
         _config['CLANG'] = mx_sulong.findBundledLLVMProgram('clang')
         _config['CLANGXX'] = mx_sulong.findBundledLLVMProgram('clang++')
         _config['LLVM_OPT'] = mx_sulong.findBundledLLVMProgram('opt')
         _config['LLVM_AS'] = mx_sulong.findBundledLLVMProgram('llvm-as')
-        # _config['LLVM_DIS'] = mx_sulong.findBundledLLVMProgram('llvm-dis')
         _config['LLVM_LINK'] = mx_sulong.findBundledLLVMProgram('llvm-link')
         _config['LLVM_CONFIG'] = mx_sulong.findBundledLLVMProgram('llvm-config')
         _config['LLVM_OBJCOPY'] = mx_sulong.findBundledLLVMProgram('llvm-objcopy')
-        # _config['GRAALVM_LLVM_HOME'] = mx_subst.path_substitutions.substitute("<path:SULONG_HOME>")
-        # if 'OS' not in _config:
-        #     _config['OS'] = mx_subst.path_substitutions.substitute("<os>")
         if DragonEggSupport.haveDragonegg():
             _config['DRAGONEGG'] = DragonEggSupport.pluginPath()
             _config['DRAGONEGG_GCC'] = DragonEggSupport.findGCCProgram('gcc', optional=False)
@@ -808,8 +809,6 @@ class SulongCMakeTestSuite(SulongTestSuiteMixin, CMakeNinjaProject):  # pylint: 
             _config['DRAGONEGG_LLVMAS'] = DragonEggSupport.findLLVMProgram("llvm-as")
             _config['DRAGONEGG_FC'] = DragonEggSupport.findGCCProgram('gfortran', optional=False)
             _config['FC'] = DragonEggSupport.findGCCProgram('gfortran', optional=False)
-        # elif not self._is_needs_rebuild_call and getattr(self, 'requireDragonegg', False):
-        #     mx.abort('Could not find dragonegg, cannot build "{}" (requireDragonegg = True).'.format(self.name))
         return _config
 
     def cmake_config(self):
@@ -861,11 +860,11 @@ class SulongCMakeTestSuite(SulongTestSuiteMixin, CMakeNinjaProject):  # pylint: 
         if not self.current_variant:
             self.abort("current_variant not set")
         _extra_cmake_config = extra_cmake_config or []
-        _extra_cmake_config.append("-DSULONG_CURRENT_VARIANT={}".format(self.current_variant))
+        _extra_cmake_config.append(CMakeMixin.config_entry("SULONG_CURRENT_VARIANT", self.current_variant))
         try:
             # get either current_variant or <other>
             variant_specific_config = next(self.cmake_config_variant[x] for x in (self.current_variant, '<others>') if x in self.cmake_config_variant)
-            _extra_cmake_config.extend(('-D{}={}'.format(k, v) for k, v in variant_specific_config.items()))
+            _extra_cmake_config.extend((CMakeMixin.config_entry(k, v) for k, v in variant_specific_config.items()))
         except StopIteration:
             # no variant specific config
             pass
