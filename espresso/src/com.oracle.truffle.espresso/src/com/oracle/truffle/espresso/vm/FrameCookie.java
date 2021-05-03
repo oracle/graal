@@ -23,7 +23,6 @@
 
 package com.oracle.truffle.espresso.vm;
 
-import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 

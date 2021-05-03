@@ -60,7 +60,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * @see InteropLibrary#isNull(Object)
      */
     @Substitution
-    static abstract class IsNull extends Node {
+    abstract static class IsNull extends Node {
         static final int LIMIT = 4;
 
         abstract boolean execute(@JavaType(Object.class) StaticObject receiver);
@@ -81,7 +81,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      * @see InteropLibrary#isBoolean(Object)
      */
     @Substitution
-    static abstract class IsBoolean extends Node {
+    abstract static class IsBoolean extends Node {
         static final int LIMIT = 4;
 
         abstract boolean execute(@JavaType(Object.class) StaticObject receiver);
@@ -99,9 +99,9 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      *
      * @see InteropLibrary#asBoolean(Object)
      */
-    @Substitution(methodName = "asBoolean")
+    @Substitution
     @Throws(UnsupportedMessageException.class)
-    static abstract class AsBoolean extends Node {
+    abstract static class AsBoolean extends Node {
         static final int LIMIT = 4;
 
         abstract boolean execute(@JavaType(Object.class) StaticObject receiver);

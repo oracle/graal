@@ -58,7 +58,7 @@ public final class Target_sun_launcher_LauncherHelper {
                     "                  Print internal options for debugging language implementations and tools.";
 
     @Substitution
-    static abstract class PrintHelpMessage extends Node {
+    abstract static class PrintHelpMessage extends Node {
         abstract void execute(boolean printToStderr);
 
         @Specialization

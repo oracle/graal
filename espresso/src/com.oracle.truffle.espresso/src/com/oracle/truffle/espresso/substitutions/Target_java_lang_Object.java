@@ -49,7 +49,7 @@ public final class Target_java_lang_Object {
     }
 
     @Substitution(hasReceiver = true, methodName = "<init>")
-    static abstract class Init extends Node {
+    abstract static class Init extends Node {
 
         abstract void execute(@JavaType(Object.class) StaticObject self);
 

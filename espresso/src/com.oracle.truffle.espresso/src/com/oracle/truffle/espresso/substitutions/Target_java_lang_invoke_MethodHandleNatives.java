@@ -292,7 +292,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
     }
 
     @Substitution(methodName = "resolve")
-    static abstract class ResolveOverload extends Node {
+    abstract static class ResolveOverload extends Node {
 
         abstract @JavaType(internalName = "Ljava/lang/invoke/MemberName;") StaticObject execute(
                         @JavaType(internalName = "Ljava/lang/invoke/MemberName;") StaticObject self,
@@ -318,7 +318,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
     }
 
     @Substitution
-    static abstract class Resolve extends Node {
+    abstract static class Resolve extends Node {
 
         /**
          * Complete resolution of a memberName, full with method lookup, flags overwriting and

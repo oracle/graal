@@ -65,7 +65,7 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
 public final class Target_java_lang_Class {
 
     @Substitution(methodName = "getPrimitiveClass")
-    static abstract class GetPrimitiveClass extends Node {
+    abstract static class GetPrimitiveClass extends Node {
         abstract @JavaType(Class.class) StaticObject execute(@JavaType(String.class) StaticObject name);
 
         @Specialization

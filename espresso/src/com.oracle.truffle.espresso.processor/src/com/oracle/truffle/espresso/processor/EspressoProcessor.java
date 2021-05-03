@@ -25,7 +25,6 @@ package com.oracle.truffle.espresso.processor;
 import java.io.IOException;
 import java.io.Writer;
 import java.time.Year;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -88,7 +87,6 @@ public abstract class EspressoProcessor extends AbstractProcessor {
      * package com.oracle.truffle.espresso.substitutions;
      * 
      * import com.oracle.truffle.espresso.meta.Meta;
-     * import com.oracle.truffle.api.nodes.DirectCallNode;
      * import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
      * import com.oracle.truffle.espresso.runtime.StaticObject;
      * 
@@ -201,23 +199,21 @@ public abstract class EspressoProcessor extends AbstractProcessor {
     EspressoProcessor(String SUBSTITUTION_PACKAGE, String SUBSTITUTOR) {
         this.SUBSTITUTOR_PACKAGE = SUBSTITUTION_PACKAGE;
         this.SUBSTITUTOR = SUBSTITUTOR;
-        this.PACKAGE = "package " + SUBSTITUTION_PACKAGE + ";\n\n";
         this.EXTENSION = " extends " + SUBSTITUTOR + " {\n";
-        this.IMPORTS_COLLECTOR = PACKAGE +
-                        "\n" +
-                        "import java.util.ArrayList;\n" +
+        this.IMPORTS_COLLECTOR = "import java.util.ArrayList;\n" +
                         "import java.util.List;\n";
+
     }
 
     // Instance specific constants
-    private final String SUBSTITUTOR_PACKAGE;
+    protected final String SUBSTITUTOR_PACKAGE;
     private final String SUBSTITUTOR;
-    private final String PACKAGE;
     private final String EXTENSION;
     private final String IMPORTS_COLLECTOR;
 
     // Processor local info
     private String collectorClassName;
+    private String collectorPackage;
     protected boolean done = false;
     protected HashSet<String> classes = null;
     protected StringBuilder collector = null;
@@ -279,7 +275,6 @@ public abstract class EspressoProcessor extends AbstractProcessor {
     static final String IMPORT_STATIC_OBJECT = "import com.oracle.truffle.espresso.runtime.StaticObject;\n";
     static final String IMPORT_TRUFFLE_OBJECT = "import com.oracle.truffle.api.interop.TruffleObject;\n";
     static final String IMPORT_META = "import com.oracle.truffle.espresso.meta.Meta;\n";
-    static final String IMPORT_DIRECT_CALL_NODE = "import com.oracle.truffle.api.nodes.DirectCallNode;\n";
     static final String IMPORT_PROFILE = "import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;\n";
 
     static final String META_CLASS = "Meta ";
@@ -293,7 +288,6 @@ public abstract class EspressoProcessor extends AbstractProcessor {
 
     private static final String SET_META = "this." + META_VAR + " = " + META_VAR + ";";
 
-    static final String DIRECT_CALL_NODE = "DirectCallNode";
     static final String CREATE = "create";
 
     static final String SHOULD_SPLIT = "shouldSplit";
@@ -421,7 +415,7 @@ public abstract class EspressoProcessor extends AbstractProcessor {
     }
 
     private String getSubstitutorQualifiedName(String substitutorName) {
-        return SUBSTITUTOR_PACKAGE + "." + substitutorName;
+        return collectorPackage + "." + substitutorName;
     }
 
     private static StringBuilder signatureSuffixBuilder(List<String> parameterTypes) {
@@ -551,7 +545,7 @@ public abstract class EspressoProcessor extends AbstractProcessor {
      *     static {
      */
     // @formatter:on
-    protected final void initCollector(String collectorName) {
+    protected final void initCollector(String collectorPkg, String collectorName) {
         if (collectorName == null) {
             return;
         }
@@ -559,10 +553,13 @@ public abstract class EspressoProcessor extends AbstractProcessor {
             commitFiles();
         }
         this.collectorClassName = collectorName;
+        this.collectorPackage = collectorPkg;
         this.classes = new HashSet<>();
         this.collector = new StringBuilder();
         collector.append(COPYRIGHT);
+        collector.append("package " + collectorPkg + ";\n\n");
         collector.append(IMPORTS_COLLECTOR).append("\n");
+        collector.append("import " + SUBSTITUTOR_PACKAGE + "." + SUBSTITUTOR).append(";\n\n");
         collector.append("// ").append(GENERATED_BY).append(SUBSTITUTOR).append("\n");
         collector.append(PUBLIC_FINAL_CLASS).append(collectorClassName).append(" {\n");
         collector.append(generateInstance("List<" + SUBSTITUTOR + "." + FACTORY + ">", COLLECTOR_INSTANCE_NAME, "ArrayList<>"));
@@ -743,12 +740,12 @@ public abstract class EspressoProcessor extends AbstractProcessor {
      * @param helper A helper structure.
      * @return The string forming the substitutor.
      */
-    String spawnSubstitutor(String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
+    String spawnSubstitutor(String targetPackage, String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
         String substitutorName = getSubstitutorClassName(className, targetMethodName, parameterTypeName);
         StringBuilder classFile = new StringBuilder();
         // Header
         classFile.append(COPYRIGHT);
-        classFile.append(PACKAGE);
+        classFile.append("package " + targetPackage + ";\n\n");
         classFile.append(IMPORT_META);
         classFile.append(generateImports(substitutorName, targetMethodName, parameterTypeName, helper));
 

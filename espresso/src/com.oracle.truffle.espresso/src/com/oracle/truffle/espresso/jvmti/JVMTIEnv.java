@@ -42,7 +42,6 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.substitutions.GenerateNativeEnv;
 import com.oracle.truffle.espresso.substitutions.GenerateNativeEnv.PrependEnv;
 import com.oracle.truffle.espresso.substitutions.IntrinsicSubstitutor;
-import com.oracle.truffle.espresso.substitutions.JVMTIEnvCollector;
 
 @GenerateNativeEnv(target = JvmtiImpl.class)
 @PrependEnv

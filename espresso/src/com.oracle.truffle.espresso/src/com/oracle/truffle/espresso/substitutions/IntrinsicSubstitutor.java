@@ -37,7 +37,7 @@ public abstract class IntrinsicSubstitutor extends SubstitutionProfiler {
         private final int parameterCount;
         private final boolean prependEnv;
 
-        Factory(String methodName, NativeSignature nativeSignature, int parameterCount, boolean prependEnv) {
+        protected Factory(String methodName, NativeSignature nativeSignature, int parameterCount, boolean prependEnv) {
             this.methodName = methodName;
             this.nativeSignature = nativeSignature;
             this.parameterCount = parameterCount;

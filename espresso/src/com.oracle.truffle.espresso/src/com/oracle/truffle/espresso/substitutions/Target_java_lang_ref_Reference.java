@@ -119,7 +119,7 @@ public final class Target_java_lang_ref_Reference {
 
     @SuppressWarnings("rawtypes")
     @Substitution(hasReceiver = true)
-    static abstract class Enqueue extends Node {
+    abstract static class Enqueue extends Node {
         abstract boolean execute(@JavaType(java.lang.ref.Reference.class) StaticObject self);
 
         @Specialization

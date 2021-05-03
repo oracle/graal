@@ -177,7 +177,7 @@ public final class Target_java_lang_Thread {
     }
 
     @Substitution(hasReceiver = true)
-    static abstract class Start0 extends Node {
+    abstract static class Start0 extends Node {
         abstract void execute(@JavaType(Thread.class) StaticObject self);
 
         @Specialization
@@ -341,7 +341,7 @@ public final class Target_java_lang_Thread {
     }
 
     @Substitution(hasReceiver = true)
-    static abstract class GetState extends Node {
+    abstract static class GetState extends Node {
         abstract @JavaType(internalName = "Ljava/lang/Thread$State;") StaticObject execute(@JavaType(Thread.class) StaticObject self);
 
         @Specialization
