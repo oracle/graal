@@ -212,7 +212,12 @@ public final class DebuggerConnection implements Commands {
                     processPacket(Packet.fromByteArray(connection.readPacket()));
                 } catch (IOException e) {
                     if (!Thread.currentThread().isInterrupted()) {
+                        // enter Truffle context for logging
+                        boolean entered = controller.enterTruffleContext();
                         JDWP.LOGGER.warning(() -> "Failed to process jdwp packet with message: " + e.getMessage());
+                        if (entered) {
+                            controller.leaveTruffleContext();
+                        }
                     }
                 } catch (ConnectionClosedException e) {
                     // we closed the session, so let the thread run dry
