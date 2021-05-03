@@ -199,16 +199,13 @@ public abstract class EspressoProcessor extends AbstractProcessor {
     EspressoProcessor(String SUBSTITUTION_PACKAGE, String SUBSTITUTOR) {
         this.SUBSTITUTOR_PACKAGE = SUBSTITUTION_PACKAGE;
         this.SUBSTITUTOR = SUBSTITUTOR;
-        this.EXTENSION = " extends " + SUBSTITUTOR + " {\n";
         this.IMPORTS_COLLECTOR = "import java.util.ArrayList;\n" +
                         "import java.util.List;\n";
-
     }
 
     // Instance specific constants
     protected final String SUBSTITUTOR_PACKAGE;
     private final String SUBSTITUTOR;
-    private final String EXTENSION;
     private final String IMPORTS_COLLECTOR;
 
     // Processor local info
@@ -283,7 +280,6 @@ public abstract class EspressoProcessor extends AbstractProcessor {
 
     static final String PROFILE_CLASS = "SubstitutionProfiler ";
     static final String PROFILE_VAR = "profile";
-    static final String PROFILE_ARG = PROFILE_CLASS + PROFILE_VAR;
     static final String PROFILE_ARG_CALL = "this";
 
     private static final String SET_META = "this." + META_VAR + " = " + META_VAR + ";";
@@ -435,6 +431,7 @@ public abstract class EspressoProcessor extends AbstractProcessor {
     }
 
     private String getSubstitutorQualifiedName(String substitutorName) {
+        assert collectorPackage != null;
         return collectorPackage + "." + substitutorName;
     }
 
@@ -466,10 +463,6 @@ public abstract class EspressoProcessor extends AbstractProcessor {
         return "(" + clazz + ") " + obj;
     }
 
-    static String genIsNull(String obj) {
-        return FACTORY_IS_NULL + "(" + obj + ")";
-    }
-
     static String extractSimpleType(String arg) {
         // The argument can be a fully qualified type e.g. java.lang.String, int, long...
         // Or an annotated type e.g. "(@com.example.Annotation :: long)",
@@ -495,10 +488,6 @@ public abstract class EspressoProcessor extends AbstractProcessor {
             result = result.substring(beginIndex + 1);
         }
         return result;
-    }
-
-    static String extractReturnType(ExecutableElement method) {
-        return extractSimpleType(method.getReturnType().toString());
     }
 
     /**
@@ -771,7 +760,7 @@ public abstract class EspressoProcessor extends AbstractProcessor {
 
         // Class
         classFile.append(generateGeneratedBy(className, targetMethodName, parameterTypeName, helper)).append("\n");
-        classFile.append(PUBLIC_FINAL_CLASS).append(substitutorName).append(EXTENSION);
+        classFile.append(PUBLIC_FINAL_CLASS).append(substitutorName).append(" extends " + SUBSTITUTOR + "{\n");
 
         // Instance Factory
         classFile.append(generateFactory(substitutorName, targetMethodName, parameterTypeName, helper)).append("\n");
