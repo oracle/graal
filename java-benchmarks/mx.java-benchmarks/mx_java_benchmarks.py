@@ -180,7 +180,7 @@ class BasePetClinicBenchmarkSuite(object):
         return "graal-compiler"
 
     def version(self):
-        return "0.0.2"
+        return "0.0.3"
 
     def validateReturnCode(self, retcode):
         return retcode == 143
@@ -281,7 +281,7 @@ class BaseTikaBenchmarkSuite(object):
         return "graal-compiler"
 
     def version(self):
-        return "1.0.2"
+        return "1.0.3"
 
     def validateReturnCode(self, retcode):
         return retcode == 143
@@ -376,7 +376,7 @@ class BaseShopCartBenchmarkSuite(object):
         return "graal-compiler"
 
     def version(self):
-        return "0.3.1"
+        return "0.3.2"
 
     def validateReturnCode(self, retcode):
         return retcode == 143
@@ -433,7 +433,7 @@ class ShopCartJMeterBenchmarkSuite(BaseShopCartBenchmarkSuite, mx_sdk_benchmark.
         return "shopcart-jmeter"
 
     def benchmarkList(self, bmSuiteArgs):
-        return ["tiny"]
+        return ["tiny", "small", "large"]
 
     def defaultWorkloadPath(self, benchmark):
         return os.path.join(self.applicationDist(), "workloads", benchmark + ".jmx")
