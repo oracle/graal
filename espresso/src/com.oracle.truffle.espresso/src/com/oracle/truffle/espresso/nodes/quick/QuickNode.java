@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,10 +27,9 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
-import com.oracle.truffle.espresso.nodes.EspressoInstrumentableQuickNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public abstract class QuickNode extends EspressoInstrumentableQuickNode {
+public abstract class QuickNode extends BaseQuickNode {
 
     public static final QuickNode[] EMPTY_ARRAY = new QuickNode[0];
 

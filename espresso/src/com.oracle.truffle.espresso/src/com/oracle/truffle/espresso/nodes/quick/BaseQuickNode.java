@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,17 +20,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.nodes;
+package com.oracle.truffle.espresso.nodes.quick;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.InstrumentableNode;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.instrumentation.GenerateWrapper;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
+import com.oracle.truffle.espresso.nodes.EspressoInstrumentableQuickNode;
 
-public abstract class EspressoInstrumentableQuickNode extends Node implements InstrumentableNode {
+@GenerateWrapper
+public abstract class BaseQuickNode extends EspressoInstrumentableQuickNode {
 
-    public abstract int execute(VirtualFrame frame, long[] primitives, Object[] refs);
+    @Override
+    public final WrapperNode createWrapper(ProbeNode probeNode) {
+        return new BaseQuickNodeWrapper(this, probeNode);
+    }
 
-    public final boolean isInstrumentable() {
-        return true;
+    public abstract boolean producedForeignObject(Object[] refs);
+
+    public boolean removedByRedefintion() {
+        return false;
     }
 }
