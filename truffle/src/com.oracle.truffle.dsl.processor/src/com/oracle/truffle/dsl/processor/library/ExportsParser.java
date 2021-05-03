@@ -602,26 +602,6 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                 continue;
             }
 
-            if (explicitReceiver) {
-                boolean foundInvalidExportsOnReceiver = false;
-                superType = ElementUtils.castTypeElement(receiverClass);
-                while ((superType = getSuperType(superType)) != null) {
-                    List<AnnotationMirror> exports = getRepeatedAnnotation(superType.getAnnotationMirrors(), types.ExportLibrary);
-                    for (AnnotationMirror export : exports) {
-                        TypeMirror exportedLibrary = getAnnotationValue(TypeMirror.class, export, "value");
-                        if (!ElementUtils.typeEquals(exportedLibrary, types.DynamicDispatchLibrary)) {
-                            foundInvalidExportsOnReceiver = true;
-                            break;
-                        }
-                    }
-                }
-                if (foundInvalidExportsOnReceiver) {
-                    lib.addError(annotationMirror, receiverClassValue, "An explicit receiver type must not export any libraries other than %s.",
-                                    types.DynamicDispatchLibrary.asElement().getSimpleName().toString());
-                    continue;
-                }
-            }
-
             if (libraryData == null) {
                 lib.addError("Class '%s' is not a library annotated with @%s.", getSimpleName(libraryMirror), types.GenerateLibrary.asElement().getSimpleName().toString());
                 continue;
@@ -775,7 +755,32 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                                 ElementUtils.getSimpleName(types.GenerateLibrary),
                                 types.ExportLibrary.asElement().getSimpleName().toString(),
                                 types.DynamicDispatchLibrary.asElement().getSimpleName().toString());
+            } else {
+                if (explicitReceiver && !exportedLibrary.isBuiltinDefaultExport()) {
+                    boolean foundInvalidExportsOnReceiver = false;
+                    superType = ElementUtils.castTypeElement(exportedLibrary.getExplicitReceiver());
+                    while (superType != null) {
+                        List<AnnotationMirror> exports = getRepeatedAnnotation(superType.getAnnotationMirrors(), types.ExportLibrary);
+                        for (AnnotationMirror export : exports) {
+                            TypeMirror exportedLibraryType = getAnnotationValue(TypeMirror.class, export, "value");
+                            if (!ElementUtils.typeEquals(exportedLibraryType, types.DynamicDispatchLibrary)) {
+                                foundInvalidExportsOnReceiver = true;
+                                break;
+                            }
+                        }
+                        superType = getSuperType(superType);
+                    }
+                    if (foundInvalidExportsOnReceiver) {
+                        AnnotationValue receiverClassValue = getAnnotationValue(exportedLibrary.getMessageAnnotation(), "receiverType");
+                        exportedLibrary.addError(exportedLibrary.getMessageAnnotation(), receiverClassValue,
+                                        "An export that is used for dynamic dispatch must not export any libraries other than %s with the receiver type.",
+                                        types.DynamicDispatchLibrary.asElement().getSimpleName().toString());
+                        continue;
+                    }
+                }
+
             }
+
         }
         return model;
     }
