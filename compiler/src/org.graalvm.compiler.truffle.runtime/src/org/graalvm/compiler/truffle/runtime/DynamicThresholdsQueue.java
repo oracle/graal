@@ -77,7 +77,7 @@ public class DynamicThresholdsQueue extends TraversingBlockingQueue {
     }
 
     private void scaleThresholds() {
-        runtime.setCompilationThresholdScale(scale());
+        runtime.setCompilationThresholdScale(FixedPointMath.toFixedPoint(scale()));
     }
 
     private double scale() {
