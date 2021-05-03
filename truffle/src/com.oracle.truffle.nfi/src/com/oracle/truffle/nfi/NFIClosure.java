@@ -106,7 +106,7 @@ final class NFIClosure implements TruffleObject {
             NFISignature signature = receiver.signature;
             if (args.length != signature.nativeArgCount) {
                 exception.enter();
-                throw ArityException.create(signature.nativeArgCount, args.length);
+                throw ArityException.create(signature.nativeArgCount, signature.nativeArgCount, args.length);
             }
 
             Object[] preparedArgs = new Object[signature.managedArgCount];

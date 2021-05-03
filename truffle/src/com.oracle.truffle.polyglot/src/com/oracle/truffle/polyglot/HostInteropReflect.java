@@ -297,7 +297,7 @@ final class HostInteropReflect {
         } catch (UnsupportedTypeException e) {
             throw HostInteropErrors.invalidExecuteArgumentType(languageContext, null, e.getSuppliedValues());
         } catch (ArityException e) {
-            throw HostInteropErrors.invalidExecuteArity(languageContext, null, arguments, e.getExpectedArity(), e.getActualArity());
+            throw HostInteropErrors.invalidExecuteArity(languageContext, null, arguments, e.getExpectedMinArity(), e.getExpectedMaxArity(), e.getActualArity());
         }
     }
 
@@ -725,7 +725,7 @@ abstract class ProxyInvokeNode extends Node {
             throw HostInteropErrors.invalidExecuteArgumentType(polyglotContext, receiver, e.getSuppliedValues());
         } catch (ArityException e) {
             error.enter();
-            throw HostInteropErrors.invalidExecuteArity(polyglotContext, receiver, arguments, e.getExpectedArity(), e.getActualArity());
+            throw HostInteropErrors.invalidExecuteArity(polyglotContext, receiver, arguments, e.getExpectedMinArity(), e.getExpectedMaxArity(), e.getActualArity());
         } catch (UnsupportedMessageException e) {
             error.enter();
             throw HostInteropErrors.invokeUnsupported(polyglotContext, receiver, member);

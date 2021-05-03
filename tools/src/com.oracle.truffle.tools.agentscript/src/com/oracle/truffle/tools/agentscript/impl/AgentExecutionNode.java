@@ -118,7 +118,7 @@ final class AgentExecutionNode extends ExecutionEventNode {
                 returnValue = args[0];
                 break;
             default:
-                throw ArityException.create(1, args.length);
+                throw ArityException.create(1, 1, args.length);
         }
         return context.createUnwind(NullObject.nullCheck(returnValue));
     }
