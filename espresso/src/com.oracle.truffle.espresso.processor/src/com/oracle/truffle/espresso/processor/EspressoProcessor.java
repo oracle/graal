@@ -319,6 +319,26 @@ public abstract class EspressoProcessor extends AbstractProcessor {
         // @formatter:on
     }
 
+    /**
+     * Returns the name of the substituted method.
+     */
+    protected String getSubstutitutedMethodName(Element targetElement) {
+        return targetElement.getSimpleName().toString();
+    }
+
+    /**
+     * Returns the target method to be called by a substitution.
+     *
+     * Returns the targetElement itself for method substitutions; or the execute* method of the
+     * Truffle node, for node substitutions.
+     */
+    protected ExecutableElement getTargetMethod(Element targetElement) {
+        if (targetElement.getKind() == ElementKind.CLASS) {
+            return findNodeExecute((TypeElement) targetElement);
+        }
+        return (ExecutableElement) targetElement;
+    }
+
     @Override
     public SourceVersion getSupportedSourceVersion() {
         return SourceVersion.latest();
@@ -685,7 +705,7 @@ public abstract class EspressoProcessor extends AbstractProcessor {
      */
     private static String generateConstructor(String substitutorName, SubstitutionHelper helper) {
         StringBuilder str = new StringBuilder();
-        str.append(TAB_1).append("private ").append(substitutorName).append("(").append(META_ARG).append(") {");
+        str.append(TAB_1).append("private ").append(substitutorName).append("(").append(META_ARG).append(") {\n");
         if (helper.hasMetaInjection || helper.hasProfileInjection) {
             str.append(TAB_2).append(SET_META).append("\n");
         }

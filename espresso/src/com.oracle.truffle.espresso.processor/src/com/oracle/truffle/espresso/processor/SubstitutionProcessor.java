@@ -171,12 +171,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         TypeMirror defaultNameProvider = getNameProvider(getAnnotation(substitution, espressoSubstitutions), espressoSubstitutionsClassNameProvider);
 
         for (Element element : substitution.getEnclosedElements()) {
-            if (element.getKind() == ElementKind.CLASS) {
-                processNodeSubstitution((TypeElement) element, className, defaultNameProvider);
-            }
-            if (element.getKind() == ElementKind.METHOD) {
-                processMethodSubstitution((ExecutableElement) element, className, defaultNameProvider);
-            }
+            processSubstitution(element, className, defaultNameProvider);
         }
     }
 
@@ -192,84 +187,56 @@ public final class SubstitutionProcessor extends EspressoProcessor {
                         .toString();
     }
 
-    private void processNodeSubstitution(TypeElement typeElement, String className, TypeMirror defaultNameProvider) {
-        // Find nodes annotated with @Substitution.
-        AnnotationMirror subst = getAnnotation(typeElement, substitutionAnnotation);
-        if (subst != null) {
-            assert typeElement.getKind() == ElementKind.CLASS;
-            // Obtain the name of the element to be substituted in.
-            String elementName = typeElement.getSimpleName().toString();
-
-            AnnotationValue methodNameValue = getAttribute(subst, methodNameElement);
-            assert methodNameValue.getValue() instanceof String;
-            String actualMethodName = (String) methodNameValue.getValue();
-            if (actualMethodName.length() == 0) {
+    @Override
+    protected String getSubstutitutedMethodName(Element targetElement) {
+        AnnotationMirror subst = getAnnotation(targetElement, substitutionAnnotation);
+        AnnotationValue methodNameValue = getAttribute(subst, methodNameElement);
+        assert methodNameValue.getValue() instanceof String;
+        String name = (String) methodNameValue.getValue();
+        if (name.isEmpty()) {
+            if (targetElement.getKind() == ElementKind.CLASS) {
                 // If methodName is not specified, use camel case version of the class name.
                 // e.g. IsNull node -> isNull.
-                actualMethodName = camelCase(elementName);
-            }
-
-            ExecutableElement executeMethod = findNodeExecute(typeElement);
-
-            // Obtain the host types of the parameters
-            List<String> espressoTypes = getEspressoTypes(executeMethod);
-
-            // Spawn the name of the Substitutor we will create.
-            String substitutorName = getSubstitutorClassName(className, elementName, espressoTypes);
-
-            if (!classes.contains(substitutorName)) {
-                // Obtain the (fully qualified) guest types parameters of the element.
-                List<String> guestTypes = getGuestTypes(executeMethod);
-
-                // Obtain the hasReceiver() value from the @Substitution annotation.
-                AnnotationValue hasReceiverValue = getAttribute(subst, hasReceiverElement);
-                assert hasReceiverValue != null;
-                boolean hasReceiver = (boolean) hasReceiverValue.getValue();
-
-                // Obtain the fully qualified guest return type of the element.
-                String returnType = getReturnTypeFromHost(executeMethod);
-
-                TypeMirror nameProvider = defaultNameProvider;
-
-                TypeMirror versionFilter = getVersionFilter(subst);
-                SubstitutorHelper helper = new SubstitutorHelper(this, typeElement, className, actualMethodName, guestTypes, returnType, hasReceiver, nameProvider, versionFilter);
-
-                // Create the contents of the source file
-                String classFile = spawnSubstitutor(
-                                SUBSTITUTION_PACKAGE,
-                                className,
-                                elementName,
-                                espressoTypes, helper);
-                commitSubstitution(substitutionAnnotation, substitutorName, classFile);
+                String elementName = targetElement.getSimpleName().toString();
+                name = camelCase(elementName);
+            } else if (targetElement.getKind() == ElementKind.METHOD) {
+                // If methodName is not specified, use the target method name.
+                name = targetElement.getSimpleName().toString();
+            } else {
+                throw new AssertionError("Unexpected: " + targetElement);
             }
         }
+
+        return name;
     }
 
-    void processMethodSubstitution(ExecutableElement methodElement, String className, TypeMirror defaultNameProvider) {
+    void processSubstitution(Element element, String className, TypeMirror defaultNameProvider) {
+        assert element.getKind() == ElementKind.METHOD || element.getKind() == ElementKind.CLASS;
+
         // Find the methods annotated with @Substitution.
-        AnnotationMirror subst = getAnnotation(methodElement, substitutionAnnotation);
+        AnnotationMirror subst = getAnnotation(element, substitutionAnnotation);
         if (subst != null) {
-            assert methodElement.getKind() == ElementKind.METHOD;
             // Obtain the name of the element to be substituted in.
-            String elementName = methodElement.getSimpleName().toString();
+            String elementName = element.getSimpleName().toString();
+
+            /**
+             * Obtain the actual target method to call in the substitution. This is the method that
+             * will be called in the substitution: Either element itself, for method substitutions.
+             * Or the execute* method of the Truffle node, for node substitutions.
+             */
+            ExecutableElement targetMethod = getTargetMethod(element);
 
             // Obtain the host types of the parameters
-            List<String> espressoTypes = getEspressoTypes(methodElement);
+            List<String> espressoTypes = getEspressoTypes(targetMethod);
 
             // Spawn the name of the Substitutor we will create.
             String substitutorName = getSubstitutorClassName(className, elementName, espressoTypes);
 
             if (!classes.contains(substitutorName)) {
-                // Obtain the name of the substituted element.
-                AnnotationValue methodNameValue = getAttribute(subst, methodNameElement);
-                assert methodNameValue.getValue() instanceof String;
-                String actualMethodName = (String) methodNameValue.getValue();
-                if (actualMethodName.length() == 0) {
-                    actualMethodName = elementName;
-                }
+                String actualMethodName = getSubstutitutedMethodName(element);
 
                 // Obtain the (fully qualified) guest types parameters of the element.
-                List<String> guestTypes = getGuestTypes(methodElement);
+                List<String> guestTypes = getGuestTypes(targetMethod);
 
                 // Obtain the hasReceiver() value from the @Substitution annotation.
                 AnnotationValue hasReceiverValue = getAttribute(subst, hasReceiverElement);
@@ -277,13 +244,13 @@ public final class SubstitutionProcessor extends EspressoProcessor {
                 boolean hasReceiver = (boolean) hasReceiverValue.getValue();
 
                 // Obtain the fully qualified guest return type of the element.
-                String returnType = getReturnTypeFromHost(methodElement);
+                String returnType = getReturnTypeFromHost(targetMethod);
 
                 TypeMirror nameProvider = getNameProvider(subst, substitutionClassNameProvider);
                 nameProvider = nameProvider == null ? defaultNameProvider : nameProvider;
 
                 TypeMirror versionFilter = getVersionFilter(subst);
-                SubstitutorHelper helper = new SubstitutorHelper(this, methodElement, className, actualMethodName, guestTypes, returnType, hasReceiver, nameProvider, versionFilter);
+                SubstitutorHelper helper = new SubstitutorHelper(this, element, className, actualMethodName, guestTypes, returnType, hasReceiver, nameProvider, versionFilter);
 
                 // Create the contents of the source file
                 String classFile = spawnSubstitutor(

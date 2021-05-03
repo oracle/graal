@@ -109,13 +109,13 @@ public final class NativeEnvProcessor extends EspressoProcessor {
         final boolean needsHandlify;
 
         public IntrinsincsHelper(EspressoProcessor processor,
-                        ExecutableElement method,
+                        Element element,
                         NativeType[] jniNativeSignature,
                         List<Boolean> referenceTypes,
                         boolean isStatic,
                         boolean prependEnv,
                         boolean needsHandlify) {
-            super(processor, method);
+            super(processor, element);
             this.jniNativeSignature = jniNativeSignature;
             this.referenceTypes = referenceTypes;
             this.isStatic = isStatic;
@@ -191,43 +191,45 @@ public final class NativeEnvProcessor extends EspressoProcessor {
     }
 
     void processElement(Element element) {
-        assert element.getKind() == ElementKind.METHOD;
-        ExecutableElement method = (ExecutableElement) element;
-        assert method.getEnclosingElement().getKind() == ElementKind.CLASS;
-        TypeElement declaringClass = (TypeElement) method.getEnclosingElement();
-        boolean prependEnv = getAnnotation(declaringClass, this.prependEnvAnnotation) != null || isJni(method);
+        assert element.getKind() == ElementKind.METHOD || element.getKind() == ElementKind.CLASS;
+        assert element.getEnclosingElement().getKind() == ElementKind.CLASS;
+        TypeElement declaringClass = (TypeElement) element.getEnclosingElement();
+        boolean prependEnv = getAnnotation(declaringClass, this.prependEnvAnnotation) != null || isJni(element);
         if (declaringClass.getQualifiedName().toString().equals(envPackage + "." + envClassName)) {
             String className = envClassName;
-            // Extract the class name.
             // Obtain the name of the method to be substituted in.
-            String targetMethodName = method.getSimpleName().toString();
+            String substitutedMethodName = getSubstutitutedMethodName(element);
+
+            // This is the actual method that will be called by the substitution.
+            ExecutableElement targetMethod = getTargetMethod(element);
+
             // Obtain the host types of the parameters
             List<String> espressoTypes = new ArrayList<>();
             List<Boolean> referenceTypes = new ArrayList<>();
-            boolean needsHandlify = getEspressoTypes(method, espressoTypes, referenceTypes);
+            boolean needsHandlify = getEspressoTypes(targetMethod, espressoTypes, referenceTypes);
             // Spawn the name of the Substitutor we will create.
-            String substitutorName = getSubstitutorClassName(className, targetMethodName, espressoTypes);
+            String substitutorName = getSubstitutorClassName(className, substitutedMethodName, espressoTypes);
             if (!classes.contains(substitutorName)) {
                 // Obtain the jniNativeSignature
-                NativeType[] jniNativeSignature = jniNativeSignature(method, prependEnv);
+                NativeType[] jniNativeSignature = jniNativeSignature(targetMethod, prependEnv);
                 // Check if we need to call an instance method
-                boolean isStatic = method.getModifiers().contains(Modifier.STATIC);
+                boolean isStatic = element.getKind() == ElementKind.METHOD && targetMethod.getModifiers().contains(Modifier.STATIC);
                 // Spawn helper
-                IntrinsincsHelper h = new IntrinsincsHelper(this, method, jniNativeSignature, referenceTypes, isStatic, prependEnv, needsHandlify);
+                IntrinsincsHelper h = new IntrinsincsHelper(this, element, jniNativeSignature, referenceTypes, isStatic, prependEnv, needsHandlify);
                 // Create the contents of the source file
                 String classFile = spawnSubstitutor(
                                 envPackage,
                                 className,
-                                targetMethodName,
+                                substitutedMethodName,
                                 espressoTypes, h);
-                commitSubstitution(method, substitutorName, classFile);
+                commitSubstitution(element, substitutorName, classFile);
             }
         }
     }
 
-    boolean isJni(ExecutableElement VMmethod) {
+    boolean isJni(Element vmElement) {
         // Check if this VM method has the @JniImpl annotation
-        return getAnnotation(VMmethod, jniImpl) != null;
+        return getAnnotation(vmElement, jniImpl) != null;
     }
 
     boolean getEspressoTypes(ExecutableElement inner, List<String> parameterTypeNames, List<Boolean> referenceTypes) {
@@ -311,10 +313,15 @@ public final class NativeEnvProcessor extends EspressoProcessor {
 
     String extractInvocation(String className, String methodName, int nParameters, boolean isStatic, SubstitutionHelper helper) {
         StringBuilder str = new StringBuilder();
-        if (isStatic) {
-            str.append(className).append(".").append(methodName).append("(");
+        if (helper.isNodeTarget()) {
+            ExecutableElement executeMethod = findNodeExecute(helper.getNodeTarget());
+            str.append("this.node").append(".").append(executeMethod.getSimpleName()).append("(");
         } else {
-            str.append(envName).append(".").append(methodName).append("(");
+            if (isStatic) {
+                str.append(className).append(".").append(methodName).append("(");
+            } else {
+                str.append(envName).append(".").append(methodName).append("(");
+            }
         }
         boolean first = true;
         for (int i = 0; i < nParameters; i++) {
@@ -341,6 +348,9 @@ public final class NativeEnvProcessor extends EspressoProcessor {
         str.append(IMPORT_NATIVE_SIGNATURE);
         str.append(IMPORT_NATIVE_TYPE);
         str.append("import " + SUBSTITUTOR_PACKAGE + "." + SUBSTITUTOR + ";\n");
+        if (helper.isNodeTarget()) {
+            str.append("import ").append(helper.getNodeTarget().getQualifiedName()).append(";\n");
+        }
         if (helper.hasProfileInjection) {
             str.append(IMPORT_PROFILE);
         }
