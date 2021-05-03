@@ -22,12 +22,20 @@
  */
 package com.oracle.truffle.espresso.nodes.quick;
 
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
-import com.oracle.truffle.espresso.nodes.EspressoInstrumentableQuickNode;
+import com.oracle.truffle.api.nodes.Node;
 
 @GenerateWrapper
-public abstract class BaseQuickNode extends EspressoInstrumentableQuickNode {
+public abstract class BaseQuickNode extends Node implements InstrumentableNode {
+
+    public abstract int execute(VirtualFrame frame, long[] primitives, Object[] refs);
+
+    public final boolean isInstrumentable() {
+        return true;
+    }
 
     @Override
     public final WrapperNode createWrapper(ProbeNode probeNode) {
