@@ -329,9 +329,9 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
 
     private static Collection<ExtendedProperty> generateStorageProperties() {
         return Arrays.asList(
-                        new ExtendedProperty(new StaticProperty(StaticPropertyKind.BYTE_ARRAY), "primitive", true),
-                        new ExtendedProperty(new StaticProperty(StaticPropertyKind.OBJECT_ARRAY), "object", true),
-                        new ExtendedProperty(new StaticProperty(StaticPropertyKind.Object), "shape", true));
+                        new ExtendedProperty(new DefaultStaticProperty(StaticPropertyKind.BYTE_ARRAY), "primitive", true),
+                        new ExtendedProperty(new DefaultStaticProperty(StaticPropertyKind.OBJECT_ARRAY), "object", true),
+                        new ExtendedProperty(new DefaultStaticProperty(StaticPropertyKind.Object), "shape", true));
     }
 
     private static Class<?> generateStorage(Class<?> storageSuperClass) {

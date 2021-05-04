@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.staticobject.test;
 
 import com.oracle.truffle.espresso.staticobject.DefaultStaticObject;
+import com.oracle.truffle.espresso.staticobject.DefaultStaticProperty;
 import com.oracle.truffle.espresso.staticobject.StaticProperty;
 import com.oracle.truffle.espresso.staticobject.StaticPropertyKind;
 import com.oracle.truffle.espresso.staticobject.StaticShape;
@@ -37,7 +38,7 @@ public class BuilderPropertyTest {
     @Test
     public void sameBuilderSameProperty() {
         StaticShape.Builder builder = StaticShape.newBuilder();
-        StaticProperty property = new StaticProperty(StaticPropertyKind.Int);
+        StaticProperty property = new DefaultStaticProperty(StaticPropertyKind.Int);
         builder.property(property, "p1", false);
         try {
             // You cannot add the same property twice
@@ -51,8 +52,8 @@ public class BuilderPropertyTest {
     @Test
     public void sameBuilderSameName() throws IllegalArgumentException {
         StaticShape.Builder builder = StaticShape.newBuilder();
-        StaticProperty p1 = new StaticProperty(StaticPropertyKind.Int);
-        StaticProperty p2 = new StaticProperty(StaticPropertyKind.Int);
+        StaticProperty p1 = new DefaultStaticProperty(StaticPropertyKind.Int);
+        StaticProperty p2 = new DefaultStaticProperty(StaticPropertyKind.Int);
         builder.property(p1, "p1", false);
         try {
             // You cannot add two properties with the same name
@@ -67,7 +68,7 @@ public class BuilderPropertyTest {
     public void differentBuildersSameProperty() {
         StaticShape.Builder b1 = StaticShape.newBuilder();
         StaticShape.Builder b2 = StaticShape.newBuilder();
-        StaticProperty property = new StaticProperty(StaticPropertyKind.Int);
+        StaticProperty property = new DefaultStaticProperty(StaticPropertyKind.Int);
         b1.property(property, "p1", false);
         b2.property(property, "p2", false);
         b1.build();
@@ -85,7 +86,7 @@ public class BuilderPropertyTest {
         Assume.assumeFalse(StorageLayout.ARRAY_BASED);
 
         StaticShape.Builder builder = StaticShape.newBuilder();
-        StaticProperty property = new StaticProperty(StaticPropertyKind.Int);
+        StaticProperty property = new DefaultStaticProperty(StaticPropertyKind.Int);
         String propertyName = "p1";
         builder.property(property, propertyName, false);
         StaticShape<DefaultStaticObject.Factory> shape = builder.build();
@@ -99,8 +100,8 @@ public class BuilderPropertyTest {
         Assume.assumeFalse(StorageLayout.ARRAY_BASED);
 
         StaticShape.Builder builder = StaticShape.newBuilder();
-        StaticProperty p1 = new StaticProperty(StaticPropertyKind.Int);
-        StaticProperty p2 = new StaticProperty(StaticPropertyKind.Int);
+        StaticProperty p1 = new DefaultStaticProperty(StaticPropertyKind.Int);
+        StaticProperty p2 = new DefaultStaticProperty(StaticPropertyKind.Int);
         String p1Name = "p1";
         String p2Name = "p2";
         builder.property(p1, p1Name, true);
@@ -119,7 +120,7 @@ public class BuilderPropertyTest {
 
         StaticShape.Builder builder = StaticShape.newBuilder();
         for (StaticPropertyKind kind : StaticPropertyKind.values()) {
-            builder.property(new StaticProperty(kind), kind.name(), false);
+            builder.property(new DefaultStaticProperty(kind), kind.name(), false);
         }
         StaticShape<DefaultStaticObject.Factory> shape = builder.build();
         DefaultStaticObject object = shape.getFactory().create();

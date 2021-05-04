@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.staticobject.test;
 
 import com.oracle.truffle.espresso.staticobject.DefaultStaticObject;
+import com.oracle.truffle.espresso.staticobject.DefaultStaticProperty;
 import com.oracle.truffle.espresso.staticobject.StaticProperty;
 import com.oracle.truffle.espresso.staticobject.StaticPropertyKind;
 import com.oracle.truffle.espresso.staticobject.StaticShape;
@@ -43,7 +44,7 @@ public class InheritanceTest {
     @Test
     public void baseClassInheritance() throws NoSuchFieldException {
         StaticShape.Builder builder = StaticShape.newBuilder();
-        StaticProperty property = new StaticProperty(StaticPropertyKind.Int);
+        StaticProperty property = new DefaultStaticProperty(StaticPropertyKind.Int);
         builder.property(property, "field1", false);
         StaticShape<CustomStaticObjectFactory> shape = builder.build(CustomStaticObject.class, CustomStaticObjectFactory.class);
         CustomStaticObject object = shape.getFactory().create();
@@ -67,15 +68,15 @@ public class InheritanceTest {
     @Test
     public void baseShapeInheritance() throws NoSuchFieldException, IllegalAccessException {
         StaticShape.Builder b1 = StaticShape.newBuilder();
-        StaticProperty s1p1 = new StaticProperty(StaticPropertyKind.Int);
-        StaticProperty s1p2 = new StaticProperty(StaticPropertyKind.Int);
+        StaticProperty s1p1 = new DefaultStaticProperty(StaticPropertyKind.Int);
+        StaticProperty s1p2 = new DefaultStaticProperty(StaticPropertyKind.Int);
         b1.property(s1p1, "field1", false);
         b1.property(s1p2, "field2", false);
         // StaticShape s1 declares 2 properties: s1p1 and s1p2
         StaticShape<DefaultStaticObject.Factory> s1 = b1.build();
 
         StaticShape.Builder b2 = StaticShape.newBuilder();
-        StaticProperty s2p1 = new StaticProperty(StaticPropertyKind.Int);
+        StaticProperty s2p1 = new DefaultStaticProperty(StaticPropertyKind.Int);
         b2.property(s2p1, "field1", false);
         // StaticShape s2:
         // 1. extends s1

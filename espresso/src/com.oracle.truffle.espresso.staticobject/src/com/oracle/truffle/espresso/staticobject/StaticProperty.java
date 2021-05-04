@@ -27,7 +27,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import java.lang.reflect.Field;
 import sun.misc.Unsafe;
 
-public class StaticProperty {
+public abstract class StaticProperty {
     private static final Unsafe UNSAFE = getUnsafe();
     private final byte internalKind;
     @CompilationFinal //
@@ -40,7 +40,7 @@ public class StaticProperty {
         this.internalKind = internalKind;
     }
 
-    public StaticProperty(StaticPropertyKind kind) {
+    protected StaticProperty(StaticPropertyKind kind) {
         this(getInternalKind(kind));
     }
 
@@ -48,21 +48,21 @@ public class StaticProperty {
         return kind.toByte();
     }
 
-    void initOffset(int o) {
+    final void initOffset(int o) {
         if (this.offset != 0) {
             throw new RuntimeException("Attempt to reinitialize the offset of a static property. Was it added to more than one builder?");
         }
         this.offset = o;
     }
 
-    void initShape(StaticShape<?> s) {
+    final void initShape(StaticShape<?> s) {
         if (this.shape != null) {
             throw new RuntimeException("Attempt to reinitialize the shape of a static property. Was it added to more than one builder?");
         }
         this.shape = s;
     }
 
-    byte getInternalKind() {
+    final byte getInternalKind() {
         return internalKind;
     }
 

@@ -29,6 +29,7 @@ import static com.oracle.truffle.espresso.vm.InterpreterToVM.instanceOf;
 import java.util.Comparator;
 import java.util.function.IntFunction;
 
+import com.oracle.truffle.espresso.staticobject.DefaultStaticProperty;
 import com.oracle.truffle.espresso.staticobject.StaticProperty;
 import com.oracle.truffle.espresso.staticobject.StaticPropertyKind;
 import com.oracle.truffle.espresso.staticobject.StaticShape;
@@ -470,7 +471,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     static final DebugCounter KLASS_LOOKUP_DECLARED_METHOD_COUNT = DebugCounter.create("Klass.lookupDeclaredMethod call count");
     static final DebugCounter KLASS_LOOKUP_DECLARED_FIELD_COUNT = DebugCounter.create("Klass.lookupDeclaredField call count");
 
-    private static final StaticProperty FOREIGN_PROPERTY = new StaticProperty(StaticPropertyKind.Object);
+    private static final StaticProperty FOREIGN_PROPERTY = new DefaultStaticProperty(StaticPropertyKind.Object);
     // This field should be static final, but until we move the static object model we cannot have a
     // SubstrateVM feature which will allow us to set the right field offsets at image build time.
     @CompilationFinal //

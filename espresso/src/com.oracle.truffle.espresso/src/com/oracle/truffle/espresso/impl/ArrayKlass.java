@@ -43,6 +43,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObject.StaticObjectFactory;
+import com.oracle.truffle.espresso.staticobject.DefaultStaticProperty;
 import com.oracle.truffle.espresso.staticobject.StaticProperty;
 import com.oracle.truffle.espresso.staticobject.StaticPropertyKind;
 import com.oracle.truffle.espresso.staticobject.StaticShape;
@@ -54,7 +55,7 @@ public final class ArrayKlass extends Klass {
     private final Klass elementalType;
     private final int dimension;
 
-    private static final StaticProperty ARRAY_PROPERTY = new StaticProperty(StaticPropertyKind.Object);
+    private static final StaticProperty ARRAY_PROPERTY = new DefaultStaticProperty(StaticPropertyKind.Object);
     // This field should be static final, but until we move the static object model we cannot have a
     // SubstrateVM feature which will allow us to set the right field offsets at image build time.
     @CompilationFinal //
