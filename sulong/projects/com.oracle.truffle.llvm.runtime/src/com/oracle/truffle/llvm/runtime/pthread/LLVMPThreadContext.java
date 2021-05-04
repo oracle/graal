@@ -201,7 +201,11 @@ public final class LLVMPThreadContext {
 
     @TruffleBoundary
     public Thread getThread(long threadID) {
-        return threadStorage.get(threadID).get();
+        WeakReference<Thread> thread = threadStorage.get(threadID);
+        if (thread == null) {
+            return null;
+        }
+        return thread.get();
     }
 
     @TruffleBoundary
