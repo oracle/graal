@@ -28,6 +28,7 @@ import sun.misc.Unsafe;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Objects;
 
 public abstract class StaticShape<T> {
@@ -90,7 +91,7 @@ public abstract class StaticShape<T> {
     }
 
     public static final class Builder {
-        private final HashMap<String, ExtendedProperty> extendedProperties = new HashMap<>();
+        private final HashMap<String, ExtendedProperty> extendedProperties = new LinkedHashMap<>();
 
         Builder() {
         }
