@@ -229,6 +229,9 @@ public final class SubstitutionProcessor extends EspressoProcessor {
                 processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Method substitution cannot be private nor protected", element);
             }
             ExecutableElement targetMethod = findNodeExecute(typeElement);
+            if (targetMethod == null) {
+                processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Cannot find Node abstract execute method ", element);
+            }
             checkTargetMethod(targetMethod);
         }
     }
@@ -275,6 +278,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         AnnotationMirror subst = getAnnotation(element, substitutionAnnotation);
         if (subst != null) {
 
+            // Sanity check.
             checkSubstitutionElement(element);
 
             // Obtain the name of the element to be substituted in.
