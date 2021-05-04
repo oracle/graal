@@ -26,6 +26,7 @@ package org.graalvm.compiler.truffle.runtime;
 
 import java.lang.ref.WeakReference;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
@@ -88,17 +89,26 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
     }
 
     public void awaitCompletion(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
-        future.get(timeout, unit);
+        try {
+            future.get(timeout, unit);
+        } catch (CancellationException e) {
+            // Ignored
+        }
     }
 
     public void awaitCompletion() throws ExecutionException, InterruptedException {
-        future.get();
+        try {
+            future.get();
+        } catch (CancellationException e) {
+            // Ignored
+        }
     }
 
     public synchronized boolean cancel() {
         if (!cancelled) {
             cancelled = true;
             if (!started) {
+                future.cancel(false);
                 finished();
             }
             return true;
