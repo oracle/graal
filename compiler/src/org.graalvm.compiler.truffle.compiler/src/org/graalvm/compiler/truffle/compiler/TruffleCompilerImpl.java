@@ -56,7 +56,6 @@ import org.graalvm.compiler.core.CompilationPrinter;
 import org.graalvm.compiler.core.CompilationWrapper;
 import org.graalvm.compiler.core.CompilationWrapper.ExceptionAction;
 import org.graalvm.compiler.core.GraalCompiler;
-import org.graalvm.compiler.core.common.CancellationBailoutException;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.CompilationIdentifier.Verbosity;
 import org.graalvm.compiler.core.common.GraalOptions;
@@ -278,13 +277,13 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
                     TruffleCompilationTask task,
                     TruffleCompilerListener inListener) {
         Objects.requireNonNull(compilation, "Compilation must be non null.");
+        Objects.requireNonNull(task, "Compilation task must be non null.");
         org.graalvm.options.OptionValues options = getOptionsForCompiler(optionsMap);
         TruffleCompilationIdentifier compilationId = asTruffleCompilationIdentifier(compilation);
         CompilableTruffleAST compilable = compilationId.getCompilable();
         boolean usingCallersDebug = truffleDebug instanceof TruffleDebugContextImpl;
         if (usingCallersDebug) {
             final DebugContext callerDebug = ((TruffleDebugContextImpl) truffleDebug).debugContext;
-
             try (DebugContext.Scope s = maybeOpenTruffleScope(compilable, callerDebug)) {
                 actuallyCompile(options, inliningPlan, task, inListener, compilationId, compilable, callerDebug);
             } catch (Throwable e) {
@@ -329,7 +328,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
                         getDebugOutputDirectory(),
                         getCompilationProblemsPerAction(),
                         compilable,
-                        task == null ? null : new CancellableTruffleCompilationTask(task),
+                        new CancellableTruffleCompilationTask(task),
                         inliningPlan,
                         compilationId,
                         listener);
@@ -484,9 +483,8 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
      * @param compilable representation of the AST to be compiled
      * @param inliningPlan
      * @param compilationId identifier to be used for the compilation
-     * @param task an object polled during the compilation process to
-     *            {@linkplain CancellationBailoutException abort} early if the thread owning the
-     *            task requests it
+     * @param task an object that holds information about the compilation process itself (e.g. which
+     *            tier, was the compilation canceled)
      * @param listener
      */
     @SuppressWarnings("try")
@@ -501,14 +499,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
         StructuredGraph graph = null;
 
         try (CompilationAlarm alarm = CompilationAlarm.trackCompilationPeriod(debug.getOptions())) {
-            TruffleTierConfiguration tier;
-            if (task == null || task.isLastTier()) {
-                tier = config.lastTier();
-            } else {
-                tier = config.firstTier();
-            }
-
-            PhaseSuite<HighTierContext> graphBuilderSuite = createGraphBuilderSuite(tier);
+            PhaseSuite<HighTierContext> graphBuilderSuite = createGraphBuilderSuite(task.isFirstTier() ? config.firstTier() : config.lastTier());
 
             ExpansionStatistics statistics = getExpansionHistogram(options);
             SpeculationLog speculationLog = compilable.getCompilationSpeculationLog();
@@ -526,7 +517,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
             }
 
             // Check if the task has been cancelled
-            if (task != null && task.isCancelled()) {
+            if (task.isCancelled()) {
                 return;
             }
             if (statistics != null) {
@@ -537,13 +528,13 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
             }
             // The Truffle compiler owns the last 2 characters of the compilation name, and uses
             // them to encode the compilation tier, so escaping the target name is not necessary.
-            String compilationName = compilable.toString() + (task != null && task.isFirstTier() ? TruffleCompiler.FIRST_TIER_COMPILATION_SUFFIX : TruffleCompiler.SECOND_TIER_COMPILATION_SUFFIX);
+            String compilationName = compilable.toString() + (task.isFirstTier() ? TruffleCompiler.FIRST_TIER_COMPILATION_SUFFIX : TruffleCompiler.SECOND_TIER_COMPILATION_SUFFIX);
             CompilationResult compilationResult = compilePEGraph(graph, compilationName, graphBuilderSuite, compilable, asCompilationRequest(compilationId), listener, task);
             if (statistics != null) {
                 statistics.afterLowTier(compilable, graph);
             }
             if (listener != null) {
-                listener.onSuccess(compilable, inliningPlan, new GraphInfoImpl(graph), new CompilationResultInfoImpl(compilationResult), taskTier(task));
+                listener.onSuccess(compilable, inliningPlan, new GraphInfoImpl(graph), new CompilationResultInfoImpl(compilationResult), task.tier());
             }
 
             // Partial evaluation and installation are included in
@@ -558,17 +549,10 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
             if (listener != null) {
                 BailoutException bailout = t instanceof BailoutException ? (BailoutException) t : null;
                 boolean permanentBailout = bailout != null ? bailout.isPermanent() : false;
-                listener.onFailure(compilable, t.toString(), bailout != null, permanentBailout, taskTier(task));
+                listener.onFailure(compilable, t.toString(), bailout != null, permanentBailout, task.tier());
             }
             throw t;
         }
-    }
-
-    private static int taskTier(CancellableTruffleCompilationTask task) {
-        if (task != null) {
-            return task.isFirstTier() ? 1 : 2;
-        }
-        return 0;
     }
 
     /**
@@ -608,13 +592,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
 
         CompilationResult result = null;
 
-        final TruffleTierConfiguration tier;
-        if (task != null && task.isFirstTier()) {
-            tier = config.firstTier();
-        } else {
-            tier = config.lastTier();
-        }
-
+        final TruffleTierConfiguration tier = task.isFirstTier() ? config.firstTier() : config.lastTier();
         try (DebugCloseable a = CompilationTime.start(debug);
                         DebugContext.Scope s = debug.scope("TruffleGraal.GraalCompiler", graph, tier.providers().getCodeCache());
                         DebugCloseable c = CompilationMemUse.start(debug)) {
@@ -729,7 +707,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
 
         @Override
         protected DebugContext createRetryDebugContext(DebugContext initialDebug, OptionValues compilerOptions, PrintStream logStream) {
-            listener.onCompilationRetry(compilable, taskTier(task));
+            listener.onCompilationRetry(compilable, task.tier());
             return createDebugContext(compilerOptions, compilationId, compilable, logStream);
         }
 
@@ -943,10 +921,14 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
         }
     }
 
-    static final class CancellableTruffleCompilationTask implements TruffleCompilationTask, Cancellable {
+    /**
+     * Wrapper around a {@link TruffleCompilationTask} which also implements {@link Cancellable} to
+     * allow co-operative canceling of truffle compilations.
+     */
+    public static final class CancellableTruffleCompilationTask implements TruffleCompilationTask, Cancellable {
         private final TruffleCompilationTask delegate;
 
-        CancellableTruffleCompilationTask(TruffleCompilationTask delegate) {
+        public CancellableTruffleCompilationTask(TruffleCompilationTask delegate) {
             this.delegate = delegate;
         }
 

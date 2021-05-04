@@ -38,6 +38,7 @@ import org.graalvm.compiler.core.GraalCompilerOptions;
 import org.graalvm.compiler.test.SubprocessUtil;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompilation;
+import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.common.TruffleDebugContext;
@@ -94,7 +95,7 @@ public class JNIExceptionWrapperTest extends TestWithPolyglotOptions {
             try (TruffleDebugContext debug = compiler.openDebugContext(GraalTruffleRuntime.getOptionsForCompiler(compilable), compilation)) {
                 TruffleMetaAccessProvider inliningPlan = runtime.createInliningPlan();
                 TestListener listener = new TestListener();
-                compiler.doCompile(debug, compilation, GraalTruffleRuntime.getOptionsForCompiler(compilable), inliningPlan, null, listener);
+                compiler.doCompile(debug, compilation, GraalTruffleRuntime.getOptionsForCompiler(compilable), inliningPlan, new TestTruffleCompilationTask(), listener);
             }
         } catch (Throwable t) {
             String message = t.getMessage();
@@ -141,6 +142,18 @@ public class JNIExceptionWrapperTest extends TestWithPolyglotOptions {
 
         @Override
         public void onCompilationRetry(CompilableTruffleAST compilable, int tier) {
+        }
+    }
+
+    private static class TestTruffleCompilationTask implements TruffleCompilationTask {
+        @Override
+        public boolean isCancelled() {
+            return false;
+        }
+
+        @Override
+        public boolean isLastTier() {
+            return true;
         }
     }
 }
