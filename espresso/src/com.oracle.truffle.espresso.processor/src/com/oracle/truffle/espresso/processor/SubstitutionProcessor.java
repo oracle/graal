@@ -194,7 +194,8 @@ public final class SubstitutionProcessor extends EspressoProcessor {
                 processingEnv.getMessager().printMessage(Diagnostic.Kind.WARNING,
                                 headerMessage + " is not of type StaticObject", element);
             }
-            if (getAnnotation(typeMirror, javaType) == null) {
+            AnnotationMirror javaTypeMirror = getAnnotation(typeMirror, javaType);
+            if (javaTypeMirror == null) {
                 processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR,
                                 headerMessage + " must be annotated with e.g. @JavaType(String.class) according to the substituted method signature", element);
             }
@@ -356,7 +357,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         TypeMirror returnType = method.getReturnType();
         AnnotationMirror a = getAnnotation(returnType, javaType);
         if (a != null) {
-            return getClassFromJavaType(a);
+            return getClassFromJavaType(a, methodNameElement);
         }
         return getInternalName(returnType.toString());
     }
@@ -367,7 +368,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
             if (isActualParameter(parameter)) {
                 AnnotationMirror mirror = getAnnotation(parameter.asType(), javaType);
                 if (mirror != null) {
-                    parameterTypeNames.add(getClassFromJavaType(mirror));
+                    parameterTypeNames.add(getClassFromJavaType(mirror, inner));
                 } else {
                     // @JavaType annotation not found -> primitive or j.l.Object
                     String arg = getInternalName(parameter.asType().toString());
@@ -378,26 +379,59 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         return parameterTypeNames;
     }
 
+    static boolean isValidInternalType(String internalName) {
+        if (internalName.isEmpty()) {
+            return false;
+        }
+        if (internalName.length() == 1) {
+            switch (internalName.charAt(0)) {
+                case 'B': // byte
+                case 'C': // char
+                case 'D': // double
+                case 'F': // float
+                case 'I': // int
+                case 'J': // long
+                case 'S': // short
+                case 'V': // void
+                case 'Z': // boolean
+                    return true;
+                default:
+                    return false;
+            }
+        }
+        if (internalName.startsWith("[")) {
+            return isValidInternalType(internalName.substring(1));
+        }
+        return internalName.length() >= 3 && internalName.startsWith("L") && internalName.endsWith(";");
+    }
+
     /**
      * @param a an @JavaType annotation
      * @return the fully qualified internal name of the guest class.
      */
-    private String getClassFromJavaType(AnnotationMirror a) {
+    private String getClassFromJavaType(AnnotationMirror a, Element element) {
         Map<? extends ExecutableElement, ? extends AnnotationValue> members = processingEnv.getElementUtils().getElementValuesWithDefaults(a);
         AnnotationValue v = members.get(javaTypeValueElement);
         if (v != null) {
             assert v.getValue() instanceof TypeMirror;
             TypeMirror value = (TypeMirror) v.getValue();
+            String internalName = null;
             if (processingEnv.getTypeUtils().isSameType(value, javaType.asType())) {
-                return (String) members.get(javaTypeInternalNameElement).getValue();
+                internalName = (String) members.get(javaTypeInternalNameElement).getValue();
             } else {
-                return getInternalName(value.toString());
+                internalName = getInternalName(value.toString());
             }
-        } else {
-
-            System.err.println("value() member of @JavaType annotation not found");
+            if (!isValidInternalType(internalName)) {
+                processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Invalid internalName: " + internalName, element);
+            }
+            // . is allowed in type names by the spec, as part of the name, not as separator.
+            // This avoids a common error e.g. using . instead of / as separator.
+            if (internalName.contains(".")) {
+                processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Invalid . in internalName: '" + internalName + "'. Use / instead e.g. Ljava/lang/String;", element, a);
+            }
+            return internalName;
         }
-        throw new IllegalArgumentException();
+        throw new AssertionError("unreachable");
     }
 
     private static String getArraySubstring(int nbDim) {
