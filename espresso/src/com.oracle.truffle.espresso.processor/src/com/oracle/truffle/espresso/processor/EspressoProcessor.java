@@ -760,7 +760,7 @@ public abstract class EspressoProcessor extends AbstractProcessor {
 
         // Class
         classFile.append(generateGeneratedBy(className, targetMethodName, parameterTypeName, helper)).append("\n");
-        classFile.append(PUBLIC_FINAL_CLASS).append(substitutorName).append(" extends " + SUBSTITUTOR + "{\n");
+        classFile.append(PUBLIC_FINAL_CLASS).append(substitutorName).append(" extends " + SUBSTITUTOR + " {\n");
 
         // Instance Factory
         classFile.append(generateFactory(substitutorName, targetMethodName, parameterTypeName, helper)).append("\n");
