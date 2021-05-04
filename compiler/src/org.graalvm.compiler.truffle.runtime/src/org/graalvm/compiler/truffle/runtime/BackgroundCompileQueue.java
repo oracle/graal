@@ -155,9 +155,9 @@ public class BackgroundCompileQueue {
         if (callTarget.getOptionValue(PolyglotCompilerOptions.TraversingCompilationQueue)) {
             if (callTarget.getOptionValue(PolyglotCompilerOptions.DynamicCompilationThresholds)) {
                 double minScale = callTarget.getOptionValue(PolyglotCompilerOptions.DynamicCompilerThresholdsMinScale);
-                int normalLoad = callTarget.getOptionValue(PolyglotCompilerOptions.DynamicCompilerThresholdsNormalLoad);
-                double plateauWidth = callTarget.getOptionValue(PolyglotCompilerOptions.DynamicCompilationThresholdsPlateauWidth);
-                return new DynamicThresholdsQueue(runtime, threads, minScale, normalLoad, plateauWidth);
+                int minNormalLoad = callTarget.getOptionValue(PolyglotCompilerOptions.DynamicCompilerThresholdsMinNormalLoad);
+                int maxNormalLoad = callTarget.getOptionValue(PolyglotCompilerOptions.DynamicCompilerThresholdsMaxNormalLoad);
+                return new DynamicThresholdsQueue(runtime, threads, minScale, minNormalLoad, maxNormalLoad);
             } else {
                 return new TraversingBlockingQueue();
             }

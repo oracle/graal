@@ -516,17 +516,17 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Traversing queue gives first tier compilations priority.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> TraversingQueueFirstTierPriority = new OptionKey<>(true);
 
-    @Option(help = "TODO", category = OptionCategory.INTERNAL)
+    @Option(help = "Reduce or increase the compilation threshold depending on the size of the compilation queue.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> DynamicCompilationThresholds = new OptionKey<>(true);
 
-    @Option(help = "TODO", category = OptionCategory.INTERNAL)
+    @Option(help = "The minimal scale the compilation thresholds can be reduced to.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Double> DynamicCompilerThresholdsMinScale = new OptionKey<>(0.1);
 
-    @Option(help = "TODO", category = OptionCategory.INTERNAL)
-    public static final OptionKey<Integer> DynamicCompilerThresholdsNormalLoad = new OptionKey<>(100);
+    @Option(help = "The minimal compilation queue load at which compilation thresholds are not reduced.", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Integer> DynamicCompilerThresholdsMinNormalLoad = new OptionKey<>(10);
 
-    @Option(help = "TODO", category = OptionCategory.INTERNAL)
-    public static final OptionKey<Double> DynamicCompilationThresholdsPlateauWidth = new OptionKey<>(0.9);
+    @Option(help = "The maximal compilation queue load at which compilation thresholds are not increased.", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Integer> DynamicCompilerThresholdsMaxNormalLoad = new OptionKey<>(90);
 
     // Language agnostic inlining
 
