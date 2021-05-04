@@ -28,7 +28,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.VM;
 
 @EspressoSubstitutions
-public class Target_jdk_internal_reflect_Reflection {
+public final class Target_jdk_internal_reflect_Reflection {
     /**
      * This substitution is here because the VM method JVM_GetCallerClass has a different signature
      * between java8 and java11.

@@ -567,6 +567,9 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         // Initialize the collector.
         initCollector(SUBSTITUTION_PACKAGE, COLLECTOR);
         for (Element e : env.getElementsAnnotatedWith(espressoSubstitutions)) {
+            if (!e.getModifiers().contains(Modifier.FINAL)) {
+                processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Enclosing class for substitutions must be final", e);
+            }
             processElement(e);
         }
     }
