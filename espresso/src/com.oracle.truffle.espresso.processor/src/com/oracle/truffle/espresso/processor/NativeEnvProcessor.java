@@ -311,11 +311,10 @@ public final class NativeEnvProcessor extends EspressoProcessor {
         return decl + castTo(obj, clazz) + ";\n";
     }
 
-    String extractInvocation(String className, String methodName, int nParameters, boolean isStatic, SubstitutionHelper helper) {
+    String extractInvocation(String className, String methodName, String nodeMethodName, int nParameters, boolean isStatic, SubstitutionHelper helper) {
         StringBuilder str = new StringBuilder();
         if (helper.isNodeTarget()) {
-            ExecutableElement executeMethod = findNodeExecute(helper.getNodeTarget());
-            str.append("this.node").append(".").append(executeMethod.getSimpleName()).append("(");
+            str.append("this.node").append(".").append(nodeMethodName).append("(");
         } else {
             if (isStatic) {
                 str.append(className).append(".").append(methodName).append("(");
@@ -394,17 +393,22 @@ public final class NativeEnvProcessor extends EspressoProcessor {
             boolean isNonPrimitive = h.referenceTypes.get(argIndex);
             str.append(extractArg(argIndex++, type, isNonPrimitive, h.prependEnv ? 1 : 0, TAB_2));
         }
+        String nodeMethodName = null;
+        if (helper.isNodeTarget()) {
+            ExecutableElement nodeExecute = findNodeExecute(processingEnv.getMessager(), helper.getNodeTarget());
+            nodeMethodName = nodeExecute.getSimpleName().toString();
+        }
         switch (h.jniNativeSignature[0]) {
             case VOID:
-                str.append(TAB_2).append(extractInvocation(className, targetMethodName, argIndex, h.isStatic, helper)).append(";\n");
+                str.append(TAB_2).append(extractInvocation(className, targetMethodName, nodeMethodName, argIndex, h.isStatic, helper)).append(";\n");
                 str.append(TAB_2).append("return ").append(STATIC_OBJECT_NULL).append(";\n");
                 break;
             case OBJECT:
                 str.append(TAB_2).append("return ").append(
-                                "(long) " + envName + ".getHandles().createLocal(" + extractInvocation(className, targetMethodName, argIndex, h.isStatic, helper) + ")").append(";\n");
+                                "(long) " + envName + ".getHandles().createLocal(" + extractInvocation(className, targetMethodName, nodeMethodName, argIndex, h.isStatic, helper) + ")").append(";\n");
                 break;
             default:
-                str.append(TAB_2).append("return ").append(extractInvocation(className, targetMethodName, argIndex, h.isStatic, helper)).append(";\n");
+                str.append(TAB_2).append("return ").append(extractInvocation(className, targetMethodName, nodeMethodName, argIndex, h.isStatic, helper)).append(";\n");
         }
         str.append(TAB_1).append("}\n");
         str.append("}");

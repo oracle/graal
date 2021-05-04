@@ -130,11 +130,10 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         return tabulation + clazz + " " + ARG_NAME + index + " = " + castTo(ARGS_NAME + "[" + index + "]", clazz) + ";\n";
     }
 
-    private static String extractInvocation(String className, String methodName, int nParameters, SubstitutionHelper helper) {
+    private static String extractInvocation(String className, String methodName, String nodeMethodName, int nParameters, SubstitutionHelper helper) {
         StringBuilder str = new StringBuilder();
         if (helper.isNodeTarget()) {
-            ExecutableElement executeMethod = findNodeExecute(helper.getNodeTarget());
-            str.append("this.node").append(".").append(executeMethod.getSimpleName()).append("(");
+            str.append("this.node").append(".").append(nodeMethodName).append("(");
         } else {
             str.append(className).append(".").append(methodName).append("(");
         }
@@ -229,7 +228,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
             if (modifiers.contains(Modifier.PRIVATE) || modifiers.contains(Modifier.PROTECTED)) {
                 processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Method substitution cannot be private nor protected", element);
             }
-            ExecutableElement targetMethod = findNodeExecute(typeElement);
+            ExecutableElement targetMethod = findNodeExecute(processingEnv.getMessager(), typeElement);
             if (targetMethod == null) {
                 processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Cannot find Node abstract execute method ", element);
             }
@@ -654,11 +653,16 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         for (String argType : parameterTypeName) {
             str.append(extractArg(argIndex++, argType, TAB_2));
         }
+        String nodeMethodName = null;
+        if (helper.isNodeTarget()) {
+            ExecutableElement nodeExecute = findNodeExecute(processingEnv.getMessager(), helper.getNodeTarget());
+            nodeMethodName = nodeExecute.getSimpleName().toString();
+        }
         if (h.returnType.equals("V")) {
-            str.append(TAB_2).append(extractInvocation(targetClass, targetMethodName, argIndex, helper));
+            str.append(TAB_2).append(extractInvocation(targetClass, targetMethodName, nodeMethodName, argIndex, helper));
             str.append(TAB_2).append("return StaticObject.NULL;\n");
         } else {
-            str.append(TAB_2).append("return ").append(extractInvocation(targetClass, targetMethodName, argIndex, helper));
+            str.append(TAB_2).append("return ").append(extractInvocation(targetClass, targetMethodName, nodeMethodName, argIndex, helper));
         }
         str.append(TAB_1).append("}\n");
         str.append("}");

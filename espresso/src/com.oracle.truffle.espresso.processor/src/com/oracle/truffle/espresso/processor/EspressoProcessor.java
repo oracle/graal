@@ -31,6 +31,7 @@ import java.util.Map;
 import java.util.Set;
 
 import javax.annotation.processing.AbstractProcessor;
+import javax.annotation.processing.Messager;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.Processor;
 import javax.annotation.processing.RoundEnvironment;
@@ -45,6 +46,7 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
+import javax.tools.Diagnostic;
 import javax.tools.JavaFileObject;
 
 /**
@@ -328,7 +330,7 @@ public abstract class EspressoProcessor extends AbstractProcessor {
      */
     protected ExecutableElement getTargetMethod(Element targetElement) {
         if (targetElement.getKind() == ElementKind.CLASS) {
-            return findNodeExecute((TypeElement) targetElement);
+            return findNodeExecute(processingEnv.getMessager(), (TypeElement) targetElement);
         }
         return (ExecutableElement) targetElement;
     }
@@ -396,7 +398,7 @@ public abstract class EspressoProcessor extends AbstractProcessor {
     /**
      * For substitutions that use a node, find the execute* (abstract) method.
      */
-    static ExecutableElement findNodeExecute(TypeElement node) {
+    static ExecutableElement findNodeExecute(Messager messager, TypeElement node) {
         for (Element method : node.getEnclosedElements()) {
             if (method.getKind() == ElementKind.METHOD) {
                 if (method.getModifiers().contains(Modifier.ABSTRACT)) {
@@ -404,6 +406,7 @@ public abstract class EspressoProcessor extends AbstractProcessor {
                 }
             }
         }
+        messager.printMessage(Diagnostic.Kind.ERROR, "Node abstract execute* method not found", node);
         return null;
     }
 
@@ -824,5 +827,9 @@ public abstract class EspressoProcessor extends AbstractProcessor {
         str.append(TAB_1).append("}\n");
 
         return str.toString();
+    }
+
+    public Messager getMessager() {
+        return processingEnv.getMessager();
     }
 }
