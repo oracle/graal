@@ -43,7 +43,7 @@ public abstract class WriteBarrierSnippets {
         }
     }
 
-    protected static Word getPointerToFirstArrayElement(Address address, int length, int elementStride) {
+    protected static Word getPointerToFirstArrayElement(Address address, long length, int elementStride) {
         long result = Word.fromAddress(address).rawValue();
         if (elementStride < 0) {
             // the address points to the place after the last array element
@@ -52,7 +52,7 @@ public abstract class WriteBarrierSnippets {
         return WordFactory.unsigned(result);
     }
 
-    protected static Word getPointerToLastArrayElement(Address address, int length, int elementStride) {
+    protected static Word getPointerToLastArrayElement(Address address, long length, int elementStride) {
         long result = Word.fromAddress(address).rawValue();
         if (elementStride < 0) {
             // the address points to the place after the last array element
