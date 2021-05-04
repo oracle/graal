@@ -92,6 +92,8 @@ public interface ArithmeticLIRGeneratorTool {
 
     Value emitMathSqrt(Value input);
 
+    Value emitMathSignum(Value input);
+
     Value emitBitCount(Value operand);
 
     Value emitBitScanForward(Value operand);

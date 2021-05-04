@@ -120,6 +120,7 @@ import org.graalvm.compiler.lir.amd64.AMD64MathExpOp;
 import org.graalvm.compiler.lir.amd64.AMD64MathLog10Op;
 import org.graalvm.compiler.lir.amd64.AMD64MathLogOp;
 import org.graalvm.compiler.lir.amd64.AMD64MathPowOp;
+import org.graalvm.compiler.lir.amd64.AMD64MathSignumOp;
 import org.graalvm.compiler.lir.amd64.AMD64MathSinOp;
 import org.graalvm.compiler.lir.amd64.AMD64MathTanOp;
 import org.graalvm.compiler.lir.amd64.AMD64Move;
@@ -1152,6 +1153,13 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     @Override
     public Value emitMathPow(Value x, Value y) {
         return new AMD64MathPowOp().emitLIRWrapper(getLIRGen(), x, y);
+    }
+
+    @Override
+    public Value emitMathSignum(Value input) {
+        Variable result = getLIRGen().newVariable(input.getValueKind());
+        getLIRGen().append(new AMD64MathSignumOp(getLIRGen(), result, asAllocatable(input)));
+        return result;
     }
 
     protected AMD64LIRGenerator getAMD64LIRGen() {

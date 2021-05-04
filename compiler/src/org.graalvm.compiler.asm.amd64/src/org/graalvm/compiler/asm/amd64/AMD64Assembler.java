@@ -3660,8 +3660,24 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         SSEOp.XOR.emit(this, PD, dst, src);
     }
 
+    public final void xorpd(Register dst, AMD64Address src) {
+        SSEOp.XOR.emit(this, PD, dst, src);
+    }
+
     public final void xorps(Register dst, Register src) {
         SSEOp.XOR.emit(this, PS, dst, src);
+    }
+
+    public final void xorps(Register dst, AMD64Address src) {
+        SSEOp.XOR.emit(this, PS, dst, src);
+    }
+
+    public final void ucomiss(Register dst, Register src) {
+        SSEOp.UCOMIS.emit(this, PS, dst, src);
+    }
+
+    public final void ucomisd(Register dst, Register src) {
+        SSEOp.UCOMIS.emit(this, PD, dst, src);
     }
 
     public final void decl(Register dst) {

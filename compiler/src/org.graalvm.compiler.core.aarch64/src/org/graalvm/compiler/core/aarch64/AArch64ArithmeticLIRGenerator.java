@@ -48,6 +48,7 @@ import org.graalvm.compiler.lir.aarch64.AArch64ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.lir.aarch64.AArch64ArithmeticOp;
 import org.graalvm.compiler.lir.aarch64.AArch64BitManipulationOp;
 import org.graalvm.compiler.lir.aarch64.AArch64Convert;
+import org.graalvm.compiler.lir.aarch64.AArch64MathSignumOp;
 import org.graalvm.compiler.lir.aarch64.AArch64Move;
 import org.graalvm.compiler.lir.aarch64.AArch64Move.LoadOp;
 import org.graalvm.compiler.lir.aarch64.AArch64Move.StoreConstantOp;
@@ -492,6 +493,15 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
         assert input.getPlatformKind() == AArch64Kind.DOUBLE ||
                         input.getPlatformKind() == AArch64Kind.SINGLE;
         return emitUnary(AArch64ArithmeticOp.FSQRT, input);
+    }
+
+    @Override
+    public Value emitMathSignum(Value input) {
+        assert input.getPlatformKind() == AArch64Kind.DOUBLE ||
+                        input.getPlatformKind() == AArch64Kind.SINGLE;
+        Variable result = getLIRGen().newVariable(input.getValueKind());
+        getLIRGen().append(new AArch64MathSignumOp(result, asAllocatable(input)));
+        return result;
     }
 
     @Override
