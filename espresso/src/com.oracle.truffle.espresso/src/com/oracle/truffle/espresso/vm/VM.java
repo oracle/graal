@@ -593,7 +593,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         assert self.getKlass() instanceof ObjectKlass;
         if (((ObjectKlass) self.getKlass()).hasFinalizer()) {
             profiler.profile(2);
-            meta.java_lang_ref_Finalizer_register.invokeDirect(clone);
+            meta.java_lang_ref_Finalizer_register.invokeDirect(null, clone);
         }
 
         return clone;
