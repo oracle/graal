@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,12 +25,17 @@ package com.oracle.truffle.espresso.nodes;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
+import com.oracle.truffle.espresso.impl.Method;
 
 @GenerateWrapper
-abstract class EspressoPreludeNode extends EspressoInstrumentableNode {
+public abstract class EspressoBaseMethodNode extends EspressoInstrumentableNode {
     abstract Object executeBody(VirtualFrame frame);
 
     abstract void initializeBody(VirtualFrame frame);
+
+    public abstract Method.MethodVersion getMethodVersion();
+
+    public abstract boolean shouldSplit();
 
     @Override
     public final Object execute(VirtualFrame frame) {
@@ -40,6 +45,6 @@ abstract class EspressoPreludeNode extends EspressoInstrumentableNode {
 
     @Override
     public WrapperNode createWrapper(ProbeNode probeNode) {
-        return new EspressoPreludeNodeWrapper(this, probeNode);
+        return new EspressoBaseMethodNodeWrapper(this, probeNode);
     }
 }

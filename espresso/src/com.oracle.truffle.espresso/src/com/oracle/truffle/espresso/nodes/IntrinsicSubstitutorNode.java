@@ -97,6 +97,6 @@ public final class IntrinsicSubstitutorNode extends EspressoMethodNode {
 
     @Override
     public int getCurrentBCI(@SuppressWarnings("unused") Frame frame) {
-        return -1;
+        return -2;
     }
 }

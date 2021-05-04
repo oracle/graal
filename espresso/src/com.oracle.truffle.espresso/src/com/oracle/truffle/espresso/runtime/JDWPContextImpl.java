@@ -34,6 +34,7 @@ import java.util.regex.Matcher;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode.WrapperNode;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
@@ -70,7 +71,7 @@ import com.oracle.truffle.espresso.jdwp.impl.TypeTag;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoInstrumentableNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
-import com.oracle.truffle.espresso.nodes.quick.QuickNode;
+import com.oracle.truffle.espresso.nodes.quick.BaseQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.interop.ForeignArrayUtils;
 import com.oracle.truffle.espresso.runtime.dispatch.EspressoInterop;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
@@ -598,9 +599,7 @@ public final class JDWPContextImpl implements JDWPContext {
     public long readBCIFromFrame(RootNode root, Frame frame) {
         if (root instanceof EspressoRootNode && frame != null) {
             EspressoRootNode rootNode = (EspressoRootNode) root;
-            if (rootNode.isBytecodeNode()) {
-                return rootNode.readBCI(frame);
-            }
+            return rootNode.readBCI(frame);
         }
         return -1;
     }
@@ -681,16 +680,26 @@ public final class JDWPContextImpl implements JDWPContext {
     public Node getInstrumentableNode(Node node) {
         Node currentNode = node;
 
+        // node might be wrapped by instrumentation, so we need to unwrap here
         while (currentNode != null) {
+            Node instrumentableNode = null;
             if (currentNode instanceof EspressoRootNode) {
-                return ((EspressoRootNode) currentNode).getMethodNode();
+                instrumentableNode = ((EspressoRootNode) currentNode).getMethodNode();
             } else if (currentNode instanceof EspressoInstrumentableNode) {
-                return currentNode;
-            } else if (currentNode instanceof QuickNode) {
-                QuickNode quickNode = (QuickNode) currentNode;
-                return quickNode.getBytecodesNode();
+                instrumentableNode = currentNode;
+            } else if (currentNode instanceof BaseQuickNode) {
+                BaseQuickNode quickNode = (BaseQuickNode) currentNode;
+                instrumentableNode = quickNode.getBytecodesNode();
             } else {
                 currentNode = currentNode.getParent();
+            }
+            if (instrumentableNode != null) {
+                // we found the node, check if wrapped
+                if (instrumentableNode instanceof WrapperNode) {
+                    return ((WrapperNode) instrumentableNode).getDelegateNode();
+                } else {
+                    return instrumentableNode;
+                }
             }
         }
         return null;

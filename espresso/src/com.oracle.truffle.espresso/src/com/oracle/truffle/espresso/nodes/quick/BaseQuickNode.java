@@ -47,4 +47,6 @@ public abstract class BaseQuickNode extends Node implements InstrumentableNode {
     public boolean removedByRedefintion() {
         return false;
     }
+
+    public abstract Node getBytecodesNode();
 }

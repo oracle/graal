@@ -63,6 +63,7 @@ public abstract class QuickNode extends BaseQuickNode {
         return value;
     }
 
+    @Override
     public final BytecodeNode getBytecodesNode() {
         return (BytecodeNode) getParent();
     }
