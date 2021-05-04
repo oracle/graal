@@ -52,14 +52,14 @@ public class EspressoReferenceArrayStoreNode extends Node {
             }
         } else {
             // We must throw ArrayIndexOutOfBoundsException before ArrayStoreException
-            if (index < 0 || index >= array.length()) {
-                enterOutOfBound2();
-                Meta meta = typeCheck.getMeta();
-                throw meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
-            } else {
+            if (Integer.compareUnsigned(index, array.length()) < 0) {
                 enterArrayStoreEx();
                 Meta meta = typeCheck.getMeta();
                 throw meta.throwException(meta.java_lang_ArrayStoreException);
+            } else {
+                enterOutOfBound2();
+                Meta meta = typeCheck.getMeta();
+                throw meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
             }
         }
     }
