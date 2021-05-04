@@ -56,6 +56,45 @@ import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.SpeculationLog;
 
+/**
+ * Class representing meta information about a counted loop.
+ *
+ * Comments on the nomenclature for {@link #getLimit()}, {@link #getBody()},
+ * {@link #getLimitCheckedIV()} and {@link #getBodyIV()}:
+ *
+ * A regular head counted loop like
+ *
+ * <pre>
+ * for (int i = 0; i < end; i++) {
+ *     // body
+ * }
+ * </pre>
+ *
+ * has a limit (end) that is compared against the {@link InductionVariable} (iv) returned by
+ * getLimitCheckedIV. The iv for the loop above is the basic induction variable i.
+ *
+ * For inverted loops like
+ *
+ * <pre>
+ * int i = 0;
+ * do {
+ *   // body
+ *   i++;
+ * } while(i < end)
+ * </pre>
+ *
+ * The iv compared against limit is not i, but the next iteration's body iv i+1.
+ *
+ * Thus, for inverted loops {@link #getBodyIV()} returns a different result than
+ * {@link #getLimitCheckedIV()}. {@link #getBodyIV()} returns i, while {@link #getLimitCheckedIV()}
+ * returns i + 1.
+ *
+ * Furthermore, the contract between {@link #getLimitCheckedIV()} and {@link #getBodyIV()} defines
+ * that both IVs iterate on the same signed-ness range, i.e., if one is purely in an unsigned range
+ * the other one has to be as well (same applies for signed integers). This means that optimizations
+ * can safely use {@link IntegerHelper} based on the signed-ness of the {@link #getLimitCheckedIV()}
+ * to compute min/max and iteration ranges for the loops involved.
+ */
 public class CountedLoopInfo {
 
     protected final LoopEx loop;
@@ -81,58 +120,20 @@ public class CountedLoopInfo {
         this.unsigned = unsigned;
     }
 
-    /*
-     * @formatter:off
-     *
-     * Comment on the nomenclature for limit, body, getLimitCheckedIV and getBodyIV.
-     *
-     * A regular head counted loop like
-     *
-     * for(int i = 0;i < end; i++){
-     *   // body
-     * }
-     *
-     * has a limit (end) that is compared against the induction variable (iv) returned by
-     * getLimitCheckedIV. The iv for the loop above is the basic induction variable i.
-     *
-     * For inverted loops like
-     *
-     * int i = 0;
-     * do {
-     *   // body
-     *   i++;
-     * } while(i < end)
-     *
-     *  The iv compared against limit is not i, but the next iteration's body iv i+1.
-     *
-     *  Thus, for inverted loops getBodyIV returns a different result than getLimitCheckedIV.
-     *  getBodyIV returns i, while getLimitCheckedIV returns i + 1.
-     *
-     *
-     *  Furthermore, the contract between getLimitCheckedIV and getBodyIV defines that both IVs
-     *  iterate on the same signed-ness range, i.e., if one is purely in an unsigned range the other
-     *  one has to be as well (same applies for signed integers). This means that optimizations
-     *  can safely use IntegerHelper based on the signed-ness of the limit checked IV to compute
-     *  min/max and iteration ranges for the loops involved.
-     *
-     * @formatter:on
-     */
-
     /**
-     * @return the {@linkplain InductionVariable} compared ({@linkplain CompareNode}) to
-     *         {@linkplain CountedLoopInfo#getLimit()}. If this loop is
-     *         {@linkplain CountedLoopInfo#isInverted()} returns to next iteration iv based on
-     *         {@linkplain CountedLoopInfo#getBodyIV()}.
+     * @return the {@link InductionVariable} compared ({@link CompareNode}) to
+     *         {@link CountedLoopInfo#getLimit()}. If this loop is
+     *         {@link CountedLoopInfo#isInverted()} returns to next iteration iv based on
+     *         {@link CountedLoopInfo#getBodyIV()}.
      */
     public InductionVariable getLimitCheckedIV() {
         return limitCheckedIV;
     }
 
     /**
-     * @return the {@linkplain InductionVariable} used in the body of this
-     *         {@linkplain CountedLoopInfo}. If {@linkplain CountedLoopInfo#isInverted()} returns
-     *         {@code false} this returns the same as
-     *         {@linkplain CountedLoopInfo#getLimitCheckedIV()}.
+     * @return the {@link InductionVariable} used in the body of this {@link CountedLoopInfo}. If
+     *         {@link CountedLoopInfo#isInverted()} returns {@code false} this returns the same as
+     *         {@link CountedLoopInfo#getLimitCheckedIV()}.
      */
     public InductionVariable getBodyIV() {
         assert !isInverted() && getLimitCheckedIV() == limitCheckedIV : "Only inverted loops must have different body ivs.";
@@ -142,9 +143,8 @@ public class CountedLoopInfo {
     /**
      * Returns the limit node of this counted loop.
      *
-     * @return the {@linkplain ValueNode} that is compared ({@linkplain CompareNode}) to the
-     *         {@linkplain InductionVariable} return by
-     *         {@linkplain CountedLoopInfo#getLimitCheckedIV()}
+     * @return the {@link ValueNode} that is compared ({@link CompareNode}) to the
+     *         {@link InductionVariable} return by {@link CountedLoopInfo#getLimitCheckedIV()}
      */
     public ValueNode getLimit() {
         return end;
@@ -152,8 +152,8 @@ public class CountedLoopInfo {
 
     /**
      * Returns the mathematical limit that is used to compute the
-     * {@linkplain CountedLoopInfo#maxTripCountNode()}. If {@linkplain CountedLoopInfo#isInverted()}
-     * is {@code false} this returns the same as {@linkplain CountedLoopInfo#getLimit()}. Otherwise,
+     * {@link CountedLoopInfo#maxTripCountNode()}. If {@link CountedLoopInfo#isInverted()} is
+     * {@code false} this returns the same as {@link CountedLoopInfo#getLimit()}. Otherwise,
      * depending on the shape of the inverted loops this may return a value that is |stride| off the
      * real limit to account for inverted loops with none-inverted limit checks.
      *
@@ -178,9 +178,8 @@ public class CountedLoopInfo {
      *
      *
      * While the "limit" of both is 100, the "real" mathematical limit of the second one is 101.
-     * Thus, in order to perform correct calculation of
-     * {@linkplain CountedLoopInfo#maxTripCountNode()} we distinguish between those two concepts.
-     *
+     * Thus, in order to perform correct calculation of {@link CountedLoopInfo#maxTripCountNode()}
+     * we distinguish between those two concepts.
      */
     public ValueNode getTripCountLimit() {
         assert !isInverted() && getLimit() == end : "Only inverted loops must have a different trip count limit";
@@ -210,8 +209,8 @@ public class CountedLoopInfo {
 
     /**
      * Returns a node that computes the maximum trip count of this loop. That is the trip count of
-     * this loop assuming it is not exited by an other exit than the {@linkplain #getLimitTest()
-     * count check}.
+     * this loop assuming it is not exited by an other exit than the {@link #getLimitTest() count
+     * check}.
      *
      * This count is exact if {@link #isExactTripCount()} returns true.
      *
@@ -381,17 +380,17 @@ public class CountedLoopInfo {
     }
 
     /**
-     * @return the {@linkplain IfNode} that checks {@linkplain CountedLoopInfo#getLimitCheckedIV()}
-     *         against {@linkplain CountedLoopInfo#getLimit()}.
+     * @return the {@link IfNode} that checks {@link CountedLoopInfo#getLimitCheckedIV()} against
+     *         {@link CountedLoopInfo#getLimit()}.
      */
     public IfNode getLimitTest() {
         return ifNode;
     }
 
     /**
-     * @return the {@linkplain InductionVariable#initNode()} of the loop's
-     *         {@linkplain #getBodyIV()}, i.e., the start node of the IV used inside the loop body
-     *         (which can be different than the IV checked in {@linkplain #getLimitCheckedIV()}}.
+     * @return the {@link InductionVariable#initNode()} of the loop's {@link #getBodyIV()}, i.e.,
+     *         the start node of the IV used inside the loop body (which can be different than the
+     *         IV checked in {@link #getLimitCheckedIV()}}.
      */
     public ValueNode getBodyIVStart() {
         return getBodyIV().initNode();
