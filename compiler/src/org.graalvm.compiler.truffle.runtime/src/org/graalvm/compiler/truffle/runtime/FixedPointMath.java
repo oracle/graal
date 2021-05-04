@@ -24,7 +24,7 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
-final class FixedPointMath {
+public final class FixedPointMath {
     private static final int SCALE = 4;
 
     /**
@@ -34,11 +34,11 @@ final class FixedPointMath {
         throw new IllegalStateException("Should not instantiate" + this.getClass().getName());
     }
 
-    static int toFixedPoint(double x) {
+    public static int toFixedPoint(double x) {
         return (int) (x * (1 << SCALE));
     }
 
-    static int multiply(int fixedPointValue, int anInteger) {
+    public static int multiply(int fixedPointValue, int anInteger) {
         return (fixedPointValue * anInteger) >> SCALE;
     }
 }

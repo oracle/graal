@@ -30,6 +30,7 @@ import java.util.Map;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.CompilationResultInfo;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
 import org.graalvm.compiler.truffle.runtime.AbstractGraalTruffleRuntimeListener;
+import org.graalvm.compiler.truffle.runtime.FixedPointMath;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntimeListener;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
@@ -86,10 +87,10 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
         GraalTruffleRuntimeListener.addASTSizeProperty(target, properties);
         properties.put("Tier", Integer.toString(tier)); // to avoid padding
         int callThreshold = tier == 1 ? target.engine.callThresholdInInterpreter : target.engine.callThresholdInFirstTier;
-        double scale = runtime.compilationThresholdScale();
-        properties.put("Calls/Thres", String.format("%7d/%5d", target.getCallCount(), (int) (scale * callThreshold)));
+        int scale = runtime.compilationThresholdScale();
+        properties.put("Calls/Thres", String.format("%7d/%5d", target.getCallCount(), FixedPointMath.multiply(scale, callThreshold)));
         int callAndLoopThreshold = tier == 1 ? target.engine.callAndLoopThresholdInInterpreter : target.engine.callAndLoopThresholdInFirstTier;
-        properties.put("CallsAndLoop/Thres", String.format("%7d/%5d", target.getCallAndLoopCount(), (int) (scale * callAndLoopThreshold)));
+        properties.put("CallsAndLoop/Thres", String.format("%7d/%5d", target.getCallAndLoopCount(), FixedPointMath.multiply(scale, callAndLoopThreshold)));
         properties.put("Src", formatSourceSection(target.getRootNode().getSourceSection()));
         properties.put("QueueSize", runtime.getCompilationQueueSize());
         properties.put("Time", System.nanoTime() - startTime);
