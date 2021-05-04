@@ -155,7 +155,7 @@ def measureTimeToFirstResponse(bmSuite):
         try:
             req = lib.urlopen(url)
             if req.getcode() == 200:
-                startTime = mx.run_start_time
+                startTime = mx.get_last_subprocess_start_time()
                 finishTime = datetime.datetime.now()
                 msToFirstResponse = (finishTime - startTime).total_seconds() * 1000
                 bmSuite.timeToFirstResponseOutput = "First response received in {} ms".format(msToFirstResponse)
@@ -324,7 +324,7 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
                     mx.abort("The server application unexpectedly ended with return code " + returnCode)
                 
                 return returnCode
-            elif stage == 'agent' or stage == 'instrument_run':
+            elif stage == 'agent' or stage == 'instrument-run':
                 # For the agent and the instrumented run, it is sufficient to run the peak performance workload.
                 threading.Thread(target=BaseMicroserviceBenchmarkSuite.testPeakPerformanceInBackground, args=[self]).start()
                 return mx.run(server_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
@@ -356,10 +356,10 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
         self.workloadPath = args.workload_configuration
 
         if not self.inNativeMode():
-            mx.use_command_mapper_hooks = False
+            mx.disable_command_mapper_hooks()
             threading.Thread(target=BaseMicroserviceBenchmarkSuite.testStartupPerformanceInBackground, args=[self]).start()
             datapoints = super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
-            mx.use_command_mapper_hooks = True
+            mx.enable_command_mapper_hooks()
 
             threading.Thread(target=BaseMicroserviceBenchmarkSuite.testPeakPerformanceInBackground, args=[self]).start()
             datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
