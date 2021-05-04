@@ -23,5 +23,5 @@
 package com.oracle.truffle.espresso.staticobject.test;
 
 class StorageLayout {
-    static final boolean ARRAY_BASED = true;
+    static final boolean ARRAY_BASED = !Boolean.getBoolean("com.oracle.truffle.espresso.staticobject.FieldBasedStorage");
 }
