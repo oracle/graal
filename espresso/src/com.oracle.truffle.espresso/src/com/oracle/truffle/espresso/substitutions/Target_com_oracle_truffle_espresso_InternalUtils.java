@@ -33,8 +33,10 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.staticobject.StaticProperty;
 import sun.misc.Unsafe;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 
 @EspressoSubstitutions
@@ -46,10 +48,9 @@ public class Target_com_oracle_truffle_espresso_InternalUtils {
         Klass k = clazz.getMirrorKlass();
         int maxLen;
         if (k instanceof ObjectKlass) {
-            maxLen = ((ObjectKlass) k).getLinkedKlass().getPrimitiveInstanceFieldLastOffset();
+            maxLen = getPrimitiveInstanceFieldLastOffset(((ObjectKlass) k).getLinkedKlass());
         } else {
-            return StaticObject.createArray(k.getMeta().java_lang_String.getArrayClass(),
-                    StaticObject.EMPTY_ARRAY);
+            return StaticObject.createArray(k.getMeta().java_lang_String.getArrayClass(), StaticObject.EMPTY_ARRAY);
         }
         StaticObject[] result = new StaticObject[maxLen];
         Meta meta = k.getMeta();
@@ -59,7 +60,7 @@ public class Target_com_oracle_truffle_espresso_InternalUtils {
             while (true) {
                 Field f = k.lookupFieldTable(i);
                 if (!f.isStatic() && f.getKind().isPrimitive()) {
-                    for (int j = f.getOffset(); j < f.getOffset() + f.getKind().getByteCount(); j++) {
+                    for (int j = getOffset(f); j < getOffset(f) + f.getKind().getByteCount(); j++) {
                         result[j] = meta.toGuestString(f.getName());
                     }
                 }
@@ -75,7 +76,7 @@ public class Target_com_oracle_truffle_espresso_InternalUtils {
     public static int getPrimitiveFieldByteCount(@Host(Class.class) StaticObject clazz) {
         Klass k = clazz.getMirrorKlass();
         if (k instanceof ObjectKlass) {
-            return ((ObjectKlass) k).getLinkedKlass().getPrimitiveInstanceFieldLastOffset();
+            return getPrimitiveInstanceFieldLastOffset(((ObjectKlass) k).getLinkedKlass());
         } else {
             return 0;
         }
@@ -101,9 +102,9 @@ public class Target_com_oracle_truffle_espresso_InternalUtils {
         } else {
             LinkedKlass lk = ((ObjectKlass) k).getLinkedKlass();
             // Bytes used by the primitive fields
-            total += lk.getPrimitiveInstanceFieldLastOffset();
+            total += getPrimitiveInstanceFieldLastOffset(lk);
             // Bytes used by the Object fields
-            total += lk.getObjectFieldsCount() * JavaKind.Int.getByteCount();
+            total += getObjectFieldsCount(lk) * JavaKind.Int.getByteCount();
             // Header of the primitive field array + storing its reference
             total += Unsafe.ARRAY_BYTE_BASE_OFFSET + JavaKind.Int.getByteCount();
             // Header of the Object field array + storing its reference
@@ -124,5 +125,39 @@ public class Target_com_oracle_truffle_espresso_InternalUtils {
     public static void triggerLivenessAnalysis(@Host(java.lang.reflect.Method.class) StaticObject method, @InjectMeta Meta meta) {
         Method m = Method.getHostReflectiveMethodRoot(method, meta);
         LivenessAnalysis.analyze(m);
+    }
+
+    private static int getOffset(Field f) {
+        try {
+            java.lang.reflect.Field linkedFieldField = Field.class.getDeclaredField("linkedField");
+            linkedFieldField.setAccessible(true);
+            Object linkedField = linkedFieldField.get(f);
+            java.lang.reflect.Field offsetField = StaticProperty.class.getDeclaredField("offset");
+            offsetField.setAccessible(true);
+            return offsetField.getInt(linkedField);
+        } catch(IllegalAccessException | NoSuchFieldException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static int getPrimitiveInstanceFieldLastOffset(LinkedKlass lk) {
+        return getLayoutProperty(lk, "lastOffset");
+    }
+
+    private static int getObjectFieldsCount(LinkedKlass lk) {
+        return getLayoutProperty(lk, "objectArraySize");
+    }
+
+    private static int getLayoutProperty(LinkedKlass lk, String propertyName) {
+        try {
+            java.lang.reflect.Method getPropertyLayout = Class.forName("com.oracle.truffle.espresso.staticobject.ArrayBasedStaticShape").getDeclaredMethod("getPropertyLayout");
+            getPropertyLayout.setAccessible(true);
+            Object propertyLayout = getPropertyLayout.invoke(lk.getShape(false));
+            java.lang.reflect.Field lastOffset = propertyLayout.getClass().getDeclaredField(propertyName);
+            lastOffset.setAccessible(true);
+            return lastOffset.getInt(propertyLayout);
+        } catch(ClassNotFoundException | IllegalAccessException | InvocationTargetException | NoSuchFieldException | NoSuchMethodException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
