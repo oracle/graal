@@ -36,8 +36,11 @@ public abstract class StaticShape<T> {
     @CompilationFinal //
     protected T factory;
 
-    StaticShape(Class<?> storageClass) {
+    StaticShape(Class<?> storageClass, PrivilegedToken privilegedToken) {
         this.storageClass = storageClass;
+        if (privilegedToken == null) {
+            throw new AssertionError("Only known implementations can create subclasses of " + StaticShape.class.getName());
+        }
     }
 
     public static Builder newBuilder() {
@@ -173,6 +176,24 @@ public abstract class StaticShape<T> {
 
         boolean isFinal() {
             return isFinal;
+        }
+    }
+
+    abstract static class PrivilegedToken {
+        PrivilegedToken() {
+            if (!isKnownImplementation()) {
+                throw new AssertionError("Only known implementations can create a " + PrivilegedToken.class.getName() + ".\nGot: " + getClass().getName());
+            }
+        }
+
+        private boolean isKnownImplementation() {
+            for (String knownImplementation : new String[]{"com.oracle.truffle.espresso.staticobject.ArrayBasedStaticShape$ArrayBasedPrivilegedToken",
+                            "com.oracle.truffle.espresso.staticobject.FieldBasedStaticShape$FieldBasedPrivilegedToken"}) {
+                if (getClass().getName().equals(knownImplementation)) {
+                    return true;
+                }
+            }
+            return false;
         }
     }
 }

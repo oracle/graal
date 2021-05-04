@@ -34,6 +34,7 @@ import sun.misc.Unsafe;
 import static com.oracle.truffle.espresso.staticobject.StaticPropertyKind.N_PRIMITIVES;
 
 final class ArrayBasedStaticShape<T> extends StaticShape<T> {
+    private static final PrivilegedToken TOKEN = new ArrayBasedPrivilegedToken();
     @CompilationFinal //
     private static Boolean disableShapeChecks;
     @CompilationFinal(dimensions = 1) //
@@ -42,7 +43,7 @@ final class ArrayBasedStaticShape<T> extends StaticShape<T> {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     private ArrayBasedStaticShape(ArrayBasedStaticShape<T> parentShape, Class<?> storageClass, ArrayBasedPropertyLayout propertyLayout) {
-        super(storageClass);
+        super(storageClass, TOKEN);
         if (parentShape == null) {
             superShapes = new StaticShape[]{this};
         } else {
@@ -102,6 +103,9 @@ final class ArrayBasedStaticShape<T> extends StaticShape<T> {
 
     private ArrayBasedPropertyLayout getPropertyLayout() {
         return propertyLayout;
+    }
+
+    private static final class ArrayBasedPrivilegedToken extends PrivilegedToken {
     }
 
     /**
