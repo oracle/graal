@@ -36,9 +36,12 @@ import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
+import javax.tools.Diagnostic;
 
 public final class SubstitutionProcessor extends EspressoProcessor {
     // @EspressoSubstitutions
@@ -70,12 +73,16 @@ public final class SubstitutionProcessor extends EspressoProcessor {
     // @JavaType.internalName()
     private ExecutableElement javaTypeInternalNameElement;
 
+    // StaticObject
+    private TypeElement staticObjectElement;
+
     // region Various String constants.
 
     private static final String SUBSTITUTION_PACKAGE = "com.oracle.truffle.espresso.substitutions";
 
     private static final String ESPRESSO_SUBSTITUTIONS = SUBSTITUTION_PACKAGE + "." + "EspressoSubstitutions";
     private static final String METHOD_SUBSTITUTION = SUBSTITUTION_PACKAGE + "." + "Substitution";
+    private static final String STATIC_OBJECT = "com.oracle.truffle.espresso.runtime.StaticObject";
     private static final String JAVA_TYPE = SUBSTITUTION_PACKAGE + "." + "JavaType";
     private static final String NO_PROVIDER = SUBSTITUTION_PACKAGE + "." + "SubstitutionNamesProvider" + "." + "NoProvider";
     private static final String NO_FILTER = SUBSTITUTION_PACKAGE + "." + "VersionFilter" + "." + "NoFilter";
@@ -175,6 +182,57 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         }
     }
 
+    void checkParameterOrReturnType(String headerMessage, TypeMirror typeMirror, Element element) {
+        if (typeMirror.getKind().isPrimitive()) {
+            if (getAnnotation(typeMirror, javaType) != null) {
+                processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR,
+                                headerMessage + " (primitive type) cannot be annotated with @JavaType", element);
+            }
+        } else if (typeMirror.getKind() != TypeKind.VOID) {
+            // Reference type.
+            if (!processingEnv.getTypeUtils().isSameType(typeMirror, staticObjectElement.asType())) {
+                processingEnv.getMessager().printMessage(Diagnostic.Kind.WARNING,
+                                headerMessage + " is not of type StaticObject", element);
+            }
+            if (getAnnotation(typeMirror, javaType) == null) {
+                processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR,
+                                headerMessage + " must be annotated with e.g. @JavaType(String.class) according to the substituted method signature", element);
+            }
+        }
+    }
+
+    void checkTargetMethod(ExecutableElement targetElement) {
+        for (VariableElement param : targetElement.getParameters()) {
+            if (isActualParameter(param)) {
+                checkParameterOrReturnType("Substitution parameter", param.asType(), param);
+            }
+        }
+        checkParameterOrReturnType("Substitution return type", targetElement.getReturnType(), targetElement);
+    }
+
+    private void checkSubstitutionElement(Element element) {
+        if (element.getKind() == ElementKind.METHOD) {
+            ExecutableElement methodElement = (ExecutableElement) element;
+            Set<Modifier> modifiers = methodElement.getModifiers();
+            if (modifiers.contains(Modifier.PRIVATE) || modifiers.contains(Modifier.PROTECTED)) {
+                processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Method substitution cannot be private nor protected", element);
+            }
+            if (!modifiers.contains(Modifier.STATIC)) {
+                processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Method substitutions must be static", element);
+            }
+            checkTargetMethod(methodElement);
+        }
+        if (element.getKind() == ElementKind.CLASS) {
+            TypeElement typeElement = (TypeElement) element;
+            Set<Modifier> modifiers = typeElement.getModifiers();
+            if (modifiers.contains(Modifier.PRIVATE) || modifiers.contains(Modifier.PROTECTED)) {
+                processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Method substitution cannot be private nor protected", element);
+            }
+            ExecutableElement targetMethod = findNodeExecute(typeElement);
+            checkTargetMethod(targetMethod);
+        }
+    }
+
     private static String camelCase(String s) {
         if (s.isEmpty()) {
             return s;
@@ -216,6 +274,9 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         // Find the methods annotated with @Substitution.
         AnnotationMirror subst = getAnnotation(element, substitutionAnnotation);
         if (subst != null) {
+
+            checkSubstitutionElement(element);
+
             // Obtain the name of the element to be substituted in.
             String elementName = element.getSimpleName().toString();
 
@@ -329,6 +390,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
                 return getInternalName(value.toString());
             }
         } else {
+
             System.err.println("value() member of @JavaType annotation not found");
         }
         throw new IllegalArgumentException();
@@ -423,6 +485,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         // Set up the different annotations, along with their values, that we will need.
         this.espressoSubstitutions = processingEnv.getElementUtils().getTypeElement(ESPRESSO_SUBSTITUTIONS);
         this.substitutionAnnotation = processingEnv.getElementUtils().getTypeElement(METHOD_SUBSTITUTION);
+        this.staticObjectElement = processingEnv.getElementUtils().getTypeElement(STATIC_OBJECT);
         this.javaType = processingEnv.getElementUtils().getTypeElement(JAVA_TYPE);
         this.noProvider = processingEnv.getElementUtils().getTypeElement(NO_PROVIDER);
         this.noFilter = processingEnv.getElementUtils().getTypeElement(NO_FILTER);

@@ -1221,7 +1221,8 @@ public final class Target_sun_misc_Unsafe {
      * except as argument to the get and put routines in this class.
      */
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
-    public static Object staticFieldBase(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(java.lang.reflect.Field.class) StaticObject field,
+    public static @JavaType(Object.class) StaticObject staticFieldBase(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
+                    @JavaType(java.lang.reflect.Field.class) StaticObject field,
                     @InjectMeta Meta meta) {
         Field target = Field.getReflectiveFieldRoot(field, meta);
         return target.getDeclaringKlass().getStatics();

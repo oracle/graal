@@ -63,7 +63,7 @@ public final class Target_java_lang_reflect_Array {
      * @exception NegativeArraySizeException if the specified {@code length} is negative
      */
     @Substitution
-    public static Object newArray(@JavaType(Class.class) StaticObject componentType, int length, @InjectMeta Meta meta) {
+    public static @JavaType(Object.class) StaticObject newArray(@JavaType(Class.class) StaticObject componentType, int length, @InjectMeta Meta meta) {
         if (CompilerDirectives.isPartialEvaluationConstant(componentType)) {
             // PE-through.
             return newArrayImpl(componentType, length, meta);
@@ -72,11 +72,11 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @TruffleBoundary(allowInlining = true)
-    static Object newArrayBoundary(@JavaType(Class.class) StaticObject componentType, int length, @InjectMeta Meta meta) {
+    static StaticObject newArrayBoundary(@JavaType(Class.class) StaticObject componentType, int length, @InjectMeta Meta meta) {
         return newArrayImpl(componentType, length, meta);
     }
 
-    static Object newArrayImpl(@JavaType(Class.class) StaticObject componentType, int length, @InjectMeta Meta meta) {
+    static StaticObject newArrayImpl(@JavaType(Class.class) StaticObject componentType, int length, @InjectMeta Meta meta) {
         if (StaticObject.isNull(componentType)) {
             throw meta.throwNullPointerException();
         }
