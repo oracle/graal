@@ -136,7 +136,7 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
             try (DebugCloseable d = debug.disableIntercept(); DebugContext.Scope s = debug.scope("PerformanceWarningTest")) {
                 final OptimizedCallTarget compilable = target;
                 CompilationIdentifier compilationId = getTruffleCompiler(target).createCompilationIdentifier(compilable);
-                getTruffleCompiler(target).compileAST(compilable.getOptionValues(), debug, compilable, new TruffleInlining(), compilationId,
+                getTruffleCompiler(target).compileAST(compilable.getOptionValues(), debug, compilable, compilationId,
                                 new TruffleCompilerImpl.CancellableTruffleCompilationTask(new TruffleCompilationTask() {
                                     private TruffleInliningData inlining = new TruffleInlining();
 

@@ -700,16 +700,16 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                 if (debug == null) {
                     debug = compiler.openDebugContext(optionsMap, compilation);
                 }
-                TruffleInlining inlining = new TruffleInlining();
                 listeners.onCompilationStarted(callTarget, task.tier());
                 compilationStarted = true;
                 try {
-                    compiler.doCompile(debug, compilation, optionsMap, inlining, task, listeners.isEmpty() ? null : listeners);
+                    compiler.doCompile(debug, compilation, optionsMap, task, listeners.isEmpty() ? null : listeners);
                 } finally {
                     if (initialDebug == null) {
                         debug.close();
                     }
                 }
+                TruffleInlining inlining = (TruffleInlining) task.inliningData();
                 truffleDump(callTarget, compiler, compilation, optionsMap, inlining);
                 inlining.dequeueTargets();
             }

@@ -94,9 +94,8 @@ public class JNIExceptionWrapperTest extends TestWithPolyglotOptions {
         TruffleCompiler compiler = runtime.getTruffleCompiler(compilable);
         try (TruffleCompilation compilation = compiler.openCompilation(compilable)) {
             try (TruffleDebugContext debug = compiler.openDebugContext(GraalTruffleRuntime.getOptionsForCompiler(compilable), compilation)) {
-                TruffleInliningData inliningPlan = runtime.createInliningPlan();
                 TestListener listener = new TestListener();
-                compiler.doCompile(debug, compilation, GraalTruffleRuntime.getOptionsForCompiler(compilable), inliningPlan, new TestTruffleCompilationTask(), listener);
+                compiler.doCompile(debug, compilation, GraalTruffleRuntime.getOptionsForCompiler(compilable), new TestTruffleCompilationTask(), listener);
             }
         } catch (Throwable t) {
             String message = t.getMessage();

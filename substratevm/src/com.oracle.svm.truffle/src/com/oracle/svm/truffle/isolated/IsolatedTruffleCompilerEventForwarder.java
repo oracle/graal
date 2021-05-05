@@ -25,6 +25,7 @@
 package com.oracle.svm.truffle.isolated;
 
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.CompilationResultInfo;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
@@ -101,7 +102,7 @@ final class IsolatedTruffleCompilerEventForwarder implements TruffleCompilerList
     private static void onTruffleTierFinished0(@SuppressWarnings("unused") ClientIsolateThread client,
                     ClientHandle<IsolatedEventContext> contextHandle, CompilerHandle<GraphInfo> graphInfo, int nodeCount) {
         IsolatedEventContext context = IsolatedCompileClient.get().unhand(contextHandle);
-        context.listener.onTruffleTierFinished(context.compilable, context.inlining, new IsolatedGraphInfo(graphInfo, nodeCount));
+        context.listener.onTruffleTierFinished(context.compilable, context.task.inliningData(), new IsolatedGraphInfo(graphInfo, nodeCount));
     }
 
     @CEntryPoint
@@ -110,7 +111,7 @@ final class IsolatedTruffleCompilerEventForwarder implements TruffleCompilerList
                     CompilerHandle<GraphInfo> graphInfo, int nodeCount, IsolatedCompilationResultData resultData, int tier) {
 
         IsolatedEventContext context = IsolatedCompileClient.get().unhand(contextHandle);
-        context.listener.onSuccess(context.compilable, context.inlining, new IsolatedGraphInfo(graphInfo, nodeCount), new IsolatedCompilationResultInfo(resultData), tier);
+        context.listener.onSuccess(context.compilable, context.task.inliningData(), new IsolatedGraphInfo(graphInfo, nodeCount), new IsolatedCompilationResultInfo(resultData), tier);
     }
 
     @CEntryPoint
@@ -133,12 +134,12 @@ final class IsolatedTruffleCompilerEventForwarder implements TruffleCompilerList
 final class IsolatedEventContext {
     final TruffleCompilerListener listener;
     final CompilableTruffleAST compilable;
-    final TruffleInliningData inlining;
+    final TruffleCompilationTask task;
 
-    IsolatedEventContext(TruffleCompilerListener listener, CompilableTruffleAST compilable, TruffleInliningData inlining) {
+    IsolatedEventContext(TruffleCompilerListener listener, CompilableTruffleAST compilable, TruffleCompilationTask task) {
         this.listener = listener;
         this.compilable = compilable;
-        this.inlining = inlining;
+        this.task = task;
     }
 }
 
