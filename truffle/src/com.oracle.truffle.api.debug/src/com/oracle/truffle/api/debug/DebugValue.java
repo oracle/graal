@@ -1249,6 +1249,85 @@ public abstract class DebugValue {
     }
 
     /**
+     * Provides hash code of the value.
+     *
+     * @return {@link InteropLibrary#identityHashCode(Object) identity hash code} of the guest
+     *         object, if the object {@link InteropLibrary#hasIdentity(Object) has identity}.
+     * @throws DebugException when guest language code throws an exception
+     * @since 21.2
+     */
+    @Override
+    public int hashCode() throws DebugException {
+        if (isReadable()) {
+            Object value = get();
+            return valueHashCode(value);
+        } else {
+            return unreadableHashCode();
+        }
+    }
+
+    /**
+     * Indicates whether another {@link DebugValue} is equal to this. Two {@link DebugValue} objects
+     * are equal if and only if their guest objects are
+     * {@link InteropLibrary#isIdentical(Object, Object, InteropLibrary) identical}.
+     *
+     * @throws DebugException when guest language code throws an exception
+     * @since 21.2
+     */
+    @Override
+    public boolean equals(Object obj) throws DebugException {
+        if (!(obj instanceof DebugValue)) {
+            return false;
+        }
+        if (obj == this) {
+            return true;
+        }
+        DebugValue other = (DebugValue) obj;
+        boolean thisReadable = isReadable();
+        boolean otherReadable = other.isReadable();
+        if (!thisReadable || !otherReadable) {
+            if (thisReadable != otherReadable) {
+                return false;
+            } else {
+                return unreadableEquals(other);
+            }
+        }
+        Object value1 = get();
+        Object value2 = other.get();
+        return valueEquals(value1, value2);
+    }
+
+    int valueHashCode(Object value) throws DebugException {
+        try {
+            if (INTEROP.hasIdentity(value)) {
+                return INTEROP.identityHashCode(value);
+            }
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            throw DebugException.create(getSession(), ex, resolveLanguage(), null, true, null);
+        }
+        return System.identityHashCode(value);
+    }
+
+    boolean valueEquals(Object value1, Object value2) throws DebugException {
+        if (value1 == value2) {
+            return true;
+        }
+        try {
+            return INTEROP.isIdentical(value1, value2, INTEROP);
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            throw DebugException.create(getSession(), ex, resolveLanguage(), null, true, null);
+        }
+    }
+
+    abstract int unreadableHashCode();
+
+    abstract boolean unreadableEquals(DebugValue var);
+
+    /**
      * Get the original language that created the value, if any. This method will return
      * <code>null</code> for values representing a primitive value, or objects that are not
      * associated with any language.
@@ -1432,6 +1511,16 @@ public abstract class DebugValue {
             return new HeapValue(session, language, name, value);
         }
 
+        @Override
+        int unreadableHashCode() {
+            throw new UnsupportedOperationException("HeapValue is always readable.");
+        }
+
+        @Override
+        boolean unreadableEquals(DebugValue var) {
+            throw new UnsupportedOperationException("HeapValue is always readable.");
+        }
+
     }
 
     abstract static class AbstractDebugCachedValue extends AbstractDebugValue {
@@ -1561,6 +1650,23 @@ public abstract class DebugValue {
             return new ObjectMemberValue(session, language, scope, object, member);
         }
 
+        @Override
+        int unreadableHashCode() {
+            int hash = 7;
+            hash = 29 * hash + valueHashCode(object);
+            hash = 29 * hash + member.hashCode();
+            return hash;
+        }
+
+        @Override
+        boolean unreadableEquals(DebugValue var) {
+            if (!(var instanceof ObjectMemberValue)) {
+                return false;
+            }
+            ObjectMemberValue other = (ObjectMemberValue) var;
+            return valueEquals(object, other.object) && member.equals(other.member);
+        }
+
         private void checkValid() {
             if (scope != null) {
                 scope.verifyValidState();
@@ -1663,6 +1769,23 @@ public abstract class DebugValue {
         @Override
         DebugValue createAsInLanguage(LanguageInfo language) {
             return new ArrayElementValue(session, language, scope, array, index);
+        }
+
+        @Override
+        int unreadableHashCode() {
+            int hash = 7;
+            hash = 29 * hash + valueHashCode(array);
+            hash = 29 * hash + Long.hashCode(index);
+            return hash;
+        }
+
+        @Override
+        boolean unreadableEquals(DebugValue var) {
+            if (!(var instanceof ArrayElementValue)) {
+                return false;
+            }
+            ArrayElementValue other = (ArrayElementValue) var;
+            return valueEquals(array, other.array) && index == other.index;
         }
 
         private void checkValid() {
