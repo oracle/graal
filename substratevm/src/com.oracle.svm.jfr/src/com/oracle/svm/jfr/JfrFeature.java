@@ -84,7 +84,6 @@ public class JfrFeature implements Feature {
         ModuleSupport.exportAndOpenAllPackagesToUnnamed("java.base", false);
 
         JVM.getJVM().createNativeJFR();
-        SubstrateTypeLibrary.installSubstrateTypeLibrary();
 
         ImageSingletons.add(SubstrateJVM.class, new SubstrateJVM());
         ImageSingletons.add(JfrManager.class, new JfrManager());
