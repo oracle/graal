@@ -157,7 +157,7 @@ public class BackgroundCompileQueue {
                 double minScale = callTarget.getOptionValue(PolyglotCompilerOptions.DynamicCompilerThresholdsMinScale);
                 int minNormalLoad = callTarget.getOptionValue(PolyglotCompilerOptions.DynamicCompilerThresholdsMinNormalLoad);
                 int maxNormalLoad = callTarget.getOptionValue(PolyglotCompilerOptions.DynamicCompilerThresholdsMaxNormalLoad);
-                return new DynamicThresholdsQueue(runtime, threads, minScale, minNormalLoad, maxNormalLoad);
+                return new DynamicThresholdsQueue(threads, minScale, minNormalLoad, maxNormalLoad);
             } else {
                 return new TraversingBlockingQueue();
             }

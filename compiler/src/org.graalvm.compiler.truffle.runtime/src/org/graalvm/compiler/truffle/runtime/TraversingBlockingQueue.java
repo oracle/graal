@@ -30,7 +30,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.TimeUnit;
 
-public class TraversingBlockingQueue implements BlockingQueue<Runnable> {
+class TraversingBlockingQueue implements BlockingQueue<Runnable> {
     final BlockingQueue<Runnable> entries = new LinkedBlockingDeque<>();
 
     @SuppressWarnings("unchecked")

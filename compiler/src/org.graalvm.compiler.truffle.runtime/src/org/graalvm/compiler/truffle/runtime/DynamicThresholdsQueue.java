@@ -26,20 +26,20 @@ package org.graalvm.compiler.truffle.runtime;
 
 import java.util.concurrent.TimeUnit;
 
-public class DynamicThresholdsQueue extends TraversingBlockingQueue {
+final class DynamicThresholdsQueue extends TraversingBlockingQueue {
 
-    private final GraalTruffleRuntime runtime;
     private final int threads;
     private final double minScale;
     private final int minNormalLoad;
     private final int maxNormalLoad;
+    private final double slope;
 
-    public DynamicThresholdsQueue(GraalTruffleRuntime runtime, int threads, double minScale, int minNormalLoad, int maxNormalLoad) {
-        this.runtime = runtime;
+    DynamicThresholdsQueue(int threads, double minScale, int minNormalLoad, int maxNormalLoad) {
         this.threads = threads;
         this.minScale = minScale;
         this.minNormalLoad = minNormalLoad;
         this.maxNormalLoad = maxNormalLoad;
+        this.slope = (1 - minScale) / (minNormalLoad - 1);
     }
 
     private double load() {
@@ -77,7 +77,7 @@ public class DynamicThresholdsQueue extends TraversingBlockingQueue {
     }
 
     private void scaleThresholds() {
-        runtime.setCompilationThresholdScale(FixedPointMath.toFixedPoint(scale()));
+        GraalTruffleRuntime.getRuntime().setCompilationThresholdScale(FixedPointMath.toFixedPoint(scale()));
     }
 
     /**
@@ -95,7 +95,6 @@ public class DynamicThresholdsQueue extends TraversingBlockingQueue {
         if (minNormalLoad <= x && x <= maxNormalLoad) {
             return 1;
         }
-        double slope = (1 - minScale) / (minNormalLoad - 1);
         if (x < minNormalLoad) {
             return slope * x + minScale;
         }

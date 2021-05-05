@@ -522,10 +522,10 @@ public final class PolyglotCompilerOptions {
     @Option(help = "The minimal scale the compilation thresholds can be reduced to.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Double> DynamicCompilerThresholdsMinScale = new OptionKey<>(0.1);
 
-    @Option(help = "The minimal compilation queue load at which compilation thresholds are not reduced.", category = OptionCategory.INTERNAL)
+    @Option(help = "The minimal compilation queue load at which compilation thresholds are not reduced. The load is scaled by the number of compiler threads.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Integer> DynamicCompilerThresholdsMinNormalLoad = new OptionKey<>(10);
 
-    @Option(help = "The maximal compilation queue load at which compilation thresholds are not increased.", category = OptionCategory.INTERNAL)
+    @Option(help = "The maximal compilation queue load at which compilation thresholds are not increased. The load is scaled by the number of compiler threads.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Integer> DynamicCompilerThresholdsMaxNormalLoad = new OptionKey<>(90);
 
     // Language agnostic inlining

@@ -40,7 +40,7 @@ import com.oracle.truffle.api.Truffle;
 
 public final class CompilationTask implements TruffleCompilationTask, Callable<Void>, Comparable<CompilationTask> {
 
-    private static final Consumer<CompilationTask> compilationAction = new Consumer<CompilationTask>() {
+    private static final Consumer<CompilationTask> COMPILATION_ACTION = new Consumer<CompilationTask>() {
         @Override
         public void accept(CompilationTask task) {
             OptimizedCallTarget callTarget = task.targetRef.get();
@@ -85,7 +85,7 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
     }
 
     static CompilationTask createCompilationTask(BackgroundCompileQueue.Priority priority, WeakReference<OptimizedCallTarget> targetRef, long id) {
-        return new CompilationTask(priority, targetRef, compilationAction, id);
+        return new CompilationTask(priority, targetRef, COMPILATION_ACTION, id);
     }
 
     public void awaitCompletion(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
@@ -207,7 +207,7 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
      * corrupt a queue data structure.
      */
     boolean isHigherPriorityThan(CompilationTask other) {
-        if (action != compilationAction) {
+        if (action != COMPILATION_ACTION) {
             // Any non-compilation action (e.g. compiler init) is higher priority.
             return true;
         }
@@ -228,7 +228,7 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
     }
 
     /**
-     * @return false if the target reference is null (i.e. if the target was garbage-collected.
+     * @return false if the target reference is null (i.e. if the target was garbage-collected).
      */
     boolean updateWeight(long currentTime) {
         OptimizedCallTarget target = targetRef.get();
