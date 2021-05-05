@@ -55,7 +55,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMDLSym extends LLVMIntrinsic {
 
-    // Linx Mac
+    // Linux Mac
     // RTLD_NEXT ((void *) -1l) ((void *) -1)
     // RTLD_DEFAULT ((void *) 0) ((void *) -2)
 
@@ -83,13 +83,17 @@ public abstract class LLVMDLSym extends LLVMIntrinsic {
         return LLVMNativePointer.createNull();
     }
 
-    @Specialization(guards = "(isRtldDefault(libraryHandle))")
+    @Specialization(guards = "isRtldDefault(libraryHandle)")
     protected Object doDefaultHandle(@SuppressWarnings("unused") LLVMNativePointer libraryHandle,
                     @SuppressWarnings("unused") LLVMPointer symbolName,
                     @SuppressWarnings("unused") @Cached() LLVMReadStringNode readStr,
                     @CachedContext(LLVMLanguage.class) LLVMContext ctx) {
         String name = readStr.executeWithTarget(symbolName);
         LLVMSymbol symbol = ctx.getGlobalScope().get(name);
+        if (symbol == null) {
+            ctx.setDLError(2);
+            return LLVMNativePointer.createNull();
+        }
         return ctx.getSymbol(symbol);
     }
 
