@@ -113,7 +113,11 @@ public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
     protected LanguageContext createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
         if (wrapper) {
             delegate.languageInstance = this;
-            return delegate.createContext(env);
+            LanguageContext c = delegate.createContext(env);
+            if (delegate.onCreate != null) {
+                delegate.onCreate.accept(c);
+            }
+            return c;
         } else {
             LanguageContext c = new LanguageContext(env);
             if (onCreate != null) {

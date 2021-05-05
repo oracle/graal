@@ -275,6 +275,7 @@ final class ObjectSizeCalculator {
                         (obj instanceof HostFunction) ||
                         (obj instanceof HostException) ||
                         (obj instanceof HostLanguage.HostContext) ||
+                        (obj instanceof PolyglotProxy) ||
 
                         (obj instanceof Class) ||
                         (obj instanceof OptionValues) ||
