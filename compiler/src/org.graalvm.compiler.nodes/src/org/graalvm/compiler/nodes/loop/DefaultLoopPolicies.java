@@ -157,7 +157,7 @@ public class DefaultLoopPolicies implements LoopPolicies {
             return FullUnrollability.TOO_LARGE;
         }
         int maxNodes = counted.isExactTripCount() ? Options.ExactFullUnrollMaxNodes.getValue(options) : Options.FullUnrollMaxNodes.getValue(options);
-        for (Node usage : counted.getCounter().valueNode().usages()) {
+        for (Node usage : counted.getLimitCheckedIV().valueNode().usages()) {
             if (usage instanceof CompareNode) {
                 CompareNode compare = (CompareNode) usage;
                 if (compare.getY().isConstant()) {
