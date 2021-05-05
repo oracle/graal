@@ -236,14 +236,10 @@ def native_image_context(common_args=None, hosted_assertions=True, native_image_
     common_args = [] if common_args is None else common_args
     base_args = ['--no-fallback', '-H:+EnforceMaxRuntimeCompileMethods']
     base_args += ['-H:Path=' + svmbuild_dir()]
-    has_server = mx.get_os() != 'windows'
     if mx.get_opts().verbose:
         base_args += ['--verbose']
     if mx.get_opts().very_verbose:
-        if has_server:
-            base_args += ['--verbose-server']
-        else:
-            base_args += ['--verbose']
+        base_args += ['--verbose']
     if hosted_assertions:
         base_args += native_image_context.hosted_assertions
     if native_image_cmd:
@@ -296,30 +292,15 @@ def native_image_context(common_args=None, hosted_assertions=True, native_image_
 
         return result
 
-    server_use = set()
     def native_image_func(args, **kwargs):
         all_args = base_args + common_args + args
-        if '--experimental-build-server' in all_args:
-            server_use.add(True)
         path = query_native_image(all_args, r'^-H:Path(@[^=]*)?=')
         name = query_native_image(all_args, r'^-H:Name(@[^=]*)?=')
         image = join(path, name)
-        if not has_server and '--no-server' in all_args:
-            all_args = [arg for arg in all_args if arg != '--no-server']
-
         _native_image(all_args, **kwargs)
         return image
-    try:
-        if exists(native_image_cmd) and has_server and server_use:
-            _native_image(['--server-wipe'])
-        yield native_image_func
-    finally:
-        if exists(native_image_cmd) and has_server and server_use:
-            def timestr():
-                return time.strftime('%d %b %Y %H:%M:%S') + ' - '
-            mx.log(timestr() + 'Shutting down image build servers for ' + native_image_cmd)
-            _native_image(['--server-shutdown'])
-            mx.log(timestr() + 'Shutting down completed')
+
+    yield native_image_func
 
 native_image_context.hosted_assertions = ['-J-ea', '-J-esa']
 _native_unittest_features = '--features=com.oracle.svm.test.ImageInfoTest$TestFeature,com.oracle.svm.test.ServiceLoaderTest$TestFeature,com.oracle.svm.test.SecurityServiceTest$TestFeature'
@@ -564,7 +545,7 @@ def js_image_test(binary, bench_location, name, warmup_iterations, iterations, t
 
 
 def build_js(native_image):
-    return native_image(['--macro:js-launcher', '--no-server'])
+    return native_image(['--macro:js-launcher'])
 
 def test_js(js, benchmarks, bin_args=None):
     bench_location = join(suite.dir, '..', '..', 'js-benchmarks')

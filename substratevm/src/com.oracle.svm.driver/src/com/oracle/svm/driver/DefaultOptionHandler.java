@@ -33,7 +33,6 @@ import java.util.regex.Pattern;
 
 import org.graalvm.compiler.options.OptionType;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.driver.MacroOption.MacroOptionKind;
 import com.oracle.svm.driver.NativeImage.ArgumentQueue;
 
@@ -45,7 +44,9 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
     static final String helpText = NativeImage.getResource("/Help.txt");
     static final String helpExtraText = NativeImage.getResource("/HelpExtra.txt");
-    static final String noServerOption = SubstrateOptions.NO_SERVER;
+
+    /* Defunct legacy options that we have to accept to maintain backward compatibility */
+    static final String noServerOption = "--no-server";
     static final String verboseServerOption = "--verbose-server";
     static final String serverOptionPrefix = "--server-";
 

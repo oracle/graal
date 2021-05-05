@@ -1041,7 +1041,6 @@ suite = {
                 "name" : "org.graalvm.nativeimage.builder",
                 "exports" : [
                     "com.oracle.svm.hosted                        to java.base",
-                    "com.oracle.svm.hosted.server                 to java.base",
                     "com.oracle.svm.hosted.agent                  to java.instrument",
                     "com.oracle.svm.core.graal.thread             to jdk.internal.vm.compiler",
                     "com.oracle.svm.core.classinitialization      to jdk.internal.vm.compiler",
@@ -1241,8 +1240,6 @@ suite = {
                 "org.graalvm.nativeimage.builder",
                 "java.management",
                 "jdk.management",
-                "jdk.unsupported", # NativeImageServer.AbortBuildSignalHandler uses sun.misc.SignalHandler
-                # Already defined static/optional in LIBRARY_SUPPORT. Apparently that is not enough.
                 "static com.oracle.mxtool.junit",
                 "static junit",
                 "static hamcrest",

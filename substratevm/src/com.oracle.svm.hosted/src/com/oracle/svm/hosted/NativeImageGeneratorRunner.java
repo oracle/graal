@@ -79,7 +79,7 @@ import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
 
-public class NativeImageGeneratorRunner implements ImageBuildTask {
+public class NativeImageGeneratorRunner {
 
     private volatile NativeImageGenerator generator;
     public static final String IMAGE_BUILDER_ARG_FILE_OPTION = "--image-args-file=";
@@ -539,17 +539,8 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
         System.err.println("Warning: " + msg);
     }
 
-    @Override
     public int build(String[] args, ImageClassLoader imageClassLoader) {
         return buildImage(args, imageClassLoader);
-    }
-
-    @Override
-    public void interruptBuild() {
-        final NativeImageGenerator generatorInstance = generator;
-        if (generatorInstance != null) {
-            generatorInstance.interruptBuild();
-        }
     }
 
     /**
