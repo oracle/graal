@@ -28,7 +28,7 @@ import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.CompilationResultInfo;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
-import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
+import org.graalvm.compiler.truffle.common.TruffleInliningData;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.struct.RawField;
@@ -59,12 +59,12 @@ final class IsolatedTruffleCompilerEventForwarder implements TruffleCompilerList
     }
 
     @Override
-    public void onTruffleTierFinished(CompilableTruffleAST compilable, TruffleMetaAccessProvider inliningPlan, GraphInfo graph) {
+    public void onTruffleTierFinished(CompilableTruffleAST compilable, TruffleInliningData inliningPlan, GraphInfo graph) {
         onTruffleTierFinished0(IsolatedCompileContext.get().getClient(), contextHandle, IsolatedCompileContext.get().hand(graph), graph.getNodeCount());
     }
 
     @Override
-    public void onSuccess(CompilableTruffleAST compilable, TruffleMetaAccessProvider inliningPlan, GraphInfo graph, CompilationResultInfo info, int tier) {
+    public void onSuccess(CompilableTruffleAST compilable, TruffleInliningData inliningPlan, GraphInfo graph, CompilationResultInfo info, int tier) {
         IsolatedCompilationResultData data = StackValue.get(IsolatedCompilationResultData.class);
         data.setOriginalObjectHandle(IsolatedCompileContext.get().hand(info));
         data.setTargetCodeSize(info.getTargetCodeSize());
@@ -133,9 +133,9 @@ final class IsolatedTruffleCompilerEventForwarder implements TruffleCompilerList
 final class IsolatedEventContext {
     final TruffleCompilerListener listener;
     final CompilableTruffleAST compilable;
-    final TruffleMetaAccessProvider inlining;
+    final TruffleInliningData inlining;
 
-    IsolatedEventContext(TruffleCompilerListener listener, CompilableTruffleAST compilable, TruffleMetaAccessProvider inlining) {
+    IsolatedEventContext(TruffleCompilerListener listener, CompilableTruffleAST compilable, TruffleInliningData inlining) {
         this.listener = listener;
         this.compilable = compilable;
         this.inlining = inlining;

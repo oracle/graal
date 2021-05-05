@@ -95,7 +95,7 @@ import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleDebugContext;
 import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
-import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
+import org.graalvm.compiler.truffle.common.TruffleInliningData;
 import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
 import org.graalvm.compiler.truffle.compiler.phases.InstrumentPhase;
 import org.graalvm.compiler.truffle.options.OptionValuesImpl;
@@ -273,7 +273,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
     public final void doCompile(TruffleDebugContext truffleDebug,
                     TruffleCompilation compilation,
                     Map<String, Object> optionsMap,
-                    TruffleMetaAccessProvider inliningPlan,
+                    TruffleInliningData inliningPlan,
                     TruffleCompilationTask task,
                     TruffleCompilerListener inListener) {
         Objects.requireNonNull(compilation, "Compilation must be non null.");
@@ -320,9 +320,9 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
         }
     }
 
-    private void actuallyCompile(org.graalvm.options.OptionValues options, TruffleMetaAccessProvider inliningPlan, TruffleCompilationTask task, TruffleCompilerListener listener,
-                    TruffleCompilationIdentifier compilationId,
-                    CompilableTruffleAST compilable, DebugContext graalDebug) {
+    private void actuallyCompile(org.graalvm.options.OptionValues options, TruffleInliningData inliningPlan, TruffleCompilationTask task, TruffleCompilerListener listener,
+                                 TruffleCompilationIdentifier compilationId,
+                                 CompilableTruffleAST compilable, DebugContext graalDebug) {
         final TruffleCompilationWrapper truffleCompilationWrapper = new TruffleCompilationWrapper(
                         options,
                         getDebugOutputDirectory(),
@@ -491,7 +491,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
     public void compileAST(org.graalvm.options.OptionValues options,
                     DebugContext debug,
                     final CompilableTruffleAST compilable,
-                    TruffleMetaAccessProvider inliningPlan,
+                    TruffleInliningData inliningPlan,
                     CompilationIdentifier compilationId,
                     CancellableTruffleCompilationTask task,
                     TruffleCompilerListener listener) {
@@ -661,7 +661,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
      */
     private final class TruffleCompilationWrapper extends CompilationWrapper<Void> {
         private final CompilableTruffleAST compilable;
-        private final TruffleMetaAccessProvider inliningPlan;
+        private final TruffleInliningData inliningPlan;
         private final CancellableTruffleCompilationTask task;
         private final TruffleCompilerListener listener;
         private final CompilationIdentifier compilationId;
@@ -674,7 +674,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
                         Map<ExceptionAction, Integer> problemsHandledPerAction,
                         CompilableTruffleAST optimizedCallTarget,
                         CancellableTruffleCompilationTask task,
-                        TruffleMetaAccessProvider inliningPlan,
+                        TruffleInliningData inliningPlan,
                         CompilationIdentifier compilationId,
                         TruffleCompilerListener listener) {
             super(outputDirectory, problemsHandledPerAction);
@@ -940,6 +940,11 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
         @Override
         public boolean isLastTier() {
             return delegate.isLastTier();
+        }
+
+        @Override
+        public TruffleInliningData inliningData() {
+            return delegate.inliningData();
         }
 
         @Override

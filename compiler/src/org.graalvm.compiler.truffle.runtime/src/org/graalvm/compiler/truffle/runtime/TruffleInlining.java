@@ -31,14 +31,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
-import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
+import org.graalvm.compiler.truffle.common.TruffleInliningData;
 
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 
 import jdk.vm.ci.meta.JavaConstant;
 
-public class TruffleInlining implements TruffleMetaAccessProvider {
+public class TruffleInlining implements TruffleInliningData {
 
     private final List<CompilableTruffleAST> targetsToDequeue = new ArrayList<>();
     private final List<CompilableTruffleAST> inlinedTargets = new ArrayList<>();

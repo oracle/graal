@@ -83,8 +83,8 @@ public interface TruffleCompiler {
      *            tier, was the compilation canceled)
      * @param listener a listener receiving events about compilation success or failure
      */
-    void doCompile(TruffleDebugContext debug, TruffleCompilation compilation, Map<String, Object> options, TruffleMetaAccessProvider inlining, TruffleCompilationTask task,
-                    TruffleCompilerListener listener);
+    void doCompile(TruffleDebugContext debug, TruffleCompilation compilation, Map<String, Object> options, TruffleInliningData inlining, TruffleCompilationTask task,
+                   TruffleCompilerListener listener);
 
     /**
      * Returns a unique name for the configuration in use by this compiler.

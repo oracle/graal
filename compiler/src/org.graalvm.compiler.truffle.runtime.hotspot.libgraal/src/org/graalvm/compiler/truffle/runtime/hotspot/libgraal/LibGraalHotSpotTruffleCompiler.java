@@ -34,7 +34,7 @@ import org.graalvm.compiler.truffle.common.TruffleCompilation;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.common.TruffleDebugContext;
-import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
+import org.graalvm.compiler.truffle.common.TruffleInliningData;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
@@ -114,7 +114,7 @@ final class LibGraalHotSpotTruffleCompiler implements HotSpotTruffleCompiler {
     public void doCompile(TruffleDebugContext debug,
                     TruffleCompilation compilation,
                     Map<String, Object> options,
-                    TruffleMetaAccessProvider inlining,
+                    TruffleInliningData inlining,
                     TruffleCompilationTask task,
                     TruffleCompilerListener listener) {
         byte[] encodedOptions = OptionsEncoder.encode(options);

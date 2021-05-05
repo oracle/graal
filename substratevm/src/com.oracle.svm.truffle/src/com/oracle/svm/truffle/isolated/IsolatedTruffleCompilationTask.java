@@ -25,6 +25,7 @@
 package com.oracle.svm.truffle.isolated;
 
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
+import org.graalvm.compiler.truffle.common.TruffleInliningData;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 
 import com.oracle.svm.core.c.function.CEntryPointOptions;
@@ -53,6 +54,11 @@ final class IsolatedTruffleCompilationTask extends IsolatedObjectProxy<TruffleCo
     @Override
     public boolean isFirstTier() {
         return isFirstTier0(IsolatedCompileContext.get().getClient(), handle);
+    }
+
+    @Override
+    public TruffleInliningData inliningData() {
+        throw new UnsupportedOperationException("TODO");
     }
 
     @CEntryPoint

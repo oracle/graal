@@ -42,10 +42,11 @@ import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.common.TruffleDebugContext;
-import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
+import org.graalvm.compiler.truffle.common.TruffleInliningData;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.graalvm.compiler.truffle.test.TestWithPolyglotOptions;
 import org.junit.Test;
 
@@ -93,7 +94,7 @@ public class JNIExceptionWrapperTest extends TestWithPolyglotOptions {
         TruffleCompiler compiler = runtime.getTruffleCompiler(compilable);
         try (TruffleCompilation compilation = compiler.openCompilation(compilable)) {
             try (TruffleDebugContext debug = compiler.openDebugContext(GraalTruffleRuntime.getOptionsForCompiler(compilable), compilation)) {
-                TruffleMetaAccessProvider inliningPlan = runtime.createInliningPlan();
+                TruffleInliningData inliningPlan = runtime.createInliningPlan();
                 TestListener listener = new TestListener();
                 compiler.doCompile(debug, compilation, GraalTruffleRuntime.getOptionsForCompiler(compilable), inliningPlan, new TestTruffleCompilationTask(), listener);
             }
@@ -124,7 +125,7 @@ public class JNIExceptionWrapperTest extends TestWithPolyglotOptions {
     private static final class TestListener implements TruffleCompilerListener {
 
         @Override
-        public void onTruffleTierFinished(CompilableTruffleAST compilable, TruffleMetaAccessProvider inliningPlan, GraphInfo graph) {
+        public void onTruffleTierFinished(CompilableTruffleAST compilable, TruffleInliningData inliningPlan, GraphInfo graph) {
             throw new RuntimeException("Expected exception");
         }
 
@@ -133,7 +134,7 @@ public class JNIExceptionWrapperTest extends TestWithPolyglotOptions {
         }
 
         @Override
-        public void onSuccess(CompilableTruffleAST compilable, TruffleMetaAccessProvider inliningPlan, GraphInfo graphInfo, CompilationResultInfo compilationResultInfo, int tier) {
+        public void onSuccess(CompilableTruffleAST compilable, TruffleInliningData inliningPlan, GraphInfo graphInfo, CompilationResultInfo compilationResultInfo, int tier) {
         }
 
         @Override
@@ -146,6 +147,8 @@ public class JNIExceptionWrapperTest extends TestWithPolyglotOptions {
     }
 
     private static class TestTruffleCompilationTask implements TruffleCompilationTask {
+        private TruffleInliningData inlining = new TruffleInlining();
+
         @Override
         public boolean isCancelled() {
             return false;
@@ -154,6 +157,11 @@ public class JNIExceptionWrapperTest extends TestWithPolyglotOptions {
         @Override
         public boolean isLastTier() {
             return true;
+        }
+
+        @Override
+        public TruffleInliningData inliningData() {
+            return inlining;
         }
     }
 }

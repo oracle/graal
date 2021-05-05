@@ -25,6 +25,7 @@
 package org.graalvm.compiler.truffle.compiler.hotspot.libgraal;
 
 import org.graalvm.nativebridge.jni.HSObject;
+import org.graalvm.compiler.truffle.common.TruffleInliningData;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsCancelled;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsLastTier;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilationTaskGen.callIsCancelled;
@@ -55,5 +56,10 @@ final class HSTruffleCompilationTask extends HSObject implements TruffleCompilat
     @Override
     public boolean isLastTier() {
         return callIsLastTier(env(), getHandle());
+    }
+
+    @Override
+    public TruffleInliningData inliningData() {
+        throw new UnsupportedOperationException("TODO");
     }
 }

@@ -36,6 +36,7 @@ import java.util.function.Consumer;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 
 import com.oracle.truffle.api.Truffle;
+import org.graalvm.compiler.truffle.common.TruffleInliningData;
 
 public final class CompilationTask implements TruffleCompilationTask, Callable<Void>, Comparable<CompilationTask> {
 
@@ -65,6 +66,7 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
     private int lastCount;
     private long lastTime;
     private double lastWeight;
+    private TruffleInlining inliningData = new TruffleInlining();
 
     private CompilationTask(BackgroundCompileQueue.Priority priority, WeakReference<OptimizedCallTarget> targetRef, Consumer<CompilationTask> action, long id) {
         this.priority = priority;
@@ -134,6 +136,11 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
     @Override
     public boolean isLastTier() {
         return priority.tier == BackgroundCompileQueue.Priority.Tier.LAST;
+    }
+
+    @Override
+    public TruffleInliningData inliningData() {
+        return inliningData;
     }
 
     public Future<?> getFuture() {

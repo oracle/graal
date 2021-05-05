@@ -60,7 +60,7 @@ import java.net.URI;
 
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
-import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
+import org.graalvm.compiler.truffle.common.TruffleInliningData;
 import org.graalvm.compiler.truffle.common.TruffleSourceLanguagePosition;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal;
 import org.graalvm.libgraal.LibGraal;
@@ -73,9 +73,9 @@ import org.graalvm.nativebridge.jni.JNIMethodScope;
 import jdk.vm.ci.meta.JavaConstant;
 
 /**
- * Proxy for a {@link TruffleMetaAccessProvider} object in the HotSpot heap.
+ * Proxy for a {@link TruffleInliningData} object in the HotSpot heap.
  */
-class HSTruffleInliningPlan extends HSObject implements TruffleMetaAccessProvider {
+class HSTruffleInliningPlan extends HSObject implements TruffleInliningData {
 
     final JNIMethodScope scope;
 

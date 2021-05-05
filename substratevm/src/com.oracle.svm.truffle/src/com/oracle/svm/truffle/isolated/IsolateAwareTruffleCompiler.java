@@ -37,7 +37,7 @@ import org.graalvm.compiler.truffle.common.TruffleCompilation;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.common.TruffleDebugContext;
-import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
+import org.graalvm.compiler.truffle.common.TruffleInliningData;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilationIdentifier;
 import org.graalvm.nativeimage.CurrentIsolate;
@@ -103,7 +103,7 @@ public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
     @Override
     @SuppressFBWarnings(value = "DLS_DEAD_LOCAL_STORE", justification = "False positive.")
     public void doCompile(TruffleDebugContext debug, TruffleCompilation compilation, Map<String, Object> options,
-                    TruffleMetaAccessProvider inlining, TruffleCompilationTask task, TruffleCompilerListener listener) {
+                          TruffleInliningData inlining, TruffleCompilationTask task, TruffleCompilerListener listener) {
 
         if (!SubstrateOptions.shouldCompileInIsolates()) {
             delegate.doCompile(null, compilation, options, inlining, task, listener);
@@ -190,7 +190,7 @@ public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
                     ClientHandle<SubstrateCompilableTruffleAST> compilableHandle,
                     ClientHandle<byte[]> encodedOptionsHandle,
                     int encodedOptionsLength,
-                    ClientHandle<TruffleMetaAccessProvider> inliningHandle,
+                    ClientHandle<TruffleInliningData> inliningHandle,
                     ClientHandle<TruffleCompilationTask> taskHandle,
                     ClientHandle<IsolatedEventContext> eventContextHandle,
                     ClientHandle<byte[]> encodedRuntimeOptionsHandle,
@@ -205,7 +205,7 @@ public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
             IsolatedCompilableTruffleAST compilable = new IsolatedCompilableTruffleAST(compilableHandle);
             delegate.initialize(options, compilable, firstCompilation);
             TruffleCompilation compilation = new IsolatedCompilationIdentifier(compilationIdentifierHandle, compilable);
-            IsolatedTruffleInlining<TruffleMetaAccessProvider> inlining = new IsolatedTruffleInlining<>(inliningHandle);
+            IsolatedTruffleInlining<TruffleInliningData> inlining = new IsolatedTruffleInlining<>(inliningHandle);
             TruffleCompilationTask task = null;
             if (taskHandle.notEqual(IsolatedHandles.nullHandle())) {
                 task = new IsolatedTruffleCompilationTask(taskHandle);

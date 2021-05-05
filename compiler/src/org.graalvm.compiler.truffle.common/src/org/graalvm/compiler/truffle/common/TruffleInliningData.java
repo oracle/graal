@@ -29,7 +29,7 @@ import jdk.vm.ci.meta.JavaConstant;
 /**
  * An interface for communication between the compiler and runtime for Inlining related information.
  */
-public interface TruffleMetaAccessProvider {
+public interface TruffleInliningData {
 
     /**
      * Gets the runtime representation of the call node constant.
