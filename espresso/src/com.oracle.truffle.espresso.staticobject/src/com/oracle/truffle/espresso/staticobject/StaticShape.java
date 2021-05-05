@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.staticobject;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import sun.misc.Unsafe;
 
@@ -97,6 +98,7 @@ public abstract class StaticShape<T> {
         }
 
         public Builder property(StaticProperty property, String name, boolean isFinal) {
+            CompilerAsserts.neverPartOfCompilation();
             Objects.requireNonNull(property);
             if (extendedProperties.containsKey(name)) {
                 throw new IllegalArgumentException("This builder already contains a property named '" + name + "'");
@@ -131,6 +133,7 @@ public abstract class StaticShape<T> {
         }
 
         private <T> StaticShape<T> build(ShapeGenerator<T> sg, StaticShape<T> parentShape) {
+            CompilerAsserts.neverPartOfCompilation();
             StaticShape<T> shape = sg.generateShape(parentShape, extendedProperties.values());
             for (ExtendedProperty extendedProperty : extendedProperties.values()) {
                 extendedProperty.property.initShape(shape);
@@ -139,6 +142,7 @@ public abstract class StaticShape<T> {
         }
 
         private static void validate(Class<?> storageFactoryInterface, Class<?> storageSuperClass) {
+            CompilerAsserts.neverPartOfCompilation();
             if (!storageFactoryInterface.isInterface()) {
                 throw new RuntimeException(storageFactoryInterface.getName() + " must be an interface.");
             }
