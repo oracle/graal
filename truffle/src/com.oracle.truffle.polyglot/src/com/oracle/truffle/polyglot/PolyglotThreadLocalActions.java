@@ -131,7 +131,7 @@ final class PolyglotThreadLocalActions {
 
     void notifyContextClosed() {
         assert Thread.holdsLock(context);
-        assert !context.isActive() : "context is still active, cannot flush safepoints";
+        assert !context.isActive() || context.cancelled : "context is still active, cannot flush safepoints";
         if (intervalTimer != null) {
             intervalTimer.cancel();
         }
@@ -141,12 +141,14 @@ final class PolyglotThreadLocalActions {
              * The set can be modified during the subsequent iteration.
              */
             ArrayList<AbstractTLHandshake> activeEventsList = new ArrayList<>(activeEvents.keySet());
+            boolean pendingThreadLocalAction = false;
             for (AbstractTLHandshake handshake : activeEventsList) {
                 Future<?> future = handshake.future;
                 if (!future.isDone()) {
-                    if (context.invalid || context.cancelled) {
+                    if (context.cancelled) {
                         // we allow cancellation for invalid or cancelled contexts
                         future.cancel(true);
+                        pendingThreadLocalAction = true;
                     } else {
                         /*
                          * otherwise this should not happen as leaving the context before close
@@ -156,7 +158,14 @@ final class PolyglotThreadLocalActions {
                     }
                 }
             }
-            activeEvents.clear();
+            if (!pendingThreadLocalAction) {
+                /*
+                 * We have to keep pending events as threads can still leave after close is
+                 * completed in which case the active events still need to be deactivated otherwise
+                 * the waiters can be blocked forever.
+                 */
+                activeEvents.clear();
+            }
         }
 
         if (statistics != null) {
