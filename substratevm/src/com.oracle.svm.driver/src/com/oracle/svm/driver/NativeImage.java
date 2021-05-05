@@ -58,6 +58,7 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.Scanner;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -393,8 +394,9 @@ public class NativeImage {
                 command.add(getJavaExecutable().toString());
                 command.add("-XX:+PrintFlagsFinal");
                 command.add("-version");
+                Process process = null;
                 try {
-                    Process process = pb.start();
+                    process = pb.start();
                     try (java.util.Scanner inputScanner = new java.util.Scanner(process.getInputStream())) {
                         while (inputScanner.hasNextLine()) {
                             String line = inputScanner.nextLine();
@@ -408,9 +410,12 @@ public class NativeImage {
                         }
                     }
                     process.waitFor();
-                    process.destroy();
                 } catch (Exception e) {
                     /* Probing fails silently */
+                } finally {
+                    if (process != null) {
+                        process.destroy();
+                    }
                 }
             }
 
@@ -844,7 +849,7 @@ public class NativeImage {
 
         if (config.useJavaModules()) {
             String modulePath = config.getBuilderModulePath().stream()
-                            .map(p -> canonicalize(p).toString())
+                            .map(this::canonicalize).map(Path::toString)
                             .collect(Collectors.joining(File.pathSeparator));
             if (!modulePath.isEmpty()) {
                 addImageBuilderJavaArgs(Arrays.asList("--module-path", modulePath));
@@ -1502,18 +1507,24 @@ public class NativeImage {
         }
 
         int exitStatus = 1;
+
+        Process p = null;
         try {
             ProcessBuilder pb = new ProcessBuilder();
             pb.command(command);
-            Process p = pb.inheritIO().start();
+            p = pb.inheritIO().start();
             exitStatus = p.waitFor();
         } catch (IOException | InterruptedException e) {
             throw showError(e.getMessage());
+        } finally {
+            if (p != null) {
+                p.destroy();
+            }
         }
         return exitStatus;
     }
 
-    private static final Function<BuildConfiguration, NativeImage> defaultNativeImageProvider = config -> IS_AOT ? NativeImageServer.create(config) : new NativeImage(config);
+    private static final Function<BuildConfiguration, NativeImage> defaultNativeImageProvider = config -> new NativeImage(config);
 
     public static void main(String[] args) {
         performBuild(new DefaultBuildConfiguration(Arrays.asList(args)), defaultNativeImageProvider);
@@ -1686,15 +1697,83 @@ public class NativeImage {
         addImageClasspathEntry(imageClasspath, classpath, true);
     }
 
-    /**
-     * For adding classpath elements that are automatically put on the image-classpath.
-     */
-    void addImageModulePath(Path mpEntry) {
-        if (!imageModulePath.contains(mpEntry)) {
-            imageModulePath.add(mpEntry);
-            /* TODO Also collect native-image properties from modules */
-            /* processClasspathNativeImageMetaInf(mpEntry); */
+    LinkedHashSet<String> builderModuleNames = null;
+
+    LinkedHashSet<String> getBuilderModuleNames() {
+        if (builderModuleNames == null) {
+            ProcessBuilder pb = new ProcessBuilder();
+            List<String> command = pb.command();
+            command.add(config.getJavaExecutable().toString());
+            command.add("--module-path");
+            command.add(Stream.concat(config.getBuilderModulePath().stream(), config.getImageProvidedModulePath().stream())
+                            .map(this::canonicalize).map(Path::toString)
+                            .collect(Collectors.joining(File.pathSeparator)));
+            command.add("--list-modules");
+            pb.redirectErrorStream();
+            Process process = null;
+            int exitValue = -1;
+            LinkedHashSet<String> modules = new LinkedHashSet<>();
+            String message = "Unable to determine image builder modules";
+            try {
+                process = pb.start();
+                try (Scanner scanner = new Scanner(process.getInputStream())) {
+                    while (scanner.hasNextLine()) {
+                        String token = scanner.next();
+                        modules.add(token.split("@", 2)[0]);
+                        scanner.nextLine();
+                    }
+                }
+                exitValue = process.waitFor();
+            } catch (IOException | InterruptedException e) {
+                throw showError(message, e);
+            } finally {
+                if (process != null) {
+                    process.destroy();
+                }
+                if (exitValue != 0) {
+                    throw showError(message + " (nonzero exit value)");
+                }
+            }
+
+            builderModuleNames = modules;
         }
+        return builderModuleNames;
+    }
+
+    void addImageModulePath(Path modulePathEntry, boolean strict) {
+        Path mpEntry;
+        try {
+            mpEntry = canonicalize(modulePathEntry);
+        } catch (NativeImageError e) {
+            if (strict) {
+                throw e;
+            }
+
+            if (isVerbose()) {
+                showWarning("Invalid module-path entry: " + modulePathEntry);
+            }
+            /* Allow non-existent module-path entries to comply with `java` command behaviour. */
+            imageModulePath.add(canonicalize(modulePathEntry, false));
+            return;
+        }
+
+        if (imageModulePath.contains(mpEntry)) {
+            /* Duplicate entries are silently ignored like with the java command */
+            return;
+        }
+        List<String> moduleNames = ModuleAccess.getModuleNames(mpEntry);
+        if (moduleNames.size() == 1) {
+            String moduleName = moduleNames.get(0);
+            if (getBuilderModuleNames().contains(moduleName)) {
+                /* Modules provided by the image-builder are not allowed on the -imagemp */
+                String modulePathEntryStr = "module " + moduleName + " from " + modulePathEntry;
+                showWarning("Ignoring " + modulePathEntryStr + " (implicitly provided by builder)");
+                return;
+            }
+        }
+
+        imageModulePath.add(mpEntry);
+        processClasspathNativeImageMetaInf(mpEntry);
     }
 
     /**

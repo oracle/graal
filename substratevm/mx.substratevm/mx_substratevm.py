@@ -852,6 +852,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
             is_module_launcher=not svm_java8(),
             destination="bin/<exe:native-image>",
             jar_distributions=["substratevm:SVM_DRIVER"],
+            main_module="org.graalvm.nativeimage.driver",
             main_class=_native_image_launcher_main_class(),
             build_args=[],
             extra_jvm_args=_native_image_launcher_extra_jvm_args(),
@@ -1103,7 +1104,7 @@ def hellomodule(args):
     proj_dir = join(suite.dir, 'src', 'native-image-module-tests', 'hello.app')
     mx.run_maven(['-e', 'install'], cwd=proj_dir)
     module_path.append(join(proj_dir, 'target', 'hello-app-1.0-SNAPSHOT.jar'))
-    with native_image_context(hosted_assertions=False, build_if_missing=False) as native_image:
+    with native_image_context(hosted_assertions=False, native_images=['native-image']) as native_image:
         build_dir = join(svmbuild_dir(), 'hellomodule')
         # Build module into native image
         mx.log('Building image from java modules: ' + str(module_path))

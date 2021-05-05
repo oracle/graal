@@ -279,7 +279,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
     private void processModulePathArgs(String mpArgs) {
         for (String mpEntry : mpArgs.split(File.pathSeparator, Integer.MAX_VALUE)) {
-            nativeImage.addImageModulePath(Paths.get(mpEntry));
+            nativeImage.addImageModulePath(Paths.get(mpEntry), false);
         }
     }
 

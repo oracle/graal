@@ -560,6 +560,25 @@ suite = {
             "spotbugs": "false",
         },
 
+        "com.oracle.svm.driver.jdk11": {
+            "subDir": "src",
+            "sourceDirs": [
+                "src",
+            ],
+            "dependencies": [
+                "com.oracle.svm.driver",
+            ],
+            "checkstyle": "com.oracle.svm.driver",
+            "workingSets": "SVM",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+            ],
+            "javaCompliance" : "11+",
+            "multiReleaseJarVersion": "11",
+            "overlayTarget" : "com.oracle.svm.driver",
+            "spotbugs": "false",
+        },
+
         "svm-compiler-flags-builder": {
             "class" : "SubstrateCompilerFlagsBuilder",
             "dependencies" : [

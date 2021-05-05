@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,17 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.server;
 
-import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.ForkJoinWorkerThread;
+package com.oracle.svm.driver;
 
-public class NativeImageThreadFactory implements ForkJoinPool.ForkJoinWorkerThreadFactory {
-    @Override
-    public ForkJoinWorkerThread newThread(ForkJoinPool pool) {
-        ForkJoinWorkerThread thread = new ForkJoinWorkerThread(pool) {
-        };
-        thread.setContextClassLoader(NativeImageBuildServer.class.getClassLoader());
-        return thread;
+import java.nio.file.Path;
+import java.util.List;
+
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+
+public class ModuleAccess {
+    @SuppressWarnings("unused")
+    public static List<String> getModuleNames(Path... modulePathEntries) {
+        assert JavaVersionUtil.JAVA_SPEC <= 8;
+        /* For Java 8 this method does not have any effect */
+        return null;
     }
 }
