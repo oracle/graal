@@ -46,7 +46,6 @@ else()
     set(CMAKE_INSTALL_RPATH "\$ORIGIN")
 endif()
 
-
 # using glob patterns is not recommended: https://cmake.org/cmake/help/latest/command/file.html#glob
 add_library(graalvm-llvm SHARED
     src/common.c
@@ -57,4 +56,14 @@ add_library(graalvm-llvm SHARED
 )
 target_include_directories(graalvm-llvm PRIVATE ${GRAALVM_LLVM_INCLUDE_DIR})
 set_target_properties(graalvm-llvm PROPERTIES VERSION 1)
+if (WIN32)
+    if(NOT LLVM_LINK)
+        message(FATAL_ERROR "LLVM_LINK needs to be set")
+    endif()
+    # no idea why we need to set this here but not for libsulong
+    set_target_properties(graalvm-llvm PROPERTIES PREFIX "")
+    # link to bitcode
+    set(CMAKE_BC_CREATE_SHARED_LIBRARY "${LLVM_LINK} <OBJECTS> -o <TARGET>")
+    set_target_properties(graalvm-llvm PROPERTIES LINKER_LANGUAGE BC)
+endif()
 install(TARGETS graalvm-llvm DESTINATION bin)

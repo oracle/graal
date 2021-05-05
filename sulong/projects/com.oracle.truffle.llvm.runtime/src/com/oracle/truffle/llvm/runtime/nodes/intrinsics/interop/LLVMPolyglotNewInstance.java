@@ -92,7 +92,7 @@ public abstract class LLVMPolyglotNewInstance extends LLVMIntrinsic {
             throw new LLVMPolyglotException(this, "Wrong argument type passed to polyglot_new_instance.");
         } catch (ArityException e) {
             CompilerDirectives.transferToInterpreter();
-            throw new LLVMPolyglotException(this, "Wrong number of arguments passed to polyglot_new_instance, expected %d but got %d.", e.getExpectedArity(), e.getActualArity());
+            throw new LLVMPolyglotException(this, "Wrong number of arguments passed to polyglot_new_instance, expected %d but got %d.", e.getExpectedMinArity(), e.getActualArity());
         }
     }
 

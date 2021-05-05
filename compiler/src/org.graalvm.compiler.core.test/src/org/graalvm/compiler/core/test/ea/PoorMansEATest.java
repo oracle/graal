@@ -31,7 +31,6 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
-import org.graalvm.compiler.nodes.java.AbstractNewObjectNode;
 import org.graalvm.compiler.nodes.java.NewInstanceNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
@@ -39,10 +38,6 @@ import org.graalvm.compiler.phases.common.LoweringPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.junit.Test;
 
-/**
- * Tests {@link AbstractNewObjectNode#simplify(org.graalvm.compiler.graph.spi.SimplifierTool)}.
- *
- */
 public class PoorMansEATest extends GraalCompilerTest {
     public static class A {
         public A obj;

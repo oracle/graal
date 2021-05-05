@@ -43,6 +43,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.reflect.hosted.ReflectionObjectReplacer;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -52,14 +53,14 @@ public final class Target_java_lang_reflect_Executable {
 
     /**
      * The parameters field doesn't need a value recomputation. Its value is pre-loaded in the
-     * {@link com.oracle.svm.reflect.hosted.ReflectionMetadataFeature}.
+     * {@link ReflectionObjectReplacer}.
      */
     @Alias //
     Parameter[] parameters;
 
     /**
      * The declaredAnnotations field doesn't need a value recomputation. Its value is pre-loaded in
-     * the {@link com.oracle.svm.reflect.hosted.ReflectionMetadataFeature}.
+     * the {@link ReflectionObjectReplacer}.
      */
     @Alias //
     Map<Class<? extends Annotation>, Annotation> declaredAnnotations;

@@ -63,7 +63,7 @@ public final class InvokeStaticNode extends QuickNode {
             if (removedByRedefintion()) {
                 // accept a slow path once the method has been removed
                 // put method behind a boundary to avoid a deopt loop
-                method = ClassRedefinition.handleRemovedMethod(method.getMethod(), method.getMethod().getDeclaringKlass()).getMethodVersion();
+                method = ClassRedefinition.handleRemovedMethod(method.getMethod(), method.getMethod().getDeclaringKlass(), null).getMethodVersion();
             } else {
                 // update to the latest method version
                 method = method.getMethod().getMethodVersion();

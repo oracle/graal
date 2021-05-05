@@ -74,6 +74,8 @@ public final class ReflectionFeature implements GraalFeature {
         reflectionData = new ReflectionDataBuilder(access);
         ImageSingletons.add(RuntimeReflectionSupport.class, reflectionData);
 
+        access.registerObjectReplacer(new ReflectionObjectReplacer(access.getMetaAccess()));
+
         if (!ImageSingletons.contains(ReflectionSubstitutionType.Factory.class)) {
             ImageSingletons.add(ReflectionSubstitutionType.Factory.class, new ReflectionSubstitutionType.Factory());
         }

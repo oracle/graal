@@ -87,7 +87,7 @@ public class CEntryPointSupport implements GraalFeature {
                 if (!ensureJavaThreadNode.isConstant()) {
                     b.bailout("Parameter ensureJavaThread of enterAttachThread must be a compile time constant");
                 }
-                b.addPush(JavaKind.Int, CEntryPointEnterNode.attachThread(isolate, ensureJavaThreadNode.asJavaConstant().asInt() != 0));
+                b.addPush(JavaKind.Int, CEntryPointEnterNode.attachThread(isolate, ensureJavaThreadNode.asJavaConstant().asInt() != 0, false));
                 return true;
             }
         });
@@ -101,14 +101,14 @@ public class CEntryPointSupport implements GraalFeature {
         r.register1("enterIsolate", Isolate.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode isolate) {
-                b.addPush(JavaKind.Int, CEntryPointEnterNode.enterIsolate(isolate, false));
+                b.addPush(JavaKind.Int, CEntryPointEnterNode.enterIsolate(isolate));
                 return true;
             }
         });
-        r.register1("enterIsolateFromCrashHandler", Isolate.class, new InvocationPlugin() {
+        r.register1("enterAttachThreadFromCrashHandler", Isolate.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode isolate) {
-                b.addPush(JavaKind.Int, CEntryPointEnterNode.enterIsolate(isolate, true));
+                b.addPush(JavaKind.Int, CEntryPointEnterNode.attachThread(isolate, false, true));
                 return true;
             }
         });

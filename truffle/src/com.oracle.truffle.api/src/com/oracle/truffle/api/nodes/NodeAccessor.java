@@ -165,6 +165,10 @@ final class NodeAccessor extends Accessor {
             return rootNode.prepareForAOT();
         }
 
+        @Override
+        public boolean countsTowardsStackTraceLimit(RootNode rootNode) {
+            return rootNode.countsTowardsStackTraceLimit();
+        }
     }
 
 }

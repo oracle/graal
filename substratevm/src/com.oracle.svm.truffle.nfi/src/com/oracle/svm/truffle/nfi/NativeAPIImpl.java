@@ -157,7 +157,11 @@ final class NativeAPIImpl {
     static NativeTruffleEnv attachCurrentThread(NativeTruffleContext context) {
         TruffleNFISupport support = ImageSingletons.lookup(TruffleNFISupport.class);
         Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContext ctx = support.resolveContextHandle(context.contextHandle());
-        return WordFactory.pointer(ctx.getNativeEnv());
+        if (ctx.attachThread()) {
+            return WordFactory.pointer(ctx.getNativeEnv());
+        } else {
+            return WordFactory.nullPointer();
+        }
     }
 
     static class AttachCurrentThreadPrologue {
@@ -171,6 +175,9 @@ final class NativeAPIImpl {
     @CEntryPoint
     @CEntryPointOptions(prologue = EnterNativeTruffleContextPrologue.class, epilogue = LeaveDetachThreadEpilogue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
     static void detachCurrentThread(@SuppressWarnings("unused") NativeTruffleContext context) {
+        TruffleNFISupport support = ImageSingletons.lookup(TruffleNFISupport.class);
+        Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContext ctx = support.resolveContextHandle(context.contextHandle());
+        ctx.detachThread();
     }
 
     static class EnterNativeTruffleContextPrologue {

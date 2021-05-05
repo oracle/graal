@@ -42,9 +42,15 @@ add_compile_options(-fdebug-prefix-map=${CMAKE_BINARY_DIR}=${CMAKE_PROJECT_NAME}
 
 add_library(sulong-native SHARED
     src/misc.c
-    src/posix.c
     src/fp80.c
     src/globals.c
 )
+if(NOT WIN32)
+    target_sources(sulong-native PRIVATE
+        src/posix.c
+        src/stat.c
+    )
+endif()
+
 target_include_directories(sulong-native PRIVATE ${TRUFFLE_NFI_NATIVE_INCLUDE})
 install(TARGETS sulong-native DESTINATION bin)

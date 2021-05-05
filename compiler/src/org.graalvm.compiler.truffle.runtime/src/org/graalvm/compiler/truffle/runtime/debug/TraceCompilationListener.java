@@ -85,8 +85,10 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
         Map<String, Object> properties = new LinkedHashMap<>();
         GraalTruffleRuntimeListener.addASTSizeProperty(target, properties);
         properties.put("Tier", Integer.toString(tier)); // to avoid padding
-        properties.put("Calls/Thres", String.format("%7d/%5d", target.getCallCount(), target.engine.callThresholdInInterpreter));
-        properties.put("CallsAndLoop/Thres", String.format("%7d/%5d", target.getCallAndLoopCount(), target.engine.callAndLoopThresholdInInterpreter));
+        int callThreshold = tier == 1 ? target.engine.callThresholdInInterpreter : target.engine.callThresholdInFirstTier;
+        properties.put("Calls/Thres", String.format("%7d/%5d", target.getCallCount(), callThreshold));
+        int callAndLoopThreshold = tier == 1 ? target.engine.callAndLoopThresholdInInterpreter : target.engine.callAndLoopThresholdInFirstTier;
+        properties.put("CallsAndLoop/Thres", String.format("%7d/%5d", target.getCallAndLoopCount(), callAndLoopThreshold));
         properties.put("Src", formatSourceSection(target.getRootNode().getSourceSection()));
         properties.put("QueueSize", runtime.getCompilationQueueSize());
         properties.put("Time", System.nanoTime() - startTime);

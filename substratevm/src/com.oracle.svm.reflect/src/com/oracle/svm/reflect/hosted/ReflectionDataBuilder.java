@@ -31,14 +31,11 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
@@ -65,21 +62,13 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
     public static final Constructor<?>[] EMPTY_CONSTRUCTORS = new Constructor<?>[0];
     public static final Class<?>[] EMPTY_CLASSES = new Class<?>[0];
 
-    private enum FieldFlag {
-        FINAL_BUT_WRITABLE,
-        UNSAFE_ACCESSIBLE,
-    }
-
     private boolean modified;
     private boolean sealed;
 
     private final DynamicHub.ReflectionData arrayReflectionData;
     private final Set<Class<?>> reflectionClasses = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final Set<Executable> reflectionMethods = Collections.newSetFromMap(new ConcurrentHashMap<>());
-    private final Map<Field, EnumSet<FieldFlag>> reflectionFields = new ConcurrentHashMap<>();
-    private final Set<Field> analyzedFinalFields = Collections.newSetFromMap(new ConcurrentHashMap<>());
-
-    private final Set<Field> preregisteredAsWritable = ConcurrentHashMap.newKeySet();
+    private final Set<Field> reflectionFields = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     /* Keep track of classes already processed for reflection. */
     private final Set<Class<?>> processedClasses = new HashSet<>();
@@ -135,32 +124,11 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
     }
 
     @Override
-    public void register(boolean finalIsWritable, boolean allowUnsafeAccess, Field... fields) {
+    public void register(boolean finalIsWritable, Field... fields) {
         checkNotSealed();
-        for (Field field : fields) {
-            EnumSet<FieldFlag> flags = EnumSet.noneOf(FieldFlag.class);
-            if (finalIsWritable || preregisteredAsWritable.contains(field)) {
-                flags.add(FieldFlag.FINAL_BUT_WRITABLE);
-            }
-            if (allowUnsafeAccess) {
-                flags.add(FieldFlag.UNSAFE_ACCESSIBLE);
-            }
-
-            reflectionFields.compute(field, (key, existingFlags) -> {
-                if (existingFlags == null || !existingFlags.containsAll(flags)) {
-                    modified = true;
-                }
-                if (existingFlags != null) {
-                    /* Preserve flags of existing registration. */
-                    flags.addAll(existingFlags);
-                }
-
-                if (finalIsWritable && (existingFlags == null || !existingFlags.contains(FieldFlag.FINAL_BUT_WRITABLE))) {
-                    UserError.guarantee(!analyzedFinalFields.contains(field),
-                                    "A field that was already processed by the analysis cannot be re-registered as writable: %s", field);
-                }
-                return flags;
-            });
+        // Unsafe and write accesses are always enabled for fields because accessors use Unsafe.
+        if (reflectionFields.addAll(Arrays.asList(fields))) {
+            modified = true;
         }
     }
 
@@ -227,12 +195,7 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
 
         Set<Class<?>> allClasses = new HashSet<>(reflectionClasses);
         reflectionMethods.stream().map(Executable::getDeclaringClass).forEach(allClasses::add);
-        reflectionFields.forEach((field, flags) -> {
-            if (flags.contains(FieldFlag.UNSAFE_ACCESSIBLE)) {
-                access.registerAsUnsafeAccessed(field);
-            }
-            allClasses.add(field.getDeclaringClass());
-        });
+        reflectionFields.stream().map(Field::getDeclaringClass).forEach(allClasses::add);
 
         allClasses.forEach(clazz -> processClass(access, clazz));
     }
@@ -291,15 +254,15 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
             reflectionData = arrayReflectionData;
         } else {
             reflectionData = new DynamicHub.ReflectionData(
-                            filterFields(accessors.getDeclaredFields(originalReflectionData), reflectionFields.keySet(), access),
-                            filterFields(accessors.getPublicFields(originalReflectionData), reflectionFields.keySet(), access),
-                            filterFields(accessors.getPublicFields(originalReflectionData), f -> reflectionFields.containsKey(f) && !isHiddenIn(f, clazz), access),
+                            filterFields(accessors.getDeclaredFields(originalReflectionData), reflectionFields, access),
+                            filterFields(accessors.getPublicFields(originalReflectionData), reflectionFields, access),
+                            filterFields(accessors.getPublicFields(originalReflectionData), f -> reflectionFields.contains(f) && !isHiddenIn(f, clazz), access),
                             filterMethods(accessors.getDeclaredMethods(originalReflectionData), reflectionMethods, access),
                             filterMethods(accessors.getPublicMethods(originalReflectionData), reflectionMethods, access),
                             filterConstructors(accessors.getDeclaredConstructors(originalReflectionData), reflectionMethods, access),
                             filterConstructors(accessors.getPublicConstructors(originalReflectionData), reflectionMethods, access),
                             nullaryConstructor(accessors.getDeclaredConstructors(originalReflectionData), reflectionMethods, access),
-                            filterFields(accessors.getDeclaredPublicFields(originalReflectionData), reflectionFields.keySet(), access),
+                            filterFields(accessors.getDeclaredPublicFields(originalReflectionData), reflectionFields, access),
                             filterMethods(accessors.getDeclaredPublicMethods(originalReflectionData), reflectionMethods, access),
                             catchLinkingErrors(clazz, reflectionClasses, access, Class::getDeclaredClasses),
                             catchLinkingErrors(clazz, reflectionClasses, access, Class::getClasses),
@@ -464,22 +427,6 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
             }
         }
         return result.toArray(EMPTY_CLASSES);
-    }
-
-    @Override
-    public boolean inspectFinalFieldWritableForAnalysis(Field field) {
-        if (field == null || !Modifier.isFinal(field.getModifiers())) {
-            return false;
-        }
-        EnumSet<FieldFlag> flags = reflectionFields.get(field);
-        analyzedFinalFields.add(field);
-        return (flags != null && flags.contains(FieldFlag.FINAL_BUT_WRITABLE)) || preregisteredAsWritable.contains(field);
-    }
-
-    @Override
-    public void preregisterAsWritableForAnalysis(Field field) {
-        UserError.guarantee(!analyzedFinalFields.contains(field), "A field that was already processed by the analysis cannot be preregistered as writable: %s", field);
-        preregisteredAsWritable.add(field);
     }
 
     static final class ReflectionDataAccessors {

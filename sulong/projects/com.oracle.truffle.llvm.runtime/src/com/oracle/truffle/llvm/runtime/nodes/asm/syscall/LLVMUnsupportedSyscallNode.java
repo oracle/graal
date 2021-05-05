@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -62,7 +62,7 @@ public final class LLVMUnsupportedSyscallNode extends LLVMSyscallOperationNode {
 
     @Override
     @CompilerDirectives.TruffleBoundary
-    public long execute(Object rdi, Object rsi, Object rdx, Object r10, Object r8, Object r9) {
+    public long executeLong(Object rdi, Object rsi, Object rdx, Object r10, Object r8, Object r9) {
         String details = syscall != null ? syscall.toString() : "0x" + Long.toHexString(nr) + " (" + nr + ")";
         throw new LLVMUnsupportedException(this, LLVMUnsupportedException.UnsupportedReason.UNSUPPORTED_SYSCALL, String.format("%s (%s %s)", details, LLVMInfo.SYSNAME, LLVMInfo.MACHINE));
     }

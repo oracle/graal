@@ -118,7 +118,7 @@ abstract class FunctionExecuteNode extends Node {
             LibFFISignature signature = (LibFFISignature) frame.getArguments()[2];
 
             if (args.length != argLibs.length) {
-                throw silenceException(RuntimeException.class, ArityException.create(argLibs.length, args.length));
+                throw silenceException(RuntimeException.class, ArityException.create(argLibs.length, argLibs.length, args.length));
             }
 
             NativeArgumentBuffer.Array buffer = signatureInfo.prepareBuffer();

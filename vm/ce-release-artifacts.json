@@ -72,6 +72,11 @@
 				"name_template": "{name}-{version}-{os}-{arch}"
 			},
 			{
+				"os": "linux",
+				"arch": "aarch64",
+				"name_template": "{name}-{version}-{os}-{arch}"
+			},
+			{
 				"os": "darwin",
 				"arch": "amd64",
 				"name_template": "{name}-{version}-macos-{arch}"
@@ -317,6 +322,10 @@
 				"arch": "amd64"
 			},
 			{
+				"os": "linux",
+				"arch": "aarch64"
+			},
+			{
 				"os": "darwin",
 				"arch": "amd64"
 			}
@@ -330,6 +339,10 @@
 			{
 				"os": "linux",
 				"arch": "amd64"
+			},
+			{
+				"os": "linux",
+				"arch": "aarch64"
 			},
 			{
 				"os": "darwin",

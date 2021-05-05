@@ -152,7 +152,7 @@ public final class WasmTable {
     }
 
     /**
-     * Gets element at {@code index}.
+     * Sets element at {@code index}.
      *
      * @throws IndexOutOfBoundsException if the index is negative or greater or equal to table size
      */

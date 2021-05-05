@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -45,7 +45,7 @@ public abstract class LLVMAMD64SyscallRtSigactionNode extends LLVMSyscallOperati
      * @param signum
      * @param act
      * @param oldact
-     * @see #execute(Object, Object, Object, Object, Object, Object)
+     * @see #executeGeneric(Object, Object, Object, Object, Object, Object)
      */
     @Specialization
     protected long doI64(long signum, LLVMPointer act, LLVMPointer oldact) {

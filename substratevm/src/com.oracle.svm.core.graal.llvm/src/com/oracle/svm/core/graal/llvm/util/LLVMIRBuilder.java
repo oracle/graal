@@ -1246,4 +1246,9 @@ public class LLVMIRBuilder implements AutoCloseable {
         LLVMValueRef castedAddress = buildBitcast(address, pointerType(valueType, isObjectType(typeOf(address)), false));
         return LLVM.LLVMBuildAtomicRMW(builder, operation, castedAddress, value, LLVM.LLVMAtomicOrderingMonotonic, FALSE);
     }
+
+    public void buildClearCache(LLVMValueRef start, LLVMValueRef end) {
+        LLVMTypeRef clearCacheType = functionType(voidType(), rawPointerType(), rawPointerType());
+        buildIntrinsicCall("llvm.clear_cache", clearCacheType, start, end);
+    }
 }

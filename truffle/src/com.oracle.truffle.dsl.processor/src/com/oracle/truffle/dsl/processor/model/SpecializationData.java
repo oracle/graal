@@ -64,9 +64,7 @@ import com.oracle.truffle.dsl.processor.java.ElementUtils;
 public final class SpecializationData extends TemplateMethod {
 
     public enum SpecializationKind {
-        UNINITIALIZED,
         SPECIALIZED,
-        POLYMORPHIC,
         FALLBACK
     }
 
@@ -421,10 +419,6 @@ public final class SpecializationData extends TemplateMethod {
         return replaced;
     }
 
-    public boolean isPolymorphic() {
-        return kind == SpecializationKind.POLYMORPHIC;
-    }
-
     @Override
     protected List<MessageContainer> findChildContainers() {
         List<MessageContainer> sinks = new ArrayList<>();
@@ -534,7 +528,7 @@ public final class SpecializationData extends TemplateMethod {
         if (getMethod() == null) {
             return -1;
         }
-        return index - 1;
+        return index;
     }
 
     public NodeData getNode() {
@@ -547,10 +541,6 @@ public final class SpecializationData extends TemplateMethod {
 
     public boolean isFallback() {
         return kind == SpecializationKind.FALLBACK;
-    }
-
-    public boolean isUninitialized() {
-        return kind == SpecializationKind.UNINITIALIZED;
     }
 
     public List<SpecializationThrowsData> getExceptions() {

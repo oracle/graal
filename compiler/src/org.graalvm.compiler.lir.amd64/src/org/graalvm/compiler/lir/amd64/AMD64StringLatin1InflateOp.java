@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -56,6 +56,7 @@ public final class AMD64StringLatin1InflateOp extends AMD64LIRInstruction {
     public static final LIRInstructionClass<AMD64StringLatin1InflateOp> TYPE = LIRInstructionClass.create(AMD64StringLatin1InflateOp.class);
 
     private final int useAVX3Threshold;
+    private final int maxVectorSize;
 
     @Use({REG}) private Value rsrc;
     @Use({REG}) private Value rdst;
@@ -68,11 +69,12 @@ public final class AMD64StringLatin1InflateOp extends AMD64LIRInstruction {
     @Temp({REG}) private Value vtmp1;
     @Temp({REG}) private Value rtmp2;
 
-    public AMD64StringLatin1InflateOp(LIRGeneratorTool tool, int useAVX3Threshold, Value src, Value dst, Value len) {
+    public AMD64StringLatin1InflateOp(LIRGeneratorTool tool, int useAVX3Threshold, int maxVectorSize, Value src, Value dst, Value len) {
         super(TYPE);
 
         assert CodeUtil.isPowerOf2(useAVX3Threshold) : "AVX3Threshold must be power of 2";
         this.useAVX3Threshold = useAVX3Threshold;
+        this.maxVectorSize = maxVectorSize;
 
         assert asRegister(src).equals(rsi);
         assert asRegister(dst).equals(rdi);
@@ -82,7 +84,9 @@ public final class AMD64StringLatin1InflateOp extends AMD64LIRInstruction {
         rdstTemp = rdst = dst;
         rlenTemp = rlen = len;
 
-        vtmp1 = useAVX512ForStringInflateCompress(tool.target()) ? tool.newVariable(LIRKind.value(AMD64Kind.V512_BYTE)) : tool.newVariable(LIRKind.value(AMD64Kind.V128_BYTE));
+        vtmp1 = useAVX512ForStringInflateCompress(tool.target(), maxVectorSize)
+                        ? tool.newVariable(LIRKind.value(AMD64Kind.V512_BYTE))
+                        : tool.newVariable(LIRKind.value(AMD64Kind.V128_BYTE));
         rtmp2 = tool.newVariable(LIRKind.value(AMD64Kind.DWORD));
     }
 
@@ -98,9 +102,9 @@ public final class AMD64StringLatin1InflateOp extends AMD64LIRInstruction {
         byteArrayInflate(masm, src, dst, len, tmp1, tmp2);
     }
 
-    public static boolean useAVX512ForStringInflateCompress(TargetDescription target) {
+    public static boolean useAVX512ForStringInflateCompress(TargetDescription target, int maxVectorSize) {
         EnumSet<CPUFeature> features = ((AMD64) target.arch).getFeatures();
-        return features.contains(AMD64.CPUFeature.AVX512BW) &&
+        return maxVectorSize >= 64 && features.contains(AMD64.CPUFeature.AVX512BW) &&
                         features.contains(AMD64.CPUFeature.AVX512VL) &&
                         features.contains(AMD64.CPUFeature.BMI2);
     }
@@ -130,7 +134,7 @@ public final class AMD64StringLatin1InflateOp extends AMD64LIRInstruction {
         assert len.number != tmp2.number;
 
         masm.movl(tmp2, len);
-        if (useAVX512ForStringInflateCompress(masm.target)) {
+        if (useAVX512ForStringInflateCompress(masm.target, maxVectorSize)) {
             Label labelCopy32Loop = new Label();
             Label labelCopyTail = new Label();
             Register tmp3Aliased = len;

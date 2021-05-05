@@ -46,13 +46,13 @@ gateTestMaxVS : ${gateTest} {
 
 gateTestAVX0 : ${gateTest} {
   environment : {
-    EXTRA_VM_ARGS : "-XX:UseAVX=0"
+    JVM_CONFIG    : ${jvm-config.default}"-avx0"
   }
 }
 
 gateTestAVX1 : ${gateTest} {
   environment : {
-    EXTRA_VM_ARGS : "-XX:UseAVX=1"
+    JVM_CONFIG    : ${jvm-config.default}"-avx1"
   }
 }
 
@@ -179,9 +179,9 @@ gateMathStubsListener: ${linux-amd64} {
 
 gateLinuxAMD64AVX3 : ${gateLinuxAMD64} {
   capabilities : ["linux", "amd64", "x82"]
-  notify_emails: [
-    "yudi.zheng@oracle.com"
-  ]
+  environment : {
+    JVM_CONFIG    : ${jvm-config.default}"-avx3"
+  }
 }
 
 gateLinuxAMD64Bootstrap : ${gateLinuxAMD64} { capabilities : ${gateLinuxAMD64.capabilities} [manycores] }

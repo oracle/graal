@@ -881,6 +881,15 @@ meth public static com.oracle.truffle.api.memory.ByteArraySupport bigEndian()
 meth public static com.oracle.truffle.api.memory.ByteArraySupport littleEndian()
 supr java.lang.Object
 
+CLSS public final com.oracle.truffle.api.memory.MemoryFence
+cons private init()
+meth public static void acquire()
+meth public static void full()
+meth public static void loadLoad()
+meth public static void release()
+meth public static void storeStore()
+supr java.lang.Object
+
 CLSS public abstract com.oracle.truffle.api.nodes.BlockNode<%0 extends com.oracle.truffle.api.nodes.Node>
 cons protected init({com.oracle.truffle.api.nodes.BlockNode%0}[])
 fld public final static int NO_ARGUMENT = 0
@@ -1285,6 +1294,7 @@ meth public java.lang.Object initialLoopStatus()
 CLSS public abstract com.oracle.truffle.api.nodes.RootNode
 cons protected init(com.oracle.truffle.api.TruffleLanguage<?>)
 cons protected init(com.oracle.truffle.api.TruffleLanguage<?>,com.oracle.truffle.api.frame.FrameDescriptor)
+meth protected boolean countsTowardsStackTraceLimit()
 meth protected boolean isCloneUninitializedSupported()
 meth protected boolean isInstrumentable()
 meth protected boolean isTrivial()
@@ -1372,7 +1382,7 @@ meth public static java.lang.String findLanguage(java.net.URL) throws java.io.IO
 meth public static java.lang.String findMimeType(com.oracle.truffle.api.TruffleFile) throws java.io.IOException
 meth public static java.lang.String findMimeType(java.net.URL) throws java.io.IOException
 supr java.lang.Object
-hfds ALLOW_IO,BUFFER_SIZE,BYTE_SEQUENCE_CLASS,CONTENT_UNSET,EMPTY,MAX_BUFFER_SIZE,NO_FASTPATH_SUBSOURCE_CREATION_MESSAGE,SOURCES,URI_SCHEME,cachedPolyglotSource,computedURI,textMap
+hfds ALLOW_IO,BUFFER_SIZE,BYTE_SEQUENCE_CLASS,CONTENT_EMPTY,CONTENT_UNSET,EMPTY,MAX_BUFFER_SIZE,NO_FASTPATH_SUBSOURCE_CREATION_MESSAGE,SOURCES,URI_SCHEME,cachedPolyglotSource,computedURI,textMap
 
 CLSS public final com.oracle.truffle.api.source.Source$LiteralBuilder
  outer com.oracle.truffle.api.source.Source

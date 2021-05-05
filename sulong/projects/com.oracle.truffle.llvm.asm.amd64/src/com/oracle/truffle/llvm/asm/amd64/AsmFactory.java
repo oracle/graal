@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -237,6 +237,7 @@ import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMUnsupportedInstructionNode;
 import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNodeFactory.LLVMAddressReadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNodeFactory.LLVMI1ReadNodeGen;
@@ -2027,7 +2028,7 @@ public class AsmFactory {
                     out = from;
                     break;
                 default:
-                    throw new AsmParseException("unsupported operand type: " + op.getType());
+                    throw unsupportedOperandType(op.getType());
             }
             return LLVMWriteI64NodeGen.create(frame, out);
         } else if (operand instanceof AsmArgumentOperand) {
@@ -2048,6 +2049,8 @@ public class AsmFactory {
                         default:
                             throw unsupportedOperandType(type);
                     }
+                } else if (type instanceof PointerType) {
+                    return LLVMPointerStoreNodeGen.create(address, from);
                 } else {
                     throw unsupportedOperandType(type);
                 }

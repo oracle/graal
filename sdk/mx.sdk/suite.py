@@ -41,7 +41,7 @@
 suite = {
   "mxversion" : "5.292.5",
   "name" : "sdk",
-  "version" : "21.1.0",
+  "version" : "21.2.0",
   "release" : False,
   "sourceinprojectwhitelist" : [],
   "url" : "https://github.com/oracle/graal",
@@ -340,7 +340,7 @@ suite = {
           "org.graalvm.word",
           "org.graalvm.polyglot.impl to org.graalvm.truffle",
           "org.graalvm.word.impl to jdk.internal.vm.compiler",
-          "org.graalvm.nativeimage.impl to org.graalvm.nativeimage.builder",
+          "org.graalvm.nativeimage.impl to org.graalvm.nativeimage.builder,com.oracle.svm.svm_enterprise",
         ],
         "uses" : [
           "org.graalvm.polyglot.impl.AbstractPolyglotImpl"

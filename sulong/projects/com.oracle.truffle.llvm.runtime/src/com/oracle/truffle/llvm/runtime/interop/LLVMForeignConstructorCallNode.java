@@ -62,8 +62,10 @@ public class LLVMForeignConstructorCallNode extends LLVMForeignCallNode {
         rawArguments[0] = languageReference.get().getLLVMMemory().allocateMemory(this, returnBaseType.getSize());
         if (packArguments.toLLVM.length != rawArguments.length) {
             // arguments also contain 'self' object, thus -1 for argCount
-            throw ArityException.create(packArguments.toLLVM.length - 1, rawArguments.length - 1);
+            int arity = packArguments.toLLVM.length - 1;
+            throw ArityException.create(arity, arity, rawArguments.length - 1);
         }
+
         Object[] arguments = packArguments.execute(rawArguments, stack);
         callNode.call(arguments);
         /*

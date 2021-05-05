@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,14 +30,10 @@
 
 package com.oracle.truffle.llvm.tests.llirtestgen;
 
-import java.io.InputStreamReader;
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -718,11 +714,13 @@ public class LLIRTestGen {
         String prelude = null;
 
         if (!printFilenames) {
-            InputStream preludeStream = new FileInputStream(System.getProperty("llirtestgen.prelude"));
-            BufferedReader buffer = new BufferedReader(new InputStreamReader(preludeStream));
-            prelude = buffer.lines().collect(Collectors.joining("\n"));
-            prelude = prelude.replaceAll(", !tbaa ![0-9]+", "");
-            prelude = prelude.replaceAll("declare[a-z_ ]* void @run.*\n", "");
+            prelude = String.join(System.lineSeparator(),
+                            "; ModuleID = 'generated.bc'", //
+                            "target datalayout = \"e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128\"", //
+                            "target triple = \"x86_64-unknown-linux-gnu\"", //
+                            "; Function Attrs: noinline nounwind optnone uwtable", //
+                            "declare dso_local void @print_output(i8* %0, i8* %1)", //
+                            "");
         }
 
         String progName = LLIRTestGen.class.getCanonicalName();

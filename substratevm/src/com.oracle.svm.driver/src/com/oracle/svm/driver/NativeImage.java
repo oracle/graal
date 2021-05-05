@@ -93,6 +93,7 @@ import com.oracle.svm.driver.MacroOption.Registry;
 import com.oracle.svm.hosted.AbstractNativeImageClassLoaderSupport;
 import com.oracle.svm.hosted.NativeImageGeneratorRunner;
 import com.oracle.svm.hosted.NativeImageSystemClassLoader;
+import com.oracle.svm.util.ModuleSupport;
 
 public class NativeImage {
 
@@ -100,6 +101,8 @@ public class NativeImage {
     static final boolean USE_NI_JPMS = System.getenv().getOrDefault("USE_NATIVE_IMAGE_JAVA_PLATFORM_MODULE_SYSTEM", "false").toLowerCase().equals("true");
 
     private static final String DEFAULT_GENERATOR_CLASS_NAME = NativeImageGeneratorRunner.class.getName();
+    private static final String DEFAULT_GENERATOR_MODULE_NAME = ModuleSupport.getModuleName(NativeImageGeneratorRunner.class);
+
     private static final String DEFAULT_GENERATOR_9PLUS_SUFFIX = "$JDK9Plus";
     private static final String CUSTOM_SYSTEM_CLASS_LOADER = NativeImageSystemClassLoader.class.getCanonicalName();
 
@@ -806,7 +809,10 @@ public class NativeImage {
         config.getBuilderJavaArgs().forEach(this::addImageBuilderJavaArgs);
         addImageBuilderJavaArgs("-Xss10m");
         addImageBuilderJavaArgs(oXms + getXmsValue());
-        addImageBuilderJavaArgs(oXmx + getXmxValue(1));
+        String xmxVal = getXmxValue(1);
+        if (!"0".equals(xmxVal)) {
+            addImageBuilderJavaArgs(oXmx + xmxVal);
+        }
         addImageBuilderJavaArgs("-Duser.country=US", "-Duser.language=en");
         /* Prevent JVM that runs the image builder to steal focus */
         if (OS.getCurrent() != OS.WINDOWS || JavaVersionUtil.JAVA_SPEC > 8) {
@@ -1179,13 +1185,6 @@ public class NativeImage {
         }
         imageClasspath.addAll(customImageClasspath);
 
-        /* Perform JavaArgs consolidation - take the maximum of -Xmx, minimum of -Xms */
-        Long xmxValue = consolidateArgs(imageBuilderJavaArgs, oXmx, SubstrateOptionsParser::parseLong, String::valueOf, () -> 0L, Math::max);
-        Long xmsValue = consolidateArgs(imageBuilderJavaArgs, oXms, SubstrateOptionsParser::parseLong, String::valueOf, () -> SubstrateOptionsParser.parseLong(getXmsValue()), Math::max);
-        if (Long.compareUnsigned(xmsValue, xmxValue) > 0) {
-            replaceArg(imageBuilderJavaArgs, oXms, Long.toUnsignedString(xmxValue));
-        }
-
         imageBuilderJavaArgs.add("-Djdk.internal.lambda.disableEagerInitialization=true");
         // The following two are for backwards compatibility reasons. They should be removed.
         imageBuilderJavaArgs.add("-Djdk.internal.lambda.eagerlyInitialize=false");
@@ -1208,6 +1207,14 @@ public class NativeImage {
             }
         }
         addImageBuilderJavaArgs(customJavaArgs.toArray(new String[0]));
+        /* Perform JavaArgs consolidation - take the maximum of -Xmx, minimum of -Xms */
+        Long xmxValue = consolidateArgs(imageBuilderJavaArgs, oXmx, SubstrateOptionsParser::parseLong, String::valueOf, () -> 0L, Math::max);
+        Long xmsValue = consolidateArgs(imageBuilderJavaArgs, oXms, SubstrateOptionsParser::parseLong, String::valueOf, () -> SubstrateOptionsParser.parseLong(getXmsValue()), Math::max);
+        if (xmxValue != null) {
+            if (Long.compareUnsigned(xmsValue, xmxValue) > 0) {
+                replaceArg(imageBuilderJavaArgs, oXms, Long.toUnsignedString(xmxValue));
+            }
+        }
 
         /* Perform option consolidation of imageBuilderArgs */
 
@@ -1471,7 +1478,11 @@ public class NativeImage {
         if (!cp.isEmpty()) {
             command.addAll(Arrays.asList("-cp", cp.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator))));
         }
-        command.add(USE_NI_JPMS ? DEFAULT_GENERATOR_CLASS_NAME : config.getGeneratorMainClass());
+        if (USE_NI_JPMS) {
+            command.addAll(Arrays.asList("--module", DEFAULT_GENERATOR_MODULE_NAME + "/" + DEFAULT_GENERATOR_CLASS_NAME));
+        } else {
+            command.add(config.getGeneratorMainClass());
+        }
         if (IS_AOT && OS.getCurrent().hasProcFS) {
             /*
              * GR-8254: Ensure image-building VM shuts down even if native-image dies unexpected

@@ -29,14 +29,6 @@
  */
 package com.oracle.truffle.llvm.parser.nodes;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map.Entry;
-import java.util.Objects;
-
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.llvm.parser.LLVMLivenessAnalysis;
@@ -134,6 +126,15 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.Type.TypeArrayBuilder;
 import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
 import com.oracle.truffle.llvm.runtime.types.symbols.SSAValue;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map.Entry;
+import java.util.Objects;
 
 public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
@@ -794,31 +795,11 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         }
         final LLVMExpressionNode baseAddress = resolveOptimized(extract.getAggregate());
         final Type baseType = extract.getAggregate().getType();
-        final int targetIndex = extract.getIndex();
+        final Collection<Long> targetIndices = extract.getIndices();
         final Type resultType = extract.getType();
 
-        LLVMExpressionNode targetAddress = baseAddress;
-
-        final AggregateType aggregateType = (AggregateType) baseType;
-
-        LLVMExpressionNode result;
-        try {
-            long offset = aggregateType.getOffsetOf(targetIndex, dataLayout);
-
-            final Type targetType = aggregateType.getElementType(targetIndex);
-            if (targetType != null && !((targetType instanceof StructureType) && (((StructureType) targetType).isPacked()))) {
-                offset = Type.addUnsignedExact(offset, Type.getPadding(offset, targetType, dataLayout));
-            }
-
-            if (offset != 0) {
-                final LLVMExpressionNode oneLiteralNode = CommonNodeFactory.createLiteral(1, PrimitiveType.I32);
-                targetAddress = nodeFactory.createTypedElementPointer(offset, extract.getType(), targetAddress, oneLiteralNode);
-            }
-
-            result = nodeFactory.createExtractValue(resultType, targetAddress);
-        } catch (TypeOverflowException e) {
-            result = Type.handleOverflowExpression(e);
-        }
+        LLVMExpressionNode targetAddress = CommonNodeFactory.getTargetAddress(baseAddress, baseType, targetIndices, nodeFactory, dataLayout);
+        LLVMExpressionNode result = nodeFactory.createExtractValue(resultType, targetAddress);
         createFrameWrite(result, extract);
     }
 

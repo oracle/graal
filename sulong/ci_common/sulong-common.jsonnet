@@ -149,6 +149,7 @@
       CLANG_CC: "clang-3.8",
       CLANG_CXX: "clang-3.8 --driver-mode=g++",
       CLANG_LLVM_OBJCOPY: "objcopy",
+      CLANG_LLVM_CONFIG: "llvm-config",
       CLANG_NO_OPTNONE: "1",
       CFLAGS: "-Wno-error",
     },

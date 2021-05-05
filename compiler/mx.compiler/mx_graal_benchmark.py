@@ -150,7 +150,11 @@ _graal_variants = [
     ('no-splitting', ['-Dpolyglot.engine.Splitting=false'], 0),
     ('limit-truffle-inlining', ['-Dpolyglot.engine.InliningRecursionDepth=2'], 0),
     ('no-splitting-limit-truffle-inlining', ['-Dpolyglot.engine.Splitting=false', '-Dpolyglot.engine.InliningRecursionDepth=2'], 0),
-    ('no-truffle-bg-comp', ['-Dpolyglot.engine.BackgroundCompilation=false'], 0)
+    ('no-truffle-bg-comp', ['-Dpolyglot.engine.BackgroundCompilation=false'], 0),
+    ('avx0', ['-XX:UseAVX=0'], 11),
+    ('avx1', ['-XX:UseAVX=1'], 11),
+    ('avx2', ['-XX:UseAVX=2'], 11),
+    ('avx3', ['-XX:UseAVX=3'], 11)
 ]
 build_jvmci_vm_variants('server', 'graal-core', ['-server', '-XX:+EnableJVMCI', '-Dgraal.CompilerConfiguration=community', '-Djvmci.Compiler=graal'], _graal_variants, suite=_suite, priority=15)
 

@@ -1755,6 +1755,54 @@ public class ContextPreInitializationTest {
         doContextPreinitialize(FIRST);
     }
 
+    @Test
+    public void testUsePreInitializedContextOptionEnabled() throws Exception {
+        setPatchable(FIRST);
+        doContextPreinitialize(FIRST);
+        List<CountingContext> contexts = new ArrayList<>(emittedContexts);
+        assertEquals(1, contexts.size());
+        CountingContext firstLangCtx = findContext(FIRST, contexts);
+        assertNotNull(firstLangCtx);
+        assertEquals(1, firstLangCtx.createContextCount);
+        assertEquals(1, firstLangCtx.initializeContextCount);
+        try (Context ctx = Context.newBuilder().allowExperimentalOptions(true).option("engine.UsePreInitializedContext", "true").build()) {
+            Value res = ctx.eval(Source.create(FIRST, "test"));
+            assertEquals("test", res.asString());
+            contexts = new ArrayList<>(emittedContexts);
+            assertEquals(1, contexts.size());
+            assertEquals(1, firstLangCtx.createContextCount);
+            assertEquals(1, firstLangCtx.initializeContextCount);
+            assertEquals(1, firstLangCtx.patchContextCount);
+        }
+    }
+
+    @Test
+    public void testUsePreInitializedContextOptionDisabled() throws Exception {
+        setPatchable(FIRST);
+        doContextPreinitialize(FIRST);
+        List<CountingContext> contexts = new ArrayList<>(emittedContexts);
+        assertEquals(1, contexts.size());
+        CountingContext firstLangCtx = findContext(FIRST, contexts);
+        assertNotNull(firstLangCtx);
+        assertEquals(1, firstLangCtx.createContextCount);
+        assertEquals(1, firstLangCtx.initializeContextCount);
+        try (Context ctx = Context.newBuilder().allowExperimentalOptions(true).option("engine.UsePreInitializedContext", "false").build()) {
+            Value res = ctx.eval(Source.create(FIRST, "test"));
+            assertEquals("test", res.asString());
+            contexts = new ArrayList<>(emittedContexts);
+            assertEquals(2, contexts.size());
+            contexts = new ArrayList<>(emittedContexts);
+            contexts.remove(firstLangCtx);
+            CountingContext firstLangCtx2 = findContext(FIRST, contexts);
+            assertEquals(1, firstLangCtx.createContextCount);
+            assertEquals(1, firstLangCtx.initializeContextCount);
+            assertEquals(0, firstLangCtx.patchContextCount);
+            assertEquals(1, firstLangCtx2.createContextCount);
+            assertEquals(1, firstLangCtx2.initializeContextCount);
+            assertEquals(0, firstLangCtx2.patchContextCount);
+        }
+    }
+
     private static IsSameFileResult testIsSameFileImpl(boolean allowIO, FileSystem fs) throws ReflectiveOperationException {
         String path = Paths.get(".").toAbsolutePath().toString();
         setPatchable(FIRST);

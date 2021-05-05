@@ -56,6 +56,7 @@ import com.oracle.svm.hosted.c.util.FileUtils;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
+import org.graalvm.nativeimage.Platform;
 
 public abstract class CCompilerInvoker {
 
@@ -147,7 +148,12 @@ public abstract class CCompilerInvoker {
                     scanner.next();
                     targetArch = scanner.next();
                 }
-                if (scanner.findInLine("Microsoft.*\\(R\\) C/C\\+\\+") == null) {
+                /*
+                 * Some cl.exe print "... Microsoft (R) C/C++ ... ##.##.#####" while others print
+                 * "...C/C++ ... Microsoft (R) ... ##.##.#####".
+                 */
+                if (scanner.findInLine("Microsoft.*\\(R\\) C/C\\+\\+") == null &&
+                                scanner.findInLine("C/C\\+\\+.*Microsoft.*\\(R\\)") == null) {
                     return null;
                 }
                 scanner.useDelimiter("\\D");
@@ -205,7 +211,10 @@ public abstract class CCompilerInvoker {
 
         @Override
         protected String getDefaultCompiler() {
-            return LibCBase.singleton().getTargetCompiler();
+            if (Platform.includedIn(Platform.LINUX.class)) {
+                return LibCBase.singleton().getTargetCompiler();
+            }
+            return "gcc";
         }
 
         @Override

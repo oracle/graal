@@ -290,7 +290,6 @@ import org.graalvm.compiler.core.common.calc.CanonicalCondition;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.calc.Condition.CanonicalizedCondition;
 import org.graalvm.compiler.core.common.calc.FloatConvert;
-import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -428,9 +427,7 @@ import org.graalvm.compiler.nodes.java.NewMultiArrayNode;
 import org.graalvm.compiler.nodes.java.RegisterFinalizerNode;
 import org.graalvm.compiler.nodes.java.StoreFieldNode;
 import org.graalvm.compiler.nodes.java.StoreIndexedNode;
-import org.graalvm.compiler.nodes.spi.CoreProviders;
-import org.graalvm.compiler.nodes.spi.Replacements;
-import org.graalvm.compiler.nodes.spi.StampProvider;
+import org.graalvm.compiler.nodes.spi.CoreProvidersDelegate;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.OptionValues;
@@ -446,7 +443,6 @@ import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.site.InfopointReason;
 import jdk.vm.ci.meta.ConstantPool;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
@@ -456,7 +452,6 @@ import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.JavaTypeProfile;
 import jdk.vm.ci.meta.LineNumberTable;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.RawConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -469,7 +464,7 @@ import jdk.vm.ci.meta.TriState;
 /**
  * The {@code GraphBuilder} class parses the bytecode of a method and builds the IR graph.
  */
-public class BytecodeParser implements GraphBuilderContext {
+public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilderContext {
 
     /**
      * The minimum value to which {@link BytecodeParserOptions#TraceBytecodeParserLevel} must be set
@@ -925,6 +920,7 @@ public class BytecodeParser implements GraphBuilderContext {
 
     protected BytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method,
                     int entryBCI, IntrinsicContext intrinsicContext) {
+        super(graphBuilderInstance.providers);
         this.bytecodeProvider = intrinsicContext == null ? new ResolvedJavaMethodBytecodeProvider() : intrinsicContext.getBytecodeProvider();
         this.code = bytecodeProvider.getBytecode(method);
         this.method = code.getMethod();
@@ -934,7 +930,6 @@ public class BytecodeParser implements GraphBuilderContext {
         this.debug = graph.getDebug();
         this.graphBuilderConfig = graphBuilderInstance.graphBuilderConfig;
         this.optimisticOpts = graphBuilderInstance.optimisticOpts;
-        this.providers = graphBuilderInstance.providers;
         assert code.getCode() != null : method;
         this.stream = new BytecodeStream(code.getCode());
         this.profilingInfo = graph.useProfilingInfo() ? code.getProfilingInfo() : null;
@@ -1590,15 +1585,6 @@ public class BytecodeParser implements GraphBuilderContext {
         return emitBytecodeExceptionCheck(condition, true, BytecodeExceptionKind.ARRAY_STORE, value);
     }
 
-    protected GuardingNode maybeEmitExplicitDivisionByZeroCheck(ValueNode y) {
-        if (!((IntegerStamp) y.stamp(NodeView.DEFAULT)).contains(0) || !needsExplicitDivisionByZeroException(y)) {
-            return null;
-        }
-        ConstantNode zero = ConstantNode.defaultForKind(y.getStackKind(), graph);
-        LogicNode condition = genUnique(IntegerEqualsNode.create(getConstantReflection(), getMetaAccess(), options, null, y, zero, NodeView.DEFAULT));
-        return emitBytecodeExceptionCheck(condition, false, BytecodeExceptionKind.DIVISION_BY_ZERO);
-    }
-
     @Override
     public AbstractBeginNode emitBytecodeExceptionCheck(LogicNode condition, boolean passingOnTrue, BytecodeExceptionKind exceptionKind, ValueNode... arguments) {
         AbstractBeginNode result = GraphBuilderContext.super.emitBytecodeExceptionCheck(condition, passingOnTrue, exceptionKind, arguments);
@@ -1828,7 +1814,6 @@ public class BytecodeParser implements GraphBuilderContext {
     protected final ProfilingInfo profilingInfo;
     protected final OptimisticOptimizations optimisticOpts;
     protected final ConstantPool constantPool;
-    protected final CoreProviders providers;
     protected final IntrinsicContext intrinsicContext;
 
     @Override
@@ -3897,21 +3882,6 @@ public class BytecodeParser implements GraphBuilderContext {
     }
 
     @Override
-    public StampProvider getStampProvider() {
-        return providers.getStampProvider();
-    }
-
-    @Override
-    public MetaAccessProvider getMetaAccess() {
-        return providers.getMetaAccess();
-    }
-
-    @Override
-    public Replacements getReplacements() {
-        return providers.getReplacements();
-    }
-
-    @Override
     public void push(JavaKind slotKind, ValueNode value) {
         assert value.isAlive();
         frameState.push(slotKind, value);
@@ -3920,16 +3890,6 @@ public class BytecodeParser implements GraphBuilderContext {
     @Override
     public ValueNode pop(JavaKind slotKind) {
         return frameState.pop(slotKind);
-    }
-
-    @Override
-    public ConstantReflectionProvider getConstantReflection() {
-        return providers.getConstantReflection();
-    }
-
-    @Override
-    public ConstantFieldProvider getConstantFieldProvider() {
-        return providers.getConstantFieldProvider();
     }
 
     /**
@@ -4069,7 +4029,7 @@ public class BytecodeParser implements GraphBuilderContext {
             JavaConstant constant = (JavaConstant) con;
             frameState.push(constant.getJavaKind(), appendConstant(constant));
         } else {
-            throw new Error("lookupConstant returned an object of incorrect type");
+            throw new Error("lookupConstant returned an object of incorrect type: " + con);
         }
     }
 
@@ -4867,15 +4827,6 @@ public class BytecodeParser implements GraphBuilderContext {
      * @param value The value that is stored into the array.
      */
     protected boolean needsExplicitStoreCheckException(ValueNode array, ValueNode value) {
-        return needsExplicitException();
-    }
-
-    /**
-     * Returns true if an explicit null check should be emitted for the given object.
-     *
-     * @param y The dividend.
-     */
-    protected boolean needsExplicitDivisionByZeroException(ValueNode y) {
         return needsExplicitException();
     }
 
