@@ -381,7 +381,7 @@ class NativeImageVM(GraalVm):
             if "image" not in self.current_stage and self.config.bmSuite.validateReturnCode(self.exit_code):
                 self.exit_code = 0
 
-    def rules(self, output, benchmarks, bmSuiteArgs, suite=None):
+    def rules(self, output, benchmarks, bmSuiteArgs):
         class NativeImageTimeToInt(object):
             def __call__(self, *args, **kwargs):
                 return int(float(args[0].replace(',', '')))
@@ -390,7 +390,7 @@ class NativeImageVM(GraalVm):
             def __call__(self, *args, **kwargs):
                 return int(args[0], 16)
 
-        suiteName = "" if suite is None else suite.name()
+        suiteName = self.bmSuite.name() if self.bmSuite else ""
         return [
             mx_benchmark.StdOutRule(
                 r"The executed image size for benchmark (?P<bench_suite>[a-zA-Z0-9_\-]+):(?P<benchmark>[a-zA-Z0-9_\-]+) is (?P<value>[0-9]+) B",
