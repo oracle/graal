@@ -502,7 +502,7 @@ class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
                 {
                     "benchmark": benchmarks[0],
                     "bench-suite": self.benchSuiteName(),
-                    "metric.name": "warmup-throughput",
+                    "metric.name": "startup-throughput",
                     "metric.value": ("<throughput>", float),
                     "metric.unit": "op/s",
                     "metric.better": "higher",
