@@ -24,9 +24,9 @@ package com.oracle.truffle.espresso.nodes.quick;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public abstract class QuickNode extends BaseQuickNode {
@@ -58,22 +58,18 @@ public abstract class QuickNode extends BaseQuickNode {
     protected final StaticObject nullCheck(StaticObject value) {
         if (StaticObject.isNull(value)) {
             enterExceptionProfile();
-            throw getBytecodesNode().getMeta().throwNullPointerException();
+            throw getBytecodeNode().getMeta().throwNullPointerException();
         }
         return value;
     }
 
     @Override
-    public final BytecodeNode getBytecodesNode() {
-        return (BytecodeNode) getParent();
-    }
-
-    public int getBCI() {
+    public int getBci(@SuppressWarnings("unused") Frame frame) {
         return callerBCI;
     }
 
     @Override
     public SourceSection getSourceSection() {
-        return getBytecodesNode().getSourceSectionAtBCI(callerBCI);
+        return getBytecodeNode().getSourceSectionAtBCI(callerBCI);
     }
 }

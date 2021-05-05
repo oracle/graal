@@ -65,7 +65,7 @@ public abstract class DoubleArrayStoreNode extends QuickNode {
 
     @Specialization(guards = "array.isEspressoObject()")
     void doEspresso(StaticObject array, int index, double value) {
-        getBytecodesNode().getInterpreterToVM().setArrayDouble(value, index, array);
+        getBytecodeNode().getInterpreterToVM().setArrayDouble(value, index, array);
     }
 
     @Override

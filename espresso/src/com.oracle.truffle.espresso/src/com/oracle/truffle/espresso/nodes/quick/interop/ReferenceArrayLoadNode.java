@@ -78,7 +78,7 @@ public abstract class ReferenceArrayLoadNode extends QuickNode {
 
     @Specialization(guards = "array.isEspressoObject()")
     StaticObject doEspresso(StaticObject array, int index) {
-        return getBytecodesNode().getInterpreterToVM().getArrayObject(index, array);
+        return getBytecodeNode().getInterpreterToVM().getArrayObject(index, array);
     }
 
     @Override

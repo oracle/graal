@@ -69,6 +69,7 @@ import com.oracle.truffle.espresso.jdwp.impl.JDWPInstrument;
 import com.oracle.truffle.espresso.jdwp.impl.JDWPLogger;
 import com.oracle.truffle.espresso.jdwp.impl.TypeTag;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.BciProvider;
 import com.oracle.truffle.espresso.nodes.EspressoInstrumentableNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.quick.BaseQuickNode;
@@ -678,6 +679,11 @@ public final class JDWPContextImpl implements JDWPContext {
 
     @Override
     public Node getInstrumentableNode(Node node) {
+        if (node instanceof EspressoInstrumentableNode) {
+            return node;
+        } else if (node instanceof BaseQuickNode) {
+            return ((BaseQuickNode) node).getBytecodeNode();
+        }
         Node currentNode = node;
 
         // node might be wrapped by instrumentation, so we need to unwrap here
@@ -689,7 +695,7 @@ public final class JDWPContextImpl implements JDWPContext {
                 instrumentableNode = currentNode;
             } else if (currentNode instanceof BaseQuickNode) {
                 BaseQuickNode quickNode = (BaseQuickNode) currentNode;
-                instrumentableNode = quickNode.getBytecodesNode();
+                instrumentableNode = quickNode.getBytecodeNode();
             } else {
                 currentNode = currentNode.getParent();
             }
@@ -705,14 +711,27 @@ public final class JDWPContextImpl implements JDWPContext {
         return null;
     }
 
+    private static BciProvider getBciProviderNode(Node node) {
+        if (node instanceof BciProvider) {
+            return (BciProvider) node;
+        }
+        Node currentNode = node.getParent();
+        while (currentNode != null) {
+            if (currentNode instanceof BciProvider) {
+                return (BciProvider) currentNode;
+            }
+            currentNode = currentNode.getParent();
+        }
+        return null;
+    }
+
     @Override
     public long getBCI(Node rawNode, Frame frame) {
-        Node node = getInstrumentableNode(rawNode);
-        if (node == null) {
+        BciProvider bciProvider = getBciProviderNode(rawNode);
+        if (bciProvider == null) {
             return -1;
         }
-        EspressoInstrumentableNode instrumentableNode = (EspressoInstrumentableNode) node;
-        return instrumentableNode.getCurrentBCI(frame);
+        return bciProvider.getBci(frame);
     }
 
     @Override

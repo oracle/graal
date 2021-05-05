@@ -20,37 +20,34 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.nodes.quick;
+package com.oracle.truffle.espresso.nodes;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
+import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.espresso.nodes.BciProvider;
-import com.oracle.truffle.espresso.nodes.BytecodeNode;
 
 @GenerateWrapper
-public abstract class BaseQuickNode extends Node implements BciProvider, InstrumentableNode {
+public abstract class BaseEspressoStatementNode extends Node implements InstrumentableNode {
 
-    public abstract int execute(VirtualFrame frame, long[] primitives, Object[] refs);
+    public void execute(@SuppressWarnings("unused") VirtualFrame frame) {
+        // only here to satisfy wrapper generation
+    }
 
-    public final boolean isInstrumentable() {
+    public boolean hasTag(Class<? extends Tag> tag) {
+        return tag == StandardTags.StatementTag.class;
+    }
+
+    @Override
+    public boolean isInstrumentable() {
         return true;
     }
 
     @Override
-    public final WrapperNode createWrapper(ProbeNode probeNode) {
-        return new BaseQuickNodeWrapper(this, probeNode);
-    }
-
-    public abstract boolean producedForeignObject(Object[] refs);
-
-    public boolean removedByRedefintion() {
-        return false;
-    }
-
-    public final BytecodeNode getBytecodeNode() {
-        return (BytecodeNode) getParent();
+    public WrapperNode createWrapper(ProbeNode probe) {
+        return new BaseEspressoStatementNodeWrapper(this, probe);
     }
 }

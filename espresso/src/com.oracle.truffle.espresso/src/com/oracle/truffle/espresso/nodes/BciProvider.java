@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,34 +23,8 @@
 package com.oracle.truffle.espresso.nodes;
 
 import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.source.SourceSection;
 
-/**
- * Node that simulates espresso statements for debugging support.
- */
-public final class EspressoStatementNode extends BaseEspressoStatementNode implements BciProvider {
+public interface BciProvider {
 
-    private final int startBci;
-    private final int lineNumber;
-    private final BytecodeNode parent;
-
-    EspressoStatementNode(BytecodeNode bytecodeNode, int startBci, int lineNumber) {
-        this.lineNumber = lineNumber;
-        this.startBci = startBci;
-        this.parent = bytecodeNode;
-    }
-
-    @Override
-    public SourceSection getSourceSection() {
-        Source s = parent.getSource();
-        // when there is a line number table we also have a source
-        assert s != null;
-        return s.createSection(lineNumber);
-    }
-
-    @Override
-    public int getBci(@SuppressWarnings("unused") Frame frame) {
-        return startBci;
-    }
+    int getBci(Frame frame);
 }

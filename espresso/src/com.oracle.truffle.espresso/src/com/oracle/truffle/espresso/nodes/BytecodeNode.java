@@ -1267,7 +1267,7 @@ public final class BytecodeNode extends EspressoMethodNode {
     }
 
     @Override
-    public int getCurrentBCI(Frame frame) {
+    public int getBci(Frame frame) {
         try {
             assert bciSlot != null;
             return frame.getInt(bciSlot);
@@ -1297,7 +1297,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                 info = this.instrumentation;
                 // double checked locking
                 if (info == null) {
-                    this.instrumentation = info = insert(new InstrumentationSupport(getMethodVersion()));
+                    this.instrumentation = info = insert(new InstrumentationSupport(this));
                     // the debug info contains instrumentable nodes so we need to notify for
                     // instrumentation updates.
                     notifyInserted(info);
@@ -2505,15 +2505,15 @@ public final class BytecodeNode extends EspressoMethodNode {
     }
 
     static final class InstrumentationSupport extends Node {
-        @Children private final EspressoInstrumentableNode[] statementNodes;
+        @Children private final BaseEspressoStatementNode[] statementNodes;
         @Child private MapperBCI hookBCIToNodeIndex;
 
         private final EspressoContext context;
         private final MethodVersion method;
 
-        InstrumentationSupport(MethodVersion method) {
+        InstrumentationSupport(BytecodeNode bytecodeNode) {
+            this.method = bytecodeNode.getMethod().getMethodVersion();
             this.context = method.getMethod().getContext();
-            this.method = method;
 
             LineNumberTableAttribute table = method.getLineNumberTableAttribute();
 
@@ -2525,7 +2525,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                 Arrays.fill(seenLines, -1);
                 int maxSeenLine = -1;
 
-                this.statementNodes = new EspressoInstrumentableNode[entries.size()];
+                this.statementNodes = new BaseEspressoStatementNode[entries.size()];
                 this.hookBCIToNodeIndex = new MapperBCI(table);
 
                 for (int i = 0; i < entries.size(); i++) {
@@ -2542,7 +2542,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                         }
                     }
                     if (!seen) {
-                        statementNodes[hookBCIToNodeIndex.initIndex(i, entry.getBCI())] = new EspressoStatementNode(entry.getBCI(), lineNumber);
+                        statementNodes[hookBCIToNodeIndex.initIndex(i, entry.getBCI())] = new EspressoStatementNode(bytecodeNode, entry.getBCI(), lineNumber);
                         seenLines[i] = lineNumber;
                         maxSeenLine = Math.max(maxSeenLine, lineNumber);
                     }
@@ -2582,7 +2582,7 @@ public final class BytecodeNode extends EspressoMethodNode {
         }
 
         void notifyExceptionAt(VirtualFrame frame, Throwable t, int statementIndex) {
-            EspressoInstrumentableNodeWrapper wrapperNode = getWrapperAt(statementIndex);
+            WrapperNode wrapperNode = getWrapperAt(statementIndex);
             if (wrapperNode == null) {
                 return;
             }
@@ -2607,7 +2607,7 @@ public final class BytecodeNode extends EspressoMethodNode {
         }
 
         private void enterAt(VirtualFrame frame, int index) {
-            EspressoInstrumentableNodeWrapper wrapperNode = getWrapperAt(index);
+            WrapperNode wrapperNode = getWrapperAt(index);
             if (wrapperNode == null) {
                 return;
             }
@@ -2630,7 +2630,7 @@ public final class BytecodeNode extends EspressoMethodNode {
         }
 
         private void exitAt(VirtualFrame frame, int index) {
-            EspressoInstrumentableNodeWrapper wrapperNode = getWrapperAt(index);
+            WrapperNode wrapperNode = getWrapperAt(index);
             if (wrapperNode == null) {
                 return;
             }
@@ -2666,16 +2666,16 @@ public final class BytecodeNode extends EspressoMethodNode {
             return hookBCIToNodeIndex.checkNext(statementIndex, nextBCI);
         }
 
-        private EspressoInstrumentableNodeWrapper getWrapperAt(int index) {
+        private WrapperNode getWrapperAt(int index) {
             if (statementNodes == null || index < 0) {
                 return null;
             }
-            EspressoInstrumentableNode node = statementNodes[index];
-            if (!(node instanceof EspressoInstrumentableNodeWrapper)) {
+            BaseEspressoStatementNode node = statementNodes[index];
+            if (!(node instanceof WrapperNode)) {
                 return null;
             }
             CompilerAsserts.partialEvaluationConstant(node);
-            return ((EspressoInstrumentableNodeWrapper) node);
+            return ((WrapperNode) node);
         }
     }
 }
