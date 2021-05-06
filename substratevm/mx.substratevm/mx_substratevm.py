@@ -830,7 +830,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     support_distributions=['substratevm:NATIVE_IMAGE_GRAALVM_SUPPORT'],
     launcher_configs=[
         mx_sdk_vm.LauncherConfig(
-            is_module_launcher=not svm_java8(),
+            use_modules='image' if USE_NI_JPMS else 'launcher' if not svm_java8() else None,
             destination="bin/<exe:native-image>",
             jar_distributions=["substratevm:SVM_DRIVER"],
             main_module="org.graalvm.nativeimage.driver",

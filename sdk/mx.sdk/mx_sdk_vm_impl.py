@@ -1291,12 +1291,13 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
             _write_ln(u'ImagePath=' + java_properties_escape("${.}/" + relpath(dirname(graalvm_image_destination), graalvm_location).replace(os.sep, '/')))
             if requires:
                 _write_ln(u'Requires=' + java_properties_escape(' '.join(requires), ' ', len('Requires')))
+            build_with_module_path = image_config.use_modules == 'image'
             if isinstance(image_config, mx_sdk.LauncherConfig):
                 _write_ln(u'ImageClass=' + java_properties_escape(image_config.main_class))
-                if image_config.module_launcher:
+                if build_with_module_path:
                     _write_ln(u'ImageModule=' + java_properties_escape(image_config.main_module))
             if location_classpath:
-                image_path_arg = u'ImageModulePath=' if image_config.module_launcher else u'ImageClasspath='
+                image_path_arg = u'ImageModulePath=' if build_with_module_path else u'ImageClasspath='
                 _write_ln(image_path_arg + java_properties_escape(':'.join(("${.}/" + e.replace(os.sep, '/') for e in location_classpath)), ':', len('ImageClasspath')))
             _write_ln(u'Args=' + java_properties_escape(' '.join(build_args), ' ', len('Args')))
         return self._contents
@@ -1850,7 +1851,7 @@ class GraalVmBashLauncherBuildTask(GraalVmNativeImageBuildTask):
             return self.subject.native_image_config.main_class
 
         def _is_module_launcher():
-            return str(self.subject.native_image_config.module_launcher)
+            return str(self.subject.native_image_config.use_modules is not None)
 
         def _get_main_module():
             return str(self.subject.native_image_config.main_module)
