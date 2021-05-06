@@ -144,7 +144,7 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
             return null;
         }
         JObject hsInliningPlan = callCreateInliningPlan(scope.getEnv(), getHandle());
-        return new HSTruffleInliningPlan(scope, hsInliningPlan);
+        return new HSTruffleInliningData(scope, hsInliningPlan);
     }
 
     @TruffleFromLibGraal(AsCompilableTruffleAST)

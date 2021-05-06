@@ -39,21 +39,21 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLi
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetURI;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.SetCallCount;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.SetInlinedCallCount;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callAddInlinedTarget;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callAddTargetToDequeue;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callCountInlinedCalls;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callFindCallNode;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callGetDescription;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callGetLanguage;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callGetLineNumber;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callGetNodeClassName;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callGetNodeId;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callGetOffsetEnd;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callGetOffsetStart;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callGetPosition;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callGetURI;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callSetCallCount;
-import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callSetInlinedCallCount;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningDataGen.callAddInlinedTarget;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningDataGen.callAddTargetToDequeue;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningDataGen.callCountInlinedCalls;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningDataGen.callFindCallNode;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningDataGen.callGetDescription;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningDataGen.callGetLanguage;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningDataGen.callGetLineNumber;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningDataGen.callGetNodeClassName;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningDataGen.callGetNodeId;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningDataGen.callGetOffsetEnd;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningDataGen.callGetOffsetStart;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningDataGen.callGetPosition;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningDataGen.callGetURI;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningDataGen.callSetCallCount;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningDataGen.callSetInlinedCallCount;
 import static org.graalvm.nativebridge.jni.JNIUtil.createString;
 
 import java.net.URI;
@@ -75,11 +75,11 @@ import jdk.vm.ci.meta.JavaConstant;
 /**
  * Proxy for a {@link TruffleInliningData} object in the HotSpot heap.
  */
-class HSTruffleInliningPlan extends HSObject implements TruffleInliningData {
+class HSTruffleInliningData extends HSObject implements TruffleInliningData {
 
     final JNIMethodScope scope;
 
-    HSTruffleInliningPlan(JNIMethodScope scope, JObject handle) {
+    HSTruffleInliningData(JNIMethodScope scope, JObject handle) {
         super(scope, handle);
         this.scope = scope;
     }

@@ -66,6 +66,6 @@ final class HSTruffleCompilationTask extends HSObject implements TruffleCompilat
     @TruffleFromLibGraal(InliningData)
     @Override
     public TruffleInliningData inliningData() {
-        return new HSTruffleInliningPlan(scope, callInliningData(env(), getHandle()));
+        return new HSTruffleInliningData(scope, callInliningData(env(), getHandle()));
     }
 }
