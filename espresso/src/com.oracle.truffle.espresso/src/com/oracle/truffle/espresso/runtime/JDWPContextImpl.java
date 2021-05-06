@@ -34,8 +34,10 @@ import java.util.regex.Matcher;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode.WrapperNode;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -70,9 +72,7 @@ import com.oracle.truffle.espresso.jdwp.impl.JDWPLogger;
 import com.oracle.truffle.espresso.jdwp.impl.TypeTag;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.BciProvider;
-import com.oracle.truffle.espresso.nodes.EspressoInstrumentableNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
-import com.oracle.truffle.espresso.nodes.quick.BaseQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.interop.ForeignArrayUtils;
 import com.oracle.truffle.espresso.runtime.dispatch.EspressoInterop;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
@@ -610,7 +610,7 @@ public final class JDWPContextImpl implements JDWPContext {
         Object currentThread = asGuestThread(Thread.currentThread());
         KlassRef klass = context.getMeta().java_lang_Object;
         MethodRef method = context.getMeta().java_lang_Object_wait.getMethodVersion();
-        return new CallFrame(ids.getIdAsLong(currentThread), TypeTag.CLASS, ids.getIdAsLong(klass), method, ids.getIdAsLong(method), 0, null, null, null, null);
+        return new CallFrame(ids.getIdAsLong(currentThread), TypeTag.CLASS, ids.getIdAsLong(klass), method, ids.getIdAsLong(method), 0, null, null, null, null, null);
     }
 
     @Override
@@ -678,33 +678,16 @@ public final class JDWPContextImpl implements JDWPContext {
     }
 
     @Override
-    public Node getInstrumentableNode(Node node) {
-        if (node instanceof EspressoInstrumentableNode) {
-            return node;
-        } else if (node instanceof BaseQuickNode) {
-            return ((BaseQuickNode) node).getBytecodeNode();
-        }
-        Node currentNode = node;
-
-        // node might be wrapped by instrumentation, so we need to unwrap here
-        while (currentNode != null) {
-            Node instrumentableNode = null;
-            if (currentNode instanceof EspressoRootNode) {
-                instrumentableNode = ((EspressoRootNode) currentNode).getMethodNode();
-            } else if (currentNode instanceof EspressoInstrumentableNode) {
-                instrumentableNode = currentNode;
-            } else if (currentNode instanceof BaseQuickNode) {
-                BaseQuickNode quickNode = (BaseQuickNode) currentNode;
-                instrumentableNode = quickNode.getBytecodeNode();
-            } else {
-                currentNode = currentNode.getParent();
+    public InstrumentableNode getScopeProviderNode(RootNode rootNode, Frame frame) {
+        if (rootNode instanceof EspressoRootNode) {
+            EspressoRootNode espressoRootNode = (EspressoRootNode) rootNode;
+            Node methodNode = espressoRootNode.getMethodNode();
+            if (methodNode instanceof WrapperNode) {
+                methodNode = ((WrapperNode) methodNode).getDelegateNode();
             }
-            if (instrumentableNode != null) {
-                // we found the node, check if wrapped
-                if (instrumentableNode instanceof WrapperNode) {
-                    return ((WrapperNode) instrumentableNode).getDelegateNode();
-                } else {
-                    return instrumentableNode;
+            if (methodNode instanceof InstrumentableNode && ((InstrumentableNode) methodNode).isInstrumentable()) {
+                if (NodeLibrary.getUncached().hasScope(methodNode, frame)) {
+                    return (InstrumentableNode) methodNode;
                 }
             }
         }

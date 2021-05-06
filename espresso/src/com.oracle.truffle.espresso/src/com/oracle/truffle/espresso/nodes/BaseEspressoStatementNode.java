@@ -22,15 +22,21 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.interop.NodeLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 
 @GenerateWrapper
+@ExportLibrary(NodeLibrary.class)
 public abstract class BaseEspressoStatementNode extends Node implements InstrumentableNode {
 
     public void execute(@SuppressWarnings("unused") VirtualFrame frame) {
@@ -49,5 +55,20 @@ public abstract class BaseEspressoStatementNode extends Node implements Instrume
     @Override
     public WrapperNode createWrapper(ProbeNode probe) {
         return new BaseEspressoStatementNodeWrapper(this, probe);
+    }
+
+    public abstract BytecodeNode getBytecodeNode();
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    public final boolean hasScope(@SuppressWarnings("unused") Frame frame) {
+        return true;
+    }
+
+    @ExportMessage
+    @CompilerDirectives.TruffleBoundary
+    @SuppressWarnings("static-method")
+    public final Object getScope(Frame frame, @SuppressWarnings("unused") boolean nodeEnter) {
+        return getBytecodeNode().getScope(frame, nodeEnter);
     }
 }

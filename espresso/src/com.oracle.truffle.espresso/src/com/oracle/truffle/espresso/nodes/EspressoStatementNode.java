@@ -53,4 +53,9 @@ public final class EspressoStatementNode extends BaseEspressoStatementNode imple
     public int getBci(@SuppressWarnings("unused") Frame frame) {
         return startBci;
     }
+
+    @Override
+    public BytecodeNode getBytecodeNode() {
+        return parent;
+    }
 }

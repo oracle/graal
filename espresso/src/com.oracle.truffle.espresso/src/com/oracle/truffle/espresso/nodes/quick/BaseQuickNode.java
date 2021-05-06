@@ -22,15 +22,21 @@
  */
 package com.oracle.truffle.espresso.nodes.quick;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
+import com.oracle.truffle.api.interop.NodeLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.nodes.BciProvider;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 
 @GenerateWrapper
+@ExportLibrary(NodeLibrary.class)
 public abstract class BaseQuickNode extends Node implements BciProvider, InstrumentableNode {
 
     public abstract int execute(VirtualFrame frame, long[] primitives, Object[] refs);
@@ -52,5 +58,18 @@ public abstract class BaseQuickNode extends Node implements BciProvider, Instrum
 
     public final BytecodeNode getBytecodeNode() {
         return (BytecodeNode) getParent();
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    public final boolean hasScope(@SuppressWarnings("unused") Frame frame) {
+        return true;
+    }
+
+    @ExportMessage
+    @CompilerDirectives.TruffleBoundary
+    @SuppressWarnings("static-method")
+    public final Object getScope(Frame frame, @SuppressWarnings("unused") boolean nodeEnter) {
+        return getBytecodeNode().getScope(frame, nodeEnter);
     }
 }

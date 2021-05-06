@@ -26,6 +26,7 @@ import com.oracle.truffle.api.debug.DebugScope;
 import com.oracle.truffle.api.debug.DebugStackFrame;
 import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.NodeLibrary;
@@ -47,13 +48,14 @@ public final class CallFrame {
     private final long codeIndex;
     private final long threadId;
     private final Frame frame;
+    private final Node currentNode;
     private final RootNode rootNode;
     private final DebugStackFrame debugStackFrame;
     private final DebugScope debugScope;
     private final JDWPContext context;
     private Object scope;
 
-    public CallFrame(long threadId, byte typeTag, long classId, MethodRef method, long methodId, long codeIndex, Frame frame, RootNode rootNode,
+    public CallFrame(long threadId, byte typeTag, long classId, MethodRef method, long methodId, long codeIndex, Frame frame, Node currentNode, RootNode rootNode,
                     DebugStackFrame debugStackFrame, JDWPContext context) {
         this.threadId = threadId;
         this.typeTag = typeTag;
@@ -62,6 +64,7 @@ public final class CallFrame {
         this.methodId = methodId;
         this.codeIndex = method != null && method.isObsolete() ? -1 : codeIndex;
         this.frame = frame;
+        this.currentNode = currentNode;
         this.rootNode = rootNode;
         this.debugStackFrame = debugStackFrame;
         this.debugScope = debugStackFrame != null ? debugStackFrame.getScope() : null;
@@ -69,7 +72,7 @@ public final class CallFrame {
     }
 
     public CallFrame(long threadId, byte typeTag, long classId, long methodId, long codeIndex) {
-        this(threadId, typeTag, classId, null, methodId, codeIndex, null, null, null, null);
+        this(threadId, typeTag, classId, null, methodId, codeIndex, null, null, null, null, null);
     }
 
     public byte getTypeTag() {
@@ -142,15 +145,24 @@ public final class CallFrame {
         if (scope != null) {
             return scope;
         }
-        Node instrumentableNode = context.getInstrumentableNode(rootNode);
-
-        if (instrumentableNode == null) {
-            JDWPLogger.log("Unable to get instrumentable node for root %s", JDWPLogger.LogLevel.ALL, rootNode);
-        } else {
+        // check if current node has scope
+        if (NodeLibrary.getUncached().hasScope(currentNode, frame)) {
             try {
-                scope = NodeLibrary.getUncached().getScope(instrumentableNode, frame, true);
+                scope = NodeLibrary.getUncached().getScope(currentNode, frame, true);
             } catch (UnsupportedMessageException e) {
-                JDWPLogger.log("Unable to get scope for %s", JDWPLogger.LogLevel.ALL, instrumentableNode.getClass());
+                JDWPLogger.log("Unable to get scope for %s", JDWPLogger.LogLevel.ALL, currentNode.getClass());
+            }
+        } else {
+            // fallback to lookup scope provider node from the root node
+            InstrumentableNode scopeNode = context.getScopeProviderNode(rootNode, frame);
+            if (scopeNode == null) {
+                JDWPLogger.log("Unable to get instrumentable node for root %s", JDWPLogger.LogLevel.ALL, rootNode);
+            } else {
+                try {
+                    scope = NodeLibrary.getUncached().getScope(scopeNode, frame, true);
+                } catch (UnsupportedMessageException e) {
+                    JDWPLogger.log("Unable to get scope for %s", JDWPLogger.LogLevel.ALL, scopeNode.getClass());
+                }
             }
         }
         return scope;

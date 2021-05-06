@@ -713,7 +713,14 @@ public final class DebuggerController implements ContextsListener {
                 if (codeIndex > lastLineBCI) {
                     codeIndex = lastLineBCI;
                 }
-                callFrames.add(new CallFrame(context.getIds().getIdAsLong(guestThread), typeTag, klassId, method, methodId, codeIndex, frame, root, null, context));
+                Node currentNode = frameInstance.getCallNode();
+                if (currentNode == null) {
+                    CallTarget callTarget = frameInstance.getCallTarget();
+                    if (callTarget instanceof RootCallTarget) {
+                        currentNode = ((RootCallTarget) callTarget).getRootNode();
+                    }
+                }
+                callFrames.add(new CallFrame(context.getIds().getIdAsLong(guestThread), typeTag, klassId, method, methodId, codeIndex, frame, currentNode, root, null, context));
                 return null;
             }
         });
@@ -1010,7 +1017,7 @@ public final class DebuggerController implements ContextsListener {
                     codeIndex = context.getBCI(rawNode, rawFrame);
                 }
 
-                list.addLast(new CallFrame(threadId, typeTag, klassId, method, methodId, codeIndex, rawFrame, root, frame, context));
+                list.addLast(new CallFrame(threadId, typeTag, klassId, method, methodId, codeIndex, rawFrame, rawNode, root, frame, context));
                 frameCount++;
                 if (frameLimit != -1 && frameCount >= frameLimit) {
                     return list.toArray(new CallFrame[list.size()]);
