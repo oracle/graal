@@ -265,6 +265,10 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         if (headArg.startsWith(serverOptionPrefix)) {
             args.poll();
             NativeImage.showWarning("Ignoring server-mode native-image argument " + headArg + ".");
+            String serverOptionCommand = headArg.substring(serverOptionPrefix.length());
+            if (!serverOptionCommand.startsWith("session=")) {
+                System.exit(0);
+            }
             return true;
         }
         return false;
