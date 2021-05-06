@@ -651,7 +651,8 @@ suite = {
       "workingSets" : "Truffle",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "javaProperties" : {
-        "native.test.lib" : "<path:TRUFFLE_TEST_NATIVE>/<lib:nativetest>"
+        "native.test.lib" : "<path:TRUFFLE_TEST_NATIVE>/<lib:nativetest>",
+        "native.isolation.test.lib" : "<path:TRUFFLE_TEST_NATIVE>/<lib:isolationtest>"
       },
       "testProject" : True,
       "jacoco" : "exclude",
@@ -682,6 +683,21 @@ suite = {
             "cflags" : ["-g", "-Wall", "-Werror"],
             "ldflags" : ["-pthread"],
             "ldlibs" : ["-lm"],
+          },
+        },
+      },
+      "testProject" : True,
+      "jacoco" : "exclude",
+    },
+
+    "com.oracle.truffle.nfi.test.native.isolation" : {
+      "subDir" : "src",
+      "native" : "shared_lib",
+      "deliverable" : "isolationtest",
+      "os_arch" : {
+        "<others>" : {
+          "<others>" : {
+            "cflags" : ["-g", "-Wall", "-Werror"],
           },
         },
       },
@@ -1151,6 +1167,7 @@ suite = {
        "output" : "<mxbuild>/truffle-test-native",
        "dependencies" : [
          "com.oracle.truffle.nfi.test.native",
+         "com.oracle.truffle.nfi.test.native.isolation",
        ],
        "testDistribution" : True,
       "maven" : False,
