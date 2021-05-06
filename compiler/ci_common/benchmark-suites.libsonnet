@@ -17,6 +17,7 @@
     jmh_micros_suites:: std.set([$.micros_graal_dist, $.micros_misc_graal_dist , $.micros_shootout_graal_dist], keyF=uniq_key),
     graal_internals_suites:: std.set([$.micros_graal_whitebox], keyF=uniq_key),
     special_suites:: std.set([$.renaissance_0_10, $.specjbb2015_full_machine], keyF=uniq_key),
+    microservice_suites:: std.set([$.microservice_benchmarks], keyF=uniq_key),
 
     main_suites:: std.set(self.open_suites + self.spec_suites + self.legacy_suites, keyF=uniq_key),
     all_suites:: std.set(self.main_suites + self.jmh_micros_suites + self.special_suites, keyF=uniq_key),
@@ -165,6 +166,21 @@
     timelimit: "3:00:00",
     forks_batches:: 5,
     forks_timelimit:: "06:00:00"
+  },
+
+  // Microservice microbenchmarks
+  microservice_benchmarks: cc.compiler_benchmark + c.heap.default + {
+    suite:: "microservice_benchmarks",
+    packages+: {
+      "python3": "==3.6.5",
+      "pip:psutil": "==5.8.0"
+    },
+    run+: [
+      c.hwlocIfNuma(self.is_numa, $.mx_benchmark + ["shopcart-jmeter:large"] + $.bench_arguments, node=self.numa_nodes[0]),
+      c.hwlocIfNuma(self.is_numa, $.mx_benchmark + ["petclinic-jmeter:tiny"] + $.bench_arguments, node=self.numa_nodes[0]),
+      c.hwlocIfNuma(self.is_numa, $.mx_benchmark + ["tika-wrk:odt"] + $.bench_arguments, node=self.numa_nodes[0])
+    ],
+    timelimit: "3:00:00"
   },
 
   // JMH microbenchmarks
