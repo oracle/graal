@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,13 @@
  */
 package org.graalvm.compiler.hotspot.amd64;
 
+import static jdk.vm.ci.amd64.AMD64.k1;
+import static jdk.vm.ci.amd64.AMD64.k2;
+import static jdk.vm.ci.amd64.AMD64.k3;
+import static jdk.vm.ci.amd64.AMD64.k4;
+import static jdk.vm.ci.amd64.AMD64.k5;
+import static jdk.vm.ci.amd64.AMD64.k6;
+import static jdk.vm.ci.amd64.AMD64.k7;
 import static jdk.vm.ci.amd64.AMD64.r10;
 import static jdk.vm.ci.amd64.AMD64.r11;
 import static jdk.vm.ci.amd64.AMD64.r12;
@@ -79,7 +86,8 @@ class AMD64HotSpotRegisterAllocationConfig extends RegisterAllocationConfig {
     static final Register[] registerAllocationOrder = {
         r10, r11, r8, r9, r12, rcx, rbx, rdi, rdx, rsi, rax, rbp, r13, r14, /*r15,*/ /*rsp,*/
         xmm0, xmm1, xmm2,  xmm3,  xmm4,  xmm5,  xmm6,  xmm7,
-        xmm8, xmm9, xmm10, xmm11, xmm12, xmm13, xmm14, xmm15
+        xmm8, xmm9, xmm10, xmm11, xmm12, xmm13, xmm14, xmm15,
+        k1, k2, k3, k4, k5, k6, k7
     };
     // @formatter:on
 

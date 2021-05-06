@@ -589,7 +589,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                  * introduced earlier.
                  */
                 ValueNode arrayClass = createReadHub(graph, array, tool);
-                ValueNode componentHub = createReadArrayComponentHub(graph, arrayClass, storeIndexed);
+                boolean isKnownObjectArray = arrayType != null && !arrayType.getType().getComponentType().isPrimitive();
+                ValueNode componentHub = createReadArrayComponentHub(graph, arrayClass, isKnownObjectArray, storeIndexed);
                 LogicNode typeTest = graph.unique(InstanceOfDynamicNode.create(graph.getAssumptions(), tool.getConstantReflection(), componentHub, value, false));
                 condition = LogicNode.or(graph.unique(IsNullNode.create(value)), typeTest, BranchProbabilityNode.NOT_LIKELY_PROFILE);
             }
@@ -671,7 +672,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
     protected void lowerLoadArrayComponentHubNode(LoadArrayComponentHubNode loadHub) {
         StructuredGraph graph = loadHub.graph();
-        ValueNode hub = createReadArrayComponentHub(graph, loadHub.getValue(), loadHub);
+        ValueNode hub = createReadArrayComponentHub(graph, loadHub.getValue(), false, loadHub);
         graph.replaceFixed(loadHub, hub);
     }
 
@@ -1224,7 +1225,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
     protected abstract ValueNode createReadHub(StructuredGraph graph, ValueNode object, LoweringTool tool);
 
-    protected abstract ValueNode createReadArrayComponentHub(StructuredGraph graph, ValueNode arrayHub, FixedNode anchor);
+    protected abstract ValueNode createReadArrayComponentHub(StructuredGraph graph, ValueNode arrayHub, boolean isKnownObjectArray, FixedNode anchor);
 
     protected ValueNode proxyIndex(AccessIndexedNode n, ValueNode index, ValueNode array, LoweringTool tool) {
         StructuredGraph graph = index.graph();

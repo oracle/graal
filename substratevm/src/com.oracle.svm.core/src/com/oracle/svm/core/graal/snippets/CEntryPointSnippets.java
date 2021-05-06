@@ -85,6 +85,8 @@ import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointUtilityNode;
+import com.oracle.svm.core.heap.ReferenceHandler;
+import com.oracle.svm.core.heap.ReferenceHandlerThreadSupport;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
@@ -266,9 +268,27 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             }
         }
 
+        /*
+         * The VM operation thread must be started early as no VM operations can be scheduled before
+         * this thread is fully started.
+         */
         if (UseDedicatedVMOperationThread.getValue()) {
             VMOperationControl.startVMOperationThread();
         }
+
+        /*
+         * The reference handler thread must also be started early. Otherwise, it could happen that
+         * the GC publishes pending references but there is no thread to process them. This could
+         * result in deadlocks if ReferenceInternals.waitForReferenceProcessing() is called.
+         */
+        if (ReferenceHandler.useDedicatedThread()) {
+            ImageSingletons.lookup(ReferenceHandlerThreadSupport.class).getThread().start();
+        }
+
+        /*
+         * After starting all the necessary threads, we can finally execute complex JDK code or code
+         * that allocates a significant amount of memory.
+         */
 
         if (parameters.isNonNull() && parameters.version() >= 3 && parameters.getArgv().isNonNull()) {
             String[] args = SubstrateUtil.getArgs(parameters.getArgc(), parameters.getArgv());

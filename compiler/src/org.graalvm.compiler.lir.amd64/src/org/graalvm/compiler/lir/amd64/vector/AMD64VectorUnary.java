@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.COMPOSITE;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.CONST;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
 import static org.graalvm.compiler.lir.LIRValueUtil.asConstant;
@@ -36,6 +37,7 @@ import static org.graalvm.compiler.lir.LIRValueUtil.isConstantValue;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRMOp;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp;
+import org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.EVEXPrefixConfig;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.asm.amd64.AVXKind;
 import org.graalvm.compiler.lir.LIRFrameState;
@@ -101,19 +103,35 @@ public class AMD64VectorUnary {
         }
     }
 
-    public static final class AVXBroadcastOp extends AMD64VectorInstruction {
+    public static final class AVXBroadcastOp extends AMD64VectorInstruction implements AVX512Support {
         public static final LIRInstructionClass<AVXBroadcastOp> TYPE = LIRInstructionClass.create(AVXBroadcastOp.class);
 
         @Opcode private final VexRMOp opcode;
 
         @Def({REG}) protected AllocatableValue result;
         @Use({REG, STACK, CONST}) protected Value input;
+        @Use({REG, ILLEGAL}) protected AllocatableValue opmask;
+
+        private final int z;
+        private final int b;
 
         public AVXBroadcastOp(VexRMOp opcode, AVXKind.AVXSize size, AllocatableValue result, Value input) {
+            this(opcode, size, result, input, Value.ILLEGAL, EVEXPrefixConfig.Z0, EVEXPrefixConfig.B0);
+        }
+
+        public AVXBroadcastOp(VexRMOp opcode, AVXKind.AVXSize size, AllocatableValue result, Value input, AllocatableValue opmask, int z, int b) {
             super(TYPE, size);
             this.opcode = opcode;
             this.result = result;
             this.input = input;
+            this.opmask = opmask;
+            this.z = z;
+            this.b = b;
+        }
+
+        @Override
+        public AllocatableValue getOpmask() {
+            return opmask;
         }
 
         @Override
@@ -121,11 +139,11 @@ public class AMD64VectorUnary {
             if (isRegister(input)) {
                 opcode.emit(masm, size, asRegister(result), asRegister(input));
             } else if (isConstantValue(input)) {
-                int align = input.getPlatformKind().getSizeInBytes();
+                int align = crb.dataBuilder.ensureValidDataAlignment(input.getPlatformKind().getSizeInBytes());
                 AMD64Address address = (AMD64Address) crb.recordDataReferenceInCode(asConstant(input), align);
-                opcode.emit(masm, size, asRegister(result), address);
+                opcode.emit(masm, size, asRegister(result), address, getOpmaskRegister(), z, b);
             } else {
-                opcode.emit(masm, size, asRegister(result), (AMD64Address) crb.asAddress(input));
+                opcode.emit(masm, size, asRegister(result), (AMD64Address) crb.asAddress(input), getOpmaskRegister(), z, b);
             }
         }
     }

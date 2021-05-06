@@ -32,6 +32,8 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Builder;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.runtime.GraalCompilerDirectives;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
@@ -133,7 +135,18 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
             try (DebugCloseable d = debug.disableIntercept(); DebugContext.Scope s = debug.scope("PerformanceWarningTest")) {
                 final OptimizedCallTarget compilable = target;
                 CompilationIdentifier compilationId = getTruffleCompiler(target).createCompilationIdentifier(compilable);
-                getTruffleCompiler(target).compileAST(compilable.getOptionValues(), debug, compilable, new TruffleInlining(), compilationId, null, null);
+                getTruffleCompiler(target).compileAST(compilable.getOptionValues(), debug, compilable, new TruffleInlining(), compilationId,
+                                new TruffleCompilerImpl.CancellableTruffleCompilationTask(new TruffleCompilationTask() {
+                                    @Override
+                                    public boolean isCancelled() {
+                                        return false;
+                                    }
+
+                                    @Override
+                                    public boolean isLastTier() {
+                                        return true;
+                                    }
+                                }), null);
                 assertTrue(compilable.isValid());
             }
         } catch (AssertionError e) {

@@ -97,6 +97,7 @@ public abstract class PrimitiveValueProfile extends ValueProfile {
      *
      * @since 0.10
      */
+    @SuppressWarnings("deprecation")
     public static PrimitiveValueProfile createEqualityProfile() {
         if (Profile.isProfilingEnabled()) {
             return Enabled.create();

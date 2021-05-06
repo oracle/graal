@@ -1317,7 +1317,7 @@ final class HostObject implements TruffleObject {
                         @Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException, UnsupportedTypeException, ArityException {
             if (args.length != 1) {
                 error.enter();
-                throw ArityException.create(1, args.length);
+                throw ArityException.create(1, 1, args.length);
             }
             Object arg0 = args[0];
             int length;

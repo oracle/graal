@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,8 +30,6 @@ import java.nio.ByteBuffer;
 
 import org.graalvm.compiler.code.DataSection.Data;
 import org.graalvm.compiler.code.DataSection.Patches;
-import org.graalvm.compiler.code.DataSection.SerializableData;
-import org.graalvm.compiler.code.DataSection.ZeroData;
 import org.graalvm.compiler.lir.asm.DataBuilder;
 
 import com.oracle.svm.core.FrameAccess;
@@ -58,10 +56,10 @@ public class SubstrateDataBuilder extends DataBuilder {
             } else {
                 size = FrameAccess.uncompressedReferenceSize();
             }
-            return ZeroData.create(size, size);
+            return createZeroData(size, size);
         } else if (constant instanceof SerializableConstant) {
             SerializableConstant s = (SerializableConstant) constant;
-            return new SerializableData(s);
+            return createSerializableData(s);
         } else {
             throw new JVMCIError(String.valueOf(constant));
         }

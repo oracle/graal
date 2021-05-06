@@ -101,7 +101,9 @@ public class DevirtualizeCallsPhase extends Phase {
         if (!callTarget.isStatic()) {
             InliningUtil.nonNullReceiver(invoke);
         }
-        AnalysisSpeculation speculation = new AnalysisSpeculation(new AnalysisSpeculationReason("The call to " + callTarget.targetMethod().format("%H.%n(%P)") + " is not reachable."));
+        HostedMethod targetMethod = (HostedMethod) callTarget.targetMethod();
+        String message = String.format("The call to %s is not reachable when called from %s.%n", targetMethod.format("%H.%n(%P)"), graph.method().format("%H.%n(%P)"));
+        AnalysisSpeculation speculation = new AnalysisSpeculation(new AnalysisSpeculationReason(message));
         FixedGuardNode node = new FixedGuardNode(LogicConstantNode.forBoolean(true, graph), DeoptimizationReason.UnreachedCode, DeoptimizationAction.None, speculation, true);
         graph.addBeforeFixed(invoke.asNode(), graph.add(node));
         graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After dead invoke %s", invoke);

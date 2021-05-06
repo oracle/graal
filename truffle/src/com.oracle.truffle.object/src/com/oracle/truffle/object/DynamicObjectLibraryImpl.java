@@ -366,7 +366,7 @@ abstract class DynamicObjectLibraryImpl {
             } catch (IncompatibleLocationException e) {
                 throw shouldNotHappen(e);
             }
-            ACCESS.setShape(object, newShape);
+            ACCESS.setShapeWithStoreFence(object, newShape);
             updateShapeImpl(object);
         } else {
             try {
@@ -1249,7 +1249,7 @@ abstract class DynamicObjectLibraryImpl {
                                 throw shouldNotHappen(e);
                             }
                             if (newShape != oldShape) {
-                                ACCESS.setShape(object, newShape);
+                                ACCESS.setShapeWithStoreFence(object, newShape);
                             }
                             c.maybeUpdateShape(object);
                             return true;
@@ -1293,7 +1293,7 @@ abstract class DynamicObjectLibraryImpl {
                                 throw shouldNotHappen(e);
                             }
                             if (newShape != oldShape) {
-                                ACCESS.setShape(object, newShape);
+                                ACCESS.setShapeWithStoreFence(object, newShape);
                             }
                             c.maybeUpdateShape(object);
                             return true;
@@ -1309,7 +1309,7 @@ abstract class DynamicObjectLibraryImpl {
                                 throw shouldNotHappen(e);
                             }
                             if (newShape != oldShape) {
-                                ACCESS.setShape(object, newShape);
+                                ACCESS.setShapeWithStoreFence(object, newShape);
                             }
                             c.maybeUpdateShape(object);
                             return true;
@@ -1325,7 +1325,7 @@ abstract class DynamicObjectLibraryImpl {
                                 throw shouldNotHappen(e);
                             }
                             if (newShape != oldShape) {
-                                ACCESS.setShape(object, newShape);
+                                ACCESS.setShapeWithStoreFence(object, newShape);
                             }
                             c.maybeUpdateShape(object);
                             return true;
@@ -1341,7 +1341,7 @@ abstract class DynamicObjectLibraryImpl {
                                 throw shouldNotHappen(e);
                             }
                             if (newShape != oldShape) {
-                                ACCESS.setShape(object, newShape);
+                                ACCESS.setShapeWithStoreFence(object, newShape);
                             }
                             c.maybeUpdateShape(object);
                             return true;
@@ -1383,7 +1383,7 @@ abstract class DynamicObjectLibraryImpl {
                                 throw shouldNotHappen(e);
                             }
                             if (newShape != oldShape) {
-                                ACCESS.setShape(object, newShape);
+                                ACCESS.setShapeWithStoreFence(object, newShape);
                             }
                             c.maybeUpdateShape(object);
                             return true;
@@ -1400,7 +1400,7 @@ abstract class DynamicObjectLibraryImpl {
                                 throw shouldNotHappen(e);
                             }
                             if (newShape != oldShape) {
-                                ACCESS.setShape(object, newShape);
+                                ACCESS.setShapeWithStoreFence(object, newShape);
                             }
                             c.maybeUpdateShape(object);
                             return true;
@@ -1442,7 +1442,7 @@ abstract class DynamicObjectLibraryImpl {
                                 throw shouldNotHappen(e);
                             }
                             if (newShape != oldShape) {
-                                ACCESS.setShape(object, newShape);
+                                ACCESS.setShapeWithStoreFence(object, newShape);
                             }
                             c.maybeUpdateShape(object);
                             return true;
@@ -1459,7 +1459,7 @@ abstract class DynamicObjectLibraryImpl {
                                 throw shouldNotHappen(e);
                             }
                             if (newShape != oldShape) {
-                                ACCESS.setShape(object, newShape);
+                                ACCESS.setShapeWithStoreFence(object, newShape);
                             }
                             c.maybeUpdateShape(object);
                             return true;

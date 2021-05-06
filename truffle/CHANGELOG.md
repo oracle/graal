@@ -9,6 +9,9 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added `RootNode#countsTowardsStackTraceLimit()`, replacing `RootNode#isInternal()` as the criterion that determines whether a frame with the given root node counts towards the stack trace limit.
 * Added `engine.UsePreInitializedContext` option which can be used to disable usage of pre-initialized context.
 * Added `MemoryFence`: provides methods for fine-grained control of memory ordering.
+* `ValueProfile.createEqualityProfile()` was deprecated without replacement. `Object.equals(Object)` cannot safely be used on compiled code paths. Use the Truffle Specialization DSL instead to implement caches with equality semantics. Making `Object.equals(Object)` reachable as runtime compiled method will mark too many equals implementations reachable for runtime compilation in a native image.
+* Methods annotated with `@Fallback`  of the Truffle specialization DSL now support `@Cached`, `@CachedContext`, `@CachedLanguage`, `@Bind` and dispatched `@CachedLibrary` parameters.
+* Deprecated and added methods to support expected arity ranges in `ArityException` instances. Note that the replacement methods now include more strict validations.
 
 ## Version 21.1.0
 * Added methods into `Instrumenter` that create bindings to be attached later on. Added `EventBinding.attach()` method.
@@ -81,6 +84,9 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     * `HostCompilerDirectives.BytecodeInterpreterSwitchBoundary` - to denote methods that do not need to be inlined into the bytecode interpreter switch
 * Truffle DSL generated nodes are no longer limited to 64 state bits. Use these state bits responsibly.
 * Added support for explicitly selecting a host method overload using the signature in the form of comma-separated fully qualified parameter type names enclosed by parentheses (e.g. `methodName(f.q.TypeName,java.lang.String,int,int[])`).
+* Changed the default value of `--engine.MultiTier` from `false` to `true`. This should significantly improve the warmup time of Truffle interpreters.
+* Deprecated and added methods to support expected arity ranges in `ArityException` instances. Note that the replacement methods now include more strict validations.
+
 
 ## Version 20.3.0
 * Added `RepeatingNode.initialLoopStatus` and `RepeatingNode.shouldContinue` to allow defining a custom loop continuation condition.

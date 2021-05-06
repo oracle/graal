@@ -1012,6 +1012,13 @@ public abstract class AArch64Assembler extends Assembler {
      * @param imm28 Signed 28-bit offset, has to be word aligned.
      */
     public void bl(int imm28) {
+        /*
+         * Currently within Graal all bl instructions will be patched later.
+         *
+         * Hence, for now imm28 should always be 0. If at a later time the imm28 can be a meaningful
+         * value, then this assert can be reevaluated.
+         */
+        assert imm28 == 0;
         unconditionalBranchImmInstruction(imm28, Instruction.BL, -1);
     }
 

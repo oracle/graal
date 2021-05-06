@@ -44,6 +44,7 @@ import java.util.logging.Level;
 import java.util.stream.Collectors;
 
 import com.oracle.truffle.espresso.FinalizationFeature;
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionMap;
 import org.graalvm.polyglot.Engine;
 
@@ -392,8 +393,10 @@ public final class EspressoContext {
                                         "Allow native access on context creation e.g. contextBuilder.allowNativeAccess(true)");
         assert !this.initialized;
         eventListener = new EmptyListener();
-        // Setup finalization support in the host VM.
-        FinalizationFeature.ensureInitialized();
+        if (!ImageInfo.inImageRuntimeCode()) {
+            // Setup finalization support in the host VM.
+            FinalizationFeature.ensureInitialized();
+        }
         spawnVM();
         this.initialized = true;
         this.jdwpContext = new JDWPContextImpl(this);

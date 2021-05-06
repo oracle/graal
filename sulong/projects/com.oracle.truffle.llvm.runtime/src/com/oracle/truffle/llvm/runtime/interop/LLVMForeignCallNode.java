@@ -177,7 +177,7 @@ public abstract class LLVMForeignCallNode extends RootNode {
         Object[] packNonVarargs(Object[] arguments, LLVMStack stack, @Cached BranchProfile exceptionProfile) throws ArityException {
             if (arguments.length < numberOfSourceArguments) {
                 exceptionProfile.enter();
-                throw ArityException.create(numberOfSourceArguments, arguments.length);
+                throw ArityException.create(numberOfSourceArguments, numberOfSourceArguments, arguments.length);
             }
 
             final Object[] packedArguments = new Object[1 + toLLVM.length];
