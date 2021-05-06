@@ -7,8 +7,8 @@ permalink: /graalvm-as-a-platform/language-implementation-framework/splitting/Sp
 redirect_from:
   - /graalvm-as-a-platform/truffle-framework/splitting/Splitting/
   - /docs/reference-manual/truffle-framework/splitting/Splitting/
-next: /en/graalvm/enterprise/20/docs/graalvm-as-a-platform/truffle-framework/MonomorphizationUseCases/
-previous: /en/graalvm/enterprise/20/docs/graalvm-as-a-platform/truffle-framework/Monomorphization/
+next: /en/graalvm/enterprise/21/docs/graalvm-as-a-platform/truffle-framework/MonomorphizationUseCases/
+previous: /en/graalvm/enterprise/21/docs/graalvm-as-a-platform/truffle-framework/Monomorphization/
 ---
 # Splitting Algorithm
 

@@ -7,8 +7,8 @@ permalink: /graalvm-as-a-platform/language-implementation-framework/Options/
 redirect_from:
   - /graalvm-as-a-platform/truffle-framework/Options/
   - /docs/reference-manual/truffle-framework/Options/
-next: /en/graalvm/enterprise/20/docs/graalvm-as-a-platform/truffle-framework/SpecializationHistogram/
-previous: /en/graalvm/enterprise/20/docs/graalvm-as-a-platform/truffle-framework/Optimizing/
+next: /en/graalvm/enterprise/21/docs/graalvm-as-a-platform/truffle-framework/SpecializationHistogram/
+previous: /en/graalvm/enterprise/21/docs/graalvm-as-a-platform/truffle-framework/Optimizing/
 ---
 # Truffle Options
 
@@ -73,9 +73,9 @@ Expert engine options:
                                                Minimum number of invocations or loop iterations needed to compile a guest language root in first tier.
   --engine.FirstTierMinInvokeThreshold=<Integer>
                                                Minimum number of invocations or loop iterations needed to compile a guest language root in last tier.
-  --engine.LastTierCompilationThreshold=<Integer>      
+  --engine.LastTierCompilationThreshold=<Integer>
                                                Minimum number of invocations or loop iterations needed to compile a guest language root when not using multi tier.
-  --engine.SingleTierCompilationThreshold=<Integer>      
+  --engine.SingleTierCompilationThreshold=<Integer>
                                                Minimum number of invocations or loop iterations needed to compile a guest language root when not using multi tier.
   --engine.Inlining=<Boolean>                  Enable automatic inlining of guest language call targets.
   --engine.InliningExpansionBudget=<Integer>   The base expansion budget for language-agnostic inlining.

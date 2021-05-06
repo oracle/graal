@@ -7,8 +7,8 @@ permalink: /graalvm-as-a-platform/language-implementation-framework/BranchInstru
 redirect_from:
   - /graalvm-as-a-platform/truffle-framework/BranchInstrumentation/
   - /docs/reference-manual/truffle-framework/BranchInstrumentation/
-next: /en/graalvm/enterprise/20/docs/graalvm-as-a-platform/truffle-framework/DynamicObjectModel/
-previous: /en/graalvm/enterprise/20/docs/graalvm-as-a-platform/truffle-framework/
+next: /en/graalvm/enterprise/21/docs/graalvm-as-a-platform/truffle-framework/DynamicObjectModel/
+previous: /en/graalvm/enterprise/21/docs/graalvm-as-a-platform/truffle-framework/
 ---
 # Truffle Branches Instrumentation
 

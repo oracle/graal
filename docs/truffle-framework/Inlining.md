@@ -7,8 +7,8 @@ permalink: /graalvm-as-a-platform/language-implementation-framework/Inlining/
 redirect_from:
   - /graalvm-as-a-platform/truffle-framework/Inlining/
   - /docs/reference-manual/truffle-framework/Inlining/
-next: /en/graalvm/enterprise/20/docs/graalvm-as-a-platform/truffle-framework/Profiling/
-previous: /en/graalvm/enterprise/20/docs/graalvm-as-a-platform/truffle-framework/DynamicObjectModel/
+next: /en/graalvm/enterprise/21/docs/graalvm-as-a-platform/truffle-framework/Profiling/
+previous: /en/graalvm/enterprise/21/docs/graalvm-as-a-platform/truffle-framework/DynamicObjectModel/
 ---
 # Truffle Approach to Function Inlining
 

@@ -7,8 +7,8 @@ permalink: /graalvm-as-a-platform/language-implementation-framework/InteropMigra
 redirect_from:
   - /graalvm-as-a-platform/truffle-framework/InteropMigration/
   - /docs/reference-manual/truffle-framework/InteropMigration/
-next: /en/graalvm/enterprise/20/docs/graalvm-as-a-platform/truffle-framework/LanguageTutorial/
-previous: /en/graalvm/enterprise/20/docs/graalvm-as-a-platform/truffle-framework/Profiling/
+next: /en/graalvm/enterprise/21/docs/graalvm-as-a-platform/truffle-framework/LanguageTutorial/
+previous: /en/graalvm/enterprise/21/docs/graalvm-as-a-platform/truffle-framework/Profiling/
 ---
 # Truffle Interop 2.0
 

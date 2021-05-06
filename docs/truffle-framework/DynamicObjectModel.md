@@ -7,8 +7,8 @@ permalink: /graalvm-as-a-platform/language-implementation-framework/DynamicObjec
 redirect_from:
   - /graalvm-as-a-platform/truffle-framework/DynamicObjectModel/
   - /docs/reference-manual/truffle-framework/DynamicObjectModel/
-next: /en/graalvm/enterprise/20/docs/graalvm-as-a-platform/truffle-framework/Inlining/
-previous: /en/graalvm/enterprise/20/docs/graalvm-as-a-platform/truffle-framework/BranchInstrumentation/
+next: /en/graalvm/enterprise/21/docs/graalvm-as-a-platform/truffle-framework/Inlining/
+previous: /en/graalvm/enterprise/21/docs/graalvm-as-a-platform/truffle-framework/BranchInstrumentation/
 ---
 # Dynamic Object Model
 

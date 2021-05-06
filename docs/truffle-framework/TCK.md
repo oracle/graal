@@ -7,8 +7,8 @@ permalink: /graalvm-as-a-platform/language-implementation-framework/TCK/
 redirect_from:
   - /docs/reference-manual/truffle-framework/TCK/
   - /graalvm-as-a-platform/truffle-framework/TCK/
-next: /en/graalvm/enterprise/20/docs/graalvm-as-a-platform/truffle-framework/TruffleLibraries/
-previous: /en/graalvm/enterprise/20/docs/graalvm-as-a-platform/truffle-framework/SpecializationTesting/
+next: /en/graalvm/enterprise/21/docs/graalvm-as-a-platform/truffle-framework/TruffleLibraries/
+previous: /en/graalvm/enterprise/21/docs/graalvm-as-a-platform/truffle-framework/SpecializationTesting/
 ---
 # Polyglot API-based Test Compatibility Kit
 

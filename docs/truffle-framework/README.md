@@ -7,8 +7,8 @@ permalink: /graalvm-as-a-platform/language-implementation-framework/
 redirect_from:
   - /docs/reference-manual/truffle-framework/
   - /graalvm-as-a-platform/truffle-framework/
-next: /en/graalvm/enterprise/20/docs/graalvm-as-a-platform/truffle-framework/BranchInstrumentation/
-previous: /en/graalvm/enterprise/20/docs/graalvm-enterprise-as-a-platform/
+next: /en/graalvm/enterprise/21/docs/graalvm-as-a-platform/truffle-framework/BranchInstrumentation/
+previous: /en/graalvm/enterprise/21/docs/graalvm-enterprise-as-a-platform/
 ---
 # Truffle Language Implementation Framework
 

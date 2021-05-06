@@ -7,8 +7,8 @@ permalink: /graalvm-as-a-platform/language-implementation-framework/Profiling/
 redirect_from:
   - /graalvm-as-a-platform/truffle-framework/Profiling/
   - /docs/reference-manual/truffle-framework/Profiling/
-next: /en/graalvm/enterprise/20/docs/graalvm-as-a-platform/truffle-framework/InteropMigration/
-previous: /en/graalvm/enterprise/20/docs/graalvm-as-a-platform/truffle-framework/Inlining/
+next: /en/graalvm/enterprise/21/docs/graalvm-as-a-platform/truffle-framework/InteropMigration/
+previous: /en/graalvm/enterprise/21/docs/graalvm-as-a-platform/truffle-framework/Inlining/
 ---
 # Profiling Truffle Interpreters
 

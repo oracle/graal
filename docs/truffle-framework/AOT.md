@@ -4,8 +4,8 @@ toc_group: truffle
 title: Truffle AOT Compilation
 link_title: Truffle AOT Compilation
 permalink: /graalvm-as-a-platform/language-implementation-framework/AOT/
-next: /en/graalvm/enterprise/20/docs/graalvm-as-a-platform/truffle-framework/Monomorphization/
-previous: /en/graalvm/enterprise/20/docs/graalvm-as-a-platform/language-implementation-framework/TruffleLibraries/
+next: /graalvm-as-a-platform/language-implementation-framework/AuxiliaryEngineCachingEnterprise/
+previous: /en/graalvm/enterprise/21/docs/graalvm-as-a-platform/language-implementation-framework/AOTOverview/
 ---
 # Truffle AOT Tutorial
 

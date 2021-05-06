@@ -7,8 +7,8 @@ permalink: /graalvm-as-a-platform/language-implementation-framework/Optimizing/
 redirect_from:
   - /graalvm-as-a-platform/truffle-framework/Optimizing/
   - /docs/reference-manual/truffle-framework/Optimizing/
-next: /en/graalvm/enterprise/20/docs/graalvm-as-a-platform/truffle-framework/Options/
-previous: /en/graalvm/enterprise/20/docs/graalvm-as-a-platform/truffle-framework/NFI/
+next: /en/graalvm/enterprise/21/docs/graalvm-as-a-platform/truffle-framework/Options/
+previous: /en/graalvm/enterprise/21/docs/graalvm-as-a-platform/truffle-framework/NFI/
 ---
 # Optimizing Truffle Interpreters
 

@@ -7,8 +7,8 @@ permalink: /graalvm-as-a-platform/language-implementation-framework/NFI/
 redirect_from:
   - /graalvm-as-a-platform/truffle-framework/NFI/
   - /docs/reference-manual/truffle-framework/NFI/
-next: /en/graalvm/enterprise/20/docs/graalvm-as-a-platform/truffle-framework/Optimizing/
-previous: /en/graalvm/enterprise/20/docs/graalvm-as-a-platform/truffle-framework/LanguageTutorial/
+next: /en/graalvm/enterprise/21/docs/graalvm-as-a-platform/truffle-framework/Optimizing/
+previous: /en/graalvm/enterprise/21/docs/graalvm-as-a-platform/truffle-framework/LanguageTutorial/
 ---
 # Truffle Native Function Interface
 

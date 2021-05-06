@@ -7,7 +7,7 @@ permalink: /graalvm-as-a-platform/language-implementation-framework/splitting/Re
 redirect_from:
   - /graalvm-as-a-platform/truffle-framework/splitting/ReportingPolymorphism/
   - /docs/reference-manual/truffle-framework/splitting/ReportingPolymorphism/
-previous: /en/graalvm/enterprise/20/docs/graalvm-as-a-platform/truffle-framework/MonomorphizationUseCases/
+previous: /en/graalvm/enterprise/21/docs/graalvm-as-a-platform/truffle-framework/MonomorphizationUseCases/
 ---
 # Reporting Polymorphic Specializations to Runtime
 
