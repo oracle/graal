@@ -39,7 +39,7 @@ final class DynamicThresholdsQueue extends TraversingBlockingQueue {
         this.minScale = minScale;
         this.minNormalLoad = minNormalLoad;
         this.maxNormalLoad = maxNormalLoad;
-        this.slope = (1 - minScale) / (minNormalLoad - 1);
+        this.slope = (1 - minScale) / minNormalLoad;
     }
 
     private double load() {
