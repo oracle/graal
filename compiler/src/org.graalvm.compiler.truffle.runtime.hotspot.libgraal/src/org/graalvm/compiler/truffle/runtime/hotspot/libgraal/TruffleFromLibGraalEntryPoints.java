@@ -67,6 +67,7 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLi
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetTruffleCallBoundaryMethods;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetURI;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetValidRootAssumptionConstant;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.InliningData;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsBytecodeInterpreterSwitch;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsBytecodeInterpreterSwitchBoundary;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsCancelled;
@@ -335,6 +336,11 @@ final class TruffleFromLibGraalEntryPoints {
     @TruffleFromLibGraal(IsLastTier)
     static boolean isLastTier(Object task) {
         return ((TruffleCompilationTask) task).isLastTier();
+    }
+
+    @TruffleFromLibGraal(InliningData)
+    static Object inliningData(Object task) {
+        return ((TruffleCompilationTask) task).inliningData();
     }
 
     @TruffleFromLibGraal(CompilableToString)
