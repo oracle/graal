@@ -1,0 +1,8 @@
+<oj-tree-view data="[[data]]" selection=" [[selectedItem]]" on-selected-changed="[[selectedChanged]]"
+              selection-mode="single" item.selectable="[[leafOnly]]">
+  <template slot="itemTemplate" data-oj-as="row">
+    <span class="oj-treeview-item-text">
+      <oj-bind-text value="[[row.data.label]]"></oj-bind-text>
+    </span>
+  </template>
+</oj-tree-view>

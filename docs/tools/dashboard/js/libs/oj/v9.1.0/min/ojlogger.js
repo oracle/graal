@@ -1,0 +1,8 @@
+/**
+ * @license
+ * Copyright (c) 2014, 2020, Oracle and/or its affiliates.
+ * Licensed under The Universal Permissive License (UPL), Version 1.0
+ * as shown at https://oss.oracle.com/licenses/upl/
+ * @ignore
+ */
+define([],function(){"use strict";var n={LEVEL_NONE:0,LEVEL_ERROR:1,LEVEL_WARN:2,LEVEL_INFO:3,LEVEL_LOG:4,_METHOD_ERROR:"error",_METHOD_WARN:"warn",_METHOD_INFO:"info",_METHOD_LOG:"log"};return n._defaultOptions={level:n.LEVEL_ERROR,writer:null},n._options=n._defaultOptions,n.error=function(o,t){n._write(n.LEVEL_ERROR,n._METHOD_ERROR,arguments)},n.info=function(o,t){n._write(n.LEVEL_INFO,n._METHOD_INFO,arguments)},n.warn=function(o,t){n._write(n.LEVEL_WARN,n._METHOD_WARN,arguments)},n.log=function(o,t){n._write(n.LEVEL_LOG,n._METHOD_LOG,arguments)},n.option=function(o,t){var i,e,r={};if(0===arguments.length){for(e=Object.keys(n._options),i=0;i<e.length;i++)r[e[i]]=n._options[e[i]];return r}if("string"==typeof o&&void 0===t)return void 0===n._options[o]?null:n._options[o];if("string"==typeof o)n._options[o]=t;else{var _=o;for(e=Object.keys(_),i=0;i<e.length;i++)n.option(e[i],_[e[i]])}},n._write=function(o,t,i){if(!(n.option("level")<o)){var e=n._getWriter();if(null!=e){if(1===i.length&&i[0]instanceof Function)i=[i[0]()];e[t]&&e[t].apply?e[t].apply(e,i):e[t]&&(e[t]=Function.prototype.bind.call(e[t],e),n._write(o,t,i))}}},n._getWriter=function(){var o=null;return n.option("writer")?o=n.option("writer"):"undefined"!=typeof window&&void 0!==window.console&&(o=window.console),o},n});

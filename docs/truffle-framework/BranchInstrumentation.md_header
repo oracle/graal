@@ -1,0 +1,12 @@
+---
+layout: docs
+toc_group: truffle
+title: Truffle Branches Instrumentation
+link_title: Truffle Branches Instrumentation
+permalink: /graalvm-as-a-platform/language-implementation-framework/BranchInstrumentation/
+redirect_from:
+  - /graalvm-as-a-platform/truffle-framework/BranchInstrumentation/
+  - /docs/reference-manual/truffle-framework/BranchInstrumentation/
+next: /en/graalvm/enterprise/21/docs/graalvm-as-a-platform/truffle-framework/DynamicObjectModel/
+previous: /en/graalvm/enterprise/21/docs/graalvm-as-a-platform/truffle-framework/
+---

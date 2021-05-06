@@ -1,0 +1,10 @@
+---
+layout: docs
+toc_group: native-image
+title: Substrate VM Project
+link_title: Substrate VM Project
+permalink: /reference-manual/native-image/SubstrateVM/
+redirect_from: /docs/reference-manual/native-image/SubstrateVM/
+next: /en/graalvm/enterprise/21/docs/reference-manual/native-image/Configuration/
+previous: /en/graalvm/enterprise/21/docs/reference-manual/enterprise-native-image/
+---

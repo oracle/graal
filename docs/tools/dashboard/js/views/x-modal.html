@@ -1,0 +1,35 @@
+<oj-dialog id="modal" dialog-title="Upload File" style="display:none; width: 40vw;">
+<div slot="body">
+    <oj-form-layout id="form" class="oj-formlayout-full-width" label-edge="top" user-assistance-density="reflow">
+    <oj-label for="selectFormat">File format</oj-label>
+    <oj-select-single id="selectFormat" data="[[formats]]" value="{{selectedFormat}}">
+    </oj-select-single>
+    <oj-label-value>
+        <oj-label slot="label" for="description">Description</oj-label>
+        <span slot="value" id="description" ><oj-bind-text value="[[description]]"></oj-bind-text></span>
+    </oj-label-value>
+    <oj-label label-id="dsfLabel" for="file">Data Source File</oj-label>
+    <div aria-labelledby="dsfLabel" class="oj-flex oj-sm-align-items-center">
+        <div class="oj-flex-item oj-sm-flex-initial ">
+        <oj-file-picker selection-mode="single" select-on='click' on-oj-select='[[selectListener]]'>
+            <oj-button slot='trigger'>
+            Select File    
+            </oj-button>
+        </oj-file-picker>
+        </div>
+    </div>
+    <div class="oj-flex-item oj-sm-padding-2x-start">
+    <oj-bind-if test="[[showError() === true]]">
+        <span class="oj-component-icon oj-message-status-icon oj-message-error-icon" title="Error" role="img"></span>
+    </oj-bind-if>
+    <span><oj-bind-text value="[[message]]"></oj-bind-text></span>
+    </div>
+    </oj-form-layout>
+</div>
+<div slot="footer">
+    <oj-button id="okButton" on-oj-action="[[ok]]" data-bind="visible: isVisible">OK
+    </oj-button>
+    <oj-button id="cancelButton" on-oj-action="[[close]]">Cancel
+    </oj-button>
+</div>
+</oj-dialog>

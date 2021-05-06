@@ -1,0 +1,28 @@
+<oj-treemap :id="[[id]]" on-click=[[zoomIn]] animation-on-display="auto" animation-on-data-change="auto"
+            data="[[treemapData]]" tooltip.renderer="[[tooltip]]" selection-mode="none">
+  <template slot="nodeTemplate">
+    <oj-treemap-node
+      label="[[$current.data.label]]"
+      value="[[$current.data.value]]"
+      color="[[getColor($current.parentData)]]">
+    </oj-treemap-node>
+  </template>
+</oj-treemap>
+<div class="oj-flex">
+  <div class="oj-flex-item oj-flex oj-sm-flex-items-initial oj-sm-flex-wrap-nowrap oj-sm-align-items-center">
+    <oj-bind-for-each data="[[breadcrumbs]]">
+      <template>
+        <oj-bind-if test="[[$current.observableIndex() > 0]]">        
+          <span class="oj-flex-item oj-component-icon oj-conveyorbelt-overflow-icon oj-end"></span>
+        </oj-bind-if>
+        <oj-button :id="[[breadcrumbId($current.observableIndex())]]" chroming="borderless" class="oj-flex-item" on-oj-action="[[breadcrumbButtonClick]]"><oj-bind-text value="[[$current.data.name]]"></oj-bind-text></oj-button>
+      </template>
+    </oj-bind-for-each>
+  </div>
+  <div class="oj-flex-item oj-sm-flex-0 oj-flex oj-sm-flex-wrap-nowrap">
+    <oj-button chroming="outlined" display="icons" class="oj-flex-item oj-sm-margin-2x-end" on-oj-action="[[zoomOut]]">
+      <span slot='startIcon' class="oj-ux-ico-back"></span>
+    </oj-button>
+    <oj-button chroming="outlined" class="oj-flex-item oj-sm-margin-2x-end" on-oj-action="[[reset]]">Reset</oj-button>
+  </div>
+</div>

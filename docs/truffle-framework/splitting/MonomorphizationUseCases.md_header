@@ -1,0 +1,12 @@
+---
+layout: docs
+toc_group: truffle
+title: Monomorphization Use Cases
+link_title: Monomorphization Use Cases
+permalink: /graalvm-as-a-platform/language-implementation-framework/splitting/MonomorphizationUseCases/
+redirect_from:
+  - /graalvm-as-a-platform/truffle-framework/splitting/MonomorphizationUseCases/
+  - /docs/reference-manual/truffle-framework/splitting/MonomorphizationUseCases/
+next: /en/graalvm/enterprise/21/docs/graalvm-as-a-platform/truffle-framework/ReportingPolymorphism/
+previous: /en/graalvm/enterprise/21/docs/graalvm-as-a-platform/truffle-framework/Splitting/
+---

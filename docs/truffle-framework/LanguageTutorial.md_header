@@ -1,0 +1,12 @@
+---
+layout: docs
+toc_group: truffle
+title: Implementing a New Language with Truffle
+link_title: Implementing a New Language with Truffle
+permalink: /graalvm-as-a-platform/language-implementation-framework/LanguageTutorial/
+redirect_from:
+  - /graalvm-as-a-platform/truffle-framework/LanguageTutorial/
+  - /docs/reference-manual/truffle-framework/LanguageTutorial/
+next: /en/graalvm/enterprise/21/docs/graalvm-as-a-platform/truffle-framework/NFI/
+previous: /en/graalvm/enterprise/21/docs/graalvm-as-a-platform/truffle-framework/InteropMigration/
+---

@@ -1,0 +1,22 @@
+<div class="oj-flex oj-sm-flex-direction-row oj-sm-flex-wrap-nowrap">
+  <oj-module config='[[modalConfig]]'></oj-module>
+  <div class="oj-flex-item oj-sm-flex-0">
+    <oj-collapsible expanded="{{expanded}}"class="x-dashboard-left-content">
+      <div slot="header">
+        <oj-button on-oj-action='[[open]]' chroming="borderless" class="oj-sm-margin-1x oj-clickthrough-disabled"
+          title="Loads data source into browser's memory, nothing is sent to the network">
+          <span slot='startIcon' class="oj-ux-ico-plus"></span>
+          <div data-bind="visible: expanded">Load data</div>
+        </oj-button>
+      </div>
+      <div class="x-dashboard-data-source-list oj-flex-item oj-panel oj-sm-margin-1x-start oj-sm-margin-1x-bottom">
+        <oj-module config='[[dataSourceListConfig]]'></oj-module>
+      </div>
+    </oj-collapsible>
+  </div>
+  <div
+    class="x-dashboard-right-content oj-flex-item oj-panel oj-sm-margin-1x-start oj-sm-margin-1x-top oj-sm-margin-1x-bottom"
+    style="overflow: auto">
+    <oj-module config='[[mosaicConfig]]'></oj-module>
+  </div>
+</div>

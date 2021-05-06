@@ -1,0 +1,8 @@
+/**
+ * @license
+ * Copyright (c) 2014, 2020, Oracle and/or its affiliates.
+ * Licensed under The Universal Permissive License (UPL), Version 1.0
+ * as shown at https://oss.oracle.com/licenses/upl/
+ * @ignore
+ */
+define(["ojs/ojcore","ojs/ojtranslation","ojs/ojconverterutils-i18n","ojs/ojconverterutils","ojs/ojvalidator","ojs/ojconverter-datetime","ojs/ojvalidation-error"],function(t,e,r,a,o,n){"use strict";var i=function(t){this.Init(t)};return t.Object.createSubclass(i,t.Validator,"oj.DateRestrictionValidator"),i.prototype.Init=function(t){i.superclass.Init.call(this),this._dayFormatter=t.dayFormatter,this._converter=a.getConverterInstance(t.converter),this._converter||(this._converter=new n.IntlDateTimeConverter),t&&(this._messageSummary=t.messageSummary||null,this._messageDetail=t.messageDetail||null)},i.prototype._inDisabled=function(t){var e=this._dayFormatter;if(e){var r=e({fullYear:t.fullYear,month:t.month+1,date:t.date});return r&&r.disabled}return!1},i.prototype.validate=function(a){var o="",n="",i=e,s=this._messageSummary,l=this._messageDetail,u=a?r.IntlConverterUtils._dateTime(a,["fullYear","month","date"],!0):null;if(null===a)return a;if(this._inDisabled(u)){var m=function(t){return o=s?i.applyParameters(s,{value:t}):i.getTranslatedString("oj-validator.restriction.date.messageSummary",{value:t}),n=l?i.applyParameters(l,{value:t}):i.getTranslatedString("oj-validator.restriction.date.messageDetail",{value:t}),[o,n]}(a?this._converter.format(a):a);throw new t.ValidatorError(m[0],m[1])}return a},i.prototype.getHint=function(){return null},i});

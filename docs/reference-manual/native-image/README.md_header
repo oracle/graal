@@ -1,0 +1,12 @@
+---
+layout: docs
+toc_group: native-image
+title: Native Image
+link_title: Native Image
+permalink: /reference-manual/native-image/
+redirect_from:
+  - /docs/reference-manual/aot-compilation/
+  - /docs/reference-manual/native-image/
+next: /en/graalvm/enterprise/21/docs/reference-manual/native-image/SubstrateVM/
+previous: /en/graalvm/enterprise/21/docs/reference-manual/graalvm-updater/
+---

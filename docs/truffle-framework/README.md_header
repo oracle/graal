@@ -1,0 +1,12 @@
+---
+layout: docs
+toc_group: truffle
+title: Truffle Language Implementation Framework
+link_title: Truffle Language Implementation Framework
+permalink: /graalvm-as-a-platform/language-implementation-framework/
+redirect_from:
+  - /docs/reference-manual/truffle-framework/
+  - /graalvm-as-a-platform/truffle-framework/
+next: /en/graalvm/enterprise/21/docs/graalvm-as-a-platform/truffle-framework/BranchInstrumentation/
+previous: /en/graalvm/enterprise/21/docs/graalvm-enterprise-as-a-platform/
+---

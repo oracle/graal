@@ -1,0 +1,8 @@
+/**
+ * @license
+ * Copyright (c) 2014, 2020, Oracle and/or its affiliates.
+ * Licensed under The Universal Permissive License (UPL), Version 1.0
+ * as shown at https://oss.oracle.com/licenses/upl/
+ * @ignore
+ */
+define(["ojs/ojcore","ojs/ojcomponentcore","ojs/ojcustomelement"],function(e,t){"use strict";var o={properties:{value:{type:"string",value:""}},methods:{setProperty:{},getProperty:{},setProperties:{},refresh:{},getNodeBySubId:{},getSubIdByNode:{}},extension:{}};function n(o){var n="value",i="_ojSwitcher_orig_display_style",r=this,s=o.element,d=!0,l=null;function a(){l=null}function u(e,o){var r=s[n];void 0===e[i]&&Object.defineProperty(e,i,{value:e.style.display}),o===r?function(e){"none"!==e.style.display?d&&t.subtreeShown(e,{initialRender:!0}):(e.style.display="",t.subtreeShown(e,d?{initialRender:!0}:void 0))}(e):function(e){"none"!==e.style.display&&(e.style.display="none",t.subtreeHidden(e))}(e)}r._caseElementMutationObserver=new MutationObserver(function(e){e.forEach(function(e){"childList"===e.type&&(e.addedNodes&&Array.prototype.forEach.call(e.addedNodes,function(e){1===e.nodeType&&(u(e,e.getAttribute("slot")),a())}),e.removedNodes&&Array.prototype.forEach.call(e.removedNodes,function(e){1===e.nodeType&&(void 0!==e[i]&&(e.style.display=e[i]),a())}))})}),this.createDOM=function(){r._caseElementMutationObserver.observe(s,{childList:!0})},this.updateDOM=function(){for(var t=(l||(l=e.BaseCustomElementBridge.getSlotMap(s)),l),o=Object.keys(t),n=0;n<o.length;n++)for(var i=o[n],r=t[i],a=0;a<r.length;a++){u(r[a],i)}d&&(d=!1)}}o.extension._CONSTRUCTOR=n,o.extension._CONTROLS_SUBTREE_HIDDEN=!0,e.CustomElementBridge.register("oj-switcher",{metadata:o})});

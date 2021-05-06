@@ -1,0 +1,8 @@
+/**
+ * @license
+ * Copyright (c) 2014, 2020, Oracle and/or its affiliates.
+ * Licensed under The Universal Permissive License (UPL), Version 1.0
+ * as shown at https://oss.oracle.com/licenses/upl/
+ * @ignore
+ */
+define(["ojs/ojcore","ojs/ojtranslation","ojs/ojvalidator","ojs/ojvalidation-error"],function(t,o,i){"use strict";var e=function(t){this.Init(t)};return t.Object.createSubclass(e,i,"oj.RegExpValidator"),e._BUNDLE_KEY_DETAIL="oj-validator.regExp.detail",e._BUNDLE_KEY_SUMMARY="oj-validator.regExp.summary",e.prototype.Init=function(t){e.superclass.Init.call(this),this._options=t},e.prototype.validate=function(i){var e,a,r,n=this._options&&this._options.pattern||"";if(null!=i&&""!==i){var s=i.toString(),l="^("+n+")$",p=s.match(l);if(null===p||p[0]!==s){this._options&&(r=this._options.messageSummary||null,e=this._options.messageDetail||null,a=this._options&&this._options.label||"");var _={label:a,pattern:n,value:s},u=r?o.applyParameters(r,_):o.getTranslatedString(this._getSummaryKey(),_),h=e?o.applyParameters(e,_):o.getTranslatedString(this._getDetailKey(),_);throw new t.ValidatorError(u,h)}}},e.prototype.getHint=function(){var t=null,i={};return this._options&&this._options.hint&&(i={pattern:this._options.pattern},t=o.applyParameters(this._options.hint,i)),t},e.prototype._getSummaryKey=function(){return e._BUNDLE_KEY_SUMMARY},e.prototype._getDetailKey=function(){return e._BUNDLE_KEY_DETAIL},e});

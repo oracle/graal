@@ -1,0 +1,8 @@
+/**
+ * @license
+ * Copyright (c) 2014, 2020, Oracle and/or its affiliates.
+ * Licensed under The Universal Permissive License (UPL), Version 1.0
+ * as shown at https://oss.oracle.com/licenses/upl/
+ * @ignore
+ */
+define(["ojs/ojcore-base","ojL10n!ojtranslations/nls/localeElements"],function(e,t){"use strict";var n={setBundle:function(e){n._bundle=e},getFirstDayOfWeek:function(){return n._getWeekData("firstDay")},getWeekendStart:function(){return n._getWeekData("weekendStart")},getWeekendEnd:function(){return n._getWeekData("weekendEnd")},getDayNames:function(e){(null==e||"abbreviated"!==e&&"narrow"!==e)&&(e="wide");var t=n._getCalendarData().days["stand-alone"][e];return[t.sun,t.mon,t.tue,t.wed,t.thu,t.fri,t.sat]},getMonthNames:function(e){(null==e||"abbreviated"!==e&&"narrow"!==e)&&(e="wide");var t=n._getCalendarData().months["stand-alone"][e];return[t[1],t[2],t[3],t[4],t[5],t[6],t[7],t[8],t[9],t[10],t[11],t[12]]},isMonthPriorToYear:function(){var e=n._getCalendarData().dateFormats.long.toUpperCase();return e.indexOf("M")<e.indexOf("Y")},_getWeekData:function(e){var t=n.__getBundle(),a=n._getRegion()||"001",r=t.supplemental.weekData[e],o=r[a];return void 0===o&&(o=r["001"]),o},_getCalendarData:function(){var e=n.__getBundle().main;return e[Object.keys(e)[0]].dates.calendars.gregorian},_getRegion:function(){var t=e.Config.getLocale();if(t){var n=t.toUpperCase().split(/-|_/);if(n.length>=2){var a=n[1];if(4!==a.length)return a;if(n.length>=3)return n[2]}}return null},__getBundle:function(){var a=n._bundle;return a||(e.__isAmdLoaderPresent()?(e.Assert.assert(void 0!==t,"LocaleElements module must be loaded"),t):{})},__updateBundle:function(e){t=e}};return e.LocaleData=n,n});

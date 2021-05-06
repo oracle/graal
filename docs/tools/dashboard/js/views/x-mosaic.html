@@ -1,0 +1,16 @@
+<oj-masonry-layout id="masonryLayout">
+  <oj-bind-for-each data="[[dataprovider]]">
+    <template data-oj-as="tile">
+      <div :id="[[getTileId(tile.data.id)]]" class="x-mosaic-tile oj-panel oj-panel-shadow-sm">
+        <span><oj-bind-text value="[[getLabel(tile.data)]]"></oj-bind-text></span>
+        <oj-button chroming="borderless"
+                   display="icons"
+                   class="oj-panel-remove-button"
+                   on-oj-action="[[removeTile]]">
+          <span slot="startIcon" class="oj-panel-remove-icon"></span>
+        </oj-button>
+        <oj-module config='[[tileConfig(tile.data)]]'></oj-module>
+      </div>
+    </template>
+  </oj-bind-for-each>
+</oj-masonry-layout>
