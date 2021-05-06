@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.libgraal.jni;
+package org.graalvm.nativebridge.jni;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
@@ -102,7 +103,7 @@ public final class JNI {
      * } jvalue;
      * </pre>
      */
-    @CContext(LibGraalJNIHeaderDirectives.class)
+    @CContext(JNIHeaderDirectives.class)
     @CStruct("jvalue")
     public interface JValue extends PointerBase {
         // @formatter:off
@@ -133,14 +134,14 @@ public final class JNI {
         JValue addressOf(int index);
     }
 
-    @CContext(LibGraalJNIHeaderDirectives.class)
+    @CContext(JNIHeaderDirectives.class)
     @CStruct(value = "JNIEnv_", addStructKeyword = true)
     public interface JNIEnv extends PointerBase {
         @CField("functions")
         JNINativeInterface getFunctions();
     }
 
-    @CContext(LibGraalJNIHeaderDirectives.class)
+    @CContext(JNIHeaderDirectives.class)
     @CStruct(value = "JNINativeInterface_", addStructKeyword = true)
     public interface JNINativeInterface extends PointerBase {
 
@@ -237,6 +238,9 @@ public final class JNI {
         @CField("GetStaticFieldID")
         GetStaticFieldID getGetStaticFieldID();
 
+        @CField("GetFieldID")
+        GetFieldID getGetFieldID();
+
         @CField("CallStaticBooleanMethodA")
         CallStaticBooleanMethodA getCallStaticBooleanMethodA();
 
@@ -254,6 +258,39 @@ public final class JNI {
 
         @CField("CallObjectMethodA")
         CallObjectMethodA getCallObjectMethodA();
+
+        @CField("CallVoidMethodA")
+        CallVoidMethodA getCallVoidMethodA();
+
+        @CField("CallBooleanMethodA")
+        CallBooleanMethodA getCallBooleanMethodA();
+
+        @CField("CallShortMethodA")
+        CallShortMethodA getCallShortMethodA();
+
+        @CField("CallIntMethodA")
+        CallIntMethodA getCallIntMethodA();
+
+        @CField("CallLongMethodA")
+        CallLongMethodA getCallLongMethodA();
+
+        @CField("CallDoubleMethodA")
+        CallDoubleMethodA getCallDoubleMethodA();
+
+        @CField("CallFloatMethodA")
+        CallFloatMethodA getCallFloatMethodA();
+
+        @CField("CallByteMethodA")
+        CallByteMethodA getCallByteMethodA();
+
+        @CField("CallCharMethodA")
+        CallCharMethodA getCallCharMethodA();
+
+        @CField("GetStaticObjectField")
+        GetStaticObjectField getGetStaticObjectField();
+
+        @CField("GetIntField")
+        GetIntField getGetIntField();
 
         @CField("GetStaticBooleanField")
         GetStaticBooleanField getGetStaticBooleanField();
@@ -281,6 +318,9 @@ public final class JNI {
 
         @CField("GetDirectBufferAddress")
         GetDirectBufferAddress getGetDirectBufferAddress();
+
+        @CField("IsInstanceOf")
+        IsInstanceOf getIsInstanceOf();
     }
 
     public interface CallStaticIntMethodA extends CFunctionPointer {
@@ -311,6 +351,51 @@ public final class JNI {
     public interface CallObjectMethodA extends CFunctionPointer {
         @InvokeCFunctionPointer
         JObject call(JNIEnv env, JObject object, JMethodID methodID, JValue args);
+    }
+
+    public interface CallVoidMethodA extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        void call(JNIEnv env, JObject o, JMethodID methodID, JValue args);
+    }
+
+    public interface CallBooleanMethodA extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        boolean call(JNIEnv env, JObject o, JMethodID methodID, JValue args);
+    }
+
+    public interface CallShortMethodA extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        short call(JNIEnv env, JObject o, JMethodID methodID, JValue args);
+    }
+
+    public interface CallIntMethodA extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        int call(JNIEnv env, JObject o, JMethodID methodID, JValue args);
+    }
+
+    public interface CallLongMethodA extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        long call(JNIEnv env, JObject o, JMethodID methodID, JValue args);
+    }
+
+    public interface CallDoubleMethodA extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        double call(JNIEnv env, JObject o, JMethodID methodID, JValue args);
+    }
+
+    public interface CallFloatMethodA extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        float call(JNIEnv env, JObject o, JMethodID methodID, JValue args);
+    }
+
+    public interface CallByteMethodA extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        byte call(JNIEnv env, JObject o, JMethodID methodID, JValue args);
+    }
+
+    public interface CallCharMethodA extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        char call(JNIEnv env, JObject o, JMethodID methodID, JValue args);
     }
 
     public interface DeleteGlobalRef extends CFunctionPointer {
@@ -445,7 +530,7 @@ public final class JNI {
 
     public interface NewObjectA extends CFunctionPointer {
         @InvokeCFunctionPointer
-        JObject call(JClass clazz, JMethodID methodID, JValue args);
+        JObject call(JNIEnv env, JClass clazz, JMethodID methodID, JValue args);
     }
 
     public interface NewObjectArray extends CFunctionPointer {
@@ -498,9 +583,29 @@ public final class JNI {
         VoidPointer call(JNIEnv env, JObject buf);
     }
 
+    public interface IsInstanceOf extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        boolean call(JNIEnv env, JObject o, JClass c);
+    }
+
     public interface GetStaticFieldID extends CFunctionPointer {
         @InvokeCFunctionPointer
         JFieldID call(JNIEnv env, JClass clazz, CCharPointer name, CCharPointer sig);
+    }
+
+    public interface GetFieldID extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JFieldID call(JNIEnv env, JClass c, CCharPointer name, CCharPointer sig);
+    }
+
+    public interface GetStaticObjectField extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JObject call(JNIEnv env, JClass clazz, JFieldID fieldID);
+    }
+
+    public interface GetIntField extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        int call(JNIEnv env, JObject o, JFieldID fieldId);
     }
 
     public interface GetStaticBooleanField extends CFunctionPointer {
@@ -513,12 +618,12 @@ public final class JNI {
         void call(JNIEnv env, JClass clazz, JFieldID fieldID, boolean value);
     }
 
-    static class LibGraalJNIHeaderDirectives implements CContext.Directives {
+    static class JNIHeaderDirectives implements CContext.Directives {
         private static final String[] INCLUDES = {"jni.h", "jni_md.h"};
 
         @Override
         public boolean isInConfiguration() {
-            return jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
+            return ImageSingletons.contains(NativeBridgeSupport.class);
         }
 
         @Override

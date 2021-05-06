@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,18 +22,37 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.libgraal.jni.annotation;
+package org.graalvm.nativebridge.jni;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import org.graalvm.nativeimage.ImageSingletons;
 
 /**
- * Container for repeated {@link JNIFromLibGraal} annotations.
+ * Services used by the {@code org.graalvm.nativebridge.jni} module. To enable the
+ * {@code org.graalvm.nativebridge.jni} module a {@code NativeBridgeSupport} instance must be
+ * registered in the {@link ImageSingletons}.
  */
-@Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.METHOD)
-public @interface JNIFromLibGraalRepeated {
-    JNIFromLibGraal[] value();
+public interface NativeBridgeSupport {
+
+    /**
+     * Returns the name of a feature using {@code org.graalvm.nativebridge.jni} module. The feature
+     * name is used in the logging output.
+     */
+    String getFeatureName();
+
+    /**
+     * Checks if logging at given level is enabled.
+     */
+    boolean isTracingEnabled(int level);
+
+    /**
+     * Logs the message.
+     */
+    void trace(String message);
+
+    /**
+     * Returns a {@code NativeBridgeSupport} instance registered in the {@link ImageSingletons}.
+     */
+    static NativeBridgeSupport getInstance() {
+        return ImageSingletons.lookup(NativeBridgeSupport.class);
+    }
 }

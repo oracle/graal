@@ -22,10 +22,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.libgraal.jni;
+package org.graalvm.nativebridge.jni;
 
-import static org.graalvm.libgraal.jni.JNIUtil.DeleteGlobalRef;
-import static org.graalvm.libgraal.jni.JNIUtil.NewGlobalRef;
+import static org.graalvm.nativebridge.jni.JNIUtil.DeleteGlobalRef;
+import static org.graalvm.nativebridge.jni.JNIUtil.NewGlobalRef;
 
 import java.lang.ref.PhantomReference;
 import java.lang.ref.ReferenceQueue;
@@ -33,14 +33,13 @@ import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.graalvm.compiler.debug.Assertions;
-import org.graalvm.libgraal.jni.JNI.JNIEnv;
-import org.graalvm.libgraal.jni.JNI.JObject;
+import org.graalvm.nativebridge.jni.JNI.JNIEnv;
+import org.graalvm.nativebridge.jni.JNI.JObject;
 import org.graalvm.word.WordFactory;
 
 /**
  * Encapsulates a JNI handle to an object in the HotSpot heap. Depending on which constructor is
- * used, the handle is either local to a {@link JNILibGraalScope} and thus invalid once the scope
+ * used, the handle is either local to a {@link JNIMethodScope} and thus invalid once the scope
  * exits or a global JNI handle that is only released sometime after the {@link HSObject} dies.
  */
 public abstract class HSObject {
@@ -57,9 +56,9 @@ public abstract class HSObject {
 
     /**
      * Link to next the next scope local object. The head of the list is in
-     * {@link JNILibGraalScope#locals}. The handle of a scope local object is only valid for the
-     * lifetime of a {@link JNILibGraalScope}. A self-reference (i.e. {@code this.next == this})
-     * denotes an object whose {@link JNILibGraalScope} has closed.
+     * {@link JNIMethodScope#locals}. The handle of a scope local object is only valid for the
+     * lifetime of a {@link JNIMethodScope}. A self-reference (i.e. {@code this.next == this})
+     * denotes an object whose {@link JNIMethodScope} has closed.
      *
      * This field is {@code null} for a non-scope local object.
      */
@@ -80,7 +79,7 @@ public abstract class HSObject {
     }
 
     private static boolean checkingGlobalDuplicates() {
-        return Assertions.assertionsEnabled() || JNIUtil.tracingAt(1);
+        return assertionsEnabled() || JNIUtil.tracingAt(1);
     }
 
     /**
@@ -88,7 +87,7 @@ public abstract class HSObject {
      * Once {@code scope.close()} is called, any attempt to {@linkplain #getHandle() use} the handle
      * will result in an {@link IllegalArgumentException}.
      */
-    protected <T extends Enum<T>> HSObject(JNILibGraalScope<T> scope, JObject handle) {
+    protected HSObject(JNIMethodScope scope, JObject handle) {
         this.handle = handle;
         next = scope.locals;
         scope.locals = this;
@@ -152,6 +151,12 @@ public abstract class HSObject {
                 }
             }
         }
+    }
+
+    private static boolean assertionsEnabled() {
+        boolean res = false;
+        assert (res = true) == true;
+        return res;
     }
 
     /**
