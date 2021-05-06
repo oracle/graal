@@ -5,8 +5,8 @@ title: Using System Properties in Native Images
 link_title: Using System Properties in Native Images
 permalink: /reference-manual/native-image/Properties/
 redirect_from: /docs/reference-manual/native-image/Properties/
-next: /en/graalvm/enterprise/20/docs/reference-manual/native-image/PGOEnterprise/
-previous: /en/graalvm/enterprise/20/docs/reference-manual/native-image/Reports/
+next: /en/graalvm/enterprise/21/docs/reference-manual/native-image/PGOEnterprise/
+previous: /en/graalvm/enterprise/21/docs/reference-manual/native-image/Reports/
 ---
 # Using System Properties in Native Images
 

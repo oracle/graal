@@ -5,8 +5,8 @@ title: JCA Security Services on Native Image
 link_title: JCA Security Services on Native Image
 permalink: /reference-manual/native-image/JCASecurityServices/
 redirect_from: /docs/reference-manual/native-image/JCASecurityServices/
-next: /en/graalvm/enterprise/20/docs/reference-manual/native-image/DynamicProxy/
-previous: /en/graalvm/enterprise/20/docs/reference-manual/native-image/NativeImageMavenPlugin/
+next: /en/graalvm/enterprise/21/docs/reference-manual/native-image/DynamicProxy/
+previous: /en/graalvm/enterprise/21/docs/reference-manual/native-image/NativeImageMavenPlugin/
 ---
 # JCA Security Services in Native Image
 

@@ -5,8 +5,8 @@ title: Native Image Code Style
 link_title: Native Image Code Style
 permalink: /reference-manual/native-image/CodeStyle/
 redirect_from: /docs/reference-manual/native-image/CodeStyle/
-next: /en/graalvm/enterprise/20/docs/reference-manual/native-image/Limitations/
-previous: /en/graalvm/enterprise/20/docs/reference-manual/native-image/Configuration/
+next: /en/graalvm/enterprise/21/docs/reference-manual/native-image/Limitations/
+previous: /en/graalvm/enterprise/21/docs/reference-manual/native-image/Configuration/
 ---
 # Native Image Code Style
 
@@ -66,4 +66,4 @@ This plugin is automatically configured by `mx ideinit`.
 * IntelliJ Save Actions to automatically format files before saving them.
   https://github.com/dubreuia/intellij-plugin-save-actions
 
-See the [documentation on IDE integration](https://github.com/oracle/graal/blob/master/compiler/docs/IDEs.md) for further suggestions.
+See the [documentation on IDE integration](../compiler/docs/IDEs.md) for further suggestions.

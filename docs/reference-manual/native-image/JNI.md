@@ -5,8 +5,8 @@ title: Java Native Interface (JNI) on Native Image
 link_title: Java Native Interface (JNI) on Native Image
 permalink: /reference-manual/native-image/JNI/
 redirect_from: /docs/reference-manual/native-image/JNI/
-next: /en/graalvm/enterprise/20/docs/reference-manual/native-image/Reflection/
-previous: /en/graalvm/enterprise/20/docs/reference-manual/native-image/DynamicProxy/
+next: /en/graalvm/enterprise/21/docs/reference-manual/native-image/Reflection/
+previous: /en/graalvm/enterprise/21/docs/reference-manual/native-image/DynamicProxy/
 ---
 # Java Native Interface (JNI) in Native Image
 

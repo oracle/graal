@@ -7,8 +7,8 @@ permalink: /reference-manual/native-image/BuildConfiguration/
 redirect_from:
   - /docs/reference-manual/native-image/Configuration/
   - /reference-manual/native-image/Configuration/
-next: /en/graalvm/enterprise/20/docs/reference-manual/native-image/Limitations/
-previous: /en/graalvm/enterprise/20/docs/reference-manual/enterprise-native-image/
+next: /en/graalvm/enterprise/21/docs/reference-manual/native-image/Limitations/
+previous: /en/graalvm/enterprise/21/docs/reference-manual/enterprise-native-image/
 ---
 # Native Image Build Configuration
 

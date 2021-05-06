@@ -5,8 +5,8 @@ title: Accessing Resources in Native Images
 link_title: Accessing Resources in Native Images
 permalink: /reference-manual/native-image/Resources/
 redirect_from: /docs/reference-manual/native-image/Resources/
-next: /en/graalvm/enterprise/20/docs/reference-manual/native-image/Logging/
-previous: /en/graalvm/enterprise/20/docs/reference-manual/native-image/Reflection/
+next: /en/graalvm/enterprise/21/docs/reference-manual/native-image/Logging/
+previous: /en/graalvm/enterprise/21/docs/reference-manual/native-image/Reflection/
 ---
 # Accessing Resources in Native Images
 
@@ -26,7 +26,7 @@ To make calls such as `Class.getResource()` or `Class.getResourceAsStream()` (or
       {"pattern": "<another regexp>"},
       ...
     ]
-  } 
+  }
 }
 ```
 
@@ -101,7 +101,7 @@ example ``-H:+IncludeResourceBundles=com.company.bundles.MyBundle_fr-FR`` will i
 
 ### JVM Mode of Localization
 
-Resource Bundle lookup is a complex and dynamic mechanism which utilizes a lot of the infrastructure of JVM. As a result of that, it causes image size increase 
-for smaller applications such as Hello World. Therefore, an optimized mode is set by default in which this lookup is simplified utilizing the fact the all 
+Resource Bundle lookup is a complex and dynamic mechanism which utilizes a lot of the infrastructure of JVM. As a result of that, it causes image size increase
+for smaller applications such as Hello World. Therefore, an optimized mode is set by default in which this lookup is simplified utilizing the fact the all
 bundles are known ahead of time.
-In case you would like to use the original JVM lookup, use the `-H:-LocalizationOptimizedMode` option. 
+In case you would like to use the original JVM lookup, use the `-H:-LocalizationOptimizedMode` option.

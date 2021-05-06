@@ -5,8 +5,8 @@ title: Implementing Native Methods in Java with Native Image
 link_title: Implementing Native Methods in Java with Native Image
 permalink: /reference-manual/native-image/ImplementingNativeMethodsInJavaWithSVM/
 redirect_from: /docs/reference-manual/native-image/ImplementingNativeMethodsInJavaWithSVM/
-next: /en/graalvm/enterprise/20/docs/reference-manual/native-image/LLVMBackend/
-previous: /en/graalvm/enterprise/20/docs/reference-manual/native-image/C-API/
+next: /en/graalvm/enterprise/21/docs/reference-manual/native-image/LLVMBackend/
+previous: /en/graalvm/enterprise/21/docs/reference-manual/native-image/C-API/
 ---
 # Implementing Native Methods in Java with Native Image
 

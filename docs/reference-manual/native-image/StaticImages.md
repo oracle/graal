@@ -5,8 +5,8 @@ title: Static Native Images
 link_title: Static Native Images
 permalink: /reference-manual/native-image/StaticImages/
 redirect_from: /docs/reference-manual/native-image/StaticImages/
-next: /en/graalvm/enterprise/20/docs/reference-manual/native-image/Options/
-previous: /en/graalvm/enterprise/20/docs/reference-manual/native-image/ClassInitialization/
+next: /en/graalvm/enterprise/21/docs/reference-manual/native-image/Options/
+previous: /en/graalvm/enterprise/21/docs/reference-manual/native-image/ClassInitialization/
 ---
 # Static Native Images
 

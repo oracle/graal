@@ -5,8 +5,8 @@ title: Generating Heap Dumps from Native Images
 link_title: Generating Heap Dumps from Native Images
 permalink: /reference-manual/native-image/NativeImageHeapdump/
 redirect_from: /docs/reference-manual/native-image/NativeImageHeapdump/
-next: /en/graalvm/enterprise/20/docs/reference-manual/native-image/NativeImageMavenPlugin/
-previous: /en/graalvm/enterprise/20/docs/reference-manual/native-image/MemoryManagement/
+next: /en/graalvm/enterprise/21/docs/reference-manual/native-image/NativeImageMavenPlugin/
+previous: /en/graalvm/enterprise/21/docs/reference-manual/native-image/MemoryManagement/
 ---
 # Generating Heap Dumps from Native Images
 

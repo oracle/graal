@@ -5,8 +5,8 @@ title: Debug Info Feature
 link_title: Debug Info Feature
 permalink: /reference-manual/native-image/DebugInfo/
 redirect_from: /docs/reference-manual/native-image/DebugInfo/
-next: /en/graalvm/enterprise/20/docs/reference-manual/native-image/Reports/
-previous: /en/graalvm/enterprise/20/docs/reference-manual/native-image/LLVMBackend/
+next: /en/graalvm/enterprise/21/docs/reference-manual/native-image/Reports/
+previous: /en/graalvm/enterprise/21/docs/reference-manual/native-image/LLVMBackend/
 ---
 # Debug Info Feature
 
