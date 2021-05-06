@@ -97,7 +97,7 @@ final class IsolatedTruffleInlining<T extends TruffleInliningData> extends Isola
     @CEntryPoint
     @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
     private static ClientHandle<TruffleCallNode> findCallNode0(@SuppressWarnings("unused") ClientIsolateThread client,
-                                                               ClientHandle<? extends TruffleInliningData> inliningHandle, ClientHandle<?> callNodeConstantHandle) {
+                    ClientHandle<? extends TruffleInliningData> inliningHandle, ClientHandle<?> callNodeConstantHandle) {
 
         TruffleInliningData inlining = IsolatedCompileClient.get().unhand(inliningHandle);
         JavaConstant callNodeConstant = SubstrateObjectConstant.forObject(IsolatedCompileClient.get().unhand(callNodeConstantHandle));
@@ -108,7 +108,7 @@ final class IsolatedTruffleInlining<T extends TruffleInliningData> extends Isola
     @CEntryPoint
     @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
     private static CompilerHandle<TruffleSourceLanguagePosition> getPosition0(@SuppressWarnings("unused") ClientIsolateThread client,
-                                                                              ClientHandle<? extends TruffleInliningData> inliningHandle, ClientHandle<?> callNodeConstantHandle) {
+                    ClientHandle<? extends TruffleInliningData> inliningHandle, ClientHandle<?> callNodeConstantHandle) {
 
         TruffleInliningData inlining = IsolatedCompileClient.get().unhand(inliningHandle);
         JavaConstant callNodeConstant = SubstrateObjectConstant.forObject(IsolatedCompileClient.get().unhand(callNodeConstantHandle));
@@ -143,7 +143,7 @@ final class IsolatedTruffleInlining<T extends TruffleInliningData> extends Isola
     @CEntryPoint
     @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
     private static void setCallCount0(@SuppressWarnings("unused") ClientIsolateThread client,
-                                      ClientHandle<? extends TruffleInliningData> handle, int count) {
+                    ClientHandle<? extends TruffleInliningData> handle, int count) {
         TruffleInliningData truffleInliningData = IsolatedCompileClient.get().unhand(handle);
         truffleInliningData.setCallCount(count);
     }
@@ -151,7 +151,7 @@ final class IsolatedTruffleInlining<T extends TruffleInliningData> extends Isola
     @CEntryPoint
     @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
     private static void setInlinedCallCount0(@SuppressWarnings("unused") ClientIsolateThread client,
-                                             ClientHandle<? extends TruffleInliningData> handle, int count) {
+                    ClientHandle<? extends TruffleInliningData> handle, int count) {
         TruffleInliningData truffleInliningData = IsolatedCompileClient.get().unhand(handle);
         truffleInliningData.setInlinedCallCount(count);
     }
