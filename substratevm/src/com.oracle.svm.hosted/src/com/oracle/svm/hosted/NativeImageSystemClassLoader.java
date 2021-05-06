@@ -179,15 +179,18 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
         return findResources(getActiveClassLoader(), name);
     }
 
+    public Class<?> forNameOrNull(String name, boolean initialize) {
+        try {
+            return Class.forName(name, initialize, getActiveClassLoader());
+        } catch (LinkageError | ClassNotFoundException ignored) {
+            return null;
+        }
+    }
+
     public Class<?> predefineClass(String name, byte[] array, int offset, int length) {
         VMError.guarantee(name != null, "The class name must be specified");
-        Class<?> existing = null;
-        try {
-            existing = Class.forName(name, false, getActiveClassLoader());
-        } catch (Throwable ignored) {
-        }
-        if (existing != null) {
-            throw UserError.abort("The class loader hierarchy already provides a class with the same name as the class submitted for predefinition: " + name);
+        if (forNameOrNull(name, false) != null) {
+            throw VMError.shouldNotReachHere("The class loader hierarchy already provides a class with the same name as the class submitted for predefinition: " + name);
         }
         return defineClass(getActiveClassLoader(), name, array, offset, length);
     }

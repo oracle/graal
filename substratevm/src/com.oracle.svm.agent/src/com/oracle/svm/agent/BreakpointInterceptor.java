@@ -990,6 +990,9 @@ final class BreakpointInterceptor {
                 return;
             }
         }
+        if (jniFunctions().getIsInstanceOf().invoke(jni, loader, agent.handles().jdkInternalReflectDelegatingClassLoader)) {
+            return;
+        }
         byte[] data = new byte[classDataLen];
         CTypeConversion.asByteBuffer(classData, classDataLen).get(data);
         traceWriter.traceCall("classloading", "onClassFileLoadHook", null, null, null, null, fromCString(name), data);

@@ -33,13 +33,14 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.PredefinedClassesConfigurationParser;
-import com.oracle.svm.core.configure.PredefinedClassesConfigurationParser.PredefinedClassesConfigurationParserDelegate;
+import com.oracle.svm.core.configure.PredefinedClassesRegistry;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.AfterRegistrationAccessImpl;
@@ -51,58 +52,82 @@ import jdk.internal.org.objectweb.asm.ClassWriter;
 @AutomaticFeature
 public class ClassPredefinitionFeature implements Feature {
 
-    private final Map<String, String> hashToCanonicalHash = new HashMap<>();
     private final Map<String, String> nameToCanonicalHash = new HashMap<>();
+    private final Map<String, Class<?>> canonicalHashToClass = new HashMap<>();
 
     @Override
     public void afterRegistration(AfterRegistrationAccess arg) {
         AfterRegistrationAccessImpl access = (AfterRegistrationAccessImpl) arg;
-        ImageClassLoader imageClassLoader = access.getImageClassLoader();
-        PredefinedClassesConfigurationParserDelegate delegate = (nameInfo, hash, basePath) -> {
+        PredefinedClassesRegistry registry = new PredefinedClassesRegistryImpl(access.getImageClassLoader());
+        ImageSingletons.add(PredefinedClassesRegistry.class, registry);
+        PredefinedClassesConfigurationParser parser = new PredefinedClassesConfigurationParser(registry);
+        ConfigurationParserUtils.parseAndRegisterConfigurations(parser, access.getImageClassLoader(), "class predefinition",
+                        ConfigurationFiles.Options.PredefinedClassesConfigurationFiles, ConfigurationFiles.Options.PredefinedClassesConfigurationResources,
+                        ConfigurationFiles.PREDEFINED_CLASSES_NAME);
+    }
+
+    private class PredefinedClassesRegistryImpl implements PredefinedClassesRegistry {
+        private final ImageClassLoader imageClassLoader;
+
+        PredefinedClassesRegistryImpl(ImageClassLoader imageClassLoader) {
+            this.imageClassLoader = imageClassLoader;
+        }
+
+        @Override
+        public void add(String nameInfo, String providedHash, Path basePath) {
             try {
-                String canonicalHash = hashToCanonicalHash.get(hash);
-                if (canonicalHash != null) {
-                    return; // already registered
-                }
+                Path path = basePath.resolve(providedHash + ConfigurationFiles.PREDEFINED_CLASSES_AGENT_EXTRACTED_NAME_SUFFIX);
+                byte[] data = Files.readAllBytes(path);
+
+                // Compute our own hash code, the files could have been messed with.
+                String hash = PredefinedClassesSupport.hash(data, 0, data.length);
 
                 /*
                  * Compute a "canonical hash" that does not incorporate debug information such as
                  * source file names, line numbers, local variable names, etc.
                  */
-                Path path = basePath.resolve(hash + ConfigurationFiles.PREDEFINED_CLASSES_AGENT_EXTRACTED_NAME_SUFFIX);
-                byte[] data = Files.readAllBytes(path);
                 ClassReader reader = new ClassReader(data);
                 ClassWriter writer = new ClassWriter(0);
                 reader.accept(writer, ClassReader.SKIP_DEBUG);
                 byte[] canonicalData = writer.toByteArray();
-                canonicalHash = PredefinedClassesSupport.hash(canonicalData, 0, canonicalData.length);
-                hashToCanonicalHash.put(hash, canonicalHash);
+                String canonicalHash = PredefinedClassesSupport.hash(canonicalData, 0, canonicalData.length);
+
+                Class<?> alreadyDefined = canonicalHashToClass.get(canonicalHash);
+                if (alreadyDefined != null) {
+                    PredefinedClassesSupport.registerClass(hash, alreadyDefined);
+                    return;
+                }
 
                 String className = reader.getClassName().replace('/', '.');
-                String existing = nameToCanonicalHash.putIfAbsent(className, canonicalHash);
-                if (existing != null) {
-                    if (canonicalHash.equals(existing)) {
-                        return; // already registered
-                    }
+                if (imageClassLoader.forNameOrNull(className, false) != null) {
+                    System.out.println("Warning: skipping predefined class because the classpath already provides a class with name: " + className);
+                    return;
+                }
+
+                String existing = nameToCanonicalHash.get(className);
+                if (existing != null && !canonicalHash.equals(existing)) {
                     throw UserError.abort("More than one pre-defined class with the same name provided: " + className);
                 }
 
-                /*
-                 * Note that we don't register the class with the canonical hash because it is
-                 * synthetic (or equal to the file's hash), but we use it to unify different
-                 * representations of the same class.
-                 */
                 Class<?> definedClass = imageClassLoader.predefineClass(className, data, 0, data.length);
+                canonicalHashToClass.put(canonicalHash, definedClass);
+                nameToCanonicalHash.put(className, canonicalHash);
+
+                /*
+                 * Initialization of the class at image build time can have unintended side effects
+                 * when the class is not even supposed to be loaded yet, so we disallow it.
+                 */
                 RuntimeClassInitialization.initializeAtRunTime(definedClass);
+
+                /*
+                 * We use the canonical hash to unify different representations of the same class
+                 * (to some extent) instead of failing, but we don't register the class with the
+                 * canonical hash because it is synthetic (or equal to the other hash anyway).
+                 */
                 PredefinedClassesSupport.registerClass(hash, definedClass);
             } catch (IOException t) {
-                throw UserError.abort(t, "Failed to pre-define class with hash %s from %s as specified in configuration", hash, basePath);
+                throw UserError.abort(t, "Failed to pre-define class with hash %s from %s as specified in configuration", providedHash, basePath);
             }
-        };
-
-        PredefinedClassesConfigurationParser parser = new PredefinedClassesConfigurationParser(delegate);
-        ConfigurationParserUtils.parseAndRegisterConfigurations(parser, access.getImageClassLoader(), "class predefinition",
-                        ConfigurationFiles.Options.PredefinedClassesConfigurationFiles, ConfigurationFiles.Options.PredefinedClassesConfigurationResources,
-                        ConfigurationFiles.PREDEFINED_CLASSES_NAME);
+        }
     }
 }

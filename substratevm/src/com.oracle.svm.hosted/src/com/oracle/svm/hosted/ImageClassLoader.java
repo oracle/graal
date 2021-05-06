@@ -421,6 +421,10 @@ public final class ImageClassLoader {
         return classLoaderSupport.findModule(moduleName);
     }
 
+    public Class<?> forNameOrNull(String name, boolean initialize) {
+        return NativeImageSystemClassLoader.singleton().forNameOrNull(name, initialize);
+    }
+
     public Class<?> predefineClass(String name, byte[] b, int offset, int length) {
         return NativeImageSystemClassLoader.singleton().predefineClass(name, b, offset, length);
     }

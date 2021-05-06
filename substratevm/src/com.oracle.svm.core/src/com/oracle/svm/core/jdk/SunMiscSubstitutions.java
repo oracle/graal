@@ -49,6 +49,7 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.util.VMError;
@@ -208,12 +209,12 @@ final class Target_Unsafe_Core {
 
     @Substitute
     private Class<?> defineClass(String name, byte[] b, int off, int len, ClassLoader loader, ProtectionDomain protectionDomain) {
-        throw VMError.unsupportedFeature("Defining new classes at run time is not supported. All classes need to be known at image build time.");
+        return PredefinedClassesSupport.loadClass(loader, name, b, off, len, protectionDomain);
     }
 
     @Substitute
     private Class<?> defineAnonymousClass(Class<?> hostClass, byte[] data, Object[] cpPatches) {
-        throw VMError.unsupportedFeature("Defining new classes at run time is not supported. All classes need to be known at image build time.");
+        throw VMError.unsupportedFeature("Defining anonymous classes at runtime is not supported.");
     }
 
     @Substitute

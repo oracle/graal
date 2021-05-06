@@ -33,37 +33,36 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
 
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.util.json.JSONParser;
 import com.oracle.svm.core.util.json.JSONParserException;
 
 public class PredefinedClassesConfigurationParser extends ConfigurationParser {
-    @FunctionalInterface
-    public interface PredefinedClassesConfigurationParserDelegate {
-        void accept(String nameInfo, String hash, Path basePath);
-    }
 
-    private final PredefinedClassesConfigurationParserDelegate delegate;
+    private final PredefinedClassesRegistry registry;
 
-    public PredefinedClassesConfigurationParser(PredefinedClassesConfigurationParserDelegate delegate) {
-        this.delegate = delegate;
+    public PredefinedClassesConfigurationParser(PredefinedClassesRegistry registry) {
+        this.registry = registry;
     }
 
     @Override
     public void parseAndRegister(Reader reader) throws IOException {
-        throw VMError.shouldNotReachHere("This parser requires the configuration file's path so it can read class files relative to its location.");
+        parseAndRegister(reader, null);
     }
 
     @Override
     public void parseAndRegister(Path path) throws IOException {
         try (Reader reader = Files.newBufferedReader(path)) {
-            JSONParser parser = new JSONParser(reader);
-            Object json = parser.parse();
-
             Path basePath = path.getParent().resolve(ConfigurationFiles.PREDEFINED_CLASSES_AGENT_EXTRACTED_SUBDIR);
-            for (Object origin : asList(json, "first level of document must be an array of predefined class origin objects")) {
-                parseOrigin(basePath, asMap(origin, "second level of document must be a predefined class origin object"));
-            }
+            parseAndRegister(reader, basePath);
+        }
+    }
+
+    private void parseAndRegister(Reader reader, Path basePath) throws IOException {
+        JSONParser parser = new JSONParser(reader);
+        Object json = parser.parse();
+
+        for (Object origin : asList(json, "first level of document must be an array of predefined class origin objects")) {
+            parseOrigin(basePath, asMap(origin, "second level of document must be a predefined class origin object"));
         }
     }
 
@@ -85,6 +84,6 @@ public class PredefinedClassesConfigurationParser extends ConfigurationParser {
 
         String hash = asString(data.get("hash"), "hash");
         String nameInfo = asNullableString(data.get("nameInfo"), "nameInfo");
-        delegate.accept(nameInfo, hash, basePath);
+        registry.add(nameInfo, hash, basePath);
     }
 }

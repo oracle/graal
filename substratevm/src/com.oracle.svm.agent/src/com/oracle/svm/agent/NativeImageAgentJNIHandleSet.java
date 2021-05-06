@@ -48,6 +48,8 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
     final JNIObjectHandle javaLangClassLoader;
     final JNIMethodId javaLangClassLoaderGetResource;
 
+    final JNIObjectHandle jdkInternalReflectDelegatingClassLoader;
+
     final JNIMethodId javaLangObjectGetClass;
 
     private JNIMethodId javaLangInvokeMethodTypeParameterArray = WordFactory.nullPointer();
@@ -57,14 +59,13 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
     final JNIObjectHandle javaLangIllegalArgumentException;
 
     private JNIMethodId javaUtilResourceBundleGetBundleImplSLCC;
+    private boolean queriedJavaUtilResourceBundleGetBundleImplSLCC;
 
     private JNIMethodId javaIoObjectStreamClassForClass;
     private JNIMethodId javaIoObjectStreamClassGetClassDataLayout0;
     private JNIObjectHandle javaIOObjectStreamClassClassDataSlot;
     private JNIFieldId javaIOObjectStreamClassClassDataSlotDesc;
     private JNIFieldId javaIOObjectStreamClassClassDataSlotHasData;
-
-    private boolean queriedJavaUtilResourceBundleGetBundleImplSLCC;
 
     NativeImageAgentJNIHandleSet(JNIEnvironment env) {
         super(env);
@@ -81,6 +82,12 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
 
         javaLangClassLoader = newClassGlobalRef(env, "java/lang/ClassLoader");
         javaLangClassLoaderGetResource = getMethodId(env, javaLangClassLoader, "getResource", "(Ljava/lang/String;)Ljava/net/URL;", false);
+
+        JNIObjectHandle reflectLoader = findClassOptional(env, "jdk/internal/reflect/DelegatingClassLoader");
+        if (reflectLoader.equal(nullHandle())) {
+            reflectLoader = findClass(env, "sun/reflect/DelegatingClassLoader");
+        }
+        jdkInternalReflectDelegatingClassLoader = newTrackedGlobalRef(env, reflectLoader);
 
         JNIObjectHandle javaLangObject = findClass(env, "java/lang/Object");
         javaLangObjectGetClass = getMethodId(env, javaLangObject, "getClass", "()Ljava/lang/Class;", false);
