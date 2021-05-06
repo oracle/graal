@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,14 +22,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.nodes.debug;
+package org.graalvm.compiler.graph.spi;
 
-import org.graalvm.compiler.graph.spi.NodeWithIdentity;
+import org.graalvm.compiler.graph.NodeClass;
 
 /**
- * Marker interface for nodes that prevents control flow optimizations. The node should never be
- * duplicated nor deduplicated.
+ * Nodes that are marked with this interface have an implicit unique identity, i.e., two nodes are
+ * never treated as having {@link NodeClass#dataEquals equal data fields}. This prevents
+ * optimizations like global value numbering or de-deduplication of such nodes.
  */
-public interface ControlFlowAnchored extends NodeWithIdentity {
-
+public interface NodeWithIdentity {
 }
