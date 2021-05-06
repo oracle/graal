@@ -81,10 +81,9 @@ public final class GraalDirectives {
     }
 
     /**
-     * A call to this method will never result in the enclosing loop be strip mined.
+     * A call to this method will disable strip mining of the enclosing loop in the compiler.
      */
-    public static void iterationRangeIntegrity() {
-
+    public static void neverStripMine() {
     }
 
     /**

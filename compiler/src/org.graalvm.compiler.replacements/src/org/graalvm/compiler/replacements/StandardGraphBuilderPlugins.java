@@ -1421,7 +1421,7 @@ public class StandardGraphBuilderPlugins {
                 return true;
             }
         });
-        r.register0("iterationRangeIntegrity", new InvocationPlugin() {
+        r.register0("neverStripMine", new InvocationPlugin() {
             @Override
             public boolean inlineOnly() {
                 return true;

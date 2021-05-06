@@ -225,7 +225,6 @@ public abstract class LoopTransformations {
     }
 
     /**
-     *
      * Create unique framestates for the loop exits of this loop: unique states ensure that virtual
      * instance nodes of this framestate are not shared with other framestates.
      *
