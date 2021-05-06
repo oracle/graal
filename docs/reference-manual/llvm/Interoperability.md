@@ -5,8 +5,8 @@ title: Interoperability
 link_title: Interoperability
 permalink: /reference-manual/llvm/Interoperability/
 redirect_from: /docs/reference-manual/llvm/Interoperability/
-next: /en/graalvm/enterprise/20/docs/reference-manual/llvm/Debugging/
-previous: /en/graalvm/enterprise/20/docs/reference-manual/llvm/NativeExecution/
+next: /en/graalvm/enterprise/21/docs/reference-manual/llvm/Debugging/
+previous: /en/graalvm/enterprise/21/docs/reference-manual/llvm/NativeExecution/
 ---
 # Interoperability
 
