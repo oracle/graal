@@ -65,6 +65,9 @@ final class ArrayBasedStaticShape<T> extends StaticShape<T> {
     @CompilerDirectives.TruffleBoundary
     private static synchronized void initializeShapeChecks() {
         if (disableShapeChecks == null) {
+            // Eventually this will become a context option.
+            // For now we store its value in a static field that is initialized on first usage to
+            // avoid that it gets initialized at native-image build time.
             disableShapeChecks = Boolean.getBoolean("com.oracle.truffle.espresso.staticobject.DisableShapeChecks");
         }
     }
