@@ -73,6 +73,7 @@ import com.oracle.truffle.api.dsl.test.AOTSupportTestFactory.NoSpecializationTes
 import com.oracle.truffle.api.dsl.test.AOTSupportTestFactory.TestNodeGen;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.DynamicDispatchLibrary;
@@ -960,6 +961,26 @@ public class AOTSupportTest extends AbstractPolyglotTest {
         @SuppressWarnings("static-method")
         @ExportMessage
         int m1() {
+            return 0;
+        }
+
+    }
+
+    @SuppressWarnings("unused")
+    @ExportLibrary(value = AOTTestLibrary.class, useForAOT = true, useForAOTPriority = 0)
+    @ExportLibrary(value = OtherAOTTestLibrary.class, useForAOT = false)
+    public static final class ErrorMultiExport implements TruffleObject {
+
+        @SuppressWarnings("static-method")
+        @ExportMessage(library = AOTTestLibrary.class, name = "m1")
+        @ExportMessage(library = OtherAOTTestLibrary.class, name = "m2")
+        int multiExport(@Cached("42") int cachedValue) {
+            return 0;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        int m0(Object arg) {
             return 0;
         }
 
