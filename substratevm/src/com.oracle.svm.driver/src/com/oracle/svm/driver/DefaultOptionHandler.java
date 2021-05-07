@@ -73,7 +73,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 singleArgumentCheck(args, headArg);
                 nativeImage.showMessage(helpText);
                 nativeImage.showNewline();
-                nativeImage.apiOptionHandler.printOptions(nativeImage::showMessage);
+                nativeImage.apiOptionHandler.printOptions(nativeImage::showMessage, false);
                 nativeImage.showNewline();
                 nativeImage.optionRegistry.showOptions(null, true, nativeImage::showMessage);
                 nativeImage.showNewline();
@@ -96,6 +96,8 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 args.poll();
                 singleArgumentCheck(args, headArg);
                 nativeImage.showMessage(helpExtraText);
+                nativeImage.apiOptionHandler.printOptions(nativeImage::showMessage, true);
+                nativeImage.showNewline();
                 nativeImage.optionRegistry.showOptions(MacroOptionKind.Macro, true, nativeImage::showMessage);
                 nativeImage.showNewline();
                 System.exit(0);

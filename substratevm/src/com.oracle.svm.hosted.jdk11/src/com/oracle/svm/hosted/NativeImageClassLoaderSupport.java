@@ -31,14 +31,21 @@ import java.lang.module.ModuleFinder;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.graalvm.collections.Pair;
+import org.graalvm.compiler.options.OptionValues;
+
+import com.oracle.svm.core.option.LocatableMultiOptionValue;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ModuleSupport;
@@ -134,6 +141,88 @@ public class NativeImageClassLoaderSupport extends AbstractNativeImageClassLoade
             return Optional.empty();
         }
         return moduleLayerForImageBuild.findModule(moduleName);
+    }
+
+    @Override
+    void processAddExportsAndAddOpens(OptionValues parsedHostedOptions) {
+        LocatableMultiOptionValue.Strings addExports = NativeImageClassLoaderOptions.AddExports.getValue(parsedHostedOptions);
+        addExports.getValuesWithOrigins().map(this::asAddExportsAndOpensFormatValue).forEach(val -> {
+            if (val.targetModules.isEmpty()) {
+                Modules.addExportsToAllUnnamed(val.module, val.packageName);
+            } else {
+                for (Module targetModule : val.targetModules) {
+                    Modules.addExports(val.module, val.packageName, targetModule);
+                }
+            }
+        });
+        LocatableMultiOptionValue.Strings addOpens = NativeImageClassLoaderOptions.AddOpens.getValue(parsedHostedOptions);
+        addOpens.getValuesWithOrigins().map(this::asAddExportsAndOpensFormatValue).forEach(val -> {
+            if (val.targetModules.isEmpty()) {
+                Modules.addOpensToAllUnnamed(val.module, val.packageName);
+            } else {
+                for (Module targetModule : val.targetModules) {
+                    Modules.addOpens(val.module, val.packageName, targetModule);
+                }
+            }
+        });
+    }
+
+    private static final class AddExportsAndOpensFormatValue {
+        private final Module module;
+        private final String packageName;
+        private final List<Module> targetModules;
+
+        private AddExportsAndOpensFormatValue(Module module, String packageName, List<Module> targetModules) {
+            this.module = module;
+            this.packageName = packageName;
+            this.targetModules = targetModules;
+        }
+    }
+
+    private final AddExportsAndOpensFormatValue asAddExportsAndOpensFormatValue(Pair<String, String> valueOrigin) {
+        String optionOrigin = valueOrigin.getRight();
+        String optionValue = valueOrigin.getLeft();
+
+        String syntaxErrorMessage = " Allowed value format: " + NativeImageClassLoaderOptions.AddExportsAndOpensFormat;
+
+        String[] modulePackageAndTargetModules = optionValue.split("=", 2);
+        if (modulePackageAndTargetModules.length != 2) {
+            throw userErrorAddExportsAndOpens(optionOrigin, optionValue, syntaxErrorMessage);
+        }
+        String modulePackage = modulePackageAndTargetModules[0];
+        String targetModuleNames = modulePackageAndTargetModules[1];
+
+        String[] moduleAndPackage = modulePackage.split("/");
+        if (moduleAndPackage.length != 2) {
+            throw userErrorAddExportsAndOpens(optionOrigin, optionValue, syntaxErrorMessage);
+        }
+        String moduleName = moduleAndPackage[0];
+        String packageName = moduleAndPackage[1];
+
+        List<String> targetModuleNamesList = Arrays.asList(targetModuleNames.split(","));
+        if (targetModuleNamesList.isEmpty()) {
+            throw userErrorAddExportsAndOpens(optionOrigin, optionValue, syntaxErrorMessage);
+        }
+
+        Module module = findModule(moduleName).orElseThrow(() -> {
+            return userErrorAddExportsAndOpens(optionOrigin, optionValue, " Specified module '" + moduleName + "' is unknown.");
+        });
+        List<Module> targetModules;
+        if (targetModuleNamesList.contains("ALL-UNNAMED")) {
+            targetModules = Collections.emptyList();
+        } else {
+            targetModules = targetModuleNamesList.stream().map(mn -> {
+                return findModule(mn).orElseThrow(() -> {
+                    throw userErrorAddExportsAndOpens(optionOrigin, optionValue, " Specified target-module '" + mn + "' is unknown.");
+                });
+            }).collect(Collectors.toList());
+        }
+        return new AddExportsAndOpensFormatValue(module, packageName, targetModules);
+    }
+
+    private static UserError.UserException userErrorAddExportsAndOpens(String origin, String value, String detailMessage) {
+        Objects.requireNonNull(detailMessage, "missing detailMessage");
+        return UserError.abort("Invalid option %s provided by %s." + detailMessage, SubstrateOptionsParser.commandArgument(NativeImageClassLoaderOptions.AddExports, value), origin);
     }
 
     @Override
