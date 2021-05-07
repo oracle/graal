@@ -36,7 +36,6 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLi
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.CompilableToString;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.ConsumeOptimizedAssumptionDependency;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.CountInlinedCalls;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.CreateInliningPlan;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.CreateStringSupplier;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.DequeueInlined;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.FindCallNode;
@@ -251,11 +250,6 @@ final class TruffleFromLibGraalEntryPoints {
     @TruffleFromLibGraal(Log)
     static void log(Object truffleRuntime, String loggerId, Object compilable, String message) {
         ((TruffleCompilerRuntime) truffleRuntime).log(loggerId, (CompilableTruffleAST) compilable, message);
-    }
-
-    @TruffleFromLibGraal(CreateInliningPlan)
-    static Object createInliningPlan(Object truffleRuntime) {
-        return ((TruffleCompilerRuntime) truffleRuntime).createInliningPlan();
     }
 
     @TruffleFromLibGraal(RegisterOptimizedAssumptionDependency)

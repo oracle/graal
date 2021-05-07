@@ -57,7 +57,6 @@ import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleDebugContext;
 import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
-import org.graalvm.compiler.truffle.common.TruffleInliningData;
 import org.graalvm.compiler.truffle.common.TruffleOutputGroup;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ExceptionAction;
@@ -180,11 +179,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         options.add(PolyglotCompilerOptions.getDescriptors());
         this.engineOptions = OptionDescriptors.createUnion(options.toArray(new OptionDescriptors[options.size()]));
         this.floodControlHandler = loadGraalRuntimeServiceProvider(FloodControlHandler.class, null, false);
-    }
-
-    @Override
-    public TruffleInliningData createInliningPlan() {
-        return new TruffleInlining();
     }
 
     public abstract ThreadLocalHandshake getThreadLocalHandshake();
