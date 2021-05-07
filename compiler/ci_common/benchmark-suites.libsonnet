@@ -28,7 +28,7 @@
 
   // suite definitions
   // *****************
-  awfy: cc.compiler_benchmark + c.heap.default + {
+  awfy: cc.compiler_benchmark + c.heap.small + {
     suite:: "awfy",
     run+: [
       c.hwlocIfNuma(self.is_numa, $.mx_benchmark + ["awfy:*"] + $.bench_arguments, node=self.numa_nodes[0])
