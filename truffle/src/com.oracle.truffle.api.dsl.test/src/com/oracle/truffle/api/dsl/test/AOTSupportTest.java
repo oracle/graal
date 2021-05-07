@@ -41,12 +41,14 @@
 package com.oracle.truffle.api.dsl.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
@@ -219,6 +221,12 @@ public class AOTSupportTest extends AbstractPolyglotTest {
                     assertEquals(1, countActiveSpecializations(root));
                 }
             }
+
+            // test excluded message with library
+            if (receiver != null) {
+                root.node.execute(new AOTInitializable(), 11);
+            }
+
         } finally {
             context.leave();
         }
@@ -423,6 +431,11 @@ public class AOTSupportTest extends AbstractPolyglotTest {
     public static final class AOTInitializable {
 
         @ExportMessage
+        static boolean accepts(AOTInitializable receiver, @Cached("43") int cachedValue) {
+            return true;
+        }
+
+        @ExportMessage
         static int m1(AOTInitializable receiver, @Cached("42") int cachedValue) {
             return cachedValue;
         }
@@ -564,7 +577,9 @@ public class AOTSupportTest extends AbstractPolyglotTest {
 
             @GenerateAOT.Exclude
             @Specialization(guards = {"arg == 11"})
+            @TruffleBoundary
             static int excludedCache(AOTInitializable receiver, int arg, @CachedLibrary("receiver") InteropLibrary library) {
+                assertNotNull(library);
                 return 42;
             }
 
@@ -907,6 +922,31 @@ public class AOTSupportTest extends AbstractPolyglotTest {
 
         @ExportMessage
         void m0() {
+        }
+
+    }
+
+    @SuppressWarnings("unused")
+    @ExportLibrary(value = AOTTestLibrary.class, useForAOT = true, useForAOTPriority = 0)
+    public static final class ErrorAcceptsExcluded {
+
+        @ExpectError("Cannot use with @GenerateAOT.Exclude with the accepts message. The accepts message must always be usable for AOT.")
+        @ExportMessage
+        @GenerateAOT.Exclude
+        static boolean accepts(ErrorAcceptsExcluded receiver) {
+            return true;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        int m0(Object arg) {
+            return 0;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        int m1() {
+            return 0;
         }
 
     }

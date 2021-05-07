@@ -585,6 +585,10 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                 needsCast = false;
             }
 
+            if (libraryExports.isUseForAOT() && !mergedLibraries.isEmpty()) {
+                builder.startIf().string("!(", receiverLocalName).string(" instanceof ").type(types.LibraryExport).string(")").end().startBlock();
+            }
+
             if (needsCast && ElementUtils.needsCastTo(context.getType(Object.class), libraryExports.getReceiverType())) {
                 String oldReceiverName = receiverLocalName;
                 receiverLocalName = "castReceiver";
@@ -601,6 +605,10 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                 builder.string(")").end();
                 CodeVariableElement var = cacheClass.add(new CodeVariableElement(modifiers(PRIVATE), key.libraryType, identifier));
                 var.getAnnotationMirrors().add(new CodeAnnotationMirror(types.Node_Child));
+            }
+
+            if (libraryExports.isUseForAOT()) {
+                builder.end();
             }
 
             if (acceptsMessage != null && acceptsMessage.getSpecializedNode() != null && acceptsMessage.isDeclared()) {
@@ -705,6 +713,10 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                 CodeTree mergedLibraryInitializer = writeExpression(key.cache, "receiver", context.getType(Object.class), libraryExports.getReceiverType());
                 String identifier = key.getCache().getMergedLibraryIdentifier();
                 builder.startElseIf();
+                if (libraryExports.isUseForAOT()) {
+                    builder.string("this.", identifier, " != null && ");
+                }
+
                 builder.string("!this.", identifier);
                 builder.startCall(".accepts").tree(mergedLibraryInitializer).end();
                 builder.end().startBlock();

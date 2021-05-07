@@ -1114,6 +1114,14 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             }
         }
         verifyMethodSignature(model.getTemplateType(), message, exportedElement, exportedMethod, exportsLibrary.getReceiverType(), realParameterCount, true);
+
+        boolean aotExcluded = ElementUtils.findAnnotationMirror(exportedMethod, types.GenerateAOT_Exclude) != null;
+        if (aotExcluded && message.getName().equals("accepts")) {
+            exportedElement.addError("Cannot use with @%s.%s with the accepts message. The accepts message must always be usable for AOT.",
+                            getSimpleName(types.GenerateAOT),
+                            getSimpleName(types.GenerateAOT_Exclude));
+        }
+
         if (exportedElement.hasErrors()) {
             return;
         }
@@ -1136,7 +1144,7 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             element.getAnnotationMirrors().clear();
             element.addAnnotationMirror(specialization);
 
-            if (ElementUtils.findAnnotationMirror(exportedMethod, types.GenerateAOT_Exclude) != null) {
+            if (aotExcluded) {
                 element.getAnnotationMirrors().add(new CodeAnnotationMirror(types.GenerateAOT_Exclude));
             }
 
