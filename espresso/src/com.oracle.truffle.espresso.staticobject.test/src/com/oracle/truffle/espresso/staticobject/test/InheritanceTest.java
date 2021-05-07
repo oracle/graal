@@ -91,7 +91,7 @@ public class InheritanceTest {
         s1p2.setInt(object, 2);
         Assert.assertEquals(2, s1p2.getInt(object));
         s2p1.setInt(object, 3);
-        // s1p1 accesses the field declared in
+        // s1p1 accesses the field declared in s1
         Assert.assertEquals(1, s1p1.getInt(object));
         Assert.assertEquals(3, s2p1.getInt(object));
 
