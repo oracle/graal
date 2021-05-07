@@ -762,30 +762,8 @@ public final class JDWPContextImpl implements JDWPContext {
         try {
             JDWP.LOGGER.fine(() -> "Redefining " + redefineInfos.size() + " classes");
 
-            // list of sub classes that needs to refresh things like vtable
-            List<ObjectKlass> refreshSubClasses = new ArrayList<>();
-
-            // match anon inner classes with previous state
-            List<ObjectKlass> removedInnerClasses = new ArrayList<>(0);
-            HotSwapClassInfo[] matchedInfos = innerClassRedefiner.matchAnonymousInnerClasses(redefineInfos, removedInnerClasses);
-
-            // detect all changes to all classes, throws if redefinition cannot be completed
-            // due to the nature of the changes
-            List<ChangePacket> changePackets = classRedefinition.detectClassChanges(matchedInfos);
-
-            for (ChangePacket packet : changePackets) {
-                JDWP.LOGGER.fine(() -> "Redefining class " + packet.info.getNewName());
-                int result = classRedefinition.redefineClass(packet, refreshSubClasses);
-                if (result != 0) {
-                    return result;
-                }
-            }
-            // refresh subclasses when needed
-            Collections.sort(refreshSubClasses, new SubClassHierarchyComparator());
-            for (ObjectKlass subKlass : refreshSubClasses) {
-                JDWP.LOGGER.fine(() -> "Updating sub class " + subKlass.getName() + " for redefined super class");
-                subKlass.onSuperKlassUpdate();
-            }
+            // begin redefine transaction
+            ClassRedefinition.begin();
 
             // redefine classes based on direct code changes first
             doRedefine(redefineInfos, changedKlasses);
@@ -827,7 +805,7 @@ public final class JDWPContextImpl implements JDWPContext {
         Collections.sort(changePackets, new HierarchyComparator());
 
         for (ChangePacket packet : changePackets) {
-            JDWP.LOGGER.fine(() -> "Redefining extra class " + packet.info.getNewName());
+            JDWP.LOGGER.fine(() -> "Redefining class " + packet.info.getNewName());
             int result = classRedefinition.redefineClass(packet, refreshSubClasses);
             if (result != 0) {
                 throw new RedefintionNotSupportedException(result);
