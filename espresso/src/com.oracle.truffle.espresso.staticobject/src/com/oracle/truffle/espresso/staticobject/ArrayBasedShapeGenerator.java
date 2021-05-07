@@ -66,6 +66,7 @@ import static com.oracle.truffle.api.impl.asm.Opcodes.V1_8;
 final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
     private static final int UNINITIALIZED_NATIVE_OFFSET = -1;
     private static final ConcurrentHashMap<Pair<Class<?>, Class<?>>, ArrayBasedShapeGenerator<?>> generatorCache = new ConcurrentHashMap<>();
+    private static final String[] ARRAY_SIZE_FIELDS = new String[]{"primitiveArraySize", "objectArraySize"};
 
     private final Class<?> generatedStorageClass;
     private final Class<? extends T> generatedFactoryClass;
@@ -320,7 +321,7 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
             mv.visitVarInsn(ALOAD, 0);
             mv.visitFieldInsn(GETFIELD, factoryName, "shape", "Ljava/lang/Object;");
             var++;
-            for (String fieldName : new String[]{"primitiveArraySize", "objectArraySize"}) {
+            for (String fieldName : ARRAY_SIZE_FIELDS) {
                 constructorDescriptor.append("I");
                 mv.visitVarInsn(ALOAD, 0);
                 mv.visitFieldInsn(GETFIELD, factoryName, fieldName, "I");
