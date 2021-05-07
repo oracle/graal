@@ -210,12 +210,27 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
         }
     }
 
-    private static void addCloneMethod(ClassVisitor cv, String className) {
-        // TODO(da): should the descriptor and the exceptions match those of `super.clone()`?
-        MethodVisitor mv = cv.visitMethod(ACC_PUBLIC, "clone", "()Ljava/lang/Object;", null, new String[]{"java/lang/CloneNotSupportedException"});
+    private static Method getCloneMethod(Class<?> storageSuperClass) {
+        for (Class<?> clazz = storageSuperClass; clazz != null; clazz = clazz.getSuperclass()) {
+            try {
+                return clazz.getDeclaredMethod("clone");
+            } catch (NoSuchMethodException e) {
+                // Swallow the error, check the super class
+            }
+        }
+        throw new RuntimeException("Should not reach here");
+    }
+
+    private static String[] getCloneMethodExceptions(Method cloneMethod) {
+        return Arrays.stream(cloneMethod.getExceptionTypes()).map(c -> Type.getInternalName(c)).toArray(String[]::new);
+    }
+
+    private static void addCloneMethod(Class<?> storageSuperClass, ClassVisitor cv, String className) {
+        Method superCloneMethod = getCloneMethod(storageSuperClass);
+        String superCloneMethodDescriptor = Type.getMethodDescriptor(superCloneMethod);
+        MethodVisitor mv = cv.visitMethod(ACC_PUBLIC, "clone", superCloneMethodDescriptor, null, getCloneMethodExceptions(superCloneMethod));
         mv.visitVarInsn(ALOAD, 0);
-        // TODO(da): we need to call `super.clone()`, not `java.lang.Object.clone()`
-        mv.visitMethodInsn(INVOKESPECIAL, "java/lang/Object", "clone", "()Ljava/lang/Object;", false);
+        mv.visitMethodInsn(INVOKESPECIAL, Type.getInternalName(storageSuperClass), "clone", superCloneMethodDescriptor, false);
         mv.visitTypeInsn(CHECKCAST, className);
         mv.visitVarInsn(ASTORE, 1);
 
@@ -346,7 +361,7 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
         addStorageConstructors(storageWriter, storageName, storageSuperClass, storageSuperName);
         addStorageFields(storageWriter, arrayProperties);
         if (Cloneable.class.isAssignableFrom(storageSuperClass)) {
-            addCloneMethod(storageWriter, storageName);
+            addCloneMethod(storageSuperClass, storageWriter, storageName);
         }
         storageWriter.visitEnd();
         return load(storageName, storageWriter.toByteArray(), storageSuperClass);
