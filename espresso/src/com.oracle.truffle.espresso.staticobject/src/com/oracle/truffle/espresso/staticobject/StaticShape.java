@@ -29,6 +29,7 @@ import sun.misc.Unsafe;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Objects;
 
@@ -93,6 +94,7 @@ public abstract class StaticShape<T> {
 
     public static final class Builder {
         private final HashMap<String, ExtendedProperty> extendedProperties = new LinkedHashMap<>();
+        private final HashSet<StaticProperty> staticProperties = new HashSet<>();
 
         Builder() {
         }
@@ -103,12 +105,11 @@ public abstract class StaticShape<T> {
             if (extendedProperties.containsKey(name)) {
                 throw new IllegalArgumentException("This builder already contains a property named '" + name + "'");
             }
-            for (ExtendedProperty extendedProperty : extendedProperties.values()) {
-                if (extendedProperty.property.equals(property)) {
-                    throw new IllegalArgumentException("This builder already contains this property");
-                }
+            if (staticProperties.contains(property)) {
+                throw new IllegalArgumentException("This builder already contains this property");
             }
             extendedProperties.put(name, new ExtendedProperty(property, name, isFinal));
+            staticProperties.add(property);
             return this;
         }
 
