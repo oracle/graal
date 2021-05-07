@@ -29,10 +29,10 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.api;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.llvm.runtime.library.internal.LLVMNativeLibrary;
+import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMNativePointerSupport;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 @GenerateUncached
@@ -46,8 +46,7 @@ public abstract class LLVMToNativeNode extends LLVMNode {
 
     @Specialization
     static LLVMNativePointer doConvert(Object obj,
-                    @CachedLibrary(limit = "5") LLVMNativeLibrary nativeLibrary) {
-        nativeLibrary.accepts(obj); // needed until GR-27452 is fixed
-        return nativeLibrary.toNativePointer(obj);
+                                       @Cached LLVMNativePointerSupport.ToNativePointerNode toNativePointer) {
+        return toNativePointer.execute(obj);
     }
 }

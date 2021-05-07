@@ -48,8 +48,8 @@ import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeFactory.LLVMVoi
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
-import com.oracle.truffle.llvm.runtime.library.internal.LLVMNativeLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMNativePointerSupport;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -260,11 +260,11 @@ public abstract class LLVMDataEscapeNode extends LLVMNode {
             return Double.longBitsToDouble(escapingValue);
         }
 
-        @Specialization(limit = "3", replaces = "escapingLong")
+        @Specialization(replaces = "escapingLong")
         @GenerateAOT.Exclude
         static double escapingPointer(Object escapingValue, LLVMInteropType.Structured type,
-                        @CachedLibrary("escapingValue") LLVMNativeLibrary library) {
-            return escapingLong(library.toNativePointer(escapingValue).asNative(), type);
+                                      @Cached LLVMNativePointerSupport.ToNativePointerNode toNativePointer) {
+            return escapingLong(toNativePointer.execute(escapingValue).asNative(), type);
         }
     }
 

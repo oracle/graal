@@ -32,23 +32,20 @@ package com.oracle.truffle.llvm.runtime.nodes.op;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CreateCast;
-import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.profiles.ValueProfile;
-import com.oracle.truffle.llvm.runtime.nodes.op.arith.floating.LLVMArithmeticFactory;
 import com.oracle.truffle.llvm.runtime.ArithmeticOperation;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.interop.LLVMNegatedForeignObject;
-import com.oracle.truffle.llvm.runtime.library.internal.LLVMNativeLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMArithmetic.LLVMArithmeticOpNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMTypesGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMNativePointerSupport;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNodeFactory.LLVMI64ArithmeticNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNodeFactory.LLVMI64SubNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNodeFactory.ManagedAndNodeGen;
@@ -56,6 +53,7 @@ import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNodeFactory.Manage
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNodeFactory.ManagedSubNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNodeFactory.ManagedXorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNodeFactory.PointerToI64NodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.op.arith.floating.LLVMArithmeticFactory;
 import com.oracle.truffle.llvm.runtime.nodes.util.LLVMSameObjectNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -234,24 +232,26 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
             return l;
         }
 
-        @Specialization(guards = "lib.isPointer(ptr)", rewriteOn = UnsupportedMessageException.class)
+        @Specialization(guards = "isPointer.execute(ptr)", rewriteOn = UnsupportedMessageException.class)
         long doPointer(Object ptr,
-                        @CachedLibrary(limit = "3") LLVMNativeLibrary lib) throws UnsupportedMessageException {
-            return lib.asPointer(ptr);
+                       @SuppressWarnings("unused") @Cached LLVMNativePointerSupport.IsPointerNode isPointer,
+                       @Cached LLVMNativePointerSupport.AsPointerNode asPointer) throws UnsupportedMessageException {
+            return asPointer.execute(ptr);
         }
 
-        @Specialization(guards = "!lib.isPointer(ptr)")
+        @Specialization(guards = "!isPointer.execute(ptr)")
         Object doManaged(Object ptr,
-                        @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMNativeLibrary lib) {
+                         @SuppressWarnings("unused") @Cached LLVMNativePointerSupport.IsPointerNode isPointer) {
             return ptr;
         }
 
         @Specialization(replaces = {"doLong", "doPointer", "doManaged"})
         Object doGeneric(Object ptr,
-                        @CachedLibrary(limit = "5") LLVMNativeLibrary lib) {
-            if (lib.isPointer(ptr)) {
+                         @SuppressWarnings("unused") @Cached LLVMNativePointerSupport.IsPointerNode isPointer,
+                         @Cached LLVMNativePointerSupport.AsPointerNode asPointer) {
+            if (isPointer.execute(ptr)) {
                 try {
-                    return lib.asPointer(ptr);
+                    return asPointer.execute(ptr);
                 } catch (UnsupportedMessageException ex) {
                     // ignore
                 }
@@ -321,14 +321,14 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
 
         @Specialization(guards = "!canDoManaged(left)")
         long doPointerRight(long left, LLVMPointer right,
-                        @CachedLibrary(limit = "3") LLVMNativeLibrary rightLib) {
-            return op.doLong(left, rightLib.toNativePointer(right).asNative());
+                            @Cached LLVMNativePointerSupport.ToNativePointerNode toNativePointerRight) {
+            return op.doLong(left, toNativePointerRight.execute(right).asNative());
         }
 
         @Specialization(guards = "!canDoManaged(right)")
         long doPointerLeft(LLVMPointer left, long right,
-                        @CachedLibrary(limit = "3") LLVMNativeLibrary leftLib) {
-            return op.doLong(leftLib.toNativePointer(left).asNative(), right);
+                           @Cached LLVMNativePointerSupport.ToNativePointerNode toNativePointerLeft) {
+            return op.doLong(toNativePointerLeft.execute(left).asNative(), right);
         }
     }
 
@@ -340,9 +340,9 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
 
         @Specialization
         long doPointer(LLVMPointer left, LLVMPointer right,
-                        @CachedLibrary(limit = "3") LLVMNativeLibrary leftLib,
-                        @CachedLibrary(limit = "3") LLVMNativeLibrary rightLib) {
-            return op.doLong(leftLib.toNativePointer(left).asNative(), rightLib.toNativePointer(right).asNative());
+                        @Cached LLVMNativePointerSupport.ToNativePointerNode toNativePointerLeft,
+                       @Cached LLVMNativePointerSupport.ToNativePointerNode toNativePointerRight) {
+            return op.doLong(toNativePointerLeft.execute(left).asNative(), toNativePointerRight.execute(right).asNative());
         }
     }
 
@@ -360,10 +360,10 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
 
         @Specialization(guards = "!sameObject.execute(left.getObject(), right.getObject())")
         long doNotSameObject(LLVMManagedPointer left, LLVMManagedPointer right,
-                        @SuppressWarnings("unused") @Cached LLVMSameObjectNode sameObject,
-                        @CachedLibrary(limit = "3") LLVMNativeLibrary leftLib,
-                        @CachedLibrary(limit = "3") LLVMNativeLibrary rightLib) {
-            return leftLib.toNativePointer(left).asNative() - rightLib.toNativePointer(right).asNative();
+                             @SuppressWarnings("unused") @Cached LLVMSameObjectNode sameObject,
+                             @Cached LLVMNativePointerSupport.ToNativePointerNode toNativePointerLeft,
+                             @Cached LLVMNativePointerSupport.ToNativePointerNode toNativePointerRight) {
+            return toNativePointerLeft.execute(left).asNative() - toNativePointerRight.execute(right).asNative();
         }
     }
 

@@ -56,6 +56,7 @@ import com.oracle.truffle.llvm.runtime.interop.access.LLVMWriteToForeignObjectNo
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMWriteToForeignObjectNode.ForeignWriteI32Node;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMWriteToForeignObjectNode.ForeignWriteI64Node;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMWriteToForeignObjectNode.ForeignWriteI8Node;
+import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMNativePointerSupport;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
@@ -385,11 +386,11 @@ abstract class LLVMManagedAccessDefaults {
 
             @Specialization
             static void writePointer(byte[] obj, long offset, LLVMPointer value,
-                            @CachedLibrary(limit = "3") LLVMNativeLibrary nativeLib,
+                                     @Cached LLVMNativePointerSupport.ToNativePointerNode toNativePointer,
                             @Exclusive @Cached BranchProfile exception,
                             @CachedLanguage LLVMLanguage language) {
-                LLVMNativePointer nativeValue = nativeLib.toNativePointer(value);
-                writeLong(obj, offset, nativeValue.asNative(), nativeLib, exception, language);
+                LLVMNativePointer nativeValue = toNativePointer.execute(value);
+                writeLong(obj, offset, nativeValue.asNative(), toNativePointer, exception, language);
             }
         }
     }
