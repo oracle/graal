@@ -186,8 +186,6 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     }
 
     private long writeCheckpointEvent(JfrRepository[] repositories) throws IOException {
-        JfrSerializer[] serializers = JfrSerializerSupport.get().getSerializers();
-
         // TODO: Write the global buffers of the previous epoch to disk. Assert that none of the
         // buffers from the previous epoch is acquired (all operations on the buffers must have
         // finished before the safepoint).
@@ -201,8 +199,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         long poolCountPos = file.getFilePointer();
         file.writeInt(0); // We'll fix this later.
         // TODO: This should be simplified, serializers and repositories can probably go under the same structure.
-        int poolCount = writeSerializers(serializers);
-        poolCount += writeRepositories(repositories);
+        int poolCount = writeRepositories(repositories);
         long currentPos = file.getFilePointer();
         file.seek(poolCountPos);
         file.writeInt(makePaddedInt(poolCount));
@@ -210,14 +207,6 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         endEvent(start);
 
         return start;
-    }
-
-    private int writeSerializers(JfrSerializer[] serializers) throws IOException {
-        int count = 0;
-        for (JfrSerializer serializer : serializers) {
-            count += serializer.write(this);
-        }
-        return count;
     }
 
     private int writeRepositories(JfrRepository[] constantPools) throws IOException {

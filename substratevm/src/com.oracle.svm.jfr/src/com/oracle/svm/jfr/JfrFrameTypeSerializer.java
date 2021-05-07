@@ -29,7 +29,7 @@ import java.io.IOException;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-public class JfrFrameTypeSerializer implements JfrSerializer {
+public class JfrFrameTypeSerializer implements JfrRepository {
     @Platforms(Platform.HOSTED_ONLY.class)
     public JfrFrameTypeSerializer() {
     }
