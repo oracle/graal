@@ -151,18 +151,33 @@ def measureTimeToFirstResponse(bmSuite):
         servicePath = '/' + servicePath
     url = "{}:{}{}".format(protocolHost, bmSuite.servicePort(), servicePath)
     lib = urllib()
-    for _ in range(60*10000):
+
+    receivedNon200Responses = 0
+    mx.log("Started time-to-first-response measurements: " + url)
+    for i in range(60*10000):
+        time.sleep(.0001)
+        if i > 0 and i % 10000 == 0:
+            mx.log("Sent {:d} requests so far but did not receive a response with code 200 yet.".format(i))
+
         try:
-            req = lib.urlopen(url)
-            if req.getcode() == 200:
+            res = lib.urlopen(url)
+            responseCode = res.getcode()
+            if responseCode == 200:
                 startTime = mx.get_last_subprocess_start_time()
                 finishTime = datetime.datetime.now()
                 msToFirstResponse = (finishTime - startTime).total_seconds() * 1000
                 bmSuite.timeToFirstResponseOutput = "First response received in {} ms".format(msToFirstResponse)
                 mx.log(bmSuite.timeToFirstResponseOutput)
                 return
+            else:
+                if receivedNon200Responses < 10:
+                    mx.log("Received a response but it had response code " + str(code) + " instead of 200")
+                elif receivedNon200Responses == 10:
+                    mx.log("No more response codes will be printed (already printed 10 response codes)")
+                receivedNon200Responses += 1
         except IOError:
-            time.sleep(.0001)
+            pass
+
     mx.abort("Failed measure time to first response. Service not reachable at " + url)
 
 
@@ -474,14 +489,24 @@ class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
 
         result.append(throughputPrefix + " " + matches[0])
 
-        matches = re.findall(r"^\s*\d*[.,]?\d*%\s+\d*[.,]?\d*[mnu]?s$", output, re.MULTILINE)
+        matches = re.findall(r"\s*(\d*[.,]?\d*%)\s+(\d*[.,]?\d*)([mun]?s)$", output, re.MULTILINE)
         if len(matches) <= 0:
             mx.abort("No latency results found in output")
 
         for match in matches:
-            result.append(latencyPrefix + " " + match)
+            val = self.convertValue(float(match[1]), match[2])
+            result.append(latencyPrefix + " {} {:f}ms".format(match[0], val))
 
-        return '\n'.join(result)
+        extracted = '\n'.join(result)
+        print(extracted)
+        return extracted
+
+    def convertValue(self, val, unit):
+        if unit == 's': return val * 1000
+        elif unit == 'ms': return val
+        elif unit == 'us': return val / 1000
+        elif unit == 'ns': return val / (1000 * 1000)
+        else: mx.abort("Unexpected unit: " + unit)
 
     def verifyWarmupOutput(self, output, config):
         matches = re.findall(r"^Requests/sec:\s*(?P<throughput>\d*[.,]?\d*)$", output, re.MULTILINE)
@@ -521,25 +546,25 @@ class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
                 }
             ),
             mx_benchmark.StdOutRule(
-                r"^startup-latency-co\s+(?P<percentile>\d*[.,]?\d*)%\s+(?P<latency>\d*[.,]?\d*)(?P<unit>[mnu]?s)$",
+                r"^startup-latency-co\s+(?P<percentile>\d*[.,]?\d*)%\s+(?P<latency>\d*[.,]?\d*)(?P<unit>ms)$",
                 {
                     "benchmark": benchmarks[0],
                     "bench-suite": self.benchSuiteName(),
                     "metric.name": "startup-latency-co",
                     "metric.value": ("<latency>", float),
-                    "metric.unit": ("<unit>", str),
+                    "metric.unit": ("ms", str),
                     "metric.better": "lower",
                     "metric.percentile": ("<percentile>", float),
                 }
             ),
             mx_benchmark.StdOutRule(
-                r"^peak-latency-co\s+(?P<percentile>\d*[.,]?\d*)%\s+(?P<latency>\d*[.,]?\d*)(?P<unit>[mnu]?s)$",
+                r"^peak-latency-co\s+(?P<percentile>\d*[.,]?\d*)%\s+(?P<latency>\d*[.,]?\d*)(?P<unit>ms)$",
                 {
                     "benchmark": benchmarks[0],
                     "bench-suite": self.benchSuiteName(),
                     "metric.name": "peak-latency-co",
                     "metric.value": ("<latency>", float),
-                    "metric.unit": ("<unit>", str),
+                    "metric.unit": ("ms", str),
                     "metric.better": "lower",
                     "metric.percentile": ("<percentile>", float),
                 }
