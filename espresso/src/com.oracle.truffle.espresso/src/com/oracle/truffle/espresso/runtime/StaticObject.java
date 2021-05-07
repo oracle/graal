@@ -193,7 +193,6 @@ public class StaticObject implements TruffleObject, Cloneable {
     }
 
     @Override
-    @TruffleBoundary
     public Object clone() {
         try {
             return super.clone();
