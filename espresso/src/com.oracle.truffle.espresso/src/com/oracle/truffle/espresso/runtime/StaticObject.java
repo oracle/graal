@@ -192,7 +192,8 @@ public class StaticObject implements TruffleObject, Cloneable {
                 // of generated subtypes.
                 obj = (StaticObject) clone();
             } catch (CloneNotSupportedException e) {
-                throw new RuntimeException(e);
+                EspressoError.shouldNotReachHere(e);
+                obj = null;
             }
         }
         return trackAllocation(getKlass(), obj);
