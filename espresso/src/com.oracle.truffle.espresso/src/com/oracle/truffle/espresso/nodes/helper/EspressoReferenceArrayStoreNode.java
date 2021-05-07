@@ -33,8 +33,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public class EspressoReferenceArrayStoreNode extends Node {
     @Child TypeCheckNode typeCheck;
-    @CompilationFinal boolean noOutOfBoundEx1 = true;
-    @CompilationFinal boolean noOutOfBoundEx2 = true;
+    @CompilationFinal boolean noOutOfBoundEx = true;
     @CompilationFinal boolean noArrayStoreEx = true;
 
     public EspressoReferenceArrayStoreNode(EspressoContext context) {
@@ -42,39 +41,23 @@ public class EspressoReferenceArrayStoreNode extends Node {
     }
 
     public void arrayStore(StaticObject value, int index, StaticObject array) {
-        if (StaticObject.isNull(value) || typeCheck.executeTypeCheck(((ArrayKlass) array.getKlass()).getComponentType(), value.getKlass())) {
-            try {
-                (array.<Object[]> unwrap())[index] = value;
-            } catch (ArrayIndexOutOfBoundsException e) {
-                enterOutOfBound1();
-                Meta meta = typeCheck.getMeta();
-                throw meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
-            }
-        } else {
-            // We must throw ArrayIndexOutOfBoundsException before ArrayStoreException
-            if (Integer.compareUnsigned(index, array.length()) < 0) {
-                enterArrayStoreEx();
-                Meta meta = typeCheck.getMeta();
-                throw meta.throwException(meta.java_lang_ArrayStoreException);
-            } else {
-                enterOutOfBound2();
-                Meta meta = typeCheck.getMeta();
-                throw meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
-            }
+        if (Integer.compareUnsigned(index, array.length()) >= 0) {
+            enterOutOfBound();
+            Meta meta = typeCheck.getMeta();
+            throw meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
         }
+        if (!StaticObject.isNull(value) && !typeCheck.executeTypeCheck(((ArrayKlass) array.getKlass()).getComponentType(), value.getKlass())) {
+            enterArrayStoreEx();
+            Meta meta = typeCheck.getMeta();
+            throw meta.throwException(meta.java_lang_ArrayStoreException);
+        }
+        (array.<Object[]> unwrap())[index] = value;
     }
 
-    private void enterOutOfBound1() {
-        if (noOutOfBoundEx1) {
+    private void enterOutOfBound() {
+        if (noOutOfBoundEx) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            noOutOfBoundEx1 = false;
-        }
-    }
-
-    private void enterOutOfBound2() {
-        if (noOutOfBoundEx2) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            noOutOfBoundEx2 = false;
+            noOutOfBoundEx = false;
         }
     }
 
