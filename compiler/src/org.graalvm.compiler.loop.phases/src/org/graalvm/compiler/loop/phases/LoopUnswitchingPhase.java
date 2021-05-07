@@ -35,6 +35,7 @@ import org.graalvm.compiler.nodes.ControlSplitNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.loop.LoopEx;
 import org.graalvm.compiler.nodes.loop.LoopPolicies;
+import org.graalvm.compiler.nodes.loop.LoopPolicies.UnswitchingDecision;
 import org.graalvm.compiler.nodes.loop.LoopsData;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 
@@ -60,11 +61,12 @@ public class LoopUnswitchingPhase extends LoopPhase<LoopPolicies> {
                         List<ControlSplitNode> controlSplits = LoopTransformations.findUnswitchable(loop);
                         if (controlSplits != null) {
                             UNSWITCH_CANDIDATES.increment(debug);
-                            if (getPolicies().shouldUnswitch(loop, controlSplits)) {
+                            UnswitchingDecision decision = getPolicies().shouldUnswitch(loop, controlSplits);
+                            if (decision.shouldUnswitch()) {
                                 if (debug.isLogEnabled()) {
                                     logUnswitch(loop, controlSplits);
                                 }
-                                LoopTransformations.unswitch(loop, controlSplits);
+                                LoopTransformations.unswitch(loop, controlSplits, decision.isTrivial());
                                 debug.dump(DebugContext.DETAILED_LEVEL, graph, "After unswitch %s", controlSplits);
                                 UNSWITCHED.increment(debug);
                                 unswitched = true;
