@@ -106,7 +106,7 @@ public class StaticObject implements TruffleObject, Cloneable {
     }
 
     public static StaticObject createNew(ObjectKlass klass) {
-        assert klass != null && !klass.isAbstract() && !klass.isInterface();
+        assert !klass.isAbstract() && !klass.isInterface();
         StaticObject newObj = klass.getLinkedKlass().getShape(false).getFactory().create(klass);
         newObj.initInstanceFields(klass);
         return trackAllocation(klass, newObj);
