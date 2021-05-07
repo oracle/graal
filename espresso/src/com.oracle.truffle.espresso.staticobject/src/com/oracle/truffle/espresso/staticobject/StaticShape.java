@@ -124,7 +124,6 @@ public abstract class StaticShape<T> {
             Objects.requireNonNull(parentShape);
             ShapeGenerator<T> sg = ShapeGenerator.getShapeGenerator(parentShape);
             return build(sg, parentShape);
-
         }
 
         public <T> StaticShape<T> build(Class<?> superClass, Class<T> factoryInterface) {
