@@ -200,6 +200,30 @@ public class PropertyAccessTest {
         }
     }
 
+    @Theory
+    public void wrongShape(TestDescriptor descriptor) {
+        StaticShape.Builder b1 = StaticShape.newBuilder();
+        StaticProperty p1 = new DefaultStaticProperty(descriptor.kind);
+        b1.property(p1, "property", false);
+        StaticShape<DefaultStaticObject.Factory> s1 = b1.build();
+        DefaultStaticObject o1 = s1.getFactory().create();
+
+        StaticShape.Builder b2 = StaticShape.newBuilder();
+        StaticProperty p2 = new DefaultStaticProperty(descriptor.kind);
+        b2.property(p2, "property", false);
+        StaticShape<DefaultStaticObject.Factory> s2 = b2.build();
+        DefaultStaticObject o2 = s2.getFactory().create();
+
+        try {
+            descriptor.setter.set(p1, o2, descriptor.testValue);
+            Assert.fail();
+        } catch (ClassCastException e) {
+            Assert.assertTrue(!StorageLayout.ARRAY_BASED);
+        } catch (RuntimeException e) {
+            Assert.assertTrue(e.getMessage().startsWith("Incompatible shape on property access."));
+        }
+    }
+
     @Test
     public void dummy() {
         // to make sure this file is recognized as a test
