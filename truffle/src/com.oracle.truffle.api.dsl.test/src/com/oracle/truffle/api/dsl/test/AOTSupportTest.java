@@ -426,7 +426,16 @@ public class AOTSupportTest extends AbstractPolyglotTest {
 
     }
 
+    @GenerateAOT
+    @GenerateLibrary
+    public abstract static class OtherAOTTestLibrary extends Library {
+
+        public abstract int m2(Object receiver);
+
+    }
+
     @ExportLibrary(value = AOTTestLibrary.class, useForAOT = true, useForAOTPriority = 0)
+    @ExportLibrary(value = OtherAOTTestLibrary.class, useForAOT = true, useForAOTPriority = 0)
     @SuppressWarnings("unused")
     public static final class AOTInitializable {
 
@@ -438,6 +447,11 @@ public class AOTSupportTest extends AbstractPolyglotTest {
         @ExportMessage
         static int m1(AOTInitializable receiver, @Cached("42") int cachedValue) {
             return cachedValue;
+        }
+
+        @ExportMessage
+        static int m2(AOTInitializable receiver) {
+            return 42;
         }
 
         @ExportMessage
