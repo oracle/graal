@@ -98,7 +98,7 @@ public class PropertyAccessTest {
                 case Char:
                     descriptors[i] = new TestDescriptor(
                                     StaticPropertyKind.Char,
-                                    (char) 42,
+                                    (char) 0x0102,
                                     (char) 0,
                                     (p, obj) -> p.getChar(obj),
                                     (p, obj, val) -> p.setChar(obj, (char) val));
