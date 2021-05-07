@@ -1246,8 +1246,13 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
                     ]
 
                 build_args += [
-                    '--install-exit-handlers'
+                    '--install-exit-handlers',
+                    '-H:+AllowVMInspection'
                 ]
+                if has_component('svmee', stage1=True):
+                    build_args += [
+                        '-R:-UsePerfData'
+                    ]
 
                 for language, path in sorted(image_config.relative_home_paths.items()):
                     build_args += ['-Dorg.graalvm.launcher.relative.' + language + '.home=' + path]
