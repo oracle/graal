@@ -47,6 +47,7 @@ import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.api.Toolchain;
+import com.oracle.truffle.llvm.runtime.IDGenerater.BitcodeID;
 import com.oracle.truffle.llvm.runtime.LLVMLanguageFactory.InitializeContextNodeGen;
 import com.oracle.truffle.llvm.runtime.config.Configuration;
 import com.oracle.truffle.llvm.runtime.config.Configurations;
@@ -69,9 +70,9 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
 @TruffleLanguage.Registration(id = LLVMLanguage.ID, name = LLVMLanguage.NAME, internal = false, interactive = false, defaultMimeType = LLVMLanguage.LLVM_BITCODE_MIME_TYPE, //
@@ -96,8 +97,6 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     public static final String ID = "llvm";
     static final String NAME = "LLVM";
-    private final AtomicInteger nextID = new AtomicInteger(0);
-
     public final Assumption singleContextAssumption = Truffle.getRuntime().createAssumption("Only a single context is active");
 
     @CompilationFinal private Configuration activeConfiguration = null;
@@ -136,10 +135,11 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     @CompilationFinal private LLVMMemory cachedLLVMMemory;
 
     private final EconomicMap<String, LLVMScope> internalFileScopes = EconomicMap.create();
-    private final EconomicMap<String, CallTarget> libraryCache = EconomicMap.create();
+    private final EconomicMap<String, WeakReference<CallTarget>> libraryCache = EconomicMap.create();
     private final Object libraryCacheLock = new Object();
     private final EconomicMap<String, Source> librarySources = EconomicMap.create();
 
+    private final IDGenerater idGenerater = new IDGenerater();
     private final LLDBSupport lldbSupport = new LLDBSupport(this);
     private final Assumption noCommonHandleAssumption = Truffle.getRuntime().createAssumption("no common handle");
     private final Assumption noDerefHandleAssumption = Truffle.getRuntime().createAssumption("no deref handle");
@@ -165,7 +165,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     }
 
     public abstract static class Loader implements LLVMCapability {
-        public abstract CallTarget load(LLVMContext context, Source source, AtomicInteger id);
+        public abstract CallTarget load(LLVMContext context, Source source, BitcodeID id);
     }
 
     @Override
@@ -472,10 +472,6 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         return defaultTargetTriple;
     }
 
-    public AtomicInteger getRawRunnerID() {
-        return nextID;
-    }
-
     @CompilerDirectives.TruffleBoundary
     public LLVMInteropType getInteropType(LLVMSourceType sourceType) {
         return interopTypeRegistry.get(sourceType);
@@ -504,32 +500,33 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
             Source source = request.getSource();
             String path = source.getPath();
             CallTarget callTarget;
+            WeakReference<CallTarget> ref;
             if (source.isCached()) {
-                callTarget = libraryCache.get(path);
-                if (callTarget == null) {
-                    callTarget = getCapability(Loader.class).load(getContext(), source, nextID);
-                    CallTarget prev = libraryCache.putIfAbsent(path, callTarget);
+                ref = libraryCache.get(path);
+                if (ref == null) {
+                    callTarget = getCapability(Loader.class).load(getContext(), source, idGenerater.generateID());
+                    WeakReference<CallTarget> prev = libraryCache.putIfAbsent(path, new WeakReference<>(callTarget));
                     // To ensure the call target in the cache is always returned in case of
                     // concurrency.
                     if (prev != null) {
-                        callTarget = prev;
+                        callTarget = prev.get();
                     }
+                } else {
+                    callTarget = ref.get();
                 }
                 return callTarget;
             }
-            return getCapability(Loader.class).load(getContext(), source, nextID);
-        }
-    }
-
-    public boolean isLibraryCached(String path) {
-        synchronized (libraryCacheLock) {
-            return libraryCache.get(path) != null;
+            // just get the id here and give it to the parserDriver
+            return getCapability(Loader.class).load(getContext(), source, idGenerater.generateID());
         }
     }
 
     public CallTarget getCachedLibrary(String path) {
         synchronized (libraryCacheLock) {
-            return libraryCache.get(path);
+            if (libraryCache.get(path) == null) {
+                return null;
+            }
+            return libraryCache.get(path).get();
         }
     }
 
