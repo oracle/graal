@@ -187,18 +187,15 @@ public class StaticObject implements TruffleObject, Cloneable {
         if (getKlass().isArray()) {
             obj = createArray((ArrayKlass) getKlass(), cloneWrappedArray());
         } else {
-            obj = (StaticObject) clone();
+            try {
+                // Call `this.clone()` rather than `super.clone()` to execute the `clone()` methods
+                // of generated subtypes.
+                obj = (StaticObject) clone();
+            } catch (CloneNotSupportedException e) {
+                throw new RuntimeException(e);
+            }
         }
         return trackAllocation(getKlass(), obj);
-    }
-
-    @Override
-    public Object clone() {
-        try {
-            return super.clone();
-        } catch (CloneNotSupportedException e) {
-            throw new RuntimeException(e);
-        }
     }
 
     private static StaticObject trackAllocation(Klass klass, StaticObject obj) {
