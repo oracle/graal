@@ -562,6 +562,12 @@ public class AOTSupportTest extends AbstractPolyglotTest {
                 return arg;
             }
 
+            @GenerateAOT.Exclude
+            @Specialization(guards = {"arg == 11"})
+            static int excludedCache(AOTInitializable receiver, int arg, @CachedLibrary("receiver") InteropLibrary library) {
+                return 42;
+            }
+
         }
 
     }
@@ -794,10 +800,56 @@ public class AOTSupportTest extends AbstractPolyglotTest {
 
         @SuppressWarnings("static-method")
         @ExportMessage
-        int m0(Object arg0, @ExpectError("Merged librares are not supported in combination with AOT preparation. " + //
-                        "Either disable useForAOT for this @ExportLibrary or use an automatically dispatched library instead.") //
-        @CachedLibrary("this.delegate") AOTTestLibrary lib) {
+        int m0(Object arg0,
+                        @ExpectError("Merged librares are not supported in combination with AOT preparation. Resolve this problem by either: %n" +
+                                        " - Setting @ExportLibrary(..., useForAOT=false) to disable AOT preparation for this export. %n" +
+                                        " - Using a dispatched library without receiver expression. %n" +
+                                        " - Adding the @GenerateAOT.Exclude annotation to the specialization or exported method.")//
+                        @CachedLibrary("this.delegate") AOTTestLibrary lib) {
             return 42;
+        }
+
+        @ExportMessage
+        static class M1 {
+
+            @SuppressWarnings("static-method")
+            @Specialization
+            static int doDefault(ErrorMergedLibrary receiver,
+                            @ExpectError("Merged librares are not supported in combination with AOT preparation. Resolve this problem by either: %n" +
+                                            " - Setting @ExportLibrary(..., useForAOT=false) to disable AOT preparation for this export. %n" +
+                                            " - Using a dispatched library without receiver expression. %n" +
+                                            " - Adding the @GenerateAOT.Exclude annotation to the specialization or exported method.")//
+                            @CachedLibrary("receiver") InteropLibrary lib) {
+                return 42;
+            }
+        }
+
+    }
+
+    @ExportLibrary(value = AOTTestLibrary.class, useForAOT = true, useForAOTPriority = 0)
+    @SuppressWarnings("unused")
+    public static final class ErrorMergedLibraryExclude {
+
+        final Object delegate = null;
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        @GenerateAOT.Exclude
+        int m0(Object arg0,
+                        @CachedLibrary("this.delegate") AOTTestLibrary lib) {
+            return 42;
+        }
+
+        @ExportMessage
+        static class M1 {
+
+            @SuppressWarnings("static-method")
+            @Specialization
+            @GenerateAOT.Exclude
+            static int doDefault(ErrorMergedLibraryExclude receiver,
+                            @CachedLibrary("receiver") InteropLibrary lib) {
+                return 42;
+            }
         }
 
     }

@@ -430,6 +430,18 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
             for (CacheExpression cache : specialization.getCaches()) {
 
+                if (cache.isMergedLibrary()) {
+                    cache.addError("Merged librares are not supported in combination with AOT preparation. " + //
+                                    "Resolve this problem by either: %n" + //
+                                    " - Setting @%s(..., useForAOT=false) to disable AOT preparation for this export. %n" + //
+                                    " - Using a dispatched library without receiver expression. %n" + //
+                                    " - Adding the @%s.%s annotation to the specialization or exported method.",
+                                    getSimpleName(types.ExportLibrary),
+                                    getSimpleName(types.GenerateAOT),
+                                    getSimpleName(types.GenerateAOT_Exclude));
+                    continue;
+                }
+
                 TypeMirror type = cache.getParameter().getType();
                 if (NodeCodeGenerator.isSpecializedNode(type)) {
                     List<TypeElement> lookupTypes = collectSuperClasses(new ArrayList<TypeElement>(), ElementUtils.castTypeElement(type));
@@ -2544,9 +2556,11 @@ public final class NodeParser extends AbstractParser<NodeData> {
             }
             specialization.setUncachedSpecialization(uncachedSpecialization);
         }
+
         if (uncachedLibraries != null && uncachedLibraries.size() != libraries.size()) {
             throw new AssertionError("Unexpected number of uncached libraries.");
         }
+
         boolean seenDynamicParameterBound = false;
 
         for (int i = 0; i < libraries.size(); i++) {
@@ -2618,13 +2632,8 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 }
                 if (substituteCachedExpression == null && supportsLibraryMerge(receiverExpression, receiverParameter.getVariableElement())) {
                     substituteCachedExpression = receiverExpression;
-                    if (specialization.getNode().isGenerateAOT()) {
-                        cachedLibrary.addError("Merged librares are not supported in combination with AOT preparation. " + //
-                                        "Either disable useForAOT for this @%s or use an automatically dispatched library instead.",
-                                        getSimpleName(types.ExportLibrary));
-                    } else {
-                        cachedLibrary.setMergedLibrary(true);
-                    }
+
+                    cachedLibrary.setMergedLibrary(true);
                 }
             }
 

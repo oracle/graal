@@ -1136,6 +1136,10 @@ public class ExportsParser extends AbstractParser<ExportsData> {
             element.getAnnotationMirrors().clear();
             element.addAnnotationMirror(specialization);
 
+            if (ElementUtils.findAnnotationMirror(exportedMethod, types.GenerateAOT_Exclude) != null) {
+                element.getAnnotationMirrors().add(new CodeAnnotationMirror(types.GenerateAOT_Exclude));
+            }
+
             boolean isStatic = element.getModifiers().contains(Modifier.STATIC);
             if (!isStatic) {
                 element.getParameters().add(0, new CodeVariableElement(exportedElement.getReceiverType(), "this"));
