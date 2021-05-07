@@ -48,9 +48,9 @@ import mx_sulong_gate
 import mx_sulong_llvm_config
 
 # re-export custom mx project classes so they can be used from suite.py
-from mx_sulong_suite_constituents import SulongTestSuite #pylint: disable=unused-import
-from mx_sulong_suite_constituents import GeneratedTestSuite #pylint: disable=unused-import
+from mx_sulong_suite_constituents import SulongCMakeTestSuite #pylint: disable=unused-import
 from mx_sulong_suite_constituents import ExternalTestSuite #pylint: disable=unused-import
+from mx_sulong_suite_constituents import ExternalCMakeTestSuite #pylint: disable=unused-import
 from mx_sulong_suite_constituents import BootstrapToolchainLauncherProject #pylint: disable=unused-import
 from mx_sulong_suite_constituents import AbstractSulongNativeProject #pylint: disable=unused-import
 from mx_sulong_suite_constituents import CMakeProject #pylint: disable=unused-import
@@ -248,7 +248,8 @@ def lli(args=None, out=None):
     debug_args = mx.java_debug_args()
     if debug_args and not mx.is_debug_disabled():
         args = [_java_to_graalvm_arg(d) for d in debug_args] + args
-    mx.run([os.path.join(mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True), 'bin', 'lli')] + args, out=out)
+    # on Windows <GRAALVM_HOME>/bin/lli is always a .cmd file because it is a "fake symlink"
+    mx.run([os.path.join(mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True), 'bin', mx_subst.path_substitutions.substitute('<cmd:lli>'))] + args, out=out)
 
 
 @mx.command(_suite.name, "extract-bitcode")
@@ -466,22 +467,21 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     installable=False,
 ))
 
-if not mx.is_windows():
-    mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
-        suite=_suite,
-        name='LLVM Runtime Native',
-        short_name='llrn',
-        dir_name='llvm',
-        license_files=[],
-        third_party_license_files=[],
-        dependencies=['Truffle NFI', 'LLVM Runtime Core'],
-        truffle_jars=['sulong:SULONG_NATIVE'],
-        support_distributions=[
-            'sulong:SULONG_NATIVE_HOME',
-        ],
-        launcher_configs=_suite.toolchain.get_launcher_configs(),
-        installable=False,
-    ))
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
+    suite=_suite,
+    name='LLVM Runtime Native',
+    short_name='llrn',
+    dir_name='llvm',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=['Truffle NFI', 'LLVM Runtime Core'],
+    truffle_jars=['sulong:SULONG_NATIVE'],
+    support_distributions=[
+        'sulong:SULONG_NATIVE_HOME',
+    ],
+    launcher_configs=_suite.toolchain.get_launcher_configs(),
+    installable=False,
+))
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     suite=_suite,

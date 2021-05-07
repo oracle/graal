@@ -68,6 +68,11 @@ public abstract class AbstractWriteNode extends FixedAccessNode implements State
         return value;
     }
 
+    public void setValue(ValueNode value) {
+        updateUsages(this.value, value);
+        this.value = value;
+    }
+
     protected AbstractWriteNode(NodeClass<? extends AbstractWriteNode> c, AddressNode address, LocationIdentity location, ValueNode value, BarrierType barrierType) {
         super(c, address, location, StampFactory.forVoid(), barrierType);
         this.value = value;

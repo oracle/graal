@@ -234,7 +234,7 @@ public final class RegexObject extends AbstractConstantKeysObject {
                     throws UnknownIdentifierException, ArityException, UnsupportedTypeException, UnsupportedMessageException {
         if (args.length != 2) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw ArityException.create(2, args.length);
+            throw ArityException.create(2, 2, args.length);
         }
         Object input = args[0];
         long fromIndex = toLongNode.execute(args[1]);
@@ -333,7 +333,7 @@ public final class RegexObject extends AbstractConstantKeysObject {
                         @Cached ExecCompiledRegexNode execNode) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
             if (args.length != 2) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw ArityException.create(2, args.length);
+                throw ArityException.create(2, 2, args.length);
             }
             Object input = expectStringOrTruffleObjectNode.execute(args[0]);
             long fromIndex = toLongNode.execute(args[1]);
@@ -382,7 +382,7 @@ public final class RegexObject extends AbstractConstantKeysObject {
             RegexObject regexObj = getRegexObject();
             if (args.length != 2) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw ArityException.create(2, args.length);
+                throw ArityException.create(2, 2, args.length);
             }
             byte[] input = expectByteArrayHostObjectNode.execute(args[0]);
             long fromIndex = toLongNode.execute(args[1]);

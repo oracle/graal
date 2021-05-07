@@ -113,7 +113,7 @@ abstract class HostExecuteNode extends Node {
         int arity = cachedMethod.getParameterCount();
         if (args.length != arity) {
             errorBranch.enter();
-            throw ArityException.create(arity, args.length);
+            throw ArityException.create(arity, arity, args.length);
         }
         Class<?>[] types = cachedMethod.getParameterTypes();
         Type[] genericTypes = cachedMethod.getGenericParameterTypes();
@@ -142,7 +142,7 @@ abstract class HostExecuteNode extends Node {
         int minArity = parameterCount - 1;
         if (args.length < minArity) {
             errorBranch.enter();
-            throw ArityException.create(minArity, args.length);
+            throw ArityException.create(minArity, -1, args.length);
         }
         Class<?>[] types = cachedMethod.getParameterTypes();
         Type[] genericTypes = cachedMethod.getGenericParameterTypes();
@@ -178,17 +178,20 @@ abstract class HostExecuteNode extends Node {
                     @Shared("engine") @Cached(value = "languageContext.context.engine", allowUncached = true) PolyglotEngineImpl engine) throws ArityException, UnsupportedTypeException {
         int parameterCount = method.getParameterCount();
         int minArity;
+        int maxArity;
         boolean arityError;
         if (isVarArgsProfile.profile(method.isVarArgs())) {
             minArity = parameterCount - 1;
+            maxArity = -1;
             arityError = args.length < minArity;
         } else {
             minArity = parameterCount;
+            maxArity = method.getParameterCount();
             arityError = args.length != minArity;
         }
         if (arityError) {
             errorBranch.enter();
-            throw ArityException.create(minArity, args.length);
+            throw ArityException.create(minArity, maxArity, args.length);
         }
         Object[] convertedArguments;
         try {
@@ -476,6 +479,7 @@ abstract class HostExecuteNode extends Node {
         int minOverallArity = Integer.MAX_VALUE;
         int maxOverallArity = 0;
         boolean anyVarArgs = false;
+        assert overloads.length > 0;
         for (SingleMethod overload : overloads) {
             int paramCount = overload.getParameterCount();
             if (!overload.isVarArgs()) {
@@ -496,7 +500,7 @@ abstract class HostExecuteNode extends Node {
             applicableByArity.add(overload);
         }
         if (applicableByArity.isEmpty()) {
-            throw ArityException.create((args.length > maxOverallArity ? maxOverallArity : minOverallArity), args.length);
+            throw ArityException.create(minOverallArity, anyVarArgs ? -1 : maxOverallArity, args.length);
         }
 
         SingleMethod best;

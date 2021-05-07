@@ -36,7 +36,7 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
-import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -77,6 +77,7 @@ import org.graalvm.compiler.nodes.java.NewArrayNode;
 import org.graalvm.compiler.nodes.java.StoreIndexedNode;
 import org.graalvm.compiler.nodes.java.ValidateNewInstanceClassNode;
 import org.graalvm.compiler.nodes.spi.ArrayLengthProvider;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.type.NarrowOopStamp;
 import org.graalvm.compiler.nodes.util.GraphUtil;
@@ -111,6 +112,7 @@ import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -120,6 +122,7 @@ import com.oracle.svm.core.graal.jdk.SubstrateArraysCopyOfWithExceptionNode;
 import com.oracle.svm.core.graal.jdk.SubstrateObjectCloneNode;
 import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
 import com.oracle.svm.core.graal.nodes.FarReturnNode;
+import com.oracle.svm.core.graal.nodes.LazyConstantNode;
 import com.oracle.svm.core.graal.nodes.ReadCallerStackPointerNode;
 import com.oracle.svm.core.graal.nodes.ReadReservedRegister;
 import com.oracle.svm.core.graal.nodes.ReadReturnAddressNode;
@@ -133,7 +136,9 @@ import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.ReferenceAccessImpl;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.identityhashcode.SubstrateIdentityHashCodeNode;
+import com.oracle.svm.core.jdk.RecordSupport;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
+import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -154,6 +159,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Local;
 import jdk.vm.ci.meta.LocalVariableTable;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -522,10 +528,10 @@ public class SubstrateGraphBuilderPlugins {
     }
 
     private static void registerUnsafePlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins, SnippetReflectionProvider snippetReflection, ParsingReason reason) {
-        registerUnsafePlugins(metaAccess, new Registration(plugins, sun.misc.Unsafe.class), snippetReflection, reason);
+        registerUnsafePlugins(metaAccess, new Registration(plugins, sun.misc.Unsafe.class), snippetReflection, reason, true);
         if (JavaVersionUtil.JAVA_SPEC > 8) {
             Registration r = new Registration(plugins, "jdk.internal.misc.Unsafe");
-            registerUnsafePlugins(metaAccess, r, snippetReflection, reason);
+            registerUnsafePlugins(metaAccess, r, snippetReflection, reason, false);
 
             r.register3("objectFieldOffset", Receiver.class, Class.class, String.class, new InvocationPlugin() {
                 @Override
@@ -536,7 +542,7 @@ public class SubstrateGraphBuilderPlugins {
                         String fieldName = snippetReflection.asObject(String.class, nameNode.asJavaConstant());
                         try {
                             Field targetField = clazz.getDeclaredField(fieldName);
-                            return processFieldOffset(b, targetField, reason, metaAccess);
+                            return processFieldOffset(b, targetField, reason, metaAccess, false);
                         } catch (NoSuchFieldException | LinkageError e) {
                             return false;
                         }
@@ -570,13 +576,13 @@ public class SubstrateGraphBuilderPlugins {
         }
     }
 
-    private static void registerUnsafePlugins(MetaAccessProvider metaAccess, Registration r, SnippetReflectionProvider snippetReflection, ParsingReason reason) {
+    private static void registerUnsafePlugins(MetaAccessProvider metaAccess, Registration r, SnippetReflectionProvider snippetReflection, ParsingReason reason, boolean isSunMiscUnsafe) {
         r.register2("staticFieldOffset", Receiver.class, Field.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode fieldNode) {
                 if (fieldNode.isConstant()) {
                     Field targetField = snippetReflection.asObject(Field.class, fieldNode.asJavaConstant());
-                    return processFieldOffset(b, targetField, reason, metaAccess);
+                    return processFieldOffset(b, targetField, reason, metaAccess, isSunMiscUnsafe);
                 }
                 return false;
             }
@@ -586,7 +592,7 @@ public class SubstrateGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode fieldNode) {
                 if (fieldNode.isConstant()) {
                     Field targetField = snippetReflection.asObject(Field.class, fieldNode.asJavaConstant());
-                    return processStaticFieldBase(b, targetField, reason, metaAccess);
+                    return processStaticFieldBase(b, targetField, isSunMiscUnsafe);
                 }
                 return false;
 
@@ -597,7 +603,7 @@ public class SubstrateGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode fieldNode) {
                 if (fieldNode.isConstant()) {
                     Field targetField = snippetReflection.asObject(Field.class, fieldNode.asJavaConstant());
-                    return processFieldOffset(b, targetField, reason, metaAccess);
+                    return processFieldOffset(b, targetField, reason, metaAccess, isSunMiscUnsafe);
                 }
                 return false;
             }
@@ -620,44 +626,19 @@ public class SubstrateGraphBuilderPlugins {
         });
     }
 
-    private static boolean processFieldOffset(GraphBuilderContext b, Field targetField, ParsingReason reason, MetaAccessProvider metaAccess) {
-        return processUnsafeAccessedField(targetField, reason, metaAccess, hostedField -> {
-            assert hostedField.wrapped.isUnsafeAccessed();
-            JavaConstant offsetValue = JavaConstant.forLong(hostedField.getLocation());
-            b.addPush(JavaKind.Long, ConstantNode.forConstant(offsetValue, b.getMetaAccess(), b.getGraph()));
-        });
-    }
-
-    private static boolean processStaticFieldBase(GraphBuilderContext b, Field targetField, ParsingReason reason, MetaAccessProvider metaAccess) {
-        return processUnsafeAccessedField(targetField, reason, metaAccess, hostedField -> {
-            assert hostedField.wrapped.isUnsafeAccessed();
-            Object staticFields = hostedField.getType().isPrimitive()
-                            ? StaticFieldsSupport.getStaticPrimitiveFields()
-                            : StaticFieldsSupport.getStaticObjectFields();
-            JavaConstant baseValue = SubstrateObjectConstant.forObject(staticFields);
-            b.addPush(JavaKind.Object, ConstantNode.forConstant(baseValue, b.getMetaAccess(), b.getGraph()));
-        });
-    }
-
-    private static boolean processUnsafeAccessedField(Field targetField, ParsingReason reason, MetaAccessProvider metaAccess, Consumer<HostedField> invokeReplacer) {
-        if (targetField == null) {
-            /* A NullPointerException will be thrown at run time for this call. */
+    private static boolean processFieldOffset(GraphBuilderContext b, Field targetField, ParsingReason reason, MetaAccessProvider metaAccess, boolean isSunMiscUnsafe) {
+        if (!isValidField(targetField, isSunMiscUnsafe)) {
             return false;
         }
 
         if (reason == ParsingReason.PointsToAnalysis) {
             /* Register the field for unsafe access. */
             registerAsUnsafeAccessed(metaAccess, targetField);
-            /* Return false; the call is not replaced. */
-            return false;
+
         } else {
-            /* Compute the offset value and constant fold the call. */
             HostedMetaAccess hostedMetaAccess = (HostedMetaAccess) metaAccess;
             HostedField hostedField = hostedMetaAccess.lookupJavaField(targetField);
-            if (hostedField.wrapped.isUnsafeAccessed()) {
-                invokeReplacer.accept(hostedField);
-                return true;
-            } else {
+            if (!hostedField.wrapped.isUnsafeAccessed()) {
                 /*
                  * The target field was not constant folded during static analysis, so the above
                  * unsafe access registration did not run. A UnsupportedFeatureError will be thrown
@@ -666,6 +647,62 @@ public class SubstrateGraphBuilderPlugins {
                 return false;
             }
         }
+
+        /* Usage of lambdas is not allowed in Graal nodes, so need explicit inner class. */
+        Function<CoreProviders, JavaConstant> fieldOffsetConstantProvider = new Function<CoreProviders, JavaConstant>() {
+            @Override
+            public JavaConstant apply(CoreProviders providers) {
+                ResolvedJavaField rField = providers.getMetaAccess().lookupJavaField(targetField);
+                if (rField instanceof SharedField) {
+                    long fieldOffset = ((SharedField) rField).getLocation();
+                    assert fieldOffset > 0;
+                    return JavaConstant.forLong(fieldOffset);
+                }
+                return null;
+            }
+        };
+
+        b.addPush(JavaKind.Long, LazyConstantNode.create(StampFactory.forKind(JavaKind.Long), fieldOffsetConstantProvider, b));
+        return true;
+    }
+
+    private static boolean isValidField(Field targetField, boolean isSunMiscUnsafe) {
+        if (targetField == null) {
+            /* A NullPointerException will be thrown at run time for this call. */
+            return false;
+        }
+        if (isSunMiscUnsafe && JavaVersionUtil.JAVA_SPEC >= 16 &&
+                        (RecordSupport.singleton().isRecord(targetField.getDeclaringClass()) || SubstrateUtil.isHiddenClass(targetField.getDeclaringClass()))) {
+            /*
+             * After JDK 11, sun.misc.Unsafe performs a few more checks than
+             * jdk.internal.misc.Unsafe to explicitly disallow hidden classes and records.
+             */
+            return false;
+        }
+        return true;
+    }
+
+    private static final Function<CoreProviders, JavaConstant> primitiveStaticFieldBaseConstant = new Function<CoreProviders, JavaConstant>() {
+        @Override
+        public JavaConstant apply(CoreProviders providers) {
+            return StaticFieldsSupport.dataAvailable() ? SubstrateObjectConstant.forObject(StaticFieldsSupport.getStaticPrimitiveFields()) : null;
+        }
+    };
+    private static final Function<CoreProviders, JavaConstant> objectStaticFieldBaseConstant = new Function<CoreProviders, JavaConstant>() {
+        @Override
+        public JavaConstant apply(CoreProviders providers) {
+            return StaticFieldsSupport.dataAvailable() ? SubstrateObjectConstant.forObject(StaticFieldsSupport.getStaticObjectFields()) : null;
+        }
+    };
+
+    private static boolean processStaticFieldBase(GraphBuilderContext b, Field targetField, boolean isSunMiscUnsafe) {
+        if (!isValidField(targetField, isSunMiscUnsafe)) {
+            return false;
+        }
+
+        b.addPush(JavaKind.Object, LazyConstantNode.create(StampFactory.objectNonNull(),
+                        targetField.getType().isPrimitive() ? primitiveStaticFieldBaseConstant : objectStaticFieldBaseConstant, b));
+        return true;
     }
 
     private static void registerArrayPlugins(InvocationPlugins plugins, SnippetReflectionProvider snippetReflection, ParsingReason reason) {

@@ -1523,7 +1523,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         }
 
         if (e instanceof ArityException) {
-            int expectedArity = ((ArityException) e).getExpectedArity();
+            int expectedArity = ((ArityException) e).getExpectedMinArity();
             int actualArity = ((ArityException) e).getActualArity();
             Throwable cause = e.getCause();
             StaticObject exception = (cause == null || !(cause instanceof AbstractTruffleException))

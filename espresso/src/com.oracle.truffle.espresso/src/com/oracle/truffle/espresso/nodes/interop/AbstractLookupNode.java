@@ -71,7 +71,7 @@ public abstract class AbstractLookupNode extends Node {
             }
         }
         if (result == null && maxOverallArity >= 0) {
-            throw ArityException.create(arity > maxOverallArity ? maxOverallArity : minOverallArity, arity);
+            throw ArityException.create(minOverallArity, maxOverallArity, arity);
         }
         return result;
     }

@@ -193,7 +193,7 @@ class RenaissanceNativeImageBenchmarkSuite(mx_java_benchmarks.RenaissanceBenchma
         if user_args:
             return user_args + [benchmark]
         else:
-            return ['-r', '5'] + [benchmark]
+            return ['-r', '10'] + [benchmark]
 
     def skip_agent_assertions(self, benchmark, args):
         user_args = super(RenaissanceNativeImageBenchmarkSuite, self).skip_agent_assertions(benchmark, args)
@@ -203,7 +203,7 @@ class RenaissanceNativeImageBenchmarkSuite(mx_java_benchmarks.RenaissanceBenchma
             return []
 
     def extra_image_build_argument(self, benchmark, args):
-        default_args = _RENAISSANCE_EXTRA_IMAGE_BUILD_ARGS[benchmark] if benchmark in _DACAPO_EXTRA_IMAGE_BUILD_ARGS else []
+        default_args = _RENAISSANCE_EXTRA_IMAGE_BUILD_ARGS[benchmark] if benchmark in _RENAISSANCE_EXTRA_IMAGE_BUILD_ARGS else []
         return default_args + super(RenaissanceNativeImageBenchmarkSuite, self).extra_image_build_argument(benchmark, args)
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
@@ -468,7 +468,7 @@ class DaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.DaCapoBenchmarkSuite, B
             return [benchmark] + user_args
         else:
             # extra-agent-profile-run-arg is used to pass a number of agent runs to provide profiles
-            return [benchmark] + ['-n', '5']
+            return [benchmark] + ['-n', '10']
 
     def skip_agent_assertions(self, benchmark, args):
         default_args = _DACAPO_SKIP_AGENT_ASSERTIONS[benchmark] if benchmark in _DACAPO_SKIP_AGENT_ASSERTIONS else []

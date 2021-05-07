@@ -332,7 +332,12 @@ final class ParserDriver {
         if (index == -1) {
             return name;
         }
-        return name.substring(0, index);
+        String substring = name.substring(0, index);
+        if (substring.equals("sulong")) {
+            // use common name on all platforms
+            return "libsulong";
+        }
+        return substring;
     }
 
     /**

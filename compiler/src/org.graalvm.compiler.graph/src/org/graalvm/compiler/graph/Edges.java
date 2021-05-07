@@ -199,11 +199,6 @@ public abstract class Edges extends Fields {
         }
     }
 
-    @Override
-    public void set(Object node, int index, Object value) {
-        throw new IllegalArgumentException("Cannot call set on " + this);
-    }
-
     /**
      * Sets the value of a given edge without notifying the new and old nodes on the other end of
      * the edge of the change.

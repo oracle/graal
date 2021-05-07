@@ -59,6 +59,10 @@ public class CompareAndSetVMThreadLocalNode extends AbstractStateSplit implement
         this.update = update;
     }
 
+    public ValueNode getUpdate() {
+        return update;
+    }
+
     @Override
     public void lower(LoweringTool tool) {
         assert threadLocalInfo.offset >= 0;

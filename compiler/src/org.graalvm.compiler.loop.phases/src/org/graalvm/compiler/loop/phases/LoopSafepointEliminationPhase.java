@@ -65,11 +65,11 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
         if (loop.counted().getStamp().getBits() <= 32) {
             return true;
         }
-        final Stamp limitStamp = loop.counted().getLimit().stamp(NodeView.DEFAULT);
+        final Stamp limitStamp = loop.counted().getTripCountLimit().stamp(NodeView.DEFAULT);
         if (limitStamp instanceof IntegerStamp) {
             final IntegerStamp limitIStamp = (IntegerStamp) limitStamp;
             final long upperBoundLimit = limitIStamp.upperBound();
-            final Stamp startStamp = loop.counted().getStart().stamp(NodeView.DEFAULT);
+            final Stamp startStamp = loop.counted().getBodyIVStart().stamp(NodeView.DEFAULT);
             if (startStamp instanceof IntegerStamp) {
                 final IntegerStamp startIStamp = (IntegerStamp) startStamp;
                 final long lowerBoundStart = startIStamp.lowerBound();

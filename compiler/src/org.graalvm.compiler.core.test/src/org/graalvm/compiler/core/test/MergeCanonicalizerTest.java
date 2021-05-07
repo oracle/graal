@@ -24,10 +24,6 @@
  */
 package org.graalvm.compiler.core.test;
 
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.nodes.ReturnNode;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.junit.Test;
 
@@ -48,7 +44,6 @@ public class MergeCanonicalizerTest extends GraalCompilerTest {
     @Test
     public void testSplitReturn() {
         test("testSplitReturnSnippet", 2);
-        testReturnCount("testSplitReturnSnippet", 2);
     }
 
     public int testSplitReturnSnippet(int b) {
@@ -65,11 +60,4 @@ public class MergeCanonicalizerTest extends GraalCompilerTest {
         return v;
     }
 
-    private void testReturnCount(String snippet, int returnCount) {
-        StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
-        createCanonicalizerPhase().apply(graph, getProviders());
-        createCanonicalizerPhase().apply(graph, getProviders());
-        graph.getDebug().dump(DebugContext.BASIC_LEVEL, graph, "Graph");
-        assertDeepEquals(returnCount, graph.getNodes(ReturnNode.TYPE).count());
-    }
 }

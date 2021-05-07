@@ -104,10 +104,4 @@ public final class IsolatedObjectConstant extends SubstrateObjectConstant {
         Object target = IsolatedCompileClient.get().unhand(h);
         return computeIdentityHashCode(target);
     }
-
-    @Override
-    public String toString() {
-        return getJavaKind().getJavaName();
-    }
-
 }

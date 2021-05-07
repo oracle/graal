@@ -62,8 +62,8 @@ import com.oracle.truffle.espresso.jdwp.api.TagConstants;
 import com.oracle.truffle.espresso.jdwp.api.VMListener;
 import com.oracle.truffle.espresso.jdwp.impl.DebuggerController;
 import com.oracle.truffle.espresso.jdwp.impl.EmptyListener;
+import com.oracle.truffle.espresso.jdwp.impl.JDWP;
 import com.oracle.truffle.espresso.jdwp.impl.JDWPInstrument;
-import com.oracle.truffle.espresso.jdwp.impl.JDWPLogger;
 import com.oracle.truffle.espresso.jdwp.impl.TypeTag;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoInstrumentableNode;
@@ -738,7 +738,7 @@ public final class JDWPContextImpl implements JDWPContext {
                             // while rerunning class initializers
                             // in the guest, some anomalies are to
                             // be expected. Treat those as non-fatal
-                            JDWPLogger.log("Exception caught while re-running <clinit>", JDWPLogger.LogLevel.REDEFINE);
+                            JDWP.LOGGER.fine(() -> "Exception caught while re-running <clinit>");
                         }
                     }
                 } finally {
@@ -753,17 +753,39 @@ public final class JDWPContextImpl implements JDWPContext {
         queue.add(new ReloadingAction(oldKlass));
     }
 
-    @Override
     public synchronized int redefineClasses(List<RedefineInfo> redefineInfos) {
         if (reloaderThread == null) {
             initializeReloaderThread();
         }
+        // list to collect all changed classes
         List<ObjectKlass> changedKlasses = new ArrayList<>(redefineInfos.size());
         try {
-            // begin redefine transaction
-            ClassRedefinition.begin();
+            JDWP.LOGGER.fine(() -> "Redefining " + redefineInfos.size() + " classes");
 
-            // list to collect all changed classes
+            // list of sub classes that needs to refresh things like vtable
+            List<ObjectKlass> refreshSubClasses = new ArrayList<>();
+
+            // match anon inner classes with previous state
+            List<ObjectKlass> removedInnerClasses = new ArrayList<>(0);
+            HotSwapClassInfo[] matchedInfos = innerClassRedefiner.matchAnonymousInnerClasses(redefineInfos, removedInnerClasses);
+
+            // detect all changes to all classes, throws if redefinition cannot be completed
+            // due to the nature of the changes
+            List<ChangePacket> changePackets = classRedefinition.detectClassChanges(matchedInfos);
+
+            for (ChangePacket packet : changePackets) {
+                JDWP.LOGGER.fine(() -> "Redefining class " + packet.info.getNewName());
+                int result = classRedefinition.redefineClass(packet, refreshSubClasses);
+                if (result != 0) {
+                    return result;
+                }
+            }
+            // refresh subclasses when needed
+            Collections.sort(refreshSubClasses, new SubClassHierarchyComparator());
+            for (ObjectKlass subKlass : refreshSubClasses) {
+                JDWP.LOGGER.fine(() -> "Updating sub class " + subKlass.getName() + " for redefined super class");
+                subKlass.onSuperKlassUpdate();
+            }
 
             // redefine classes based on direct code changes first
             doRedefine(redefineInfos, changedKlasses);
@@ -783,7 +805,7 @@ public final class JDWPContextImpl implements JDWPContext {
         try {
             classRedefinition.runPostRedefintionListeners(changedKlasses.toArray(new ObjectKlass[changedKlasses.size()]));
         } catch (Throwable t) {
-            JDWPLogger.throwing(JDWPLogger.LogLevel.REDEFINE, t);
+            JDWP.LOGGER.throwing(JDWPContextImpl.class.getName(), "redefineClasses", t);
         }
         return 0;
     }
@@ -805,7 +827,7 @@ public final class JDWPContextImpl implements JDWPContext {
         Collections.sort(changePackets, new HierarchyComparator());
 
         for (ChangePacket packet : changePackets) {
-            JDWPLogger.log("Redefining extra class %s", JDWPLogger.LogLevel.REDEFINE, packet.info.getNewName());
+            JDWP.LOGGER.fine(() -> "Redefining extra class " + packet.info.getNewName());
             int result = classRedefinition.redefineClass(packet, refreshSubClasses);
             if (result != 0) {
                 throw new RedefintionNotSupportedException(result);
@@ -815,7 +837,7 @@ public final class JDWPContextImpl implements JDWPContext {
         // refresh subclasses when needed
         Collections.sort(refreshSubClasses, new SubClassHierarchyComparator());
         for (ObjectKlass subKlass : refreshSubClasses) {
-            JDWPLogger.log("Updating sub class %s for redefined super class", JDWPLogger.LogLevel.REDEFINE, subKlass.getName());
+            JDWP.LOGGER.fine(() -> "Updating sub class " + subKlass.getName() + " for redefined super class");
             subKlass.onSuperKlassUpdate();
         }
 

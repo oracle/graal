@@ -274,7 +274,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
     }
 
     @Snippet
-    public void g1ArrayRangePreWriteBarrier(Address address, int length, @ConstantParameter int elementStride) {
+    public void g1ArrayRangePreWriteBarrier(Address address, long length, @ConstantParameter int elementStride) {
         Word thread = getThread();
         byte markingValue = thread.readByte(satbQueueMarkingOffset(), SATB_QUEUE_MARKING_LOCATION);
         // If the concurrent marker is not enabled or the vector length is zero, return.
@@ -308,7 +308,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
     }
 
     @Snippet
-    public void g1ArrayRangePostWriteBarrier(Address address, int length, @ConstantParameter int elementStride) {
+    public void g1ArrayRangePostWriteBarrier(Address address, long length, @ConstantParameter int elementStride) {
         if (probability(NOT_FREQUENT_PROBABILITY, length == 0)) {
             return;
         }
@@ -531,7 +531,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
         public void lower(AbstractTemplates templates, SnippetInfo snippet, G1ArrayRangePreWriteBarrier barrier, LoweringTool tool) {
             Arguments args = new Arguments(snippet, barrier.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("address", barrier.getAddress());
-            args.add("length", barrier.getLength());
+            args.add("length", barrier.getLengthAsLong());
             args.addConst("elementStride", barrier.getElementStride());
 
             templates.template(barrier, args).instantiate(templates.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);
@@ -540,7 +540,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
         public void lower(AbstractTemplates templates, SnippetInfo snippet, G1ArrayRangePostWriteBarrier barrier, LoweringTool tool) {
             Arguments args = new Arguments(snippet, barrier.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("address", barrier.getAddress());
-            args.add("length", barrier.getLength());
+            args.add("length", barrier.getLengthAsLong());
             args.addConst("elementStride", barrier.getElementStride());
 
             templates.template(barrier, args).instantiate(templates.getMetaAccess(), barrier, SnippetTemplate.DEFAULT_REPLACER, args);

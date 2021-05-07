@@ -1757,6 +1757,9 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
 
     private PolyglotContextImpl loadPreinitializedContext(PolyglotContextConfig config, HostAccess hostAccess) {
         PolyglotContextImpl context = preInitializedContext.getAndSet(null);
+        if (!getEngineOptionValues().get(PolyglotEngineOptions.UsePreInitializedContext)) {
+            context = null;
+        }
         if (context != null) {
             FileSystems.PreInitializeContextFileSystem preInitFs = (FileSystems.PreInitializeContextFileSystem) context.config.fileSystem;
             preInitFs.onLoadPreinitializedContext(config.fileSystem);

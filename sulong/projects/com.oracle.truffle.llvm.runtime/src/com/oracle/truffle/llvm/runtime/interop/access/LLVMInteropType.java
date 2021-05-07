@@ -336,7 +336,7 @@ public abstract class LLVMInteropType implements TruffleObject {
             if (superclass != null) {
                 return superclass.findMethodByArgumentsWithSelf(memberName, arguments);
             } else if (expectedArgCount >= 0) {
-                throw ArityException.create(expectedArgCount, arguments.length - 1);
+                throw ArityException.create(expectedArgCount, expectedArgCount, arguments.length - 1);
             }
             return null;
         }

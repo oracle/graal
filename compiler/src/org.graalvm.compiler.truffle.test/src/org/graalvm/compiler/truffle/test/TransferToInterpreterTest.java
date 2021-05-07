@@ -27,6 +27,7 @@ package org.graalvm.compiler.truffle.test;
 import java.util.Map;
 
 import org.graalvm.compiler.truffle.common.TruffleCompilation;
+import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.common.TruffleDebugContext;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
@@ -47,6 +48,39 @@ public class TransferToInterpreterTest extends TestWithPolyglotOptions {
         setupContext("engine.CompileImmediately", Boolean.FALSE.toString());
     }
 
+    @Test
+    public void test() {
+        RootNode rootNode = new TestRootNode();
+        GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
+        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
+        target.call(0);
+        Assert.assertFalse(target.isValid());
+        final OptimizedCallTarget compilable = target;
+        TruffleCompiler compiler = runtime.getTruffleCompiler(compilable);
+        Map<String, Object> options = GraalTruffleRuntime.getOptionsForCompiler(target);
+        try (TruffleCompilation compilation = compiler.openCompilation(compilable)) {
+            TruffleDebugContext debug = compiler.openDebugContext(options, compilation);
+            compiler.doCompile(debug, compilation, options, new TruffleInlining(), new TestTruffleCompilationTask(), null);
+        }
+        Assert.assertTrue(target.isValid());
+        target.call(0);
+        Assert.assertTrue(target.isValid());
+        target.call(1);
+        Assert.assertFalse(target.isValid());
+    }
+
+    private static class TestTruffleCompilationTask implements TruffleCompilationTask {
+        @Override
+        public boolean isCancelled() {
+            return false;
+        }
+
+        @Override
+        public boolean isLastTier() {
+            return true;
+        }
+    }
+
     private final class TestRootNode extends RootNode {
 
         private TestRootNode() {
@@ -63,26 +97,5 @@ public class TransferToInterpreterTest extends TestWithPolyglotOptions {
             }
             return null;
         }
-    }
-
-    @Test
-    public void test() {
-        RootNode rootNode = new TestRootNode();
-        GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
-        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
-        target.call(0);
-        Assert.assertFalse(target.isValid());
-        final OptimizedCallTarget compilable = target;
-        TruffleCompiler compiler = runtime.getTruffleCompiler(compilable);
-        Map<String, Object> options = GraalTruffleRuntime.getOptionsForCompiler(target);
-        try (TruffleCompilation compilation = compiler.openCompilation(compilable)) {
-            TruffleDebugContext debug = compiler.openDebugContext(options, compilation);
-            compiler.doCompile(debug, compilation, options, new TruffleInlining(), null, null);
-        }
-        Assert.assertTrue(target.isValid());
-        target.call(0);
-        Assert.assertTrue(target.isValid());
-        target.call(1);
-        Assert.assertFalse(target.isValid());
     }
 }

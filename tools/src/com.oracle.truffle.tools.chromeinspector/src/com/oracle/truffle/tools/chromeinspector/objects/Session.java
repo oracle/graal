@@ -246,7 +246,7 @@ class Session extends AbstractInspectorObject {
 
     private Object emit(Object[] arguments) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
         if (arguments.length < 1) {
-            throw ArityException.create(1, arguments.length);
+            throw ArityException.create(1, -1, arguments.length);
         }
         Object eventName = arguments[0];
         Object[] listenerArgs = new Object[arguments.length - 1];
@@ -256,7 +256,7 @@ class Session extends AbstractInspectorObject {
 
     private Object post(Object[] arguments) throws ArityException, UnsupportedTypeException {
         if (arguments.length < 1) {
-            throw ArityException.create(1, arguments.length);
+            throw ArityException.create(1, -1, arguments.length);
         }
         if (!(arguments[0] instanceof String)) {
             throw UnsupportedTypeException.create(new Object[]{arguments[0]});
@@ -302,7 +302,7 @@ class Session extends AbstractInspectorObject {
 
     private static boolean requireListenerArguments(Object[] arguments) throws ArityException {
         if (arguments.length < 2) {
-            throw ArityException.create(2, arguments.length);
+            throw ArityException.create(2, -1, arguments.length);
         }
         if (!InteropLibrary.getFactory().getUncached().isExecutable(arguments[1])) {
             throw new IllegalArgumentException("The \"listener\" argument must be of type Function");
@@ -469,30 +469,14 @@ class Session extends AbstractInspectorObject {
                         arguments[0] = undefinedProvider.get();
                         arguments[1] = result != null ? new JSONTruffleObject(result) : undefinedProvider.get();
                     }
-                    try {
-                        InteropLibrary.getFactory().getUncached().execute(callback, arguments);
-                    } catch (UnsupportedTypeException ex) {
-                        throw UnsupportedTypeException.create(ex.getSuppliedValues());
-                    } catch (ArityException ex) {
-                        throw ArityException.create(ex.getExpectedArity(), ex.getActualArity());
-                    } catch (UnsupportedMessageException ex) {
-                        throw UnsupportedMessageException.create();
-                    }
+                    InteropLibrary.getFactory().getUncached().execute(callback, arguments);
                 }
             }
         }
 
         private static void notify(TruffleObject[] ls, TruffleObject event) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
             for (TruffleObject listener : ls) {
-                try {
-                    InteropLibrary.getFactory().getUncached().execute(listener, event);
-                } catch (UnsupportedTypeException ex) {
-                    throw UnsupportedTypeException.create(ex.getSuppliedValues());
-                } catch (ArityException ex) {
-                    throw ArityException.create(ex.getExpectedArity(), ex.getActualArity());
-                } catch (UnsupportedMessageException ex) {
-                    throw UnsupportedMessageException.create();
-                }
+                InteropLibrary.getFactory().getUncached().execute(listener, event);
             }
         }
 
@@ -502,15 +486,7 @@ class Session extends AbstractInspectorObject {
                 return false;
             } else {
                 for (TruffleObject listener : ls) {
-                    try {
-                        InteropLibrary.getFactory().getUncached().execute(listener, listenerArgs);
-                    } catch (UnsupportedTypeException ex) {
-                        throw UnsupportedTypeException.create(ex.getSuppliedValues());
-                    } catch (ArityException ex) {
-                        throw ArityException.create(ex.getExpectedArity(), ex.getActualArity());
-                    } catch (UnsupportedMessageException ex) {
-                        throw UnsupportedMessageException.create();
-                    }
+                    InteropLibrary.getFactory().getUncached().execute(listener, listenerArgs);
                 }
                 return true;
             }
@@ -537,18 +513,7 @@ class Session extends AbstractInspectorObject {
             @ExportMessage
             final Object execute(Object[] arguments, @CachedLibrary("this.listener") InteropLibrary library) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
                 listeners.removeListener(eventName, this);
-                try {
-                    return library.execute(listener, arguments);
-                } catch (ArityException ex) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw ArityException.create(ex.getExpectedArity(), ex.getActualArity());
-                } catch (UnsupportedMessageException ex) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw UnsupportedMessageException.create();
-                } catch (UnsupportedTypeException ex) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw UnsupportedTypeException.create(ex.getSuppliedValues());
-                }
+                return library.execute(listener, arguments);
             }
         }
     }

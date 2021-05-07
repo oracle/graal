@@ -997,6 +997,25 @@ public abstract class Accessor {
             return TruffleJDKServices.isNonTruffleClass(clazz);
         }
 
+        public void fullFence() {
+            TruffleJDKServices.fullFence();
+        }
+
+        public void acquireFence() {
+            TruffleJDKServices.acquireFence();
+        }
+
+        public void releaseFence() {
+            TruffleJDKServices.releaseFence();
+        }
+
+        public void loadLoadFence() {
+            TruffleJDKServices.loadLoadFence();
+        }
+
+        public void storeStoreFence() {
+            TruffleJDKServices.storeStoreFence();
+        }
     }
 
 // A separate class to break the cycle such that Accessor can fully initialize
@@ -1069,6 +1088,7 @@ public abstract class Accessor {
             case "org.graalvm.compiler.truffle.runtime.GraalRuntimeAccessor":
             case "org.graalvm.compiler.truffle.runtime.debug.CompilerDebugAccessor":
             case "com.oracle.truffle.api.dsl.DSLAccessor":
+            case "com.oracle.truffle.api.memory.MemoryFenceAccessor":
             case "com.oracle.truffle.api.library.LibraryAccessor":// OK, classes allowed to use
                                                                   // accessors
                 break;

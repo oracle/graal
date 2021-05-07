@@ -24,8 +24,8 @@
  */
 package org.graalvm.compiler.nodes.extended;
 
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_UNKNOWN;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_4;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_4;
 
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
@@ -44,7 +44,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  *
  * @see ObjectIsArrayNode
  */
-@NodeInfo(cycles = CYCLES_UNKNOWN, size = SIZE_UNKNOWN)
+@NodeInfo(cycles = CYCLES_4, size = SIZE_4)
 public final class ClassIsArrayNode extends LogicNode implements Canonicalizable.Unary<ValueNode>, Lowerable {
     public static final NodeClass<ClassIsArrayNode> TYPE = NodeClass.create(ClassIsArrayNode.class);
 

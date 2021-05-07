@@ -93,6 +93,7 @@ import com.oracle.svm.driver.MacroOption.Registry;
 import com.oracle.svm.hosted.AbstractNativeImageClassLoaderSupport;
 import com.oracle.svm.hosted.NativeImageGeneratorRunner;
 import com.oracle.svm.hosted.NativeImageSystemClassLoader;
+import com.oracle.svm.util.ModuleSupport;
 
 public class NativeImage {
 
@@ -100,6 +101,8 @@ public class NativeImage {
     static final boolean USE_NI_JPMS = System.getenv().getOrDefault("USE_NATIVE_IMAGE_JAVA_PLATFORM_MODULE_SYSTEM", "false").toLowerCase().equals("true");
 
     private static final String DEFAULT_GENERATOR_CLASS_NAME = NativeImageGeneratorRunner.class.getName();
+    private static final String DEFAULT_GENERATOR_MODULE_NAME = ModuleSupport.getModuleName(NativeImageGeneratorRunner.class);
+
     private static final String DEFAULT_GENERATOR_9PLUS_SUFFIX = "$JDK9Plus";
     private static final String CUSTOM_SYSTEM_CLASS_LOADER = NativeImageSystemClassLoader.class.getCanonicalName();
 
@@ -1474,7 +1477,11 @@ public class NativeImage {
         if (!cp.isEmpty()) {
             command.addAll(Arrays.asList("-cp", cp.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator))));
         }
-        command.add(USE_NI_JPMS ? DEFAULT_GENERATOR_CLASS_NAME : config.getGeneratorMainClass());
+        if (USE_NI_JPMS) {
+            command.addAll(Arrays.asList("--module", DEFAULT_GENERATOR_MODULE_NAME + "/" + DEFAULT_GENERATOR_CLASS_NAME));
+        } else {
+            command.add(config.getGeneratorMainClass());
+        }
         if (IS_AOT && OS.getCurrent().hasProcFS) {
             /*
              * GR-8254: Ensure image-building VM shuts down even if native-image dies unexpected

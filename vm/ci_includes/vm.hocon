@@ -23,10 +23,10 @@ vm_common_windows_jdk8: ${svm-common-windows-openjdk8}
 
 svm_suite: /substratevm
 vm_extra_suites: "/graal-nodejs,truffleruby,graalpython,fastr,/wasm,/espresso"
-vm_extra_suites_aarch64: "/graal-nodejs,/wasm,/espresso"
+vm_extra_suites_aarch64: "/graal-nodejs,truffleruby,/wasm,/espresso"
 vm_extra_suites_windows: "/graal-nodejs,/wasm,/espresso"
 vm_extra_suites_java16: "/graal-nodejs,truffleruby,graalpython,fastr,/wasm"
-vm_extra_suites_aarch64_java16: "/graal-nodejs,/wasm"
+vm_extra_suites_aarch64_java16: "/graal-nodejs,truffleruby,/wasm"
 vm_extra_suites_windows_java16: "/graal-nodejs,/wasm"
 custom_vm_linux: {}
 custom_vm_darwin: {}
@@ -41,7 +41,7 @@ vm_setup: {
   short_name: ce
   setup: [
     [set-export, VM_ENV, ce]
-    [set-export, RELEASE_CATALOG, "https://www.graalvm.org/component-catalog/graal-updater-component-catalog-java${BASE_JDK_SHORT_VERSION}.properties"]
+    [set-export, RELEASE_CATALOG, "https://www.graalvm.org/component-catalog/v2/graal-updater-component-catalog-java${BASE_JDK_SHORT_VERSION}.properties"]
     [set-export, SNAPSHOT_CATALOG, [mx, urlrewrite, "http://www.graalvm.org/catalog/ce/java${BASE_JDK_SHORT_VERSION}"]]
     [cd, ${vm_subdir}]
   ]

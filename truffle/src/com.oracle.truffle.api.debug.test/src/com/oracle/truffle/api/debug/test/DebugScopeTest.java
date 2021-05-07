@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.debug.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -54,6 +55,7 @@ import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
+import java.util.Iterator;
 
 public class DebugScopeTest extends AbstractDebugTest {
 
@@ -218,4 +220,51 @@ public class DebugScopeTest extends AbstractDebugTest {
         }
     }
 
+    @Test
+    public void testNoCallNode() {
+        Source source = Source.create(ProxyLanguage.ID, "abcde");
+        ProxyLanguage.setDelegate(new NoCallNodeTestLanguage());
+
+        try (DebuggerSession session = startSession()) {
+            session.suspendNextExecution();
+            startEval(source);
+
+            expectSuspended((SuspendedEvent event) -> {
+                checkNoCallFrames(event, 1);
+                event.prepareStepInto(1);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkNoCallFrames(event, 2);
+                event.prepareStepInto(1);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkNoCallFrames(event, 3);
+                event.prepareStepInto(1);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkNoCallFrames(event, 4);
+                event.prepareStepInto(1);
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                checkNoCallFrames(event, 5);
+                event.prepareStepInto(1);
+            });
+            expectDone();
+        }
+    }
+
+    private static void checkNoCallFrames(SuspendedEvent event, int depth) {
+        DebugScope scope = event.getTopStackFrame().getScope();
+        assertNotNull(scope);
+        assertFalse(scope.getDeclaredValues().iterator().hasNext());
+
+        Iterator<DebugStackFrame> iterator = event.getStackFrames().iterator();
+        iterator.next(); // top frame
+        for (int d = 1; d < depth; d++) {
+            assertTrue("No next frame at dept " + d, iterator.hasNext());
+            DebugStackFrame frame = iterator.next();
+            assertEquals("abcde".substring(depth - d - 1), frame.getName());
+            assertNull(frame.getScope());
+        }
+    }
 }

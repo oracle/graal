@@ -37,6 +37,7 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
+import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.BackgroundCompileQueue;
@@ -275,8 +276,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
         }
 
         try {
-            // Single threaded compilation does not require cancellation.
-            doCompile(optimizedCallTarget, null);
+            doCompile(optimizedCallTarget, lastTierCompilation ? SingleThreadedCompilationTask.lastTier : SingleThreadedCompilationTask.firstTier);
         } catch (com.oracle.truffle.api.OptimizationFailedException e) {
             if (optimizedCallTarget.getOptionValue(PolyglotCompilerOptions.CompilationExceptionsArePrinted)) {
                 Log.log().string(printStackTraceToString(e));
@@ -374,6 +374,30 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
                 return super.isSuppressedFailure(compilable, serializedException);
             default:
                 throw new IllegalStateException("Unsupported value " + res);
+        }
+    }
+
+    /**
+     * Compilation task used when truffle runtime is run in single threaded mode.
+     */
+    private static class SingleThreadedCompilationTask implements TruffleCompilationTask {
+        private final boolean lastTierCompilation;
+        static SingleThreadedCompilationTask firstTier = new SingleThreadedCompilationTask(false);
+        static SingleThreadedCompilationTask lastTier = new SingleThreadedCompilationTask(true);
+
+        SingleThreadedCompilationTask(boolean lastTierCompilation) {
+            this.lastTierCompilation = lastTierCompilation;
+        }
+
+        @Override
+        public boolean isCancelled() {
+            // Single threaded compilation does not require cancellation.
+            return false;
+        }
+
+        @Override
+        public boolean isLastTier() {
+            return lastTierCompilation;
         }
     }
 }

@@ -881,6 +881,15 @@ meth public static com.oracle.truffle.api.memory.ByteArraySupport bigEndian()
 meth public static com.oracle.truffle.api.memory.ByteArraySupport littleEndian()
 supr java.lang.Object
 
+CLSS public final com.oracle.truffle.api.memory.MemoryFence
+cons private init()
+meth public static void acquire()
+meth public static void full()
+meth public static void loadLoad()
+meth public static void release()
+meth public static void storeStore()
+supr java.lang.Object
+
 CLSS public abstract com.oracle.truffle.api.nodes.BlockNode<%0 extends com.oracle.truffle.api.nodes.Node>
 cons protected init({com.oracle.truffle.api.nodes.BlockNode%0}[])
 fld public final static int NO_ARGUMENT = 0

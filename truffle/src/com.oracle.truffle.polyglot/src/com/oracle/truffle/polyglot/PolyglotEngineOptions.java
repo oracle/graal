@@ -93,4 +93,8 @@ final class PolyglotEngineOptions {
                     "Print warning when the engine is using a default Truffle runtime.")//
     static final OptionKey<Boolean> WarnInterpreterOnly = new OptionKey<>(true);
 
+    @Option(category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, help = "" +
+                    "Use pre-initialized context when it's available.")//
+    static final OptionKey<Boolean> UsePreInitializedContext = new OptionKey<>(true);
+
 }

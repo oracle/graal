@@ -231,8 +231,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     private AnalysisType[] convertTypes(ResolvedJavaType[] originalTypes) {
         List<AnalysisType> result = new ArrayList<>(originalTypes.length);
         for (ResolvedJavaType originalType : originalTypes) {
-            if (!universe.platformSupported(originalType)) {
-                /* Ignore types that are not in our platform (including hosted-only types). */
+            if (universe.hostVM.skipInterface(universe, originalType, wrapped)) {
                 continue;
             }
             result.add(universe.lookup(originalType));

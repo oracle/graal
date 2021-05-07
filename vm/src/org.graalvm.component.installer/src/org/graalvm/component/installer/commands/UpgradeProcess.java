@@ -502,7 +502,7 @@ public class UpgradeProcess implements AutoCloseable {
             } else {
                 Set<String> miss = new HashSet<>(toMigrate);
                 miss.removeAll(canMigrate);
-                missingParts.put(candidate, miss.stream().map((id) -> input.getRegistry().findComponent(id)).collect(Collectors.toSet()));
+                missingParts.put(candidate, miss.stream().map((id) -> input.getLocalRegistry().findComponent(id)).collect(Collectors.toSet()));
             }
         }
         if (installables == null) {
@@ -525,7 +525,11 @@ public class UpgradeProcess implements AutoCloseable {
 
                     feedback.error("UPGRADE_MissingComponents", null, core.getName(), core.getVersion().displayString(), msg);
                 }
-                throw feedback.failure("UPGRADE_ComponentsCannotMigrate", null);
+                if (editionUpgrade != null) {
+                    throw feedback.failure("UPGRADE_ComponentsMissingFromEdition", null, editionUpgrade);
+                } else {
+                    throw feedback.failure("UPGRADE_ComponentsCannotMigrate", null);
+                }
             }
             if (versions.isEmpty()) {
                 throw feedback.failure("UPGRADE_NoVersionSatisfiesComponents", null);

@@ -461,6 +461,10 @@ class BaseShopCartBenchmarkSuite(object):
         else:
             return []
 
+    def skip_build_assertions(self, benchmark):
+        # This method overrides NativeImageMixin.skip_build_assertions
+        return True  # We are skipping build assertions due to some failed asserts while building Micronaut apps.
+
     def stages(self, args):
         # This method overrides NativeImageMixin.stages
         parsed_arg = mx_sdk_benchmark.parse_prefixed_arg('-Dnative-image.benchmark.stages=', args, 'Native Image benchmark stages should only be specified once.')

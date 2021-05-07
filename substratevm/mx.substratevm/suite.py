@@ -1,5 +1,5 @@
 suite = {
-    "mxversion": "5.292.5",
+    "mxversion": "5.294.0",
     "name": "substratevm",
     "version" : "21.2.0",
     "release" : False,
@@ -444,7 +444,7 @@ suite = {
                 },
                 "windows": {
                     "<others>": {
-                        "cflags": ["-Zi", "-O2", "-D_LITTLE_ENDIAN"],
+                        "cflags": ["-Zi", "-O2", "-D_LITTLE_ENDIAN", "-DJDK_VER=<jdk_ver>"],
                     },
                 },
                 "<others>": {
@@ -1037,6 +1037,9 @@ suite = {
                     "java.desktop",
                     "java.security.sasl",
                     "java.smartcardio",
+                    "java.net.http",
+                    "jdk.sctp",
+                    "jdk.scripting.nashorn@11..14",
                 ],
                 "uses" : [
                     "org.graalvm.nativeimage.Platform",

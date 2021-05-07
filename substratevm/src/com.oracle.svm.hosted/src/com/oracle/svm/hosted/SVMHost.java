@@ -28,7 +28,6 @@ import java.lang.ref.PhantomReference;
 import java.lang.ref.Reference;
 import java.lang.ref.SoftReference;
 import java.lang.ref.WeakReference;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
@@ -57,6 +56,7 @@ import org.graalvm.compiler.nodes.extended.UnsafeAccessNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.nodes.java.AccessFieldNode;
+import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -76,6 +76,7 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.UnknownClass;
 import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.annotate.UnknownPrimitiveField;
@@ -90,6 +91,7 @@ import com.oracle.svm.core.hub.HubType;
 import com.oracle.svm.core.hub.ReferenceType;
 import com.oracle.svm.core.jdk.ClassLoaderSupport;
 import com.oracle.svm.core.jdk.RecordSupport;
+import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.VMError;
@@ -137,7 +139,6 @@ public final class SVMHost implements HostVM {
     private final ConcurrentMap<AnalysisMethod, Set<AnalysisType>> initializedClasses = new ConcurrentHashMap<>();
     private final ConcurrentMap<AnalysisMethod, Boolean> analysisTrivialMethods = new ConcurrentHashMap<>();
 
-    private static final Method isHiddenMethod = JavaVersionUtil.JAVA_SPEC >= 15 ? ReflectionUtil.lookupMethod(Class.class, "isHidden") : null;
     private static final Method getNestHostMethod = JavaVersionUtil.JAVA_SPEC >= 11 ? ReflectionUtil.lookupMethod(Class.class, "getNestHost") : null;
 
     public SVMHost(OptionValues options, ForkJoinPool executor, ClassLoader classLoader, ClassInitializationSupport classInitializationSupport,
@@ -356,17 +357,8 @@ public final class SVMHost implements HostVM {
          */
         String sourceFileName = stringTable.deduplicate(type.getSourceFileName(), true);
 
-        /*
-         * JDK 15 added support for Hidden Classes. Record if this javaClass is hidden.
-         */
-        boolean isHidden = false;
-        if (JavaVersionUtil.JAVA_SPEC >= 15) {
-            try {
-                isHidden = (boolean) isHiddenMethod.invoke(javaClass);
-            } catch (IllegalAccessException | InvocationTargetException e) {
-                throw VMError.shouldNotReachHere(e);
-            }
-        }
+        /* JDK 15 added support for Hidden Classes. Record if this javaClass is hidden. */
+        boolean isHidden = SubstrateUtil.isHiddenClass(javaClass);
 
         Class<?> nestHost = null;
         if (JavaVersionUtil.JAVA_SPEC >= 11) {
@@ -667,5 +659,29 @@ public final class SVMHost implements HostVM {
         } catch (Throwable e) {
             throw bb.getDebug().handle(e);
         }
+    }
+
+    public static class Options {
+        @Option(help = "Enable the behavior of old GraalVM versions. When enabled, interfaces not available for the current platform are filtered.")//
+        public static final HostedOptionKey<Boolean> PlatformInterfaceCompatibilityMode = new HostedOptionKey<>(false);
+    }
+
+    @Override
+    public boolean skipInterface(AnalysisUniverse universe, ResolvedJavaType interfaceType, ResolvedJavaType implementingType) {
+        if (!universe.platformSupported(interfaceType)) {
+            String message = "The interface " + interfaceType.toJavaName(true) + " is not available in the current platform, but used by " + implementingType.toJavaName(true) + ". " +
+                            "GraalVM before version 21.2 ignored such interfaces, but this was an oversight.";
+
+            String commandArgument = SubstrateOptionsParser.commandArgument(Options.PlatformInterfaceCompatibilityMode, "+");
+            if (Options.PlatformInterfaceCompatibilityMode.getValue()) {
+                System.out.println("Warning: " + message + " The interface is filtered because the compatibility option " + commandArgument +
+                                " is used. This option will be removed in a future GraalVM version.");
+                return true;
+            } else {
+                throw new UnsupportedFeatureException(
+                                message + " The old behavior can be temporarily restored using the option " + commandArgument + ". This option will be removed in a future GraalVM version.");
+            }
+        }
+        return false;
     }
 }

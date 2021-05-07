@@ -230,6 +230,7 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.TABLESWITCH;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.WIDE;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
@@ -2515,18 +2516,18 @@ public final class BytecodeNode extends EspressoMethodNode {
             LineNumberTableAttribute table = method.getLineNumberTableAttribute();
 
             if (table != LineNumberTableAttribute.EMPTY) {
-                LineNumberTableAttribute.Entry[] entries = table.getEntries();
+                List<LineNumberTableAttribute.Entry> entries = table.getEntries();
                 // don't allow multiple entries with same line, keep only the first one
                 // reduce the checks needed heavily by keeping track of max seen line number
-                int[] seenLines = new int[entries.length];
+                int[] seenLines = new int[entries.size()];
                 Arrays.fill(seenLines, -1);
                 int maxSeenLine = -1;
 
-                this.statementNodes = new EspressoInstrumentableNode[entries.length];
+                this.statementNodes = new EspressoInstrumentableNode[entries.size()];
                 this.hookBCIToNodeIndex = new MapperBCI(table);
 
-                for (int i = 0; i < entries.length; i++) {
-                    LineNumberTableAttribute.Entry entry = entries[i];
+                for (int i = 0; i < entries.size(); i++) {
+                    LineNumberTableAttribute.Entry entry = entries.get(i);
                     int lineNumber = entry.getLineNumber();
                     boolean seen = false;
                     boolean checkSeen = !(maxSeenLine < lineNumber);

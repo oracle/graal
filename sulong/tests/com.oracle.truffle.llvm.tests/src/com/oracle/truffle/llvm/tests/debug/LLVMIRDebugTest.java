@@ -53,7 +53,7 @@ import com.oracle.truffle.llvm.tests.options.TestOptions;
 @RunWith(Parameterized.class)
 public final class LLVMIRDebugTest extends LLVMDebugTestBase {
 
-    private static final String CONFIGURATION = "O0.bc";
+    private static final String CONFIGURATION = "bitcode-O0.bc";
 
     private static final Path BC_DIR_PATH = Paths.get(TestOptions.getTestDistribution("SULONG_EMBEDDED_TEST_SUITES"), "irdebug");
     private static final Path SRC_DIR_PATH = Paths.get(TestOptions.PROJECT_ROOT, "..", "tests", "com.oracle.truffle.llvm.tests.irdebug.native", "irdebug");
@@ -61,6 +61,11 @@ public final class LLVMIRDebugTest extends LLVMDebugTestBase {
 
     private static final String OPTION_LLDEBUG = "llvm.llDebug";
     private static final String OPTION_LLDEBUG_SOURCES = "llvm.llDebug.sources";
+
+    @BeforeClass
+    public static void bundledOnly() {
+        TestOptions.assumeBundledLLVM();
+    }
 
     @BeforeClass
     public static void checkLinuxAMD64() {

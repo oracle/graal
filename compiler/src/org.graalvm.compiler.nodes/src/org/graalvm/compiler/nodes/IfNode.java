@@ -897,6 +897,23 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
      */
     private boolean removeOrMaterializeIf(SimplifierTool tool) {
         assert trueSuccessor().hasNoUsages() && falseSuccessor().hasNoUsages();
+        MergeNode blockingMerge = null;
+        if (trueSuccessor().next() instanceof ReturnNode && falseSuccessor().next() instanceof AbstractEndNode) {
+            AbstractMergeNode am = ((AbstractEndNode) falseSuccessor.next()).merge();
+            if (am instanceof MergeNode) {
+                blockingMerge = (MergeNode) am;
+            }
+        } else if (falseSuccessor().next() instanceof ReturnNode && trueSuccessor().next() instanceof AbstractEndNode) {
+            AbstractMergeNode am = ((AbstractEndNode) trueSuccessor().next()).merge();
+            if (am instanceof MergeNode) {
+                blockingMerge = (MergeNode) am;
+            }
+        }
+        if (blockingMerge != null) {
+            if (blockingMerge.next() instanceof ReturnNode) {
+                AbstractMergeNode.duplicateReturnThroughMerge(blockingMerge);
+            }
+        }
         if (trueSuccessor().next() instanceof AbstractEndNode && falseSuccessor().next() instanceof AbstractEndNode) {
             AbstractEndNode trueEnd = (AbstractEndNode) trueSuccessor().next();
             AbstractEndNode falseEnd = (AbstractEndNode) falseSuccessor().next();
