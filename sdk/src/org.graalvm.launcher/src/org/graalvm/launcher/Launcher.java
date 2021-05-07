@@ -204,7 +204,7 @@ public abstract class Launcher {
 
     /**
      * Exception which shall abort the launcher execution. Thrown by this class in the case of
-     * malformed arguments or unknown options, or deliberate exit.
+     * unhandled internal exception, malformed arguments or unknown options, or deliberate exit.
      *
      * @since 20.0
      */
@@ -336,7 +336,7 @@ public abstract class Launcher {
         String message = e.getMessage();
         if (message != null) {
             if (e instanceof NoSuchFileException) {
-                throw abort("Not such file: " + message, exitCode);
+                throw abort("No such file: " + message, exitCode);
             } else if (e instanceof AccessDeniedException) {
                 throw abort("Access denied: " + message, exitCode);
             } else {

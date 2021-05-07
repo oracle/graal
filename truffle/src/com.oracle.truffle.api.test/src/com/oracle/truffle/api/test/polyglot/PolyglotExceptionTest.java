@@ -402,6 +402,7 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
             assertTrue(e.isGuestException());
             assertFalse(e.isHostException());
             assertFalse(e.isCancelled());
+            assertEquals(e.getMessage(), "Resources exhausted");
             Iterator<StackFrame> iterator = e.getPolyglotStackTrace().iterator();
             boolean foundFrame = false;
             while (iterator.hasNext()) {

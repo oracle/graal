@@ -194,7 +194,14 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
             if (internal) {
                 this.message = exception.toString();
             } else {
-                this.message = exception.getMessage();
+                String exceptionMessage = exception.getMessage();
+                if (exceptionMessage != null) {
+                    this.message = exceptionMessage;
+                } else if (resourceExhausted) {
+                    this.message = "Resources exhausted";
+                } else {
+                    this.message = null;
+                }
             }
         }
 
