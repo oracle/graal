@@ -308,31 +308,34 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
             mv.visitCode();
             mv.visitTypeInsn(NEW, Type.getInternalName(storageClass));
             mv.visitInsn(DUP);
-            int var = 1;
+            int maxStack = 2;
             StringBuilder constructorDescriptor = new StringBuilder();
             constructorDescriptor.append('(');
-            for (Class<?> p : m.getParameterTypes()) {
-                int loadOpcode = Type.getType(p).getOpcode(ILOAD);
-                mv.visitVarInsn(loadOpcode, var++);
-                constructorDescriptor.append(Type.getDescriptor(p));
+            Class<?>[] params = m.getParameterTypes();
+            for (int i = 0; i < params.length; i++) {
+                int loadOpcode = Type.getType(params[i]).getOpcode(ILOAD);
+                mv.visitVarInsn(loadOpcode, i + 1);
+                constructorDescriptor.append(Type.getDescriptor(params[i]));
+                maxStack++;
             }
+            int maxLocals = maxStack - 1;
 
             constructorDescriptor.append("Ljava/lang/Object;");
             mv.visitVarInsn(ALOAD, 0);
             mv.visitFieldInsn(GETFIELD, factoryName, "shape", "Ljava/lang/Object;");
-            var++;
+            maxStack++;
             for (String fieldName : ARRAY_SIZE_FIELDS) {
                 constructorDescriptor.append("I");
                 mv.visitVarInsn(ALOAD, 0);
                 mv.visitFieldInsn(GETFIELD, factoryName, fieldName, "I");
-                var++;
+                maxStack++;
             }
 
             constructorDescriptor.append(")V");
             String storageName = Type.getInternalName(storageClass);
             mv.visitMethodInsn(INVOKESPECIAL, storageName, "<init>", constructorDescriptor.toString(), false);
             mv.visitInsn(ARETURN);
-            mv.visitMaxs(var, 1);
+            mv.visitMaxs(maxStack, maxLocals);
             mv.visitEnd();
         }
     }
@@ -349,8 +352,7 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
         String storageName = generateStorageName();
         Collection<ExtendedProperty> arrayProperties = generateStorageProperties();
 
-        int classWriterFlags = ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS;
-        ClassWriter storageWriter = new ClassWriter(classWriterFlags);
+        ClassWriter storageWriter = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
         int storageAccess = ACC_PUBLIC | ACC_SUPER | ACC_SYNTHETIC;
         storageWriter.visit(V1_8, storageAccess, storageName, null, storageSuperName, null);
         addStorageConstructors(storageWriter, storageName, storageSuperClass, storageSuperName);
@@ -364,7 +366,7 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
 
     @SuppressWarnings("unchecked")
     private static <T> Class<? extends T> generateFactory(Class<?> storageClass, Class<T> storageFactoryInterface) {
-        ClassWriter factoryWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+        ClassWriter factoryWriter = new ClassWriter(0);
         int factoryAccess = ACC_PUBLIC | ACC_SUPER | ACC_SYNTHETIC | ACC_FINAL;
         String factoryName = generateFactoryName(storageClass);
         factoryWriter.visit(V1_8, factoryAccess, factoryName, null, Type.getInternalName(Object.class), new String[]{Type.getInternalName(storageFactoryInterface)});
