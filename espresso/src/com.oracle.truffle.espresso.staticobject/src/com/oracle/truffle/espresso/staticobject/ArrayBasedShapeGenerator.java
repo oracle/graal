@@ -234,12 +234,6 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
         mv.visitTypeInsn(CHECKCAST, className);
         mv.visitVarInsn(ASTORE, 1);
 
-        // clone.shape = shape;
-        mv.visitVarInsn(ALOAD, 1);
-        mv.visitVarInsn(ALOAD, 0);
-        mv.visitFieldInsn(GETFIELD, className, "shape", "Ljava/lang/Object;");
-        mv.visitFieldInsn(PUTFIELD, className, "shape", "Ljava/lang/Object;");
-
         // clone.primitive = (primitive == null ? null : (byte[]) primitive.clone());
         mv.visitVarInsn(ALOAD, 1);
         mv.visitVarInsn(ALOAD, 0);
