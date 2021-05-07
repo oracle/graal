@@ -273,6 +273,16 @@ final class LegacyScopesBridge {
             return new EmptyObject(language);
         }
         CompilerAsserts.neverPartOfCompilation();
+        if (legacyScopes instanceof LegacyDefaultScope.LegacyScopeIterator) {
+            // Shortcut for our own default scope
+            com.oracle.truffle.api.Scope scope = legacyScopes.next();
+            Object variables = scope.getVariables();
+            if (INTEROP.isScope(variables)) {
+                return variables;
+            } else {
+                return new MergedScopes(new com.oracle.truffle.api.Scope[]{scope}, new Object[]{variables}, language);
+            }
+        }
         ArrayList<com.oracle.truffle.api.Scope> scopesList = new ArrayList<>(5);
         if (node instanceof InstrumentableNode && ((InstrumentableNode) node).hasTag(StandardTags.RootTag.class)) {
             // Provide the arguments
