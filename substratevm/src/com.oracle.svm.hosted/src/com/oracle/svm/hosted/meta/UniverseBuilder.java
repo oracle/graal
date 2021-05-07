@@ -40,8 +40,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ForkJoinTask;
 
-import com.oracle.svm.core.heap.ReferenceMapIndex;
-import com.oracle.svm.core.heap.StoredContinuation;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
@@ -61,7 +59,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.graal.pointsto.results.StaticAnalysisResultsBuilder;
+import com.oracle.graal.pointsto.results.AbstractAnalysisResultsBuilder;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
@@ -75,6 +73,8 @@ import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.heap.FillerObject;
 import com.oracle.svm.core.heap.InstanceReferenceMapEncoder;
 import com.oracle.svm.core.heap.ReferenceMapEncoder;
+import com.oracle.svm.core.heap.ReferenceMapIndex;
+import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubSupport;
@@ -101,12 +101,12 @@ public class UniverseBuilder {
     private final AnalysisMetaAccess aMetaAccess;
     private final HostedUniverse hUniverse;
     private final HostedMetaAccess hMetaAccess;
-    private StaticAnalysisResultsBuilder staticAnalysisResultsBuilder;
+    private AbstractAnalysisResultsBuilder staticAnalysisResultsBuilder;
     private final UnsupportedFeatures unsupportedFeatures;
     private TypeCheckBuilder typeCheckBuilder;
 
     public UniverseBuilder(AnalysisUniverse aUniverse, AnalysisMetaAccess aMetaAccess, HostedUniverse hUniverse, HostedMetaAccess hMetaAccess,
-                    StaticAnalysisResultsBuilder staticAnalysisResultsBuilder, UnsupportedFeatures unsupportedFeatures) {
+                    AbstractAnalysisResultsBuilder staticAnalysisResultsBuilder, UnsupportedFeatures unsupportedFeatures) {
         this.aUniverse = aUniverse;
         this.aMetaAccess = aMetaAccess;
         this.hUniverse = hUniverse;
@@ -149,9 +149,6 @@ public class UniverseBuilder {
                 makeMethod(aMethod);
             }
 
-            BigBang bb = staticAnalysisResultsBuilder.getBigBang();
-            ForkJoinTask<?> profilingInformationBuildTask = ForkJoinTask.adapt(this::buildProfilingInformation).fork();
-
             Collection<HostedType> allTypes = hUniverse.types.values();
             HostedType objectType = hUniverse.objectType();
             HostedType cloneableType = hUniverse.types.get(aMetaAccess.lookupJavaType(Cloneable.class));
@@ -161,7 +158,9 @@ public class UniverseBuilder {
             typeCheckBuilder.calculateIDs();
 
             collectDeclaredMethods();
-            collectMonitorFieldInfo(bb);
+            collectMonitorFieldInfo(staticAnalysisResultsBuilder.getBigBang());
+
+            ForkJoinTask<?> profilingInformationBuildTask = ForkJoinTask.adapt(this::buildProfilingInformation).fork();
 
             layoutInstanceFields();
             layoutStaticFields();
@@ -347,7 +346,7 @@ public class UniverseBuilder {
     private void buildProfilingInformation() {
         /* Convert profiling information after all types and methods have been created. */
         hUniverse.methods.entrySet().parallelStream()
-                        .forEach(entry -> entry.getValue().staticAnalysisResults = staticAnalysisResultsBuilder.makeResults(entry.getKey()));
+                        .forEach(entry -> entry.getValue().staticAnalysisResults = staticAnalysisResultsBuilder.makeOrApplyResults(entry.getKey()));
 
         staticAnalysisResultsBuilder = null;
     }

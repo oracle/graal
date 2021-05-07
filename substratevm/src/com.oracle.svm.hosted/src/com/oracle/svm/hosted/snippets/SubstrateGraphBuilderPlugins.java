@@ -272,7 +272,7 @@ public class SubstrateGraphBuilderPlugins {
     }
 
     private static void registerProxyPlugins(SnippetReflectionProvider snippetReflection, AnnotationSubstitutionProcessor annotationSubstitutions, InvocationPlugins plugins, ParsingReason reason) {
-        if (reason == ParsingReason.PointsToAnalysis) {
+        if (SubstrateOptions.parseOnce() || reason == ParsingReason.PointsToAnalysis) {
             Registration proxyRegistration = new Registration(plugins, Proxy.class);
             proxyRegistration.register2("getProxyClass", ClassLoader.class, Class[].class, new InvocationPlugin() {
                 @Override
@@ -464,7 +464,7 @@ public class SubstrateGraphBuilderPlugins {
      * them for reflection/unsafe access.
      */
     private static void interceptUpdaterInvoke(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, ParsingReason reason, ValueNode tclassNode, ValueNode fieldNameNode) {
-        if (reason == ParsingReason.PointsToAnalysis) {
+        if (SubstrateOptions.parseOnce() || reason == ParsingReason.PointsToAnalysis) {
             if (tclassNode.isConstant() && fieldNameNode.isConstant()) {
                 Class<?> tclass = snippetReflection.asObject(Class.class, tclassNode.asJavaConstant());
                 String fieldName = snippetReflection.asObject(String.class, fieldNameNode.asJavaConstant());
@@ -621,7 +621,7 @@ public class SubstrateGraphBuilderPlugins {
             return false;
         }
 
-        if (reason == ParsingReason.PointsToAnalysis) {
+        if (SubstrateOptions.parseOnce() || reason == ParsingReason.PointsToAnalysis) {
             /* Register the field for unsafe access. */
             registerAsUnsafeAccessed(metaAccess, targetField);
 
@@ -700,7 +700,7 @@ public class SubstrateGraphBuilderPlugins {
         r.register2("newInstance", Class.class, int[].class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode clazzNode, ValueNode dimensionsNode) {
-                if (reason == ParsingReason.PointsToAnalysis) {
+                if (SubstrateOptions.parseOnce() || reason == ParsingReason.PointsToAnalysis) {
                     /*
                      * There is no Graal node for dynamic multi array allocation, and it is also not
                      * necessary for performance reasons. But when the arguments are constant, we
@@ -836,6 +836,10 @@ public class SubstrateGraphBuilderPlugins {
         r.register0("isDeoptimizationTarget", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                if (SubstrateOptions.parseOnce()) {
+                    throw VMError.unimplemented("Intrinsification of isDeoptimizationTarget not done yet");
+                }
+
                 if (b.getGraph().method() instanceof SharedMethod) {
                     SharedMethod method = (SharedMethod) b.getGraph().method();
                     if (method.isDeoptTarget()) {

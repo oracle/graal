@@ -51,6 +51,10 @@ public class NodeSourcePosition extends BytecodePosition implements Iterable<Nod
     private final Marker marker;
     private final SourceLanguagePosition sourceLanguagePosition;
 
+    public Marker getMarker() {
+        return marker;
+    }
+
     /**
      * Remove marker frames.
      */

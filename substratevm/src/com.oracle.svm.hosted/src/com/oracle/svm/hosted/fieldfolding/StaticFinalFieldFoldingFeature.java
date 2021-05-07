@@ -218,10 +218,6 @@ final class StaticFinalFieldFoldingFeature implements GraalFeature {
      * class initializer, it is verified that there is no illegal store to an optimized field.
      */
     void onAnalysisMethodParsed(AnalysisMethod method, StructuredGraph graph) {
-        if (graph == null) {
-            return;
-        }
-
         boolean isClassInitializer = method.isClassInitializer();
         Map<AnalysisField, JavaConstant> optimizableFields = isClassInitializer ? new HashMap<>() : null;
         Set<AnalysisField> ineligibleFields = isClassInitializer ? new HashSet<>() : null;

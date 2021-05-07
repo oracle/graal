@@ -110,7 +110,7 @@ import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public final class SVMHost implements HostVM {
+public class SVMHost implements HostVM {
     private final ConcurrentHashMap<AnalysisType, DynamicHub> typeToHub = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<DynamicHub, AnalysisType> hubToType = new ConcurrentHashMap<>();
 
@@ -298,6 +298,37 @@ public final class SVMHost implements HostVM {
         assert shouldInitializeAtRuntime || type.getWrapped().isInitialized() : "Types that are not marked for runtime initializations must have been initialized: " + type;
 
         return !shouldInitializeAtRuntime;
+    }
+
+    private final boolean parseOnce = SubstrateOptions.parseOnce();
+
+    @Override
+    public GraphBuilderConfiguration updateGraphBuilderConfiguration(GraphBuilderConfiguration config, AnalysisMethod method) {
+        return config.withRetainLocalVariables(retainLocalVariables());
+    }
+
+    private boolean retainLocalVariables() {
+        if (parseOnce) {
+            /*
+             * Disabling liveness analysis preserves the values of local variables beyond the
+             * bytecode-liveness. This greatly helps debugging. When local variable numbers are
+             * reused by javac, local variables can still get illegal values. Since we cannot
+             * "restore" such illegal values during deoptimization, we cannot disable liveness
+             * analysis for deoptimization target methods.
+             * 
+             * TODO: ParseOnce does not support deoptimization targets yet, this needs to be added
+             * later.
+             */
+            return SubstrateOptions.Optimize.getValue() <= 0;
+
+        } else {
+            /*
+             * We want to always disable the liveness analysis, since we want the points-to analysis
+             * to be as conservative as possible. The analysis results can then be used with the
+             * liveness analysis enabled or disabled.
+             */
+            return true;
+        }
     }
 
     @Override
@@ -514,8 +545,12 @@ public final class SVMHost implements HostVM {
 
     @Override
     public void methodAfterParsingHook(BigBang bb, AnalysisMethod method, StructuredGraph graph) {
-        for (BiConsumer<AnalysisMethod, StructuredGraph> methodAfterParsingHook : methodAfterParsingHooks) {
-            methodAfterParsingHook.accept(method, graph);
+        if (graph != null) {
+            graph.setGuardsStage(StructuredGraph.GuardsStage.FIXED_DEOPTS);
+
+            for (BiConsumer<AnalysisMethod, StructuredGraph> methodAfterParsingHook : methodAfterParsingHooks) {
+                methodAfterParsingHook.accept(method, graph);
+            }
         }
     }
 
