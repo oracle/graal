@@ -37,8 +37,10 @@ import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
+import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
@@ -102,21 +104,37 @@ public class HostedGraphKit extends SubstrateGraphKit {
     public void emitEnsureInitializedCall(ResolvedJavaType type) {
         if (SubstrateClassInitializationPlugin.needsRuntimeInitialization(graph.method().getDeclaringClass(), type)) {
             ValueNode hub = createConstant(getConstantReflection().asJavaClass(type), JavaKind.Object);
-            int bci = bci();
-            EnsureClassInitializedNode ensureInitializedNode = append(new EnsureClassInitializedNode(hub));
-            ensureInitializedNode.setStateAfter(getFrameState().create(bci, ensureInitializedNode));
-
-            AbstractBeginNode noExceptionEdge = add(ensureInitializedNode.createNextBegin());
-            ensureInitializedNode.setNext(noExceptionEdge);
-            ExceptionObjectNode exceptionEdge = createExceptionObjectNode(getFrameState(), bci);
-            ensureInitializedNode.setExceptionEdge(exceptionEdge);
-
-            lastFixedNode = exceptionEdge;
-            append(new UnwindNode(exceptionEdge));
-
-            assert lastFixedNode == null;
-            lastFixedNode = noExceptionEdge;
+            appendWithUnwind(new EnsureClassInitializedNode(hub));
         }
+    }
+
+    /**
+     * Appends the provided node to the control flow graph. The exception edge is connected to an
+     * {@link UnwindNode}, i.e., the exception is not handled in this method.
+     */
+    public <T extends WithExceptionNode> T appendWithUnwind(T withExceptionNode) {
+        WithExceptionNode appended = append(withExceptionNode);
+        assert appended == withExceptionNode;
+
+        int bci = bci();
+        if (withExceptionNode instanceof StateSplit) {
+            StateSplit stateSplit = (StateSplit) withExceptionNode;
+            stateSplit.setStateAfter(getFrameState().create(bci, stateSplit));
+        }
+
+        AbstractBeginNode noExceptionEdge = add(withExceptionNode.createNextBegin());
+        withExceptionNode.setNext(noExceptionEdge);
+        ExceptionObjectNode exceptionEdge = createExceptionObjectNode(getFrameState(), bci);
+        withExceptionNode.setExceptionEdge(exceptionEdge);
+
+        assert lastFixedNode == null;
+        lastFixedNode = exceptionEdge;
+        append(new UnwindNode(exceptionEdge));
+
+        assert lastFixedNode == null;
+        lastFixedNode = noExceptionEdge;
+
+        return withExceptionNode;
     }
 
     public void throwInvocationTargetException(ValueNode exception) {

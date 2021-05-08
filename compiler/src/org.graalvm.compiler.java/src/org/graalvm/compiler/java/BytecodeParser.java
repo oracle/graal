@@ -262,6 +262,7 @@ import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.Compi
 import static org.graalvm.compiler.nodes.type.StampTool.isPointerNonNull;
 
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Formatter;
@@ -896,8 +897,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
     private final BytecodeParser parent;
 
     private LineNumberTable lnt;
-    private int previousLineNumber;
-    private int currentLineNumber;
+    private BitSet emittedLineNumbers;
 
     private ValueNode methodSynchronizedObject;
 
@@ -951,7 +951,6 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
 
         if (graphBuilderConfig.insertFullInfopoints() && !parsingIntrinsic()) {
             lnt = code.getLineNumberTable();
-            previousLineNumber = -1;
         }
 
         assert !GraalOptions.TrackNodeSourcePosition.getValue(options) || graph.trackNodeSourcePosition();
@@ -3404,18 +3403,17 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         int bci = block.startBci;
         BytecodesParsed.add(debug, block.endBci - bci);
 
-        /* Reset line number for new block */
-        if (graphBuilderConfig.insertFullInfopoints()) {
-            previousLineNumber = -1;
-        }
-
         while (bci < endBCI) {
             try (DebugCloseable context = openNodeContext()) {
-                if (graphBuilderConfig.insertFullInfopoints() && !parsingIntrinsic()) {
-                    currentLineNumber = lnt != null ? lnt.getLineNumber(bci) : -1;
-                    if (currentLineNumber != previousLineNumber) {
+                if (graphBuilderConfig.insertFullInfopoints() && !parsingIntrinsic() && lnt != null) {
+                    if (emittedLineNumbers == null) {
+                        emittedLineNumbers = new BitSet();
+                    }
+                    int currentLineNumber = lnt.getLineNumber(bci);
+
+                    if (!emittedLineNumbers.get(currentLineNumber)) {
+                        emittedLineNumbers.set(currentLineNumber);
                         genInfoPointNode(InfopointReason.BYTECODE_POSITION, null);
-                        previousLineNumber = currentLineNumber;
                     }
                 }
 
@@ -5018,9 +5016,8 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
 
     private double[] switchProbability(int numberOfCases, int bci) {
         double[] prob = (profilingInfo == null ? null : profilingInfo.getSwitchProbabilities(bci));
-        if (prob != null) {
-            assert prob.length == numberOfCases;
-        } else {
+        /* A broken profile (wrong number of cases) must not fail compilation, so just ignore it. */
+        if (prob == null || prob.length != numberOfCases) {
             debug.log("Missing probability (switch) in %s at bci %d", method, bci);
             prob = new double[numberOfCases];
             for (int i = 0; i < numberOfCases; i++) {
