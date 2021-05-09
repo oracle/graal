@@ -1338,39 +1338,6 @@ public final class BytecodeNode extends EspressoMethodNode {
         // @formatter:on
     }
 
-    private static JavaKind arrayAccessKind(int opcode) {
-        assert (IALOAD <= opcode && opcode <= SALOAD) || (IASTORE <= opcode && opcode <= SASTORE);
-        switch (opcode) {
-            case IALOAD: // fall through
-            case IASTORE:
-                return JavaKind.Int;
-            case LALOAD: // fall through
-            case LASTORE:
-                return JavaKind.Long;
-            case FALOAD: // fall through
-            case FASTORE:
-                return JavaKind.Float;
-            case DALOAD: // fall through
-            case DASTORE:
-                return JavaKind.Double;
-            case AALOAD: // fall through
-            case AASTORE:
-                return JavaKind.Object;
-            case BALOAD: // fall through
-            case BASTORE:
-                return JavaKind.Byte; // or Boolean
-            case CALOAD: // fall through
-            case CASTORE:
-                return JavaKind.Char;
-            case SALOAD: // fall through
-            case SASTORE:
-                return JavaKind.Short;
-            default:
-                CompilerDirectives.transferToInterpreter();
-                throw EspressoError.shouldNotReachHere();
-        }
-    }
-
     private void arrayLength(VirtualFrame frame, long[] primitives, Object[] refs, int top, int curBCI) {
         StaticObject array = nullCheck(popObject(refs, top - 1));
         if (noForeignObjects.isValid() || array.isEspressoObject()) {
@@ -1386,21 +1353,20 @@ public final class BytecodeNode extends EspressoMethodNode {
 
     private void arrayLoad(VirtualFrame frame, long[] primitives, Object[] refs, int top, int curBCI, int loadOpcode) {
         assert IALOAD <= loadOpcode && loadOpcode <= SALOAD;
-        JavaKind kind = arrayAccessKind(loadOpcode);
-        CompilerAsserts.partialEvaluationConstant(kind);
+        CompilerAsserts.partialEvaluationConstant(loadOpcode);
         int index = popInt(primitives, top - 1);
         StaticObject array = nullCheck(popObject(refs, top - 2));
         if (noForeignObjects.isValid() || array.isEspressoObject()) {
             // @formatter:off
-            switch (kind) {
-                case Byte:    putInt(primitives, top - 2, getInterpreterToVM().getArrayByte(index, array, this));      break;
-                case Short:   putInt(primitives, top - 2, getInterpreterToVM().getArrayShort(index, array, this));     break;
-                case Char:    putInt(primitives, top - 2, getInterpreterToVM().getArrayChar(index, array, this));      break;
-                case Int:     putInt(primitives, top - 2, getInterpreterToVM().getArrayInt(index, array, this));       break;
-                case Float:   putFloat(primitives, top - 2, getInterpreterToVM().getArrayFloat(index, array, this));   break;
-                case Long:    putLong(primitives, top - 2, getInterpreterToVM().getArrayLong(index, array, this));     break;
-                case Double:  putDouble(primitives, top - 2, getInterpreterToVM().getArrayDouble(index, array, this)); break;
-                case Object:  putObject(refs, top - 2, getInterpreterToVM().getArrayObject(index, array, this)); break;
+            switch (loadOpcode) {
+                case BALOAD: putInt(primitives, top - 2, getInterpreterToVM().getArrayByte(index, array, this));      break;
+                case SALOAD: putInt(primitives, top - 2, getInterpreterToVM().getArrayShort(index, array, this));     break;
+                case CALOAD: putInt(primitives, top - 2, getInterpreterToVM().getArrayChar(index, array, this));      break;
+                case IALOAD: putInt(primitives, top - 2, getInterpreterToVM().getArrayInt(index, array, this));       break;
+                case FALOAD: putFloat(primitives, top - 2, getInterpreterToVM().getArrayFloat(index, array, this));   break;
+                case LALOAD: putLong(primitives, top - 2, getInterpreterToVM().getArrayLong(index, array, this));     break;
+                case DALOAD: putDouble(primitives, top - 2, getInterpreterToVM().getArrayDouble(index, array, this)); break;
+                case AALOAD: putObject(refs, top - 2, getInterpreterToVM().getArrayObject(index, array, this));       break;
                 default:
                     CompilerDirectives.transferToInterpreter();
                     throw EspressoError.shouldNotReachHere();
@@ -1412,28 +1378,27 @@ public final class BytecodeNode extends EspressoMethodNode {
             putInt(primitives, top - 1, index);
             putObject(refs, top - 2, array);
             // The stack effect difference vs. original bytecode is always 0.
-            quickenArrayLoad(frame, primitives, refs, top, curBCI, loadOpcode, kind);
+            quickenArrayLoad(frame, primitives, refs, top, curBCI, loadOpcode);
         }
     }
 
     private void arrayStore(VirtualFrame frame, long[] primitives, Object[] refs, int top, int curBCI, int storeOpcode) {
         assert IASTORE <= storeOpcode && storeOpcode <= SASTORE;
-        JavaKind kind = arrayAccessKind(storeOpcode);
-        CompilerAsserts.partialEvaluationConstant(kind);
-        int offset = kind.needsTwoSlots() ? 2 : 1;
+        CompilerAsserts.partialEvaluationConstant(storeOpcode);
+        int offset = (storeOpcode == LASTORE || storeOpcode == DASTORE) ? 2 : 1;
         int index = popInt(primitives, top - 1 - offset);
         StaticObject array = nullCheck(popObject(refs, top - 2 - offset));
         if (noForeignObjects.isValid() || array.isEspressoObject()) {
             // @formatter:off
-            switch (kind) {
-                case Byte:    getInterpreterToVM().setArrayByte((byte) popInt(primitives, top - 1), index, array, this);   break;
-                case Short:   getInterpreterToVM().setArrayShort((short) popInt(primitives, top - 1), index, array, this); break;
-                case Char:    getInterpreterToVM().setArrayChar((char) popInt(primitives, top - 1), index, array, this);   break;
-                case Int:     getInterpreterToVM().setArrayInt(popInt(primitives, top - 1), index, array, this);           break;
-                case Float:   getInterpreterToVM().setArrayFloat(popFloat(primitives, top - 1), index, array, this);       break;
-                case Long:    getInterpreterToVM().setArrayLong(popLong(primitives, top - 1), index, array, this);         break;
-                case Double:  getInterpreterToVM().setArrayDouble(popDouble(primitives, top - 1), index, array, this);     break;
-                case Object:  referenceArrayStore(refs, top, index, array);     break;
+            switch (storeOpcode) {
+                case BASTORE: getInterpreterToVM().setArrayByte((byte) popInt(primitives, top - 1), index, array, this);   break;
+                case SASTORE: getInterpreterToVM().setArrayShort((short) popInt(primitives, top - 1), index, array, this); break;
+                case CASTORE: getInterpreterToVM().setArrayChar((char) popInt(primitives, top - 1), index, array, this);   break;
+                case IASTORE: getInterpreterToVM().setArrayInt(popInt(primitives, top - 1), index, array, this);           break;
+                case FASTORE: getInterpreterToVM().setArrayFloat(popFloat(primitives, top - 1), index, array, this);       break;
+                case LASTORE: getInterpreterToVM().setArrayLong(popLong(primitives, top - 1), index, array, this);         break;
+                case DASTORE: getInterpreterToVM().setArrayDouble(popDouble(primitives, top - 1), index, array, this);     break;
+                case AASTORE: referenceArrayStore(refs, top, index, array);     break;
                 default:
                     CompilerDirectives.transferToInterpreter();
                     throw EspressoError.shouldNotReachHere();
@@ -1445,7 +1410,7 @@ public final class BytecodeNode extends EspressoMethodNode {
             putInt(primitives, top - 1 - offset, index);
             putObject(refs, top - 2 - offset, array);
             // The stack effect difference vs. original bytecode is always 0.
-            quickenArrayStore(frame, primitives, refs, top, curBCI, storeOpcode, kind);
+            quickenArrayStore(frame, primitives, refs, top, curBCI, storeOpcode);
         }
     }
 
@@ -1715,26 +1680,24 @@ public final class BytecodeNode extends EspressoMethodNode {
         return arrayLengthNode.execute(frame, primitives, refs) - Bytecodes.stackEffectOf(ARRAYLENGTH);
     }
 
-    private int quickenArrayLoad(VirtualFrame frame, long[] primitives, Object[] refs, int top, int curBCI, int loadOpcode, JavaKind componentKind) {
+    private int quickenArrayLoad(VirtualFrame frame, long[] primitives, Object[] refs, int top, int curBCI, int loadOpcode) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
+        assert IALOAD <= loadOpcode && loadOpcode <= SALOAD;
         BaseQuickNode arrayLoadNode;
         synchronized (this) {
             if (bs.currentVolatileBC(curBCI) == SLIM_QUICK) {
                 arrayLoadNode = sparseNodes[curBCI];
             } else {
                 // @formatter:off
-                switch (componentKind)  {
-                    case Boolean: // fall-through
-                    case Byte:
-                        arrayLoadNode = ByteArrayLoadNodeGen.create(top, curBCI);
-                        break;
-                    case Short  : arrayLoadNode = ShortArrayLoadNodeGen.create(top, curBCI);  break;
-                    case Char   : arrayLoadNode = CharArrayLoadNodeGen.create(top, curBCI);   break;
-                    case Int    : arrayLoadNode = IntArrayLoadNodeGen.create(top, curBCI);    break;
-                    case Float  : arrayLoadNode = FloatArrayLoadNodeGen.create(top, curBCI);  break;
-                    case Long   : arrayLoadNode = LongArrayLoadNodeGen.create(top, curBCI);   break;
-                    case Double : arrayLoadNode = DoubleArrayLoadNodeGen.create(top, curBCI); break;
-                    case Object : arrayLoadNode = ReferenceArrayLoadNodeGen.create(top, curBCI); break;
+                switch (loadOpcode)  {
+                    case BALOAD: arrayLoadNode = ByteArrayLoadNodeGen.create(top, curBCI);   break;
+                    case SALOAD: arrayLoadNode = ShortArrayLoadNodeGen.create(top, curBCI);  break;
+                    case CALOAD: arrayLoadNode = CharArrayLoadNodeGen.create(top, curBCI);   break;
+                    case IALOAD: arrayLoadNode = IntArrayLoadNodeGen.create(top, curBCI);    break;
+                    case FALOAD: arrayLoadNode = FloatArrayLoadNodeGen.create(top, curBCI);  break;
+                    case LALOAD: arrayLoadNode = LongArrayLoadNodeGen.create(top, curBCI);   break;
+                    case DALOAD: arrayLoadNode = DoubleArrayLoadNodeGen.create(top, curBCI); break;
+                    case AALOAD: arrayLoadNode = ReferenceArrayLoadNodeGen.create(top, curBCI); break;
                     default:
                         CompilerDirectives.transferToInterpreter();
                         throw EspressoError.shouldNotReachHere("unexpected kind");
@@ -1746,26 +1709,24 @@ public final class BytecodeNode extends EspressoMethodNode {
         return arrayLoadNode.execute(frame, primitives, refs) - Bytecodes.stackEffectOf(loadOpcode);
     }
 
-    private int quickenArrayStore(final VirtualFrame frame, long[] primitives, Object[] refs, int top, int curBCI, int storeOpcode, JavaKind componentKind) {
+    private int quickenArrayStore(final VirtualFrame frame, long[] primitives, Object[] refs, int top, int curBCI, int storeOpcode) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
+        assert IASTORE <= storeOpcode && storeOpcode <= SASTORE;
         BaseQuickNode arrayStoreNode;
         synchronized (this) {
             if (bs.currentVolatileBC(curBCI) == SLIM_QUICK) {
                 arrayStoreNode = sparseNodes[curBCI];
             } else {
                 // @formatter:off
-                switch (componentKind)  {
-                    case Boolean: // fall-through
-                    case Byte:
-                        arrayStoreNode = ByteArrayStoreNodeGen.create(top, curBCI);
-                        break;
-                    case Short  : arrayStoreNode = ShortArrayStoreNodeGen.create(top, curBCI);  break;
-                    case Char   : arrayStoreNode = CharArrayStoreNodeGen.create(top, curBCI);   break;
-                    case Int    : arrayStoreNode = IntArrayStoreNodeGen.create(top, curBCI);    break;
-                    case Float  : arrayStoreNode = FloatArrayStoreNodeGen.create(top, curBCI);  break;
-                    case Long   : arrayStoreNode = LongArrayStoreNodeGen.create(top, curBCI);   break;
-                    case Double : arrayStoreNode = DoubleArrayStoreNodeGen.create(top, curBCI); break;
-                    case Object : arrayStoreNode = ReferenceArrayStoreNodeGen.create(top, curBCI); break;
+                switch (storeOpcode)  {
+                    case BASTORE: arrayStoreNode = ByteArrayStoreNodeGen.create(top, curBCI);   break;
+                    case SASTORE: arrayStoreNode = ShortArrayStoreNodeGen.create(top, curBCI);  break;
+                    case CASTORE: arrayStoreNode = CharArrayStoreNodeGen.create(top, curBCI);   break;
+                    case IASTORE: arrayStoreNode = IntArrayStoreNodeGen.create(top, curBCI);    break;
+                    case FASTORE: arrayStoreNode = FloatArrayStoreNodeGen.create(top, curBCI);  break;
+                    case LASTORE: arrayStoreNode = LongArrayStoreNodeGen.create(top, curBCI);   break;
+                    case DASTORE: arrayStoreNode = DoubleArrayStoreNodeGen.create(top, curBCI); break;
+                    case AASTORE: arrayStoreNode = ReferenceArrayStoreNodeGen.create(top, curBCI); break;
                     default:
                         CompilerDirectives.transferToInterpreter();
                         throw EspressoError.shouldNotReachHere("unexpected kind");
