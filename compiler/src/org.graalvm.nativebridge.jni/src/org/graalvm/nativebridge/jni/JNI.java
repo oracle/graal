@@ -40,6 +40,7 @@ import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.nativeimage.c.type.CShortPointer;
 import org.graalvm.nativeimage.c.type.VoidPointer;
@@ -69,6 +70,9 @@ public final class JNI {
     }
 
     public interface JByteArray extends JArray {
+    }
+
+    public interface JIntArray extends JArray {
     }
 
     public interface JLongArray extends JArray {
@@ -178,6 +182,9 @@ public final class JNI {
         @CField("NewByteArray")
         NewByteArray getNewByteArray();
 
+        @CField("NewIntArray")
+        NewIntArray getNewIntArray();
+
         @CField("NewLongArray")
         NewLongArray getNewLongArray();
 
@@ -190,11 +197,17 @@ public final class JNI {
         @CField("GetByteArrayElements")
         GetByteArrayElements getGetByteArrayElements();
 
+        @CField("GetIntArrayElements")
+        GetIntArrayElements getGetIntArrayElements();
+
         @CField("GetLongArrayElements")
         GetLongArrayElements getGetLongArrayElements();
 
         @CField("ReleaseByteArrayElements")
         ReleaseByteArrayElements getReleaseByteArrayElements();
+
+        @CField("ReleaseIntArrayElements")
+        ReleaseIntArrayElements getReleaseIntArrayElements();
 
         @CField("ReleaseLongArrayElements")
         ReleaseLongArrayElements getReleaseLongArrayElements();
@@ -458,6 +471,11 @@ public final class JNI {
         CCharPointer call(JNIEnv env, JByteArray array, JValue isCopy);
     }
 
+    public interface GetIntArrayElements extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        CIntPointer call(JNIEnv env, JIntArray array, JValue isCopy);
+    }
+
     public interface GetLongArrayElements extends CFunctionPointer {
         @InvokeCFunctionPointer
         CLongPointer call(JNIEnv env, JLongArray array, JValue isCopy);
@@ -518,6 +536,11 @@ public final class JNI {
         JByteArray call(JNIEnv env, int len);
     }
 
+    public interface NewIntArray extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JIntArray call(JNIEnv env, int len);
+    }
+
     public interface NewLongArray extends CFunctionPointer {
         @InvokeCFunctionPointer
         JLongArray call(JNIEnv env, int len);
@@ -551,6 +574,11 @@ public final class JNI {
     public interface ReleaseByteArrayElements extends CFunctionPointer {
         @InvokeCFunctionPointer
         void call(JNIEnv env, JByteArray array, CCharPointer elems, int mode);
+    }
+
+    public interface ReleaseIntArrayElements extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        void call(JNIEnv env, JIntArray array, CIntPointer elems, int mode);
     }
 
     public interface ReleaseLongArrayElements extends CFunctionPointer {

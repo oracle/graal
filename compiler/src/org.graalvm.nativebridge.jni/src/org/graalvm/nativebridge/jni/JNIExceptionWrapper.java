@@ -149,7 +149,7 @@ public final class JNIExceptionWrapper extends RuntimeException {
         Objects.requireNonNull(exceptionHandler, "ExceptionHandler must be non null.");
         if (ExceptionCheck(env)) {
             JThrowable exception = ExceptionOccurred(env);
-            if (JNIUtil.tracingAt(1) && exception.isNonNull()) {
+            if (JNIUtil.tracingAt(2) && exception.isNonNull()) {
                 ExceptionDescribe(env);
             }
             ExceptionClear(env);
@@ -172,7 +172,7 @@ public final class JNIExceptionWrapper extends RuntimeException {
      */
     public static void throwInHotSpot(JNIEnv env, Throwable original) {
         try {
-            JNIUtil.trace(1, original);
+            JNIUtil.trace(2, original);
             if (original.getClass() == JNIExceptionWrapper.class) {
                 ((JNIExceptionWrapper) original).throwInHotSpot(env);
             } else {

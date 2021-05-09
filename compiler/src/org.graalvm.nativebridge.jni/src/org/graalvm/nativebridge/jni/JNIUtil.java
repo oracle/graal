@@ -30,6 +30,7 @@ import org.graalvm.nativebridge.jni.JNI.JArray;
 import org.graalvm.nativebridge.jni.JNI.JByteArray;
 import org.graalvm.nativebridge.jni.JNI.JClass;
 import org.graalvm.nativebridge.jni.JNI.JFieldID;
+import org.graalvm.nativebridge.jni.JNI.JIntArray;
 import org.graalvm.nativebridge.jni.JNI.JLongArray;
 import org.graalvm.nativebridge.jni.JNI.JMethodID;
 import org.graalvm.nativebridge.jni.JNI.JNIEnv;
@@ -42,6 +43,7 @@ import org.graalvm.nativebridge.jni.JNIExceptionWrapper.ExceptionHandler;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.nativeimage.c.type.CShortPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
@@ -150,6 +152,11 @@ public final class JNIUtil {
         return env.getFunctions().getNewByteArray().call(env, len);
     }
 
+    public static JIntArray NewIntArray(JNIEnv env, int len) {
+        traceJNI("NewIntArray");
+        return env.getFunctions().getNewIntArray().call(env, len);
+    }
+
     public static JLongArray NewLongArray(JNIEnv env, int len) {
         traceJNI("NewLongArray");
         return env.getFunctions().getNewLongArray().call(env, len);
@@ -170,9 +177,19 @@ public final class JNIUtil {
         return env.getFunctions().getGetObjectArrayElement().call(env, array, index);
     }
 
+    public static CIntPointer GetIntArrayElements(JNIEnv env, JIntArray array, JValue isCopy) {
+        traceJNI("GetIntArrayElements");
+        return env.getFunctions().getGetIntArrayElements().call(env, array, isCopy);
+    }
+
     public static CLongPointer GetLongArrayElements(JNIEnv env, JLongArray array, JValue isCopy) {
         traceJNI("GetLongArrayElements");
         return env.getFunctions().getGetLongArrayElements().call(env, array, isCopy);
+    }
+
+    public static void ReleaseIntArrayElements(JNIEnv env, JIntArray array, CIntPointer elems, int mode) {
+        traceJNI("ReleaseIntArrayElements");
+        env.getFunctions().getReleaseIntArrayElements().call(env, array, elems, mode);
     }
 
     public static void ReleaseLongArrayElements(JNIEnv env, JLongArray array, CLongPointer elems, int mode) {
