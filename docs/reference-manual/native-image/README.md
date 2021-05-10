@@ -42,6 +42,10 @@ application, specify `--language:<languageId>` for each guest language (e.g.,
 The Native Image technology is distributed as a separate installable to GraalVM.
 Native Image for GraalVM Community Edition is licensed under the [GPL 2 with Classpath Exception](https://github.com/oracle/graal/blob/master/substratevm/LICENSE).
 
+Native Image for GraalVM Enterprise Edition is available as an Early Adopter feature.
+Early Adopter features are subject to ongoing development, testing, and modification.
+For more information, check the [Oracle Technology Network License Agreement for GraalVM Enterprise Edition]https://www.oracle.com/downloads/licenses/graalvm-otn-license.html).
+
 ## Install Native Image
 
 Native Image can be added to GraalVM with the [GraalVM Updater](https://www.graalvm.org/docs/reference-manual/gu/) tool.
