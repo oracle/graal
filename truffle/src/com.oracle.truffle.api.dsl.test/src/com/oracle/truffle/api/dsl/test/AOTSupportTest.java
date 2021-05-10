@@ -81,6 +81,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
+import com.oracle.truffle.api.library.GenerateLibrary.DefaultExport;
 import com.oracle.truffle.api.nodes.ExecutionSignature;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -423,11 +424,31 @@ public class AOTSupportTest extends AbstractPolyglotTest {
 
     @GenerateAOT
     @GenerateLibrary
+    @DefaultExport(DefaultAOTExport.class)
     public abstract static class AOTTestLibrary extends Library {
 
         public abstract int m0(Object receiver, Object arg);
 
         public abstract int m1(Object receiver);
+
+    }
+
+    @ExportLibrary(value = AOTTestLibrary.class, receiverType = DefaultAOTReceiver.class, useForAOT = true, useForAOTPriority = 0)
+    @SuppressWarnings("unused")
+    public static final class DefaultAOTExport {
+        @ExportMessage
+        static int m0(DefaultAOTReceiver receiver, Object arg) {
+            return 42;
+        }
+
+        @ExportMessage
+        static int m1(DefaultAOTReceiver receiver) {
+            return 43;
+        }
+
+    }
+
+    static final class DefaultAOTReceiver {
 
     }
 

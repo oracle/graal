@@ -127,7 +127,7 @@ public final class ExportsLibrary extends Template {
     }
 
     public boolean needsEagerExportProvider() {
-        return isUseForAOT() && getLibrary().isGenerateAOT() && !isBuiltinDefaultExport();
+        return isUseForAOT() && getLibrary().isGenerateAOT();
     }
 
     public boolean isFinalReceiver() {
