@@ -36,13 +36,13 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
-import com.oracle.truffle.espresso.redefinition.ClassLoadListener;
+import com.oracle.truffle.espresso.redefinition.DefineKlassListener;
 import com.oracle.truffle.espresso.redefinition.plugins.api.ClassLoadAction;
 import com.oracle.truffle.espresso.redefinition.plugins.api.InternalRedefinitionPlugin;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public final class RedefinitionPluginHandler implements RedefineListener, ClassLoadListener {
+public final class RedefinitionPluginHandler implements RedefineListener, DefineKlassListener {
 
     private final EspressoContext context;
     private final Set<InternalRedefinitionPlugin> internalPlugins = Collections.synchronizedSet(new HashSet<>(1));
@@ -95,7 +95,7 @@ public final class RedefinitionPluginHandler implements RedefineListener, ClassL
 
     @TruffleBoundary
     @Override
-    public void onClassLoad(ObjectKlass klass) {
+    public void onKlassDefined(ObjectKlass klass) {
         // internal plugins
         Symbol<Symbol.Type> type = klass.getType();
         // fire registered load actions
