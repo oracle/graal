@@ -51,9 +51,7 @@ public abstract class StaticShape<T> {
     }
 
     protected final void setFactory(T factory) {
-        if (this.factory != null) {
-            throw new RuntimeException("Attempt to reinitialize the offset of a static property. Was it added to more than one builder?");
-        }
+        assert this.factory == null;
         this.factory = factory;
     }
 
