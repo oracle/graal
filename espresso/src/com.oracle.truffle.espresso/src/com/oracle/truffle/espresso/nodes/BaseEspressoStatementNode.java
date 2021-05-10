@@ -57,7 +57,13 @@ public abstract class BaseEspressoStatementNode extends Node implements Instrume
         return new BaseEspressoStatementNodeWrapper(this, probe);
     }
 
-    public abstract BytecodeNode getBytecodeNode();
+    public final BytecodeNode getBytecodeNode() {
+        Node parent = getParent();
+        while (!(parent instanceof BytecodeNode) && parent != null) {
+            parent = parent.getParent();
+        }
+        return (BytecodeNode) parent;
+    }
 
     @ExportMessage
     @SuppressWarnings("static-method")

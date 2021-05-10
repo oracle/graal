@@ -33,17 +33,15 @@ public final class EspressoStatementNode extends BaseEspressoStatementNode imple
 
     private final int startBci;
     private final int lineNumber;
-    private final BytecodeNode parent;
 
-    EspressoStatementNode(BytecodeNode bytecodeNode, int startBci, int lineNumber) {
+    EspressoStatementNode(int startBci, int lineNumber) {
         this.lineNumber = lineNumber;
         this.startBci = startBci;
-        this.parent = bytecodeNode;
     }
 
     @Override
     public SourceSection getSourceSection() {
-        Source s = parent.getSource();
+        Source s = getBytecodeNode().getSource();
         // when there is a line number table we also have a source
         assert s != null;
         return s.createSection(lineNumber);
@@ -52,10 +50,5 @@ public final class EspressoStatementNode extends BaseEspressoStatementNode imple
     @Override
     public int getBci(@SuppressWarnings("unused") Frame frame) {
         return startBci;
-    }
-
-    @Override
-    public BytecodeNode getBytecodeNode() {
-        return parent;
     }
 }

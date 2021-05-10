@@ -1297,7 +1297,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                 info = this.instrumentation;
                 // double checked locking
                 if (info == null) {
-                    this.instrumentation = info = insert(new InstrumentationSupport(this));
+                    this.instrumentation = info = insert(new InstrumentationSupport(getMethodVersion()));
                     // the debug info contains instrumentable nodes so we need to notify for
                     // instrumentation updates.
                     notifyInserted(info);
@@ -2511,8 +2511,8 @@ public final class BytecodeNode extends EspressoMethodNode {
         private final EspressoContext context;
         private final MethodVersion method;
 
-        InstrumentationSupport(BytecodeNode bytecodeNode) {
-            this.method = bytecodeNode.getMethod().getMethodVersion();
+        InstrumentationSupport(MethodVersion method) {
+            this.method = method;
             this.context = method.getMethod().getContext();
 
             LineNumberTableAttribute table = method.getLineNumberTableAttribute();
@@ -2542,7 +2542,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                         }
                     }
                     if (!seen) {
-                        statementNodes[hookBCIToNodeIndex.initIndex(i, entry.getBCI())] = new EspressoStatementNode(bytecodeNode, entry.getBCI(), lineNumber);
+                        statementNodes[hookBCIToNodeIndex.initIndex(i, entry.getBCI())] = new EspressoStatementNode(entry.getBCI(), lineNumber);
                         seenLines[i] = lineNumber;
                         maxSeenLine = Math.max(maxSeenLine, lineNumber);
                     }
