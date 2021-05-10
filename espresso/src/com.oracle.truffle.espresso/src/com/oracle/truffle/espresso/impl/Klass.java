@@ -1040,7 +1040,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
 
     @CompilationFinal(dimensions = 1) private Klass[] transitiveInterfaceCache;
 
-    public final Klass[] getTransitiveInterfacesList() {
+    protected final Klass[] getTransitiveInterfacesList() {
         Klass[] transitiveInterfaces = transitiveInterfaceCache;
         if (transitiveInterfaces == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
