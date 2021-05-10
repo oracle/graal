@@ -658,11 +658,9 @@ public final class ClassRedefinition {
                 context.getRegistries().removeUnloadedKlassConstraint(loadedKlass, type);
             }
             oldKlass.patchClassName(packet.info.getName());
-            classRegistry.onClassRenamed(oldKlass, packet.info.getName());
+            classRegistry.onClassRenamed(oldKlass, packet.info.getName(), type);
 
             InterpreterToVM.setFieldObject(StaticObject.NULL, oldKlass.mirror(), context.getMeta().java_lang_Class_name);
-
-            context.getRegistries().recordConstraint(type, oldKlass, oldKlass.getDefiningClassLoader());
         }
         oldKlass.redefineClass(packet, refreshSubClasses, ids);
         if (redefineListener.rerunClinit(oldKlass, packet.detectedChange.clinitChanged())) {

@@ -374,9 +374,11 @@ public abstract class ClassRegistry implements ContextAccess {
         return (ObjectKlass) klass;
     }
 
-    public void onClassRenamed(ObjectKlass oldKlass, Symbol<Symbol.Name> newName) {
+    public void onClassRenamed(ObjectKlass oldKlass, Symbol<Symbol.Name> newName, Symbol<Type> type) {
         Symbol<Symbol.Type> newType = context.getTypes().fromName(newName);
         classes.put(newType, new ClassRegistries.RegistryEntry(oldKlass));
+        // record the new loading constraint
+        context.getRegistries().recordConstraint(type, oldKlass, oldKlass.getDefiningClassLoader());
     }
 
     public void onInnerClassRemoved(Symbol<Symbol.Type> type) {

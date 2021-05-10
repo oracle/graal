@@ -234,7 +234,7 @@ public final class ClassRegistries {
         }
     }
 
-    public void recordConstraint(Symbol<Type> type, Klass klass, StaticObject loader) {
+    void recordConstraint(Symbol<Type> type, Klass klass, StaticObject loader) {
         assert !Types.isArray(type);
         if (!Types.isPrimitive(type)) {
             constraints.recordConstraint(type, klass, loader);
