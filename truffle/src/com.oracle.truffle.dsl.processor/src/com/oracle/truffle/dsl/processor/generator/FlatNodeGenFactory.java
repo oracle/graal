@@ -725,6 +725,7 @@ public class FlatNodeGenFactory {
         clazz.getImplements().add(aotProviderType);
 
         CodeExecutableElement prepare = clazz.add(CodeExecutableElement.cloneNoAnnotations(ElementUtils.findMethod(types.GenerateAOT_Provider, "prepareForAOT")));
+        prepare.renameArguments("language", "root");
         GeneratorUtils.addOverride(prepare);
         prepare.getModifiers().remove(ABSTRACT);
         CodeTreeBuilder builder = prepare.createBuilder();
