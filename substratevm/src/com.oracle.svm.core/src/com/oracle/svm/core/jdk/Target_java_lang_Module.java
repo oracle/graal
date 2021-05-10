@@ -46,7 +46,7 @@ public final class Target_java_lang_Module {
 
     @TargetClass(className = "java.lang.Module", innerClass = "ReflectionData", onlyWith = JDK11OrLater.class)
     private static final class ReflectionData {
-        @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, isFinal = true, declClassName = "java.lang.WeakPairMap")
+        @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, isFinal = true, declClassName = "java.lang.WeakPairMap") //
         static Target_java_lang_WeakPairMap<Target_java_lang_Module, Class<?>, Boolean> uses;
     }
 }
