@@ -41,7 +41,6 @@ import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
-import org.graalvm.compiler.nodes.Invokable;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
@@ -82,7 +81,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
           size = SIZE_UNKNOWN,
           sizeRationale = "If this node is not optimized away it will be lowered to a call, which we cannot estimate")
 //@formatter:on
-public abstract class MacroNode extends FixedWithNextNode implements Lowerable, Invokable {
+public abstract class MacroNode extends FixedWithNextNode implements Lowerable, MacroInvokable {
 
     public static final NodeClass<MacroNode> TYPE = NodeClass.create(MacroNode.class);
     @Input protected NodeInputList<ValueNode> arguments;
@@ -140,7 +139,6 @@ public abstract class MacroNode extends FixedWithNextNode implements Lowerable, 
 
     protected MacroNode(NodeClass<? extends MacroNode> c, MacroParams p) {
         super(c, p.returnStamp != null ? p.returnStamp.getTrustedStamp() : null);
-        assertArgumentCount(p.targetMethod, p.arguments);
         this.arguments = new NodeInputList<>(this, p.arguments);
         this.bci = p.bci;
         this.callerMethod = p.callerMethod;
@@ -148,6 +146,7 @@ public abstract class MacroNode extends FixedWithNextNode implements Lowerable, 
         this.returnStamp = p.returnStamp;
         this.invokeKind = p.invokeKind;
         assert !isPlaceholderBci(p.bci);
+        assert MacroInvokable.assertArgumentCount(this);
     }
 
     @Override
@@ -155,20 +154,9 @@ public abstract class MacroNode extends FixedWithNextNode implements Lowerable, 
         return callerMethod;
     }
 
-    protected void assertArgumentCount(ResolvedJavaMethod method, ValueNode... args) {
-        assert method.getSignature().getParameterCount(!method.isStatic()) == args.length;
-    }
-
+    @Override
     public NodeInputList<ValueNode> getArguments() {
         return arguments;
-    }
-
-    public ValueNode getArgument(int i) {
-        return arguments.get(i);
-    }
-
-    public int getArgumentCount() {
-        return arguments.size();
     }
 
     public ValueNode[] toArgumentArray() {
@@ -190,6 +178,7 @@ public abstract class MacroNode extends FixedWithNextNode implements Lowerable, 
         return targetMethod;
     }
 
+    @Override
     public InvokeKind getInvokeKind() {
         return invokeKind;
     }
@@ -287,7 +276,7 @@ public abstract class MacroNode extends FixedWithNextNode implements Lowerable, 
     }
 
     protected InvokeNode createInvoke() {
-        MethodCallTargetNode callTarget = graph().add(new MethodCallTargetNode(invokeKind, targetMethod, arguments.toArray(new ValueNode[arguments.size()]), returnStamp, null));
+        MethodCallTargetNode callTarget = graph().add(new MethodCallTargetNode(invokeKind, targetMethod, getArguments().toArray(new ValueNode[0]), returnStamp, null));
         InvokeNode invoke = graph().add(new InvokeNode(callTarget, bci, getLocationIdentity()));
         if (stateAfter() != null) {
             invoke.setStateAfter(stateAfter().duplicate());
