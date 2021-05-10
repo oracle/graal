@@ -922,6 +922,18 @@ public class FlatNodeGenFactory {
                     builder.startIf().tree(createCacheReference(innerFrameState, specialization, cache)).instanceOf(aotProviderType).end().startBlock();
                 }
                 if (NodeCodeGenerator.isSpecializedNode(cache.getParameter().getType()) || cachedLibrary) {
+                    builder.startAssert().startStaticCall(types.NodeUtil, "assertRecursion");
+                    builder.tree(createCacheReference(innerFrameState, specialization, cache));
+                    /*
+                     * We allow a single recursion level only for AOT preparation. It is important
+                     * that we only assert recursion for @Cached fields as regular AST children can
+                     * be recursive arbitrarily deep.
+                     *
+                     * We might need to increase this limit in the future if it triggers to eagerly.
+                     */
+                    builder.string("1");
+                    builder.end().end();
+
                     builder.startStatement();
                     builder.string("(");
                     builder.cast(aotProviderType);
