@@ -34,6 +34,7 @@ import com.oracle.truffle.api.impl.asm.ClassVisitor;
 import com.oracle.truffle.api.impl.asm.ClassWriter;
 import com.oracle.truffle.api.impl.asm.Label;
 import com.oracle.truffle.api.impl.asm.MethodVisitor;
+import com.oracle.truffle.api.impl.asm.Opcodes;
 import com.oracle.truffle.api.impl.asm.Type;
 import com.oracle.truffle.espresso.staticobject.StaticShape.ExtendedProperty;
 import org.graalvm.collections.Pair;
@@ -48,14 +49,19 @@ import static com.oracle.truffle.api.impl.asm.Opcodes.ANEWARRAY;
 import static com.oracle.truffle.api.impl.asm.Opcodes.ARETURN;
 import static com.oracle.truffle.api.impl.asm.Opcodes.ASTORE;
 import static com.oracle.truffle.api.impl.asm.Opcodes.CHECKCAST;
+import static com.oracle.truffle.api.impl.asm.Opcodes.DOUBLE;
 import static com.oracle.truffle.api.impl.asm.Opcodes.DUP;
+import static com.oracle.truffle.api.impl.asm.Opcodes.FLOAT;
+import static com.oracle.truffle.api.impl.asm.Opcodes.F_FULL;
 import static com.oracle.truffle.api.impl.asm.Opcodes.GETFIELD;
 import static com.oracle.truffle.api.impl.asm.Opcodes.GOTO;
 import static com.oracle.truffle.api.impl.asm.Opcodes.IFLE;
 import static com.oracle.truffle.api.impl.asm.Opcodes.IFNONNULL;
 import static com.oracle.truffle.api.impl.asm.Opcodes.ILOAD;
+import static com.oracle.truffle.api.impl.asm.Opcodes.INTEGER;
 import static com.oracle.truffle.api.impl.asm.Opcodes.INVOKESPECIAL;
 import static com.oracle.truffle.api.impl.asm.Opcodes.INVOKEVIRTUAL;
+import static com.oracle.truffle.api.impl.asm.Opcodes.LONG;
 import static com.oracle.truffle.api.impl.asm.Opcodes.NEW;
 import static com.oracle.truffle.api.impl.asm.Opcodes.NEWARRAY;
 import static com.oracle.truffle.api.impl.asm.Opcodes.PUTFIELD;
@@ -156,6 +162,37 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
         return sb.append(")V").toString();
     }
 
+    private static Object getFrameLocal(Class<?> clazz) {
+        if (clazz.isPrimitive()) {
+            if (clazz == Boolean.TYPE || clazz == Byte.TYPE || clazz == Character.TYPE || clazz == Integer.TYPE || clazz == Short.TYPE) {
+                return INTEGER;
+            } else if (clazz == Double.TYPE) {
+                return DOUBLE;
+            } else if (clazz == Float.TYPE) {
+                return FLOAT;
+            } else if (clazz == Long.TYPE) {
+                return LONG;
+            } else {
+                throw new AssertionError();
+            }
+        } else {
+            return Type.getInternalName(clazz);
+        }
+    }
+
+    private static Object[] getFrameLocals(String storageName, Class<?>[] constructorParameters) {
+        Object[] frameLocals = new Object[constructorParameters.length + 4];
+        int idx = 0;
+        frameLocals[idx++] = storageName; // this
+        for (; idx <= constructorParameters.length; idx++) {
+            frameLocals[idx] = getFrameLocal(constructorParameters[idx - 1]);
+        }
+        frameLocals[idx++] = "java/lang/Object"; // shape
+        frameLocals[idx++] = INTEGER; // primitiveArraySize
+        frameLocals[idx++] = INTEGER; // objectArraySize
+        return frameLocals;
+    }
+
     private static void addStorageConstructors(ClassVisitor cv, String storageName, Class<?> storageSuperClass, String storageSuperName) {
         for (Constructor<?> superConstructor : storageSuperClass.getDeclaredConstructors()) {
             String storageConstructorDescriptor = getStorageConstructorDescriptor(superConstructor);
@@ -165,11 +202,17 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
             mv.visitCode();
             mv.visitVarInsn(ALOAD, 0);
             int var = 1;
-            for (Class<?> constructorParameter : superConstructor.getParameterTypes()) {
-                int loadOpcode = Type.getType(constructorParameter).getOpcode(ILOAD);
+            Class<?>[] constructorParameters = superConstructor.getParameterTypes();
+            for (int i = 0; i < constructorParameters.length; i++) {
+                Class<?> constructorParameter = constructorParameters[i];
+                Type parameterType = Type.getType(constructorParameter);
+                int loadOpcode = parameterType.getOpcode(ILOAD);
                 mv.visitVarInsn(loadOpcode, var++);
             }
             mv.visitMethodInsn(INVOKESPECIAL, storageSuperName, "<init>", superConstructorDescriptor, false);
+
+            // Prepare array of frame locals for jumps
+            Object[] frameLocals = getFrameLocals(storageName, constructorParameters);
 
             // this.shape = shape;
             mv.visitVarInsn(ALOAD, 0);
@@ -186,8 +229,10 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
             Label lSetPrimitive = new Label();
             mv.visitJumpInsn(GOTO, lSetPrimitive);
             mv.visitLabel(lNoPrimitives);
+            mv.visitFrame(F_FULL, frameLocals.length, frameLocals, 1, new Object[] {storageName});
             mv.visitInsn(ACONST_NULL);
             mv.visitLabel(lSetPrimitive);
+            mv.visitFrame(F_FULL, frameLocals.length, frameLocals, 2, new Object[] {storageName, "[B"});
             mv.visitFieldInsn(PUTFIELD, storageName, "primitive", "[B");
 
             // object = objectArraySize > 0 ? new Object[objectArraySize] : null;
@@ -200,8 +245,10 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
             Label lSetObject = new Label();
             mv.visitJumpInsn(GOTO, lSetObject);
             mv.visitLabel(lNoObjects);
+            mv.visitFrame(F_FULL, frameLocals.length, frameLocals, 1, new Object[] {storageName});
             mv.visitInsn(ACONST_NULL);
             mv.visitLabel(lSetObject);
+            mv.visitFrame(F_FULL, frameLocals.length, frameLocals, 2, new Object[] {storageName, "[Ljava/lang/Object;"});
             mv.visitFieldInsn(PUTFIELD, storageName, "object", "[Ljava/lang/Object;");
 
             mv.visitInsn(RETURN);
@@ -227,6 +274,9 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
     }
 
     private static void addCloneMethod(Class<?> storageSuperClass, ClassVisitor cv, String className) {
+        // Prepare array of frame locals for jumps
+        Object[] frameLocals = new Object[] {className, className};
+
         Method superCloneMethod = getCloneMethod(storageSuperClass);
         String superCloneMethodDescriptor = Type.getMethodDescriptor(superCloneMethod);
         MethodVisitor mv = cv.visitMethod(ACC_PUBLIC, "clone", superCloneMethodDescriptor, null, getCloneMethodExceptions(superCloneMethod));
@@ -245,12 +295,14 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
         Label lSetPrimitive = new Label();
         mv.visitJumpInsn(GOTO, lSetPrimitive);
         mv.visitLabel(lHasPrimitives);
+        mv.visitFrame(Opcodes.F_FULL, 2, frameLocals, 1, new Object[] {className});
         mv.visitVarInsn(ALOAD, 0);
         mv.visitFieldInsn(GETFIELD, className, "primitive", "[B");
         mv.visitMethodInsn(INVOKEVIRTUAL, "[B", "clone", "()Ljava/lang/Object;", false);
         mv.visitTypeInsn(CHECKCAST, "[B");
         mv.visitTypeInsn(CHECKCAST, "[B");
         mv.visitLabel(lSetPrimitive);
+        mv.visitFrame(Opcodes.F_FULL, 2, frameLocals, 2, new Object[] {className, "[B"});
         mv.visitFieldInsn(PUTFIELD, className, "primitive", "[B");
 
         // clone.object = (object == null ? null : (Object[]) object.clone());
@@ -263,12 +315,14 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
         Label lSetObject = new Label();
         mv.visitJumpInsn(GOTO, lSetObject);
         mv.visitLabel(lHasObjects);
+        mv.visitFrame(Opcodes.F_FULL, 2, frameLocals, 1, new Object[] {className});
         mv.visitVarInsn(ALOAD, 0);
         mv.visitFieldInsn(GETFIELD, className, "object", "[Ljava/lang/Object;");
         mv.visitMethodInsn(INVOKEVIRTUAL, "[Ljava/lang/Object;", "clone", "()Ljava/lang/Object;", false);
         mv.visitTypeInsn(CHECKCAST, "[Ljava/lang/Object;");
         mv.visitTypeInsn(CHECKCAST, "[Ljava/lang/Object;");
         mv.visitLabel(lSetObject);
+        mv.visitFrame(Opcodes.F_FULL, 2, frameLocals, 2, new Object[] {className, "[Ljava/lang/Object;"});
         mv.visitFieldInsn(PUTFIELD, className, "object", "[Ljava/lang/Object;");
 
         mv.visitVarInsn(ALOAD, 1);
@@ -352,7 +406,7 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
         String storageName = generateStorageName();
         Collection<ExtendedProperty> arrayProperties = generateStorageProperties();
 
-        ClassWriter storageWriter = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
+        ClassWriter storageWriter = new ClassWriter(0);
         int storageAccess = ACC_PUBLIC | ACC_SUPER | ACC_SYNTHETIC;
         storageWriter.visit(V1_8, storageAccess, storageName, null, storageSuperName, null);
         addStorageConstructors(storageWriter, storageName, storageSuperClass, storageSuperName);
