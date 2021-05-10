@@ -46,23 +46,33 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyObject;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.SourceSection;
 
-public class TestProxyObjectNotReachable extends AbstractPolyglotTest {
+public class RetainedSizeContextBoundaryTest extends AbstractPolyglotTest {
     @ExportLibrary(InteropLibrary.class)
     static class ScopeObject implements TruffleObject {
         final Map<String, Object> members = Collections.synchronizedMap(new LinkedHashMap<>());
@@ -184,8 +194,127 @@ public class TestProxyObjectNotReachable extends AbstractPolyglotTest {
 
             }
         });
+        /*
+         * Calculation should stop at PolyglotProxy, and so the ProxyObject and thus also the
+         * polyglot Context should not be reachable. If it were, the calculation would fail on
+         * assert.
+         */
         long retainedSize = instrumentEnv.calculateContextHeapSize(instrumentEnv.getEnteredContext(), 16L * 1024L * 1024L, new AtomicBoolean(false));
         Assert.assertTrue(retainedSize > 0);
         Assert.assertTrue(retainedSize < 16L * 1024L * 1024L);
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportLibrary(InteropLibrary.class)
+    static class HeapSizeExecutable implements TruffleObject {
+        private TruffleInstrument.Env instrumentEnv;
+
+        @ExportMessage
+        final boolean isExecutable() {
+            return true;
+        }
+
+        @SuppressWarnings("unused")
+        @ExportMessage
+        @CompilerDirectives.TruffleBoundary
+        final Object execute(Object[] arguments) {
+            return instrumentEnv.calculateContextHeapSize(instrumentEnv.getEnteredContext(), 16L * 1024L * 1024L, new AtomicBoolean(false));
+        }
+    }
+
+    @Test
+    public void testRetainedSizeWithHostToGuestRootNode() {
+        Assume.assumeFalse(TruffleOptions.AOT);
+        Assume.assumeFalse(Truffle.getRuntime() instanceof DefaultTruffleRuntime);
+        HeapSizeExecutable heapSizeExecutable = new HeapSizeExecutable();
+        setupEnv(Context.create(), new ProxyLanguage() {
+            private CallTarget target;
+
+            @Override
+            protected CallTarget parse(ParsingRequest request) {
+                com.oracle.truffle.api.source.Source source = request.getSource();
+                if (target == null) {
+                    target = Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
+
+                        @Override
+                        public Object execute(VirtualFrame frame) {
+                            return heapSizeExecutable;
+                        }
+
+                        @Override
+                        public SourceSection getSourceSection() {
+                            return source.createSection(1);
+                        }
+
+                    });
+                }
+                return target;
+            }
+        });
+        heapSizeExecutable.instrumentEnv = instrumentEnv;
+        Value val = context.eval(ProxyLanguage.ID, "");
+        /*
+         * Value#execute() uses HostToGuestRootNode which stores PolyglotLanguageContext in a frame.
+         * The retained size computation should stop on PolyglotLanguageContext and don't fail.
+         */
+        long retainedSize = val.execute().asLong();
+        Assert.assertTrue(retainedSize > 0);
+        Assert.assertTrue(retainedSize < 16L * 1024L * 1024L);
+    }
+
+    private static TruffleInstrument.Env staticInstrumentEnv;
+
+    public static long calculateRetainedSize() {
+        return staticInstrumentEnv.calculateContextHeapSize(staticInstrumentEnv.getEnteredContext(), 16L * 1024L * 1024L, new AtomicBoolean(false));
+    }
+
+    @Test
+    public void testRetainedSizeWithGuestToHostRootNode() {
+        Assume.assumeFalse(TruffleOptions.AOT);
+        Assume.assumeFalse(Truffle.getRuntime() instanceof DefaultTruffleRuntime);
+        setupEnv(Context.newBuilder().allowHostClassLookup((s) -> true).allowHostAccess(HostAccess.ALL), new ProxyLanguage() {
+            private CallTarget target;
+
+            @Override
+            protected CallTarget parse(ParsingRequest request) {
+                com.oracle.truffle.api.source.Source source = request.getSource();
+                if (target == null) {
+                    target = Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
+
+                        @Override
+                        public Object execute(VirtualFrame frame) {
+                            TruffleLanguage.ContextReference<ProxyLanguage.LanguageContext> languageContext = lookupContextReference(ProxyLanguage.class);
+                            Object thisTestClass = languageContext.get().getEnv().lookupHostSymbol(RetainedSizeContextBoundaryTest.class.getName());
+                            try {
+                                return InteropLibrary.getUncached().invokeMember(thisTestClass, "calculateRetainedSize");
+                            } catch (UnsupportedMessageException | ArityException | UnknownIdentifierException | UnsupportedTypeException e) {
+                                throw new AssertionError(e);
+                            }
+                        }
+
+                        @Override
+                        public SourceSection getSourceSection() {
+                            return source.createSection(1);
+                        }
+
+                    });
+                }
+                return target;
+            }
+        });
+        staticInstrumentEnv = instrumentEnv;
+        try {
+            /*
+             * The following uses GuestToHostRootNode which stores PolyglotLanguageContext in a
+             * frame. The retained size computation should stop on PolyglotLanguageContext and don't
+             * fail.
+             */
+            Value val = context.eval(ProxyLanguage.ID, "");
+            long retainedSize = val.asLong();
+            Assert.assertTrue(retainedSize > 0);
+            Assert.assertTrue(retainedSize < 16L * 1024L * 1024L);
+        } finally {
+            staticInstrumentEnv = null;
+        }
     }
 }
