@@ -10,12 +10,12 @@ toc_group: security-guide
 # Security Guide
 
 This security guide provides developers and embedders with information on the security model and features of GraalVM for developers and embedders who seek to build a secure application on top of it.
-It assumes that readers are familiar with the [GraalVM architecture](/docs/introduction/).
+It assumes that readers are familiar with the [GraalVM architecture](/introduction/).
 This guide does not replace but rather supplements the Java security documentation with aspects unique to GraalVM.
 It also provides security researchers with information on GraalVM's security model.
 
 * [Security Model](#security-model)
-* [Truffle Language Implementation Framework](#truffle-language-implementation-framework)
+* [Language Launchers](#language-launchers)
 * [Guest Applications](#guest-applications)
 * [Managed Execution of Native Code](#managed-execution-of-native-code)
 * [Native Image](#native-image)
@@ -28,6 +28,9 @@ programming language (or an intermediate representation thereof) as input, which
 Developers that implement security controls for their applications (such as access control) in code that is being run by GraalVM can rely on the correct execution of instructions.
 Incorrect execution of security-critical code running on top of GraalVM that allows to bypass such a security control is regarded a security vulnerability.
 
+GraalVM does not support execution of untrusted code.
+If untrusted and potentially malicious code is to be executed, we recommend GraalVM customers who have an immediate requirement to execute untrusted and potentially adversarial code, adopt the appropriate external isolation primitives to ensure the confidentiality and integrity of their application data.
+
 Debug features should only be used in a trusted environment as they provide privileged access to an application, allowing to inspect and change its state and behavior.
 They may further open network sockets to allow debug clients to connect.
 
@@ -36,95 +39,25 @@ Experimental and early-adopter features in GraalVM are not for production use an
 We appreciate reports of bugs that break the security model via the process
 outlined in the [Reporting Vulnerabilities guide](https://www.oracle.com/corporate/security-practices/assurance/vulnerability/reporting.html).
 
-## Truffle Language Implementation Framework
+## Language Launchers
 
-Using the [Truffle language implementation framework](/graalvm-as-a-platform/language-implementation-framework/), interpreters for guest languages can be implemented to execute guest applications written in languages such as Javascript, Python, Ruby, R or WebAssembly (Wasm) on top of GraalVM.
-Whereas the execution context for these applications can be created with restricted privileges, this mechanism is only fully supported for Javascript and should not be used to execute untrusted code.
-
-For every language implemented with the [Truffle framework](/graalvm-as-a-platform/language-implementation-framework/), and shipped with GraalVM, a launcher, e.g., interactive shell, is provided.
+For every language implemented with the Truffle framework, and shipped with GraalVM, a launcher, e.g., interactive shell, is provided.
 These launchers behave in the same way and come with the same security guarantees as their "original" counterparts.
-The languages implemented with the Truffle framework are henceforth referenced as **guest languages**.
 
 ## Guest Applications
 
-GraalVM allows a host application written in a JVM-based language to create an execution context to run code written in one or more guest languages.
+GraalVM allows a host application written in a JVM-based language to execute guest applications written in a Truffle language via the [Polyglot API](/reference-manual/embedding/embed-languages.md).
 When creating a context, the host application can control which resources the guest can access.
-By default, access to all managed resources is denied and needs to be granted explicitly. Note that this is currently only fully supported by Javascript.
-
-### File I/O
-Access to files can be controlled via two means.
-
-1. The `allowIO` privilege grants
-the guest application unrestricted access to the host file system:
-```java
-Context context = Context.newBuilder().allowIO(true).build();
-```
-2. Alternatively, the Truffle framework virtual file system can be installed that all guest file I/O will be routed through:
-```java
-Context context = Context.newBuilder().fileSystem(FileSystem fs).build();
-```
-
-### Threading
-A guest application can only create new threads if the context is created with the corresponding privilege:
-```java
-Context context = Context.newBuilder().allowCreateThread(true).build()
-```
-
-### Native Access
-The Truffle native interface allows access to privileged native code.
-It needs to be granted to a guest application context via:
-```java
-Context context = Context.newBuilder().allowNativeAccess(true).build()
-```
+This mechanism is only fully supported for Javascript.
+By default, access to all managed resources is denied and needs to be granted explicitly, following the principle of least privilege.
 
 ### Host Interoperability
 GraalVM allows exchanging objects between the host and the guest application.
-Since the guest application is potentially less trusted than the host application, multiple controls exist to tune the degree of interoperability between the guest and the host:
+By default only methods of host classes that are explicitly annotated by the embedder are exposed to guest applications.
 
-* `allowHostAccess(policy)` -- configures which of the host's public constructors, methods, or fields of public classes can be accessed by the guest.
-* `allowHostClassLookup(Predicate<String> classFilter)` -- allows the guest application to look up the host application classes specified in the classFilter via `Java.type`. For example, a Javascript context can create a Java ArrayList, provided that ArrayList is whitelisted by the `classFilter` and access is permitted by the host access policy: `context.eval("js", "var array = Java.type('java.util.ArrayList')")`
-* `allowHostClassLoading(true/false)` - allows the guest application to access the host's class loader to load new classes. Classes are only accessible if access to them is granted by the host access policy.
-
-The host access policy has three different options:
-
-* `ALL` - all public constructors, methods or fields of public classes of the host can be accessed by the guest.
-* `NONE` - no constructors, methods or fields of the host can be accessed by the guest.
-* `EXPLICIT` - only public constructors, methods, and fields of public classes that are annotated with `@HostAccess.Export` can be accessed by the guest.
-
-The following example demonstrates how these configuration options work together:
-```java
- public class MyClass {
-     @HostAccess.Export
-     public int accessibleMethod() {
-         return 42;
-     }
-
-     public static void main(String[] args) {
-         try (Context context = Context.newBuilder() //
-                         .allowHostClassLookup(c -> c.equals("myPackage.MyClass")) //
-                         .build()) {
-             int result = context.eval("js", "" +
-                             "var MyClass = Java.type('myPackage.MyClass');" +
-                             "new MyClass().accessibleMethod()").asInt();
-             assert result == 42;
-         }
-     }
- }
-```
-
-This Java/JavaScript example:
-* Creates a new context with the permission to look up the class `myPackage.MyClass` in the guest application.
-* Evaluates a JavaScript code snippet that accesses the Java class `myPackage.MyClass` using the `Java.type` builtin provided by the JavaScript language implementation.
-* Creates a new instance of the Java class `MyClass` by using the JavaScript `new` keyword.
-* Calls the method `accessibleMethod()` which returns "42". The method is accessible to the guest application because the enclosing class and the declared method are public, as well as annotated with the `@HostAccess.Export` annotation.
-
-The guest can also pass objects back to the host.
-This is implemented by functions that return a value. For example:
-```java
-Value a = Context.create().eval("js", "21 + 21");
-```
-This returns a guest object representing the value "42".
-When executing less trusted guest code, application developers need to take care when processing objects returned from the guest application -- the host application should treat them as less trusted input and sanitize accordingly.
+By exposing security critical host methods, access restrictions can be bypassed.
+For example, a guest application in a context that is created with `allowIO=false` cannot perform IO operations via the guest language's native API.
+However, exposing a host method to the context that allows writing to arbitrary files effectively bypasses this restriction.
 
 ### Sharing Execution Engines
 Application developers may choose to share execution engines among execution contexts for performance reasons.
@@ -138,15 +71,15 @@ Source.newBuilder(…).cached(false).build()
 
 > Note: Available with GraalVM Enterprise.
 
-With GraalVM Enterprise you can control certain computational resources used by guest applications, such as CPU time, a number of threads that can be concurrently used by a context, etc.
-Those can be restricted with the [sandbox options](/en/graalvm/enterprise/21/docs/reference-manual/embed-languages/sandbox/).
+GraalVM Enterprise allows restricting certain computational resources used by guest applications, such as CPU time, heap memory or the number of threads that can be concurrently used by a context.
+These [sandboxing options](/reference-manual/embedding/sandbox-options.md) are also available via the Polyglot embedding API.
 
 ### ScriptEngine Compatibility
 For reasons of backward compatibility, certain guest languages also support Java's ScriptEngine interface.
 For example, this allows GraalVM JavaScript to be used as a drop-in replacement for Nashorn.
 However, to maintain compatibility, the Nashorn GraalVM JavaScript ScriptEngine interface will create a context with **all privileges** granted to the script and **should be used with extreme caution** and only for trusted code.
 
-## Managed Execution of Native Code
+### Managed Execution of Native Code
 
 > Note: Available with GraalVM Enterprise.
 
@@ -184,15 +117,16 @@ Deserialization support also adds optional object checksums, and only classes wi
 The checksum mechanism must not be used for security purposes and the deserialization of untrusted data is not supported.
 
 ## Security Manager and Untrusted Code
-The OpenJDK vulnerability group strongly discourages to running untrusted code under a security manager.
+
+The OpenJDK vulnerability group strongly discourages running untrusted code under a security manager.
 This also applies to GraalVM, which does not support untrusted code execution in Java.
 While GraalVM's ability to restrict the execution of guest language applications to a certain extent is not dependent on a security manager, it is not suited to be used as a sandbox for running untrusted code.
+
+Note that security manager deprecation is an option in [JEP-411](https://openjdk.java.net/jeps/411).
 
 Native Image does not support a security manager in general. Attempting to set a security manager will trigger a runtime error.
 
 The Truffle framework needs to be invoked with all permissions to make full use of its functionality - it provides its own controls to manage resources.
-
-If untrusted and potentially malicious code is to be executed, we recommend GraalVM customers who have an immediate requirement to execute untrusted and potentially adversarial code, adopt the appropriate isolation primitives to ensure the confidentiality and integrity of their application data.
 
 ## GraalVM Enterprise to GraalVM Community Downgrade
 
@@ -200,3 +134,5 @@ If untrusted and potentially malicious code is to be executed, we recommend Graa
 
 When downgrading to GraalVM Community, native code execution is only available with the `allowNativeAccess` privilege.
 This also applies to languages implemented with Truffle that allow for native code extensions, such as Python and Ruby.
+
+Computational resource limit options are not recognized by GraalVM Community.
