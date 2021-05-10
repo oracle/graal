@@ -27,7 +27,6 @@ import java.util.List;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -491,17 +490,5 @@ public interface JDWPContext {
      * @return the current bci
      */
     long getBCI(Node rawNode, Frame frame);
-
-    /**
-     * Returns a node that returns true for
-     * {@link com.oracle.truffle.api.interop.NodeLibrary#hasScope(Object, Frame)} or
-     * <code>null</code> if not present for this root node. The returned node must implement
-     * {@link InstrumentableNode} and return true for {@link InstrumentableNode#isInstrumentable()}
-     *
-     * @param rootNode the root node
-     * @param frame
-     * @return the nearest instrumentable node or null
-     */
-    InstrumentableNode getScopeProviderNode(RootNode rootNode, Frame frame);
 
 }

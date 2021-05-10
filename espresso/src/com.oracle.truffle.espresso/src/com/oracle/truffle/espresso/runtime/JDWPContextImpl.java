@@ -34,10 +34,7 @@ import java.util.regex.Matcher;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.instrumentation.InstrumentableNode;
-import com.oracle.truffle.api.instrumentation.InstrumentableNode.WrapperNode;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -675,23 +672,6 @@ public final class JDWPContextImpl implements JDWPContext {
     @Override
     public Class<? extends TruffleLanguage<?>> getLanguageClass() {
         return EspressoLanguage.class;
-    }
-
-    @Override
-    public InstrumentableNode getScopeProviderNode(RootNode rootNode, Frame frame) {
-        if (rootNode instanceof EspressoRootNode) {
-            EspressoRootNode espressoRootNode = (EspressoRootNode) rootNode;
-            Node methodNode = espressoRootNode.getMethodNode();
-            if (methodNode instanceof WrapperNode) {
-                methodNode = ((WrapperNode) methodNode).getDelegateNode();
-            }
-            if (methodNode instanceof InstrumentableNode && ((InstrumentableNode) methodNode).isInstrumentable()) {
-                if (NodeLibrary.getUncached().hasScope(methodNode, frame)) {
-                    return (InstrumentableNode) methodNode;
-                }
-            }
-        }
-        return null;
     }
 
     private static BciProvider getBciProviderNode(Node node) {

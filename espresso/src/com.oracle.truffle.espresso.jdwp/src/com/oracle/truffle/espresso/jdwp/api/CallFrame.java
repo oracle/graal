@@ -26,7 +26,6 @@ import com.oracle.truffle.api.debug.DebugScope;
 import com.oracle.truffle.api.debug.DebugStackFrame;
 import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.NodeLibrary;
@@ -153,18 +152,7 @@ public final class CallFrame {
                 JDWP.LOGGER.warning(() -> "Unable to get scope for " + currentNode.getClass());
             }
         } else {
-            // fallback to lookup scope provider node from the root node
-            InstrumentableNode scopeNode = context.getScopeProviderNode(rootNode, frame);
-            if (scopeNode == null) {
-                JDWP.LOGGER.warning(() -> "Unable to get instrumentable node for root " + rootNode);
-            } else {
-                try {
-                    scope = NodeLibrary.getUncached().getScope(scopeNode, frame, true);
-                } catch (UnsupportedMessageException e) {
-                    JDWP.LOGGER.warning(() -> "Unable to get scope for " + scopeNode.getClass());
-                }
-                JDWP.LOGGER.warning(() -> "Unable to get scope for " + scopeNode.getClass());
-            }
+            JDWP.LOGGER.warning(() -> "Unable to get scope for " + currentNode.getClass());
         }
         return scope;
     }
