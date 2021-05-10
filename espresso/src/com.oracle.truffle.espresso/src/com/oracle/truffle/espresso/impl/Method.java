@@ -1026,15 +1026,22 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         hooks[hooks.length - 1] = info;
     }
 
-    public synchronized void removeActiveHook(int requestId) {
-        // shrink the array to avoid null values
+    private void expectActiveHooks() {
         if (hooks.length == 0) {
-            throw new RuntimeException("Method: " + getNameAsString() + " should contain method hook");
-        } else if (hooks.length == 1) {
+            throw new RuntimeException("Method: " + getNameAsString() + " expected to contain method hook");
+        }
+    }
+
+    public synchronized void removeActiveHook(int requestId) {
+        expectActiveHooks();
+        boolean removed = false;
+        // shrink the array to avoid null values
+        if (hooks.length == 1) {
             // make sure it's the right hook
             if (hooks[0].getRequestId() == requestId) {
                 hooks = new MethodHook[0];
                 hasActiveHook.set(false);
+                removed = true;
             }
         } else {
             int removeIndex = -1;
@@ -1044,26 +1051,30 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                     break;
                 }
             }
-            if (removeIndex == -1) {
-                throw new RuntimeException("Method: " + getNameAsString() + " should contain method hook");
+            if (removeIndex != -1) {
+                MethodHook[] temp = new MethodHook[hooks.length - 1];
+                for (int i = 0; i < temp.length; i++) {
+                    temp[i] = i < removeIndex ? hooks[i] : hooks[i + 1];
+                }
+                hooks = temp;
+                removed = true;
             }
-            MethodHook[] temp = new MethodHook[hooks.length - 1];
-            for (int i = 0; i < temp.length; i++) {
-                temp[i] = i < removeIndex ? hooks[i] : hooks[i + 1];
-            }
-            hooks = temp;
+        }
+        if (!removed) {
+            throw new RuntimeException("Method: " + getNameAsString() + " should contain method hook");
         }
     }
 
     public synchronized void removeActiveHook(MethodHook hook) {
+        expectActiveHooks();
+        boolean removed = false;
         // shrink the array to avoid null values
-        if (hooks.length == 0) {
-            throw new RuntimeException("Method: " + getNameAsString() + " should contain method hook");
-        } else if (hooks.length == 1) {
+        if (hooks.length == 1) {
             // make sure it's the right hook
             if (hooks[0] == hook) {
                 hooks = new MethodHook[0];
                 hasActiveHook.set(false);
+                removed = true;
             }
         } else {
             int removeIndex = -1;
@@ -1073,11 +1084,17 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                     break;
                 }
             }
-            MethodHook[] temp = new MethodHook[hooks.length - 1];
-            for (int i = 0; i < temp.length; i++) {
-                temp[i] = i < removeIndex ? hooks[i] : hooks[i + 1];
+            if (removeIndex != -1) {
+                MethodHook[] temp = new MethodHook[hooks.length - 1];
+                for (int i = 0; i < temp.length; i++) {
+                    temp[i] = i < removeIndex ? hooks[i] : hooks[i + 1];
+                }
+                hooks = temp;
+                removed = true;
             }
-            hooks = temp;
+        }
+        if (!removed) {
+            throw new RuntimeException("Method: " + getNameAsString() + " should contain method hook");
         }
     }
 
