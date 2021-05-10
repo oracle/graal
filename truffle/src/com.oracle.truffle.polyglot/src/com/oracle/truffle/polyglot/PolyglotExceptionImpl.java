@@ -122,7 +122,8 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
         this.exception = original;
         this.guestFrames = TruffleStackTrace.getStackTrace(original);
         this.showInternalStackFrames = engine == null ? false : engine.engineOptionValues.get(PolyglotEngineOptions.ShowInternalStackFrames);
-        this.resourceExhausted = isResourceLimit(exception);
+        Error resourceLimitError = getResourceLimitError(exception);
+        this.resourceExhausted = resourceLimitError != null;
         InteropLibrary interop;
         if (allowInterop && (interop = InteropLibrary.getUncached()).isException(exception)) {
             try {
@@ -197,8 +198,15 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
                 String exceptionMessage = exception.getMessage();
                 if (exceptionMessage != null) {
                     this.message = exceptionMessage;
-                } else if (resourceExhausted) {
-                    this.message = "Resources exhausted";
+                } else if (resourceLimitError != null) {
+                    String resourceExhaustedMessage = "Resource exhausted";
+                    if (resourceLimitError instanceof StackOverflowError) {
+                        resourceExhaustedMessage += ": Stack overflow";
+                    }
+                    if (resourceLimitError instanceof OutOfMemoryError) {
+                        resourceExhaustedMessage += ": Out of memory";
+                    }
+                    this.message = resourceExhaustedMessage;
                 } else {
                     this.message = null;
                 }
@@ -210,9 +218,9 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
         EngineAccessor.LANGUAGE.materializeHostFrames(original);
     }
 
-    private static boolean isResourceLimit(Throwable e) {
+    private static Error getResourceLimitError(Throwable e) {
         if (e instanceof CancelExecution) {
-            return ((CancelExecution) e).isResourceLimit();
+            return ((CancelExecution) e).isResourceLimit() ? (Error) e : null;
         }
         Throwable toCheck;
         if (e instanceof HostException) {
@@ -220,7 +228,10 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
         } else {
             toCheck = e;
         }
-        return toCheck instanceof StackOverflowError || toCheck instanceof OutOfMemoryError;
+        if (toCheck instanceof StackOverflowError || toCheck instanceof OutOfMemoryError) {
+            return (Error) toCheck;
+        }
+        return null;
     }
 
     @SuppressWarnings("deprecation")
