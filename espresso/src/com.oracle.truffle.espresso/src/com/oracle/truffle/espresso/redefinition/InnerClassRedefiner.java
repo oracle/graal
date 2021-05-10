@@ -343,7 +343,7 @@ public final class InnerClassRedefiner {
             for (Klass loadedKlass : loadedKlasses) {
                 if (loadedKlass instanceof ObjectKlass) {
                     ObjectKlass objectKlass = (ObjectKlass) loadedKlass;
-                    Matcher matcher = ANON_INNER_CLASS_PATTERN.matcher(klass.getNameAsString());
+                    Matcher matcher = ANON_INNER_CLASS_PATTERN.matcher(loadedKlass.getNameAsString());
                     if (matcher.matches()) {
                         Symbol<Symbol.Name> outerClassName = getOuterClassName(loadedKlass.getName());
                         if (outerClassName != null && outerClassName.length() > 0) {
