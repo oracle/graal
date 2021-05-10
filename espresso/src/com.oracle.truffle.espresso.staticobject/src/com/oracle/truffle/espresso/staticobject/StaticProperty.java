@@ -50,14 +50,14 @@ public abstract class StaticProperty {
 
     final void initOffset(int o) {
         if (this.offset != 0) {
-            throw new RuntimeException("Attempt to reinitialize the offset of a static property. Was it added to more than one builder?");
+            throw new RuntimeException("Attempt to reinitialize the offset of a static property. Was it added to more than one builder or multiple times to the same builder?");
         }
         this.offset = o;
     }
 
     final void initShape(StaticShape<?> s) {
         if (this.shape != null) {
-            throw new RuntimeException("Attempt to reinitialize the shape of a static property. Was it added to more than one builder?");
+            throw new RuntimeException("Attempt to reinitialize the shape of a static property. Was it added to more than one builder or multiple times to the same builder?");
         }
         this.shape = s;
     }

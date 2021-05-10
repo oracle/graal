@@ -40,12 +40,13 @@ public class BuilderPropertyTest {
         StaticShape.Builder builder = StaticShape.newBuilder();
         StaticProperty property = new DefaultStaticProperty(StaticPropertyKind.Int);
         builder.property(property, "p1", false);
+        builder.property(property, "p2", false);
         try {
-            // You cannot add the same property twice
-            builder.property(property, "p2", false);
+            builder.build();
             Assert.fail();
-        } catch (IllegalArgumentException e) {
-            Assert.assertEquals("This builder already contains this property", e.getMessage());
+        } catch (RuntimeException e) {
+            // You cannot add the same property twice
+            Assert.assertEquals("Attempt to reinitialize the offset of a static property. Was it added to more than one builder or multiple times to the same builder?", e.getMessage());
         }
     }
 
@@ -77,7 +78,7 @@ public class BuilderPropertyTest {
             b2.build();
             Assert.fail();
         } catch (RuntimeException e) {
-            Assert.assertEquals("Attempt to reinitialize the offset of a static property. Was it added to more than one builder?", e.getMessage());
+            Assert.assertEquals("Attempt to reinitialize the offset of a static property. Was it added to more than one builder or multiple times to the same builder?", e.getMessage());
         }
     }
 
