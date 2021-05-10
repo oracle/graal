@@ -13,6 +13,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Methods annotated with `@Fallback`  of the Truffle specialization DSL now support `@Cached`, `@CachedContext`, `@CachedLanguage`, `@Bind` and dispatched `@CachedLibrary` parameters.
 * Deprecated and added methods to support expected arity ranges in `ArityException` instances. Note that the replacement methods now include more strict validations.
 * `DebugValue` methods `hashCode()` and `equals()` provide result of the interop `identityHashCode` and `isIdentical` calls on the corresponding guest objects, respectively.
+* Enabled by default the traversing compilation queue with dynamic thresholds, see `PolyglotCompilerOptions#TraversingCompilationQueue`, `PolyglotCompilerOptions#DynamicCompilationThresholds`, `PolyglotCompilerOptions#DynamicCompilerThresholdsMinScale`, `PolyglotCompilerOptions#DynamicCompilerThresholdsMinNormalLoad` and `PolyglotCompilerOptions#DynamicCompilerThresholdsMaxNormalLoad`.
 
 ## Version 21.1.0
 * Added methods into `Instrumenter` that create bindings to be attached later on. Added `EventBinding.attach()` method.

@@ -694,6 +694,9 @@ def _unittest_config_participant(config):
     if _get_XX_option_value(vmArgs, 'TypeProfileWidth', None) is None:
         vmArgs.append('-XX:TypeProfileWidth=8')
 
+    # TODO: GR-31197, this should be removed.
+    vmArgs.append('-Dpolyglot.engine.DynamicCompilationThresholds=false')
+    vmArgs.append('-Dpolyglot.engine.AllowExperimentalOptions=true')
     return (vmArgs, mainClass, mainClassArgs)
 
 mx_unittest.add_config_participant(_unittest_config_participant)
