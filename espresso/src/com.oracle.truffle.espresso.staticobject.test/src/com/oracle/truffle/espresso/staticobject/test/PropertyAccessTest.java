@@ -90,7 +90,7 @@ public class PropertyAccessTest {
                 case Byte:
                     descriptors[i] = new TestDescriptor(
                                     StaticPropertyKind.Byte,
-                                    (byte) 42,
+                                    (byte) 0x01,
                                     (byte) 0,
                                     (p, obj) -> p.getByte(obj),
                                     (p, obj, val) -> p.setByte(obj, (byte) val));
@@ -98,7 +98,7 @@ public class PropertyAccessTest {
                 case Char:
                     descriptors[i] = new TestDescriptor(
                                     StaticPropertyKind.Char,
-                                    (char) 0x0102,
+                                    (char) 0x0203,
                                     (char) 0,
                                     (p, obj) -> p.getChar(obj),
                                     (p, obj, val) -> p.setChar(obj, (char) val));
@@ -106,7 +106,7 @@ public class PropertyAccessTest {
                 case Double:
                     descriptors[i] = new TestDescriptor(
                                     StaticPropertyKind.Double,
-                                    42D,
+                                    Double.longBitsToDouble(0x161718191a1b1c1dL),
                                     0D,
                                     (p, obj) -> p.getDouble(obj),
                                     (p, obj, val) -> p.setDouble(obj, (double) val));
@@ -114,7 +114,7 @@ public class PropertyAccessTest {
                 case Float:
                     descriptors[i] = new TestDescriptor(
                                     StaticPropertyKind.Float,
-                                    42F,
+                                    Float.intBitsToFloat(0x12131415),
                                     0F,
                                     (p, obj) -> p.getFloat(obj),
                                     (p, obj, val) -> p.setFloat(obj, (float) val));
@@ -122,7 +122,7 @@ public class PropertyAccessTest {
                 case Int:
                     descriptors[i] = new TestDescriptor(
                                     StaticPropertyKind.Int,
-                                    42,
+                                    0x0607_0809,
                                     0,
                                     (p, obj) -> p.getInt(obj),
                                     (p, obj, val) -> p.setInt(obj, (int) val));
@@ -130,7 +130,7 @@ public class PropertyAccessTest {
                 case Long:
                     descriptors[i] = new TestDescriptor(
                                     StaticPropertyKind.Long,
-                                    42L,
+                                    0x0a0b_0c0d_0e0f_10_11L,
                                     0L,
                                     (p, obj) -> p.getLong(obj),
                                     (p, obj, val) -> p.setLong(obj, (long) val));
@@ -138,7 +138,7 @@ public class PropertyAccessTest {
                 case Short:
                     descriptors[i] = new TestDescriptor(
                                     StaticPropertyKind.Short,
-                                    (short) 42,
+                                    (short) 0x0405,
                                     (short) 0,
                                     (p, obj) -> p.getShort(obj),
                                     (p, obj, val) -> p.setShort(obj, (short) val));
