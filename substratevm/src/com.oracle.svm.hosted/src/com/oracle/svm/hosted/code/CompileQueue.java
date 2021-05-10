@@ -1160,7 +1160,7 @@ public class CompileQueue {
             SubstrateBackend backend = config.lookupBackend(method);
 
             StructuredGraph graph = method.compilationInfo.graph;
-            assert graph != null : method;
+            VMError.guarantee(graph != null, "The following method is reachable during compilation, but was not seen during Bytecode parsing: " + method);
             /* Operate on a copy, to keep the original graph intact for later inlining. */
             graph = graph.copyWithIdentifier(compilationIdentifier, debug);
 
