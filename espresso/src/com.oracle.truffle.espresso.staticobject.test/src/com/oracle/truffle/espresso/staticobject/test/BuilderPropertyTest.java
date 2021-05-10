@@ -38,30 +38,30 @@ public class BuilderPropertyTest {
     @Test
     public void sameBuilderSameProperty() {
         StaticShape.Builder builder = StaticShape.newBuilder();
-        StaticProperty property = new DefaultStaticProperty(StaticPropertyKind.Int);
-        builder.property(property, "p1", false);
-        builder.property(property, "p2", false);
+        StaticProperty property = new DefaultStaticProperty("property", StaticPropertyKind.Int, false);
+        builder.property(property);
         try {
-            builder.build();
-            Assert.fail();
-        } catch (RuntimeException e) {
             // You cannot add the same property twice
-            Assert.assertEquals("Attempt to reinitialize the offset of a static property. Was it added to more than one builder or multiple times to the same builder?", e.getMessage());
+            builder.property(property);
+            Assert.fail();
+        } catch (IllegalArgumentException e) {
+            // You cannot add the same property twice
+            Assert.assertEquals("This builder already contains a property named 'property'", e.getMessage());
         }
     }
 
     @Test
     public void sameBuilderSameName() throws IllegalArgumentException {
         StaticShape.Builder builder = StaticShape.newBuilder();
-        StaticProperty p1 = new DefaultStaticProperty(StaticPropertyKind.Int);
-        StaticProperty p2 = new DefaultStaticProperty(StaticPropertyKind.Int);
-        builder.property(p1, "p1", false);
+        StaticProperty p1 = new DefaultStaticProperty("property", StaticPropertyKind.Int, false);
+        StaticProperty p2 = new DefaultStaticProperty("property", StaticPropertyKind.Int, false);
+        builder.property(p1);
         try {
             // You cannot add two properties with the same name
-            builder.property(p2, "p1", false);
+            builder.property(p2);
             Assert.fail();
         } catch (IllegalArgumentException e) {
-            Assert.assertEquals("This builder already contains a property named 'p1'", e.getMessage());
+            Assert.assertEquals("This builder already contains a property named 'property'", e.getMessage());
         }
     }
 
@@ -69,16 +69,17 @@ public class BuilderPropertyTest {
     public void differentBuildersSameProperty() {
         StaticShape.Builder b1 = StaticShape.newBuilder();
         StaticShape.Builder b2 = StaticShape.newBuilder();
-        StaticProperty property = new DefaultStaticProperty(StaticPropertyKind.Int);
-        b1.property(property, "p1", false);
-        b2.property(property, "p2", false);
+        StaticProperty property = new DefaultStaticProperty("property", StaticPropertyKind.Int, false);
+        b1.property(property);
+        b2.property(property);
         b1.build();
         try {
             // You cannot build shapes that share properties
             b2.build();
             Assert.fail();
         } catch (RuntimeException e) {
-            Assert.assertEquals("Attempt to reinitialize the offset of a static property. Was it added to more than one builder or multiple times to the same builder?", e.getMessage());
+            Assert.assertEquals("Attempt to reinitialize the offset of static property 'property' of kind 'Int'.\nWas it added to more than one builder or multiple times to the same builder?",
+                            e.getMessage());
         }
     }
 
@@ -87,9 +88,9 @@ public class BuilderPropertyTest {
         Assume.assumeFalse(StorageLayout.ARRAY_BASED);
 
         StaticShape.Builder builder = StaticShape.newBuilder();
-        StaticProperty property = new DefaultStaticProperty(StaticPropertyKind.Int);
-        String propertyName = "p1";
-        builder.property(property, propertyName, false);
+        String propertyName = "property";
+        StaticProperty property = new DefaultStaticProperty(propertyName, StaticPropertyKind.Int, false);
+        builder.property(property);
         StaticShape<DefaultStaticObject.Factory> shape = builder.build();
         DefaultStaticObject object = shape.getFactory().create();
         Field field = object.getClass().getField(propertyName);
@@ -101,12 +102,12 @@ public class BuilderPropertyTest {
         Assume.assumeFalse(StorageLayout.ARRAY_BASED);
 
         StaticShape.Builder builder = StaticShape.newBuilder();
-        StaticProperty p1 = new DefaultStaticProperty(StaticPropertyKind.Int);
-        StaticProperty p2 = new DefaultStaticProperty(StaticPropertyKind.Int);
         String p1Name = "p1";
         String p2Name = "p2";
-        builder.property(p1, p1Name, true);
-        builder.property(p2, p2Name, false);
+        StaticProperty p1 = new DefaultStaticProperty(p1Name, StaticPropertyKind.Int, true);
+        StaticProperty p2 = new DefaultStaticProperty(p2Name, StaticPropertyKind.Int, false);
+        builder.property(p1);
+        builder.property(p2);
         StaticShape<DefaultStaticObject.Factory> shape = builder.build();
         DefaultStaticObject object = shape.getFactory().create();
         Field f1 = object.getClass().getField(p1Name);
@@ -121,7 +122,7 @@ public class BuilderPropertyTest {
 
         StaticShape.Builder builder = StaticShape.newBuilder();
         for (StaticPropertyKind kind : StaticPropertyKind.values()) {
-            builder.property(new DefaultStaticProperty(kind), kind.name(), false);
+            builder.property(new DefaultStaticProperty(kind.name(), kind, false));
         }
         StaticShape<DefaultStaticObject.Factory> shape = builder.build();
         DefaultStaticObject object = shape.getFactory().create();

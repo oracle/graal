@@ -1112,7 +1112,7 @@ public final class ObjectKlass extends Klass {
                     Field oldField = fieldTable[i];
                     if (outerField == oldField) {
                         for (LinkedField instanceField : instanceFields) {
-                            if (instanceField.getName().equals(outerField.getName())) {
+                            if (instanceField.getSymbolicName().equals(outerField.getName())) {
                                 // replace with new field
                                 fieldTable[i] = new Field(this, instanceField, false);
                             }

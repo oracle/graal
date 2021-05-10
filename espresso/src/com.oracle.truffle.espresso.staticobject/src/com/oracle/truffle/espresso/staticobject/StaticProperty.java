@@ -44,20 +44,26 @@ public abstract class StaticProperty {
         this(getInternalKind(kind));
     }
 
+    public abstract String getName();
+
+    public abstract boolean isFinal();
+
     private static byte getInternalKind(StaticPropertyKind kind) {
         return kind.toByte();
     }
 
     final void initOffset(int o) {
         if (this.offset != 0) {
-            throw new RuntimeException("Attempt to reinitialize the offset of a static property. Was it added to more than one builder or multiple times to the same builder?");
+            throw new RuntimeException("Attempt to reinitialize the offset of static property '" + getName() + "' of kind '" + StaticPropertyKind.valueOf(internalKind).name() + "'.\n" +
+                            "Was it added to more than one builder or multiple times to the same builder?");
         }
         this.offset = o;
     }
 
     final void initShape(StaticShape<?> s) {
         if (this.shape != null) {
-            throw new RuntimeException("Attempt to reinitialize the shape of a static property. Was it added to more than one builder or multiple times to the same builder?");
+            throw new RuntimeException("Attempt to reinitialize the shape of static property '" + getName() + "' of kind '" + StaticPropertyKind.valueOf(internalKind).name() + "'.\n" +
+                            "Was it added to more than one builder or multiple times to the same builder?");
         }
         this.shape = s;
     }
@@ -70,7 +76,7 @@ public abstract class StaticProperty {
         if (this.internalKind != getInternalKind(kind)) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             String kindName = StaticPropertyKind.valueOf(internalKind).name();
-            throw new RuntimeException("Static property of '" + kindName + "' kind cannot be accessed as '" + kind.name() + "'");
+            throw new RuntimeException("Static property '" + getName() + "' of kind '" + kindName + "' cannot be accessed as '" + kind.name() + "'");
         }
     }
 

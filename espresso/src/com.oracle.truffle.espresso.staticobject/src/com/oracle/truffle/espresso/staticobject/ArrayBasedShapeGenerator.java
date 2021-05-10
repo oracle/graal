@@ -36,7 +36,6 @@ import com.oracle.truffle.api.impl.asm.Label;
 import com.oracle.truffle.api.impl.asm.MethodVisitor;
 import com.oracle.truffle.api.impl.asm.Opcodes;
 import com.oracle.truffle.api.impl.asm.Type;
-import com.oracle.truffle.espresso.staticobject.StaticShape.ExtendedProperty;
 import org.graalvm.collections.Pair;
 
 import static com.oracle.truffle.api.impl.asm.Opcodes.ACC_FINAL;
@@ -148,8 +147,8 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
     }
 
     @Override
-    StaticShape<T> generateShape(StaticShape<T> parentShape, Collection<ExtendedProperty> extendedProperties) {
-        return ArrayBasedStaticShape.create(generatedStorageClass, generatedFactoryClass, (ArrayBasedStaticShape<T>) parentShape, extendedProperties, byteArrayOffset, objectArrayOffset, shapeOffset);
+    StaticShape<T> generateShape(StaticShape<T> parentShape, Collection<StaticProperty> staticProperties) {
+        return ArrayBasedStaticShape.create(generatedStorageClass, generatedFactoryClass, (ArrayBasedStaticShape<T>) parentShape, staticProperties, byteArrayOffset, objectArrayOffset, shapeOffset);
     }
 
     private static String getStorageConstructorDescriptor(Constructor<?> superConstructor) {
@@ -229,10 +228,10 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
             Label lSetPrimitive = new Label();
             mv.visitJumpInsn(GOTO, lSetPrimitive);
             mv.visitLabel(lNoPrimitives);
-            mv.visitFrame(F_FULL, frameLocals.length, frameLocals, 1, new Object[] {storageName});
+            mv.visitFrame(F_FULL, frameLocals.length, frameLocals, 1, new Object[]{storageName});
             mv.visitInsn(ACONST_NULL);
             mv.visitLabel(lSetPrimitive);
-            mv.visitFrame(F_FULL, frameLocals.length, frameLocals, 2, new Object[] {storageName, "[B"});
+            mv.visitFrame(F_FULL, frameLocals.length, frameLocals, 2, new Object[]{storageName, "[B"});
             mv.visitFieldInsn(PUTFIELD, storageName, "primitive", "[B");
 
             // object = objectArraySize > 0 ? new Object[objectArraySize] : null;
@@ -245,10 +244,10 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
             Label lSetObject = new Label();
             mv.visitJumpInsn(GOTO, lSetObject);
             mv.visitLabel(lNoObjects);
-            mv.visitFrame(F_FULL, frameLocals.length, frameLocals, 1, new Object[] {storageName});
+            mv.visitFrame(F_FULL, frameLocals.length, frameLocals, 1, new Object[]{storageName});
             mv.visitInsn(ACONST_NULL);
             mv.visitLabel(lSetObject);
-            mv.visitFrame(F_FULL, frameLocals.length, frameLocals, 2, new Object[] {storageName, "[Ljava/lang/Object;"});
+            mv.visitFrame(F_FULL, frameLocals.length, frameLocals, 2, new Object[]{storageName, "[Ljava/lang/Object;"});
             mv.visitFieldInsn(PUTFIELD, storageName, "object", "[Ljava/lang/Object;");
 
             mv.visitInsn(RETURN);
@@ -275,7 +274,7 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
 
     private static void addCloneMethod(Class<?> storageSuperClass, ClassVisitor cv, String className) {
         // Prepare array of frame locals for jumps
-        Object[] frameLocals = new Object[] {className, className};
+        Object[] frameLocals = new Object[]{className, className};
 
         Method superCloneMethod = getCloneMethod(storageSuperClass);
         String superCloneMethodDescriptor = Type.getMethodDescriptor(superCloneMethod);
@@ -295,14 +294,14 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
         Label lSetPrimitive = new Label();
         mv.visitJumpInsn(GOTO, lSetPrimitive);
         mv.visitLabel(lHasPrimitives);
-        mv.visitFrame(Opcodes.F_FULL, 2, frameLocals, 1, new Object[] {className});
+        mv.visitFrame(Opcodes.F_FULL, 2, frameLocals, 1, new Object[]{className});
         mv.visitVarInsn(ALOAD, 0);
         mv.visitFieldInsn(GETFIELD, className, "primitive", "[B");
         mv.visitMethodInsn(INVOKEVIRTUAL, "[B", "clone", "()Ljava/lang/Object;", false);
         mv.visitTypeInsn(CHECKCAST, "[B");
         mv.visitTypeInsn(CHECKCAST, "[B");
         mv.visitLabel(lSetPrimitive);
-        mv.visitFrame(Opcodes.F_FULL, 2, frameLocals, 2, new Object[] {className, "[B"});
+        mv.visitFrame(Opcodes.F_FULL, 2, frameLocals, 2, new Object[]{className, "[B"});
         mv.visitFieldInsn(PUTFIELD, className, "primitive", "[B");
 
         // clone.object = (object == null ? null : (Object[]) object.clone());
@@ -315,14 +314,14 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
         Label lSetObject = new Label();
         mv.visitJumpInsn(GOTO, lSetObject);
         mv.visitLabel(lHasObjects);
-        mv.visitFrame(Opcodes.F_FULL, 2, frameLocals, 1, new Object[] {className});
+        mv.visitFrame(Opcodes.F_FULL, 2, frameLocals, 1, new Object[]{className});
         mv.visitVarInsn(ALOAD, 0);
         mv.visitFieldInsn(GETFIELD, className, "object", "[Ljava/lang/Object;");
         mv.visitMethodInsn(INVOKEVIRTUAL, "[Ljava/lang/Object;", "clone", "()Ljava/lang/Object;", false);
         mv.visitTypeInsn(CHECKCAST, "[Ljava/lang/Object;");
         mv.visitTypeInsn(CHECKCAST, "[Ljava/lang/Object;");
         mv.visitLabel(lSetObject);
-        mv.visitFrame(Opcodes.F_FULL, 2, frameLocals, 2, new Object[] {className, "[Ljava/lang/Object;"});
+        mv.visitFrame(Opcodes.F_FULL, 2, frameLocals, 2, new Object[]{className, "[Ljava/lang/Object;"});
         mv.visitFieldInsn(PUTFIELD, className, "object", "[Ljava/lang/Object;");
 
         mv.visitVarInsn(ALOAD, 1);
@@ -394,17 +393,17 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
         }
     }
 
-    private static Collection<ExtendedProperty> generateStorageProperties() {
+    private static Collection<StaticProperty> generateStorageProperties() {
         return Arrays.asList(
-                        new ExtendedProperty(new DefaultStaticProperty(StaticPropertyKind.BYTE_ARRAY), "primitive", true),
-                        new ExtendedProperty(new DefaultStaticProperty(StaticPropertyKind.OBJECT_ARRAY), "object", true),
-                        new ExtendedProperty(new DefaultStaticProperty(StaticPropertyKind.Object), "shape", true));
+                        new DefaultStaticProperty("primitive", StaticPropertyKind.BYTE_ARRAY, true),
+                        new DefaultStaticProperty("object", StaticPropertyKind.OBJECT_ARRAY, true),
+                        new DefaultStaticProperty("shape", StaticPropertyKind.Object, true));
     }
 
     private static Class<?> generateStorage(Class<?> storageSuperClass) {
         String storageSuperName = Type.getInternalName(storageSuperClass);
         String storageName = generateStorageName();
-        Collection<ExtendedProperty> arrayProperties = generateStorageProperties();
+        Collection<StaticProperty> arrayProperties = generateStorageProperties();
 
         ClassWriter storageWriter = new ClassWriter(0);
         int storageAccess = ACC_PUBLIC | ACC_SUPER | ACC_SYNTHETIC;

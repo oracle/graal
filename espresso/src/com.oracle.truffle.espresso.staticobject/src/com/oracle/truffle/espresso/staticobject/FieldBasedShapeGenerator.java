@@ -26,7 +26,6 @@ import com.oracle.truffle.api.impl.asm.ClassVisitor;
 import com.oracle.truffle.api.impl.asm.ClassWriter;
 import com.oracle.truffle.api.impl.asm.MethodVisitor;
 import com.oracle.truffle.api.impl.asm.Type;
-import com.oracle.truffle.espresso.staticobject.StaticShape.ExtendedProperty;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
@@ -60,12 +59,12 @@ final class FieldBasedShapeGenerator<T> extends ShapeGenerator<T> {
     }
 
     @Override
-    StaticShape<T> generateShape(StaticShape<T> parentShape, Collection<ExtendedProperty> extendedProperties) {
-        Class<?> generatedStorageClass = generateStorage(storageSuperClass, extendedProperties);
+    StaticShape<T> generateShape(StaticShape<T> parentShape, Collection<StaticProperty> staticProperties) {
+        Class<?> generatedStorageClass = generateStorage(storageSuperClass, staticProperties);
         Class<? extends T> generatedFactoryClass = generateFactory(generatedStorageClass, storageFactoryInterface);
-        for (ExtendedProperty extendedProperty : extendedProperties) {
-            int offset = getObjectFieldOffset(generatedStorageClass, extendedProperty.getName());
-            extendedProperty.getProperty().initOffset(offset);
+        for (StaticProperty staticProperty : staticProperties) {
+            int offset = getObjectFieldOffset(generatedStorageClass, staticProperty.getName());
+            staticProperty.initOffset(offset);
         }
         return FieldBasedStaticShape.create(generatedStorageClass, generatedFactoryClass);
     }
@@ -136,14 +135,14 @@ final class FieldBasedShapeGenerator<T> extends ShapeGenerator<T> {
         }
     }
 
-    private static Class<?> generateStorage(Class<?> storageSuperClass, Collection<ExtendedProperty> extendedProperties) {
+    private static Class<?> generateStorage(Class<?> storageSuperClass, Collection<StaticProperty> staticProperties) {
         String storageSuperName = Type.getInternalName(storageSuperClass);
         String storageName = generateStorageName();
         ClassWriter storageWriter = new ClassWriter(0);
         int storageAccess = ACC_PUBLIC | ACC_SUPER | ACC_SYNTHETIC;
         storageWriter.visit(V1_8, storageAccess, storageName, null, storageSuperName, null);
         addStorageConstructors(storageWriter, storageSuperClass, storageSuperName);
-        addStorageFields(storageWriter, extendedProperties);
+        addStorageFields(storageWriter, staticProperties);
         storageWriter.visitEnd();
         return load(storageName, storageWriter.toByteArray(), storageSuperClass);
     }

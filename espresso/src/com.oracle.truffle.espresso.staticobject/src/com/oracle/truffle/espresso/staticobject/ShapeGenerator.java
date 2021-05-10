@@ -25,7 +25,6 @@ package com.oracle.truffle.espresso.staticobject;
 import com.oracle.truffle.api.impl.asm.ClassVisitor;
 import com.oracle.truffle.api.impl.asm.FieldVisitor;
 import com.oracle.truffle.api.impl.asm.Type;
-import com.oracle.truffle.espresso.staticobject.StaticShape.ExtendedProperty;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodHandles.Lookup;
@@ -65,7 +64,7 @@ abstract class ShapeGenerator<T> {
         }
     }
 
-    abstract StaticShape<T> generateShape(StaticShape<T> parentShape, Collection<ExtendedProperty> extendedProperties);
+    abstract StaticShape<T> generateShape(StaticShape<T> parentShape, Collection<StaticProperty> staticProperties);
 
     static <T> ShapeGenerator<T> getShapeGenerator(StaticShape<T> parentShape) {
         Class<?> parentStorageClass = parentShape.getStorageClass();
@@ -89,13 +88,13 @@ abstract class ShapeGenerator<T> {
         return Type.getInternalName(generatedStorageClass) + DELIMITER + "Factory";
     }
 
-    static void addStorageFields(ClassVisitor cv, Collection<ExtendedProperty> extendedProperties) {
-        for (ExtendedProperty extendedProperty : extendedProperties) {
+    static void addStorageFields(ClassVisitor cv, Collection<StaticProperty> staticProperties) {
+        for (StaticProperty staticProperty : staticProperties) {
             int access = ACC_PUBLIC;
-            if (extendedProperty.isFinal()) {
+            if (staticProperty.isFinal()) {
                 access |= ACC_FINAL;
             }
-            FieldVisitor fv = cv.visitField(access, extendedProperty.getName(), StaticPropertyKind.getDescriptor(extendedProperty.getProperty().getInternalKind()), null, null);
+            FieldVisitor fv = cv.visitField(access, staticProperty.getName(), StaticPropertyKind.getDescriptor(staticProperty.getInternalKind()), null, null);
             fv.visitEnd();
         }
     }

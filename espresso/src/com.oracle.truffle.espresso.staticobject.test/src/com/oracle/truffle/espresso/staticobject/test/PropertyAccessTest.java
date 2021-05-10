@@ -160,8 +160,8 @@ public class PropertyAccessTest {
     @Theory
     public void correctAccessors(TestDescriptor descriptor) {
         StaticShape.Builder builder = StaticShape.newBuilder();
-        StaticProperty property = new DefaultStaticProperty(descriptor.kind);
-        builder.property(property, "property", false);
+        StaticProperty property = new DefaultStaticProperty("property", descriptor.kind, false);
+        builder.property(property);
         StaticShape<DefaultStaticObject.Factory> shape = builder.build();
         DefaultStaticObject object = shape.getFactory().create();
 
@@ -179,13 +179,13 @@ public class PropertyAccessTest {
         Assume.assumeFalse(expectedDescriptor.equals(actualDescriptor));
 
         StaticShape.Builder builder = StaticShape.newBuilder();
-        StaticProperty property = new DefaultStaticProperty(expectedDescriptor.kind);
-        builder.property(property, "property", false);
+        StaticProperty property = new DefaultStaticProperty("property", expectedDescriptor.kind, false);
+        builder.property(property);
         StaticShape<DefaultStaticObject.Factory> shape = builder.build();
         DefaultStaticObject object = shape.getFactory().create();
 
         // Check that wrong getters throw exceptions
-        String expectedExceptionMessage = "Static property of '" + expectedDescriptor.kind.name() + "' kind cannot be accessed as '" + actualDescriptor.kind + "'";
+        String expectedExceptionMessage = "Static property 'property' of kind '" + expectedDescriptor.kind.name() + "' cannot be accessed as '" + actualDescriptor.kind + "'";
         try {
             actualDescriptor.getter.get(property, object);
             Assert.fail();
@@ -204,13 +204,13 @@ public class PropertyAccessTest {
     @SuppressWarnings("unused")
     public void wrongShape(TestDescriptor descriptor) {
         StaticShape.Builder b1 = StaticShape.newBuilder();
-        StaticProperty p1 = new DefaultStaticProperty(descriptor.kind);
-        b1.property(p1, "property", false);
+        StaticProperty p1 = new DefaultStaticProperty("property", descriptor.kind, false);
+        b1.property(p1);
         StaticShape<DefaultStaticObject.Factory> s1 = b1.build();
 
         StaticShape.Builder b2 = StaticShape.newBuilder();
-        StaticProperty p2 = new DefaultStaticProperty(descriptor.kind);
-        b2.property(p2, "property", false);
+        StaticProperty p2 = new DefaultStaticProperty("property", descriptor.kind, false);
+        b2.property(p2);
         StaticShape<DefaultStaticObject.Factory> s2 = b2.build();
         DefaultStaticObject o2 = s2.getFactory().create();
 

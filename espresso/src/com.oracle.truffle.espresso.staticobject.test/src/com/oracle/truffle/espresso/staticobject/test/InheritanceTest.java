@@ -44,8 +44,8 @@ public class InheritanceTest {
     @Test
     public void baseClassInheritance() throws NoSuchFieldException {
         StaticShape.Builder builder = StaticShape.newBuilder();
-        StaticProperty property = new DefaultStaticProperty(StaticPropertyKind.Int);
-        builder.property(property, "field1", false);
+        StaticProperty property = new DefaultStaticProperty("field1", StaticPropertyKind.Int, false);
+        builder.property(property);
         StaticShape<CustomStaticObjectFactory> shape = builder.build(CustomStaticObject.class, CustomStaticObjectFactory.class);
         CustomStaticObject object = shape.getFactory().create();
 
@@ -68,16 +68,16 @@ public class InheritanceTest {
     @Test
     public void baseShapeInheritance() throws NoSuchFieldException, IllegalAccessException {
         StaticShape.Builder b1 = StaticShape.newBuilder();
-        StaticProperty s1p1 = new DefaultStaticProperty(StaticPropertyKind.Int);
-        StaticProperty s1p2 = new DefaultStaticProperty(StaticPropertyKind.Int);
-        b1.property(s1p1, "field1", false);
-        b1.property(s1p2, "field2", false);
+        StaticProperty s1p1 = new DefaultStaticProperty("field1", StaticPropertyKind.Int, false);
+        StaticProperty s1p2 = new DefaultStaticProperty("field2", StaticPropertyKind.Int, false);
+        b1.property(s1p1);
+        b1.property(s1p2);
         // StaticShape s1 declares 2 properties: s1p1 and s1p2
         StaticShape<DefaultStaticObject.Factory> s1 = b1.build();
 
         StaticShape.Builder b2 = StaticShape.newBuilder();
-        StaticProperty s2p1 = new DefaultStaticProperty(StaticPropertyKind.Int);
-        b2.property(s2p1, "field1", false);
+        StaticProperty s2p1 = new DefaultStaticProperty("field1", StaticPropertyKind.Int, false);
+        b2.property(s2p1);
         // StaticShape s2:
         // 1. extends s1
         // 2. declares one property: s2p1

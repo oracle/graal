@@ -23,11 +23,26 @@
 package com.oracle.truffle.espresso.staticobject;
 
 public final class DefaultStaticProperty extends StaticProperty {
-    DefaultStaticProperty(byte internalKind) {
+    private final String name;
+    private final boolean isFinal;
+
+    DefaultStaticProperty(String name, byte internalKind, boolean isFinal) {
         super(internalKind);
+        this.name = name;
+        this.isFinal = isFinal;
     }
 
-    public DefaultStaticProperty(StaticPropertyKind kind) {
-        super(kind);
+    public DefaultStaticProperty(String name, StaticPropertyKind kind, boolean isFinal) {
+        this(name, kind.toByte(), isFinal);
+    }
+
+    @Override
+    public String getName() {
+        return name;
+    }
+
+    @Override
+    public boolean isFinal() {
+        return isFinal;
     }
 }

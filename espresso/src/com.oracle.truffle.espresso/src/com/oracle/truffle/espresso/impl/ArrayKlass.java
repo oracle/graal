@@ -55,7 +55,7 @@ public final class ArrayKlass extends Klass {
     private final Klass elementalType;
     private final int dimension;
 
-    private static final StaticProperty ARRAY_PROPERTY = new DefaultStaticProperty(StaticPropertyKind.Object);
+    private static final StaticProperty ARRAY_PROPERTY = new DefaultStaticProperty("array", StaticPropertyKind.Object, true);
     // This field should be static final, but until we move the static object model we cannot have a
     // SubstrateVM feature which will allow us to set the right field offsets at image build time.
     @CompilationFinal //
@@ -89,7 +89,7 @@ public final class ArrayKlass extends Klass {
     @TruffleBoundary
     private static synchronized void initializeArrayShape() {
         if (arrayShape == null) {
-            arrayShape = StaticShape.newBuilder().property(ARRAY_PROPERTY, "array", true).build(StaticObject.class, StaticObjectFactory.class);
+            arrayShape = StaticShape.newBuilder().property(ARRAY_PROPERTY).build(StaticObject.class, StaticObjectFactory.class);
         }
     }
 

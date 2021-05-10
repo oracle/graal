@@ -29,7 +29,6 @@ import sun.misc.Unsafe;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Objects;
 
@@ -91,18 +90,18 @@ public abstract class StaticShape<T> {
     }
 
     public static final class Builder {
-        private final HashMap<String, ExtendedProperty> extendedProperties = new LinkedHashMap<>();
+        private final HashMap<String, StaticProperty> staticProperties = new LinkedHashMap<>();
 
         Builder() {
         }
 
-        public Builder property(StaticProperty property, String name, boolean isFinal) {
+        public Builder property(StaticProperty property) {
             CompilerAsserts.neverPartOfCompilation();
             Objects.requireNonNull(property);
-            if (extendedProperties.containsKey(name)) {
-                throw new IllegalArgumentException("This builder already contains a property named '" + name + "'");
+            if (staticProperties.containsKey(property.getName())) {
+                throw new IllegalArgumentException("This builder already contains a property named '" + property.getName() + "'");
             }
-            extendedProperties.put(name, new ExtendedProperty(property, name, isFinal));
+            staticProperties.put(property.getName(), property);
             return this;
         }
 
@@ -127,9 +126,9 @@ public abstract class StaticShape<T> {
 
         private <T> StaticShape<T> build(ShapeGenerator<T> sg, StaticShape<T> parentShape) {
             CompilerAsserts.neverPartOfCompilation();
-            StaticShape<T> shape = sg.generateShape(parentShape, extendedProperties.values());
-            for (ExtendedProperty extendedProperty : extendedProperties.values()) {
-                extendedProperty.property.initShape(shape);
+            StaticShape<T> shape = sg.generateShape(parentShape, staticProperties.values());
+            for (StaticProperty staticProperty : staticProperties.values()) {
+                staticProperty.initShape(shape);
             }
             return shape;
         }
@@ -150,30 +149,6 @@ public abstract class StaticShape<T> {
                     throw new RuntimeException("Method '" + m.toString() + "' does not match any constructor in '" + storageSuperClass.getName() + "'", e);
                 }
             }
-        }
-    }
-
-    static final class ExtendedProperty {
-        private final StaticProperty property;
-        private final String name;
-        private final boolean isFinal;
-
-        ExtendedProperty(StaticProperty property, String name, boolean isFinal) {
-            this.property = property;
-            this.name = name;
-            this.isFinal = isFinal;
-        }
-
-        StaticProperty getProperty() {
-            return property;
-        }
-
-        String getName() {
-            return name;
-        }
-
-        boolean isFinal() {
-            return isFinal;
         }
     }
 

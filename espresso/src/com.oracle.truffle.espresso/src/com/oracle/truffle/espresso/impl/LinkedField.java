@@ -43,6 +43,16 @@ final class LinkedField extends StaticProperty {
         return new LinkedField(new ParserField(ParserField.HIDDEN, name, Type.java_lang_Object, null), slot);
     }
 
+    @Override
+    public String getName() {
+        return getSymbolicName().toString();
+    }
+
+    @Override
+    public boolean isFinal() {
+        return parserField.isFinal();
+    }
+
     /**
      * The slot is the position in the `fieldTable` of the ObjectKlass.
      */
@@ -54,7 +64,7 @@ final class LinkedField extends StaticProperty {
         return parserField.getType();
     }
 
-    public Symbol<Name> getName() {
+    public Symbol<Name> getSymbolicName() {
         return parserField.getName();
     }
 

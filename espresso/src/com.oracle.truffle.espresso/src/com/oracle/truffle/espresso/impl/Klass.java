@@ -471,7 +471,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     static final DebugCounter KLASS_LOOKUP_DECLARED_METHOD_COUNT = DebugCounter.create("Klass.lookupDeclaredMethod call count");
     static final DebugCounter KLASS_LOOKUP_DECLARED_FIELD_COUNT = DebugCounter.create("Klass.lookupDeclaredField call count");
 
-    private static final StaticProperty FOREIGN_PROPERTY = new DefaultStaticProperty(StaticPropertyKind.Object);
+    private static final StaticProperty FOREIGN_PROPERTY = new DefaultStaticProperty("foreignObject", StaticPropertyKind.Object, true);
     // This field should be static final, but until we move the static object model we cannot have a
     // SubstrateVM feature which will allow us to set the right field offsets at image build time.
     @CompilationFinal //
@@ -624,7 +624,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     @TruffleBoundary
     private static synchronized void initializeForeignShape() {
         if (foreignShape == null) {
-            foreignShape = StaticShape.newBuilder().property(FOREIGN_PROPERTY, "foreignObject", true).build(StaticObject.class, StaticObjectFactory.class);
+            foreignShape = StaticShape.newBuilder().property(FOREIGN_PROPERTY).build(StaticObject.class, StaticObjectFactory.class);
         }
     }
 

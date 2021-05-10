@@ -73,10 +73,10 @@ final class ArrayBasedStaticShape<T> extends StaticShape<T> {
     }
 
     static <T> ArrayBasedStaticShape<T> create(Class<?> generatedStorageClass, Class<? extends T> generatedFactoryClass, ArrayBasedStaticShape<T> parentShape,
-                    Collection<ExtendedProperty> extendedProperties, int byteArrayOffset, int objectArrayOffset, int shapeOffset) {
+                    Collection<StaticProperty> staticProperties, int byteArrayOffset, int objectArrayOffset, int shapeOffset) {
         try {
             ArrayBasedPropertyLayout parentPropertyLayout = parentShape == null ? null : parentShape.getPropertyLayout();
-            ArrayBasedPropertyLayout propertyLayout = new ArrayBasedPropertyLayout(parentPropertyLayout, extendedProperties, byteArrayOffset, objectArrayOffset, shapeOffset);
+            ArrayBasedPropertyLayout propertyLayout = new ArrayBasedPropertyLayout(parentPropertyLayout, staticProperties, byteArrayOffset, objectArrayOffset, shapeOffset);
             ArrayBasedStaticShape<T> shape = new ArrayBasedStaticShape<>(parentShape, generatedStorageClass, propertyLayout);
             T factory = generatedFactoryClass.cast(
                             generatedFactoryClass.getConstructor(Object.class, int.class, int.class).newInstance(shape, propertyLayout.getPrimitiveArraySize(), propertyLayout.getObjectArraySize()));
@@ -192,7 +192,7 @@ final class ArrayBasedStaticShape<T> extends StaticShape<T> {
         private final int objectArrayOffset;
         private final int shapeOffset;
 
-        ArrayBasedPropertyLayout(ArrayBasedPropertyLayout parentLayout, Collection<ExtendedProperty> extendedProperties, int byteArrayOffset, int objectArrayOffset, int shapeOffset) {
+        ArrayBasedPropertyLayout(ArrayBasedPropertyLayout parentLayout, Collection<StaticProperty> staticProperties, int byteArrayOffset, int objectArrayOffset, int shapeOffset) {
             this.byteArrayOffset = byteArrayOffset;
             this.objectArrayOffset = objectArrayOffset;
             this.shapeOffset = shapeOffset;
@@ -218,23 +218,23 @@ final class ArrayBasedStaticShape<T> extends StaticShape<T> {
             }
 
             int[] primitiveFields = new int[N_PRIMITIVES];
-            for (ExtendedProperty extendedProperty : extendedProperties) {
-                byte propertyKind = extendedProperty.getProperty().getInternalKind();
+            for (StaticProperty staticProperty : staticProperties) {
+                byte propertyKind = staticProperty.getInternalKind();
                 if (propertyKind != StaticPropertyKind.Object.toByte()) {
                     primitiveFields[propertyKind]++;
                 }
             }
 
             PrimitiveFieldIndexes primitiveFieldIndexes = new PrimitiveFieldIndexes(primitiveFields, superTotalByteCount, parentLeftoverHoles);
-            for (ExtendedProperty extendedProperty : extendedProperties) {
-                byte propertyKind = extendedProperty.getProperty().getInternalKind();
+            for (StaticProperty staticProperty : staticProperties) {
+                byte propertyKind = staticProperty.getInternalKind();
                 int index;
                 if (propertyKind == StaticPropertyKind.Object.toByte()) {
                     index = Unsafe.ARRAY_OBJECT_BASE_OFFSET + Unsafe.ARRAY_OBJECT_INDEX_SCALE * objArraySize++;
                 } else {
                     index = primitiveFieldIndexes.getIndex(propertyKind);
                 }
-                extendedProperty.getProperty().initOffset(index);
+                staticProperty.initOffset(index);
             }
             lastOffset = primitiveFieldIndexes.offsets[N_PRIMITIVES - 1];
             primitiveArraySize = getSizeToAlloc(parentLayout == null ? 0 : parentLayout.primitiveArraySize, primitiveFieldIndexes);

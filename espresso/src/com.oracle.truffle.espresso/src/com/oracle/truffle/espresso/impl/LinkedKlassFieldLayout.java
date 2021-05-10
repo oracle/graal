@@ -59,18 +59,18 @@ final class LinkedKlassFieldLayout {
         for (ParserField parserField : parserKlass.getFields()) {
             if (parserField.isStatic()) {
                 LinkedField field = new LinkedField(parserField, nextStaticFieldSlot++);
-                staticBuilder.property(field, parserField.getName().toString(), parserField.isFinal());
+                staticBuilder.property(field);
                 staticFields[nextStaticFieldIndex++] = field;
             } else {
                 LinkedField field = new LinkedField(parserField, nextInstanceFieldSlot++);
-                instanceBuilder.property(field, parserField.getName().toString(), parserField.isFinal());
+                instanceBuilder.property(field);
                 instanceFields[nextInstanceFieldIndex++] = field;
             }
         }
         for (Symbol<Name> hiddenFieldName : fieldCounter.hiddenFieldNames) {
             ParserField hiddenParserField = new ParserField(ParserField.HIDDEN, hiddenFieldName, Type.java_lang_Object, null);
             LinkedField field = new LinkedField(hiddenParserField, nextInstanceFieldSlot++);
-            instanceBuilder.property(field, hiddenFieldName.toString(), false);
+            instanceBuilder.property(field);
             instanceFields[nextInstanceFieldIndex++] = field;
         }
         if (superKlass == null) {
