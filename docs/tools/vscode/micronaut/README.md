@@ -5,8 +5,8 @@ link_title: Micronaut Extension
 permalink: /tools/vscode/micronaut-extension/
 redirect_from:
 toc_group: vscode
-next: /en/graalvm/enterprise/20/docs/tools/lsp/
-previous: /en/graalvm/enterprise/20/docs/tools/graalvm-extension/
+next: /en/graalvm/enterprise/21/docs/tools/lsp/
+previous: /en/graalvm/enterprise/21/docs/tools/graalvm-extension/
 ---
 # Micronaut Visual Studio Code Extension <!-- omit in toc -->
 
@@ -113,7 +113,7 @@ Besides that, you can push a newly-built native executable to the Docker Registr
 For more details, continue reading to the [Micronaut documentation](https://guides.micronaut.io/micronaut-creating-first-graal-app/guide/index.html#creatingGraalImage).
 
 ## Deploy Micronaut Projects
-The Micronaut support in VSCode also allows to build and deploy Docker image to docker registry. Use command "Command Palette -> Micronaut: Deploy..." and select "dockerPush" to deploy dockerized Micronaut application or "dockerPushNative" to build and push docker with native executable of Micronaut application. 
+The Micronaut support in VSCode also allows to build and deploy Docker image to docker registry. Use command "Command Palette -> Micronaut: Deploy..." and select "dockerPush" to deploy dockerized Micronaut application or "dockerPushNative" to build and push docker with native executable of Micronaut application.
 
 ![Micronaut Deploy Commands](images/micronaut-deploy-commands.png)
 
