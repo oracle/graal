@@ -672,7 +672,15 @@ public final class LLVMContext {
             }
             return symbolFinalStorage[id][index];
         } else {
-            return symbolDynamicStorage[id][index];
+            try {
+                return symbolDynamicStorage[id][index];
+            } catch (ArrayIndexOutOfBoundsException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                int idLength = symbolDynamicStorage[id].length;
+                throw new IllegalStateException("id: " + id + " index: " + index + " id length: " + idLength +
+                                " symbol name: " + symbol.getName() + " symbol kind: " + symbol.getKind() +
+                                " symbol class: " + symbol.getClass(), e);
+            }
         }
     }
 
