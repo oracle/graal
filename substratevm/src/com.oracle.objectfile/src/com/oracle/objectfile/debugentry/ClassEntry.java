@@ -26,14 +26,6 @@
 
 package com.oracle.objectfile.debugentry;
 
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFieldInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugMethodInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugInstanceTypeInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind;
-import org.graalvm.compiler.debug.DebugContext;
-
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -41,6 +33,15 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+
+import org.graalvm.compiler.debug.DebugContext;
+
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFieldInfo;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugInstanceTypeInfo;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugMethodInfo;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind;
 
 /**
  * Track debug info associated with a Java class.
@@ -96,7 +97,8 @@ public class ClassEntry extends StructureTypeEntry {
         super(className, size);
         this.interfaces = new ArrayList<>();
         this.fileEntry = fileEntry;
-        // methods is a sorted list and we want to be able to add more elements to it while keeping it sorted,
+        // methods is a sorted list and we want to be able to add more elements to it while keeping
+        // it sorted,
         // so a LinkedList seems more appropriate than an ArrayList. (see getMethodEntry)
         this.methods = new LinkedList<>();
         this.primaryEntries = new ArrayList<>();
