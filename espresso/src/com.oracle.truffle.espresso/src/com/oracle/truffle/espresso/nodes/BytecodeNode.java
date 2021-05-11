@@ -669,11 +669,14 @@ public final class BytecodeNode extends EspressoMethodNode {
         }
         onStart(primitives, refs);
 
+        EspressoError.guarantee(primitives.length - 1 < (1 << 17), "hoist");
+        EspressoError.guarantee(refs.length - 1 < (1 << 17), "hoist");
+        EspressoError.guarantee(primitives.length == refs.length, "hoist");
+
         loop: while (true) {
-            int curOpcode;
+            final int curOpcode = bs.opcode(curBCI);
             EXECUTED_BYTECODES_COUNT.inc();
             try {
-                curOpcode = bs.currentBC(curBCI);
                 CompilerAsserts.partialEvaluationConstant(top);
                 CompilerAsserts.partialEvaluationConstant(curBCI);
                 CompilerAsserts.partialEvaluationConstant(curOpcode);
