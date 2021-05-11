@@ -22,6 +22,15 @@
  */
 package com.oracle.truffle.espresso.staticobject.test;
 
-class StorageLayout {
+import com.oracle.truffle.espresso.staticobject.StaticProperty;
+
+class StaticObjectTest {
     static final boolean ARRAY_BASED = !Boolean.getBoolean("com.oracle.truffle.espresso.staticobject.FieldBasedStorage");
+
+    String guessGeneratedFieldName(StaticProperty property) {
+        assert !ARRAY_BASED;
+        // The format of generated field names with the field-based storage might change at any
+        // time. Do not depend on it!
+        return property + "@" + System.identityHashCode(property);
+    }
 }

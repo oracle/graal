@@ -37,7 +37,7 @@ import org.junit.experimental.theories.Theory;
 import org.junit.runner.RunWith;
 
 @RunWith(Theories.class)
-public class PropertyAccessTest {
+public class PropertyAccessTest extends StaticObjectTest {
     @DataPoints //
     public static TestDescriptor[] descriptors;
 
@@ -218,7 +218,7 @@ public class PropertyAccessTest {
             descriptor.setter.set(p1, o2, descriptor.testValue);
             Assert.fail();
         } catch (ClassCastException e) {
-            Assert.assertTrue(!StorageLayout.ARRAY_BASED);
+            Assert.assertTrue(!ARRAY_BASED);
         } catch (RuntimeException e) {
             Assert.assertTrue(e.getMessage().startsWith("Incompatible shape on property access."));
         }

@@ -54,7 +54,7 @@ public final class Field extends Member<Type> implements FieldRef {
     @CompilationFinal private Symbol<ModifiedUTF8> genericSignature = null;
 
     public Field(ObjectKlass holder, LinkedField linkedField, boolean hidden) {
-        super(hidden ? null : linkedField.getType(), linkedField.getSymbolicName());
+        super(hidden ? null : linkedField.getType(), linkedField.getName());
         this.linkedField = linkedField;
         this.holder = holder;
     }

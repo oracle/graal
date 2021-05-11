@@ -31,7 +31,7 @@ import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 
-public class InheritanceTest {
+public class InheritanceTest extends StaticObjectTest {
     public static class CustomStaticObject {
         public byte field1;
         public boolean field2;
@@ -58,11 +58,13 @@ public class InheritanceTest {
         // Get the value of the field declared in the generated class
         Assert.assertEquals(24, property.getInt(object));
 
-        Assume.assumeFalse(StorageLayout.ARRAY_BASED);
-        // `CustomStaticObject.field1` is shadowed
-        Assert.assertEquals(int.class, object.getClass().getField("field1").getType());
+        Assume.assumeFalse(ARRAY_BASED);
+        // `CustomStaticObject.field1` is still visible
+        Assert.assertEquals(byte.class, object.getClass().getField("field1").getType());
         // `CustomStaticObject.field2` is visible
         Assert.assertEquals(boolean.class, object.getClass().getField("field2").getType());
+        // The generated field is accessible
+        Assert.assertEquals(int.class, object.getClass().getField(guessGeneratedFieldName(property)).getType());
     }
 
     @Test
@@ -95,7 +97,8 @@ public class InheritanceTest {
         Assert.assertEquals(1, s1p1.getInt(object));
         Assert.assertEquals(3, s2p1.getInt(object));
 
-        Assume.assumeFalse(StorageLayout.ARRAY_BASED);
-        Assert.assertEquals(3, object.getClass().getField("field1").getInt(object));
+        Assume.assumeFalse(ARRAY_BASED);
+        Assert.assertEquals(1, object.getClass().getField(guessGeneratedFieldName(s1p1)).getInt(object));
+        Assert.assertEquals(3, object.getClass().getField(guessGeneratedFieldName(s2p1)).getInt(object));
     }
 }

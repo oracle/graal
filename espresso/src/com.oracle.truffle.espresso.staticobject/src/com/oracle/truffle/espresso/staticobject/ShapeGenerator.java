@@ -88,9 +88,13 @@ abstract class ShapeGenerator<T> {
         return Type.getInternalName(generatedStorageClass) + DELIMITER + "Factory";
     }
 
+    static String generateFieldName(StaticProperty property) {
+        return property.toString() + "@" + System.identityHashCode(property);
+    }
+
     static void addStorageFields(ClassVisitor cv, Collection<StaticProperty> staticProperties) {
         for (StaticProperty staticProperty : staticProperties) {
-            addStorageField(cv, staticProperty.getName(), staticProperty.getInternalKind(), staticProperty.isFinal());
+            addStorageField(cv, generateFieldName(staticProperty), staticProperty.getInternalKind(), staticProperty.isFinal());
         }
     }
 

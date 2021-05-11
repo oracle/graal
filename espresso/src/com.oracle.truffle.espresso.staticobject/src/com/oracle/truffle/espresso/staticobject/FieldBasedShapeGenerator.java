@@ -63,7 +63,7 @@ final class FieldBasedShapeGenerator<T> extends ShapeGenerator<T> {
         Class<?> generatedStorageClass = generateStorage(storageSuperClass, staticProperties);
         Class<? extends T> generatedFactoryClass = generateFactory(generatedStorageClass, storageFactoryInterface);
         for (StaticProperty staticProperty : staticProperties) {
-            int offset = getObjectFieldOffset(generatedStorageClass, staticProperty.getName());
+            int offset = getObjectFieldOffset(generatedStorageClass, generateFieldName(staticProperty));
             staticProperty.initOffset(offset);
         }
         return FieldBasedStaticShape.create(generatedStorageClass, generatedFactoryClass);

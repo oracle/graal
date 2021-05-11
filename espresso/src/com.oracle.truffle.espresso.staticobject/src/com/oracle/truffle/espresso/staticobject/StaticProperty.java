@@ -29,28 +29,35 @@ import sun.misc.Unsafe;
 
 public abstract class StaticProperty {
     private static final Unsafe UNSAFE = getUnsafe();
-    private final byte internalKind;
+    private static final byte IS_FINAL = (byte) (1 << 7);
+    private final byte flags;
     @CompilationFinal //
     private StaticShape<?> shape;
     // The offset is the actual position in the field array of an actual instance.
     @CompilationFinal //
     private int offset;
 
-    protected StaticProperty(StaticPropertyKind kind) {
-        this.internalKind = getInternalKind(kind);
+    protected StaticProperty(StaticPropertyKind kind, boolean isFinal) {
+        byte internalKind = getInternalKind(kind);
+        assert (internalKind & IS_FINAL) == 0;
+        this.flags = (byte) (isFinal ? IS_FINAL | internalKind : internalKind);
     }
 
-    public abstract String getName();
-
-    public abstract boolean isFinal();
+    public final boolean isFinal() {
+        return (flags & IS_FINAL) == IS_FINAL;
+    }
 
     private static byte getInternalKind(StaticPropertyKind kind) {
         return kind.toByte();
     }
 
+    final byte getInternalKind() {
+        return (byte) (flags & ~IS_FINAL);
+    }
+
     final void initOffset(int o) {
         if (this.offset != 0) {
-            throw new RuntimeException("Attempt to reinitialize the offset of static property '" + getName() + "' of kind '" + StaticPropertyKind.valueOf(internalKind).name() + "'.\n" +
+            throw new RuntimeException("Attempt to reinitialize the offset of static property '" + this + "' of kind '" + StaticPropertyKind.valueOf(getInternalKind()).name() + "'.\n" +
                             "Was it added to more than one builder or multiple times to the same builder?");
         }
         this.offset = o;
@@ -58,21 +65,18 @@ public abstract class StaticProperty {
 
     final void initShape(StaticShape<?> s) {
         if (this.shape != null) {
-            throw new RuntimeException("Attempt to reinitialize the shape of static property '" + getName() + "' of kind '" + StaticPropertyKind.valueOf(internalKind).name() + "'.\n" +
+            throw new RuntimeException("Attempt to reinitialize the shape of static property '" + this + "' of kind '" + StaticPropertyKind.valueOf(getInternalKind()).name() + "'.\n" +
                             "Was it added to more than one builder or multiple times to the same builder?");
         }
         this.shape = s;
     }
 
-    final byte getInternalKind() {
-        return internalKind;
-    }
-
     private void checkKind(StaticPropertyKind kind) {
-        if (this.internalKind != getInternalKind(kind)) {
+        byte internalKind = getInternalKind();
+        if (internalKind != getInternalKind(kind)) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             String kindName = StaticPropertyKind.valueOf(internalKind).name();
-            throw new RuntimeException("Static property '" + getName() + "' of kind '" + kindName + "' cannot be accessed as '" + kind.name() + "'");
+            throw new RuntimeException("Static property '" + this + "' of kind '" + kindName + "' cannot be accessed as '" + kind.name() + "'");
         }
     }
 

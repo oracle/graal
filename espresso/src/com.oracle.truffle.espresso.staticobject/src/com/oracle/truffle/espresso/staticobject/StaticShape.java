@@ -90,7 +90,7 @@ public abstract class StaticShape<T> {
     }
 
     public static final class Builder {
-        private final HashMap<String, StaticProperty> staticProperties = new LinkedHashMap<>();
+        private final HashMap<Object, StaticProperty> staticProperties = new LinkedHashMap<>();
 
         Builder() {
         }
@@ -98,10 +98,7 @@ public abstract class StaticShape<T> {
         public Builder property(StaticProperty property) {
             CompilerAsserts.neverPartOfCompilation();
             Objects.requireNonNull(property);
-            if (staticProperties.containsKey(property.getName())) {
-                throw new IllegalArgumentException("This builder already contains a property named '" + property.getName() + "'");
-            }
-            staticProperties.put(property.getName(), property);
+            staticProperties.put(property, property);
             return this;
         }
 
@@ -140,13 +137,13 @@ public abstract class StaticShape<T> {
             }
             for (Method m : storageFactoryInterface.getMethods()) {
                 if (!m.getReturnType().isAssignableFrom(storageSuperClass)) {
-                    throw new RuntimeException("The return type of '" + m.getReturnType().getName() + " " + storageFactoryInterface.getName() + "." + m.toString() + "' is not assignable from '" +
+                    throw new RuntimeException("The return type of '" + m.getReturnType().getName() + " " + storageFactoryInterface.getName() + "." + m + "' is not assignable from '" +
                                     storageSuperClass.getName() + "'");
                 }
                 try {
                     storageSuperClass.getDeclaredConstructor(m.getParameterTypes());
                 } catch (NoSuchMethodException e) {
-                    throw new RuntimeException("Method '" + m.toString() + "' does not match any constructor in '" + storageSuperClass.getName() + "'", e);
+                    throw new RuntimeException("Method '" + m + "' does not match any constructor in '" + storageSuperClass.getName() + "'", e);
                 }
             }
         }
