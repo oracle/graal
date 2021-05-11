@@ -53,7 +53,7 @@ public class ClassEntry extends StructureTypeEntry {
     /**
      * Details of this class's interfaces.
      */
-    protected LinkedList<InterfaceClassEntry> interfaces;
+    protected List<InterfaceClassEntry> interfaces;
     /**
      * Details of the associated file.
      */
@@ -66,7 +66,7 @@ public class ClassEntry extends StructureTypeEntry {
      * A list recording details of all primary ranges included in this class sorted by ascending
      * address range.
      */
-    private LinkedList<PrimaryEntry> primaryEntries;
+    private List<PrimaryEntry> primaryEntries;
     /**
      * An index identifying primary ranges which have already been encountered.
      */
@@ -78,7 +78,7 @@ public class ClassEntry extends StructureTypeEntry {
     /**
      * A list of the same files.
      */
-    private LinkedList<FileEntry> localFiles;
+    private List<FileEntry> localFiles;
     /**
      * An index of all primary and secondary dirs referenced from this class's compilation unit.
      */
@@ -86,7 +86,7 @@ public class ClassEntry extends StructureTypeEntry {
     /**
      * A list of the same dirs.
      */
-    private LinkedList<DirEntry> localDirs;
+    private List<DirEntry> localDirs;
     /**
      * This flag is true iff the entry includes methods that are deopt targets.
      */
@@ -94,14 +94,16 @@ public class ClassEntry extends StructureTypeEntry {
 
     public ClassEntry(String className, FileEntry fileEntry, int size) {
         super(className, size);
-        this.interfaces = new LinkedList<>();
+        this.interfaces = new ArrayList<>();
         this.fileEntry = fileEntry;
+        // methods is a sorted list and we want to be able to add more elements to it while keeping it sorted,
+        // so a LinkedList seems more appropriate than an ArrayList. (see getMethodEntry)
         this.methods = new LinkedList<>();
-        this.primaryEntries = new LinkedList<>();
+        this.primaryEntries = new ArrayList<>();
         this.primaryIndex = new HashMap<>();
-        this.localFiles = new LinkedList<>();
+        this.localFiles = new ArrayList<>();
         this.localFilesIndex = new HashMap<>();
-        this.localDirs = new LinkedList<>();
+        this.localDirs = new ArrayList<>();
         this.localDirsIndex = new HashMap<>();
         if (fileEntry != null) {
             localFiles.add(fileEntry);
@@ -231,7 +233,7 @@ public class ClassEntry extends StructureTypeEntry {
         return fileEntry;
     }
 
-    public LinkedList<PrimaryEntry> getPrimaryEntries() {
+    public List<PrimaryEntry> getPrimaryEntries() {
         return primaryEntries;
     }
 
@@ -240,11 +242,11 @@ public class ClassEntry extends StructureTypeEntry {
         return primaryIndex.get(primaryRange);
     }
 
-    public LinkedList<DirEntry> getLocalDirs() {
+    public List<DirEntry> getLocalDirs() {
         return localDirs;
     }
 
-    public LinkedList<FileEntry> getLocalFiles() {
+    public List<FileEntry> getLocalFiles() {
         return localFiles;
     }
 

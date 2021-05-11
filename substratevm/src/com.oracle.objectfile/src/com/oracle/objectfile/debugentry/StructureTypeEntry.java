@@ -31,7 +31,7 @@ import org.graalvm.compiler.debug.DebugContext;
 
 import java.lang.reflect.Modifier;
 import java.nio.file.Path;
-import java.util.LinkedList;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -47,7 +47,7 @@ public abstract class StructureTypeEntry extends TypeEntry {
 
     public StructureTypeEntry(String typeName, int size) {
         super(typeName, size);
-        this.fields = new LinkedList<>();
+        this.fields = new ArrayList<>();
     }
 
     public Stream<FieldEntry> fields() {

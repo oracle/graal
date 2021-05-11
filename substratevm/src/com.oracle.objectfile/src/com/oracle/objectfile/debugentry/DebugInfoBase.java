@@ -29,8 +29,9 @@ package com.oracle.objectfile.debugentry;
 import java.nio.ByteOrder;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 
 import org.graalvm.compiler.debug.DebugContext;
@@ -89,7 +90,7 @@ public abstract class DebugInfoBase {
     /**
      * List of class entries detailing class info for primary ranges.
      */
-    private LinkedList<TypeEntry> types = new LinkedList<>();
+    private List<TypeEntry> types = new ArrayList<>();
     /**
      * index of already seen classes.
      */
@@ -97,7 +98,7 @@ public abstract class DebugInfoBase {
     /**
      * List of class entries detailing class info for primary ranges.
      */
-    private LinkedList<ClassEntry> primaryClasses = new LinkedList<>();
+    private List<ClassEntry> primaryClasses = new ArrayList<>();
     /**
      * index of already seen classes.
      */
@@ -109,7 +110,7 @@ public abstract class DebugInfoBase {
     /**
      * List of of files which contain primary or secondary ranges.
      */
-    private LinkedList<FileEntry> files = new LinkedList<>();
+    private List<FileEntry> files = new ArrayList<>();
     /**
      * Flag set to true if heap references are stored as addresses relative to a heap base register
      * otherwise false.
@@ -426,16 +427,16 @@ public abstract class DebugInfoBase {
         return byteOrder;
     }
 
-    public LinkedList<TypeEntry> getTypes() {
+    public List<TypeEntry> getTypes() {
         return types;
     }
 
-    public LinkedList<ClassEntry> getPrimaryClasses() {
+    public List<ClassEntry> getPrimaryClasses() {
         return primaryClasses;
     }
 
     @SuppressWarnings("unused")
-    public LinkedList<FileEntry> getFiles() {
+    public List<FileEntry> getFiles() {
         return files;
     }
 
