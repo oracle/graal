@@ -5,16 +5,40 @@ This document gives motivation and an overview of this approach.
 
 ## What is a Compilation queue?
 
-During execution of guest code each truffle call target counts how many times it was executed (i.e. the target's "call count") as well as how many loop iteration happened during those executions (i.e. the target's "call and loop count"). 
-Once these counters reach a certain threshold the call target is deemed "hot" and scheduled for compilation. 
+During execution of guest code each Truffle call target counts how many times it was executed as well as how many loop iterations happened during those executions (i.e. the target's "call and loop count"). 
+Once this counter reaches a certain threshold the call target is deemed "hot" and scheduled for compilation.
 In order to minimize the impact this has on the execution of the guest code the notion that the target should be compiled is made concrete as a [compilation task](https://github.com/oracle/graal/blob/master/compiler/src/org.graalvm.compiler.truffle.runtime/src/org/graalvm/compiler/truffle/runtime/CompilationTask.java) and placed into a [compilation queue](https://github.com/oracle/graal/blob/master/compiler/src/org.graalvm.compiler.truffle.runtime/src/org/graalvm/compiler/truffle/runtime/BackgroundCompileQueue.java) to await compilation.
 The Truffle runtime spawns several dedicated threads that take tasks from the queue and compile the specified call targets.
 
-The initial implementation of the compilation queue in truffle was a straightforward FIFO queue.
+The initial implementation of the compilation queue in Truffle was a straightforward FIFO queue.
 This approach has important limitations with respect to warmup characteristics of the guest code execution. 
 Namely, not all call targets are equally important to compile. 
 The aim is to identify targets which account for more execution time and compile them first, thus reaching better performance sooner.
-Since call targets are queued for compilation when their execution counters reach a certain threshold a FIFO queue would compile targets in order of reaching that threshold, which does not correlate to actual execution time.
+Since call targets are queued for compilation when a counter reaches a certain threshold a FIFO queue would compile targets in order of reaching that threshold, which in practise does not correlate to actual execution time.
+
+Consider the following toy JavaScript example:
+
+```js
+function lowUsage() {
+    for (i = 0; i < COMPILATION_THRESHOLD; i++) {
+        // Do something
+    }
+}
+
+function highUsage() {
+    for (i = 0; i < 100 * COMPILATION_THRESHOLD; i++) {
+        // Do something
+    }
+}
+
+while(true) {
+    lowUsage();
+    highUsage();
+}
+```
+
+Both the `lowUsage` and the `highUsage` function will reach a high enough call and loop count threshold even on the first execution, but the `lowUsage` function will reach it first.
+Using a FIFO queue, we would compile the `lowUsage` function first, even though this example illustrates that the `highUsage` function should be compiled first in order to reach better performance sooner.
 
 ## Traversing Compilation Queue
 
@@ -24,7 +48,7 @@ Every time a compiler thread requests the next compilation task the queue will t
 A task's priority is [determined based on several factors](https://github.com/oracle/graal/blob/c7c061b3230852e9582badf788b3dab74a809ca9/compiler/src/org.graalvm.compiler.truffle.runtime/src/org/graalvm/compiler/truffle/runtime/CompilationTask.java#L209).
 
 For starters, targets scheduled for [first-tier compilation](https://medium.com/graalvm/multi-tier-compilation-in-graalvm-5fbc65f92402) (i.e. first-tier tasks) always have higher priority than second-tier tasks. 
-The rational behind this is that performance difference between executing code in the interpreter and executing it in first-tier compiled code is much greater then when comparing the difference between tier-one and tier-two compiled code, meaning that we get more benefit from compiling these targets sooner. 
+The rational behind this is that performance difference between executing code in the interpreter and executing it in first-tier compiled code is much greater then the difference between tier-one and tier-two compiled code, meaning that we get more benefit from compiling these targets sooner. 
 Also, first-tier compilations are usually take less time, thus one compiler thread can finish multiple first-tier compilations in the same time it takes to complete one second-tier compilation.
 This approach has been shown to underperform in certain scenarios and might be improved upon in the coming versions.
 
