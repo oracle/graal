@@ -461,31 +461,37 @@ public final class BytecodeNode extends EspressoMethodNode {
             }
             curSlot += JavaKind.Object.getSlotCount();
         }
+
+        Symbol<Type>[] methodSignature = getMethod().getParsedSignature();
+        int argCount = Signatures.parameterCount(methodSignature, false);
+        CompilerAsserts.partialEvaluationConstant(argCount);
         for (int i = 0; i < argCount; ++i) {
-            JavaKind expectedkind = Signatures.parameterKind(getMethod().getParsedSignature(), i);
-            // @formatter:off
-            switch (expectedkind) {
-                case Boolean : setLocalInt(primitives, curSlot, ((boolean) arguments[i + receiverSlot]) ? 1 : 0); break;
-                case Byte    : setLocalInt(primitives, curSlot, ((byte) arguments[i + receiverSlot]));            break;
-                case Short   : setLocalInt(primitives, curSlot, ((short) arguments[i + receiverSlot]));           break;
-                case Char    : setLocalInt(primitives, curSlot, ((char) arguments[i + receiverSlot]));            break;
-                case Int     : setLocalInt(primitives, curSlot, (int) arguments[i + receiverSlot]);               break;
-                case Float   : setLocalFloat(primitives, curSlot, (float) arguments[i + receiverSlot]);           break;
-                case Long    : setLocalLong(primitives, curSlot, (long) arguments[i + receiverSlot]);             break;
-                case Double  : setLocalDouble(primitives, curSlot, (double) arguments[i + receiverSlot]);         break;
-                case Object  :
-                    setLocalObject(refs, curSlot, (StaticObject) arguments[i + receiverSlot]);
-                    if (noForeignObjects.isValid() && ((StaticObject) arguments[i + receiverSlot]).isForeignObject()) {
-                        CompilerDirectives.transferToInterpreterAndInvalidate();
-                        noForeignObjects.invalidate();
-                    }
-                    break;
-                default      :
-                    CompilerDirectives.transferToInterpreter();
-                    throw EspressoError.shouldNotReachHere("unexpected kind");
+            Symbol<Type> argType = Signatures.parameterType(methodSignature, i);
+            if (argType.length() == 1) {
+                // @formatter:off
+                switch (argType.byteAt(0)) {
+                    case 'Z' : setLocalInt(primitives, curSlot, ((boolean) arguments[i + receiverSlot]) ? 1 : 0); break;
+                    case 'B' : setLocalInt(primitives, curSlot, ((byte) arguments[i + receiverSlot]));            break;
+                    case 'S' : setLocalInt(primitives, curSlot, ((short) arguments[i + receiverSlot]));           break;
+                    case 'C' : setLocalInt(primitives, curSlot, ((char) arguments[i + receiverSlot]));            break;
+                    case 'I' : setLocalInt(primitives, curSlot, (int) arguments[i + receiverSlot]);               break;
+                    case 'F' : setLocalFloat(primitives, curSlot, (float) arguments[i + receiverSlot]);           break;
+                    case 'J' : setLocalLong(primitives, curSlot, (long) arguments[i + receiverSlot]);     ++curSlot; break;
+                    case 'D' : setLocalDouble(primitives, curSlot, (double) arguments[i + receiverSlot]); ++curSlot; break;
+                    default      :
+                        CompilerDirectives.transferToInterpreter();
+                        throw EspressoError.shouldNotReachHere("unexpected kind");
+                }
+                // @formatter:on
+            } else {
+                // Reference type.
+                setLocalObject(refs, curSlot, (StaticObject) arguments[i + receiverSlot]);
+                if (noForeignObjects.isValid() && ((StaticObject) arguments[i + receiverSlot]).isForeignObject()) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    noForeignObjects.invalidate();
+                }
             }
-            // @formatter:on
-            curSlot += expectedkind.getSlotCount();
+            ++curSlot;
         }
     }
 
@@ -641,7 +647,7 @@ public final class BytecodeNode extends EspressoMethodNode {
     Object executeBody(VirtualFrame frame) {
         int curBCI = 0;
         int top = 0;
-        InstrumentationSupport instrument = this.instrumentation;
+        final InstrumentationSupport instrument = this.instrumentation;
         int statementIndex = -1;
         int nextStatementIndex = 0;
 
@@ -678,17 +684,13 @@ public final class BytecodeNode extends EspressoMethodNode {
                 CompilerDirectives.ensureVirtualized(primitives);
                 CompilerDirectives.ensureVirtualized(refs);
 
-                if (Bytecodes.canTrap(curOpcode) || instrument != null) {
-                    setBCI(frame, curBCI);
-                }
-
                 if (instrument != null) {
+                    setBCI(frame, curBCI);
                     instrument.notifyStatement(frame, statementIndex, nextStatementIndex);
                     statementIndex = nextStatementIndex;
                 }
 
                 // @formatter:off
-                switchLabel:
                 switch (curOpcode) {
                     case NOP: break;
                     case ACONST_NULL: putObject(refs, top, StaticObject.NULL); break;
@@ -717,32 +719,65 @@ public final class BytecodeNode extends EspressoMethodNode {
                     case LDC_W: // fall through
                     case LDC2_W: putPoolConstant(primitives, refs, top, readCPI(curBCI), curOpcode); break;
 
-                    case ILOAD: putInt(primitives, top, getLocalInt(primitives, bs.readLocalIndex(curBCI))); break;
-                    case LLOAD: putLong(primitives, top, getLocalLong(primitives, bs.readLocalIndex(curBCI))); break;
-                    case FLOAD: putFloat(primitives, top, getLocalFloat(primitives, bs.readLocalIndex(curBCI))); break;
-                    case DLOAD: putDouble(primitives, top, getLocalDouble(primitives, bs.readLocalIndex(curBCI))); break;
-                    case ALOAD: putObject(refs, top, getLocalObject(refs, bs.readLocalIndex(curBCI))); break;
+                    case ILOAD:
+                        putInt(primitives, top, getLocalInt(primitives, bs.readLocalIndex(curBCI)));
+                        postLocalAccess(primitives, refs, curBCI);
+                        break;
+                    case LLOAD:
+                        putLong(primitives, top, getLocalLong(primitives, bs.readLocalIndex(curBCI)));
+                        postLocalAccess(primitives, refs, curBCI);
+                        break;
+                    case FLOAD:
+                        putFloat(primitives, top, getLocalFloat(primitives, bs.readLocalIndex(curBCI)));
+                        postLocalAccess(primitives, refs, curBCI);
+                        break;
+                    case DLOAD:
+                        putDouble(primitives, top, getLocalDouble(primitives, bs.readLocalIndex(curBCI)));
+                        postLocalAccess(primitives, refs, curBCI);
+                        break;
+                    case ALOAD:
+                        putObject(refs, top, getLocalObject(refs, bs.readLocalIndex(curBCI)));
+                        postLocalAccess(primitives, refs, curBCI);
+                        break;
 
                     case ILOAD_0: // fall through
                     case ILOAD_1: // fall through
                     case ILOAD_2: // fall through
-                    case ILOAD_3: putInt(primitives, top, getLocalInt(primitives, curOpcode - ILOAD_0)); break;
+                    case ILOAD_3:
+                        putInt(primitives, top, getLocalInt(primitives, curOpcode - ILOAD_0));
+                        postLocalAccess(primitives, refs, curBCI);
+                        break;
                     case LLOAD_0: // fall through
                     case LLOAD_1: // fall through
                     case LLOAD_2: // fall through
-                    case LLOAD_3: putLong(primitives, top, getLocalLong(primitives, curOpcode - LLOAD_0)); break;
+                    case LLOAD_3:
+                        putLong(primitives, top, getLocalLong(primitives, curOpcode - LLOAD_0));
+                        postLocalAccess(primitives, refs, curBCI);
+                        break;
                     case FLOAD_0: // fall through
                     case FLOAD_1: // fall through
                     case FLOAD_2: // fall through
-                    case FLOAD_3: putFloat(primitives, top, getLocalFloat(primitives, curOpcode - FLOAD_0)); break;
+                    case FLOAD_3:
+                        putFloat(primitives, top, getLocalFloat(primitives, curOpcode - FLOAD_0));
+                        postLocalAccess(primitives, refs, curBCI);
+                        break;
                     case DLOAD_0: // fall through
                     case DLOAD_1: // fall through
                     case DLOAD_2: // fall through
-                    case DLOAD_3: putDouble(primitives, top, getLocalDouble(primitives, curOpcode - DLOAD_0)); break;
-                    case ALOAD_0: putObject(refs, top, getLocalObject(refs, 0)); break;
+                    case DLOAD_3:
+                        putDouble(primitives, top, getLocalDouble(primitives, curOpcode - DLOAD_0));
+                        postLocalAccess(primitives, refs, curBCI);
+                        break;
+                    case ALOAD_0:
+                        putObject(refs, top, getLocalObject(refs, 0));
+                        postLocalAccess(primitives, refs, curBCI);
+                        break;
                     case ALOAD_1: // fall through
                     case ALOAD_2: // fall through
-                    case ALOAD_3: putObject(refs, top, getLocalObject(refs, curOpcode - ALOAD_0)); break;
+                    case ALOAD_3:
+                        putObject(refs, top, getLocalObject(refs, curOpcode - ALOAD_0));
+                        postLocalAccess(primitives, refs, curBCI);
+                        break;
 
                     case IALOAD: // fall through
                     case LALOAD: // fall through
@@ -752,39 +787,69 @@ public final class BytecodeNode extends EspressoMethodNode {
                     case CALOAD: // fall through
                     case SALOAD: arrayLoad(frame, primitives, refs, top, curBCI, curOpcode); break;
                     case AALOAD:
-                        arrayLoad(frame, primitives, refs, top, curBCI, curOpcode);
+                        arrayLoad(frame, primitives, refs, top, curBCI, AALOAD);
                         if (noForeignObjects.isValid() && peekObject(refs, top - 2).isForeignObject()) {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
                             noForeignObjects.invalidate();
                         }
                         break;
 
-                    case ISTORE: setLocalInt(primitives, bs.readLocalIndex(curBCI), popInt(primitives, top - 1)); break;
-                    case LSTORE: setLocalLong(primitives, bs.readLocalIndex(curBCI), popLong(primitives, top - 1)); break;
-                    case FSTORE: setLocalFloat(primitives, bs.readLocalIndex(curBCI), popFloat(primitives, top - 1)); break;
-                    case DSTORE: setLocalDouble(primitives, bs.readLocalIndex(curBCI), popDouble(primitives, top - 1)); break;
-                    case ASTORE: setLocalObjectOrReturnAddress(refs, bs.readLocalIndex(curBCI), popReturnAddressOrObject(refs, top - 1)); break;
+                    case ISTORE:
+                        setLocalInt(primitives, bs.readLocalIndex(curBCI), popInt(primitives, top - 1));
+                        postLocalAccess(primitives, refs, curBCI);
+                        break;
+                    case LSTORE:
+                        setLocalLong(primitives, bs.readLocalIndex(curBCI), popLong(primitives, top - 1));
+                        postLocalAccess(primitives, refs, curBCI);
+                        break;
+                    case FSTORE:
+                        setLocalFloat(primitives, bs.readLocalIndex(curBCI), popFloat(primitives, top - 1));
+                        postLocalAccess(primitives, refs, curBCI);
+                        break;
+                    case DSTORE:
+                        setLocalDouble(primitives, bs.readLocalIndex(curBCI), popDouble(primitives, top - 1));
+                        postLocalAccess(primitives, refs, curBCI);
+                        break;
+                    case ASTORE:
+                        setLocalObjectOrReturnAddress(refs, bs.readLocalIndex(curBCI), popReturnAddressOrObject(refs, top - 1));
+                        postLocalAccess(primitives, refs, curBCI);
+                        break;
 
                     case ISTORE_0: // fall through
                     case ISTORE_1: // fall through
                     case ISTORE_2: // fall through
-                    case ISTORE_3: setLocalInt(primitives, curOpcode - ISTORE_0, popInt(primitives, top - 1)); break;
+                    case ISTORE_3:
+                        setLocalInt(primitives, curOpcode - ISTORE_0, popInt(primitives, top - 1));
+                        postLocalAccess(primitives, refs, curBCI);
+                        break;
                     case LSTORE_0: // fall through
                     case LSTORE_1: // fall through
                     case LSTORE_2: // fall through
-                    case LSTORE_3: setLocalLong(primitives, curOpcode - LSTORE_0, popLong(primitives, top - 1)); break;
+                    case LSTORE_3:
+                        setLocalLong(primitives, curOpcode - LSTORE_0, popLong(primitives, top - 1));
+                        postLocalAccess(primitives, refs, curBCI);
+                        break;
                     case FSTORE_0: // fall through
                     case FSTORE_1: // fall through
                     case FSTORE_2: // fall through
-                    case FSTORE_3: setLocalFloat(primitives, curOpcode - FSTORE_0, popFloat(primitives, top - 1)); break;
+                    case FSTORE_3:
+                        setLocalFloat(primitives, curOpcode - FSTORE_0, popFloat(primitives, top - 1));
+                        postLocalAccess(primitives, refs, curBCI);
+                        break;
                     case DSTORE_0: // fall through
                     case DSTORE_1: // fall through
                     case DSTORE_2: // fall through
-                    case DSTORE_3: setLocalDouble(primitives, curOpcode - DSTORE_0, popDouble(primitives, top - 1)); break;
+                    case DSTORE_3:
+                        setLocalDouble(primitives, curOpcode - DSTORE_0, popDouble(primitives, top - 1));
+                        postLocalAccess(primitives, refs, curBCI);
+                        break;
                     case ASTORE_0: // fall through
                     case ASTORE_1: // fall through
                     case ASTORE_2: // fall through
-                    case ASTORE_3: setLocalObjectOrReturnAddress(refs, curOpcode - ASTORE_0, popReturnAddressOrObject(refs, top - 1)); break;
+                    case ASTORE_3:
+                        setLocalObjectOrReturnAddress(refs, curOpcode - ASTORE_0, popReturnAddressOrObject(refs, top - 1));
+                        postLocalAccess(primitives, refs, curBCI);
+                        break;
 
                     case IASTORE: // fall through
                     case LASTORE: // fall through
@@ -817,10 +882,10 @@ public final class BytecodeNode extends EspressoMethodNode {
                     case FADD: putFloat(primitives, top - 2, popFloat(primitives, top - 1) + popFloat(primitives, top - 2)); break;
                     case DADD: putDouble(primitives, top - 4, popDouble(primitives, top - 1) + popDouble(primitives, top - 3)); break;
 
-                    case ISUB: putInt(primitives, top - 2, -popInt(primitives, top - 1) + popInt(primitives, top - 2)); break;
-                    case LSUB: putLong(primitives, top - 4, -popLong(primitives, top - 1) + popLong(primitives, top - 3)); break;
-                    case FSUB: putFloat(primitives, top - 2, -popFloat(primitives, top - 1) + popFloat(primitives, top - 2)); break;
-                    case DSUB: putDouble(primitives, top - 4, -popDouble(primitives, top - 1) + popDouble(primitives, top - 3)); break;
+                    case ISUB: putInt(primitives, top - 2, popInt(primitives, top - 2) - popInt(primitives, top - 1)); break;
+                    case LSUB: putLong(primitives, top - 4, popLong(primitives, top - 3) - popLong(primitives, top - 1)); break;
+                    case FSUB: putFloat(primitives, top - 2, popFloat(primitives, top - 2) - popFloat(primitives, top - 1)); break;
+                    case DSUB: putDouble(primitives, top - 4, popDouble(primitives, top - 3) - popDouble(primitives, top - 1)); break;
 
                     case IMUL: putInt(primitives, top - 2, popInt(primitives, top - 1) * popInt(primitives, top - 2)); break;
                     case LMUL: putLong(primitives, top - 4, popLong(primitives, top - 1) * popLong(primitives, top - 3)); break;
@@ -858,7 +923,10 @@ public final class BytecodeNode extends EspressoMethodNode {
                     case IXOR: putInt(primitives, top - 2, popInt(primitives, top - 1) ^ popInt(primitives, top - 2)); break;
                     case LXOR: putLong(primitives, top - 4, popLong(primitives, top - 1) ^ popLong(primitives, top - 3)); break;
 
-                    case IINC: setLocalInt(primitives, bs.readLocalIndex(curBCI), getLocalInt(primitives, bs.readLocalIndex(curBCI)) + bs.readIncrement(curBCI)); break;
+                    case IINC:
+                        setLocalInt(primitives, bs.readLocalIndex1(curBCI), getLocalInt(primitives, bs.readLocalIndex1(curBCI)) + bs.readIncrement1(curBCI));
+                        postLocalAccess(primitives, refs, curBCI);
+                        break;
 
                     case I2L: putLong(primitives, top - 1, popInt(primitives, top - 1)); break;
                     case I2F: putFloat(primitives, top - 1, popInt(primitives, top - 1)); break;
@@ -892,43 +960,81 @@ public final class BytecodeNode extends EspressoMethodNode {
                     case IFGE: // fall through
                     case IFGT: // fall through
                     case IFLE: // fall through
+                        if (takeBranchPrimitive1(popInt(primitives, top - 1), curOpcode)) {
+                            int targetBCI = bs.readBranchDest2(curBCI);
+                            nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument, loopCount);
+                            top += Bytecodes.stackEffectOf(IFLE);
+                            curBCI = targetBCI;
+                            continue loop;
+                        }
+                        break;
+
                     case IF_ICMPEQ: // fall through
                     case IF_ICMPNE: // fall through
                     case IF_ICMPLT: // fall through
                     case IF_ICMPGE: // fall through
                     case IF_ICMPGT: // fall through
-                    case IF_ICMPLE: // fall through
+                    case IF_ICMPLE:
+                        if (takeBranchPrimitive2(popInt(primitives, top - 1), popInt(primitives, top - 2), curOpcode)) {
+                            nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, bs.readBranchDest2(curBCI), statementIndex, instrument, loopCount);
+                            top += Bytecodes.stackEffectOf(IF_ICMPLE);
+                            curBCI = bs.readBranchDest2(curBCI);
+                            continue loop;
+                        }
+                        break;
+
                     case IF_ACMPEQ: // fall through
-                    case IF_ACMPNE: // fall through
-
-                    // TODO(peterssen): Order shuffled.
-                    case GOTO: // fall through
-                    case GOTO_W: // fall through
-                    case IFNULL: // fall through
-
-                    // @formatter:on
-                    case IFNONNULL:
-
-                        if (takeBranch(primitives, refs, top, curOpcode)) {
-                            int targetBCI = bs.readBranchDest(curBCI);
+                    case IF_ACMPNE:
+                        if (takeBranchRef2(popObject(refs, top - 1), popObject(refs, top - 2), curOpcode)) {
+                            int targetBCI = bs.readBranchDest2(curBCI);
                             nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument, loopCount);
-                            top += Bytecodes.stackEffectOf(curOpcode);
+                            top += Bytecodes.stackEffectOf(IF_ACMPNE);
                             curBCI = targetBCI;
                             continue loop;
                         }
-                        break switchLabel;
+                        break;
 
-                    case JSR: // fall through
+                    case IFNULL: // fall through
+                    case IFNONNULL:
+                        if (takeBranchRef1(popObject(refs, top - 1), curOpcode)) {
+                            int targetBCI = bs.readBranchDest2(curBCI);
+                            nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument, loopCount);
+                            top += Bytecodes.stackEffectOf(IFNONNULL);
+                            curBCI = targetBCI;
+                            continue loop;
+                        }
+                        break;
+
+                    case GOTO: {
+                        int targetBCI = bs.readBranchDest2(curBCI);
+                        nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument, loopCount);
+                        curBCI = targetBCI;
+                        continue loop;
+                    }
+                    case GOTO_W: {
+                        int targetBCI = bs.readBranchDest4(curBCI);
+                        nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument, loopCount);
+                        curBCI = targetBCI;
+                        continue loop;
+                    }
+                    case JSR: {
+                        putReturnAddress(refs, top, bs.nextBCI(curBCI));
+                        int targetBCI = bs.readBranchDest2(curBCI);
+                        nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument, loopCount);
+                        top += Bytecodes.stackEffectOf(JSR);
+                        curBCI = targetBCI;
+                        continue loop;
+                    }
                     case JSR_W: {
                         putReturnAddress(refs, top, bs.nextBCI(curBCI));
-                        int targetBCI = bs.readBranchDest(curBCI);
+                        int targetBCI = bs.readBranchDest4(curBCI);
                         nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument, loopCount);
-                        top += Bytecodes.stackEffectOf(curOpcode);
+                        top += Bytecodes.stackEffectOf(JSR_W);
                         curBCI = targetBCI;
                         continue loop;
                     }
                     case RET: {
-                        int targetBCI = getLocalReturnAddress(refs, bs.readLocalIndex(curBCI));
+                        int targetBCI = getLocalReturnAddress(refs, bs.readLocalIndex1(curBCI));
                         postLocalAccess(primitives, refs, curBCI);
                         if (jsrBci == null) {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -943,7 +1049,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                                 CompilerAsserts.partialEvaluationConstant(jsr);
                                 targetBCI = jsr;
                                 nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument, loopCount);
-                                top += Bytecodes.stackEffectOf(curOpcode);
+                                top += Bytecodes.stackEffectOf(RET);
                                 curBCI = targetBCI;
                                 continue loop;
                             }
@@ -952,7 +1058,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                         jsrBci[curBCI] = Arrays.copyOf(jsrBci[curBCI], jsrBci[curBCI].length + 1);
                         jsrBci[curBCI][jsrBci[curBCI].length - 1] = targetBCI;
                         nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument, loopCount);
-                        top += Bytecodes.stackEffectOf(curOpcode);
+                        top += Bytecodes.stackEffectOf(RET);
                         curBCI = targetBCI;
                         continue loop;
                     }
@@ -973,7 +1079,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                                 targetBCI = switchHelper.defaultTarget(bs, curBCI);
                             }
                             nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument, loopCount);
-                            top += Bytecodes.stackEffectOf(curOpcode);
+                            top += Bytecodes.stackEffectOf(TABLESWITCH);
                             curBCI = targetBCI;
                             continue loop;
                         }
@@ -985,7 +1091,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                                 // Key found.
                                 int targetBCI = switchHelper.targetAt(bs, curBCI, i - low);
                                 nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument, loopCount);
-                                top += Bytecodes.stackEffectOf(curOpcode);
+                                top += Bytecodes.stackEffectOf(TABLESWITCH);
                                 curBCI = targetBCI;
                                 continue loop;
                             }
@@ -994,7 +1100,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                         // Key not found.
                         int targetBCI = switchHelper.defaultTarget(bs, curBCI);
                         nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument, loopCount);
-                        top += Bytecodes.stackEffectOf(curOpcode);
+                        top += Bytecodes.stackEffectOf(TABLESWITCH);
                         curBCI = targetBCI;
                         continue loop;
                     }
@@ -1014,7 +1120,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                                 // Key found.
                                 int targetBCI = curBCI + switchHelper.offsetAt(bs, curBCI, mid);
                                 nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument, loopCount);
-                                top += Bytecodes.stackEffectOf(curOpcode);
+                                top += Bytecodes.stackEffectOf(LOOKUPSWITCH);
                                 curBCI = targetBCI;
                                 continue loop;
                             }
@@ -1023,7 +1129,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                         // Key not found.
                         int targetBCI = switchHelper.defaultTarget(bs, curBCI);
                         nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument, loopCount);
-                        top += Bytecodes.stackEffectOf(curOpcode);
+                        top += Bytecodes.stackEffectOf(LOOKUPSWITCH);
                         curBCI = targetBCI;
                         continue loop;
                     }
@@ -1047,34 +1153,96 @@ public final class BytecodeNode extends EspressoMethodNode {
 
                     case INVOKEVIRTUAL: // fall through
                     case INVOKESPECIAL: // fall through
-                    case INVOKESTATIC: // fall through
+                    case INVOKESTATIC:  // fall through
+                    case INVOKEINTERFACE:
+                        setBCI(frame, curBCI);
+                        top += quickenInvoke(frame, primitives, refs, top, curBCI, curOpcode, statementIndex); break;
 
-                    case INVOKEINTERFACE: top += quickenInvoke(frame, primitives, refs, top, curBCI, curOpcode, statementIndex); break;
+                    case NEW         : putObject(refs, top, InterpreterToVM.newObject(resolveType(NEW, readCPI(curBCI)), true)); break;
+                    case NEWARRAY    : putObject(refs, top - 1, InterpreterToVM.allocatePrimitiveArray(bs.readByte(curBCI), popInt(primitives, top - 1), getMeta(), this)); break;
+                    case ANEWARRAY   : putObject(refs, top - 1, InterpreterToVM.newReferenceArray(resolveType(ANEWARRAY, readCPI(curBCI)), popInt(primitives, top - 1), this)); break;
 
-                    case NEW         : putObject(refs, top, InterpreterToVM.newObject(resolveType(curOpcode, readCPI(curBCI)), true)); break;
-                    case NEWARRAY    : putObject(refs, top - 1, InterpreterToVM.allocatePrimitiveArray(bs.readByte(curBCI), popInt(primitives, top - 1), getMeta())); break;
-                    case ANEWARRAY   : putObject(refs, top - 1, allocateArray(resolveType(curOpcode, readCPI(curBCI)), popInt(primitives, top - 1))); break;
                     case ARRAYLENGTH : arrayLength(frame, primitives, refs, top, curBCI); break;
-                    case ATHROW      : throw getMeta().throwException(nullCheck(popObject(refs, top - 1)));
 
-                    case CHECKCAST   : top += quickenCheckCast(frame, primitives, refs, top, curBCI, curOpcode); break;
-                    case INSTANCEOF  : top += quickenInstanceOf(frame, primitives, refs, top, curBCI, curOpcode); break;
+                    case ATHROW      :
+                        setBCI(frame, curBCI);
+                        throw getMeta().throwException(nullCheck(popObject(refs, top - 1)));
+
+                    case CHECKCAST   : top += quickenCheckCast(frame, primitives, refs, top, curBCI, CHECKCAST); break;
+                    case INSTANCEOF  : top += quickenInstanceOf(frame, primitives, refs, top, curBCI, INSTANCEOF); break;
 
                     case MONITORENTER: getRoot().monitorEnter(frame, nullCheck(popObject(refs, top - 1))); break;
                     case MONITOREXIT : getRoot().monitorExit(frame, nullCheck(popObject(refs, top - 1))); break;
 
-                    case WIDE:
-                        CompilerDirectives.transferToInterpreter();
-                        throw EspressoError.shouldNotReachHere("BytecodeStream.currentBC() should never return this bytecode.");
+                    case WIDE: {
+                        int wideOpcode = bs.opcode(curBCI + 1);
+                        switch (wideOpcode) {
+                            case ILOAD: putInt(primitives, top, getLocalInt(primitives, bs.readLocalIndex2(curBCI))); break;
+                            case LLOAD: putLong(primitives, top, getLocalLong(primitives, bs.readLocalIndex2(curBCI))); break;
+                            case FLOAD: putFloat(primitives, top, getLocalFloat(primitives, bs.readLocalIndex2(curBCI))); break;
+                            case DLOAD: putDouble(primitives, top, getLocalDouble(primitives, bs.readLocalIndex2(curBCI))); break;
+                            case ALOAD: putObject(refs, top, getLocalObject(refs, bs.readLocalIndex2(curBCI))); break;
 
-                    case MULTIANEWARRAY: top += allocateMultiArray(primitives, refs, top, resolveType(curOpcode, readCPI(curBCI)), bs.readUByte(curBCI + 3)); break;
+                            case ISTORE: setLocalInt(primitives, bs.readLocalIndex2(curBCI), popInt(primitives, top - 1)); break;
+                            case LSTORE: setLocalLong(primitives, bs.readLocalIndex2(curBCI), popLong(primitives, top - 1)); break;
+                            case FSTORE: setLocalFloat(primitives, bs.readLocalIndex2(curBCI), popFloat(primitives, top - 1)); break;
+                            case DSTORE: setLocalDouble(primitives, bs.readLocalIndex2(curBCI), popDouble(primitives, top - 1)); break;
+                            case ASTORE: setLocalObjectOrReturnAddress(refs, bs.readLocalIndex2(curBCI), popReturnAddressOrObject(refs, top - 1)); break;
+                            case IINC: setLocalInt(primitives, bs.readLocalIndex2(curBCI), getLocalInt(primitives, bs.readLocalIndex2(curBCI)) + bs.readIncrement2(curBCI)); break;
+                            case RET: {
+                                int targetBCI = getLocalReturnAddress(refs, bs.readLocalIndex2(curBCI));
+                                postLocalAccess(primitives, refs, curBCI);
+                                if (jsrBci == null) {
+                                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                                    jsrBci = new int[bs.endBCI()][];
+                                }
+                                if (jsrBci[curBCI] == null) {
+                                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                                    jsrBci[curBCI] = new int[]{targetBCI};
+                                }
+                                for (int jsr : jsrBci[curBCI]) {
+                                    if (jsr == targetBCI) {
+                                        CompilerAsserts.partialEvaluationConstant(jsr);
+                                        targetBCI = jsr;
+                                        nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument, loopCount);
+                                        top += Bytecodes.stackEffectOf(RET);
+                                        curBCI = targetBCI;
+                                        continue loop;
+                                    }
+                                }
+                                CompilerDirectives.transferToInterpreterAndInvalidate();
+                                jsrBci[curBCI] = Arrays.copyOf(jsrBci[curBCI], jsrBci[curBCI].length + 1);
+                                jsrBci[curBCI][jsrBci[curBCI].length - 1] = targetBCI;
+                                nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument, loopCount);
+                                top += Bytecodes.stackEffectOf(RET);
+                                curBCI = targetBCI;
+                                continue loop;
+                            }
+                            default:
+                                CompilerDirectives.transferToInterpreter();
+                                throw EspressoError.shouldNotReachHere(Bytecodes.nameOf(curOpcode));
+                        }
+                        postLocalAccess(primitives, refs, curBCI);
+                        int targetBCI = bs.nextBCI(curBCI);
+                        edgeLocalAnalysis(primitives, refs, curBCI, targetBCI);
+                        top += Bytecodes.stackEffectOf(wideOpcode);
+                        curBCI += targetBCI;
+                        continue loop;
+                    }
+
+                    case MULTIANEWARRAY: top += allocateMultiArray(primitives, refs, top, resolveType(MULTIANEWARRAY, readCPI(curBCI)), bs.readUByte(curBCI + 3)); break;
 
                     case BREAKPOINT:
                         CompilerDirectives.transferToInterpreter();
                         throw EspressoError.unimplemented(Bytecodes.nameOf(curOpcode) + " not supported.");
 
-                    case INVOKEDYNAMIC: top += quickenInvokeDynamic(frame, primitives, refs, top, curBCI, curOpcode); break;
+                    case INVOKEDYNAMIC:
+                        setBCI(frame, curBCI);
+                        top += quickenInvokeDynamic(frame, primitives, refs, top, curBCI, INVOKEDYNAMIC);
+                        break;
+
                     case QUICK: {
+                        setBCI(frame, curBCI);
                         // Force a volatile read of the opcode.
                         if (bs.currentVolatileBC(curBCI) != QUICK) {
                             // Possible case of read reordering. Retry handling the bytecode to make sure we get a correct CPI.
@@ -1106,7 +1274,10 @@ public final class BytecodeNode extends EspressoMethodNode {
                         }
                         break;
                     }
-                    case SLIM_QUICK: top += sparseNodes[curBCI].execute(frame, primitives, refs); break;
+                    case SLIM_QUICK:
+                        setBCI(frame, curBCI);
+                        top += sparseNodes[curBCI].execute(frame, primitives, refs);
+                        break;
 
                     default:
                         CompilerDirectives.transferToInterpreter();
@@ -1114,6 +1285,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                 }
                 // @formatter:on
             } catch (EspressoException | AbstractTruffleException | StackOverflowError | OutOfMemoryError e) {
+                setBCI(frame, curBCI);
                 if (instrument != null && e instanceof EspressoException) {
                     instrument.notifyExceptionAt(frame, e, statementIndex);
                 }
@@ -1208,33 +1380,36 @@ public final class BytecodeNode extends EspressoMethodNode {
                 }
             } catch (EspressoExitException e) {
                 CompilerDirectives.transferToInterpreter();
+                setBCI(frame, curBCI);
                 getRoot().abortMonitor(frame);
                 // Tearing down the VM, no need to report loop count.
                 throw e;
             }
             // This check includes newly rewritten QUICK nodes, not just curOpcode == quick
-            if (noForeignObjects.isValid() && (bs.currentBC(curBCI) == QUICK || bs.currentBC(curBCI) == SLIM_QUICK)) {
-                BaseQuickNode quickNode;
-                if (bs.currentBC(curBCI) == QUICK) {
-                    quickNode = nodes[readCPI(curBCI)];
-                } else {
-                    assert bs.currentBC(curBCI) == SLIM_QUICK;
-                    quickNode = sparseNodes[curBCI];
-                }
-                if (quickNode.producedForeignObject(refs)) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    noForeignObjects.invalidate();
+            if (noForeignObjects.isValid()) {
+                int opcode = bs.opcode(curBCI);
+                if (opcode == QUICK || opcode == SLIM_QUICK) {
+                    BaseQuickNode quickNode;
+                    if (opcode == QUICK) {
+                        quickNode = nodes[readCPI(curBCI)];
+                    } else {
+                        assert opcode == SLIM_QUICK;
+                        quickNode = sparseNodes[curBCI];
+                    }
+                    if (quickNode.producedForeignObject(refs)) {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        noForeignObjects.invalidate();
+                    }
                 }
             }
-            if (Bytecodes.isLoad(curOpcode) || Bytecodes.isStore(curOpcode)) {
-                postLocalAccess(primitives, refs, curBCI);
-            }
-            top += Bytecodes.stackEffectOf(curOpcode);
-            int targetBCI = bs.nextBCI(curBCI);
+            assert curOpcode != WIDE && curOpcode != LOOKUPSWITCH && curOpcode != TABLESWITCH;
+
+            int targetBCI = curBCI + Bytecodes.lengthOf(curOpcode);
+            edgeLocalAnalysis(primitives, refs, curBCI, targetBCI);
             if (instrument != null) {
                 nextStatementIndex = instrument.getNextStatementIndex(statementIndex, targetBCI);
             }
-            edgeLocalAnalysis(primitives, refs, curBCI, targetBCI);
+            top += Bytecodes.stackEffectOf(curOpcode);
             curBCI = targetBCI;
         }
     }
@@ -1309,31 +1484,62 @@ public final class BytecodeNode extends EspressoMethodNode {
         return this;
     }
 
-    private static boolean takeBranch(long[] primitives, Object[] refs, int top, int opcode) {
-        assert Bytecodes.isBranch(opcode);
+    private static boolean takeBranchRef1(StaticObject operand, int opcode) {
+        assert IFNULL <= opcode && opcode <= IFNONNULL;
         // @formatter:off
         switch (opcode) {
-            case IFEQ      : return popInt(primitives, top - 1) == 0;
-            case IFNE      : return popInt(primitives, top - 1) != 0;
-            case IFLT      : return popInt(primitives, top - 1)  < 0;
-            case IFGE      : return popInt(primitives, top - 1) >= 0;
-            case IFGT      : return popInt(primitives, top - 1)  > 0;
-            case IFLE      : return popInt(primitives, top - 1) <= 0;
-            case IF_ICMPEQ : return popInt(primitives, top - 1) == popInt(primitives, top - 2);
-            case IF_ICMPNE : return popInt(primitives, top - 1) != popInt(primitives, top - 2);
-            case IF_ICMPLT : return popInt(primitives, top - 1)  > popInt(primitives, top - 2);
-            case IF_ICMPGE : return popInt(primitives, top - 1) <= popInt(primitives, top - 2);
-            case IF_ICMPGT : return popInt(primitives, top - 1)  < popInt(primitives, top - 2);
-            case IF_ICMPLE : return popInt(primitives, top - 1) >= popInt(primitives, top - 2);
-            case IF_ACMPEQ : return popObject(refs, top - 1) == popObject(refs, top - 2);
-            case IF_ACMPNE : return popObject(refs, top - 1) != popObject(refs, top - 2);
-            case GOTO      : // fall though
-            case GOTO_W    : return true; // unconditional
-            case IFNULL    : return StaticObject.isNull(popObject(refs, top - 1));
-            case IFNONNULL : return StaticObject.notNull(popObject(refs, top - 1));
+            case IFNULL    : return StaticObject.isNull(operand);
+            case IFNONNULL : return StaticObject.notNull(operand);
             default        :
                 CompilerDirectives.transferToInterpreter();
-                throw EspressoError.shouldNotReachHere("non-branching bytecode");
+                throw EspressoError.shouldNotReachHere("expected IFNULL or IFNONNULL bytecode");
+        }
+        // @formatter:on
+    }
+
+    private static boolean takeBranchPrimitive1(int operand, int opcode) {
+        assert IFEQ <= opcode && opcode <= IFLE;
+        // @formatter:off
+        switch (opcode) {
+            case IFEQ      : return operand == 0;
+            case IFNE      : return operand != 0;
+            case IFLT      : return operand  < 0;
+            case IFGE      : return operand >= 0;
+            case IFGT      : return operand  > 0;
+            case IFLE      : return operand <= 0;
+            default        :
+                CompilerDirectives.transferToInterpreter();
+                throw EspressoError.shouldNotReachHere("expecting IFEQ,IFNE,IFLT,IFGE,IFGT,IFLE");
+        }
+        // @formatter:on
+    }
+
+    private static boolean takeBranchPrimitive2(int operand1, int operand2, int opcode) {
+        assert IF_ICMPEQ <= opcode && opcode <= IF_ICMPLE;
+        // @formatter:off
+        switch (opcode) {
+            case IF_ICMPEQ : return operand1 == operand2;
+            case IF_ICMPNE : return operand1 != operand2;
+            case IF_ICMPLT : return operand1  > operand2;
+            case IF_ICMPGE : return operand1 <= operand2;
+            case IF_ICMPGT : return operand1  < operand2;
+            case IF_ICMPLE : return operand1 >= operand2;
+            default        :
+                CompilerDirectives.transferToInterpreter();
+                throw EspressoError.shouldNotReachHere("expecting IF_ICMPEQ,IF_ICMPNE,IF_ICMPLT,IF_ICMPGE,IF_ICMPGT,IF_ICMPLE");
+        }
+        // @formatter:on
+    }
+
+    private static boolean takeBranchRef2(StaticObject operand1, StaticObject operand2, int opcode) {
+        assert IF_ACMPEQ <= opcode && opcode <= IF_ACMPNE;
+        // @formatter:off
+        switch (opcode) {
+            case IF_ACMPEQ : return operand1 == operand2;
+            case IF_ACMPNE : return operand1 != operand2;
+            default        :
+                CompilerDirectives.transferToInterpreter();
+                throw EspressoError.shouldNotReachHere("expecting IF_ACMPEQ,IF_ACMPNE");
         }
         // @formatter:on
     }
@@ -2350,24 +2556,28 @@ public final class BytecodeNode extends EspressoMethodNode {
 
         int argAt = top - 1;
         for (int i = argCount - 1; i >= 0; --i) {
-            JavaKind kind = Signatures.parameterKind(signature, i);
-            // @formatter:off
-            switch (kind) {
-                case Boolean : args[i + extraParam] = (popInt(primitives, argAt) != 0);  break;
-                case Byte    : args[i + extraParam] = (byte) popInt(primitives, argAt);  break;
-                case Short   : args[i + extraParam] = (short) popInt(primitives, argAt); break;
-                case Char    : args[i + extraParam] = (char) popInt(primitives, argAt);  break;
-                case Int     : args[i + extraParam] = popInt(primitives, argAt);         break;
-                case Float   : args[i + extraParam] = popFloat(primitives, argAt);       break;
-                case Long    : args[i + extraParam] = popLong(primitives, argAt);        break;
-                case Double  : args[i + extraParam] = popDouble(primitives, argAt);      break;
-                case Object  : args[i + extraParam] = popObject(refs, argAt); break;
-                default      :
-                    CompilerDirectives.transferToInterpreter();
-                    throw EspressoError.shouldNotReachHere();
+            Symbol<Type> argType = Signatures.parameterType(signature, i);
+            if (argType.length() == 1) {
+                // @formatter:off
+                switch (argType.byteAt(0)) {
+                    case 'Z' : args[i + extraParam] = (popInt(primitives, argAt) != 0);  break;
+                    case 'B' : args[i + extraParam] = (byte) popInt(primitives, argAt);  break;
+                    case 'S' : args[i + extraParam] = (short) popInt(primitives, argAt); break;
+                    case 'C' : args[i + extraParam] = (char) popInt(primitives, argAt);  break;
+                    case 'I' : args[i + extraParam] = popInt(primitives, argAt);         break;
+                    case 'F' : args[i + extraParam] = popFloat(primitives, argAt);       break;
+                    case 'J' : args[i + extraParam] = popLong(primitives, argAt);   --argAt; break;
+                    case 'D' : args[i + extraParam] = popDouble(primitives, argAt); --argAt; break;
+                    default  :
+                        CompilerDirectives.transferToInterpreter();
+                        throw EspressoError.shouldNotReachHere();
+                }
+                // @formatter:on
+            } else {
+                args[i + extraParam] = popObject(refs, argAt);
             }
-            // @formatter:on
-            argAt -= kind.getSlotCount();
+            --argAt;
+
         }
         if (hasReceiver) {
             args[0] = popObject(refs, argAt);
@@ -2381,27 +2591,29 @@ public final class BytecodeNode extends EspressoMethodNode {
         // Use basic types
         CompilerAsserts.partialEvaluationConstant(argCount);
         CompilerAsserts.partialEvaluationConstant(signature);
-
         int argAt = top - 1;
         for (int i = argCount - 1; i >= 0; --i) {
-            JavaKind kind = Signatures.parameterKind(signature, i);
-            // @formatter:off
-            switch (kind) {
-                case Boolean : // Fall through
-                case Byte    : // Fall through
-                case Short   : // Fall through
-                case Char    : // Fall through
-                case Int     : args[i + start] = popInt(primitives, argAt);    break;
-                case Float   : args[i + start] = popFloat(primitives, argAt);  break;
-                case Long    : args[i + start] = popLong(primitives, argAt);   break;
-                case Double  : args[i + start] = popDouble(primitives, argAt); break;
-                case Object  : args[i + start] = popObject(refs, argAt); break;
-                default      :
-                    CompilerDirectives.transferToInterpreter();
-                    throw EspressoError.shouldNotReachHere();
+            Symbol<Type> argType = Signatures.parameterType(signature, i);
+            if (argType.length() == 1) {
+                // @formatter:off
+                switch (argType.byteAt(0)) {
+                    case 'Z' : // fall through
+                    case 'B' : // fall through
+                    case 'S' : // fall through
+                    case 'C' : // fall through
+                    case 'I' : args[i + start] = popInt(primitives, argAt);    break;
+                    case 'F' : args[i + start] = popFloat(primitives, argAt);  break;
+                    case 'J' : args[i + start] = popLong(primitives, argAt);   --argAt; break;
+                    case 'D' : args[i + start] = popDouble(primitives, argAt); --argAt; break;
+                    default  :
+                        CompilerDirectives.transferToInterpreter();
+                        throw EspressoError.shouldNotReachHere();
+                }
+                // @formatter:on
+            } else {
+                args[i + start] = popObject(refs, argAt);
             }
-            // @formatter:on
-            argAt -= kind.getSlotCount();
+            --argAt;
         }
         return args;
     }
