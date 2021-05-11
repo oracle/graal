@@ -5,8 +5,8 @@ link_title: Language Server Protocol
 permalink: /tools/lsp/
 redirect_from: /docs/tools/lsp/
 toc_group: tools
-next: /en/graalvm/enterprise/21/docs/tools/dsp/
-previous: /en/graalvm/enterprise/21/docs/tools/vscode-extension/
+next: /en/graalvm/enterprise/{{ site.version }}/docs/tools/dsp/
+previous: /en/graalvm/enterprise/{{ site.version }}/docs/tools/vscode-extension/
 ---
 
 # Language Server Protocol

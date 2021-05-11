@@ -7,8 +7,8 @@ permalink: /graalvm-as-a-platform/language-implementation-framework/LanguageTuto
 redirect_from:
   - /graalvm-as-a-platform/truffle-framework/LanguageTutorial/
   - /docs/reference-manual/truffle-framework/LanguageTutorial/
-next: /en/graalvm/enterprise/21/docs/graalvm-as-a-platform/truffle-framework/NFI/
-previous: /en/graalvm/enterprise/21/docs/graalvm-as-a-platform/truffle-framework/InteropMigration/
+next: /en/graalvm/enterprise/{{ site.version }}/docs/graalvm-as-a-platform/truffle-framework/NFI/
+previous: /en/graalvm/enterprise/{{ site.version }}/docs/graalvm-as-a-platform/truffle-framework/InteropMigration/
 ---
 # Implementing a New Language with Truffle
 

@@ -5,8 +5,8 @@ title: Limitations and Differences to Native Execution
 link_title: Limitations and Differences to Native Execution
 permalink: /reference-manual/llvm/NativeExecution/
 redirect_from: /docs/reference-manual/llvm/NativeExecution/
-next: /en/graalvm/enterprise/21/docs/reference-manual/llvm/Interoperability/
-previous: /en/graalvm/enterprise/21/docs/reference-manual/llvm/Compiling/
+next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/llvm/Interoperability/
+previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/llvm/Compiling/
 ---
 # Limitations and Differences to Native Execution
 

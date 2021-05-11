@@ -5,8 +5,8 @@ title: Profile-Guided Optimizations
 link_title: Profile-Guided Optimizations
 permalink: /reference-manual/native-image/PGO/
 redirect_from: /docs/reference-manual/native-image/PGO/
-next: /en/graalvm/enterprise/21/docs/reference-manual/native-image/MemoryManagement/
-previous: /en/graalvm/enterprise/21/docs/reference-manual/native-image/Properties/
+next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/native-image/MemoryManagement/
+previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/native-image/Properties/
 ---
 # Profile-Guided Optimizations
 

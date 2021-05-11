@@ -4,7 +4,7 @@ toc_group: truffle
 title: Truffle Language Safepoint Tutorial
 link_title: Truffle Language Safepoint Tutorial
 permalink: /graalvm-as-a-platform/language-implementation-framework/Safepoint/
-next: /en/graalvm/enterprise/21/docs/graalvm-as-a-platform/truffle-framework/Monomorphization/
+next: /en/graalvm/enterprise/{{ site.version }}/docs/graalvm-as-a-platform/truffle-framework/Monomorphization/
 previous: /graalvm-as-a-platform/language-implementation-framework/AOT/
 ---
 # Truffle Language Safepoint Tutorial

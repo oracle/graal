@@ -5,8 +5,8 @@ title: Native Image Options
 link_title: Native Image Options
 permalink: /reference-manual/native-image/Options/
 redirect_from: /docs/reference-manual/native-image/Options/
-next: /en/graalvm/enterprise/21/docs/reference-manual/native-image/HostedvsRuntimeOptions/
-previous: /en/graalvm/enterprise/21/docs/reference-manual/native-image/StaticImages/
+next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/native-image/HostedvsRuntimeOptions/
+previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/native-image/StaticImages/
 ---
 # Native Image Options
 

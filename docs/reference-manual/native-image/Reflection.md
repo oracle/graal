@@ -5,8 +5,8 @@ title: Reflection on Native Image
 link_title: Reflection on Native Image
 permalink: /reference-manual/native-image/Reflection/
 redirect_from: /docs/reference-manual/native-image/Reflection/
-next: /en/graalvm/enterprise/21/docs/reference-manual/native-image/Resources/
-previous: /en/graalvm/enterprise/21/docs/reference-manual/native-image/JNI/
+next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/native-image/Resources/
+previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/native-image/JNI/
 ---
 # Reflection Use in Native Images
 

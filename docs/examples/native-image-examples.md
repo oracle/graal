@@ -5,8 +5,8 @@ link_title: Native Image Examples
 permalink: /examples/native-image-examples/
 redirect_from: /docs/examples/native-list-dir/
 toc_group: examples
-previous: /en/graalvm/enterprise/21/docs/examples/polyglot-javascript-java-r/
-next: /en/graalvm/enterprise/21/docs/examples/java-kotlin-aot/
+previous: /en/graalvm/enterprise/{{ site.version }}/docs/examples/polyglot-javascript-java-r/
+next: /en/graalvm/enterprise/{{ site.version }}/docs/examples/java-kotlin-aot/
 ---
 
 # Ahead-of-Time Compilation of Java and Polyglot Applications

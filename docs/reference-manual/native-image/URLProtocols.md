@@ -5,8 +5,8 @@ title: URL Protocols on Native Image
 link_title: URL Protocols on Native Image
 permalink: /reference-manual/native-image/URLProtocols/
 redirect_from: /docs/reference-manual/native-image/URLProtocols/
-next: /en/graalvm/enterprise/21/docs/reference-manual/native-image/URLProtocols/
-previous: /en/graalvm/enterprise/21/docs/reference-manual/native-image/Logging/
+next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/native-image/URLProtocols/
+previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/native-image/Logging/
 ---
 # URL Protocols in Native Image
 

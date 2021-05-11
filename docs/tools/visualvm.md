@@ -5,8 +5,8 @@ link_title: VisualVM
 permalink: /tools/visualvm/
 redirect_from: /docs/tools/visualvm/
 toc_group: tools
-next: /en/graalvm/enterprise/21/docs/tools/chrome-debugger/
-previous: /en/graalvm/enterprise/21/docs/tools/
+next: /en/graalvm/enterprise/{{ site.version }}/docs/tools/chrome-debugger/
+previous: /en/graalvm/enterprise/{{ site.version }}/docs/tools/
 ---
 
 # VisualVM

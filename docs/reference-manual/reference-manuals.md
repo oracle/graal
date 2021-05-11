@@ -6,7 +6,7 @@ permalink: /reference-manual/
 redirect_from:
   - /docs/graalvm-reference/
   - /docs/reference-manual/
-next: /en/graalvm/enterprise/21/docs/reference-manual/compiler/
+next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/compiler/
 toc_group: reference-manual
 ---
 

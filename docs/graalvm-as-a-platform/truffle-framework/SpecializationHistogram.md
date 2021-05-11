@@ -7,8 +7,8 @@ permalink: /graalvm-as-a-platform/language-implementation-framework/Specializati
 redirect_from:
   - /graalvm-as-a-platform/truffle-framework/SpecializationHistogram/
   - /docs/reference-manual/truffle-framework/SpecializationHistogram/
-next: /en/graalvm/enterprise/21/docs/graalvm-as-a-platform/truffle-framework/SpecializationTesting/
-previous: /en/graalvm/enterprise/21/docs/graalvm-as-a-platform/truffle-framework/Options/
+next: /en/graalvm/enterprise/{{ site.version }}/docs/graalvm-as-a-platform/truffle-framework/SpecializationTesting/
+previous: /en/graalvm/enterprise/{{ site.version }}/docs/graalvm-as-a-platform/truffle-framework/Options/
 ---
 # Specialization Histogram
 

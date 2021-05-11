@@ -5,8 +5,8 @@ title: Memory Management at Image Run Time
 link_title: Memory Management at Image Run Time
 permalink: /reference-manual/native-image/MemoryManagement/
 redirect_from: /docs/reference-manual/native-image/MemoryManagement/
-next: /en/graalvm/enterprise/21/docs/reference-manual/native-image/NativeImageHeapdumpEnterprise/
-previous: /en/graalvm/enterprise/21/docs/reference-manual/native-image/PGO/
+next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/native-image/NativeImageHeapdumpEnterprise/
+previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/native-image/PGO/
 ---
 # Memory Management at Image Run Time
 

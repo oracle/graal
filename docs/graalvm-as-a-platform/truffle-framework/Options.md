@@ -7,8 +7,8 @@ permalink: /graalvm-as-a-platform/language-implementation-framework/Options/
 redirect_from:
   - /graalvm-as-a-platform/truffle-framework/Options/
   - /docs/reference-manual/truffle-framework/Options/
-next: /en/graalvm/enterprise/21/docs/graalvm-as-a-platform/truffle-framework/SpecializationHistogram/
-previous: /en/graalvm/enterprise/21/docs/graalvm-as-a-platform/truffle-framework/Optimizing/
+next: /en/graalvm/enterprise/{{ site.version }}/docs/graalvm-as-a-platform/truffle-framework/SpecializationHistogram/
+previous: /en/graalvm/enterprise/{{ site.version }}/docs/graalvm-as-a-platform/truffle-framework/Optimizing/
 ---
 # Truffle Options
 

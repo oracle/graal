@@ -7,8 +7,8 @@ permalink: /reference-manual/java/
 redirect_from:
   - /reference-manual/jvm/
   - /docs/reference-manual/jvm/
-next: /en/graalvm/enterprise/21/docs/reference-manual/java/options/
-previous: /en/graalvm/enterprise/21/docs/reference-manual/polyglot-programming/
+next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/java/options/
+previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/polyglot-programming/
 ---
 
 # Java Reference

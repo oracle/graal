@@ -5,8 +5,8 @@ title: Class Initialization in Native Image
 link_title: Class Initialization in Native Image
 permalink: /reference-manual/native-image/ClassInitialization/
 redirect_from: /docs/reference-manual/native-image/ClassInitialization/
-next: /en/graalvm/enterprise/21/docs/reference-manual/native-image/StaticImages/
-previous: /en/graalvm/enterprise/21/docs/reference-manual/native-image/Limitations/
+next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/native-image/StaticImages/
+previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/native-image/Limitations/
 ---
 # Class Initialization in Native Image
 

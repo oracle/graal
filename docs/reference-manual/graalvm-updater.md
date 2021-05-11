@@ -6,8 +6,8 @@ permalink: /reference-manual/graalvm-updater/
 redirect_from:
   - /docs/reference-manual/gu/
   - /docs/reference-manual/graal-updater/
-next: /en/graalvm/enterprise/21/docs/reference-manual/embed-languages/
-previous: /en/graalvm/enterprise/21/docs/reference-manual/compiler/
+next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/embed-languages/
+previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/compiler/
 toc_group: reference-manual
 ---
 

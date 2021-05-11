@@ -6,7 +6,7 @@ permalink: /tools/
 redirect_from:
   - /docs/graalvm-tools/
   - /docs/tools//
-next: /en/graalvm/enterprise/21/docs/tools/visualvm/
+next: /en/graalvm/enterprise/{{ site.version }}/docs/tools/visualvm/
 toc_group: tools
 ---
 

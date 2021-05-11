@@ -5,8 +5,8 @@ link_title: GraalVM Extension
 permalink: /tools/vscode/graalvm-extension/
 redirect_from:
 toc_group: vscode
-next: /en/graalvm/enterprise/21/docs/tools/micronaut-extension/
-previous: /en/graalvm/enterprise/21/docs/tools/vscode/
+next: /en/graalvm/enterprise/{{ site.version }}/docs/tools/micronaut-extension/
+previous: /en/graalvm/enterprise/{{ site.version }}/docs/tools/vscode/
 ---
 # GraalVM Visual Studio Code Extension
 

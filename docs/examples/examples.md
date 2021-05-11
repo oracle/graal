@@ -4,7 +4,7 @@ title: Examples
 link_title: Examples
 permalink: /examples/
 redirect_from: /docs/examples/
-next: /en/graalvm/enterprise/21/docs/examples/java-performance-examples/
+next: /en/graalvm/enterprise/{{ site.version }}/docs/examples/java-performance-examples/
 toc_group: examples
 ---
 

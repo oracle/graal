@@ -5,8 +5,8 @@ link_title: Micronaut Extension
 permalink: /tools/vscode/micronaut-extension/
 redirect_from:
 toc_group: vscode
-next: /en/graalvm/enterprise/21/docs/tools/lsp/
-previous: /en/graalvm/enterprise/21/docs/tools/graalvm-extension/
+next: /en/graalvm/enterprise/{{ site.version }}/docs/tools/lsp/
+previous: /en/graalvm/enterprise/{{ site.version }}/docs/tools/graalvm-extension/
 ---
 # Micronaut Visual Studio Code Extension <!-- omit in toc -->
 

@@ -5,7 +5,7 @@ link_title: Implement Your Tool
 permalink: /graalvm-as-a-platform/implement-instrument/
 redirect_from: /docs/graalvm-as-a-platform/implement-instrument/
 toc_group: graalvm-as-a-platform
-previous: /en/graalvm/enterprise/21/docs/graalvm-as-a-platform/implement-language/
+previous: /en/graalvm/enterprise/{{ site.version }}/docs/graalvm-as-a-platform/implement-language/
 ---
 
 # Getting Started with Instruments in GraalVM

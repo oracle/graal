@@ -7,8 +7,8 @@ permalink: /reference-manual/native-image/
 redirect_from:
   - /docs/reference-manual/aot-compilation/
   - /docs/reference-manual/native-image/
-next: /en/graalvm/enterprise/21/docs/reference-manual/native-image/Configuration/
-previous: /en/graalvm/enterprise/21/docs/reference-manual/
+next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/native-image/Configuration/
+previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/
 ---
 # Native Image
 

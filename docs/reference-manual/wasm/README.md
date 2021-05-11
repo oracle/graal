@@ -5,7 +5,7 @@ link_title: WebAssembly Reference
 permalink: /reference-manual/wasm/
 redirect_from: /docs/reference-manual/languages/wasm/
 toc_group: wasm
-previous: /en/graalvm/enterprise/21/docs/reference-manual/ruby/
+previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/ruby/
 ---
 
 # GraalVM Implementation of WebAssembly

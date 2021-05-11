@@ -1,7 +1,7 @@
 ---
 layout: ohc
 permalink: /getting-started/installation-windows/
-previous: /en/graalvm/enterprise/21/docs/getting-started/
+previous: /en/graalvm/enterprise/{{ site.version }}/docs/getting-started/
 ---
 
 # Installation on Windows Platforms
@@ -36,8 +36,8 @@ Optionally, you can specify GraalVM Enterprise as the JRE or JDK installation in
 
 ## Supported Functionalities
 
-The GraalVM Enterprise distribution for Windows platforms includes Oracle JDK with the GraalVM compiler enabled, the [GraalVM Updater](/en/graalvm/enterprise/21/docs/reference-manual/graalvm-updater/) tool, the JavaScript runtime, and the developer tools (e.g., Chrome inspector based debugger, Profiler, etc.).
-Currently, the GraalVM Enterprise environment on Windows can be extended with [Native Image](/en/graalvm/enterprise/21/docs/reference-manual/enterprise-native-image/), [Java on Trufle](/en/graalvm/enterprise/21/docs/reference-manual/java-on-truffle/), WebAssembly, and Node.js support.
+The GraalVM Enterprise distribution for Windows platforms includes Oracle JDK with the GraalVM compiler enabled, the [GraalVM Updater](/en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/graalvm-updater/) tool, the JavaScript runtime, and the developer tools (e.g., Chrome inspector based debugger, Profiler, etc.).
+Currently, the GraalVM Enterprise environment on Windows can be extended with [Native Image](/en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/enterprise-native-image/), [Java on Trufle](/en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/java-on-truffle/), WebAssembly, and Node.js support.
 
 ## Prerequisites for Using Native Image on Windows
 To make use of Native Image on Windows, observe the following recommendations. The

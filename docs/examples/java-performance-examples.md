@@ -5,7 +5,7 @@ link_title: Java Performance Examples
 permalink: /examples/java-performance-examples/
 redirect_from: /docs/examples/java-performance-examples/
 toc_group: examples
-next: /en/graalvm/enterprise/21/docs/examples/java-simple-stream-benchmark/
+next: /en/graalvm/enterprise/{{ site.version }}/docs/examples/java-simple-stream-benchmark/
 ---
 
 # Java Performance Examples

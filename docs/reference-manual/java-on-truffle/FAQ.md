@@ -4,7 +4,7 @@ toc_group: espresso
 title: FAQ
 link_title: FAQ
 permalink: /reference-manual/java-on-truffle/faq/
-previous: /en/graalvm/enterprise/21/docs/reference-manual/java-on-truffle/demos/
+previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/java-on-truffle/demos/
 ---
 
 # Frequently Asked Questions

@@ -5,8 +5,8 @@ title: Dynamic Proxy on Native Image
 link_title: Dynamic Proxy on Native Image
 permalink: /reference-manual/native-image/DynamicProxy/
 redirect_from: /docs/reference-manual/native-image/DynamicProxy/
-next: /en/graalvm/enterprise/21/docs/reference-manual/native-image/JNI/
-previous: /en/graalvm/enterprise/21/docs/reference-manual/native-image/JCASecurityServices/
+next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/native-image/JNI/
+previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/native-image/JCASecurityServices/
 ---
 # Dynamic Proxy in Native Image
 

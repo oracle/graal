@@ -4,7 +4,7 @@ title: Guides
 link_title: Guides
 permalink: /guides/
 toc_group: getting-started
-previous: /en/graalvm/enterprise/21/docs/examples/java-kotlin-aot/
+previous: /en/graalvm/enterprise/{{ site.version }}/docs/examples/java-kotlin-aot/
 ---
 
 Here you will find information about how to:

@@ -5,8 +5,8 @@ title: LLVM Languages Reference
 link_title: LLVM Languages Reference
 permalink: /reference-manual/llvm/
 redirect_from: /docs/reference-manual/languages/llvm/
-next: /en/graalvm/enterprise/21/docs/reference-manual/llvm/Compiling/
-previous: /en/graalvm/enterprise/21/docs/reference-manual/js/
+next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/llvm/Compiling/
+previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/js/
 ---
 # GraalVM LLVM Runtime
 

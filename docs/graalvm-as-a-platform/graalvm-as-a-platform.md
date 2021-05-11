@@ -4,7 +4,7 @@ title: GraalVM as a Platform
 link_title: GraalVM as a Platform
 permalink: /graalvm-as-a-platform/
 redirect_from: /docs/graalvm-as-a-platform/
-next: /en/graalvm/enterprise/21/docs/graalvm-as-a-platform/language-implementation-framework/
+next: /en/graalvm/enterprise/{{ site.version }}/docs/graalvm-as-a-platform/language-implementation-framework/
 toc_group: graalvm-as-a-platform
 ---
 

@@ -5,7 +5,7 @@ title: Truffle AOT Overview
 link_title: Truffle AOT Overview
 permalink: /graalvm-as-a-platform/language-implementation-framework/AOTOverview/
 next: /graalvm-as-a-platform/language-implementation-framework/AOT/
-previous: /en/graalvm/enterprise/21/docs/graalvm-as-a-platform/language-implementation-framework/TruffleLibraries/
+previous: /en/graalvm/enterprise/{{ site.version }}/docs/graalvm-as-a-platform/language-implementation-framework/TruffleLibraries/
 ---
 # Truffle AOT Overview
 

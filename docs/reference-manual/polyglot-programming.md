@@ -6,8 +6,8 @@ permalink: /reference-manual/polyglot-programming/
 redirect_from:
   - /docs/reference-manual/polyglot/
   - /docs/reference-manual/polyglot-programming/
-next: /en/graalvm/enterprise/21/docs/reference-manual/languages/
-previous: /en/graalvm/enterprise/21/docs/reference-manual/embed-languages/
+next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/languages/
+previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/embed-languages/
 toc_group: reference-manual
 ---
 

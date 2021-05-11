@@ -3,8 +3,8 @@ layout: docs
 title: Compiler
 link_title: Compiler
 permalink: /reference-manual/compiler/
-previous: /en/graalvm/enterprise/21/docs/reference-manual/enterprise-native-image/
-next: /en/graalvm/enterprise/21/docs/reference-manual/graalvm-updater/
+previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/enterprise-native-image/
+next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/graalvm-updater/
 toc_group: reference-manual
 ---
 
@@ -83,7 +83,7 @@ This will produce diagnostic data for every method compiled by the compiler.
 To refine the set of methods for which diagnostic data is produced, use the `-Dgraal.MethodFilter=<class>.<method>` option.
 For example, `-Dgraal.MethodFilter=java.lang.String.*,HashMap.get` will produce diagnostic data only for methods in the `java.lang.String` class as well as methods named `get` in a class whose non-qualified name is `HashMap`.
 
-Instead of being written to a file, diagnostic data can also be sent over the network to the [Ideal Graph Visualizer](https://docs.oracle.com/en/graalvm/enterprise/21/docs/tools/igv/).
+Instead of being written to a file, diagnostic data can also be sent over the network to the [Ideal Graph Visualizer](https://docs.oracle.com/en/graalvm/enterprise/{{ site.version }}/docs/tools/igv/).
 This requires the `-Dgraal.PrintGraph=Network` option, upon which the compiler will try to send diagnostic data to _127.0.0.1:4445_.
 This network endpoint can be configured with the `-Dgraal.PrintGraphHost` and `-Dgraal.PrintGraphPort` options.
 

@@ -5,8 +5,8 @@ title: LLVM Backend for Native Image
 link_title: LLVM Backend for Native Image
 permalink: /reference-manual/native-image/LLVMBackend/
 redirect_from: /docs/reference-manual/native-image/LLVMBackend/
-next: /en/graalvm/enterprise/21/docs/reference-manual/native-image/LLVMBackend/
-previous: /en/graalvm/enterprise/21/docs/reference-manual/native-image/C-API/
+next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/native-image/LLVMBackend/
+previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/native-image/C-API/
 ---
 # LLVM Backend for Native Image
 

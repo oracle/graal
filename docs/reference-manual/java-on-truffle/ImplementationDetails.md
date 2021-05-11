@@ -4,8 +4,8 @@ toc_group: espresso
 title: Implementation Details
 link_title: Implementation Details
 permalink: /reference-manual/java-on-truffle/implementation/
-next: /en/graalvm/enterprise/21/docs/reference-manual/java-on-truffle/demos/
-previous: /en/graalvm/enterprise/21/docs/reference-manual/interoperability/
+next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/java-on-truffle/demos/
+previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/interoperability/
 ---
 
 # Implementation Details

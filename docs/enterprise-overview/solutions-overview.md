@@ -1,8 +1,8 @@
 ---
 layout: ohc
 permalink: /overview/
-next: /en/graalvm/enterprise/21/docs/overview/architecture/
-previous: /en/graalvm/enterprise/21/docs/
+next: /en/graalvm/enterprise/{{ site.version }}/docs/overview/architecture/
+previous: /en/graalvm/enterprise/{{ site.version }}/docs/
 ---
 
 # Oracle GraalVM Enterprise Edition
@@ -98,7 +98,7 @@ vulnerabilities.
 
 ## Get Started with GraalVM Enterprise
 
-[Get started with GraalVM Enterprise](/en/graalvm/enterprise/21/docs/getting-started/) and:
+[Get started with GraalVM Enterprise](/en/graalvm/enterprise/{{ site.version }}/docs/getting-started/) and:
 * reduce IT and storage costs
 * provide customers with quicker response time
 * employ fewer resources, freeing up CPU

@@ -4,8 +4,8 @@ toc_group: truffle
 title: Testing DSL Specializations
 link_title: Testing DSL Specializations
 permalink: /graalvm-as-a-platform/language-implementation-framework/SpecializationTesting/
-next: /en/graalvm/enterprise/21/docs/graalvm-as-a-platform/truffle-framework/TCK/
-previous: /en/graalvm/enterprise/21/docs/graalvm-as-a-platform/truffle-framework/SpecializationHistogram/
+next: /en/graalvm/enterprise/{{ site.version }}/docs/graalvm-as-a-platform/truffle-framework/TCK/
+previous: /en/graalvm/enterprise/{{ site.version }}/docs/graalvm-as-a-platform/truffle-framework/SpecializationHistogram/
 ---
 # Testing Truffle DSL Specializations
 

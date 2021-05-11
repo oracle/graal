@@ -8,7 +8,7 @@ redirect_from:
   - /docs/reference-manual/truffle-framework/TruffleLibraries/
   - /graalvm-as-a-platform/truffle-framework/TruffleLibraries/
 next: /graalvm-as-a-platform/language-implementation-framework/AOT/
-previous: /en/graalvm/enterprise/21/docs/graalvm-as-a-platform/truffle-framework/TCK/
+previous: /en/graalvm/enterprise/{{ site.version }}/docs/graalvm-as-a-platform/truffle-framework/TCK/
 ---
 # Truffle Library Guide
 

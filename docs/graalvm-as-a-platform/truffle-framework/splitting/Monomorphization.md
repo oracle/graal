@@ -7,7 +7,7 @@ permalink: /graalvm-as-a-platform/language-implementation-framework/splitting/Mo
 redirect_from:
   - /graalvm-as-a-platform/truffle-framework/splitting/Monomorphization/
   - /docs/reference-manual/truffle-framework/splitting/Monomorphization/
-next: /en/graalvm/enterprise/21/docs/graalvm-as-a-platform/truffle-framework/Splitting/
+next: /en/graalvm/enterprise/{{ site.version }}/docs/graalvm-as-a-platform/truffle-framework/Splitting/
 previous: /graalvm-as-a-platform/language-implementation-framework/Safepoint/
 ---
 # Monomorphization

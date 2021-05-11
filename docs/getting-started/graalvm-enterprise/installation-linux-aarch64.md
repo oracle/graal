@@ -1,7 +1,7 @@
 ---
 layout: ohc
 permalink: /getting-started/installation-linux-aarch64/
-previous: /en/graalvm/enterprise/21/docs/getting-started/
+previous: /en/graalvm/enterprise/{{ site.version }}/docs/getting-started/
 ---
 
 # Installation on Linux ARM64 systems
@@ -37,6 +37,6 @@ Optionally, you can specify GraalVM Enterprise as the default JRE or JDK install
 
 ## Supported Functionalities
 
-The 64-bit GraalVM Enterprise distribution for Linux platforms includes Oracle JDK with the GraalVM compiler enabled, the [GraalVM Updater, `gu`](/en/graalvm/enterprise/21/docs/reference-manual/graalvm-updater/) tool, the JavaScript runtime, and some developer tools (e.g., Chrome inspector based debugger, Visual VM).
-Support for [Native Image](/en/graalvm/enterprise/21/docs/reference-manual/enterprise-native-image/), Node.js, LLVM and WebAssembly runtimes can be installed with `gu`.
+The 64-bit GraalVM Enterprise distribution for Linux platforms includes Oracle JDK with the GraalVM compiler enabled, the [GraalVM Updater, `gu`](/en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/graalvm-updater/) tool, the JavaScript runtime, and some developer tools (e.g., Chrome inspector based debugger, Visual VM).
+Support for [Native Image](/en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/enterprise-native-image/), Node.js, LLVM and WebAssembly runtimes can be installed with `gu`.
 Runtimes for Python, FastR, and Ruby languages are not available in this distribution yet.

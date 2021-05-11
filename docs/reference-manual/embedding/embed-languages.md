@@ -7,8 +7,8 @@ redirect_from:
   - /docs/reference-manual/embed/
   - /docs/reference-manual/embed-languages/
 toc_group: reference-manual
-next: /en/graalvm/enterprise/21/docs/reference-manual/polyglot-programming/
-previous: /en/graalvm/enterprise/21/docs/reference-manual/graalvm-updater/
+next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/polyglot-programming/
+previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/graalvm-updater/
 ---
 
 # Embedding Languages

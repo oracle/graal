@@ -5,8 +5,8 @@ title: Native Image Maven Plugin
 link_title: Native Image Maven Plugin
 permalink: /reference-manual/native-image/NativeImageMavenPlugin/
 redirect_from: /docs/reference-manual/native-image/NativeImageMavenPlugin/
-next: /en/graalvm/enterprise/21/docs/reference-manual/native-image/JCASecurityServices/
-previous: /en/graalvm/enterprise/21/docs/reference-manual/native-image/NativeImageHeapdumpEnterprise/
+next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/native-image/JCASecurityServices/
+previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/native-image/NativeImageHeapdumpEnterprise/
 ---
 # Native Image Maven Plugin
 

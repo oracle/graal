@@ -7,8 +7,8 @@ redirect_from:
   - /tools/vscode-extension/
   - /docs/tools/vscode-extension/
 toc_group: vscode
-next: /en/graalvm/enterprise/21/docs/tools/graalvm-extension/
-previous: /en/graalvm/enterprise/21/docs/tools/chrome-debugger/
+next: /en/graalvm/enterprise/{{ site.version }}/docs/tools/graalvm-extension/
+previous: /en/graalvm/enterprise/{{ site.version }}/docs/tools/chrome-debugger/
 ---
 
 # Visual Studio Code Extensions

@@ -6,8 +6,8 @@ permalink: /examples/java-simple-stream-benchmark/
 redirect_from: /docs/examples/java-simple-stream-benchmark/
 toc_group: examples
 next:
-previous: /en/graalvm/enterprise/21/docs/examples/java-performance-examples/
-next: /en/graalvm/enterprise/21/docs/examples/polyglot-javascript-java-r/
+previous: /en/graalvm/enterprise/{{ site.version }}/docs/examples/java-performance-examples/
+next: /en/graalvm/enterprise/{{ site.version }}/docs/examples/polyglot-javascript-java-r/
 ---
 
 # Simple Java Stream Benchmark
