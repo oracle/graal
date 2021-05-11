@@ -147,11 +147,11 @@ public final class ClassRedefinition {
     }
 
     public void addExtraReloadClasses(List<RedefineInfo> redefineInfos, List<RedefineInfo> additional) {
-        redefineListener.addExtraReloadClasses(redefineInfos, additional);
+        redefineListener.collectExtraClassesToReload(redefineInfos, additional);
     }
 
     public void runPostRedefintionListeners(ObjectKlass[] changedKlasses) {
-        redefineListener.postRedefition(changedKlasses);
+        redefineListener.postRedefinition(changedKlasses);
     }
 
     private static class RedefineAssumption {
@@ -663,7 +663,7 @@ public final class ClassRedefinition {
             InterpreterToVM.setFieldObject(StaticObject.NULL, oldKlass.mirror(), context.getMeta().java_lang_Class_name);
         }
         oldKlass.redefineClass(packet, refreshSubClasses, ids);
-        if (redefineListener.rerunClinit(oldKlass, packet.detectedChange.clinitChanged())) {
+        if (redefineListener.shouldRerunClassInitializer(oldKlass, packet.detectedChange.clinitChanged())) {
             context.getJdwpContext().rerunclinit(oldKlass);
         }
     }

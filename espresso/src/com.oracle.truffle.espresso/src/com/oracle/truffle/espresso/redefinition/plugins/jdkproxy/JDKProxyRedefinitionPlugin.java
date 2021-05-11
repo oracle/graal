@@ -81,7 +81,7 @@ public final class JDKProxyRedefinitionPlugin extends InternalRedefinitionPlugin
 
     @Override
     @TruffleBoundary
-    public synchronized void fillExtraReloadClasses(List<RedefineInfo> redefineInfos, List<RedefineInfo> additional) {
+    public synchronized void collectExtraClassesToReload(List<RedefineInfo> redefineInfos, List<RedefineInfo> additional) {
         for (RedefineInfo redefineInfo : redefineInfos) {
             KlassRef klass = redefineInfo.getKlass();
             if (klass != null) {
@@ -96,7 +96,7 @@ public final class JDKProxyRedefinitionPlugin extends InternalRedefinitionPlugin
     }
 
     @Override
-    public boolean reRunClinit(ObjectKlass klass, boolean changed) {
+    public boolean shouldRerunClassInitializer(ObjectKlass klass, boolean changed) {
         // changed Dynamic Proxy classes have cached Method references
         // in static fields, so always re-run the static initializer
         return changed && getContext().getMeta().java_lang_reflect_Proxy.isAssignable(klass);

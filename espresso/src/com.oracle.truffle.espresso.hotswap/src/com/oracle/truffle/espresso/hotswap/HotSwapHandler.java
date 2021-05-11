@@ -122,7 +122,7 @@ final class HotSwapHandler {
     }
 
     @SuppressWarnings("unused")
-    public boolean rerunClassInit(Class<?> klass, boolean changed) {
+    public boolean shouldRerunClassInitializer(Class<?> klass, boolean changed) {
         if (staticInitializerHotSwap.containsKey(klass)) {
             boolean onlyOnChange = staticInitializerHotSwap.get(klass);
             boolean rerun = !onlyOnChange || changed;

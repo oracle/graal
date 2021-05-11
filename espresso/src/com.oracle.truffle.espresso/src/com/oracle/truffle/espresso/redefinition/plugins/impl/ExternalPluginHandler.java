@@ -28,37 +28,39 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.jdwp.impl.JDWP;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 final class ExternalPluginHandler {
 
-    private static InteropLibrary INTEROP;
-    private static final String RERUN_CLINIT = "rerunClassInit";
+    private final InteropLibrary interopLibrary;
+    private static final String RERUN_CLINIT = "shouldRerunClassInitializer";
     private static final String POST_HOTSWAP = "postHotSwap";
 
     private final StaticObject guestHandler;
 
-    private ExternalPluginHandler(StaticObject handler) {
+    private ExternalPluginHandler(StaticObject handler, InteropLibrary library) {
         this.guestHandler = handler;
+        this.interopLibrary = library;
     }
 
     public static ExternalPluginHandler create(StaticObject guestHandler) throws IllegalArgumentException {
-        INTEROP = InteropLibrary.getFactory().create(guestHandler);
+        InteropLibrary library = InteropLibrary.getFactory().create(guestHandler);
 
-        boolean invocable = INTEROP.isMemberInvocable(guestHandler, RERUN_CLINIT) &&
-                        INTEROP.isMemberInvocable(guestHandler, POST_HOTSWAP);
+        boolean invocable = library.isMemberInvocable(guestHandler, RERUN_CLINIT) &&
+                library.isMemberInvocable(guestHandler, POST_HOTSWAP);
 
         if (!invocable) {
             throw new IllegalArgumentException("guest handler does not implement expected API");
         }
-        return new ExternalPluginHandler(guestHandler);
+        return new ExternalPluginHandler(guestHandler, library);
     }
 
-    public boolean rerunClassInit(Klass klass, boolean changed) {
+    public boolean shouldRerunClassInitializer(Klass klass, boolean changed) {
         try {
-            return (boolean) INTEROP.invokeMember(guestHandler, RERUN_CLINIT, klass.mirror(), changed);
+            return (boolean) interopLibrary.invokeMember(guestHandler, RERUN_CLINIT, klass.mirror(), changed);
         } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException | ArityException e) {
-            // TODO - log failure to invoke clinit rerun method on external plugin handler
+            JDWP.LOGGER.throwing(ExternalPluginHandler.class.getName(), "shouldRerunClassInitializer", e);
         }
         return false;
     }
@@ -70,9 +72,9 @@ final class ExternalPluginHandler {
                 guestClasses[i] = changedKlasses[i].mirror();
             }
             StaticObject array = StaticObject.createArray(changedKlasses[0].getMeta().java_lang_Class_array, guestClasses);
-            INTEROP.invokeMember(guestHandler, POST_HOTSWAP, array);
+            interopLibrary.invokeMember(guestHandler, POST_HOTSWAP, array);
         } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException | ArityException e) {
-            // TODO - log failure to invoke clinit rerun method on external plugin handler
+            JDWP.LOGGER.throwing(ExternalPluginHandler.class.getName(), "postHotSwap", e);
         }
     }
 }

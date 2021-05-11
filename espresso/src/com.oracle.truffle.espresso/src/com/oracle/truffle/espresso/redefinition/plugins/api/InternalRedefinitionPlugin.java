@@ -43,11 +43,11 @@ public abstract class InternalRedefinitionPlugin {
         this.redefinitionPluginHandler = handler;
     }
 
-    public boolean reRunClinit(@SuppressWarnings("unused") ObjectKlass klass, @SuppressWarnings("unused") boolean changed) {
+    public boolean shouldRerunClassInitializer(@SuppressWarnings("unused") ObjectKlass klass, @SuppressWarnings("unused") boolean changed) {
         return false;
     }
 
-    public void fillExtraReloadClasses(@SuppressWarnings("unused") List<RedefineInfo> redefineInfos, @SuppressWarnings("unused") List<RedefineInfo> additional) {
+    public void collectExtraClassesToReload(@SuppressWarnings("unused") List<RedefineInfo> redefineInfos, @SuppressWarnings("unused") List<RedefineInfo> additional) {
         // default does nothing
     }
 
