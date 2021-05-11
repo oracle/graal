@@ -74,11 +74,6 @@ public class InlinedGetterNode extends QuickNode {
         return (getResultAt() - top) + getFieldNode.getField(frame, primitives, refs, root, receiver, getResultAt(), statementIndex);
     }
 
-    @Override
-    public boolean producedForeignObject(Object[] refs) {
-        return field.getKind().isObject() && BytecodeNode.peekObject(refs, getResultAt()).isForeignObject();
-    }
-
     private int getResultAt() {
         return inlinedMethod.isStatic() ? top : (top - 1);
     }

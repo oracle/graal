@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.nodes.quick.invoke;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -29,6 +30,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.espresso.descriptors.Signatures;
+import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ClassRedefinition;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
@@ -44,6 +46,7 @@ public abstract class InvokeInterfaceNode extends QuickNode {
     final Method resolutionSeed;
     final Klass declaringKlass;
     final int resultAt;
+    final boolean returnsPrimitiveType;
 
     static final int INLINE_CACHE_SIZE_LIMIT = 5;
 
@@ -77,6 +80,7 @@ public abstract class InvokeInterfaceNode extends QuickNode {
         this.resolutionSeed = resolutionSeed;
         this.declaringKlass = resolutionSeed.getDeclaringKlass();
         this.resultAt = top - Signatures.slotsForParameters(resolutionSeed.getParsedSignature()) - 1; // -receiver
+        this.returnsPrimitiveType = Types.isPrimitive(Signatures.returnType(resolutionSeed.getParsedSignature()));
     }
 
     protected static MethodVersion methodLookup(StaticObject receiver, Method resolutionSeed, Klass declaringKlass) {
@@ -107,12 +111,14 @@ public abstract class InvokeInterfaceNode extends QuickNode {
         final Object[] args = BytecodeNode.popArguments(primitives, refs, top, true, resolutionSeed.getParsedSignature());
         final StaticObject receiver = nullCheck((StaticObject) args[0]);
         Object result = executeInterface(receiver, args);
+        if (!returnsPrimitiveType) {
+            Assumption noForeignObjects = getBytecodeNode().getNoForeignObjects();
+            if (noForeignObjects.isValid() && ((StaticObject) result).isForeignObject()) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                noForeignObjects.invalidate();
+            }
+        }
         return (getResultAt() - top) + BytecodeNode.putKind(primitives, refs, getResultAt(), result, Signatures.returnKind(resolutionSeed.getParsedSignature()));
-    }
-
-    @Override
-    public boolean producedForeignObject(Object[] refs) {
-        return resolutionSeed.getReturnKind().isObject() && BytecodeNode.peekObject(refs, getResultAt()).isForeignObject();
     }
 
     private int getResultAt() {

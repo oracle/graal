@@ -396,6 +396,10 @@ public final class BytecodeNode extends EspressoMethodNode {
 
     @Child private volatile InstrumentationSupport instrumentation;
 
+    public Assumption getNoForeignObjects() {
+        return noForeignObjects;
+    }
+
     private final Assumption noForeignObjects;
 
     // Cheap profile for implicit exceptions e.g. null checks, division by 0, index out of bounds.
@@ -1380,23 +1384,6 @@ public final class BytecodeNode extends EspressoMethodNode {
                 getRoot().abortMonitor(frame);
                 // Tearing down the VM, no need to report loop count.
                 throw e;
-            }
-            // This check includes newly rewritten QUICK nodes, not just curOpcode == quick
-            if (noForeignObjects.isValid()) {
-                int opcode = bs.opcode(curBCI);
-                if (opcode == QUICK || opcode == SLIM_QUICK) {
-                    BaseQuickNode quickNode;
-                    if (opcode == QUICK) {
-                        quickNode = nodes[readCPI(curBCI)];
-                    } else {
-                        assert opcode == SLIM_QUICK;
-                        quickNode = sparseNodes[curBCI];
-                    }
-                    if (quickNode.producedForeignObject(refs)) {
-                        CompilerDirectives.transferToInterpreterAndInvalidate();
-                        noForeignObjects.invalidate();
-                    }
-                }
             }
             assert curOpcode != WIDE && curOpcode != LOOKUPSWITCH && curOpcode != TABLESWITCH;
 
