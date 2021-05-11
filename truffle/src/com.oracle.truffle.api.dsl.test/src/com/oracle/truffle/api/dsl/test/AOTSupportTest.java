@@ -558,8 +558,7 @@ public class AOTSupportTest extends AbstractPolyglotTest {
                             @Cached("createRawIdentityProfile()") DoubleValueProfile doubleValue,
                             @Cached("createEqualityProfile()") PrimitiveValueProfile primitiveValue,
                             @Cached("createClassProfile()") ValueProfile classValue,
-                            @Cached("createIdentityProfile()") ValueProfile identityValue,
-                            @Cached("createEqualityProfile()") ValueProfile equalityValue) {
+                            @Cached("createIdentityProfile()") ValueProfile identityValue) {
 
                 branch.enter();
                 binaryCondition.profile(true);
@@ -601,7 +600,6 @@ public class AOTSupportTest extends AbstractPolyglotTest {
 
                 classValue.profile(Integer.class);
                 identityValue.profile(receiver);
-                equalityValue.profile(receiver);
 
                 return arg;
             }
