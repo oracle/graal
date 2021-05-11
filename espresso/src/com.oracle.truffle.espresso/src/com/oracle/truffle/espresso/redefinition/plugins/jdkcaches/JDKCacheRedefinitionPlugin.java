@@ -25,7 +25,7 @@ package com.oracle.truffle.espresso.redefinition.plugins.jdkcaches;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -38,7 +38,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public final class JDKCacheRedefinitionPlugin extends InternalRedefinitionPlugin {
 
-    private List<WeakReference<StaticObject>> threadGroupContexts = Collections.synchronizedList(new ArrayList<>(4));
+    private final List<WeakReference<StaticObject>> threadGroupContexts = new ArrayList<>(4);
     private Method flushFromCachesMethod;
     private Method removeBeanInfoMethod;
 
@@ -51,21 +51,30 @@ public final class JDKCacheRedefinitionPlugin extends InternalRedefinitionPlugin
 
     @Override
     public void postClassRedefinition(ObjectKlass[] changedKlasses) {
-        for (ObjectKlass changedKlass : changedKlasses) {
-            if (flushFromCachesMethod != null) {
-                flushFromCachesMethod.invokeDirect(null, changedKlass.mirror());
-            }
-            for (WeakReference<StaticObject> ref : threadGroupContexts) {
-                StaticObject context = ref.get();
-                if (context != null) {
-                    removeBeanInfoMethod.invokeDirect(context, changedKlass.mirror());
+        synchronized (threadGroupContexts) {
+            for (ObjectKlass changedKlass : changedKlasses) {
+                if (flushFromCachesMethod != null) {
+                    flushFromCachesMethod.invokeDirect(null, changedKlass.mirror());
+                }
+                Iterator<WeakReference<StaticObject>> iterator = threadGroupContexts.iterator();
+                while (iterator.hasNext()) {
+                    WeakReference<StaticObject> ref = iterator.next();
+                    StaticObject context = ref.get();
+                    if (context != null) {
+                        removeBeanInfoMethod.invokeDirect(context, changedKlass.mirror());
+                    } else {
+                        // clean up list when context was reclaimed
+                        iterator.remove();
+                    }
                 }
             }
         }
     }
 
     @TruffleBoundary
-    public synchronized void registerThreadGroupContext(StaticObject context) {
-        threadGroupContexts.add(new WeakReference<>(context));
+    public void registerThreadGroupContext(StaticObject context) {
+        synchronized (threadGroupContexts) {
+            threadGroupContexts.add(new WeakReference<>(context));
+        }
     }
 }
