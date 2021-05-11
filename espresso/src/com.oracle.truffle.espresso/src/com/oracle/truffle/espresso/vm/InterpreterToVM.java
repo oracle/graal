@@ -634,7 +634,7 @@ public final class InterpreterToVM implements ContextAccess {
             Node location = element.getLocation();
             while (location != null) {
                 if (location instanceof QuickNode) {
-                    bci = ((QuickNode) location).getBCI();
+                    bci = ((QuickNode) location).getBci(element.getFrame());
                     break;
                 }
                 location = location.getParent();

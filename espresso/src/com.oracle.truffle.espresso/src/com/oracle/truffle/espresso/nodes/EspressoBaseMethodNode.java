@@ -22,33 +22,29 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
-import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.GenerateWrapper;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
+import com.oracle.truffle.espresso.impl.Method;
 
-/**
- * Node that simulates espresso statements for debugging support.
- */
-public final class EspressoStatementNode extends BaseEspressoStatementNode implements BciProvider {
+@GenerateWrapper
+public abstract class EspressoBaseMethodNode extends EspressoInstrumentableNode {
+    abstract Object executeBody(VirtualFrame frame);
 
-    private final int startBci;
-    private final int lineNumber;
+    abstract void initializeBody(VirtualFrame frame);
 
-    EspressoStatementNode(int startBci, int lineNumber) {
-        this.lineNumber = lineNumber;
-        this.startBci = startBci;
+    public abstract Method.MethodVersion getMethodVersion();
+
+    public abstract boolean shouldSplit();
+
+    @Override
+    public final Object execute(VirtualFrame frame) {
+        initializeBody(frame);
+        return executeBody(frame);
     }
 
     @Override
-    public SourceSection getSourceSection() {
-        Source s = getBytecodeNode().getSource();
-        // when there is a line number table we also have a source
-        assert s != null;
-        return s.createSection(lineNumber);
-    }
-
-    @Override
-    public int getBci(@SuppressWarnings("unused") Frame frame) {
-        return startBci;
+    public WrapperNode createWrapper(ProbeNode probeNode) {
+        return new EspressoBaseMethodNodeWrapper(this, probeNode);
     }
 }

@@ -68,9 +68,8 @@ import com.oracle.truffle.espresso.jdwp.impl.JDWP;
 import com.oracle.truffle.espresso.jdwp.impl.JDWPInstrument;
 import com.oracle.truffle.espresso.jdwp.impl.TypeTag;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.nodes.EspressoInstrumentableNode;
+import com.oracle.truffle.espresso.nodes.BciProvider;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
-import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.nodes.quick.interop.ForeignArrayUtils;
 import com.oracle.truffle.espresso.runtime.dispatch.EspressoInterop;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
@@ -598,9 +597,7 @@ public final class JDWPContextImpl implements JDWPContext {
     public long readBCIFromFrame(RootNode root, Frame frame) {
         if (root instanceof EspressoRootNode && frame != null) {
             EspressoRootNode rootNode = (EspressoRootNode) root;
-            if (rootNode.isBytecodeNode()) {
-                return rootNode.readBCI(frame);
-            }
+            return rootNode.readBCI(frame);
         }
         return -1;
     }
@@ -610,7 +607,7 @@ public final class JDWPContextImpl implements JDWPContext {
         Object currentThread = asGuestThread(Thread.currentThread());
         KlassRef klass = context.getMeta().java_lang_Object;
         MethodRef method = context.getMeta().java_lang_Object_wait.getMethodVersion();
-        return new CallFrame(ids.getIdAsLong(currentThread), TypeTag.CLASS, ids.getIdAsLong(klass), method, ids.getIdAsLong(method), 0, null, null, null, null);
+        return new CallFrame(ids.getIdAsLong(currentThread), TypeTag.CLASS, ids.getIdAsLong(klass), method, ids.getIdAsLong(method), 0, null, null, null, null, null);
     }
 
     @Override
@@ -677,33 +674,27 @@ public final class JDWPContextImpl implements JDWPContext {
         return EspressoLanguage.class;
     }
 
-    @Override
-    public Node getInstrumentableNode(Node node) {
-        Node currentNode = node;
-
+    private static BciProvider getBciProviderNode(Node node) {
+        if (node instanceof BciProvider) {
+            return (BciProvider) node;
+        }
+        Node currentNode = node.getParent();
         while (currentNode != null) {
-            if (currentNode instanceof EspressoRootNode) {
-                return ((EspressoRootNode) currentNode).getMethodNode();
-            } else if (currentNode instanceof EspressoInstrumentableNode) {
-                return currentNode;
-            } else if (currentNode instanceof QuickNode) {
-                QuickNode quickNode = (QuickNode) currentNode;
-                return quickNode.getBytecodesNode();
-            } else {
-                currentNode = currentNode.getParent();
+            if (currentNode instanceof BciProvider) {
+                return (BciProvider) currentNode;
             }
+            currentNode = currentNode.getParent();
         }
         return null;
     }
 
     @Override
     public long getBCI(Node rawNode, Frame frame) {
-        Node node = getInstrumentableNode(rawNode);
-        if (node == null) {
+        BciProvider bciProvider = getBciProviderNode(rawNode);
+        if (bciProvider == null) {
             return -1;
         }
-        EspressoInstrumentableNode instrumentableNode = (EspressoInstrumentableNode) node;
-        return instrumentableNode.getCurrentBCI(frame);
+        return bciProvider.getBci(frame);
     }
 
     @Override
