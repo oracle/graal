@@ -26,14 +26,10 @@ public final class DefaultStaticProperty extends StaticProperty {
     private final String name;
     private final boolean isFinal;
 
-    DefaultStaticProperty(String name, byte internalKind, boolean isFinal) {
-        super(internalKind);
+    public DefaultStaticProperty(String name, StaticPropertyKind kind, boolean isFinal) {
+        super(kind);
         this.name = name;
         this.isFinal = isFinal;
-    }
-
-    public DefaultStaticProperty(String name, StaticPropertyKind kind, boolean isFinal) {
-        this(name, kind.toByte(), isFinal);
     }
 
     @Override

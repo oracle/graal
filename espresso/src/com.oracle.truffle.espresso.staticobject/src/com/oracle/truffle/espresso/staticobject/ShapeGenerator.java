@@ -90,13 +90,14 @@ abstract class ShapeGenerator<T> {
 
     static void addStorageFields(ClassVisitor cv, Collection<StaticProperty> staticProperties) {
         for (StaticProperty staticProperty : staticProperties) {
-            int access = ACC_PUBLIC;
-            if (staticProperty.isFinal()) {
-                access |= ACC_FINAL;
-            }
-            FieldVisitor fv = cv.visitField(access, staticProperty.getName(), StaticPropertyKind.getDescriptor(staticProperty.getInternalKind()), null, null);
-            fv.visitEnd();
+            addStorageField(cv, staticProperty.getName(), staticProperty.getInternalKind(), staticProperty.isFinal());
         }
+    }
+
+    static void addStorageField(ClassVisitor cv, String propertyName, byte internalKind, boolean isFinal) {
+        int access = isFinal ? ACC_FINAL | ACC_PUBLIC : ACC_PUBLIC;
+        FieldVisitor fv = cv.visitField(access, propertyName, StaticPropertyKind.getDescriptor(internalKind), null, null);
+        fv.visitEnd();
     }
 
     @SuppressWarnings("unchecked")

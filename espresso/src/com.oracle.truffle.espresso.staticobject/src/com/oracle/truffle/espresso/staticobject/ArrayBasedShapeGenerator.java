@@ -393,23 +393,17 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
         }
     }
 
-    private static Collection<StaticProperty> generateStorageProperties() {
-        return Arrays.asList(
-                        new DefaultStaticProperty("primitive", StaticPropertyKind.BYTE_ARRAY, true),
-                        new DefaultStaticProperty("object", StaticPropertyKind.OBJECT_ARRAY, true),
-                        new DefaultStaticProperty("shape", StaticPropertyKind.Object, true));
-    }
-
     private static Class<?> generateStorage(Class<?> storageSuperClass) {
         String storageSuperName = Type.getInternalName(storageSuperClass);
         String storageName = generateStorageName();
-        Collection<StaticProperty> arrayProperties = generateStorageProperties();
 
         ClassWriter storageWriter = new ClassWriter(0);
         int storageAccess = ACC_PUBLIC | ACC_SUPER | ACC_SYNTHETIC;
         storageWriter.visit(V1_8, storageAccess, storageName, null, storageSuperName, null);
         addStorageConstructors(storageWriter, storageName, storageSuperClass, storageSuperName);
-        addStorageFields(storageWriter, arrayProperties);
+        addStorageField(storageWriter, "primitive", StaticPropertyKind.BYTE_ARRAY, true);
+        addStorageField(storageWriter, "object", StaticPropertyKind.OBJECT_ARRAY, true);
+        addStorageField(storageWriter, "shape", StaticPropertyKind.Object.toByte(), true);
         if (Cloneable.class.isAssignableFrom(storageSuperClass)) {
             addCloneMethod(storageSuperClass, storageWriter, storageName);
         }

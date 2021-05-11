@@ -36,12 +36,8 @@ public abstract class StaticProperty {
     @CompilationFinal //
     private int offset;
 
-    StaticProperty(byte internalKind) {
-        this.internalKind = internalKind;
-    }
-
     protected StaticProperty(StaticPropertyKind kind) {
-        this(getInternalKind(kind));
+        this.internalKind = getInternalKind(kind);
     }
 
     public abstract String getName();
