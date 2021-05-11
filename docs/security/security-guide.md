@@ -17,7 +17,6 @@ It also provides security researchers with information on GraalVM's security mod
 * [Security Model](#security-model)
 * [Language Launchers](#language-launchers)
 * [Guest Applications](#guest-applications)
-* [Managed Execution of Native Code](#managed-execution-of-native-code)
 * [Native Image](#native-image)
 * [Security Manager and Untrusted Code](#security-manager-and-untrusted-code)
 * [GraalVM Enterprise to GraalVM Community Downgrade](#graalvm-enterprise-to-graalvm-community-downgrade)
