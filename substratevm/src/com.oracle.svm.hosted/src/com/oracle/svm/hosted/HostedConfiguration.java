@@ -34,10 +34,13 @@ import java.util.concurrent.ForkJoinPool;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.flow.MethodTypeFlow;
+import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.results.AbstractAnalysisResultsBuilder;
@@ -48,6 +51,7 @@ import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.monitor.MultiThreadedMonitorSupport;
+import com.oracle.svm.hosted.analysis.flow.SVMMethodTypeFlowBuilder;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.CompileQueue;
 import com.oracle.svm.hosted.code.SharedRuntimeConfigurationBuilder;
@@ -133,6 +137,14 @@ public class HostedConfiguration {
                     SharedRuntimeConfigurationBuilder runtime, boolean deoptimizeAll, SnippetReflectionProvider aSnippetReflection, ForkJoinPool executor) {
 
         return new CompileQueue(debug, featureHandler, hostedUniverse, runtime, deoptimizeAll, aSnippetReflection, executor);
+    }
+
+    public MethodTypeFlowBuilder createMethodTypeFlowBuilder(BigBang bigBang, MethodTypeFlow methodTypeFlow) {
+        return new SVMMethodTypeFlowBuilder(bigBang, methodTypeFlow);
+    }
+
+    public MethodTypeFlowBuilder createMethodTypeFlowBuilder(BigBang bigBang, StructuredGraph graph) {
+        return new SVMMethodTypeFlowBuilder(bigBang, graph);
     }
 
     public void findAllFieldsForLayout(HostedUniverse universe, @SuppressWarnings("unused") HostedMetaAccess metaAccess,
