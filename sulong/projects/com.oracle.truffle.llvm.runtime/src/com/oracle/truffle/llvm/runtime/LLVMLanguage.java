@@ -66,6 +66,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.target.TargetTriple;
 import com.oracle.truffle.llvm.toolchain.config.LLVMConfig;
+import java.lang.ref.ReferenceQueue;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
@@ -135,8 +136,21 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     @CompilationFinal private LLVMMemory cachedLLVMMemory;
 
     private final EconomicMap<String, LLVMScope> internalFileScopes = EconomicMap.create();
-    private final EconomicMap<String, WeakReference<CallTarget>> libraryCache = EconomicMap.create();
+
+    private static final class LibraryCacheEntry extends WeakReference<CallTarget> {
+
+        final String path;
+
+        LibraryCacheEntry(LLVMLanguage language, String path, CallTarget callTarget) {
+            super(callTarget, language.libraryCacheQueue);
+            this.path = path;
+        }
+    }
+
+    private final EconomicMap<String, LibraryCacheEntry> libraryCache = EconomicMap.create();
+    private final ReferenceQueue<CallTarget> libraryCacheQueue = new ReferenceQueue<>();
     private final Object libraryCacheLock = new Object();
+
     private final EconomicMap<String, Source> librarySources = EconomicMap.create();
 
     private final IDGenerater idGenerater = new IDGenerater();
@@ -496,37 +510,53 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
      */
     @Override
     protected CallTarget parse(ParsingRequest request) {
-        synchronized (libraryCacheLock) {
-            Source source = request.getSource();
-            String path = source.getPath();
-            CallTarget callTarget;
-            WeakReference<CallTarget> ref;
-            if (source.isCached()) {
-                ref = libraryCache.get(path);
-                if (ref == null) {
-                    callTarget = getCapability(Loader.class).load(getContext(), source, idGenerater.generateID());
-                    WeakReference<CallTarget> prev = libraryCache.putIfAbsent(path, new WeakReference<>(callTarget));
-                    // To ensure the call target in the cache is always returned in case of
-                    // concurrency.
-                    if (prev != null) {
-                        callTarget = prev.get();
-                    }
-                } else {
-                    callTarget = ref.get();
+        Source source = request.getSource();
+        String path = source.getPath();
+        if (source.isCached()) {
+            synchronized (libraryCacheLock) {
+                CallTarget cached = getCachedLibrary(path);
+                if (cached == null) {
+                    assert !libraryCache.containsKey(path) : "racy insertion despite lock?";
+
+                    cached = getCapability(Loader.class).load(getContext(), source, idGenerater.generateID());
+                    LibraryCacheEntry entry = new LibraryCacheEntry(this, path, cached);
+                    libraryCache.put(path, entry);
                 }
-                return callTarget;
+                return cached;
             }
+        } else {
             // just get the id here and give it to the parserDriver
             return getCapability(Loader.class).load(getContext(), source, idGenerater.generateID());
         }
     }
 
+    private void lazyCacheCleanup() {
+        /*
+         * Just lazily clean up one entry. We do this on every lookup. Under the assumption that
+         * lookups are more frequent than insertions, this will eventually catch up and remove every
+         * GCed entry.
+         */
+        LibraryCacheEntry ref = (LibraryCacheEntry) libraryCacheQueue.poll();
+        if (ref != null) {
+            libraryCache.removeKey(ref.path);
+        }
+    }
+
     public CallTarget getCachedLibrary(String path) {
         synchronized (libraryCacheLock) {
-            if (libraryCache.get(path) == null) {
+            lazyCacheCleanup();
+            LibraryCacheEntry entry = libraryCache.get(path);
+            if (entry == null) {
                 return null;
             }
-            return libraryCache.get(path).get();
+
+            assert entry.path.equals(path);
+            CallTarget ret = entry.get();
+            if (ret == null) {
+                // clean up the map after an entry has been cleared by the GC
+                libraryCache.removeKey(entry.path);
+            }
+            return ret;
         }
     }
 
