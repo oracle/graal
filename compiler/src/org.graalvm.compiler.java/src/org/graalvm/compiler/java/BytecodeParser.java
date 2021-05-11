@@ -3605,7 +3605,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         ProfileSource source = profilingInfo.isMature() ? ProfileSource.PROFILED : ProfileSource.UNKNOWN;
         BranchProbabilityData profileData = BranchProbabilityData.create(probability, source);
 
-        if (negate && shouldComplementProbability()) {
+        if (negate) {
             // the probability coming from profile is about the original condition
             profileData = profileData.negated();
         }
@@ -3654,10 +3654,8 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
             BciBlock tmpBlock = trueBlock;
             trueBlock = falseBlock;
             falseBlock = tmpBlock;
-            if (shouldComplementProbability()) {
-                // the probability coming from profile is about the original condition
-                profileData = profileData.negated();
-            }
+            // the probability coming from profile is about the original condition
+            profileData = profileData.negated();
             condition = logicNegationNode.getValue();
         }
 
@@ -3762,14 +3760,6 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
             }
         }
         return false;
-    }
-
-    /**
-     * Hook for subclasses to decide whether the IfNode probability should be complemented during
-     * conversion to Graal IR.
-     */
-    protected boolean shouldComplementProbability() {
-        return true;
     }
 
     /**
