@@ -1229,7 +1229,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                         int targetBCI = bs.nextBCI(curBCI);
                         edgeLocalAnalysis(primitives, refs, curBCI, targetBCI);
                         top += Bytecodes.stackEffectOf(wideOpcode);
-                        curBCI += targetBCI;
+                        curBCI = targetBCI;
                         continue loop;
                     }
 
