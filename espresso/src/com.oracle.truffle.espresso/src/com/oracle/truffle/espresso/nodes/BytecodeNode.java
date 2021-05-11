@@ -441,10 +441,6 @@ public final class BytecodeNode extends EspressoMethodNode {
 
     @ExplodeLoop
     private void initArguments(Object[] arguments, long[] primitives, Object[] refs) {
-
-        int argCount = Signatures.parameterCount(getMethod().getParsedSignature(), false);
-
-        CompilerAsserts.partialEvaluationConstant(argCount);
         CompilerAsserts.partialEvaluationConstant(primitives.length);
         CompilerAsserts.partialEvaluationConstant(refs.length);
 
@@ -2121,11 +2117,6 @@ public final class BytecodeNode extends EspressoMethodNode {
     // endregion Class/Method/Field resolution
 
     // region Instance/array allocation
-
-    private static StaticObject allocateArray(Klass componentType, int length) {
-        assert !componentType.isPrimitive();
-        return InterpreterToVM.newReferenceArray(componentType, length);
-    }
 
     @ExplodeLoop
     private int allocateMultiArray(long[] primitives, Object[] refs, int top, Klass klass, int allocatedDimensions) {
