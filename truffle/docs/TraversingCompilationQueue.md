@@ -110,22 +110,23 @@ The following is an ASCII art plot of the scale function which should illustrate
 ```
           ^ scale
           |
-          |                                                           /
-          |                                                          /
-          |                                                         /
-          |                                                        /
-          |                                                       /
-          |                                                      /
-        1 |..... _______________________________________________/
-          |     /.                                              .
-          |    / .                                              .
-          |   /  .                                              .
-          |  /   .                                              .
-          | /    .                                              .
-MinScale->|/     .                                              .
-          |      .                                              .
-          |______________________________________________________________________> load
-         0       ^MinNormalLoad                                 ^MaxNormalLoad
+          |                                            /
+          |                                           /
+          |                                          /
+          |                                         /
+          |                                        /
+          |                                       /
+        1 |..... ________________________________/
+          |     /.                               .
+          |    / .                               .
+          |   /  .                               .
+          |  /   .                               .
+          | /    .                               .
+MinScale >|/     .                               .
+          |      .                               .
+          |_______________________________________________________> load
+         0       ^                               ^
+              MinNormalLoad                   MaxNormalLoad
 ```
 
 The dynamic thresholds only work with the traversing compilation queue and are on by default as of version 21.2.0.
