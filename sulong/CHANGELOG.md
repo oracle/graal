@@ -1,3 +1,9 @@
+# Version 21.2.0
+
+Fixes:
+
+* Fix LLVM toolchain not working correctly for C++ on MacOS 11.3.
+
 # Version 21.1.0
 
 New features:
