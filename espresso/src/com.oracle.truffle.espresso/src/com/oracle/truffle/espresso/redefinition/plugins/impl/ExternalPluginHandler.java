@@ -48,7 +48,7 @@ final class ExternalPluginHandler {
         InteropLibrary library = InteropLibrary.getFactory().create(guestHandler);
 
         boolean invocable = library.isMemberInvocable(guestHandler, RERUN_CLINIT) &&
-                library.isMemberInvocable(guestHandler, POST_HOTSWAP);
+                        library.isMemberInvocable(guestHandler, POST_HOTSWAP);
 
         if (!invocable) {
             throw new IllegalArgumentException("guest handler does not implement expected API");
