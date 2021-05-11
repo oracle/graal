@@ -43,7 +43,7 @@ public class EspressoReferenceArrayStoreNode extends Node {
     public void arrayStore(StaticObject value, int index, StaticObject array) {
         assert !array.isForeignObject();
         assert array.isArray();
-        if (index >= 0 && index < array.length()) {
+        if (Integer.compareUnsigned(index, array.length()) < 0) {
             if (StaticObject.isNull(value) || typeCheck.executeTypeCheck(((ArrayKlass) array.getKlass()).getComponentType(), value.getKlass())) {
                 array.putObjectUnsafe(value, index);
             } else {
