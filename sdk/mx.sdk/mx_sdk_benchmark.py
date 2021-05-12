@@ -555,7 +555,7 @@ class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
             mx.abort(key + " not specified in Wrk configuration.")
 
     def isScalarValue(self, value):
-        return type(value) in (int, float, bool, str, unicode) # pylint: disable=unidiomatic-typecheck
+        return type(value) in (int, float, bool) or isinstance(value, ("".__class__, u"".__class__)) # pylint: disable=unidiomatic-typecheck
 
     def getScriptPath(self, config):
         return os.path.join(self.applicationDist(), "workloads", config["script"])

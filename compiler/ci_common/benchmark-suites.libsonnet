@@ -168,7 +168,7 @@
     forks_timelimit:: "06:00:00"
   },
 
-  // JMeter microservice microbenchmarks
+  // Microservice benchmarks
   microservice_benchmarks: cc.compiler_benchmark + c.heap.default + {
     suite:: "microservice-benchmarks",
     packages+: {
