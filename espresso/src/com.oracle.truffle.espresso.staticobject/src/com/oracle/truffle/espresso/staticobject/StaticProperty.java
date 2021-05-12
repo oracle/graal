@@ -59,7 +59,7 @@ public abstract class StaticProperty {
 
     final void initOffset(int o) {
         if (this.offset != 0) {
-            throw new RuntimeException("Attempt to reinitialize the offset of static property '" + this + "' of kind '" + StaticPropertyKind.valueOf(getInternalKind()).name() + "'.\n" +
+            throw new RuntimeException("Attempt to reinitialize the offset of static property '" + getId() + "' of kind '" + StaticPropertyKind.valueOf(getInternalKind()).name() + "'.\n" +
                             "Was it added to more than one builder or multiple times to the same builder?");
         }
         this.offset = o;
@@ -67,7 +67,7 @@ public abstract class StaticProperty {
 
     final void initShape(StaticShape<?> s) {
         if (this.shape != null) {
-            throw new RuntimeException("Attempt to reinitialize the shape of static property '" + this + "' of kind '" + StaticPropertyKind.valueOf(getInternalKind()).name() + "'.\n" +
+            throw new RuntimeException("Attempt to reinitialize the shape of static property '" + getId() + "' of kind '" + StaticPropertyKind.valueOf(getInternalKind()).name() + "'.\n" +
                             "Was it added to more than one builder or multiple times to the same builder?");
         }
         this.shape = s;
@@ -78,7 +78,7 @@ public abstract class StaticProperty {
         if (internalKind != getInternalKind(kind)) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             String kindName = StaticPropertyKind.valueOf(internalKind).name();
-            throw new RuntimeException("Static property '" + this + "' of kind '" + kindName + "' cannot be accessed as '" + kind.name() + "'");
+            throw new RuntimeException("Static property '" + getId() + "' of kind '" + kindName + "' cannot be accessed as '" + kind.name() + "'");
         }
     }
 

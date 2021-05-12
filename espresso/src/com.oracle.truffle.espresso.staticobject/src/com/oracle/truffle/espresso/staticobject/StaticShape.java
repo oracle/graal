@@ -90,7 +90,7 @@ public abstract class StaticShape<T> {
     }
 
     public static final class Builder {
-        private final HashMap<Object, StaticProperty> staticProperties = new LinkedHashMap<>();
+        private final HashMap<String, StaticProperty> staticProperties = new LinkedHashMap<>();
 
         Builder() {
         }
@@ -98,7 +98,10 @@ public abstract class StaticShape<T> {
         public Builder property(StaticProperty property) {
             CompilerAsserts.neverPartOfCompilation();
             Objects.requireNonNull(property);
-            staticProperties.put(property, property);
+            if (staticProperties.containsKey(property.getId())) {
+                throw new IllegalArgumentException("This builder already contains a property named '" + property.getId() + "'");
+            }
+            staticProperties.put(property.getId(), property);
             return this;
         }
 

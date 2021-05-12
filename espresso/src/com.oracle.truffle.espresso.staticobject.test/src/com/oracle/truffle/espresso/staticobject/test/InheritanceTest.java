@@ -59,12 +59,10 @@ public class InheritanceTest extends StaticObjectTest {
         Assert.assertEquals(24, property.getInt(object));
 
         Assume.assumeFalse(ARRAY_BASED);
-        // `CustomStaticObject.field1` is still visible
-        Assert.assertEquals(byte.class, object.getClass().getField("field1").getType());
+        // `CustomStaticObject.field1` is shadowed
+        Assert.assertEquals(int.class, object.getClass().getField("field1").getType());
         // `CustomStaticObject.field2` is visible
         Assert.assertEquals(boolean.class, object.getClass().getField("field2").getType());
-        // The generated field is accessible
-        Assert.assertEquals(int.class, object.getClass().getField(guessGeneratedFieldName(property)).getType());
     }
 
     @Test
@@ -98,7 +96,6 @@ public class InheritanceTest extends StaticObjectTest {
         Assert.assertEquals(3, s2p1.getInt(object));
 
         Assume.assumeFalse(ARRAY_BASED);
-        Assert.assertEquals(1, object.getClass().getField(guessGeneratedFieldName(s1p1)).getInt(object));
-        Assert.assertEquals(3, object.getClass().getField(guessGeneratedFieldName(s2p1)).getInt(object));
+        Assert.assertEquals(3, object.getClass().getField("field1").getInt(object));
     }
 }

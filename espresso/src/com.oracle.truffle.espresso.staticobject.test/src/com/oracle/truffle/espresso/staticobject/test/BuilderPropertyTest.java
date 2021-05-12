@@ -40,8 +40,14 @@ public class BuilderPropertyTest extends StaticObjectTest {
         StaticShape.Builder builder = StaticShape.newBuilder();
         StaticProperty property = new DefaultStaticProperty("property", StaticPropertyKind.Int, false);
         builder.property(property);
-        builder.property(property);
-        builder.build();
+        try {
+            // You cannot add the same property twice
+            builder.property(property);
+            Assert.fail();
+        } catch (IllegalArgumentException e) {
+            // You cannot add the same property twice
+            Assert.assertEquals("This builder already contains a property named 'property'", e.getMessage());
+        }
     }
 
     @Test
@@ -50,8 +56,13 @@ public class BuilderPropertyTest extends StaticObjectTest {
         StaticProperty p1 = new DefaultStaticProperty("property", StaticPropertyKind.Int, false);
         StaticProperty p2 = new DefaultStaticProperty("property", StaticPropertyKind.Int, false);
         builder.property(p1);
-        builder.property(p2);
-        builder.build();
+        try {
+            // You cannot add two properties with the same name
+            builder.property(p2);
+            Assert.fail();
+        } catch (IllegalArgumentException e) {
+            Assert.assertEquals("This builder already contains a property named 'property'", e.getMessage());
+        }
     }
 
     @Test
