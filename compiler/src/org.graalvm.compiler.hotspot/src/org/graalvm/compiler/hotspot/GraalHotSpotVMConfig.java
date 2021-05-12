@@ -394,7 +394,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int threadIsMethodHandleReturnOffset = getFieldOffset("JavaThread::_is_method_handle_return", Integer.class, "int");
     public final int threadObjectResultOffset = getFieldOffset("JavaThread::_vm_result", Integer.class, "oop");
     public final int jvmciCountersThreadOffset = getFieldOffset("JavaThread::_jvmci_counters", Integer.class, "jlong*");
-    public final int jvmciReserved0Offset = getFieldOffset("JavaThread::_jvmci_reserved0", Integer.class, "intptr_t*", -1, JVMCI ? jvmciGE(JVMCI_21_1_b02) : false);
+    public final int jvmciReserved0Offset = getFieldOffset("JavaThread::_jvmci_reserved0", Integer.class, "intptr_t*", -1, JVMCI ? jvmciGE(JVMCI_21_1_b02) : JDK >= 17);
 
     public final int doingUnsafeAccessOffset = getFieldOffset("JavaThread::_doing_unsafe_access", Integer.class, "bool", Integer.MAX_VALUE, JVMCI || JDK >= 14);
     // @formatter:off
@@ -663,8 +663,9 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
         } else if (JDK < 16) {
             threadPollingPageOffset = getFieldOffset("Thread::_polling_page", Integer.class, "volatile void*");
         } else {
-            // JDK-8253180
-            threadPollingPageOffset = getFieldOffset("Thread::_poll_data", Integer.class, "SafepointMechanism::ThreadData") +
+            // JDK-8253180 & JDK-8265932
+            String name = JDK == 16 ? "Thread::_poll_data" : "JavaThread::_poll_data";
+            threadPollingPageOffset = getFieldOffset(name, Integer.class, "SafepointMechanism::ThreadData") +
                             getFieldOffset("SafepointMechanism::ThreadData::_polling_page", Integer.class, "volatile uintptr_t");
         }
     }
@@ -818,7 +819,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long newMultiArrayOrNullAddress = getAddress("JVMCIRuntime::new_multi_array_or_null", 0L, JVMCI || JDK >= 12 || (!IS_OPENJDK && JDK == 11 && JDK_UPDATE >= 7));
     public final long dynamicNewInstanceOrNullAddress = getAddress("JVMCIRuntime::dynamic_new_instance_or_null", 0L, JVMCI || JDK >= 12 || (!IS_OPENJDK && JDK == 11 && JDK_UPDATE >= 7));
 
-    public final long invokeJavaMethodAddress = getAddress("JVMCIRuntime::invoke_static_method_one_arg", 0L, JVMCI ? jvmciGE(JVMCI_21_1_b02) : false);
+    public final long invokeJavaMethodAddress = getAddress("JVMCIRuntime::invoke_static_method_one_arg", 0L, JVMCI ? jvmciGE(JVMCI_21_1_b02) : JDK >= 17);
 
     public boolean areNullAllocationStubsAvailable() {
         return newInstanceOrNullAddress != 0L;

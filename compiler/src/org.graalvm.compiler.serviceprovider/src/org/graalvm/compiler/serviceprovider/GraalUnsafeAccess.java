@@ -66,4 +66,14 @@ public class GraalUnsafeAccess {
         }
         return UNSAFE;
     }
+
+    @SuppressWarnings("deprecation") // deprecated since JDK 15
+    public static boolean shouldBeInitialized(Class<?> c) {
+        return UNSAFE.shouldBeInitialized(c);
+    }
+
+    @SuppressWarnings("deprecation") // deprecated since JDK 15
+    public static void ensureClassInitialized(Class<?> c) {
+        UNSAFE.ensureClassInitialized(c);
+    }
 }

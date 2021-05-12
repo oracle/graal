@@ -630,9 +630,7 @@ class ScalaDaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.ScalaDaCapoBenchma
 
     @staticmethod
     def substitution_path():
-        bench_suite = mx.suite('substratevm')
-        root_dir = mx.join(bench_suite.dir, 'mxbuild')
-        path = os.path.abspath(mx.join(root_dir, 'src', 'com.oracle.svm.bench', 'bin'))
+        path = mx.project('com.oracle.svm.bench').classpath_repr()
         if not mx.exists(path):
             mx.abort('Path to substitutions for scala dacapo not present: ' + path + '. Did you build all of substratevm?')
         return path

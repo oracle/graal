@@ -75,13 +75,17 @@ for %%a in (%args%) do (
 )
 
 set "module_launcher=<module_launcher>"
+:: The list of --add-exports can easily exceed the 8191 command
+:: line character limit so pass them in a command line arguments file.
 if "%module_launcher%"=="True" (
   set "app_path_arg=--module-path"
-  call :escape_args <add_exports>
-  for %%v in (!args!) do (
-    call :unescape_arg %%v
-    set "jvm_args=!jvm_args! !arg!"
+  set exports_file="%location%.!basename!.exports"
+  if not exist "!exports_file!" (
+    for %%a in (<add_exports>) do (
+      echo %%a >> "!exports_file!"
+    )
   )
+  set "jvm_args=!jvm_args! @!exports_file!"
 ) else (
   set "app_path_arg=-cp"
 )
