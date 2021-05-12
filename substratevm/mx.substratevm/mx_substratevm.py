@@ -1089,7 +1089,11 @@ def hellomodule(args):
         # Build module into native image
         mx.log('Building image from java modules: ' + str(module_path))
         module_path_sep = ';' if mx.is_windows() else ':'
-        built_image = native_image(['--verbose', '-ea', '-H:Path=' + build_dir, '-p', module_path_sep.join(module_path), '-m', 'moduletests.hello.app'])
+        built_image = native_image([
+            '--verbose', '-ea', '-H:Path=' + build_dir,
+            '--add-exports=moduletests.hello.lib/hello.privateLib=moduletests.hello.app',
+            '--add-exports=moduletests.hello.lib/hello.privateLib2=moduletests.hello.app',
+            '-p', module_path_sep.join(module_path), '-m', 'moduletests.hello.app'])
         mx.log('Running image ' + built_image + ' built from module:')
         mx.run([built_image])
 
