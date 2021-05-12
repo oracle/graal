@@ -69,6 +69,8 @@ import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SourceElement;
 import com.oracle.truffle.api.debug.SuspendedEvent;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
@@ -276,6 +278,7 @@ public class DebugValueTest extends AbstractDebugTest {
             assertEquals("property", attributesTOValue.getName());
             // All false initially
             assertFalse(attributesTOValue.isReadable());
+            assertEquals("<not readable>", attributesTOValue.toDisplayString());
             assertFalse(attributesTOValue.isWritable());
             assertFalse(attributesTOValue.isInternal());
             assertFalse(attributesTOValue.hasReadSideEffects());
@@ -372,16 +375,22 @@ public class DebugValueTest extends AbstractDebugTest {
 
             final class TestRootNode extends RootNode {
                 @Node.Child TestBody body = new TestBody();
+                private final FrameSlot a;
+                private final FrameSlot b;
+                private final FrameSlot c;
 
                 TestRootNode(TruffleLanguage<?> language) {
                     super(language);
+                    a = getFrameDescriptor().addFrameSlot("a", FrameSlotKind.Object);
+                    b = getFrameDescriptor().addFrameSlot("b", FrameSlotKind.Int);
+                    c = getFrameDescriptor().addFrameSlot("c", FrameSlotKind.Object);
                 }
 
                 @Override
                 public Object execute(VirtualFrame frame) {
-                    if (frame.getArguments().length == 0) {
-                        return getCallTarget().call(null, 11, new Object());
-                    }
+                    frame.setObject(a, new ValueLanguageTest.NullObject());
+                    frame.setInt(b, 11);
+                    frame.setObject(c, new Object());
                     return body.execute(frame);
                 }
             }
@@ -392,34 +401,30 @@ public class DebugValueTest extends AbstractDebugTest {
             tester.startEval(source);
             expectSuspended((SuspendedEvent event) -> {
                 Iterator<DebugValue> declaredValues = event.getTopStackFrame().getScope().getDeclaredValues().iterator();
-                DebugValue arg0 = declaredValues.next();
-                DebugValue arg1 = declaredValues.next();
-                DebugValue arg2 = declaredValues.next();
+                DebugValue var0 = declaredValues.next();
+                DebugValue var1 = declaredValues.next();
+                // var2 is not an interop value
                 assertFalse(declaredValues.hasNext());
 
-                assertFalse(arg0.isReadable());
-                assertTrue(arg1.isReadable());
-                assertFalse(arg2.isReadable());
+                assertTrue(var0.isReadable());
+                assertTrue(var1.isReadable());
 
-                assertEquals("<not readable>", arg0.toDisplayString());
-                assertNull(arg0.getProperties());
-                assertNull(arg0.getMetaObject());
-                assertFalse(arg0.isArray());
-                assertFalse(arg0.isBoolean());
-                assertFalse(arg0.isDate());
-                assertFalse(arg0.isDuration());
-                assertFalse(arg0.isInstant());
-                assertFalse(arg0.isInternal());
-                assertFalse(arg0.isMetaObject());
-                assertFalse(arg0.isNull());
-                assertFalse(arg0.isNumber());
-                assertFalse(arg0.isReadable());
-                assertFalse(arg0.isString());
-                assertFalse(arg0.isTime());
-                assertFalse(arg0.isTimeZone());
+                assertNull(var0.getProperties());
+                assertFalse(var0.isArray());
+                assertFalse(var0.isBoolean());
+                assertFalse(var0.isDate());
+                assertFalse(var0.isDuration());
+                assertFalse(var0.isInstant());
+                assertFalse(var0.isInternal());
+                assertFalse(var0.isMetaObject());
+                assertTrue(var0.isNull());
+                assertFalse(var0.isNumber());
+                assertTrue(var0.isReadable());
+                assertFalse(var0.isString());
+                assertFalse(var0.isTime());
+                assertFalse(var0.isTimeZone());
 
-                assertEquals("11", arg1.toDisplayString());
-                assertEquals("<not readable>", arg2.toDisplayString());
+                assertEquals("11", var1.toDisplayString());
             });
         }
         expectDone();

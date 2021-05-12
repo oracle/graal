@@ -40,9 +40,7 @@
  */
 package com.oracle.truffle.polyglot;
 
-import java.util.Collections;
 import java.util.Iterator;
-import java.util.List;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -52,6 +50,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import java.util.NoSuchElementException;
 
 /**
  * A default frame slot based implementation of variables contained in the (default) frame scope.
@@ -59,15 +58,14 @@ import com.oracle.truffle.api.nodes.RootNode;
 @SuppressWarnings("deprecation")
 abstract class LegacyDefaultScope implements Iterable<com.oracle.truffle.api.Scope> {
 
-    private List<com.oracle.truffle.api.Scope> scopeList;
+    private com.oracle.truffle.api.Scope scope;
 
     @Override
     public Iterator<com.oracle.truffle.api.Scope> iterator() {
-        List<com.oracle.truffle.api.Scope> list = scopeList;
-        if (list == null) {
-            scopeList = list = Collections.singletonList(createScope());
+        if (scope == null) {
+            scope = createScope();
         }
-        return list.iterator();
+        return new LegacyScopeIterator(scope);
     }
 
     abstract com.oracle.truffle.api.Scope createScope();
@@ -128,6 +126,33 @@ abstract class LegacyDefaultScope implements Iterable<com.oracle.truffle.api.Sco
         @ExportMessage
         boolean isMemberReadable(@SuppressWarnings("unused") String member) {
             return false;
+        }
+    }
+
+    static final class LegacyScopeIterator implements Iterator<com.oracle.truffle.api.Scope> {
+
+        private com.oracle.truffle.api.Scope scope;
+
+        LegacyScopeIterator(com.oracle.truffle.api.Scope scope) {
+            this.scope = scope;
+        }
+
+        public boolean hasNext() {
+            return scope != null;
+        }
+
+        public com.oracle.truffle.api.Scope next() {
+            com.oracle.truffle.api.Scope s = scope;
+            if (s != null) {
+                scope = null;
+                return s;
+            } else {
+                throw new NoSuchElementException();
+            }
+        }
+
+        public void remove() {
+            throw new UnsupportedOperationException();
         }
     }
 }
