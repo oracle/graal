@@ -396,10 +396,6 @@ public final class BytecodeNode extends EspressoMethodNode {
 
     @Child private volatile InstrumentationSupport instrumentation;
 
-    public Assumption getNoForeignObjects() {
-        return noForeignObjects;
-    }
-
     private final Assumption noForeignObjects;
 
     // Cheap profile for implicit exceptions e.g. null checks, division by 0, index out of bounds.
@@ -455,10 +451,7 @@ public final class BytecodeNode extends EspressoMethodNode {
             assert StaticObject.notNull((StaticObject) arguments[0]) : "null receiver in init arguments !";
             StaticObject receiver = (StaticObject) arguments[0];
             setLocalObject(refs, curSlot, receiver);
-            if (noForeignObjects.isValid() && receiver.isForeignObject()) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                noForeignObjects.invalidate();
-            }
+            checkNoForeignObjectAssumption(receiver);
             curSlot += JavaKind.Object.getSlotCount();
         }
 
@@ -485,13 +478,18 @@ public final class BytecodeNode extends EspressoMethodNode {
                 // @formatter:on
             } else {
                 // Reference type.
-                setLocalObject(refs, curSlot, (StaticObject) arguments[i + receiverSlot]);
-                if (noForeignObjects.isValid() && ((StaticObject) arguments[i + receiverSlot]).isForeignObject()) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    noForeignObjects.invalidate();
-                }
+                StaticObject argument = (StaticObject) arguments[i + receiverSlot];
+                setLocalObject(refs, curSlot, argument);
+                checkNoForeignObjectAssumption(argument);
             }
             ++curSlot;
+        }
+    }
+
+    public void checkNoForeignObjectAssumption(StaticObject object) {
+        if (noForeignObjects.isValid() && object.isForeignObject()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            noForeignObjects.invalidate();
         }
     }
 
@@ -791,10 +789,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                     case SALOAD: arrayLoad(frame, primitives, refs, top, curBCI, curOpcode); break;
                     case AALOAD:
                         arrayLoad(frame, primitives, refs, top, curBCI, AALOAD);
-                        if (noForeignObjects.isValid() && peekObject(refs, top - 2).isForeignObject()) {
-                            CompilerDirectives.transferToInterpreterAndInvalidate();
-                            noForeignObjects.invalidate();
-                        }
+                        checkNoForeignObjectAssumption(peekObject(refs, top - 2));
                         break;
 
                     case ISTORE:
@@ -2503,10 +2498,7 @@ public final class BytecodeNode extends EspressoMethodNode {
             case Object  : {
                 StaticObject value = InterpreterToVM.getFieldObject(receiver, field);
                 putObject(refs, resultAt, value);
-                if (noForeignObjects.isValid() && value.isForeignObject()) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    noForeignObjects.invalidate();
-                }
+                checkNoForeignObjectAssumption(value);
                 break;
             }
             default :

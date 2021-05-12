@@ -22,7 +22,6 @@
  */
 package com.oracle.truffle.espresso.nodes.quick.invoke;
 
-import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -103,20 +102,15 @@ public abstract class InvokeInterfaceNode extends QuickNode {
 
     @Override
     public final int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
-        // Method signature does not change across methods.
-        // Can safely use the constant signature from `resolutionSeed` instead of the non-constant
-        // signature from the lookup.
-        // TODO(peterssen): Maybe refrain from exposing the whole root node?.
-        // TODO(peterssen): IsNull Node?.
+        /**
+         * Method signature does not change across methods. Can safely use the constant signature
+         * from `resolutionSeed` instead of the non-constant signature from the lookup.
+         */
         final Object[] args = BytecodeNode.popArguments(primitives, refs, top, true, resolutionSeed.getParsedSignature());
         final StaticObject receiver = nullCheck((StaticObject) args[0]);
         Object result = executeInterface(receiver, args);
         if (!returnsPrimitiveType) {
-            Assumption noForeignObjects = getBytecodeNode().getNoForeignObjects();
-            if (noForeignObjects.isValid() && ((StaticObject) result).isForeignObject()) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                noForeignObjects.invalidate();
-            }
+            getBytecodeNode().checkNoForeignObjectAssumption((StaticObject) result);
         }
         return (getResultAt() - top) + BytecodeNode.putKind(primitives, refs, getResultAt(), result, Signatures.returnKind(resolutionSeed.getParsedSignature()));
     }

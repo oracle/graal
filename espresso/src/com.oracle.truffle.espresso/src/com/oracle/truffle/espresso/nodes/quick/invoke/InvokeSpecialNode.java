@@ -22,7 +22,6 @@
  */
 package com.oracle.truffle.espresso.nodes.quick.invoke;
 
-import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -75,11 +74,7 @@ public final class InvokeSpecialNode extends QuickNode {
         // TODO(peterssen): IsNull Node?
         Object result = directCallNode.call(args);
         if (!returnsPrimitiveType) {
-            Assumption noForeignObjects = getBytecodeNode().getNoForeignObjects();
-            if (noForeignObjects.isValid() && ((StaticObject) result).isForeignObject()) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                noForeignObjects.invalidate();
-            }
+            getBytecodeNode().checkNoForeignObjectAssumption((StaticObject) result);
         }
         return (getResultAt() - top) + BytecodeNode.putKind(primitives, refs, getResultAt(), result, method.getMethod().getReturnKind());
     }

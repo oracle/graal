@@ -22,8 +22,6 @@
  */
 package com.oracle.truffle.espresso.nodes.quick.invoke;
 
-import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.descriptors.Signatures;
@@ -75,11 +73,7 @@ public final class InvokeHandleNode extends QuickNode {
         BytecodeNode.popBasicArgumentsWithArray(primitives, refs, top, parsedSignature, args, parameterCount, hasReceiver ? 1 : 0);
         Object result = intrinsic.processReturnValue(intrinsic.call(args), rKind);
         if (!returnsPrimitiveType) {
-            Assumption noForeignObjects = getBytecodeNode().getNoForeignObjects();
-            if (noForeignObjects.isValid() && ((StaticObject) result).isForeignObject()) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                noForeignObjects.invalidate();
-            }
+            getBytecodeNode().checkNoForeignObjectAssumption((StaticObject) result);
         }
         return (getResultAt() - top) + BytecodeNode.putKind(primitives, refs, getResultAt(), result, method.getReturnKind());
     }

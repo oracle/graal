@@ -23,8 +23,6 @@
 
 package com.oracle.truffle.espresso.nodes.quick.interop;
 
-import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -55,11 +53,7 @@ public abstract class ReferenceArrayLoadNode extends QuickNode {
         StaticObject array = nullCheck(BytecodeNode.popObject(refs, top - 2));
         int index = BytecodeNode.popInt(primitives, top - 1);
         StaticObject result = executeLoad(array, index);
-        Assumption noForeignObjects = getBytecodeNode().getNoForeignObjects();
-        if (noForeignObjects.isValid() && result.isForeignObject()) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            noForeignObjects.invalidate();
-        }
+        getBytecodeNode().checkNoForeignObjectAssumption(result);
         BytecodeNode.putObject(refs, top - 2, result);
         return Bytecodes.stackEffectOf(Bytecodes.AALOAD);
     }
