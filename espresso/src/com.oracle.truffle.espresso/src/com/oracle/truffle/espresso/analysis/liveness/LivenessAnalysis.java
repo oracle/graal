@@ -28,7 +28,6 @@ import java.util.ArrayList;
 import java.util.BitSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.analysis.DepthFirstBlockIterator;
 import com.oracle.truffle.espresso.analysis.GraphBuilder;
 import com.oracle.truffle.espresso.analysis.Util;
@@ -76,14 +75,8 @@ public class LivenessAnalysis {
     private final EdgeAction[] edge;
     private final LocalVariableAction onStart;
 
-    private final boolean compiledCodeOnly;
-
-    private boolean compiledCodeCheck() {
-        return !compiledCodeOnly || CompilerDirectives.inCompiledCode();
-    }
-
     public void performOnEdge(long[] primitives, Object[] refs, int bci, int nextBci) {
-        if (compiledCodeCheck()) {
+        if (CompilerDirectives.inCompiledCode()) {
             if (edge != null && edge[nextBci] != null) {
                 edge[nextBci].onEdge(primitives, refs, bci);
             }
@@ -91,7 +84,7 @@ public class LivenessAnalysis {
     }
 
     public void onStart(long[] primitives, Object[] refs) {
-        if (compiledCodeCheck()) {
+        if (CompilerDirectives.inCompiledCode()) {
             if (onStart != null) {
                 onStart.execute(primitives, refs);
             }
@@ -99,7 +92,7 @@ public class LivenessAnalysis {
     }
 
     public void performPostBCI(long[] primitives, Object[] refs, int bci) {
-        if (compiledCodeCheck()) {
+        if (CompilerDirectives.inCompiledCode()) {
             if (result != null && result[bci] != null) {
                 result[bci].execute(primitives, refs);
             }
@@ -108,7 +101,7 @@ public class LivenessAnalysis {
 
     @SuppressWarnings("try")
     public static LivenessAnalysis analyze(Method method) {
-        if (method.getContext().livenessAnalysisMode == EspressoOptions.LivenessAnalysisMode.DISABLED) {
+        if (!method.getContext().livenessAnalysis) {
             return NO_ANALYSIS;
         }
         TimerCollection scope = method.getContext().getTimers();
@@ -160,21 +153,19 @@ public class LivenessAnalysis {
             try (DebugCloseable actionFinder = ACTION_TIMER.scope(scope)) {
                 Builder builder = new Builder(graph, method, blockBoundaryFinder.result());
                 builder.build();
-                boolean compiledCodeOnly = method.getContext().livenessAnalysisMode == EspressoOptions.LivenessAnalysisMode.COMPILED;
-                return new LivenessAnalysis(builder.actions, builder.edge, builder.onStart, compiledCodeOnly);
+                return new LivenessAnalysis(builder.actions, builder.edge, builder.onStart);
             }
         }
     }
 
-    public LivenessAnalysis(LocalVariableAction[] result, EdgeAction[] edge, LocalVariableAction onStart, boolean compiledCodeOnly) {
+    public LivenessAnalysis(LocalVariableAction[] result, EdgeAction[] edge, LocalVariableAction onStart) {
         this.result = result;
         this.edge = edge;
         this.onStart = onStart;
-        this.compiledCodeOnly = compiledCodeOnly;
     }
 
     private LivenessAnalysis() {
-        this(null, null, null, false);
+        this(null, null, null);
     }
 
     private static final class Builder {
