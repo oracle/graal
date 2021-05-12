@@ -34,6 +34,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.function.BiConsumer;
+import java.util.logging.Handler;
 
 import org.graalvm.launcher.AbstractLanguageLauncher;
 import org.graalvm.options.OptionCategory;
@@ -206,7 +207,10 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
                 throw new AssertionError("Unknown execution-mode: " + config.mode);
         }
         contextBuilder.options(config.metric.getEngineOptions(config));
-
+        Handler handler = config.metric.getLogHandler();
+        if (handler != null) {
+            contextBuilder.logHandler(handler);
+        }
         try (Context context = contextBuilder.build()) {
             log("::: Initializing :::");
 
