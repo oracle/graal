@@ -40,7 +40,9 @@ import com.oracle.truffle.espresso.meta.EspressoError;
  * prone. For example, it handles the {@link Bytecodes#WIDE} instruction and wide variants of
  * instructions internally.
  *
- * Some operations have suffix wi
+ * Some accessors have a suffix indicating the type of bytecode it handles, these do <b>NOT</b>
+ * handle the {@link Bytecodes#WIDE} modifier. Methods without the numeric suffix will handle the
+ * {@link Bytecodes#WIDE} modifier internally, but may be slower.
  */
 public final class BytecodeStream {
 
