@@ -534,7 +534,6 @@ public final class DebuggerController implements ContextsListener {
     @Override
     public void onLanguageContextInitialized(TruffleContext con, @SuppressWarnings("unused") LanguageInfo language) {
         truffleContext = con;
-        context.setTruffleContext(con);
     }
 
     public void suspend(CallFrame currentFrame, Object thread, byte suspendPolicy, List<Callable<Void>> jobs, SteppingInfo steppingInfo, boolean breakpointHit) {
@@ -760,12 +759,12 @@ public final class DebuggerController implements ContextsListener {
 
         @Override
         public void onSuspend(SuspendedEvent event) {
-            Thread hostThread = Thread.currentThread();
-            if (context.isSystemThread(hostThread)) {
+            if (context.isSystemThread()) {
                 // always allow VM threads to run guest code without
                 // the risk of being suspended
                 return;
             }
+            Thread hostThread = Thread.currentThread();
             Object currentThread = getContext().asGuestThread(hostThread);
             JDWP.LOGGER.fine(() -> "Suspended at: " + event.getSourceSection() + " in thread: " + getThreadName(currentThread));
 

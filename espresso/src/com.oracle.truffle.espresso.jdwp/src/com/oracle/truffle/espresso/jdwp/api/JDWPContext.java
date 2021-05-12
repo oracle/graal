@@ -493,19 +493,11 @@ public interface JDWPContext {
     Node getInstrumentableNode(Node node);
 
     /**
-     * Determines if hostThread is a VM internal thread.
+     * Determines if the current thread is a VM internal thread.
      *
-     * @param hostThread the thread
-     * @return true if hostThread is a VM internal thread
+     * @return true if current thread is a VM internal thread
      */
-    boolean isSystemThread(Thread hostThread);
-
-    /**
-     * Sets the Truffle context.
-     *
-     * @param con the Truffle context.
-     */
-    void setTruffleContext(TruffleContext con);
+    boolean isSystemThread();
 
     /**
      * Returns the current BCI of the node.
