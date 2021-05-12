@@ -47,6 +47,7 @@ import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.api.Toolchain;
+import com.oracle.truffle.llvm.runtime.IDGenerater.BitcodeID;
 import com.oracle.truffle.llvm.runtime.LLVMLanguageFactory.InitializeContextNodeGen;
 import com.oracle.truffle.llvm.runtime.config.Configuration;
 import com.oracle.truffle.llvm.runtime.config.Configurations;
@@ -65,13 +66,14 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.target.TargetTriple;
 import com.oracle.truffle.llvm.toolchain.config.LLVMConfig;
+import java.lang.ref.ReferenceQueue;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
 @TruffleLanguage.Registration(id = LLVMLanguage.ID, name = LLVMLanguage.NAME, internal = false, interactive = false, defaultMimeType = LLVMLanguage.LLVM_BITCODE_MIME_TYPE, //
@@ -96,8 +98,6 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     public static final String ID = "llvm";
     static final String NAME = "LLVM";
-    private final AtomicInteger nextID = new AtomicInteger(0);
-
     public final Assumption singleContextAssumption = Truffle.getRuntime().createAssumption("Only a single context is active");
 
     @CompilationFinal private Configuration activeConfiguration = null;
@@ -136,10 +136,24 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     @CompilationFinal private LLVMMemory cachedLLVMMemory;
 
     private final EconomicMap<String, LLVMScope> internalFileScopes = EconomicMap.create();
-    private final EconomicMap<String, CallTarget> libraryCache = EconomicMap.create();
+
+    private static final class LibraryCacheEntry extends WeakReference<CallTarget> {
+
+        final String path;
+
+        LibraryCacheEntry(LLVMLanguage language, String path, CallTarget callTarget) {
+            super(callTarget, language.libraryCacheQueue);
+            this.path = path;
+        }
+    }
+
+    private final EconomicMap<String, LibraryCacheEntry> libraryCache = EconomicMap.create();
+    private final ReferenceQueue<CallTarget> libraryCacheQueue = new ReferenceQueue<>();
     private final Object libraryCacheLock = new Object();
+
     private final EconomicMap<String, Source> librarySources = EconomicMap.create();
 
+    private final IDGenerater idGenerater = new IDGenerater();
     private final LLDBSupport lldbSupport = new LLDBSupport(this);
     private final Assumption noCommonHandleAssumption = Truffle.getRuntime().createAssumption("no common handle");
     private final Assumption noDerefHandleAssumption = Truffle.getRuntime().createAssumption("no deref handle");
@@ -165,7 +179,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     }
 
     public abstract static class Loader implements LLVMCapability {
-        public abstract CallTarget load(LLVMContext context, Source source, AtomicInteger id);
+        public abstract CallTarget load(LLVMContext context, Source source, BitcodeID id);
     }
 
     @Override
@@ -472,10 +486,6 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         return defaultTargetTriple;
     }
 
-    public AtomicInteger getRawRunnerID() {
-        return nextID;
-    }
-
     @CompilerDirectives.TruffleBoundary
     public LLVMInteropType getInteropType(LLVMSourceType sourceType) {
         return interopTypeRegistry.get(sourceType);
@@ -500,36 +510,53 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
      */
     @Override
     protected CallTarget parse(ParsingRequest request) {
-        synchronized (libraryCacheLock) {
-            Source source = request.getSource();
-            String path = source.getPath();
-            CallTarget callTarget;
-            if (source.isCached()) {
-                callTarget = libraryCache.get(path);
-                if (callTarget == null) {
-                    callTarget = getCapability(Loader.class).load(getContext(), source, nextID);
-                    CallTarget prev = libraryCache.putIfAbsent(path, callTarget);
-                    // To ensure the call target in the cache is always returned in case of
-                    // concurrency.
-                    if (prev != null) {
-                        callTarget = prev;
-                    }
+        Source source = request.getSource();
+        String path = source.getPath();
+        if (source.isCached()) {
+            synchronized (libraryCacheLock) {
+                CallTarget cached = getCachedLibrary(path);
+                if (cached == null) {
+                    assert !libraryCache.containsKey(path) : "racy insertion despite lock?";
+
+                    cached = getCapability(Loader.class).load(getContext(), source, idGenerater.generateID());
+                    LibraryCacheEntry entry = new LibraryCacheEntry(this, path, cached);
+                    libraryCache.put(path, entry);
                 }
-                return callTarget;
+                return cached;
             }
-            return getCapability(Loader.class).load(getContext(), source, nextID);
+        } else {
+            // just get the id here and give it to the parserDriver
+            return getCapability(Loader.class).load(getContext(), source, idGenerater.generateID());
         }
     }
 
-    public boolean isLibraryCached(String path) {
-        synchronized (libraryCacheLock) {
-            return libraryCache.get(path) != null;
+    private void lazyCacheCleanup() {
+        /*
+         * Just lazily clean up one entry. We do this on every lookup. Under the assumption that
+         * lookups are more frequent than insertions, this will eventually catch up and remove every
+         * GCed entry.
+         */
+        LibraryCacheEntry ref = (LibraryCacheEntry) libraryCacheQueue.poll();
+        if (ref != null) {
+            libraryCache.removeKey(ref.path);
         }
     }
 
     public CallTarget getCachedLibrary(String path) {
         synchronized (libraryCacheLock) {
-            return libraryCache.get(path);
+            lazyCacheCleanup();
+            LibraryCacheEntry entry = libraryCache.get(path);
+            if (entry == null) {
+                return null;
+            }
+
+            assert entry.path.equals(path);
+            CallTarget ret = entry.get();
+            if (ret == null) {
+                // clean up the map after an entry has been cleared by the GC
+                libraryCache.removeKey(entry.path);
+            }
+            return ret;
         }
     }
 

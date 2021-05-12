@@ -129,7 +129,7 @@ public class BackgroundCompileQueue {
             long compilerIdleDelay = runtime.getCompilerIdleDelay(callTarget);
             long keepAliveTime = compilerIdleDelay >= 0 ? compilerIdleDelay : 0;
 
-            initQueue(callTarget);
+            this.compilationQueue = createQueue(callTarget, threads);
             ThreadPoolExecutor threadPoolExecutor = new ThreadPoolExecutor(threads, threads,
                             keepAliveTime, TimeUnit.MILLISECONDS,
                             compilationQueue, factory) {
@@ -151,11 +151,18 @@ public class BackgroundCompileQueue {
         }
     }
 
-    private void initQueue(OptimizedCallTarget callTarget) {
+    private BlockingQueue<Runnable> createQueue(OptimizedCallTarget callTarget, int threads) {
         if (callTarget.getOptionValue(PolyglotCompilerOptions.TraversingCompilationQueue)) {
-            this.compilationQueue = new TraversingBlockingQueue();
+            if (callTarget.getOptionValue(PolyglotCompilerOptions.DynamicCompilationThresholds)) {
+                double minScale = callTarget.getOptionValue(PolyglotCompilerOptions.DynamicCompilerThresholdsMinScale);
+                int minNormalLoad = callTarget.getOptionValue(PolyglotCompilerOptions.DynamicCompilerThresholdsMinNormalLoad);
+                int maxNormalLoad = callTarget.getOptionValue(PolyglotCompilerOptions.DynamicCompilerThresholdsMaxNormalLoad);
+                return new DynamicThresholdsQueue(threads, minScale, minNormalLoad, maxNormalLoad);
+            } else {
+                return new TraversingBlockingQueue();
+            }
         } else {
-            this.compilationQueue = new IdlingPriorityBlockingQueue<>();
+            return new IdlingPriorityBlockingQueue<>();
         }
     }
 

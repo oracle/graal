@@ -571,6 +571,22 @@ final class Target_sun_security_jca_ProviderConfig_ProviderLoader {
     static Target_sun_security_jca_ProviderConfig_ProviderLoader INSTANCE;
 }
 
+/**
+ * This only applies to JDK8 and JDK11. Experimental FIPS mode in the SunJSSE Provider was removed
+ * in JDK-8217835. Going forward it is recommended to configure FIPS 140 compliant cryptography
+ * providers by using the usual JCA providers configuration mechanism.
+ */
+@SuppressWarnings("unused")
+@TargetClass(value = sun.security.ssl.SunJSSE.class, onlyWith = JDK11OrEarlier.class)
+final class Target_sun_security_ssl_SunJSSE {
+
+    @Substitute
+    private Target_sun_security_ssl_SunJSSE(java.security.Provider cryptoProvider, String providerName) {
+        throw VMError.unsupportedFeature("Experimental FIPS mode in the SunJSSE Provider is deprecated (JDK-8217835)." +
+                        " To register a FIPS provider use the supported java.security.Security.addProvider() API.");
+    }
+}
+
 /** Dummy class to have a class with the file's name. */
 public final class SecuritySubstitutions {
 }

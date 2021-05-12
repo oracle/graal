@@ -484,15 +484,6 @@ public interface JDWPContext {
     void abort(int exitCode);
 
     /**
-     * Returns the nearest {@link com.oracle.truffle.api.instrumentation.InstrumentableNode node} or
-     * <code>null</code>. The nodes are traversed by walking the parent node hierarchy.
-     *
-     * @param node the node
-     * @return the nearest instrumentable node
-     */
-    Node getInstrumentableNode(Node node);
-
-    /**
      * Determines if the current thread is a VM internal thread.
      *
      * @return true if current thread is a VM internal thread

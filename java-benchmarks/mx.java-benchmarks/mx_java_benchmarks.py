@@ -180,7 +180,7 @@ class BasePetClinicBenchmarkSuite(object):
         return "graal-compiler"
 
     def version(self):
-        return "0.0.1"
+        return "0.0.2"
 
     def validateReturnCode(self, retcode):
         return retcode == 143
@@ -303,7 +303,7 @@ class BaseTikaBenchmarkSuite(object):
         return "graal-compiler"
 
     def version(self):
-        return "1.0.1"
+        return "1.0.2"
 
     def validateReturnCode(self, retcode):
         return retcode == 143

@@ -553,15 +553,19 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     private boolean shouldCompileImpl(int intCallCount, int intLoopCallCount) {
-        return intCallCount >= engine.callThresholdInInterpreter //
-                        && intLoopCallCount >= engine.callAndLoopThresholdInInterpreter //
-                        && !compilationFailed //
-                        && !isSubmittedForCompilation()
+        return !compilationFailed //
+                        && !isSubmittedForCompilation() //
                         /*
                          * Compilation of OSR loop call target is scheduled in
                          * OptimizedOSRLoopNode#compileImpl.
                          */
-                        && !(getRootNode() instanceof OSRRootNode);
+                        && !(getRootNode() instanceof OSRRootNode) //
+                        && intCallCount >= engine.callThresholdInInterpreter //
+                        && intLoopCallCount >= scaledThreshold(engine.callAndLoopThresholdInInterpreter); //
+    }
+
+    private static int scaledThreshold(int callAndLoopThresholdInInterpreter) {
+        return FixedPointMath.multiply(runtime().compilationThresholdScale(), callAndLoopThresholdInInterpreter);
     }
 
     public final boolean shouldCompile() {
@@ -593,10 +597,10 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         this.callCount = firstTierCallCount == Integer.MAX_VALUE ? firstTierCallCount : ++firstTierCallCount;
         int firstTierLoopCallCount = this.callAndLoopCount;
         this.callAndLoopCount = firstTierLoopCallCount == Integer.MAX_VALUE ? firstTierLoopCallCount : ++firstTierLoopCallCount;
-        if (firstTierCallCount >= engine.callThresholdInFirstTier //
-                        && firstTierLoopCallCount >= engine.callAndLoopThresholdInFirstTier //
-                        && !compilationFailed //
-                        && !isSubmittedForCompilation()) {
+        if (!compilationFailed //
+                        && !isSubmittedForCompilation()//
+                        && firstTierCallCount >= engine.callThresholdInFirstTier //
+                        && firstTierLoopCallCount >= scaledThreshold(engine.callAndLoopThresholdInFirstTier)) {
             return lastTierCompile();
         }
         return false;

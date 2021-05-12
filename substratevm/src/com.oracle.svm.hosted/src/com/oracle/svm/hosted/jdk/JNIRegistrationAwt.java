@@ -59,9 +59,13 @@ public class JNIRegistrationAwt extends JNIRegistrationUtil implements Feature {
                             clazz(access, "sun.awt.X11GraphicsEnvironment"),
                             clazz(access, "sun.font.FontManagerNativeLibrary"),
                             clazz(access, "sun.java2d.Disposer"));
+            PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("java_awt");
+            PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_awt");
+            PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_java2d");
 
             access.registerReachabilityHandler(JNIRegistrationAwt::registerFreeType,
                             clazz(access, "sun.font.FontManagerNativeLibrary"));
+            PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_font");
 
             access.registerReachabilityHandler(JNIRegistrationAwt::registerLCMS,
                             clazz(access, "sun.java2d.cmm.lcms.LCMS"));
@@ -73,6 +77,7 @@ public class JNIRegistrationAwt extends JNIRegistrationUtil implements Feature {
                             clazz(access, "sun.awt.image.JPEGImageDecoder"),
                             clazz(access, "com.sun.imageio.plugins.jpeg.JPEGImageReader"),
                             clazz(access, "com.sun.imageio.plugins.jpeg.JPEGImageWriter"));
+            PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("com_sun_imageio_plugins_jpeg");
 
             access.registerReachabilityHandler(JNIRegistrationAwt::registerColorProfiles,
                             clazz(access, "java.awt.color.ICC_Profile"));
@@ -114,10 +119,6 @@ public class JNIRegistrationAwt extends JNIRegistrationUtil implements Feature {
             nativeLibraries.addDynamicNonJniLibrary("Xi");
         }
 
-        PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("java_awt");
-        PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_awt");
-        PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_java2d");
-
         nativeLibraries.addDynamicNonJniLibrary("stdc++");
         nativeLibraries.addDynamicNonJniLibrary("m");
 
@@ -126,9 +127,6 @@ public class JNIRegistrationAwt extends JNIRegistrationUtil implements Feature {
     }
 
     private static void registerJPEG(DuringAnalysisAccess access) {
-
-        PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("com_sun_imageio_plugins_jpeg");
-
         NativeLibraries nativeLibraries = getNativeLibraries(access);
 
         NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("javajpeg");
@@ -155,8 +153,6 @@ public class JNIRegistrationAwt extends JNIRegistrationUtil implements Feature {
         NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("fontmanager");
         nativeLibraries.addStaticJniLibrary("fontmanager", isHeadless() ? "awt_headless" : "awt_xawt");
         nativeLibraries.addStaticJniLibrary("harfbuzz");
-
-        PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_font");
 
         nativeLibraries.addDynamicNonJniLibrary("freetype");
 

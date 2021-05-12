@@ -1,10 +1,12 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -20,26 +22,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.nodes;
+package org.graalvm.compiler.truffle.runtime;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.GenerateWrapper;
-import com.oracle.truffle.api.instrumentation.ProbeNode;
+public final class FixedPointMath {
+    private static final int SCALE = 4;
 
-@GenerateWrapper
-abstract class EspressoPreludeNode extends EspressoInstrumentableNode {
-    abstract Object executeBody(VirtualFrame frame);
-
-    abstract void initializeBody(VirtualFrame frame);
-
-    @Override
-    public final Object execute(VirtualFrame frame) {
-        initializeBody(frame);
-        return executeBody(frame);
+    /**
+     * should not be instantiated.
+     */
+    private FixedPointMath() {
+        throw new IllegalStateException("Should not instantiate" + this.getClass().getName());
     }
 
-    @Override
-    public WrapperNode createWrapper(ProbeNode probeNode) {
-        return new EspressoPreludeNodeWrapper(this, probeNode);
+    public static int toFixedPoint(double x) {
+        return (int) (x * (1 << SCALE));
+    }
+
+    public static int multiply(int fixedPointValue, int anInteger) {
+        return (fixedPointValue * anInteger) >> SCALE;
     }
 }

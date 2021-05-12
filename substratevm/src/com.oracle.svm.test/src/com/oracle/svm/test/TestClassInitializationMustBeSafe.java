@@ -451,7 +451,7 @@ class TestClassInitializationMustBeSafeFeature implements Feature {
                 errors.add(checkedClass.getName() + ": Wrongly named class (nameHasSafeEarly: " + nameHasSafeEarly + ", nameHasSafeLate: " + nameHasSafeLate + ", nameHasDelayed: " + nameHasDelayed);
             } else {
 
-                boolean initialized = !UnsafeAccess.UNSAFE.shouldBeInitialized(checkedClass);
+                boolean initialized = !shouldBeInitialized(checkedClass);
 
                 if (nameHasDelayed && initialized) {
                     errors.add(checkedClass.getName() + ": Check for MustBeDelayed failed");
@@ -468,6 +468,11 @@ class TestClassInitializationMustBeSafeFeature implements Feature {
         if (!errors.isEmpty()) {
             throw new Error(errors.stream().collect(Collectors.joining(System.lineSeparator())));
         }
+    }
+
+    @SuppressWarnings("deprecation")
+    private static boolean shouldBeInitialized(Class<?> c) {
+        return UnsafeAccess.UNSAFE.shouldBeInitialized(c);
     }
 
     @Override

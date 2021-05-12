@@ -35,8 +35,8 @@
   builds: common.builds + [
     // Benchmarks
     // AWFY peak perf. benchmarks
-    common.jdk8_weekly_bench_linux              + common.espresso_benchmark('jvm-ce', 'awfy:*')                                    + {name: 'weekly-bench-espresso-jvm-ce-awfy-jdk8-linux-amd64'},
-    common.jdk8_weekly_bench_linux              + common.espresso_benchmark('native-ce', 'awfy:*')                                 + {name: 'weekly-bench-espresso-native-ce-awfy-jdk8-linux-amd64'},
+    common.jdk8_weekly_bench_linux              + common.espresso_benchmark('jvm-ce', 'awfy:*',    extra_args=['--vm.Xmx1g', '--vm.Xms1g'])  + {name: 'weekly-bench-espresso-jvm-ce-awfy-jdk8-linux-amd64'},
+    common.jdk8_weekly_bench_linux              + common.espresso_benchmark('native-ce', 'awfy:*', extra_args=['--vm.Xmx1g', '--vm.Xms1g'])  + {name: 'weekly-bench-espresso-native-ce-awfy-jdk8-linux-amd64'},
 
     // AWFY interpreter benchmarks
     common.jdk8_weekly_bench_linux              + common.espresso_interpreter_benchmark('jvm-ce', 'awfy:*')                        + {name: 'weekly-bench-espresso-jvm-ce-awfy_interpreter-jdk8-linux-amd64'},

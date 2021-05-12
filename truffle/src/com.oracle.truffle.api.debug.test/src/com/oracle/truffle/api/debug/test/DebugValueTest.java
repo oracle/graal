@@ -46,14 +46,17 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
-import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
+import org.graalvm.collections.Pair;
+
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -82,6 +85,8 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
+import com.oracle.truffle.api.utilities.TriState;
 
 @SuppressWarnings({"static-method", "unused"})
 public class DebugValueTest extends AbstractDebugTest {
@@ -420,6 +425,137 @@ public class DebugValueTest extends AbstractDebugTest {
         expectDone();
     }
 
+    @Test
+    public void testHashCode() {
+        final Source source = testSource("DEFINE(getHashCode, ROOT(\n" +
+                        "  ARGUMENT(a), \n" +
+                        "  STATEMENT()\n" +
+                        "))\n");
+        Context context = Context.create();
+        context.eval(source);
+        Value getHashCode = context.getBindings(InstrumentationTestLanguage.ID).getMember("getHashCode");
+        assertNotNull(getHashCode);
+        Debugger debugger = context.getEngine().getInstruments().get("debugger").lookup(Debugger.class);
+
+        List<Pair<Object, Integer>> hashes = new ArrayList<>();
+        hashes.add(Pair.create(42, System.identityHashCode(42)));
+        hashes.add(Pair.create(true, System.identityHashCode(true)));
+        hashes.add(Pair.create(new IdentityObject(42, 24), 24));
+
+        DebuggerSession session = debugger.startSession((SuspendedEvent event) -> {
+            DebugValue value = event.getTopStackFrame().getScope().getDeclaredValue("a");
+            assertNotNull(value);
+            Pair<Object, Integer> hash = hashes.remove(0);
+            assertEquals("Hash of " + hash.getLeft(), hash.getRight().intValue(), value.hashCode());
+            event.prepareStepOver(1);
+        });
+        session.suspendNextExecution();
+        for (Pair<Object, Integer> hash : new ArrayList<>(hashes)) {
+            getHashCode.execute(hash.getLeft());
+        }
+        session.close();
+        assertTrue(hashes.isEmpty());
+    }
+
+    @Test
+    public void testEquals() {
+        final Source source = testSource("DEFINE(isEqual, ROOT(\n" +
+                        "  ARGUMENT(a), \n" +
+                        "  ARGUMENT(b), \n" +
+                        "  STATEMENT()\n" +
+                        "))\n");
+        Context context = Context.create();
+        context.eval(source);
+        Value isEqual = context.getBindings(InstrumentationTestLanguage.ID).getMember("isEqual");
+        assertNotNull(isEqual);
+        Debugger debugger = context.getEngine().getInstruments().get("debugger").lookup(Debugger.class);
+
+        List<Pair<Pair<Object, Object>, Boolean>> equals = new ArrayList<>();
+        equals.add(Pair.create(Pair.create(42, 42), true));
+        equals.add(Pair.create(Pair.create(42, 10), false));
+        equals.add(Pair.create(Pair.create(false, false), true));
+        equals.add(Pair.create(Pair.create(true, false), false));
+        equals.add(Pair.create(Pair.create(new IdentityObject("aa", 10), new IdentityObject("aa", 10)), true));
+        equals.add(Pair.create(Pair.create(new IdentityObject("aa", 10), new IdentityObject("bb", 10)), false));
+
+        DebuggerSession session = debugger.startSession((SuspendedEvent event) -> {
+            DebugValue valueA = event.getTopStackFrame().getScope().getDeclaredValue("a");
+            DebugValue valueB = event.getTopStackFrame().getScope().getDeclaredValue("b");
+            assertNotNull(valueA);
+            assertNotNull(valueB);
+            Pair<Pair<Object, Object>, Boolean> eq = equals.remove(0);
+            Pair<Object, Object> objects = eq.getLeft();
+            assertEquals("Equality of " + objects.getLeft() + " and " + objects.getRight(), eq.getRight().booleanValue(), valueA.equals(valueB));
+            event.prepareStepOver(1);
+        });
+        session.suspendNextExecution();
+        for (Pair<Pair<Object, Object>, Boolean> eq : new ArrayList<>(equals)) {
+            Pair<Object, Object> objects = eq.getLeft();
+            isEqual.execute(objects.getLeft(), objects.getRight());
+        }
+        session.close();
+        assertTrue(equals.isEmpty());
+    }
+
+    @Test
+    public void testUnreadableEquals() {
+        final Source source = testSource("DEFINE(isEqual, ROOT(\n" +
+                        "  ARGUMENT(a1), \n" +
+                        "  ARGUMENT(a2), \n" +
+                        "  ARGUMENT(b), \n" +
+                        "  ARGUMENT(c), \n" +
+                        "  STATEMENT()\n" +
+                        "))\n");
+        Context context = Context.create();
+        context.eval(source);
+        Value isEqual = context.getBindings(InstrumentationTestLanguage.ID).getMember("isEqual");
+        assertNotNull(isEqual);
+        Debugger debugger = context.getEngine().getInstruments().get("debugger").lookup(Debugger.class);
+
+        ModifiableAttributesTruffleObject obj1 = new ModifiableAttributesTruffleObject();
+        obj1.setIsReadable(false);
+        obj1.setIsWritable(true);
+        ModifiableAttributesTruffleObject obj2 = new ModifiableAttributesTruffleObject();
+        obj2.setIsReadable(false);
+        obj2.setIsWritable(true);
+        ModifiableAttributesTruffleObject objReadable = new ModifiableAttributesTruffleObject();
+        objReadable.setIsReadable(true);
+
+        // a1 and a2 refer to the same value with unreadable properties
+        // b refer to a different value with unreadable properties
+        // c refer to a value with readable properties
+        DebuggerSession session = debugger.startSession((SuspendedEvent event) -> {
+            DebugValue a1 = event.getTopStackFrame().getScope().getDeclaredValue("a1");
+            DebugValue a2 = event.getTopStackFrame().getScope().getDeclaredValue("a2");
+            DebugValue b = event.getTopStackFrame().getScope().getDeclaredValue("b");
+            DebugValue c = event.getTopStackFrame().getScope().getDeclaredValue("c");
+            assertNotNull(a1);
+            assertNotNull(a2);
+            assertNotNull(b);
+            assertNotNull(c);
+            assertTrue(a1.equals(a2));
+            assertFalse(a1.equals(b));
+            assertFalse(a1.equals(c));
+            DebugValue a1p1 = a1.getProperty("p1");
+            DebugValue a1p2 = a1.getProperty("p2");
+            DebugValue a2p1 = a2.getProperty("p1");
+            DebugValue a2p2 = a2.getProperty("p2");
+            DebugValue bp1 = b.getProperty("p1");
+            DebugValue bp2 = b.getProperty("p2");
+            DebugValue cp1 = c.getProperty("p1");
+            assertTrue(a1p1.equals(a2p1));
+            assertTrue(a1p2.equals(a2p2));
+            assertFalse(a1p1.equals(a2p2));
+            assertFalse(a1p1.equals(bp1));
+            assertFalse(a1p2.equals(bp2));
+            assertFalse(bp1.equals(cp1));
+            event.prepareStepOver(1);
+        });
+        session.suspendNextExecution();
+        isEqual.execute(obj1, obj1, obj2, objReadable);
+        session.close();
+    }
+
     @GenerateWrapper
     static class TestBody extends Node implements InstrumentableNode {
 
@@ -646,4 +782,28 @@ public class DebugValueTest extends AbstractDebugTest {
         }
     }
 
+    @ExportLibrary(InteropLibrary.class)
+    static final class IdentityObject implements TruffleObject {
+
+        private final Object equalsDelegate;
+        private final int hashCode;
+
+        IdentityObject(Object equalsDelegate, int hashCode) {
+            this.equalsDelegate = equalsDelegate;
+            this.hashCode = hashCode;
+        }
+
+        @ExportMessage
+        int identityHashCode() {
+            return hashCode;
+        }
+
+        @ExportMessage
+        TriState isIdenticalOrUndefined(Object other) {
+            if (other == this) {
+                return TriState.TRUE;
+            }
+            return TriState.valueOf((other instanceof IdentityObject) && equalsDelegate.equals(((IdentityObject) other).equalsDelegate));
+        }
+    }
 }

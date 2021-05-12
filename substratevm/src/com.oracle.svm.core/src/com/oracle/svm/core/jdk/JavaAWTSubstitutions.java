@@ -567,11 +567,24 @@ public final class JavaAWTSubstitutions {
 
     }
 
+    /**
+     * This is necessary to workaround `javac` warnings that cannot be suppressed. For example:
+     *
+     * <pre>
+     * JavaAWTSubstitutions.java:574: warning: ComponentPeer is internal proprietary API and may be removed in a future release
+     *       private void nativeSetSource(java.awt.peer.ComponentPeer peer) {
+     *                                                 ^
+     * </pre>
+     */
+    @TargetClass(className = "java.awt.peer.ComponentPeer", onlyWith = IsHeadless.class)
+    static final class Target_java_awt_peer_ComponentPeer {
+    }
+
     @TargetClass(className = "java.awt.AWTEvent", onlyWith = IsHeadless.class)
     static final class Target_java_awt_AWTEvent {
 
         @Substitute
-        private void nativeSetSource(java.awt.peer.ComponentPeer peer) {
+        private void nativeSetSource(Target_java_awt_peer_ComponentPeer peer) {
             throw new UnsupportedOperationException();
         }
     }

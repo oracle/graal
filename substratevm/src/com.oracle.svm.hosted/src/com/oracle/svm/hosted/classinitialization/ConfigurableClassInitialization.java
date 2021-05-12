@@ -54,15 +54,12 @@ import com.oracle.svm.hosted.c.GraalAccess;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import sun.misc.Unsafe;
 
 /**
  * The core class for deciding whether a class should be initialized during image building or class
  * initialization should be delayed to runtime.
  */
 public class ConfigurableClassInitialization implements ClassInitializationSupport {
-
-    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
 
     /**
      * Setup for class initialization: configured through features and command line input. It
@@ -173,7 +170,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
      */
     private InitKind ensureClassInitialized(Class<?> clazz, boolean allowErrors) {
         try {
-            UNSAFE.ensureClassInitialized(clazz);
+            GraalUnsafeAccess.ensureClassInitialized(clazz);
             return InitKind.BUILD_TIME;
         } catch (NoClassDefFoundError ex) {
             if (NativeImageOptions.AllowIncompleteClasspath.getValue()) {
@@ -266,7 +263,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
         setSubclassesAsRunTime(clazz);
         checkEagerInitialization(clazz);
 
-        if (!UNSAFE.shouldBeInitialized(clazz)) {
+        if (!GraalUnsafeAccess.shouldBeInitialized(clazz)) {
             throw UserError.abort("The class %1$s has already been initialized; it is too late to register %1$s for build-time initialization (%2$s). %3$s",
                             clazz.getTypeName(), reason,
                             classInitializationErrorMessage(clazz, "Try avoiding this conflict by avoiding to initialize the class that caused initialization of " + clazz.getTypeName() +
@@ -386,7 +383,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
         checkEagerInitialization(clazz);
 
         try {
-            UNSAFE.ensureClassInitialized(clazz);
+            GraalUnsafeAccess.ensureClassInitialized(clazz);
         } catch (Throwable ex) {
             throw UserError.abort(ex, "Class initialization failed for %s. The class is requested for re-running (reason: %s)", clazz.getTypeName(), reason);
         }
@@ -512,7 +509,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
          */
         Set<Class<?>> illegalyInitialized = new HashSet<>();
         for (Map.Entry<Class<?>, InitKind> entry : classInitKinds.entrySet()) {
-            if (entry.getValue().isRunTime() && !UNSAFE.shouldBeInitialized(entry.getKey())) {
+            if (entry.getValue().isRunTime() && !GraalUnsafeAccess.shouldBeInitialized(entry.getKey())) {
                 illegalyInitialized.add(entry.getKey());
             }
         }
@@ -577,7 +574,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
         }
 
         /* Well, and enums that got initialized while annotations are parsed. */
-        if (clazz.isEnum() && !UNSAFE.shouldBeInitialized(clazz)) {
+        if (clazz.isEnum() && !GraalUnsafeAccess.shouldBeInitialized(clazz)) {
             if (memoize) {
                 forceInitializeHosted(clazz, "enums referred in annotations must be initialized", false);
             }

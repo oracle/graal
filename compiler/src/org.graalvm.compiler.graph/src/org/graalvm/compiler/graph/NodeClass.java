@@ -62,6 +62,7 @@ import org.graalvm.compiler.graph.Node.Successor;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.graph.spi.BinaryCommutativeMarker;
 import org.graalvm.compiler.graph.spi.CanonicalizableMarker;
+import org.graalvm.compiler.graph.spi.NodeWithIdentity;
 import org.graalvm.compiler.graph.spi.SimplifiableMarker;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
@@ -163,6 +164,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
     private final boolean isCommutative;
     private final boolean isSimplifiable;
     private final boolean isLeafNode;
+    private final boolean isNodeWithIdentity;
 
     private final int leafId;
 
@@ -180,6 +182,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
         this.isCanonicalizable = CanonicalizableMarker.class.isAssignableFrom(clazz);
         this.isCommutative = BinaryCommutativeMarker.class.isAssignableFrom(clazz);
         this.isSimplifiable = SimplifiableMarker.class.isAssignableFrom(clazz);
+        this.isNodeWithIdentity = NodeWithIdentity.class.isAssignableFrom(clazz);
 
         NodeFieldsScanner fs = new NodeFieldsScanner(calcOffset, superNodeClass, debug);
         try (DebugCloseable t = Init_FieldScanning.start(debug)) {
@@ -657,6 +660,16 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
 
     public boolean dataEquals(Node a, Node b) {
         assert a.getClass() == b.getClass();
+        if (a == b) {
+            return true;
+        } else if (isNodeWithIdentity) {
+            /*
+             * The node class is manually marked by the user as having identity. Two such nodes are
+             * never "value equal" regardless of their data fields.
+             */
+            return false;
+        }
+
         for (int i = 0; i < data.getCount(); ++i) {
             Class<?> type = data.getType(i);
             if (type.isPrimitive()) {
