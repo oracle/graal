@@ -325,7 +325,8 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
     def calibrateLatencyTestInBackground(benchmarkSuite):
         if not BaseMicroserviceBenchmarkSuite.waitForPort(benchmarkSuite.servicePort()):
             mx.abort("Failed to find server application in {0}".format(BaseMicroserviceBenchmarkSuite.__name__))
-        benchmarkSuite.calibrateLatencyTest()
+        # TEMP (chaeubl)
+        # benchmarkSuite.calibrateLatencyTest()
         if not BaseMicroserviceBenchmarkSuite.terminateApplication(benchmarkSuite.servicePort()):
             mx.abort("Failed to terminate server application in {0}".format(BaseMicroserviceBenchmarkSuite.__name__))
 
@@ -333,7 +334,8 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
     def testLatencyInBackground(benchmarkSuite):
         if not BaseMicroserviceBenchmarkSuite.waitForPort(benchmarkSuite.servicePort()):
             mx.abort("Failed to find server application in {0}".format(BaseMicroserviceBenchmarkSuite.__name__))
-        benchmarkSuite.testLatency()
+        # TEMP (chaeubl)
+        # benchmarkSuite.testLatency()
         if not BaseMicroserviceBenchmarkSuite.terminateApplication(benchmarkSuite.servicePort()):
             mx.abort("Failed to terminate server application in {0}".format(BaseMicroserviceBenchmarkSuite.__name__))
 
@@ -725,6 +727,7 @@ class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
 
         actualThroughput = float(matches[0])
         if actualThroughput < expectedThroughput * 0.97 or actualThroughput > expectedThroughput * 1.03:
+            # TEMP (chaeubl)
             print("Warmup failed: expected requests/s: {:.2f}, actual requests/s: {:.2f}".format(expectedThroughput, actualThroughput))
             # mx.abort("Warmup failed: expected requests/s: {:.2f}, actual requests/s: {:.2f}".format(expectedThroughput, actualThroughput))
 
