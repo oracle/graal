@@ -181,7 +181,7 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
                                 // perform boolean coercion
                                 LogicNode cmp = IntegerEqualsNode.create(cachedValue, ConstantNode.forInt(0), NodeView.DEFAULT);
                                 ValueNode boolValue = ConditionalNode.create(cmp, ConstantNode.forBoolean(false), ConstantNode.forBoolean(true), NodeView.DEFAULT);
-                                effects.addFloatingNode(boolValue, "boolean coercion");
+                                effects.ensureFloatingAdded(boolValue);
                                 cachedValue = boolValue;
                             }
                             effects.replaceAtUsages(load, cachedValue, load);
