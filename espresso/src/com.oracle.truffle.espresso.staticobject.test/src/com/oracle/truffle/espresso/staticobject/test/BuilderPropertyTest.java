@@ -46,7 +46,7 @@ public class BuilderPropertyTest extends StaticObjectTest {
             Assert.fail();
         } catch (IllegalArgumentException e) {
             // You cannot add the same property twice
-            Assert.assertEquals("This builder already contains a property named 'property'", e.getMessage());
+            Assert.assertEquals("This builder already contains a property with id 'property'", e.getMessage());
         }
     }
 
@@ -61,7 +61,7 @@ public class BuilderPropertyTest extends StaticObjectTest {
             builder.property(p2);
             Assert.fail();
         } catch (IllegalArgumentException e) {
-            Assert.assertEquals("This builder already contains a property named 'property'", e.getMessage());
+            Assert.assertEquals("This builder already contains a property with id 'property'", e.getMessage());
         }
     }
 

@@ -90,6 +90,7 @@ public abstract class StaticShape<T> {
     }
 
     public static final class Builder {
+        private static final char[] FORBIDDEN_CHARS = new char[]{'.', ';', '[', '/'};
         private final HashMap<String, StaticProperty> staticProperties = new LinkedHashMap<>();
 
         Builder() {
@@ -97,10 +98,7 @@ public abstract class StaticShape<T> {
 
         public Builder property(StaticProperty property) {
             CompilerAsserts.neverPartOfCompilation();
-            Objects.requireNonNull(property);
-            if (staticProperties.containsKey(property.getId())) {
-                throw new IllegalArgumentException("This builder already contains a property named '" + property.getId() + "'");
-            }
+            validatePropertyId(property.getId());
             staticProperties.put(property.getId(), property);
             return this;
         }
@@ -119,7 +117,7 @@ public abstract class StaticShape<T> {
         }
 
         public <T> StaticShape<T> build(Class<?> superClass, Class<T> factoryInterface) {
-            validate(factoryInterface, superClass);
+            validateClasses(factoryInterface, superClass);
             ShapeGenerator<T> sg = ShapeGenerator.getShapeGenerator(superClass, factoryInterface);
             return build(sg, null);
         }
@@ -133,7 +131,22 @@ public abstract class StaticShape<T> {
             return shape;
         }
 
-        private static void validate(Class<?> storageFactoryInterface, Class<?> storageSuperClass) {
+        private void validatePropertyId(String id) {
+            Objects.requireNonNull(id);
+            if (id.length() == 0) {
+                throw new IllegalArgumentException("The property id cannot be an empty string");
+            }
+            for (char forbidden : FORBIDDEN_CHARS) {
+                if (id.indexOf(forbidden) != -1) {
+                    throw new IllegalArgumentException("Property id '" + id + "' contains a forbidden char: '" + forbidden + "'");
+                }
+            }
+            if (staticProperties.containsKey(id)) {
+                throw new IllegalArgumentException("This builder already contains a property with id '" + id + "'");
+            }
+        }
+
+        private static void validateClasses(Class<?> storageFactoryInterface, Class<?> storageSuperClass) {
             CompilerAsserts.neverPartOfCompilation();
             if (!storageFactoryInterface.isInterface()) {
                 throw new RuntimeException(storageFactoryInterface.getName() + " must be an interface.");
