@@ -260,15 +260,8 @@ class PetClinicWrkBenchmarkSuite(BasePetClinicBenchmarkSuite, mx_sdk_benchmark.B
     def benchmarkList(self, bmSuiteArgs):
         return ["mixed-tiny", "mixed-small", "mixed-medium", "mixed-large", "mixed-huge"]
 
-    def defaultWorkloadPath(self, benchmark):
-        return os.path.join(self.applicationDist(), "workloads", benchmark + ".wrk")
-
     def rules(self, out, benchmarks, bmSuiteArgs):
         return self.applicationStartupRule(self.benchSuiteName(), benchmarks[0]) + super(PetClinicWrkBenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
-
-    def getScriptPath(self, config):
-        return os.path.join(self.applicationDist(), "workloads", config["script"])
-
 
 mx_benchmark.add_bm_suite(PetClinicWrkBenchmarkSuite())
 
@@ -355,15 +348,8 @@ class TikaWrkBenchmarkSuite(BaseTikaBenchmarkSuite, mx_sdk_benchmark.BaseWrkBenc
     def benchmarkList(self, bmSuiteArgs):
         return ["odt-tiny", "odt-small", "odt-medium", "odt-large", "odt-huge", "pdf-tiny", "pdf-small", "pdf-medium", "pdf-large", "pdf-huge"]
 
-    def defaultWorkloadPath(self, benchmark):
-        return os.path.join(self.applicationDist(), "workloads", benchmark + ".wrk")
-
     def rules(self, out, benchmarks, bmSuiteArgs):
         return self.applicationStartupRule(self.benchSuiteName(), benchmarks[0]) + super(TikaWrkBenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
-
-    def getScriptPath(self, config):
-        return os.path.join(self.applicationDist(), "workloads", config["script"])
-
 
 mx_benchmark.add_bm_suite(TikaWrkBenchmarkSuite())
 
@@ -454,15 +440,8 @@ class ShopCartWrkBenchmarkSuite(BaseShopCartBenchmarkSuite, mx_sdk_benchmark.Bas
     def benchmarkList(self, bmSuiteArgs):
         return ["mixed-tiny", "mixed-small", "mixed-medium", "mixed-large", "mixed-huge"]
 
-    def defaultWorkloadPath(self, benchmark):
-        return os.path.join(self.applicationDist(), "workloads", benchmark + ".wrk")
-
     def rules(self, out, benchmarks, bmSuiteArgs):
         return self.applicationStartupRule(self.benchSuiteName(), benchmarks[0]) + super(ShopCartWrkBenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
-
-    def getScriptPath(self, config):
-        return os.path.join(self.applicationDist(), "workloads", config["script"])
-
 
 mx_benchmark.add_bm_suite(ShopCartWrkBenchmarkSuite())
 
