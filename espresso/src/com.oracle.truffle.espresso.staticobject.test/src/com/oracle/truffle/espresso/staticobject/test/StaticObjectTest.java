@@ -22,7 +22,11 @@
  */
 package com.oracle.truffle.espresso.staticobject.test;
 
+import com.oracle.truffle.espresso.staticobject.DefaultStaticProperty;
 import com.oracle.truffle.espresso.staticobject.StaticProperty;
+
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 
 class StaticObjectTest {
     static final boolean ARRAY_BASED = !Boolean.getBoolean("com.oracle.truffle.espresso.staticobject.FieldBasedStorage");
@@ -31,6 +35,16 @@ class StaticObjectTest {
         assert !ARRAY_BASED;
         // The format of generated field names with the field-based storage might change at any
         // time. Do not depend on it!
-        return property + "@" + System.identityHashCode(property);
+        if (property instanceof DefaultStaticProperty) {
+            return ((DefaultStaticProperty) property).getId();
+        } else {
+            try {
+                Method getId = StaticProperty.class.getDeclaredMethod("getId");
+                getId.setAccessible(true);
+                return (String) getId.invoke(property);
+            } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 }

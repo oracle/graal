@@ -89,7 +89,7 @@ abstract class ShapeGenerator<T> {
     }
 
     static String generateFieldName(StaticProperty property) {
-        return property.toString() + "@" + System.identityHashCode(property);
+        return property.getId();
     }
 
     static void addStorageFields(ClassVisitor cv, Collection<StaticProperty> staticProperties) {

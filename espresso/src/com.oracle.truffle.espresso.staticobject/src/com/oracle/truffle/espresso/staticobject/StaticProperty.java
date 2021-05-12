@@ -43,6 +43,8 @@ public abstract class StaticProperty {
         this.flags = (byte) (isFinal ? IS_FINAL | internalKind : internalKind);
     }
 
+    protected abstract String getId();
+
     public final boolean isFinal() {
         return (flags & IS_FINAL) == IS_FINAL;
     }

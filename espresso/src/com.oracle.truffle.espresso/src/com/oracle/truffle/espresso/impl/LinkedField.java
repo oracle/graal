@@ -43,6 +43,15 @@ final class LinkedField extends StaticProperty {
         return new LinkedField(new ParserField(ParserField.HIDDEN, name, Type.java_lang_Object, null), slot);
     }
 
+    /**
+     * This method is required by the Static Object Model. In Espresso we should rather call
+     * `getName()` and use Symbols.
+     */
+    @Override
+    protected String getId() {
+        return getName().toString();
+    }
+
     public Symbol<Name> getName() {
         return parserField.getName();
     }
@@ -77,11 +86,6 @@ final class LinkedField extends StaticProperty {
 
     public boolean isHidden() {
         return parserField.isHidden();
-    }
-
-    @Override
-    public String toString() {
-        return getName().toString();
     }
 
     ParserField getParserField() {
