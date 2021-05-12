@@ -25,7 +25,6 @@ package com.oracle.truffle.espresso.jdwp.api;
 import java.nio.file.Path;
 import java.util.List;
 
-import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.nodes.Node;
