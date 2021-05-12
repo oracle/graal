@@ -153,6 +153,23 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
     public void afterRegistration(AfterRegistrationAccess a) {
         ModuleSupport.exportAndOpenPackageToClass("java.base", "sun.security.x509", false, getClass());
         ModuleSupport.openModuleByClass(Security.class, getClass());
+        disableExperimentalFipsMode(a);
+    }
+
+    /**
+     * The SunJSSE provider had a experimental feature that bound to a FIPS crypto provider. This
+     * has been removed in JDK-8217835. We disabled explicitly here by calling SunJSSE.isFIPS(). If
+     * it was already enabled that's an error.
+     */
+    private static void disableExperimentalFipsMode(AfterRegistrationAccess a) {
+        if (JavaVersionUtil.JAVA_SPEC <= 11) {
+            try {
+                Boolean isFIPS = (Boolean) method(a, "sun.security.ssl.SunJSSE", "isFIPS").invoke(null);
+                VMError.guarantee(!isFIPS, "SunJSSE is already initialized in experimental FIPS mode.");
+            } catch (IllegalAccessException | InvocationTargetException e) {
+                VMError.shouldNotReachHere(e);
+            }
+        }
     }
 
     @Override
