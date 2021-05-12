@@ -171,7 +171,7 @@ def measureTimeToFirstResponse(bmSuite):
                 return
             else:
                 if receivedNon200Responses < 10:
-                    mx.log("Received a response but it had response code " + str(code) + " instead of 200")
+                    mx.log("Received a response but it had response code " + str(responseCode) + " instead of 200")
                 elif receivedNon200Responses == 10:
                     mx.log("No more response codes will be printed (already printed 10 response codes)")
                 receivedNon200Responses += 1
@@ -555,7 +555,7 @@ class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
             mx.abort(key + " not specified in Wrk configuration.")
 
     def isScalarValue(self, value):
-        return type(value) in (int, float, bool, str, unicode)
+        return type(value) in (int, float, bool, str, unicode) # pylint: disable=unidiomatic-typecheck
 
     def getScriptPath(self, config):
         return os.path.join(self.applicationDist(), "workloads", config["script"])
@@ -672,7 +672,7 @@ class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
     def computeAverage(self, results):
         count = len(results)
         if count < 1:
-            mx.abort("Expected at least one wrk2 result: " + str(matches))
+            mx.abort("Expected at least one wrk2 result: " + str(count))
         elif count == 1:
             return results[0]
 
