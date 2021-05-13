@@ -288,6 +288,7 @@ import com.oracle.truffle.espresso.classfile.constantpool.StringConstant;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -690,7 +691,10 @@ public final class BytecodeNode extends EspressoMethodNode {
                     statementIndex = nextStatementIndex;
                 }
                 if (instrument != null || Bytecodes.canTrap(curOpcode)) {
-                    // curOpcode can be == WIDE, but none of the WIDE-prefixed bytecodes throw exceptions.
+                    /*
+                     * curOpcode can be == WIDE, but none of the WIDE-prefixed bytecodes throw
+                     * exceptions.
+                     */
                     setBCI(frame, curBCI);
                 }
 
@@ -1135,12 +1139,22 @@ public final class BytecodeNode extends EspressoMethodNode {
                         continue loop;
                     }
                     // @formatter:off
-                    case IRETURN: return notifyReturn(frame, statementIndex, exitMethodAndReturn(popInt(primitives, top - 1)), loopCount[0]);
-                    case LRETURN: return notifyReturn(frame, statementIndex, exitMethodAndReturnObject(popLong(primitives, top - 1)), loopCount[0]);
-                    case FRETURN: return notifyReturn(frame, statementIndex, exitMethodAndReturnObject(popFloat(primitives, top - 1)), loopCount[0]);
-                    case DRETURN: return notifyReturn(frame, statementIndex, exitMethodAndReturnObject(popDouble(primitives, top - 1)), loopCount[0]);
-                    case ARETURN: return notifyReturn(frame, statementIndex, exitMethodAndReturnObject(popObject(refs, top - 1)), loopCount[0]);
-                    case RETURN : return notifyReturn(frame, statementIndex, exitMethodAndReturn(), loopCount[0]);
+
+                    case IRETURN: // fall through
+                    case LRETURN: // fall through
+                    case FRETURN: // fall through
+                    case DRETURN: // fall through
+                    case ARETURN: // fall through
+                    case RETURN : {
+                        if (loopCount[0] > 0) {
+                            LoopNode.reportLoopCount(this, loopCount[0]);
+                        }
+                        Object returnValue = getReturnValueAsObject(primitives, refs, top);
+                        if (instrument != null) {
+                            instrument.notifyReturn(frame, statementIndex, returnValue);
+                        }
+                        return returnValue;
+                    }
 
                     // TODO(peterssen): Order shuffled.
                     case GETSTATIC : // fall through
@@ -1391,6 +1405,26 @@ public final class BytecodeNode extends EspressoMethodNode {
         }
     }
 
+    private Object getReturnValueAsObject(long[] primitives, Object[] refs, int top) {
+        Symbol<Type> returnType = Signatures.returnType(getMethod().getParsedSignature());
+        // @formatter:off
+        switch (returnType.byteAt(0)) {
+            case 'Z' : return stackIntToBoolean(popInt(primitives, top - 1));
+            case 'B' : return (byte) popInt(primitives, top - 1);
+            case 'S' : return (short) popInt(primitives, top - 1);
+            case 'C' : return (char) popInt(primitives, top - 1);
+            case 'I' : return popInt(primitives, top - 1);
+            case 'J' : return popLong(primitives, top - 1);
+            case 'F' : return popFloat(primitives, top - 1);
+            case 'D' : return popDouble(primitives, top - 1);
+            case 'V' : return StaticObject.NULL; // void
+            default:
+                assert Types.isReference(returnType);
+                return popObject(refs, top - 1);
+        }
+        // @formatter:on
+    }
+
     @ExplodeLoop
     private static void clearOperandStack(long[] primitives, Object[] refs, int top) {
         for (int slot = top - 1; slot >= 0; --slot) {
@@ -1427,16 +1461,6 @@ public final class BytecodeNode extends EspressoMethodNode {
             CompilerDirectives.transferToInterpreter();
             throw EspressoError.shouldNotReachHere(e);
         }
-    }
-
-    private Object notifyReturn(VirtualFrame frame, int statementIndex, Object toReturn, int loopCount) {
-        if (loopCount > 0) {
-            LoopNode.reportLoopCount(this, loopCount);
-        }
-        if (instrumentation != null) {
-            instrumentation.notifyReturn(frame, statementIndex, toReturn);
-        }
-        return toReturn;
     }
 
     @Override
@@ -2116,33 +2140,8 @@ public final class BytecodeNode extends EspressoMethodNode {
 
     // region Method return
 
-    private Object exitMethodAndReturn(int result) {
-        // @formatter:off
-        switch (Signatures.returnKind(getMethod().getParsedSignature())) {
-            case Boolean :
-                // TODO: Use a node ?
-                return stackIntToBoolean(result);
-            case Byte    : return (byte) result;
-            case Short   : return (short) result;
-            case Char    : return (char) result;
-            case Int     : return result;
-            default      :
-                CompilerDirectives.transferToInterpreter();
-                throw EspressoError.shouldNotReachHere("unexpected kind");
-        }
-        // @formatter:on
-    }
-
     private boolean stackIntToBoolean(int result) {
         return getJavaVersion().java9OrLater() ? (result & 1) != 0 : result != 0;
-    }
-
-    private static Object exitMethodAndReturnObject(Object result) {
-        return result;
-    }
-
-    private static Object exitMethodAndReturn() {
-        return exitMethodAndReturnObject(StaticObject.NULL);
     }
 
     // endregion Method return
