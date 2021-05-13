@@ -647,7 +647,6 @@ public final class ClassRedefinition {
 
     private void doRedefineClass(ChangePacket packet, List<ObjectKlass> refreshSubClasses) {
         ObjectKlass oldKlass = packet.info.getKlass();
-        ClassRegistry classRegistry = context.getRegistries().getClassRegistry(packet.info.getClassLoader());
         if (packet.info.isRenamed()) {
             // renaming a class is done by
             // 1. Rename the 'name' and 'type' Symbols in the Klass
@@ -656,13 +655,12 @@ public final class ClassRedefinition {
             // 4. update the JDWP refType ID for the klass instance
             // 5. replace/record a classloader constraint for the new type and klass combination
 
-            Symbol<Symbol.Type> type = context.getTypes().fromName(packet.info.getName());
-            Klass loadedKlass = classRegistry.findLoadedKlass(type);
-            if (loadedKlass != null) {
-                context.getRegistries().removeUnloadedKlassConstraint(loadedKlass, type);
-            }
-            oldKlass.patchClassName(packet.info.getName());
-            classRegistry.onClassRenamed(oldKlass, packet.info.getName(), type);
+            Symbol<Symbol.Name> newName = packet.info.getName();
+            Symbol<Symbol.Type> newType = context.getTypes().fromName(newName);
+
+            oldKlass.patchClassName(newName, newType);
+            ClassRegistry classRegistry = context.getRegistries().getClassRegistry(packet.info.getClassLoader());
+            classRegistry.onClassRenamed(oldKlass);
 
             InterpreterToVM.setFieldObject(StaticObject.NULL, oldKlass.mirror(), context.getMeta().java_lang_Class_name);
         }
