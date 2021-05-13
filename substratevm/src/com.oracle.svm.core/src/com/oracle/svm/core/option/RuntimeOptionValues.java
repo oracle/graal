@@ -154,7 +154,7 @@ class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
         }
         OptionKey<T> optionKey = (OptionKey<T>) descriptor.getOptionKey();
         while (optionKey instanceof NestedBooleanOptionKey) {
-            optionKey = (OptionKey<T>) ((NestedBooleanOptionKey) optionKey).getMasterOption();
+            optionKey = (OptionKey<T>) ((NestedBooleanOptionKey) optionKey).getParentOption();
         }
         T defaultValue = optionKey.getDefaultValue();
         return new org.graalvm.options.OptionKey<>(defaultValue, type);
