@@ -1,12 +1,8 @@
 ---
 layout: docs
-title:  Installation on Windows
+toc_group: getting-started
 link_title:  Installation on Windows
 permalink: /docs/getting-started/windows/
-redirect_from:
-  - /docs/getting-started-with-graalvm/windows/
-  - /getting-started/windows/
-toc_group: getting-started
 ---
 
 # Installation on Windows Platforms

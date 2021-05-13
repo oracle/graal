@@ -1,7 +1,6 @@
 ---
 layout: page_content
-title: GraalVM Dashboard
+toc_group: tools
 link_title: GraalVM Dashboard
 permalink: /docs/tools/dashboard/
-toc_group: tools
 ---

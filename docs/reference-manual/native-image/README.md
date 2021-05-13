@@ -1,14 +1,8 @@
 ---
 layout: docs
 toc_group: native-image
-title: Native Image
 link_title: Native Image
 permalink: /reference-manual/native-image/
-redirect_from:
-  - /docs/reference-manual/aot-compilation/
-  - /docs/reference-manual/native-image/
-next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/native-image/Configuration/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/
 ---
 # Native Image
 
@@ -48,7 +42,7 @@ For more information, check the [Oracle Technology Network License Agreement for
 
 ## Install Native Image
 
-Native Image can be added to GraalVM with the [GraalVM Updater](https://www.graalvm.org/docs/reference-manual/gu/) tool.
+Native Image can be added to GraalVM with the [GraalVM Updater](https://www.graalvm.org/reference-manual/graalvm-updater/) tool.
 
 Run this command to install Native Image:
 ```shell
@@ -153,7 +147,7 @@ signal handlers when building a native image for containerized environments, lik
 Docker containers. The `--install-exit-handlers` option gives you the same
 signal handlers that a JVM does.
 
-For more complex examples, visit the [native image generation](https://www.graalvm.org/docs/examples/native-list-dir/) or [compiling a Java and Kotlin app ahead-of-time](https://www.graalvm.org/docs/examples/java-kotlin-aot/) pages.
+For more complex examples, visit the [native image generation](https://www.graalvm.org/examples/native-image-examples/) or [compiling a Java and Kotlin app ahead-of-time](https://www.graalvm.org/examples/java-kotlin-aot/) pages.
 
 ## Build a Shared Library
 

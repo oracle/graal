@@ -1,11 +1,8 @@
 ---
 layout: docs
-title: Debug Adapter Protocol
+toc_group: tools
 link_title: Debug Adapter Protocol
 permalink: /tools/dap/
-toc_group: tools
-next: /en/graalvm/enterprise/{{ site.version }}/docs/tools/graalvm-insight/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/tools/lsp/
 ---
 
 # Debug Adapter Protocol

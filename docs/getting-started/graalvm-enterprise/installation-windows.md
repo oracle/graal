@@ -1,7 +1,6 @@
 ---
 layout: ohc
 permalink: /getting-started/installation-windows/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/getting-started/
 ---
 
 # Installation on Windows Platforms
@@ -11,7 +10,7 @@ Follow these steps:
 
 1. Navigate to [Oracle GraalVM Downloads](https://www.oracle.com/downloads/graalvm-downloads.html). Depending on the workload, select **Oracle GraalVM Enterprise Edition based on JDK8 for Windows** or **Oracle GraalVM Enterprise Edition based on JDK11 for Windows**.
 2. Click on the **Oracle GraalVM Enterprise Edition Core** download link. Before you download a file, you must accept the [Oracle License Agreement](https://www.oracle.com/downloads/licenses/graalvm-otn-license.html) in the popup window.
-3. When the download button becomes active, press it to start downloading **graalvm-ee-java<version>-windows-amd64-<version.zip**.
+3. When the download button becomes active, press it to start downloading **graalvm-ee-java<version>-windows-amd64-<version>.zip**.
 4. Change the directory to the location where you want to install GraalVM Enterprise, then move the _.zip_ archive to it.
 5. Unzip the archive to your file system.
 6. There can be multiple JDKs installed on the machine. The next step is to configure the runtime environment. Setting environment variables via the command line will work the same way for Windows 7, 8 and 10.

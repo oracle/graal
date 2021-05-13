@@ -1,14 +1,8 @@
 ---
 layout: docs
 toc_group: truffle
-title: Dynamic Object Model
 link_title: Dynamic Object Model
 permalink: /graalvm-as-a-platform/language-implementation-framework/DynamicObjectModel/
-redirect_from:
-  - /graalvm-as-a-platform/truffle-framework/DynamicObjectModel/
-  - /docs/reference-manual/truffle-framework/DynamicObjectModel/
-next: /en/graalvm/enterprise/{{ site.version }}/docs/graalvm-as-a-platform/truffle-framework/Inlining/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/graalvm-as-a-platform/truffle-framework/BranchInstrumentation/
 ---
 # Dynamic Object Model
 

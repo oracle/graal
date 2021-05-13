@@ -1,11 +1,8 @@
 ---
 layout: docs
-title: Compiler
+toc_group: reference-manual
 link_title: Compiler
 permalink: /reference-manual/compiler/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/enterprise-native-image/
-next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/graalvm-updater/
-toc_group: reference-manual
 ---
 
 # GraalVM Compiler
@@ -30,7 +27,7 @@ The GraalVM compiler assures performance advantages for highly-abstracted progra
 Code using more abstraction and modern Java features like Streams or Lambdas will see greater speedups.
 Low-level code or code that converges to things like I/O, memory allocation, or garbage collection will see less improvement.
 Consequently, an application running on GraalVM needs to spend less time doing memory management and garbage collection.
-For more information on performance tuning, refer to [Compiler Configuration on JVM](/reference-manual/jvm/Options/).
+For more information on performance tuning, refer to [Compiler Configuration on JVM](/reference-manual/java/options/).
 
 ## Graph Compilation
 

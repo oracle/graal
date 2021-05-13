@@ -1,12 +1,8 @@
 ---
 layout: docs
 toc_group: native-image
-title: Java Native Interface (JNI) on Native Image
 link_title: Java Native Interface (JNI) on Native Image
 permalink: /reference-manual/native-image/JNI/
-redirect_from: /docs/reference-manual/native-image/JNI/
-next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/native-image/Reflection/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/native-image/DynamicProxy/
 ---
 # Java Native Interface (JNI) in Native Image
 

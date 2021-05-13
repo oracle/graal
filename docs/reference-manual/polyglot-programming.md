@@ -1,14 +1,8 @@
 ---
 layout: docs
-title: Polyglot Programming
+toc_group: reference-manual
 link_title: Polyglot Programming
 permalink: /reference-manual/polyglot-programming/
-redirect_from:
-  - /docs/reference-manual/polyglot/
-  - /docs/reference-manual/polyglot-programming/
-next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/languages/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/embed-languages/
-toc_group: reference-manual
 ---
 
 # Polyglot Programming

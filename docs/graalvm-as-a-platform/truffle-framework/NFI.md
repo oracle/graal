@@ -1,14 +1,8 @@
 ---
 layout: docs
 toc_group: truffle
-title: Truffle Native Function Interface
 link_title: Truffle Native Function Interface
 permalink: /graalvm-as-a-platform/language-implementation-framework/NFI/
-redirect_from:
-  - /graalvm-as-a-platform/truffle-framework/NFI/
-  - /docs/reference-manual/truffle-framework/NFI/
-next: /en/graalvm/enterprise/{{ site.version }}/docs/graalvm-as-a-platform/truffle-framework/Optimizing/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/graalvm-as-a-platform/truffle-framework/LanguageTutorial/
 ---
 # Truffle Native Function Interface
 

@@ -1,14 +1,8 @@
 ---
 layout: docs
 toc_group: truffle
-title: Optimizing Truffle Interpreters
 link_title: Optimizing Truffle Interpreters
 permalink: /graalvm-as-a-platform/language-implementation-framework/Optimizing/
-redirect_from:
-  - /graalvm-as-a-platform/truffle-framework/Optimizing/
-  - /docs/reference-manual/truffle-framework/Optimizing/
-next: /en/graalvm/enterprise/{{ site.version }}/docs/graalvm-as-a-platform/truffle-framework/Options/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/graalvm-as-a-platform/truffle-framework/NFI/
 ---
 # Optimizing Truffle Interpreters
 

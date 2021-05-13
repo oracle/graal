@@ -1,13 +1,8 @@
 ---
 layout: docs
-title: Debugging and Monitoring Tools
+toc_group: tools
 link_title: Debugging and Monitoring Tools
 permalink: /tools/
-redirect_from:
-  - /docs/graalvm-tools/
-  - /docs/tools//
-next: /en/graalvm/enterprise/{{ site.version }}/docs/tools/visualvm/
-toc_group: tools
 ---
 
 # GraalVM Debugging and Monitoring Tools

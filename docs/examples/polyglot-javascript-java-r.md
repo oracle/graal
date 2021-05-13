@@ -1,12 +1,8 @@
 ---
 layout: docs
-title: Polyglot Node.js Example
+toc_group: examples
 link_title: Polyglot Node.js Example
 permalink: /examples/polyglot-javascript-java-r/
-redirect_from: /docs/examples/polyglot-javascript-java-r/
-toc_group: examples
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/examples/java-simple-stream-benchmark/
-next: /en/graalvm/enterprise/{{ site.version }}/docs/examples/native-image-examples/
 ---
 
 # Polyglot JavaScript, Java, R Example Application

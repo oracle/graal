@@ -1,12 +1,8 @@
 ---
 layout: docs
-title:  Installation on macOS
+toc_group: getting-started
 link_title:  Installation on macOS
 permalink: /docs/getting-started/macos/
-redirect_from:
-  - /docs/getting-started-with-graalvm/macos/
-  - /getting-started/macos/
-toc_group: getting-started
 ---
 
 ## Installation on macOS Platforms

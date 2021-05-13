@@ -1,13 +1,9 @@
 ---
 layout: docs
-title: GraalVM Reference Manuals
+toc_group: reference-manual
 link_title: Reference Manuals
 permalink: /reference-manual/
-redirect_from:
-  - /docs/graalvm-reference/
-  - /docs/reference-manual/
-next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/compiler/
-toc_group: reference-manual
+redirect_from: /docs/reference-manual/
 ---
 
 # GraalVM Reference Manuals

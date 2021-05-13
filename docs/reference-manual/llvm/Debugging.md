@@ -1,12 +1,8 @@
 ---
 layout: docs
 toc_group: llvm
-title: GraalVM LLVM Runtime Debugging
 link_title: GraalVM LLVM Runtime Debugging
 permalink: /reference-manual/llvm/Debugging/
-redirect_from: /docs/reference-manual/llvm/Debugging/
-next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/llvm/Options/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/llvm/Interoperability/
 ---
 # Debugging on the GraalVM LLVM Runtime
 

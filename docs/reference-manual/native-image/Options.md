@@ -1,12 +1,8 @@
 ---
 layout: docs
 toc_group: native-image
-title: Native Image Options
 link_title: Native Image Options
 permalink: /reference-manual/native-image/Options/
-redirect_from: /docs/reference-manual/native-image/Options/
-next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/native-image/HostedvsRuntimeOptions/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/native-image/StaticImages/
 ---
 # Native Image Options
 
@@ -98,7 +94,7 @@ instantiation is traced for.
 * `--tool:lsp`: add the Language Server Protocol support to later attach compatible debuggers to GraalVM in IDEs like VS Code
 * `--tool:profiler`: add profiling support to a GraalVM supported language
 
-The `--language:python`, `--language:ruby` and `--language:R` polyglot macro options become available once the corresponding languages are added to the base GraalVM installation (see the [GraalVM Updater](https://www.graalvm.org/docs/reference-manual/gu/) guide).
+The `--language:python`, `--language:ruby` and `--language:R` polyglot macro options become available once the corresponding languages are added to the base GraalVM installation (see the [GraalVM Updater](https://www.graalvm.org/reference-manual/graalvm-updater/) guide).
 
 ### Non-standard Options
 * `--expert-options`: list image build options for experts

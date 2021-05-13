@@ -1,7 +1,6 @@
 ---
 layout: ohc
 permalink: /tools/igv/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/tools/profiling/
 ---
 
 # Ideal Graph Visualizer

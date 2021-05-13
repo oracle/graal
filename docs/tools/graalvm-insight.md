@@ -1,12 +1,8 @@
 ---
 layout: docs-experimental
-title: GraalVM Insight
+toc_group: tools
 link_title: GraalVM Insight
 permalink: /tools/graalvm-insight/
-redirect_from: /docs/tools/graalvm-insight/
-toc_group: tools
-next: /en/graalvm/enterprise/{{ site.version }}/docs/tools/code-coverage/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/tools/lsp/
 ---
 
 # GraalVM Insight

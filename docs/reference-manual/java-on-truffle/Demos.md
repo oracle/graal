@@ -1,11 +1,8 @@
 ---
 layout: docs-experimental
 toc_group: espresso
-title: Demo Applications
 link_title: Demo Applications
 permalink: /reference-manual/java-on-truffle/demos/
-next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/java-on-truffle/faq/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/java-on-truffle/implementation/
 ---
 
 # Running Demo Applications

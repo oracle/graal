@@ -1,7 +1,6 @@
 ---
 layout: ohc
 permalink: /getting-started/installation-linux/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/getting-started/
 ---
 
 # Installation on Linux Platforms

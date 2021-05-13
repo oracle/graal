@@ -1,12 +1,8 @@
 ---
 layout: docs
 toc_group: llvm
-title: Compiling Native Projects to LLVM Bitcode
 link_title: Compiling Native Projects to LLVM Bitcode
 permalink: /reference-manual/llvm/Compiling/
-redirect_from: /docs/reference-manual/llvm/Compiling/
-next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/llvm/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/llvm/NativeExecution/
 ---
 # Compiling to LLVM Bitcode
 

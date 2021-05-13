@@ -1,12 +1,8 @@
 ---
 layout: docs
-title: Languages References
+toc_group: reference-manual
 link_title: Languages References
 permalink: /reference-manual/languages/
-redirect_from: /reference-manual/languages-runtime/
-next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/java/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/polyglot-programming/
-toc_group: reference-manual
 ---
 
 # Languages References

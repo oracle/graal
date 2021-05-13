@@ -1,9 +1,8 @@
 ---
 layout: docs
-title:  Installation on Linux ARM64
-link_title:  Installation on Linux
-permalink: /docs/getting-started/linux-aarch64/
 toc_group: getting-started
+link_title:  Installation on Linux ARM64
+permalink: /docs/getting-started/linux-aarch64/
 ---
 
 # Installation on Linux ARM64 systems

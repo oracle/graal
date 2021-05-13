@@ -1,12 +1,8 @@
 ---
 layout: docs
 toc_group: native-image
-title: Logging on Native Image
 link_title: Logging on Native Image
 permalink: /reference-manual/native-image/Logging/
-redirect_from: /docs/reference-manual/native-image/Logging/
-next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/native-image/URLProtocols/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/native-image/Resources/
 ---
 # Logging in Native Image
 

@@ -1,12 +1,8 @@
 ---
 layout: docs
-title: Profiling Command Line Tools
+toc_group: tools
 link_title: Profiling Command Line Tools
 permalink: /tools/profiling/
-redirect_from: /docs/tools/profiling/
-toc_group: tools
-next: /en/graalvm/enterprise/{{ site.version }}/docs/tools/igv/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/tools/code-coverage/
 ---
 
 # Profiling Command Line Tools

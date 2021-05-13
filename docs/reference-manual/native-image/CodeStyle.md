@@ -1,12 +1,8 @@
 ---
 layout: docs
 toc_group: native-image
-title: Native Image Code Style
 link_title: Native Image Code Style
 permalink: /reference-manual/native-image/CodeStyle/
-redirect_from: /docs/reference-manual/native-image/CodeStyle/
-next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/native-image/Limitations/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/native-image/Configuration/
 ---
 # Native Image Code Style
 

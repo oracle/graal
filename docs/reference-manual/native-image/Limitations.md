@@ -1,12 +1,8 @@
 ---
 layout: docs
 toc_group: native-image
-title: Native Image Compatibility and Optimization Guide
 link_title: Native Image Compatibility and Optimization Guide
 permalink: /reference-manual/native-image/Limitations/
-redirect_from: /docs/reference-manual/native-image/Limitations/
-next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/native-image/ClassInitialization/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/native-image/Configuration/
 ---
 # Native Image Compatibility and Optimization Guide
 

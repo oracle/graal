@@ -1,14 +1,8 @@
 ---
 layout: docs
-title: Embed Languages with GraalVM Polyglot API
+toc_group: reference-manual
 link_title: Embedding Reference
 permalink: /reference-manual/embed-languages/
-redirect_from:
-  - /docs/reference-manual/embed/
-  - /docs/reference-manual/embed-languages/
-toc_group: reference-manual
-next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/polyglot-programming/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/graalvm-updater/
 ---
 
 # Embedding Languages

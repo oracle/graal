@@ -1,14 +1,10 @@
 ---
 layout: docs
-title: Micronaut Extension
+toc_group: vscode
 link_title: Micronaut Extension
 permalink: /tools/vscode/micronaut-extension/
-redirect_from:
-toc_group: vscode
-next: /en/graalvm/enterprise/{{ site.version }}/docs/tools/lsp/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/tools/graalvm-extension/
 ---
-# Micronaut Visual Studio Code Extension <!-- omit in toc -->
+# Micronaut Visual Studio Code Extension
 
 The Micronaut extension for Visual Studio Code (VS Code) provides the basic support for developing applications based on the [Micronaut Framework](https://micronaut.io/).
 The extension is Technology Preview.

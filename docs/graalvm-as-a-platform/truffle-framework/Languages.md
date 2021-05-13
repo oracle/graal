@@ -1,12 +1,8 @@
 ---
 layout: docs
 toc_group: truffle
-title: Language Implementations
 link_title: Language Implementations
 permalink: /graalvm-as-a-platform/language-implementation-framework/Languages/
-redirect_from:
-  - /docs/reference-manual/truffle-framework/Languages/
-  - /graalvm-as-a-platform/truffle-framework/Languages/
 ---
 # Language Implementations
 

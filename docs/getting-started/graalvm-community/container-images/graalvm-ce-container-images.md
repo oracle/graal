@@ -1,10 +1,8 @@
 ---
 layout: docs
-title: Container Images
+toc_group: container-images
 link_title: Container Images
 permalink: /docs/getting-started/container-images/
-redirect_from: /docs/getting-started/#graalvm-community-container-images/
-toc_group: container-images
 ---
 
 ## GraalVM Community Images

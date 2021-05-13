@@ -1,10 +1,8 @@
 ---
 layout: docs
-title: Guides
+toc_group: getting-started
 link_title: Guides
 permalink: /guides/
-toc_group: getting-started
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/examples/java-kotlin-aot/
 ---
 
 Here you will find information about how to:
@@ -23,9 +21,10 @@ At runtime, an application is loaded and executed normally by the JVM.
 In order to follow the steps in this guide, you must have GraalVM installed.
 In case you do not have it installed, getting GraalVM  downloaded and ready-to-go should only take a few minutes.
 Choose your operating system and proceed to the installation steps:
-- [Linux](/docs/getting-started-with-graalvm/linux/)
-- [macOS](/docs/getting-started-with-graalvm/macos/)
-- [Windows](/docs/getting-started-with-graalvm/windows/)
+- [Linux](/docs/getting-started/linux/)
+- [Linux AArch64](/docs/getting-started/linux-aarch64/)
+- [macOS](/docs/getting-started/macos/)
+- [Windows](/docs/getting-started/windows/)
 
 For the purpose of this guide, GraalVM Enterprise based on Java 11 distribution for macOS platform is used.
 To ensure you have successfully installed GraalVM, verify it is available in the `PATH` environment variable and the `JAVA_HOME` points to it.

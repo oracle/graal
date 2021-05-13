@@ -1,10 +1,8 @@
 ---
 layout: docs
-title: Getting Started with GraalVM
+toc_group: getting-started
 link_title: Getting Started
 permalink: /docs/getting-started/
-redirect_from: /docs/getting-started-with-graalvm/
-toc_group: getting-started
 ---
 
 # Get Started with GraalVM
@@ -24,10 +22,10 @@ If you have GraalVM already installed and have experience using it, you can skip
 
 Getting GraalVM installed and ready-to-go should take a few minutes.
 Choose the operating system and proceed to the installation steps:
-* [Linux](/docs/getting-started-with-graalvm/linux/)
+* [Linux](/docs/getting-started/linux/)
 * [Linux AArch64](/docs/getting-started/linux-aarch64/)
-* [macOS](/docs/getting-started-with-graalvm/macos/)
-* [Windows](/docs/getting-started-with-graalvm/windows/)
+* [macOS](/docs/getting-started/macos/)
+* [Windows](/docs/getting-started/windows/)
 
 ## Start Running Applications
 
@@ -76,7 +74,7 @@ java HelloWorld
 Hello World!
 ```
 
-You can find a collection of larger Java examples on the [Examples Applications](/docs/examples/) page.
+You can find a collection of larger Java examples on the [Examples Applications](/examples/) page.
 For more information on the GraalVM
 compiler, go to [Compiler](/reference-manual/compiler/).
 For more extensive documentation on running Java, proceed to [JVM Languages](/reference-manual/java/).
@@ -386,14 +384,14 @@ sys	0m0.016s
 ## What to Read Next
 
 ### New Users
-Since this guide is intended mainly for users new to GraalVM, or users who are familiar with GraalVM but may have little experience using it, please consider investigating more complex [Example Applications](/docs/examples/).
+Since this guide is intended mainly for users new to GraalVM, or users who are familiar with GraalVM but may have little experience using it, please consider investigating more complex [Example Applications](/examples/).
 We also recommend checking our [GraalVM Team Blog](/blog/).
 
 ### Advanced Users
-If you are mostly interested in GraalVM support for a specific language, or want more in-depth details about GraalVM's diverse technologies, proceed to [Reference Manuals](/docs/reference-manual/).
+If you are mostly interested in GraalVM support for a specific language, or want more in-depth details about GraalVM's diverse technologies, proceed to [Reference Manuals](/reference-manual/).
 
-If you are looking for the tooling support GraalVM offers, proceed to [Debugging and Monitoring Tools](/docs/tools/).
+If you are looking for the tooling support GraalVM offers, proceed to [Debugging and Monitoring Tools](/tools/).
 
-If you are considering GraalVM as a platform for your future language or tool implementation, go to [GraalVM as a Platform](/docs/graalvm-as-a-platform/).
+If you are considering GraalVM as a platform for your future language or tool implementation, go to [GraalVM as a Platform](/graalvm-as-a-platform/language-implementation-framework/).
 
-You can find information on GraalVM's security model in the [Security Guide](/docs/security-guide/), and rich API documentation in [GraalVM SDK Javadoc](https://www.graalvm.org/sdk/javadoc/) and [Truffle Javadoc](https://www.graalvm.org/truffle/javadoc/).
+You can find information on GraalVM's security model in the [Security Guide](/security-guide/), and rich API documentation in [GraalVM SDK Javadoc](https://www.graalvm.org/sdk/javadoc/) and [Truffle Javadoc](https://www.graalvm.org/truffle/javadoc/).

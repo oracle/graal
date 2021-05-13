@@ -1,7 +1,6 @@
 ---
 layout: ohc
 permalink: /getting-started/installation-linux-aarch64/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/getting-started/
 ---
 
 # Installation on Linux ARM64 systems

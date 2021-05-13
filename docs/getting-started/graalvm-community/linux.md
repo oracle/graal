@@ -1,12 +1,8 @@
 ---
 layout: docs
-title:  Installation on Linux
+toc_group: getting-started
 link_title:  Installation on Linux
 permalink: /docs/getting-started/linux/
-redirect_from:
-  - /docs/getting-started-with-graalvm/linux/
-  - /getting-started/linux/
-toc_group: getting-started
 ---
 
 ## Installation on Linux Platforms

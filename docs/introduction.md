@@ -1,9 +1,8 @@
 ---
 layout: docs
+toc_group: docs
 title: GraalVM Documentation
 permalink: /docs/introduction/
-redirect_from: /docs/
-toc_group: docs
 show_complete_toc: true
 ---
 
@@ -132,9 +131,9 @@ The following table lists production-ready and experimental features in GraalVM 
 
 Whether you are new to GraalVM or have little experience using it, continue to [Get Started with GraalVM](/docs/getting-started/).
 Install GraalVM on your local machine, try running the examples provided in the guide, or test GraalVM with your workload.
-After that we suggest you to look at more complex [Examples Applications](/docs/examples/).
+After that we suggest you to look at more complex [Examples Applications](/examples/).
 
-Developers who have GraalVM already installed or have experience using, can skip the getting started guide and proceed to the [Reference Manuals](/docs/reference-manual/) for in-depth coverage of GraalVM technologies.
+Developers who have GraalVM already installed or have experience using, can skip the getting started guide and proceed to the [Reference Manuals](/reference-manual/) for in-depth coverage of GraalVM technologies.
 
 To start coding with the GraalVM Polyglot APIs, check out the [GraalVM SDK Java API Reference](http://www.graalvm.org/sdk/javadoc).
 

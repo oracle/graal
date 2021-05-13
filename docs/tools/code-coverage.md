@@ -1,12 +1,8 @@
 ---
 layout: docs
-title: Code Coverage
+toc_group: tools
 link_title: Code Coverage
 permalink: /tools/code-coverage/
-redirect_from: /docs/tools/code-coverage/
-toc_group: tools
-next: /en/graalvm/enterprise/{{ site.version }}/docs/tools/profiling/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/tools/graalvm-insight/
 ---
 
 # Code Coverage Command Line Tool

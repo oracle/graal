@@ -1,13 +1,8 @@
 ---
 layout: docs
 toc_group: java
-title: JVM Operations Manual
 link_title: JVM Operations Manual
 permalink: /reference-manual/java/operations/
-redirect_from:
-  - /reference-manual/jvm/Operations/
-  - /docs/reference-manual/jvm/Operations/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/java/options/
 ---
 
 # JVM Operations Manual

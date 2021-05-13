@@ -1,8 +1,6 @@
 ---
 layout: ohc
 permalink: /getting-started/
-next: /en/graalvm/enterprise/{{ site.version }}/docs/examples/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/overview/solutions/
 ---
 
 # Get Started with Oracle GraalVM Enterprise Edition
@@ -10,7 +8,7 @@ previous: /en/graalvm/enterprise/{{ site.version }}/docs/overview/solutions/
 Here you will find information about downloading and installing GraalVM Enterprise, running basic applications with it, and adding support for its accompanying features.
 Further, you will learn about the polyglot capabilities of GraalVM Enterprise and see how to build platform-specific native executables of JVM-based applications.
 
-If you are new to GraalVM Enterprise or have little experience using it, we recommend starting with the [GraalVM Enterprise Overview](/en/graalvm/enterprise/{{ site.version }}/docs/overview/technical-architecture/) page.
+If you are new to GraalVM Enterprise or have little experience using it, we recommend starting with the [GraalVM Enterprise Overview](/en/graalvm/enterprise/{{ site.version }}/docs/overview/architecture/) page.
 There you will find information about GraalVM Enterprise's architecture, the distributions available, supported platforms, licensing and support, core and additional features, and much more.
 
 If you have GraalVM Enterprise already installed and have experience using it, you can skip this getting started guide and proceed to the in-depth [Reference Manuals](/en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/).
@@ -81,7 +79,7 @@ java HelloWorld
 Hello World!
 ```
 
-You can find a collection of larger Java examples on the [Examples Applications](/en/graalvm/enterprise/{{ site.version }}/docs/docs/examples/) page.
+You can find a collection of larger Java examples on the [Examples Applications](/en/graalvm/enterprise/{{ site.version }}/docs/examples/) page.
 For more information on the GraalVM compiler, go to [Compiler](/en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/compiler/).
 For more extensive documentation on running Java, proceed to [JVM Languages](/en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/java/).
 

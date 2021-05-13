@@ -1,12 +1,8 @@
 ---
 layout: docs
-title: Chrome Debugger
+toc_group: tools
 link_title: Chrome Debugger
 permalink: /tools/chrome-debugger/
-redirect_from: /docs/tools/chrome-debugger/
-toc_group: tools
-next: /en/graalvm/enterprise/{{ site.version }}/docs/tools/vscode-extension/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/tools/visualvm/
 ---
 
 # Chrome Debugger

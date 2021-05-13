@@ -1,11 +1,8 @@
 ---
 layout: docs
 toc_group: truffle
-title: Auxiliary Engine Caching
 link_title: Auxiliary Engine Caching
 permalink: /graalvm-as-a-platform/language-implementation-framework/AuxiliaryEngineCachingEnterprise/
-next: /graalvm-as-a-platform/language-implementation-framework/Safepoint/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/graalvm-as-a-platform/language-implementation-framework/AOT/
 ---
 # Auxiliary Engine Caching
 

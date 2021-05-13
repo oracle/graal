@@ -1,13 +1,8 @@
 ---
 layout: docs
 toc_group: truffle
-title: Reporting Polymorphic Specializations to Runtime
 link_title: Reporting Polymorphic Specializations to Runtime
 permalink: /graalvm-as-a-platform/language-implementation-framework/splitting/ReportingPolymorphism/
-redirect_from:
-  - /graalvm-as-a-platform/truffle-framework/splitting/ReportingPolymorphism/
-  - /docs/reference-manual/truffle-framework/splitting/ReportingPolymorphism/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/graalvm-as-a-platform/truffle-framework/MonomorphizationUseCases/
 ---
 # Reporting Polymorphic Specializations to Runtime
 

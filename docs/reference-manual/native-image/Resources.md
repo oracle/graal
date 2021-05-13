@@ -1,12 +1,8 @@
 ---
 layout: docs
 toc_group: native-image
-title: Accessing Resources in Native Images
 link_title: Accessing Resources in Native Images
 permalink: /reference-manual/native-image/Resources/
-redirect_from: /docs/reference-manual/native-image/Resources/
-next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/native-image/Logging/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/native-image/Reflection/
 ---
 # Accessing Resources in Native Images
 

@@ -1,11 +1,8 @@
 ---
 layout: docs-experimental
 toc_group: espresso
-title: Java on Truffle
 link_title: Java on Truffle
 permalink: /reference-manual/java-on-truffle/
-next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/java-on-truffle/interoperability/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/java/
 ---
 
 # Java on Truffle

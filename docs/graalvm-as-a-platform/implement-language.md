@@ -1,11 +1,9 @@
 ---
 layout: docs
-title: Implement Your Language with GraalVM
 link_title: Implement Your Language
 permalink: /graalvm-as-a-platform/implement-language/
 redirect_from: /docs/graalvm-as-a-platform/implement-language/
 toc_group: graalvm-as-a-platform
-next: /en/graalvm/enterprise/{{ site.version }}/docs/graalvm-as-a-platform/implement-instrument/
 ---
 
 # Introduction to SimpleLanguage

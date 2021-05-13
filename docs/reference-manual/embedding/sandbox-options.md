@@ -9,7 +9,7 @@ Polyglot options can be provided through the language launcher, using the polygl
 For better understanding of the examples it is recommended to read the [polyglot embedding guide](/reference-manual/embed-languages/) of the reference manual first.
 
 Currently all sandbox options are experimental therefore in these examples it is assumed that experimental options are enabled (e.g. with `--experimental-options`).
-The options are a best effort approach to limiting resource usage of guest applications. 
+The options are a best effort approach to limiting resource usage of guest applications.
 
 The resource limits may be configured using the following options:
 
@@ -36,23 +36,23 @@ A guest language might choose to create an inner context within the outer execut
 ## Limiting the active CPU time
 
 The `sandbox.MaxCPUTime` option allows you to specify the maximum CPU time spent running the application.
-The maximum [CPU time](https://docs.oracle.com/en/java/javase/11/docs/api/java.management/java/lang/management/ThreadMXBean.html#getThreadCpuTime\(long\)) specifies how long a context can be active until it is automatically cancelled and the context is closed. 
-By default the time limit is checked every 10 milliseconds. 
+The maximum [CPU time](https://docs.oracle.com/en/java/javase/11/docs/api/java.management/java/lang/management/ThreadMXBean.html#getThreadCpuTime\(long\)) specifies how long a context can be active until it is automatically cancelled and the context is closed.
+By default the time limit is checked every 10 milliseconds.
 This can be customized using the `sandbox.MaxCPUTimeCheckInterval` option.
-Both maximum CPU time limit and check interval must be positive. 
+Both maximum CPU time limit and check interval must be positive.
 By default no CPU time limit is enforced.
 If the time limit is exceeded then the polyglot context is cancelled and the execution stops by throwing a [`PolyglotException`](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/PolyglotException.html) which returns `true` for `isResourceExhausted()`.
 As soon as the time limit is triggered, no further application code can be executed with this context.
-It will continuously throw a `PolyglotException` for any method of the polyglot context that will be invoked. 
+It will continuously throw a `PolyglotException` for any method of the polyglot context that will be invoked.
 
-The used CPU time of a context typically does not include time spent waiting for synchronization or IO. 
-The CPU time of all threads will be added and checked against the CPU time limit. 
+The used CPU time of a context typically does not include time spent waiting for synchronization or IO.
+The CPU time of all threads will be added and checked against the CPU time limit.
 This can mean that if two threads execute the same context then the time limit will be exceeded twice as fast.
 
-The time limit is enforced by a separate high-priority thread that will be woken regularly. 
-There is no guarantee that the context will be cancelled within the accuracy specified. 
-The accuracy may be significantly missed, e.g. if the host VM causes a full garbage collection. 
-If the time limit is never exceeded then the throughput of the guest context is not affected. 
+The time limit is enforced by a separate high-priority thread that will be woken regularly.
+There is no guarantee that the context will be cancelled within the accuracy specified.
+The accuracy may be significantly missed, e.g. if the host VM causes a full garbage collection.
+If the time limit is never exceeded then the throughput of the guest context is not affected.
 If the time limit is exceeded for one context then it may slow down the throughput for other contexts with the same explicit engine temporarily.
 
 Available units to specify time durations are `ms` for milliseconds, `s` for seconds, `m` for minutes, `h` for hours and `d` for days.
@@ -81,23 +81,23 @@ try (Context context = Context.newBuilder("js")
 
 ## Limiting the number of executed statements
 
-Specifies the maximum number of statements a context may execute until the the context will be cancelled. 
-After the statement limit was triggered for a context, it is no longer usable and every use of the context will throw a `PolyglotException` that returns `true` for `PolyglotException.isCancelled()`. 
-The statement limit is independent of the number of threads executing and is applied per context. 
+Specifies the maximum number of statements a context may execute until the the context will be cancelled.
+After the statement limit was triggered for a context, it is no longer usable and every use of the context will throw a `PolyglotException` that returns `true` for `PolyglotException.isCancelled()`.
+The statement limit is independent of the number of threads executing and is applied per context.
 It is also possible to specify this limit using the [ResourceLimits]() API of the polyglot embedding API.
 
-By default there is no statement limit applied. The limit may be set to a negative number to disable it. 
+By default there is no statement limit applied. The limit may be set to a negative number to disable it.
 Whether this limit is applied internal sources only can be configured using `sandbox.MaxStatementsIncludeInternal`.
-By default the limit does not include statements of sources that are marked internal. 
-If a shared engine is used then the same internal configuration must be used for all contexts of an engine. 
+By default the limit does not include statements of sources that are marked internal.
+If a shared engine is used then the same internal configuration must be used for all contexts of an engine.
 The maximum statement limit can be configured for each context of an engine separately.
 
-Attaching a statement limit to a context reduces the throughput of all guest applications with the same engine. 
-The statement counter needs to be updated with every statement that is executed. 
+Attaching a statement limit to a context reduces the throughput of all guest applications with the same engine.
+The statement counter needs to be updated with every statement that is executed.
 It is recommended to benchmark the use of the statement limit before it is used in production.
 
-The complexity of a single statement may not be constant time depending on the guest language. 
-For example, statements that execute JavaScript builtins, like `Array.sort`, may account for a single statement, but its execution time is dependent on the size of the array. 
+The complexity of a single statement may not be constant time depending on the guest language.
+For example, statements that execute JavaScript builtins, like `Array.sort`, may account for a single statement, but its execution time is dependent on the size of the array.
 The statement count limit is therefore not suitable to perform time boxing and must be combined with other more reliable measures like the CPU time limit.
 
 
@@ -151,7 +151,7 @@ Resetting resource limits does not affect thread limits.
 
 The `sandbox.MaxHeapMemory` option allows you to specify the maximum heap memory the application is allowed to retain during its run.
 `sandbox.MaxHeapMemory` must be positive. This option is only supported on a HotSpot-based VM. Enabling this option in AOT mode will result in PolyglotException.
-When exceeding of the limit is detected, the corresponding context is automatically cancelled and then closed. 
+When exceeding of the limit is detected, the corresponding context is automatically cancelled and then closed.
 
 The efficacy of this option (also) depends on the garbage collector used.
 
@@ -252,4 +252,3 @@ try (Context context = Context.newBuilder("js")
     }
 }
 ```
-

@@ -1,14 +1,8 @@
 ---
 layout: docs
-toc_group: truffle
-title: Implementing a New Language with Truffle
+toc_group: truffles
 link_title: Implementing a New Language with Truffle
 permalink: /graalvm-as-a-platform/language-implementation-framework/LanguageTutorial/
-redirect_from:
-  - /graalvm-as-a-platform/truffle-framework/LanguageTutorial/
-  - /docs/reference-manual/truffle-framework/LanguageTutorial/
-next: /en/graalvm/enterprise/{{ site.version }}/docs/graalvm-as-a-platform/truffle-framework/NFI/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/graalvm-as-a-platform/truffle-framework/InteropMigration/
 ---
 # Implementing a New Language with Truffle
 
@@ -25,5 +19,5 @@ Conference on Programming Language Design and Implementation [PLDI 2016](http://
 Next Steps:
 * Start to subclass [TruffleLanguage](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html) for your own language implementation.
 * Fork [SimpleLanguage](https://github.com/graalvm/simplelanguage), a toy language that demonstrates how to use many Truffle features.
-* Embed Truffle languages in Java host applications using the [Polyglot API](http://www.graalvm.org/docs/reference-manual/embed-languages/).
+* Embed Truffle languages in Java host applications using the [Polyglot API](https://graalvm.org/reference-manual/embed-languages/).
 * Read [GraalVM/Truffle publications](https://github.com/oracle/graal/blob/master/docs/Publications.md).

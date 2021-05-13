@@ -1,11 +1,8 @@
 ---
 layout: docs-experimental
 toc_group: espresso
-title: Interoperability with Truffle Languages
 link_title: Interoperability with Truffle Languages
 permalink: /reference-manual/java-on-truffle/interoperability/
-next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/java-on-truffle/implementation/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/java-on-truffle/
 ---
 
 # Interoperability with Truffle Languages

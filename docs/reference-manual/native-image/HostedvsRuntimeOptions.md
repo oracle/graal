@@ -1,12 +1,8 @@
 ---
 layout: docs
 toc_group: native-image
-title: Native Image Hosted and Runtime Options
 link_title: Native Image Hosted and Runtime Options
 permalink: /reference-manual/native-image/HostedvsRuntimeOptions/
-redirect_from: /docs/reference-manual/native-image/HostedvsRuntimeOptions/
-next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/native-image/C-API/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/native-image/Options/
 ---
 # Native Image Hosted and Runtime Options
 

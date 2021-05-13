@@ -1,8 +1,6 @@
 ---
 layout: ohc
 permalink: /overview/
-next: /en/graalvm/enterprise/{{ site.version }}/docs/overview/architecture/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/
 ---
 
 # Oracle GraalVM Enterprise Edition

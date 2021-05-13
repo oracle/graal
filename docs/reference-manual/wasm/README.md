@@ -1,11 +1,8 @@
 ---
 layout: docs-experimental
-title: GraalVM Wasm Reference
+toc_group: wasm
 link_title: WebAssembly Reference
 permalink: /reference-manual/wasm/
-redirect_from: /docs/reference-manual/languages/wasm/
-toc_group: wasm
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/ruby/
 ---
 
 # GraalVM Implementation of WebAssembly
@@ -21,7 +18,7 @@ The support is not available by default, but you can add it to GraalVM using the
 gu install wasm
 ```
 The above command will install a community version of a component from the GitHub catalog.
-For GraalVM Enterprise users, the [manual component installation](https://www.graalvm.org/docs/reference-manual/gu/#component-installation) is required.
+For GraalVM Enterprise users, the [manual component installation](/reference-manual/graalvm-updater/#component-installation) is required.
 
 Then `wasm` launcher, which can run compiled WebAssembly binary code, becomes available.
 
@@ -78,4 +75,4 @@ Value mainFunction = context.getBindings("wasm").getMember("main").getMember("_s
 mainFunction.execute();
 ```
 
-For more polyglot examples, visit the [Polyglot Programming](/docs/reference-manual/polyglot-programming/) page.
+For more polyglot examples, visit the [Polyglot Programming](/reference-manual/polyglot-programming/) page.

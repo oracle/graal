@@ -1,12 +1,8 @@
 ---
 layout: docs
 toc_group: llvm
-title: Interoperability
 link_title: Interoperability
 permalink: /reference-manual/llvm/Interoperability/
-redirect_from: /docs/reference-manual/llvm/Interoperability/
-next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/llvm/Debugging/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/llvm/NativeExecution/
 ---
 # Interoperability
 
@@ -109,7 +105,7 @@ Point<17.000000,42.000000>
 ## Polyglot C API
 
 There are also lower level API functions for directly accessing polyglot values
-from C. See the [Polyglot Programming](https://graalvm.org/docs/reference-manual/polyglot-programming/) reference
+from C. See the [Polyglot Programming](https://graalvm.org/reference-manual/polyglot-programming/) reference
 and the comments in `polyglot.h` for more details.
 
 For example, this program allocates and accesses a Java array from C:
@@ -167,5 +163,5 @@ java Polyglot
 24
 ```
 
-See the [Embedding Languages](https://graalvm.org/docs/reference-manual/embed-languages/) reference for
+See the [Embedding Languages](https://graalvm.org/reference-manual/embed-languages/) reference for
 more information.

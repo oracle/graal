@@ -1,12 +1,8 @@
 ---
 layout: docs
 toc_group: native-image
-title: Native Image C API
 link_title: Native Image C API
 permalink: /reference-manual/native-image/C-API/
-redirect_from: /docs/reference-manual/native-image/C-API/
-next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/native-image/ImplementingNativeMethodsInJavaWithSVM/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/native-image/HostedvsRuntimeOptions/
 ---
 #  Native Image C API
 

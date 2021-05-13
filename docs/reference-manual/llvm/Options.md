@@ -1,12 +1,8 @@
 ---
 layout: docs
 toc_group: llvm
-title: LLI Command Options
 link_title: LLI Command Options
 permalink: /reference-manual/llvm/Options/
-redirect_from: /docs/reference-manual/llvm/Options/
-next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/llvm/Compatibility/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/llvm/Debugging/
 ---
 # LLI Command Options
 

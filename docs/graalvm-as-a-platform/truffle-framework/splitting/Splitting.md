@@ -1,14 +1,8 @@
 ---
 layout: docs
 toc_group: truffle
-title: Splitting Algorithm
 link_title: Splitting Algorithm
 permalink: /graalvm-as-a-platform/language-implementation-framework/splitting/Splitting/
-redirect_from:
-  - /graalvm-as-a-platform/truffle-framework/splitting/Splitting/
-  - /docs/reference-manual/truffle-framework/splitting/Splitting/
-next: /en/graalvm/enterprise/{{ site.version }}/docs/graalvm-as-a-platform/truffle-framework/MonomorphizationUseCases/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/graalvm-as-a-platform/truffle-framework/Monomorphization/
 ---
 # Splitting Algorithm
 

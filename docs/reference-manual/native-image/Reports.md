@@ -1,12 +1,8 @@
 ---
 layout: docs
 toc_group: native-image
-title: Points-to Analysis Reports
 link_title: Points-to Analysis Reports
 permalink: /reference-manual/native-image/Reports/
-redirect_from: /docs/reference-manual/native-image/Reports/
-next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/native-image/Properties/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/native-image/DebugInfo/
 ---
 # Points-to Analysis Reports
 

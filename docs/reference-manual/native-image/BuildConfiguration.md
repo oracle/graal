@@ -1,14 +1,8 @@
 ---
 layout: docs
 toc_group: native-image
-title: Build Configuration
 link_title: Build Configuration
 permalink: /reference-manual/native-image/BuildConfiguration/
-redirect_from:
-  - /docs/reference-manual/native-image/Configuration/
-  - /reference-manual/native-image/Configuration/
-next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/native-image/Limitations/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/native-image/
 ---
 # Native Image Build Configuration
 

@@ -1,9 +1,6 @@
 ---
 layout: ohc
 permalink: /overview/architecture/
-redirect_from: /overview/technical-architecture/
-next: /en/graalvm/enterprise/{{ site.version }}/docs/getting-started/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/overview/solutions/
 ---
 
 # Oracle GraalVM Enterprise Edition Architecture Overview
@@ -106,7 +103,7 @@ Tools/Utilities:
 
 * [Native Image](/en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/enterprise-native-image/) -- a technology to compile an application ahead-of-time into a native platform executable.
 * [LLVM toolchain](/en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/llvm/) --  a set of tools and APIs for compiling native programs to bitcode that can be executed on GraalVM.
-* [Java on Truffle](/en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/java-on-truffle/) -- a JVM implementation built upon the [Truffle framework](/21/docs/graalvm-as-a-platform/language-implementation-framework/) to run Java via a Java bytecode interpreter.
+* [Java on Truffle](/en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/java-on-truffle/) -- a JVM implementation built upon the [Truffle framework](/en/graalvm/enterprise/{{ site.version }}/docs/graalvm-as-a-platform/language-implementation-framework/) to run Java via a Java bytecode interpreter.
 
 Runtimes:
 

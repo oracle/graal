@@ -1,14 +1,8 @@
 ---
 layout: docs
-title: GraalVM Updater
+toc_group: reference-manual
 link_title: GraalVM Updater
 permalink: /reference-manual/graalvm-updater/
-redirect_from:
-  - /docs/reference-manual/gu/
-  - /docs/reference-manual/graal-updater/
-next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/embed-languages/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/compiler/
-toc_group: reference-manual
 ---
 
 # GraalVM Updater

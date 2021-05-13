@@ -1,10 +1,8 @@
 ---
 layout: docs
-title: Oracle Database Example
+toc_group: examples
 link_title: Oracle Database Example
 permalink: /examples/mle-oracle/
-redirect_from: /docs/examples/mle-oracle/
-toc_group: examples
 ---
 
 # Oracle Database Multilingual Engine (MLE) Based on JavaScript module

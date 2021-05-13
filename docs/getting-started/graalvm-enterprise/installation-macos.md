@@ -1,7 +1,6 @@
 ---
 layout: ohc
 permalink: /getting-started/installation-macos/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/getting-started/
 ---
 
 # Installation on macOS Platforms

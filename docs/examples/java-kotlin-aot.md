@@ -1,12 +1,8 @@
 ---
 layout: docs
-title: Java/Kotlin Native Image Example
+toc_group: examples
 link_title: Java/Kotlin Native Image Example
 permalink: /examples/java-kotlin-aot/
-redirect_from: /docs/examples/java-kotlin-aot/
-toc_group: examples
-previous:  /en/graalvm/enterprise/{{ site.version }}/docs/examples/native-image-examples/
-next: /en/graalvm/enterprise/{{ site.version }}/docs/guides/
 ---
 
 # Build a Native Image of a Java and Kotlin Application

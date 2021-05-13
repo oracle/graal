@@ -1,14 +1,8 @@
 ---
 layout: docs
 toc_group: java
-title: Compiler Configuration on JVM
 link_title: Compiler Configuration on JVM
 permalink: /reference-manual/java/options/
-redirect_from:
-  - /reference-manual/jvm/Options/
-  - /docs/reference-manual/jvm/Options/
-next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/java/operations/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/java/
 ---
 
 # Compiler Configuration on JVM

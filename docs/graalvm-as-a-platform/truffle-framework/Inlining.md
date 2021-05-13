@@ -1,14 +1,8 @@
 ---
 layout: docs
 toc_group: truffle
-title: Truffle Approach to Function Inlining
 link_title: Truffle Approach to Function Inlining
 permalink: /graalvm-as-a-platform/language-implementation-framework/Inlining/
-redirect_from:
-  - /graalvm-as-a-platform/truffle-framework/Inlining/
-  - /docs/reference-manual/truffle-framework/Inlining/
-next: /en/graalvm/enterprise/{{ site.version }}/docs/graalvm-as-a-platform/truffle-framework/Profiling/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/graalvm-as-a-platform/truffle-framework/DynamicObjectModel/
 ---
 # Truffle Approach to Function Inlining
 

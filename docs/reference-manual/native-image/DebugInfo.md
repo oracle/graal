@@ -1,12 +1,8 @@
 ---
 layout: docs
 toc_group: native-image
-title: Debug Info Feature
 link_title: Debug Info Feature
 permalink: /reference-manual/native-image/DebugInfo/
-redirect_from: /docs/reference-manual/native-image/DebugInfo/
-next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/native-image/Reports/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/native-image/LLVMBackend/
 ---
 # Debug Info Feature
 

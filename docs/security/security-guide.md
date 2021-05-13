@@ -1,10 +1,8 @@
 ---
 layout: docs
-title: Security Guide
+toc_group: security-guide
 link_title: Security Guide
 permalink: /security-guide/
-redirect_from: /docs/security-guide/
-toc_group: security-guide
 ---
 
 # Security Guide

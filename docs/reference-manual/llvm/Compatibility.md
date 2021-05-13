@@ -1,11 +1,8 @@
 ---
 layout: docs
 toc_group: llvm
-title: LLVM Compatibility
 link_title: LLVM Compatibility
 permalink: /reference-manual/llvm/Compatibility/
-redirect_from: /docs/reference-manual/llvm/Compatibility/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/llvm/Options/
 ---
 # LLVM Compatibility
 
