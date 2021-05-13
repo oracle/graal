@@ -33,10 +33,10 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 
 final class ExternalPluginHandler {
 
-    private final InteropLibrary interopLibrary;
     private static final String RERUN_CLINIT = "shouldRerunClassInitializer";
     private static final String POST_HOTSWAP = "postHotSwap";
 
+    private final InteropLibrary interopLibrary;
     private final StaticObject guestHandler;
 
     private ExternalPluginHandler(StaticObject handler, InteropLibrary library) {
