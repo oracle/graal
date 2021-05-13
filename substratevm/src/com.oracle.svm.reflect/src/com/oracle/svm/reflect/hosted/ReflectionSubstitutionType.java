@@ -35,13 +35,16 @@ import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
+import jdk.vm.ci.code.BytecodeFrame;
 import org.graalvm.compiler.core.common.calc.FloatConvert;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiNode;
@@ -603,7 +606,7 @@ public class ReflectionSubstitutionType extends CustomSubstitutionType<CustomSub
                 invokeKind = InvokeKind.Virtual;
             }
             ValueNode ret = graphKit.createJavaCallWithException(invokeKind, targetMethod, args);
-
+            patchNodeSourcePosition((InvokeWithExceptionNode) ret);
             graphKit.noExceptionPart();
 
             JavaKind retKind = targetMethod.getSignature().getReturnKind();
@@ -622,6 +625,13 @@ public class ReflectionSubstitutionType extends CustomSubstitutionType<CustomSub
             graphKit.endInvokeWithException();
 
             return graphKit.finalizeGraph();
+        }
+    }
+
+    static void patchNodeSourcePosition(InvokeWithExceptionNode invoke) {
+        NodeSourcePosition position = invoke.getNodeSourcePosition();
+        if (position != null && position.getBCI() == BytecodeFrame.INVALID_FRAMESTATE_BCI) {
+            invoke.setNodeSourcePosition(new NodeSourcePosition(position.getCaller(), position.getMethod(), invoke.bci()));
         }
     }
 

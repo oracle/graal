@@ -30,9 +30,11 @@ import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.Iterator;
 
+import jdk.vm.ci.code.BytecodeFrame;
 import org.graalvm.compiler.core.common.calc.FloatConvert;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
@@ -222,6 +224,7 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
             System.arraycopy(args, 0, invokeArgs, 1, args.length);
         }
         InvokeWithExceptionNode invoke = kit.startInvokeWithException(universeTargetMethod, invokeKind, kit.getFrameState(), invokeBci, invokeArgs);
+        patchNodeSourcePosition(invoke);
         kit.exceptionPart();
         ExceptionObjectNode exception = kit.exceptionObject();
         generateExceptionHandler(providers, kit, exception, invoke.getStackKind());
@@ -236,6 +239,13 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
         inlinePrologueAndEpilogue(kit, prologueInvoke, epilogueInvoke, invoke.getStackKind());
 
         return kit.finalizeGraph();
+    }
+
+    private void patchNodeSourcePosition(InvokeWithExceptionNode invoke) {
+        NodeSourcePosition position = invoke.getNodeSourcePosition();
+        if (position != null && position.getBCI() == BytecodeFrame.INVALID_FRAMESTATE_BCI) {
+            invoke.setNodeSourcePosition(new NodeSourcePosition(position.getCaller(), position.getMethod(), invoke.bci()));
+        }
     }
 
     private StructuredGraph buildBuiltinGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers) {

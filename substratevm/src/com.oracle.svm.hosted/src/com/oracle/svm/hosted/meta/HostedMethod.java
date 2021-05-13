@@ -33,6 +33,7 @@ import java.lang.reflect.Type;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.JavaMethodContext;
+import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.nodes.StructuredGraph;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
@@ -123,6 +124,21 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
         }
         localVariableTable = newLocalVariableTable;
         hasNeverInlineDirective = SubstrateUtil.NativeImageLoadingShield.isNeverInline(wrapped);
+    }
+
+    public HostedMethod cloneSpecialized(HostedUniverse universe) {
+        StaticAnalysisResults profilingInfo = getProfilingInfo();
+        StaticAnalysisResults profilingInfoCopy = new StaticAnalysisResults(profilingInfo.getCodeSize(), profilingInfo.getParameterTypeProfiles(), profilingInfo.getResultTypeProfile(),
+                        profilingInfo.firstBytecodeEntry());
+        HostedMethod copy = new HostedMethod(universe, wrapped, getDeclaringClass(), signature, constantPool, getExceptionHandlers());
+        copy.staticAnalysisResults = profilingInfoCopy;
+        StructuredGraph graph = this.compilationInfo.getGraph();
+        StructuredGraph graphCopy = graph.cloneSpecialized(copy);
+        copy.compilationInfo.setGraph(graphCopy);
+        assert copy.vtableIndex == -1;
+        // isParsed will be set as false but doesnt seem to have any impact since we are already
+        // past that point in the compilation pipeline
+        return copy;
     }
 
     @Override

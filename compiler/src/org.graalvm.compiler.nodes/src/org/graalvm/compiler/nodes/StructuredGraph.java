@@ -1267,4 +1267,10 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     public NodeSourcePosition getCallerContext() {
         return callerContext;
     }
+
+    public StructuredGraph cloneSpecialized(ResolvedJavaMethod specialized) {
+        StructuredGraph copy = (StructuredGraph) this.copy(getDebug());
+        copy.rootMethod = specialized;
+        return copy;
+    }
 }
