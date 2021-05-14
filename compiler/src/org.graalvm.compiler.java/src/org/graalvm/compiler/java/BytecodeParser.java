@@ -831,7 +831,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         }
     }
 
-    private static class Target {
+    private static final class Target {
         final FixedNode entry;
         final FixedNode originalEntry;
         final FrameStateBuilder state;
@@ -1310,7 +1310,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
     /**
      * @return the entry point to exception dispatch
      */
-    private AbstractBeginNode handleException(ValueNode exceptionObject, int bci, boolean deoptimizeOnly) {
+    protected AbstractBeginNode handleException(ValueNode exceptionObject, int bci, boolean deoptimizeOnly) {
         FixedWithNextNode currentLastInstr = lastInstr;
         assert bci == BytecodeFrame.BEFORE_BCI || bci == bci() : "invalid bci";
         debug.log("Creating exception dispatch edges at %d, exception object=%s, exception seen=%s", bci, exceptionObject, (profilingInfo == null ? "" : profilingInfo.getExceptionSeen(bci)));
@@ -3123,8 +3123,16 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                  */
                 LoopBeginNode loopBegin = (LoopBeginNode) getFirstInstruction(block);
                 LoopEndNode loopEnd = graph.add(new LoopEndNode(loopBegin));
-                Target target = checkLoopExit(new Target(loopEnd, state), block);
+                Target target = checkLoopExit(new Target(loopEnd, state.copy()), block);
                 FixedNode result = target.entry;
+                /*
+                 * It is guaranteed that a loop header cannot be an ExceptionDispatchBlock. By the
+                 * time the backward loop edge is reached, the block will already be processed, and
+                 * its rethrow exception will be set to false.
+                 */
+                assert !(block instanceof ExceptionDispatchBlock);
+                assert !getEntryState(block).rethrowException();
+                target.state.setRethrowException(false);
                 getEntryState(block).merge(loopBegin, target.state);
 
                 debug.log("createTarget %s: merging backward branch to loop header %s, result: %s", block, loopBegin, result);

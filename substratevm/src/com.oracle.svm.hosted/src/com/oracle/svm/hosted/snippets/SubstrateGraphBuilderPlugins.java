@@ -53,7 +53,6 @@ import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.DynamicPiNode;
 import org.graalvm.compiler.nodes.FixedNode;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FullInfopointNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
@@ -416,13 +415,17 @@ public class SubstrateGraphBuilderPlugins {
 
     /**
      * Unwrap FullInfopointNode and DeoptEntryNode since they are not important for the Class[]
-     * elements analysis and they can obscure the control flow.
+     * elements analysis.
      */
     private static FixedNode unwrapNode(FixedNode node) {
         FixedNode successor = node;
         while (successor instanceof FullInfopointNode || successor instanceof DeoptEntryNode) {
             assert !(successor instanceof DeoptEntryNode) || ((HostedMethod) successor.graph().method()).isDeoptTarget();
-            successor = ((FixedWithNextNode) successor).next();
+            if (successor instanceof FullInfopointNode) {
+                successor = ((FullInfopointNode) successor).next();
+            } else {
+                successor = ((DeoptEntryNode) successor).next();
+            }
         }
         return successor;
     }

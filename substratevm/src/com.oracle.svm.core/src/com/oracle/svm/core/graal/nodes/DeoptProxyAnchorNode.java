@@ -31,8 +31,6 @@ import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.AbstractStateSplit;
-import org.graalvm.compiler.nodes.debug.ControlFlowAnchored;
-import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 /**
@@ -40,7 +38,7 @@ import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
  * required.
  */
 @NodeInfo(allowedUsageTypes = InputType.Anchor, cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
-public class DeoptProxyAnchorNode extends AbstractStateSplit implements LIRLowerable, ControlFlowAnchored {
+public class DeoptProxyAnchorNode extends AbstractStateSplit implements DeoptEntrySupport {
     public static final NodeClass<DeoptProxyAnchorNode> TYPE = NodeClass.create(DeoptProxyAnchorNode.class);
 
     public DeoptProxyAnchorNode() {

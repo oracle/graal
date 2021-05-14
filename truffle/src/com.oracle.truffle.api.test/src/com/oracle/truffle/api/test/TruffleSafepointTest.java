@@ -297,9 +297,6 @@ public class TruffleSafepointTest {
 
     @Test
     public void testSynchronousRecursiveError() throws InterruptedException, AssertionError, ExecutionException {
-        // GR-29896 does not yet work on SVM.
-        Assume.assumeFalse(TruffleOptions.AOT);
-
         try (TestSetup setup = setupSafepointLoop(1, (s, node) -> {
             TruffleSafepoint.poll(node);
             return false;
@@ -465,9 +462,6 @@ public class TruffleSafepointTest {
 
     @Test
     public void testHasPendingSideEffectingActions() {
-        // GR-29896 does not yet work on SVM.
-        Assume.assumeFalse(TruffleOptions.AOT);
-
         AtomicReference<Thread> thread = new AtomicReference<>();
         CountDownLatch waitSideEffectsDisabled = new CountDownLatch(1);
         CountDownLatch waitSubmitted = new CountDownLatch(1);
@@ -570,9 +564,6 @@ public class TruffleSafepointTest {
 
     @Test
     public void testException() {
-        // GR-29896 does not yet work on SVM.
-        Assume.assumeFalse(TruffleOptions.AOT);
-
         forEachConfig((threads, events) -> {
 
             AtomicReference<CountDownLatch> latchRef = new AtomicReference<>(null);
@@ -1135,9 +1126,6 @@ public class TruffleSafepointTest {
 
     @Test
     public void testNonSideEffectInvalidErrorThrown() throws InterruptedException {
-        // GR-29896 does not yet work on SVM.
-        Assume.assumeFalse(TruffleOptions.AOT);
-
         try (TestSetup setup = setupSafepointLoop(1, (s, node) -> {
             TruffleSafepoint.poll(node);
             return false;

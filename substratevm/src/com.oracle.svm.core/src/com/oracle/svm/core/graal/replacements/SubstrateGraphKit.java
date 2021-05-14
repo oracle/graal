@@ -46,15 +46,18 @@ import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ReturnNode;
+import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.calc.NarrowNode;
 import org.graalvm.compiler.nodes.extended.BoxNode;
 import org.graalvm.compiler.nodes.extended.StateSplitProxyNode;
 import org.graalvm.compiler.nodes.extended.UnboxNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.LoadIndexedNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
@@ -203,8 +206,12 @@ public class SubstrateGraphKit extends GraphKit {
             append(epilogue);
             epilogue.setStateAfter(invoke.stateAfter().duplicateWithVirtualState());
         } else if (emitDeoptTarget) {
-            DeoptEntryNode deoptEntry = append(new DeoptEntryNode());
-            deoptEntry.setStateAfter(invoke.stateAfter());
+            /*
+             * Since this deoptimization is occurring in an custom graph, assume there are no
+             * exception handlers and directly unwind.
+             */
+            int bci = invoke.stateAfter().bci;
+            appendWithUnwind(new DeoptEntryNode(), bci);
         }
 
         ValueNode result = invoke;
@@ -319,6 +326,34 @@ public class SubstrateGraphKit extends GraphKit {
             exceptionState.setRethrowException(true);
             unwindMergeNode.setStateAfter(exceptionState.create(BytecodeFrame.AFTER_EXCEPTION_BCI, unwindMergeNode));
         }
+    }
+
+    /**
+     * Appends the provided node to the control flow graph. The exception edge is connected to an
+     * {@link UnwindNode}, i.e., the exception is not handled in this method.
+     */
+    protected <T extends WithExceptionNode> T appendWithUnwind(T withExceptionNode, int bci) {
+        WithExceptionNode appended = append(withExceptionNode);
+        assert appended == withExceptionNode;
+
+        if (withExceptionNode instanceof StateSplit) {
+            StateSplit stateSplit = (StateSplit) withExceptionNode;
+            stateSplit.setStateAfter(frameState.create(bci, stateSplit));
+        }
+
+        AbstractBeginNode noExceptionEdge = add(withExceptionNode.createNextBegin());
+        withExceptionNode.setNext(noExceptionEdge);
+        ExceptionObjectNode exceptionEdge = createExceptionObjectNode(frameState, bci);
+        withExceptionNode.setExceptionEdge(exceptionEdge);
+
+        assert lastFixedNode == null;
+        lastFixedNode = exceptionEdge;
+        append(new UnwindNode(exceptionEdge));
+
+        assert lastFixedNode == null;
+        lastFixedNode = noExceptionEdge;
+
+        return withExceptionNode;
     }
 
     public void appendStateSplitProxy(FrameState state) {
