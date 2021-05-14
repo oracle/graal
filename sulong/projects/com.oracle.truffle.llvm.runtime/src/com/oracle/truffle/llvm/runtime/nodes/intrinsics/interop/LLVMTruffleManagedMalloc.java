@@ -58,9 +58,9 @@ import com.oracle.truffle.llvm.spi.NativeTypeLibrary;
 public abstract class LLVMTruffleManagedMalloc extends LLVMIntrinsic {
 
     @ExportLibrary(InteropLibrary.class)
-    @ExportLibrary(value = LLVMManagedReadLibrary.class, useForAOT = true, useForAOTPriority = 2)
-    @ExportLibrary(value = LLVMManagedWriteLibrary.class, useForAOT = true, useForAOTPriority = 1)
-    @ExportLibrary(value = NativeTypeLibrary.class, useForAOT = true, useForAOTPriority = 0)
+    @ExportLibrary(value = LLVMManagedReadLibrary.class, useForAOT = true, useForAOTPriority = 1)
+    @ExportLibrary(value = LLVMManagedWriteLibrary.class, useForAOT = true, useForAOTPriority = 2)
+    @ExportLibrary(value = NativeTypeLibrary.class, useForAOT = true, useForAOTPriority = 3)
     public static final class ManagedMallocObject extends LLVMInternalTruffleObject {
 
         private final LLVMPointer[] contents;
@@ -138,32 +138,32 @@ public abstract class LLVMTruffleManagedMalloc extends LLVMIntrinsic {
 
         @ExportMessage
         byte readI8(long offset,
-                        @CachedLibrary(limit = "1") LLVMManagedReadLibrary read) {
+                        @CachedLibrary("this") LLVMManagedReadLibrary read) {
             throw new LLVMPolyglotException(read, "Can't read I8 from managed malloc object at offset %d.", offset);
         }
 
         @ExportMessage
         short readI16(long offset,
-                        @CachedLibrary(limit = "1") LLVMManagedReadLibrary read) {
+                        @CachedLibrary("this") LLVMManagedReadLibrary read) {
             throw new LLVMPolyglotException(read, "Can't read I16 from managed malloc object at offset %d.", offset);
         }
 
         @ExportMessage
         int readI32(long offset,
-                        @CachedLibrary(limit = "1") LLVMManagedReadLibrary read) {
+                        @CachedLibrary("this") LLVMManagedReadLibrary read) {
             throw new LLVMPolyglotException(read, "Can't read I32 from managed malloc object at offset %d.", offset);
         }
 
         @ExportMessage
         double readDouble(long offset,
-                        @CachedLibrary(limit = "1") LLVMManagedReadLibrary read) {
+                        @CachedLibrary("this") LLVMManagedReadLibrary read) {
             throw new LLVMPolyglotException(read, "Can't read double from managed malloc object at offset %d.", offset);
         }
 
         @ExportMessage
         LLVMPointer readPointer(long offset,
                         @Cached BranchProfile exception,
-                        @CachedLibrary(limit = "1") LLVMManagedReadLibrary read) {
+                        @CachedLibrary("this") LLVMManagedReadLibrary read) {
             if (offset % LLVMExpressionNode.ADDRESS_SIZE_IN_BYTES == 0) {
                 long idx = offset / LLVMExpressionNode.ADDRESS_SIZE_IN_BYTES;
                 if (idx == (int) idx) {
@@ -177,32 +177,32 @@ public abstract class LLVMTruffleManagedMalloc extends LLVMIntrinsic {
 
         @ExportMessage
         LLVMPointer readGenericI64(long offset,
-                        @CachedLibrary(limit = "1") LLVMManagedReadLibrary read) {
+                        @CachedLibrary("this") LLVMManagedReadLibrary read) {
             return read.readPointer(this, offset);
         }
 
         @ExportMessage
         void writeI8(long offset, @SuppressWarnings("unused") byte value,
-                        @CachedLibrary(limit = "1") LLVMManagedWriteLibrary write) {
+                        @CachedLibrary("this") LLVMManagedWriteLibrary write) {
             throw new LLVMPolyglotException(write, "Can't write I8 to managed malloc object at offset %d.", offset);
         }
 
         @ExportMessage
         void writeI16(long offset, @SuppressWarnings("unused") short value,
-                        @CachedLibrary(limit = "1") LLVMManagedWriteLibrary write) {
+                        @CachedLibrary("this") LLVMManagedWriteLibrary write) {
             throw new LLVMPolyglotException(write, "Can't write I16 to managed malloc object at offset %d.", offset);
         }
 
         @ExportMessage
         void writeI32(long offset, @SuppressWarnings("unused") int value,
-                        @CachedLibrary(limit = "1") LLVMManagedWriteLibrary write) {
+                        @CachedLibrary("this") LLVMManagedWriteLibrary write) {
             throw new LLVMPolyglotException(write, "Can't write I32 to managed malloc object at offset %d.", offset);
         }
 
         @ExportMessage
         void writePointer(long offset, LLVMPointer value,
                         @Cached BranchProfile exception,
-                        @CachedLibrary(limit = "1") LLVMManagedWriteLibrary write) {
+                        @CachedLibrary("this") LLVMManagedWriteLibrary write) {
             if (offset % LLVMExpressionNode.ADDRESS_SIZE_IN_BYTES == 0) {
                 long idx = offset / LLVMExpressionNode.ADDRESS_SIZE_IN_BYTES;
                 if (idx == (int) idx) {
@@ -217,14 +217,14 @@ public abstract class LLVMTruffleManagedMalloc extends LLVMIntrinsic {
 
         @ExportMessage
         void writeI64(long offset, long value,
-                        @CachedLibrary(limit = "1") LLVMManagedWriteLibrary write) {
+                        @CachedLibrary("this") LLVMManagedWriteLibrary write) {
             write.writePointer(this, offset, LLVMNativePointer.create(value));
         }
 
         @ExportMessage
         void writeGenericI64(long offset, Object value,
                         @Cached LLVMToPointerNode toPointer,
-                        @CachedLibrary(limit = "1") LLVMManagedWriteLibrary write) {
+                        @CachedLibrary("this") LLVMManagedWriteLibrary write) {
             write.writePointer(this, offset, toPointer.executeWithTarget(value));
         }
 
