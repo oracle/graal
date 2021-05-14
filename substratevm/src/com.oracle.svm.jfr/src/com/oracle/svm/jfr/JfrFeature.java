@@ -24,9 +24,6 @@
  */
 package com.oracle.svm.jfr;
 
-import static com.oracle.svm.jfr.PredefinedJFCSubstitition.DEFAULT_JFC;
-import static com.oracle.svm.jfr.PredefinedJFCSubstitition.PROFILE_JFC;
-
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -102,11 +99,6 @@ public class JfrFeature implements Feature {
             RuntimeClassInitialization.initializeAtBuildTime(eventSubClass.getName());
         }
         config.registerSubstitutionProcessor(new JfrEventSubstitution(metaAccess));
-
-        // Register for runtime access.
-        ClassLoader cl = PredefinedJFCSubstitition.class.getClassLoader();
-        Resources.registerResource(DEFAULT_JFC, cl.getResourceAsStream(DEFAULT_JFC));
-        Resources.registerResource(PROFILE_JFC, cl.getResourceAsStream(PROFILE_JFC));
     }
 
     @Override
