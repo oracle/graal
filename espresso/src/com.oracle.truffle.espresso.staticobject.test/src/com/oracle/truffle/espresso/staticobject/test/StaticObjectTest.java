@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.staticobject.test;
 
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.espresso.staticobject.DefaultStaticProperty;
 import com.oracle.truffle.espresso.staticobject.StaticProperty;
 
@@ -29,10 +30,10 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 class StaticObjectTest {
-    static final boolean ARRAY_BASED = !Boolean.getBoolean("com.oracle.truffle.espresso.staticobject.FieldBasedStorage");
+    static final boolean ARRAY_BASED_STORAGE = TruffleOptions.AOT || Boolean.getBoolean("com.oracle.truffle.espresso.staticobject.ArrayBasedStorage");
 
     String guessGeneratedFieldName(StaticProperty property) {
-        assert !ARRAY_BASED;
+        assert !ARRAY_BASED_STORAGE;
         // The format of generated field names with the field-based storage might change at any
         // time. Do not depend on it!
         if (property instanceof DefaultStaticProperty) {

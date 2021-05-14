@@ -36,7 +36,7 @@ import static com.oracle.truffle.espresso.staticobject.StaticPropertyKind.N_PRIM
 final class ArrayBasedStaticShape<T> extends StaticShape<T> {
     private static final PrivilegedToken TOKEN = new ArrayBasedPrivilegedToken();
     @CompilationFinal //
-    private static Boolean disableShapeChecks;
+    private static Boolean enableShapeChecks;
     @CompilationFinal(dimensions = 1) //
     private final StaticShape<T>[] superShapes;
     private final ArrayBasedPropertyLayout propertyLayout;
@@ -56,19 +56,19 @@ final class ArrayBasedStaticShape<T> extends StaticShape<T> {
     }
 
     public static boolean shapeChecks() {
-        if (disableShapeChecks == null) {
+        if (enableShapeChecks == null) {
             initializeShapeChecks();
         }
-        return !disableShapeChecks;
+        return enableShapeChecks;
     }
 
     @CompilerDirectives.TruffleBoundary
     private static synchronized void initializeShapeChecks() {
-        if (disableShapeChecks == null) {
+        if (enableShapeChecks == null) {
             // Eventually this will become a context option.
             // For now we store its value in a static field that is initialized on first usage to
             // avoid that it gets initialized at native-image build time.
-            disableShapeChecks = Boolean.getBoolean("com.oracle.truffle.espresso.staticobject.DisableShapeChecks");
+            enableShapeChecks = Boolean.getBoolean("com.oracle.truffle.espresso.staticobject.ShapeChecks");
         }
     }
 

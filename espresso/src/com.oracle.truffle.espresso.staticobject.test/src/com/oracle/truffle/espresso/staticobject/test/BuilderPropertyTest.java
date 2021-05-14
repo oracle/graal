@@ -85,7 +85,7 @@ public class BuilderPropertyTest extends StaticObjectTest {
 
     @Test
     public void propertyName() throws NoSuchFieldException {
-        Assume.assumeFalse(ARRAY_BASED);
+        Assume.assumeFalse(ARRAY_BASED_STORAGE);
 
         StaticShape.Builder builder = StaticShape.newBuilder();
         StaticProperty property = new DefaultStaticProperty("property", StaticPropertyKind.Int, false);
@@ -97,7 +97,7 @@ public class BuilderPropertyTest extends StaticObjectTest {
 
     @Test
     public void propertyFinal() throws NoSuchFieldException {
-        Assume.assumeFalse(ARRAY_BASED);
+        Assume.assumeFalse(ARRAY_BASED_STORAGE);
 
         StaticShape.Builder builder = StaticShape.newBuilder();
         StaticProperty p1 = new DefaultStaticProperty("p1", StaticPropertyKind.Int, true);
@@ -114,7 +114,7 @@ public class BuilderPropertyTest extends StaticObjectTest {
 
     @Test
     public void propertyKind() throws NoSuchFieldException {
-        Assume.assumeFalse(ARRAY_BASED);
+        Assume.assumeFalse(ARRAY_BASED_STORAGE);
 
         StaticShape.Builder builder = StaticShape.newBuilder();
         StaticPropertyKind[] kinds = StaticPropertyKind.values();
