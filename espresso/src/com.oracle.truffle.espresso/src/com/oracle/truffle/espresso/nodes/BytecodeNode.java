@@ -686,16 +686,16 @@ public final class BytecodeNode extends EspressoMethodNode {
                 CompilerDirectives.ensureVirtualized(primitives);
                 CompilerDirectives.ensureVirtualized(refs);
 
-                if (instrument != null) {
-                    instrument.notifyStatement(frame, statementIndex, nextStatementIndex);
-                    statementIndex = nextStatementIndex;
-                }
                 if (instrument != null || Bytecodes.canTrap(curOpcode)) {
                     /*
                      * curOpcode can be == WIDE, but none of the WIDE-prefixed bytecodes throw
                      * exceptions.
                      */
                     setBCI(frame, curBCI);
+                }
+                if (instrument != null) {
+                    instrument.notifyStatement(frame, statementIndex, nextStatementIndex);
+                    statementIndex = nextStatementIndex;
                 }
 
                 // @formatter:off
