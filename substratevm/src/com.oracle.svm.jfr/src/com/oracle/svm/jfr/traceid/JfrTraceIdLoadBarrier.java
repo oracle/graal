@@ -31,6 +31,10 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 
+/**
+ * The trace id management class. This is used to tag classes as in use for the current epoch and to iterate over them
+ * e.g. when writing the constant pools to disk
+ */
 public class JfrTraceIdLoadBarrier {
     private static final UninterruptibleUtils.AtomicInteger classCount0 = new UninterruptibleUtils.AtomicInteger(0);
     private static final UninterruptibleUtils.AtomicInteger classCount1 = new UninterruptibleUtils.AtomicInteger(0);

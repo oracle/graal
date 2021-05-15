@@ -41,6 +41,12 @@ import sun.misc.Unsafe;
 
 import java.lang.reflect.Field;
 
+/**
+ * Class holding the current epoch. JFR uses an epoch system to safely separate constant pool entries between
+ * adjacent chunks. Used to get the current or previous epoch and switch from one epoch to another across
+ * an uninterruptible safepoint operation
+ *
+ */
 public class JfrTraceIdEpoch {
     private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
     private static final Field EPOCH_FIELD = ReflectionUtil.lookupField(JfrTraceIdEpoch.class, "epoch");

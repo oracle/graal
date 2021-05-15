@@ -30,6 +30,10 @@ import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 import com.oracle.svm.core.VMInspection;
 
+/**
+ * Used to include/exclude JFR feature and substitutions. JFR is included when the VMInspection feature is enabled and
+ * the underlying JDK is 11+
+ */
 public class JfrEnabled implements BooleanSupplier {
     @Override
     public boolean getAsBoolean() {
