@@ -43,6 +43,10 @@ import jdk.jfr.internal.LogTag;
 import jdk.jfr.internal.EventWriter;
 import jdk.jfr.internal.JVM;
 
+/**
+ * Manager class that handles most JFR Java API
+ * @see Target_jdk_jfr_internal_JVM
+ */
 class SubstrateJVM {
     private final JfrOptionSet options;
     private final JfrNativeEventSetting[] eventSettings;

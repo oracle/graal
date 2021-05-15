@@ -34,6 +34,11 @@ import org.graalvm.nativeimage.Platforms;
 
 import java.util.Arrays;
 
+/**
+ * Map for storing trace ids. Initialized before compilation with static
+ * class count from analysis
+ * @see JfrTraceId
+ */
 public class JfrTraceIdMap {
     @UnknownObjectField(types = {long[].class})
     private long[] traceIDs;

@@ -33,6 +33,16 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+/**
+ * The unique trace id for class constant pool entries. When classes are referenced in events, a unique id is tagged
+ * as in-use for the current epoch. When the current chunk is closed the class constants and their child data
+ * (classloader, module, package, etc.) that are tagged will be emitted as part of the CheckpointEvent so references
+ * to the class via the unique trace id can be read
+ *
+ * The trace id uses internal bits to hold data about the tagged class
+ *
+ * @see com.oracle.svm.jfr.JfrTypeRepository for writing of the types constant pool entries
+ */
 public class JfrTraceId {
 
     public static final long BIT = 1;

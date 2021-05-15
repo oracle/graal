@@ -37,6 +37,10 @@ import com.oracle.svm.jfr.traceid.JfrTraceId;
 import com.oracle.svm.jfr.traceid.JfrTraceIdEpoch;
 import com.oracle.svm.jfr.traceid.JfrTraceIdLoadBarrier;
 
+/**
+ * Repository that writes types (classes, packages, modules, classloaders)
+ * for the constant pool
+ */
 public class JfrTypeRepository implements JfrConstantPool {
     @Platforms(Platform.HOSTED_ONLY.class)
     public JfrTypeRepository() {
@@ -55,6 +59,7 @@ public class JfrTypeRepository implements JfrConstantPool {
         JfrTraceIdLoadBarrier.ClassConsumer classVisitor = aClass -> visitClass(typeInfo, aClass);
         JfrTraceIdLoadBarrier.doClasses(classVisitor, JfrTraceIdEpoch.getInstance().previousEpoch());
 
+        // The order of writing matters as following types can be tagged during the write process
         int count = writeClasses(writer, typeInfo);
         count += writePackages(writer, typeInfo);
         count += writeModules(writer, typeInfo);
