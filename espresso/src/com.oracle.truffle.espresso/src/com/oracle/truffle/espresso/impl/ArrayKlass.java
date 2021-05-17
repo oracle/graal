@@ -43,6 +43,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObject.StaticObjectFactory;
+import com.oracle.truffle.espresso.staticobject.ClassLoaderCache;
 import com.oracle.truffle.espresso.staticobject.DefaultStaticProperty;
 import com.oracle.truffle.espresso.staticobject.StaticProperty;
 import com.oracle.truffle.espresso.staticobject.StaticPropertyKind;
@@ -79,17 +80,17 @@ public final class ArrayKlass extends Klass {
         return ARRAY_PROPERTY;
     }
 
-    public static StaticShape<StaticObjectFactory> getArrayShape() {
+    public static StaticShape<StaticObjectFactory> getArrayShape(ClassLoaderCache clc) {
         if (arrayShape == null) {
-            initializeArrayShape();
+            initializeArrayShape(clc);
         }
         return arrayShape;
     }
 
     @TruffleBoundary
-    private static synchronized void initializeArrayShape() {
+    private static synchronized void initializeArrayShape(ClassLoaderCache clc) {
         if (arrayShape == null) {
-            arrayShape = StaticShape.newBuilder().property(ARRAY_PROPERTY).build(StaticObject.class, StaticObjectFactory.class);
+            arrayShape = StaticShape.newBuilder(clc).property(ARRAY_PROPERTY).build(StaticObject.class, StaticObjectFactory.class);
         }
     }
 

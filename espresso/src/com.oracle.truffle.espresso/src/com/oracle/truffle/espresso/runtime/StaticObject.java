@@ -42,6 +42,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.dispatch.BaseInterop;
+import com.oracle.truffle.espresso.staticobject.ClassLoaderCache;
 import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.substitutions.SuppressFBWarnings;
 
@@ -140,7 +141,7 @@ public class StaticObject implements TruffleObject, Cloneable {
         assert array != null;
         assert !(array instanceof StaticObject);
         assert array.getClass().isArray();
-        StaticObject newObj = ArrayKlass.getArrayShape().getFactory().create(klass);
+        StaticObject newObj = ArrayKlass.getArrayShape(klass.getEspressoLanguage()).getFactory().create(klass);
         ArrayKlass.getArrayProperty().setObject(newObj, array);
         return trackAllocation(klass, newObj);
     }
@@ -158,21 +159,21 @@ public class StaticObject implements TruffleObject, Cloneable {
     }
 
     public static StaticObject createForeign(Klass klass, Object foreignObject, InteropLibrary interopLibrary) {
+        ClassLoaderCache clc = klass.getEspressoLanguage();
         if (interopLibrary.isNull(foreignObject)) {
-            return createForeignNull(foreignObject);
+            return createForeignNull(clc, foreignObject);
         }
-        assert klass != null;
-        return createForeign(klass, foreignObject);
+        return createForeign(clc, klass, foreignObject);
     }
 
-    public static StaticObject createForeignNull(Object foreignObject) {
+    public static StaticObject createForeignNull(ClassLoaderCache clc, Object foreignObject) {
         assert InteropLibrary.getUncached().isNull(foreignObject);
-        return createForeign(null, foreignObject);
+        return createForeign(clc, null, foreignObject);
     }
 
-    private static StaticObject createForeign(Klass klass, Object foreignObject) {
+    private static StaticObject createForeign(ClassLoaderCache clc, Klass klass, Object foreignObject) {
         assert foreignObject != null;
-        StaticObject newObj = Klass.getForeignShape().getFactory().create(klass, true);
+        StaticObject newObj = Klass.getForeignShape(clc).getFactory().create(klass, true);
         Klass.getForeignProperty().setObject(newObj, foreignObject);
         return trackAllocation(klass, newObj);
     }

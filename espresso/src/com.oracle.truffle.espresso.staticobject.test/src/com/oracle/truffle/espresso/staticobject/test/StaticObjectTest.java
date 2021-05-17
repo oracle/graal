@@ -23,14 +23,16 @@
 package com.oracle.truffle.espresso.staticobject.test;
 
 import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.espresso.staticobject.ClassLoaderCache;
 import com.oracle.truffle.espresso.staticobject.DefaultStaticProperty;
 import com.oracle.truffle.espresso.staticobject.StaticProperty;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
-class StaticObjectTest {
+class StaticObjectTest implements ClassLoaderCache {
     static final boolean ARRAY_BASED_STORAGE = TruffleOptions.AOT || Boolean.getBoolean("com.oracle.truffle.espresso.staticobject.ArrayBasedStorage");
+    private ClassLoader cl;
 
     String guessGeneratedFieldName(StaticProperty property) {
         assert !ARRAY_BASED_STORAGE;
@@ -47,5 +49,15 @@ class StaticObjectTest {
                 throw new RuntimeException(e);
             }
         }
+    }
+
+    @Override
+    public void setClassLoader(ClassLoader cl) {
+        this.cl = cl;
+    }
+
+    @Override
+    public ClassLoader getClassLoader() {
+        return cl;
     }
 }

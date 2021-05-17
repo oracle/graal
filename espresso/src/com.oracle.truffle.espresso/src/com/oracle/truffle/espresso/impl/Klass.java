@@ -29,6 +29,7 @@ import static com.oracle.truffle.espresso.vm.InterpreterToVM.instanceOf;
 import java.util.Comparator;
 import java.util.function.IntFunction;
 
+import com.oracle.truffle.espresso.staticobject.ClassLoaderCache;
 import com.oracle.truffle.espresso.staticobject.DefaultStaticProperty;
 import com.oracle.truffle.espresso.staticobject.StaticProperty;
 import com.oracle.truffle.espresso.staticobject.StaticPropertyKind;
@@ -614,17 +615,17 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         return FOREIGN_PROPERTY;
     }
 
-    public static StaticShape<StaticObjectFactory> getForeignShape() {
+    public static StaticShape<StaticObjectFactory> getForeignShape(ClassLoaderCache clc) {
         if (foreignShape == null) {
-            initializeForeignShape();
+            initializeForeignShape(clc);
         }
         return foreignShape;
     }
 
     @TruffleBoundary
-    private static synchronized void initializeForeignShape() {
+    private static synchronized void initializeForeignShape(ClassLoaderCache clc) {
         if (foreignShape == null) {
-            foreignShape = StaticShape.newBuilder().property(FOREIGN_PROPERTY).build(StaticObject.class, StaticObjectFactory.class);
+            foreignShape = StaticShape.newBuilder(clc).property(FOREIGN_PROPERTY).build(StaticObject.class, StaticObjectFactory.class);
         }
     }
 

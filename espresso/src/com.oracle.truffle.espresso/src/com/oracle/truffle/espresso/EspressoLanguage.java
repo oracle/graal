@@ -27,6 +27,7 @@ import java.util.logging.Level;
 
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.nodes.interop.GetBindingsNode;
+import com.oracle.truffle.espresso.staticobject.ClassLoaderCache;
 import org.graalvm.home.Version;
 import org.graalvm.options.OptionDescriptors;
 
@@ -59,7 +60,7 @@ import com.oracle.truffle.espresso.substitutions.Substitutions;
                 contextPolicy = TruffleLanguage.ContextPolicy.EXCLUSIVE, //
                 dependentLanguages = {"nfi", "llvm"})
 @ProvidedTags({StandardTags.RootTag.class, StandardTags.RootBodyTag.class, StandardTags.StatementTag.class})
-public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
+public final class EspressoLanguage extends TruffleLanguage<EspressoContext> implements ClassLoaderCache {
 
     public static final String ID = "java";
     public static final String NAME = "Java";
@@ -82,6 +83,8 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     private final Signatures signatures;
 
     private long startupClockNanos = 0;
+
+    private ClassLoader cl;
 
     public EspressoLanguage() {
         // Initialize statically defined symbols and substitutions.
@@ -209,4 +212,13 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         context.disposeThread(thread);
     }
 
+    @Override
+    public void setClassLoader(ClassLoader cl) {
+        this.cl = cl;
+    }
+
+    @Override
+    public ClassLoader getClassLoader() {
+        return cl;
+    }
 }

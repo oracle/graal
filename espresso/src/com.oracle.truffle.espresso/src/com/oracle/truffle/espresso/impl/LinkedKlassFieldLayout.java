@@ -29,6 +29,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObject.StaticObjectFactory;
+import com.oracle.truffle.espresso.staticobject.ClassLoaderCache;
 import com.oracle.truffle.espresso.staticobject.StaticShape;
 
 final class LinkedKlassFieldLayout {
@@ -44,9 +45,9 @@ final class LinkedKlassFieldLayout {
 
     final int fieldTableLength;
 
-    LinkedKlassFieldLayout(ParserKlass parserKlass, LinkedKlass superKlass) {
-        StaticShape.Builder instanceBuilder = StaticShape.newBuilder();
-        StaticShape.Builder staticBuilder = StaticShape.newBuilder();
+    LinkedKlassFieldLayout(ClassLoaderCache clc, ParserKlass parserKlass, LinkedKlass superKlass) {
+        StaticShape.Builder instanceBuilder = StaticShape.newBuilder(clc);
+        StaticShape.Builder staticBuilder = StaticShape.newBuilder(clc);
 
         FieldCounter fieldCounter = new FieldCounter(parserKlass);
         int nextInstanceFieldIndex = 0;

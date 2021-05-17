@@ -118,13 +118,13 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
     }
 
     @SuppressWarnings("unchecked")
-    static <T> ArrayBasedShapeGenerator<T> getShapeGenerator(Class<?> storageSuperClass, Class<T> storageFactoryInterface) {
+    static <T> ArrayBasedShapeGenerator<T> getShapeGenerator(GeneratorClassLoader gcl, Class<?> storageSuperClass, Class<T> storageFactoryInterface) {
         Pair<Class<?>, Class<?>> pair = Pair.create(storageSuperClass, storageFactoryInterface);
         ArrayBasedShapeGenerator<T> sg = (ArrayBasedShapeGenerator<T>) generatorCache.get(pair);
         if (sg == null) {
             assert !TruffleOptions.AOT;
-            Class<?> generatedStorageClass = generateStorage(storageSuperClass);
-            Class<? extends T> generatedFactoryClass = generateFactory(generatedStorageClass, storageFactoryInterface);
+            Class<?> generatedStorageClass = generateStorage(gcl, storageSuperClass);
+            Class<? extends T> generatedFactoryClass = generateFactory(gcl, generatedStorageClass, storageFactoryInterface);
             sg = new ArrayBasedShapeGenerator<>(generatedStorageClass, generatedFactoryClass);
             ArrayBasedShapeGenerator<T> prevSg = (ArrayBasedShapeGenerator<T>) generatorCache.putIfAbsent(pair, sg);
             if (prevSg != null) {
@@ -393,7 +393,7 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
         }
     }
 
-    private static Class<?> generateStorage(Class<?> storageSuperClass) {
+    private static Class<?> generateStorage(GeneratorClassLoader gcl, Class<?> storageSuperClass) {
         String storageSuperName = Type.getInternalName(storageSuperClass);
         String storageName = generateStorageName();
 
@@ -408,11 +408,11 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
             addCloneMethod(storageSuperClass, storageWriter, storageName);
         }
         storageWriter.visitEnd();
-        return load(storageName, storageWriter.toByteArray(), storageSuperClass);
+        return load(gcl, storageName, storageWriter.toByteArray());
     }
 
     @SuppressWarnings("unchecked")
-    private static <T> Class<? extends T> generateFactory(Class<?> storageClass, Class<T> storageFactoryInterface) {
+    private static <T> Class<? extends T> generateFactory(GeneratorClassLoader gcl, Class<?> storageClass, Class<T> storageFactoryInterface) {
         ClassWriter factoryWriter = new ClassWriter(0);
         int factoryAccess = ACC_PUBLIC | ACC_SUPER | ACC_SYNTHETIC | ACC_FINAL;
         String factoryName = generateFactoryName(storageClass);
@@ -421,6 +421,6 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
         addFactoryConstructor(factoryWriter, factoryName);
         addFactoryMethods(factoryWriter, storageClass, storageFactoryInterface, factoryName);
         factoryWriter.visitEnd();
-        return (Class<? extends T>) load(factoryName, factoryWriter.toByteArray(), storageClass);
+        return (Class<? extends T>) load(gcl, factoryName, factoryWriter.toByteArray());
     }
 }

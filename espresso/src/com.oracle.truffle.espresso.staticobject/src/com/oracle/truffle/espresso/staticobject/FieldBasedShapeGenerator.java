@@ -45,23 +45,25 @@ import static com.oracle.truffle.api.impl.asm.Opcodes.RETURN;
 import static com.oracle.truffle.api.impl.asm.Opcodes.V1_8;
 
 final class FieldBasedShapeGenerator<T> extends ShapeGenerator<T> {
+    private final GeneratorClassLoader gcl;
     private final Class<?> storageSuperClass;
     private final Class<T> storageFactoryInterface;
 
-    private FieldBasedShapeGenerator(Class<?> storageSuperClass, Class<T> storageFactoryInterface) {
+    private FieldBasedShapeGenerator(GeneratorClassLoader gcl, Class<?> storageSuperClass, Class<T> storageFactoryInterface) {
+        this.gcl = gcl;
         this.storageSuperClass = storageSuperClass;
         this.storageFactoryInterface = storageFactoryInterface;
     }
 
     @SuppressWarnings("unchecked")
-    static <T> FieldBasedShapeGenerator<T> getShapeGenerator(Class<?> storageSuperClass, Class<T> storageFactoryInterface) {
-        return new FieldBasedShapeGenerator<>(storageSuperClass, storageFactoryInterface);
+    static <T> FieldBasedShapeGenerator<T> getShapeGenerator(GeneratorClassLoader gcl, Class<?> storageSuperClass, Class<T> storageFactoryInterface) {
+        return new FieldBasedShapeGenerator<>(gcl, storageSuperClass, storageFactoryInterface);
     }
 
     @Override
     StaticShape<T> generateShape(StaticShape<T> parentShape, Collection<StaticProperty> staticProperties) {
-        Class<?> generatedStorageClass = generateStorage(storageSuperClass, staticProperties);
-        Class<? extends T> generatedFactoryClass = generateFactory(generatedStorageClass, storageFactoryInterface);
+        Class<?> generatedStorageClass = generateStorage(gcl, storageSuperClass, staticProperties);
+        Class<? extends T> generatedFactoryClass = generateFactory(gcl, generatedStorageClass, storageFactoryInterface);
         for (StaticProperty staticProperty : staticProperties) {
             int offset = getObjectFieldOffset(generatedStorageClass, generateFieldName(staticProperty));
             staticProperty.initOffset(offset);
@@ -135,7 +137,7 @@ final class FieldBasedShapeGenerator<T> extends ShapeGenerator<T> {
         }
     }
 
-    private static Class<?> generateStorage(Class<?> storageSuperClass, Collection<StaticProperty> staticProperties) {
+    private static Class<?> generateStorage(GeneratorClassLoader gcl, Class<?> storageSuperClass, Collection<StaticProperty> staticProperties) {
         String storageSuperName = Type.getInternalName(storageSuperClass);
         String storageName = generateStorageName();
         ClassWriter storageWriter = new ClassWriter(0);
@@ -144,11 +146,11 @@ final class FieldBasedShapeGenerator<T> extends ShapeGenerator<T> {
         addStorageConstructors(storageWriter, storageSuperClass, storageSuperName);
         addStorageFields(storageWriter, staticProperties);
         storageWriter.visitEnd();
-        return load(storageName, storageWriter.toByteArray(), storageSuperClass);
+        return load(gcl, storageName, storageWriter.toByteArray());
     }
 
     @SuppressWarnings("unchecked")
-    private static <T> Class<? extends T> generateFactory(Class<?> storageClass, Class<T> storageFactoryInterface) {
+    private static <T> Class<? extends T> generateFactory(GeneratorClassLoader gcl, Class<?> storageClass, Class<T> storageFactoryInterface) {
         ClassWriter factoryWriter = new ClassWriter(0);
         int factoryAccess = ACC_PUBLIC | ACC_SUPER | ACC_SYNTHETIC | ACC_FINAL;
         String factoryName = generateFactoryName(storageClass);
@@ -156,6 +158,6 @@ final class FieldBasedShapeGenerator<T> extends ShapeGenerator<T> {
         addFactoryConstructor(factoryWriter);
         addFactoryMethods(factoryWriter, storageClass, storageFactoryInterface);
         factoryWriter.visitEnd();
-        return (Class<? extends T>) load(factoryName, factoryWriter.toByteArray(), storageClass);
+        return (Class<? extends T>) load(gcl, factoryName, factoryWriter.toByteArray());
     }
 }
