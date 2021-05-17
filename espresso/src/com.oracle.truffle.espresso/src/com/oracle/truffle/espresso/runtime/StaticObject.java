@@ -148,9 +148,8 @@ public class StaticObject implements TruffleObject, Cloneable {
         assert array != null;
         assert !(array instanceof StaticObject);
         assert array.getClass().isArray();
-        EspressoLanguage espresso = klass.getEspressoLanguage();
-        StaticObject newObj = espresso.getArrayShape().getFactory().create(klass);
-        espresso.getArrayProperty().setObject(newObj, array);
+        StaticObject newObj = EspressoLanguage.getArrayShape().getFactory().create(klass);
+        EspressoLanguage.getArrayProperty().setObject(newObj, array);
         return trackAllocation(klass, newObj);
     }
 
@@ -179,10 +178,10 @@ public class StaticObject implements TruffleObject, Cloneable {
     }
 
     private static StaticObject createForeign(Klass klass, Object foreignObject, boolean isNull) {
+        assert klass != null;
         assert foreignObject != null;
-        EspressoLanguage espresso = klass.getEspressoLanguage();
-        StaticObject newObj = espresso.getForeignShape().getFactory().create(klass, true, isNull);
-        espresso.getForeignProperty().setObject(newObj, foreignObject);
+        StaticObject newObj = EspressoLanguage.getForeignShape().getFactory().create(klass, true, isNull);
+        EspressoLanguage.getForeignProperty().setObject(newObj, foreignObject);
         return trackAllocation(klass, newObj);
     }
 
@@ -311,7 +310,7 @@ public class StaticObject implements TruffleObject, Cloneable {
 
     public Object rawForeignObject() {
         assert isForeignObject();
-        return getKlass().getEspressoLanguage().getForeignProperty().getObject(this);
+        return EspressoLanguage.getForeignProperty().getObject(this);
     }
 
     public boolean isStaticStorage() {
@@ -396,7 +395,7 @@ public class StaticObject implements TruffleObject, Cloneable {
      * Start of Array manipulation.
      */
     private Object getArray() {
-        return getKlass().getEspressoLanguage().getArrayProperty().getObject(this);
+        return EspressoLanguage.getArrayProperty().getObject(this);
     }
 
     @SuppressWarnings("unchecked")
