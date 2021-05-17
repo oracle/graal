@@ -302,7 +302,7 @@ public class ClassEntry extends StructureTypeEntry {
          * substitution
          */
         FileEntry methodFileEntry = debugInfoBase.ensureFileEntry(fileName, filePath, cachePath);
-        return new MethodEntry(methodFileEntry, methodName, this, resultType, paramTypeArray, paramNameArray, modifiers, debugMethodInfo.isDeoptTarget());
+        return new MethodEntry(methodFileEntry, methodName, this, resultType, paramTypeArray, paramNameArray, modifiers, debugMethodInfo.isDeoptTarget(), debugMethodInfo.isSubstitutionMethod());
     }
 
     @Override
@@ -357,10 +357,11 @@ public class ClassEntry extends StructureTypeEntry {
         String methodName = debugInfoBase.uniqueDebugString(debugMethodInfo.name());
         String paramSignature = debugMethodInfo.paramSignature();
         String returnTypeName = debugMethodInfo.valueType();
+        boolean substitutionMethod = debugMethodInfo.isSubstitutionMethod();
         ListIterator<MethodEntry> methodIterator = methods.listIterator();
         while (methodIterator.hasNext()) {
             MethodEntry methodEntry = methodIterator.next();
-            int comparisonResult = methodEntry.compareTo(methodName, paramSignature, returnTypeName);
+            int comparisonResult = methodEntry.compareTo(methodName, paramSignature, returnTypeName, substitutionMethod);
             if (comparisonResult == 0) {
                 return methodEntry;
             } else if (comparisonResult > 0) {

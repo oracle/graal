@@ -30,14 +30,18 @@ public class MethodEntry extends MemberEntry implements Comparable<MethodEntry> 
     final TypeEntry[] paramTypes;
     final String[] paramNames;
     final boolean isDeoptTarget;
+    final boolean isSubstitution;
 
-    public MethodEntry(FileEntry fileEntry, String methodName, ClassEntry ownerType, TypeEntry valueType, TypeEntry[] paramTypes, String[] paramNames, int modifiers, boolean isDeoptTarget) {
+    public MethodEntry(FileEntry fileEntry, String methodName, ClassEntry ownerType, TypeEntry valueType,
+                    TypeEntry[] paramTypes, String[] paramNames, int modifiers, boolean isDeoptTarget,
+                    boolean isSubstitutionMethod) {
         super(fileEntry, methodName, ownerType, valueType, modifiers);
         assert ((paramTypes == null && paramNames == null) ||
                         (paramTypes != null && paramNames != null && paramTypes.length == paramNames.length));
         this.paramTypes = paramTypes;
         this.paramNames = paramNames;
         this.isDeoptTarget = isDeoptTarget;
+        this.isSubstitution = isSubstitutionMethod;
     }
 
     public String methodName() {
@@ -74,7 +78,7 @@ public class MethodEntry extends MemberEntry implements Comparable<MethodEntry> 
         return paramNames[idx];
     }
 
-    public int compareTo(String methodName, String paramSignature, String returnTypeName) {
+    public int compareTo(String methodName, String paramSignature, String returnTypeName, boolean isSubstitutionMethod) {
         int nameComparison = memberName.compareTo(methodName);
         if (nameComparison != 0) {
             return nameComparison;
@@ -99,6 +103,9 @@ public class MethodEntry extends MemberEntry implements Comparable<MethodEntry> 
             if (paraComparison != 0) {
                 return paraComparison;
             }
+        }
+        if (this.isSubstitution != isSubstitutionMethod) {
+            return this.isSubstitution ? 1 : -1;
         }
         return 0;
     }
@@ -127,6 +134,9 @@ public class MethodEntry extends MemberEntry implements Comparable<MethodEntry> 
             if (paramComparison != 0) {
                 return paramComparison;
             }
+        }
+        if (this.isSubstitution != other.isSubstitution) {
+            return this.isSubstitution ? 1 : -1;
         }
         return 0;
     }

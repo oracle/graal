@@ -225,6 +225,11 @@ public interface DebugInfoProvider {
          * @return true if this method has been compiled in as a deoptimization target
          */
         boolean isDeoptTarget();
+
+        /**
+         * @return true if this method substitutes another method
+         */
+        boolean isSubstitutionMethod();
     }
 
     /**

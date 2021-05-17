@@ -727,6 +727,11 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             }
 
             @Override
+            public boolean isSubstitutionMethod() {
+                return hostedMethod.getWrapped().getWrapped() instanceof SubstitutionMethod;
+            }
+
+            @Override
             public int modifiers() {
                 return hostedMethod.getModifiers();
             }
@@ -988,6 +993,11 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         @Override
+        public boolean isSubstitutionMethod() {
+            return hostedMethod.getWrapped().getWrapped() instanceof SubstitutionMethod;
+        }
+
+        @Override
         public List<String> paramTypes() {
             Signature signature = hostedMethod.getSignature();
             int parameterCount = signature.getParameterCount(false);
@@ -1132,6 +1142,14 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
                 return ((HostedMethod) method).isDeoptTarget();
             }
             return name().endsWith(HostedMethod.METHOD_NAME_DEOPT_SUFFIX);
+        }
+
+        @Override
+        public boolean isSubstitutionMethod() {
+            if (method instanceof HostedMethod) {
+                return ((HostedMethod) method).getWrapped().getWrapped() instanceof SubstitutionMethod;
+            }
+            return method instanceof SubstitutionMethod;
         }
 
         @Override
