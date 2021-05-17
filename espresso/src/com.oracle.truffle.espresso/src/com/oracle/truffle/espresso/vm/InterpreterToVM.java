@@ -370,7 +370,7 @@ public final class InterpreterToVM implements ContextAccess {
             }
         } else {
             // We must throw ArrayIndexOutOfBoundsException before ArrayStoreException
-            if (index < 0 || index >= wrapper.length()) {
+            if (Integer.compareUnsigned(index, wrapper.length()) >= 0) {
                 throwArrayIndexOutOfBoundsException(getMeta(), bytecodeNode);
             } else {
                 throwArrayStoreException(getMeta(), bytecodeNode);
