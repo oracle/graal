@@ -117,7 +117,7 @@ public final class ListInterop extends IterableInterop {
 
         public Object listGet(StaticObject receiver, long index, BranchProfile error) throws InvalidArrayIndexException {
             try {
-                return unwrapForeign(execute(receiver, (int) index));
+                return unwrapForeign(receiver.getKlass().getEspressoLanguage(), execute(receiver, (int) index));
             } catch (EspressoException e) {
                 error.enter();
                 if (InterpreterToVM.instanceOf(e.getExceptionObject(), receiver.getKlass().getMeta().java_lang_IndexOutOfBoundsException)) {
