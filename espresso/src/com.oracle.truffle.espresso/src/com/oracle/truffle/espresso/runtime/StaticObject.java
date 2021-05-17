@@ -220,6 +220,8 @@ public class StaticObject implements TruffleObject, Cloneable {
 
     public static boolean isNull(StaticObject object) {
         assert object != null;
+        assert (object.getKlass() != null) || object == NULL ||
+                        (object.isForeignObject() && InteropLibrary.getUncached().isNull(object.rawForeignObject())) : "klass can only be null for Espresso null (NULL) and interop nulls";
         return object.getKlass() == null;
     }
 
@@ -298,7 +300,7 @@ public class StaticObject implements TruffleObject, Cloneable {
         return !isForeignObject();
     }
 
-    public Object rawForeignObject(EspressoLanguage espresso) {
+    public Object rawForeignObject() {
         assert isForeignObject();
         return EspressoLanguage.getForeignProperty().getObject(this);
     }
@@ -352,7 +354,7 @@ public class StaticObject implements TruffleObject, Cloneable {
             return "null";
         }
         if (isForeignObject()) {
-            return String.format("foreign object: %s\n%s", getKlass().getTypeAsString(), InteropLibrary.getUncached().toDisplayString(rawForeignObject(getKlass().getEspressoLanguage())));
+            return String.format("foreign object: %s\n%s", getKlass().getTypeAsString(), InteropLibrary.getUncached().toDisplayString(rawForeignObject()));
         }
         if (getKlass() == getKlass().getMeta().java_lang_String) {
             Meta meta = getKlass().getMeta();

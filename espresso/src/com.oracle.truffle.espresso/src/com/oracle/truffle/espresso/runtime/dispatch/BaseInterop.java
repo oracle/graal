@@ -204,8 +204,7 @@ public class BaseInterop {
         if (object.isForeignObject()) {
             InteropLibrary interopLibrary = InteropLibrary.getUncached();
             try {
-
-                return "Foreign object: " + interopLibrary.asString(interopLibrary.toDisplayString(object.rawForeignObject(object.getKlass().getEspressoLanguage()), allowSideEffects));
+                return "Foreign object: " + interopLibrary.asString(interopLibrary.toDisplayString(object.rawForeignObject(), allowSideEffects));
             } catch (UnsupportedMessageException e) {
                 throw EspressoError.shouldNotReachHere("Interop library failed to convert display string to string");
             }

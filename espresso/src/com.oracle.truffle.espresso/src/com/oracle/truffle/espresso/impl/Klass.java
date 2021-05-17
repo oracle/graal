@@ -130,7 +130,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         if (field != null) {
             Object result = field.get(this.tryInitializeAndGetStatics());
             if (result instanceof StaticObject && ((StaticObject) result).isForeignObject()) {
-                return ((StaticObject) result).rawForeignObject(getEspressoLanguage());
+                return ((StaticObject) result).rawForeignObject();
             }
             return result;
         }

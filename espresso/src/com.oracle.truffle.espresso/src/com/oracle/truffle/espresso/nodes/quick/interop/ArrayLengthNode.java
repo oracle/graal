@@ -62,7 +62,7 @@ public abstract class ArrayLengthNode extends QuickNode {
                     @CachedContext(EspressoLanguage.class) EspressoContext context,
                     @Cached BranchProfile exceptionProfile) {
         try {
-            long arrayLength = interop.getArraySize(array.rawForeignObject(context.getLanguage()));
+            long arrayLength = interop.getArraySize(array.rawForeignObject());
             if (arrayLength > Integer.MAX_VALUE) {
                 exceptionProfile.enter();
                 Meta meta = context.getMeta();

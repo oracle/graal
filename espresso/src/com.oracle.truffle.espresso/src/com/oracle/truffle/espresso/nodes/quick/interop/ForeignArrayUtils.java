@@ -43,7 +43,7 @@ public final class ForeignArrayUtils {
     public static Object readForeignArrayElement(StaticObject array, int index, InteropLibrary interop,
                     Meta meta, BranchProfile exceptionProfile) {
         try {
-            return interop.readArrayElement(array.rawForeignObject(meta.getEspressoLanguage()), index);
+            return interop.readArrayElement(array.rawForeignObject(), index);
         } catch (UnsupportedMessageException e) {
             exceptionProfile.enter();
             throw meta.throwExceptionWithMessage(meta.getMeta().java_lang_IllegalArgumentException, "The foreign object is not a readable array");
@@ -56,7 +56,7 @@ public final class ForeignArrayUtils {
     public static void writeForeignArrayElement(StaticObject array, int index, Object value, InteropLibrary interop,
                     Meta meta, BranchProfile exceptionProfile) {
         try {
-            interop.writeArrayElement(array.rawForeignObject(meta.getEspressoLanguage()), index, value);
+            interop.writeArrayElement(array.rawForeignObject(), index, value);
         } catch (UnsupportedMessageException e) {
             exceptionProfile.enter();
             throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "The foreign object is not a writable array");
