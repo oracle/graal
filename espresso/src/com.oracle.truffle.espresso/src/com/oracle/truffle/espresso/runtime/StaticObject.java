@@ -141,8 +141,9 @@ public class StaticObject implements TruffleObject, Cloneable {
         assert array != null;
         assert !(array instanceof StaticObject);
         assert array.getClass().isArray();
-        StaticObject newObj = EspressoLanguage.getArrayShape().getFactory().create(klass);
-        EspressoLanguage.getArrayProperty().setObject(newObj, array);
+        EspressoLanguage espresso = klass.getEspressoLanguage();
+        StaticObject newObj = espresso.getArrayShape().getFactory().create(klass);
+        espresso.getArrayProperty().setObject(newObj, array);
         return trackAllocation(klass, newObj);
     }
 
@@ -159,21 +160,22 @@ public class StaticObject implements TruffleObject, Cloneable {
     }
 
     public static StaticObject createForeign(Klass klass, Object foreignObject, InteropLibrary interopLibrary) {
+        EspressoLanguage espresso = klass.getEspressoLanguage();
         if (interopLibrary.isNull(foreignObject)) {
-            return createForeignNull(foreignObject);
+            return createForeignNull(espresso, foreignObject);
         }
-        return createForeign(klass, foreignObject);
+        return createForeign(espresso, klass, foreignObject);
     }
 
-    public static StaticObject createForeignNull(Object foreignObject) {
+    public static StaticObject createForeignNull(EspressoLanguage espresso, Object foreignObject) {
         assert InteropLibrary.getUncached().isNull(foreignObject);
-        return createForeign(null, foreignObject);
+        return createForeign(espresso, null, foreignObject);
     }
 
-    private static StaticObject createForeign(Klass klass, Object foreignObject) {
+    private static StaticObject createForeign(EspressoLanguage espresso, Klass klass, Object foreignObject) {
         assert foreignObject != null;
-        StaticObject newObj = EspressoLanguage.getForeignShape().getFactory().create(klass, true);
-        EspressoLanguage.getForeignProperty().setObject(newObj, foreignObject);
+        StaticObject newObj = espresso.getForeignShape().getFactory().create(klass, true);
+        espresso.getForeignProperty().setObject(newObj, foreignObject);
         return trackAllocation(klass, newObj);
     }
 
@@ -300,7 +302,7 @@ public class StaticObject implements TruffleObject, Cloneable {
 
     public Object rawForeignObject(EspressoLanguage espresso) {
         assert isForeignObject();
-        return EspressoLanguage.getForeignProperty().getObject(this);
+        return espresso.getForeignProperty().getObject(this);
     }
 
     public boolean isStaticStorage() {
@@ -385,7 +387,7 @@ public class StaticObject implements TruffleObject, Cloneable {
      * Start of Array manipulation.
      */
     private Object getArray() {
-        return EspressoLanguage.getArrayProperty().getObject(this);
+        return getKlass().getEspressoLanguage().getArrayProperty().getObject(this);
     }
 
     @SuppressWarnings("unchecked")
