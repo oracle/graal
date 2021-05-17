@@ -682,7 +682,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         String name = uniqueDebugString(range.getMethodName());
         log(context, "  [0x%08x]     name 0x%x (%s)", pos, debugStringIndex(name), name);
         pos = writeAttrStrp(name, buffer, pos);
-        int fileIdx = classEntry.localFilesIdx();
+        int fileIdx = classEntry.localFilesIdx(range.getFileEntry());
         log(context, "  [0x%08x]     file 0x%x (%s)", pos, fileIdx, range.getFileEntry().getFullName());
         pos = writeAttrData2((short) fileIdx, buffer, pos);
         String returnTypeName = range.getMethodReturnTypeName();

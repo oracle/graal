@@ -436,7 +436,6 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         String primaryClassName = classEntry.getTypeName();
         String primaryFileName = classEntry.getFileName();
         String file = primaryFileName;
-        int fileIdx = 1;
         log(context, "  [0x%08x] primary class %s", pos, primaryClassName);
         log(context, "  [0x%08x] primary file %s", pos, primaryFileName);
         for (PrimaryEntry primaryEntry : classEntry.getPrimaryEntries()) {
@@ -464,6 +463,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
             /*
              * Initialize and write a row for the start of the primary method.
              */
+            int fileIdx = classEntry.localFilesIdx(primaryRange.getFileEntry());
             pos = writeSetFileOp(context, file, fileIdx, buffer, pos);
             pos = writeSetBasicBlockOp(context, buffer, pos);
             /*
