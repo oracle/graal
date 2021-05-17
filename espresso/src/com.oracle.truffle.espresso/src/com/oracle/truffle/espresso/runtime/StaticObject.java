@@ -60,29 +60,22 @@ public class StaticObject implements TruffleObject, Cloneable {
     public static final StaticObject NULL = new StaticObject(null);
     public static final String CLASS_TO_STATIC = "static";
 
+    private static final EspressoLock FOREIGN_MARKER = EspressoLock.create();
+
     private final Klass klass; // != PrimitiveKlass
 
-    private enum Tag {
-        NULL,
-        FOREIGN,
-        FOREIGN_NULL
-    }
-
-    private Object tag;
+    private EspressoLock lockOrForeignMarker;
 
     // region Constructors
     protected StaticObject(Klass klass) {
-        this(klass, false, klass == null);
+        this(klass, false);
     }
 
-    protected StaticObject(Klass klass, boolean isForeign, boolean isNull) {
-        // The initialization of the `tag` field is visible by all threads as a side-effect of the
-        // setting of the final `klass` field in the constructor.
+    protected StaticObject(Klass klass, boolean isForeign) {
         if (isForeign) {
-            tag = isNull ? Tag.FOREIGN_NULL : Tag.FOREIGN;
-        } else if (isNull) {
-            assert klass == null;
-            tag = Tag.NULL;
+            // This assignment is visible by all threads as a side-effect of the setting of the
+            // final `klass` field in the constructor.
+            lockOrForeignMarker = FOREIGN_MARKER;
         }
         this.klass = klass;
     }
@@ -167,20 +160,19 @@ public class StaticObject implements TruffleObject, Cloneable {
 
     public static StaticObject createForeign(Klass klass, Object foreignObject, InteropLibrary interopLibrary) {
         if (interopLibrary.isNull(foreignObject)) {
-            return createForeignNull(klass, foreignObject);
+            return createForeignNull(foreignObject);
         }
-        return createForeign(klass, foreignObject, false);
+        return createForeign(klass, foreignObject);
     }
 
-    public static StaticObject createForeignNull(Klass klass, Object foreignObject) {
+    public static StaticObject createForeignNull(Object foreignObject) {
         assert InteropLibrary.getUncached().isNull(foreignObject);
-        return createForeign(klass, foreignObject, true);
+        return createForeign(null, foreignObject);
     }
 
-    private static StaticObject createForeign(Klass klass, Object foreignObject, boolean isNull) {
-        assert klass != null;
+    private static StaticObject createForeign(Klass klass, Object foreignObject) {
         assert foreignObject != null;
-        StaticObject newObj = EspressoLanguage.getForeignShape().getFactory().create(klass, true, isNull);
+        StaticObject newObj = EspressoLanguage.getForeignShape().getFactory().create(klass, true);
         EspressoLanguage.getForeignProperty().setObject(newObj, foreignObject);
         return trackAllocation(klass, newObj);
     }
@@ -230,7 +222,7 @@ public class StaticObject implements TruffleObject, Cloneable {
         assert object != null;
         assert (object.getKlass() != null) || object == NULL ||
                         (object.isForeignObject() && InteropLibrary.getUncached().isNull(object.rawForeignObject())) : "klass can only be null for Espresso null (NULL) and interop nulls";
-        return object.tag == Tag.NULL || object.tag == Tag.FOREIGN_NULL;
+        return object.getKlass() == null;
     }
 
     @ExportMessage
@@ -277,16 +269,16 @@ public class StaticObject implements TruffleObject, Cloneable {
             CompilerDirectives.transferToInterpreter();
             throw EspressoError.shouldNotReachHere("StaticObject.NULL.getLock()");
         }
-        Object l = tag;
+        EspressoLock l = lockOrForeignMarker;
         if (l == null) {
             synchronized (this) {
-                l = tag;
+                l = lockOrForeignMarker;
                 if (l == null) {
-                    tag = l = EspressoLock.create();
+                    lockOrForeignMarker = l = EspressoLock.create();
                 }
             }
         }
-        return (EspressoLock) l;
+        return l;
     }
 
     public static boolean notNull(StaticObject object) {
@@ -301,7 +293,7 @@ public class StaticObject implements TruffleObject, Cloneable {
     }
 
     public boolean isForeignObject() {
-        return tag == Tag.FOREIGN || tag == Tag.FOREIGN_NULL;
+        return lockOrForeignMarker == FOREIGN_MARKER;
     }
 
     public boolean isEspressoObject() {
@@ -519,7 +511,7 @@ public class StaticObject implements TruffleObject, Cloneable {
     public interface StaticObjectFactory {
         StaticObject create(Klass klass);
 
-        StaticObject create(Klass klass, boolean isForeign, boolean isNull);
+        StaticObject create(Klass klass, boolean isForeign);
     }
     // endregion Factory interface.
 
@@ -536,8 +528,8 @@ public class StaticObject implements TruffleObject, Cloneable {
             this.object = new Object[objectArraySize];
         }
 
-        private DefaultArrayBasedStaticObject(Klass klass, boolean isForeign, boolean isNull, Object shape, int primitiveArraySize, int objectArraySize) {
-            super(klass, isForeign, isNull);
+        private DefaultArrayBasedStaticObject(Klass klass, boolean isForeign, Object shape, int primitiveArraySize, int objectArraySize) {
+            super(klass, isForeign);
             this.shape = shape;
             this.primitive = new byte[primitiveArraySize];
             this.object = new Object[objectArraySize];
@@ -562,8 +554,8 @@ public class StaticObject implements TruffleObject, Cloneable {
         }
 
         @Override
-        public StaticObject create(Klass klass, boolean isForeign, boolean isNull) {
-            return new DefaultArrayBasedStaticObject(klass, isForeign, isNull, shape, primitiveArraySize, objectArraySize);
+        public StaticObject create(Klass klass, boolean isForeign) {
+            return new DefaultArrayBasedStaticObject(klass, isForeign, shape, primitiveArraySize, objectArraySize);
         }
     }
 }
