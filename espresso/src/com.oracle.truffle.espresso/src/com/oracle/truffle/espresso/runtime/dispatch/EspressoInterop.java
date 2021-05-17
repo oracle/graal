@@ -92,7 +92,7 @@ public class EspressoInterop extends BaseInterop {
 
     static Object unwrapForeign(Object receiver) {
         if (receiver instanceof StaticObject && ((StaticObject) receiver).isForeignObject()) {
-            return ((StaticObject) receiver).rawForeignObject();
+            return ((StaticObject) receiver).rawForeignObject(getMeta().getEspressoLanguage());
         }
         return receiver;
     }

@@ -30,6 +30,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -53,13 +54,14 @@ public class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
         }
         Klass targetKlass = targetClass.getMirrorKlass();
         if (value.isForeignObject()) {
+            EspressoLanguage espresso = meta.getEspressoLanguage();
             if (targetKlass.isAssignableFrom(value.getKlass())) {
                 return value;
             }
 
             if (targetKlass.isPrimitive()) {
                 try {
-                    return castToBoxed(targetKlass, value.rawForeignObject(), meta);
+                    return castToBoxed(targetKlass, value.rawForeignObject(espresso), meta);
                 } catch (UnsupportedMessageException e) {
                     throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException,
                                     "Couldn't read " + targetKlass.getTypeAsString() + " value from foreign object");
@@ -68,10 +70,10 @@ public class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
 
             if (targetKlass.isArray()) {
                 InteropLibrary interopLibrary = InteropLibrary.getUncached();
-                if (!interopLibrary.hasArrayElements(value.rawForeignObject())) {
+                if (!interopLibrary.hasArrayElements(value.rawForeignObject(espresso))) {
                     throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Cannot cast a non-array value to an array type");
                 }
-                return StaticObject.createForeign(targetKlass, value.rawForeignObject(), interopLibrary);
+                return StaticObject.createForeign(targetKlass, value.rawForeignObject(espresso), interopLibrary);
             }
 
             if (targetKlass instanceof ObjectKlass) {
@@ -87,11 +89,11 @@ public class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                  * content/chars of foreign strings without a full conversion.
                  */
                 if (targetKlass == meta.java_lang_String) {
-                    if (!interopLibrary.isString(value.rawForeignObject())) {
+                    if (!interopLibrary.isString(value.rawForeignObject(espresso))) {
                         throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Cannot cast a non-string foreign object to string");
                     }
                     try {
-                        return meta.toGuestString(interopLibrary.asString(value.rawForeignObject()));
+                        return meta.toGuestString(interopLibrary.asString(value.rawForeignObject(espresso)));
                     } catch (UnsupportedMessageException e) {
                         CompilerDirectives.transferToInterpreter();
                         throw EspressoError.shouldNotReachHere("Contract violation: if isString returns true, asString must succeed.");
@@ -102,18 +104,18 @@ public class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                  * Casting to ForeignException skip the field checks.
                  */
                 if (meta.polyglot != null /* polyglot enabled */ && meta.polyglot.ForeignException == targetKlass) {
-                    if (!interopLibrary.isException(value.rawForeignObject())) {
+                    if (!interopLibrary.isException(value.rawForeignObject(espresso))) {
                         throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Cannot cast a non-exception foreign object to ForeignException");
                     }
-                    return StaticObject.createForeignException(meta, value.rawForeignObject(), interopLibrary);
+                    return StaticObject.createForeignException(meta, value.rawForeignObject(espresso), interopLibrary);
                 }
 
                 try {
-                    ToEspressoNode.checkHasAllFieldsOrThrow(value.rawForeignObject(), (ObjectKlass) targetKlass, interopLibrary, meta);
+                    ToEspressoNode.checkHasAllFieldsOrThrow(value.rawForeignObject(espresso), (ObjectKlass) targetKlass, interopLibrary, meta);
                 } catch (ClassCastException e) {
                     throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Could not cast foreign object to " + targetKlass.getNameAsString() + ": " + e.getMessage());
                 }
-                return StaticObject.createForeign(targetKlass, value.rawForeignObject(), interopLibrary);
+                return StaticObject.createForeign(targetKlass, value.rawForeignObject(espresso), interopLibrary);
             }
 
             throw EspressoError.shouldNotReachHere("Klass is either Primitive, Object or Array");
@@ -234,7 +236,7 @@ public class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
         }
         String bindingName = meta.toHostString(name);
         if (value.isForeignObject()) {
-            meta.getContext().getEnv().exportSymbol(bindingName, value.rawForeignObject());
+            meta.getContext().getEnv().exportSymbol(bindingName, value.rawForeignObject(meta.getEspressoLanguage()));
         } else {
             meta.getContext().getEnv().exportSymbol(bindingName, value);
         }

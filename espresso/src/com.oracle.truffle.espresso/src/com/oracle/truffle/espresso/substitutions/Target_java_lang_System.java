@@ -113,7 +113,8 @@ public final class Target_java_lang_System {
         if (src.isForeignObject() || dest.isForeignObject()) {
             // TODO: handle foreign arrays efficiently.
             profiler.profile(FOREIGN_PROFILE);
-            handleForeignArray(src.isForeignObject() ? src.rawForeignObject() : src, srcPos, dest.isForeignObject() ? dest.rawForeignObject() : dest, destPos, length,
+            handleForeignArray(src.isForeignObject() ? src.rawForeignObject(meta.getEspressoLanguage()) : src, srcPos,
+                            dest.isForeignObject() ? dest.rawForeignObject(meta.getEspressoLanguage()) : dest, destPos, length,
                             ((ArrayKlass) dest.getKlass()).getComponentType(), meta, profiler);
             return;
         }

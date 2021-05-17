@@ -55,7 +55,7 @@ public abstract class InvokeEspressoNode extends Node {
          * Espresso and unwrapped when going out)
          */
         if (result instanceof StaticObject && ((StaticObject) result).isForeignObject()) {
-            return ((StaticObject) result).rawForeignObject();
+            return ((StaticObject) result).rawForeignObject(method.getEspressoLanguage());
         }
         return result;
     }

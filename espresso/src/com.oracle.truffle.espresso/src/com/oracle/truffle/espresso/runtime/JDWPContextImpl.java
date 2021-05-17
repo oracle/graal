@@ -398,7 +398,7 @@ public final class JDWPContextImpl implements JDWPContext {
         StaticObject staticObject = (StaticObject) array;
         if (staticObject.isForeignObject()) {
             try {
-                long arrayLength = UNCACHED.getArraySize(staticObject.rawForeignObject());
+                long arrayLength = UNCACHED.getArraySize(staticObject.rawForeignObject(context.getLanguage()));
                 if (arrayLength > Integer.MAX_VALUE) {
                     return -1;
                 }

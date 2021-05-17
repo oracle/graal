@@ -366,7 +366,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     private static Object readForeignArrayElement(StaticObject array, int index, InteropLibrary interop,
                     Meta meta, SubstitutionProfiler profiler, char exceptionBranch) {
         try {
-            return interop.readArrayElement(array.rawForeignObject(), index);
+            return interop.readArrayElement(array.rawForeignObject(meta.getEspressoLanguage()), index);
         } catch (UnsupportedMessageException e) {
             profiler.profile(exceptionBranch);
             throw meta.throwExceptionWithMessage(meta.getMeta().java_lang_ClassCastException, "The foreign object is not a readable array");
@@ -381,7 +381,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         assert array.isArray();
         int length;
         try {
-            long longLength = interop.getArraySize(array.rawForeignObject());
+            long longLength = interop.getArraySize(array.rawForeignObject(meta.getEspressoLanguage()));
             if (longLength > Integer.MAX_VALUE) {
                 profiler.profile(exceptionBranch);
                 throw meta.throwExceptionWithMessage(meta.java_lang_CloneNotSupportedException, "Cannot clone a foreign array whose length does not fit in int");
@@ -494,7 +494,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         if (self.isArray()) {
             // Arrays are always cloneable.
             if (self.isForeignObject()) {
-                return cloneForeignArray(self, meta, InteropLibrary.getUncached(self.rawForeignObject()), ToEspressoNodeGen.getUncached(), profiler, exceptionBranch);
+                return cloneForeignArray(self, meta, InteropLibrary.getUncached(self.rawForeignObject(meta.getEspressoLanguage())), ToEspressoNodeGen.getUncached(), profiler, exceptionBranch);
             }
             return self.copy();
         }
