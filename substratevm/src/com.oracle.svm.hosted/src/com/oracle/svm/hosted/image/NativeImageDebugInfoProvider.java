@@ -45,9 +45,7 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
-import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
@@ -197,6 +195,20 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         return hostedType.getWrapped().getWrapped();
     }
 
+    private static ResolvedJavaType getJavaType(ResolvedJavaMethod method, boolean wantOriginal) {
+        if (method instanceof HostedMethod) {
+            return getJavaType((HostedMethod) method, wantOriginal);
+        }
+        ResolvedJavaMethod wrappedMethod = method;
+        while (wrappedMethod instanceof WrappedJavaMethod) {
+            wrappedMethod = ((WrappedJavaMethod) wrappedMethod).getWrapped();
+        }
+        if (wrappedMethod instanceof SubstitutionMethod) {
+            return ((SubstitutionMethod) wrappedMethod).getAnnotated().getDeclaringClass();
+        }
+        return wrappedMethod.getDeclaringClass();
+    }
+
     protected static ResolvedJavaType getJavaType(HostedMethod hostedMethod, boolean wantOriginal) {
         if (wantOriginal) {
             /* Check for wholesale replacement of the original class. */
@@ -216,6 +228,9 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             return hostedType.getWrapped().getWrapped();
         }
         ResolvedJavaMethod javaMethod = hostedMethod.getWrapped().getWrapped();
+        if (javaMethod instanceof SubstitutionMethod) {
+            return ((SubstitutionMethod) javaMethod).getAnnotated().getDeclaringClass();
+        }
         return javaMethod.getDeclaringClass();
     }
 
@@ -267,10 +282,9 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         @SuppressWarnings("try")
         NativeImageDebugFileInfo(HostedType hostedType) {
             ResolvedJavaType javaType = getJavaType(hostedType, false);
-            Class<?> clazz = hostedType.getJavaClass();
             SourceManager sourceManager = ImageSingletons.lookup(SourceManager.class);
             try (DebugContext.Scope s = debugContext.scope("DebugFileInfo", hostedType)) {
-                fullFilePath = sourceManager.findAndCacheSource(javaType, clazz, debugContext);
+                fullFilePath = sourceManager.findAndCacheSource(javaType, debugContext);
             } catch (Throwable e) {
                 throw debugContext.handle(e);
             }
@@ -280,10 +294,9 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         NativeImageDebugFileInfo(HostedMethod hostedMethod) {
             ResolvedJavaType javaType = getJavaType(hostedMethod, false);
             HostedType hostedType = hostedMethod.getDeclaringClass();
-            Class<?> clazz = hostedType.getJavaClass();
             SourceManager sourceManager = ImageSingletons.lookup(SourceManager.class);
             try (DebugContext.Scope s = debugContext.scope("DebugFileInfo", hostedType)) {
-                fullFilePath = sourceManager.findAndCacheSource(javaType, clazz, debugContext);
+                fullFilePath = sourceManager.findAndCacheSource(javaType, debugContext);
             } catch (Throwable e) {
                 throw debugContext.handle(e);
             }
@@ -293,10 +306,9 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         NativeImageDebugFileInfo(HostedField hostedField) {
             ResolvedJavaType javaType = getJavaType(hostedField, false);
             HostedType hostedType = hostedField.getDeclaringClass();
-            Class<?> clazz = hostedType.getJavaClass();
             SourceManager sourceManager = ImageSingletons.lookup(SourceManager.class);
             try (DebugContext.Scope s = debugContext.scope("DebugFileInfo", hostedType)) {
-                fullFilePath = sourceManager.findAndCacheSource(javaType, clazz, debugContext);
+                fullFilePath = sourceManager.findAndCacheSource(javaType, debugContext);
             } catch (Throwable e) {
                 throw debugContext.handle(e);
             }
@@ -1202,25 +1214,10 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
         @SuppressWarnings("try")
         private void computeFullFilePath() {
-            ResolvedJavaType declaringClass = method.getDeclaringClass();
-            Class<?> clazz = null;
-            if (declaringClass instanceof OriginalClassProvider) {
-                clazz = ((OriginalClassProvider) declaringClass).getJavaClass();
-            }
-            /*
-             * HostedType wraps an AnalysisType and both HostedType and AnalysisType punt calls to
-             * getSourceFilename to the wrapped class so for consistency we need to do the path
-             * lookup relative to the doubly unwrapped HostedType or singly unwrapped AnalysisType.
-             */
-            if (declaringClass instanceof HostedType) {
-                declaringClass = ((HostedType) declaringClass).getWrapped();
-            }
-            if (declaringClass instanceof AnalysisType) {
-                declaringClass = ((AnalysisType) declaringClass).getWrapped();
-            }
+            ResolvedJavaType declaringClass = getJavaType(method, false);
             SourceManager sourceManager = ImageSingletons.lookup(SourceManager.class);
             try (DebugContext.Scope s = debugContext.scope("DebugCodeInfo", declaringClass)) {
-                fullFilePath = sourceManager.findAndCacheSource(declaringClass, clazz, debugContext);
+                fullFilePath = sourceManager.findAndCacheSource(declaringClass, debugContext);
             } catch (Throwable e) {
                 throw debugContext.handle(e);
             }

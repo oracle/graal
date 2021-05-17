@@ -26,6 +26,8 @@
 
 package com.oracle.svm.hosted.image.sources;
 
+import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
+import com.oracle.svm.hosted.c.GraalAccess;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.compiler.debug.DebugContext;
 
@@ -46,12 +48,11 @@ public class SourceManager {
      * the source.
      * 
      * @param resolvedType the Java type whose source file should be located and cached
-     * @param clazz the Java class associated with the resolved type
      * @param debugContext context for logging details of any lookup failure
      * @return a path identifying the location of a successfully cached file for inclusion in the
      *         generated debug info or null if a source file cannot be found or cached.
      */
-    public Path findAndCacheSource(ResolvedJavaType resolvedType, Class<?> clazz, DebugContext debugContext) {
+    public Path findAndCacheSource(ResolvedJavaType resolvedType, DebugContext debugContext) {
         /* short circuit if we have already seen this type */
         Path path = verifiedPaths.get(resolvedType);
         if (path != null) {
@@ -68,6 +69,7 @@ public class SourceManager {
              */
             if (resolvedType.isInstanceClass() || resolvedType.isInterface()) {
                 String packageName = computePackageName(resolvedType);
+                Class<?> clazz = OriginalClassProvider.getJavaClass(GraalAccess.getOriginalSnippetReflection(), resolvedType);
                 path = locateSource(fileName, packageName, clazz);
                 if (path == null) {
                     // as a last ditch effort derive path from the Java class name
