@@ -80,6 +80,12 @@ final class TruffleJDKServices {
         }
     }
 
+    static void addReads(Class<?> client) {
+        Module truffleModule = TruffleJDKServices.class.getModule();
+        Module clientModule = client.getModule();
+        truffleModule.addReads(clientModule);
+    }
+
     static <Service> List<Iterable<Service>> getTruffleRuntimeLoaders(Class<Service> serviceClass) {
         return Collections.singletonList(ServiceLoader.load(serviceClass));
     }

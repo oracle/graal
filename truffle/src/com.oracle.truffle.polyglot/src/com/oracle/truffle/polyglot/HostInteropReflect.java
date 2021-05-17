@@ -586,6 +586,7 @@ final class FunctionProxyHandler implements InvocationHandler, HostWrapper {
         assert declaringClass.isInterface() : declaringClass;
         MethodHandle mh;
         try {
+            EngineAccessor.JDKSERVICES.addReads(declaringClass);
             mh = MethodHandles.lookup().findSpecial(declaringClass, method.getName(), MethodType.methodType(method.getReturnType(), method.getParameterTypes()), declaringClass);
         } catch (IllegalAccessException e) {
             throw new UnsupportedOperationException(method.getName(), e);
