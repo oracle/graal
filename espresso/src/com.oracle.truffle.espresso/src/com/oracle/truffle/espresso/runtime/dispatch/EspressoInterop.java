@@ -90,9 +90,9 @@ public class EspressoInterop extends BaseInterop {
         return EspressoLanguage.getCurrentContext().getMeta();
     }
 
-    static Object unwrapForeign(EspressoLanguage espresso, Object receiver) {
+    static Object unwrapForeign(Object receiver) {
         if (receiver instanceof StaticObject && ((StaticObject) receiver).isForeignObject()) {
-            return ((StaticObject) receiver).rawForeignObject(espresso);
+            return ((StaticObject) receiver).rawForeignObject(getMeta().getEspressoLanguage());
         }
         return receiver;
     }
@@ -866,7 +866,7 @@ public class EspressoInterop extends BaseInterop {
         if (notNull(receiver)) {
             Field f = lookupField.execute(getInteropKlass(receiver), member);
             if (f != null) {
-                return unwrapForeign(receiver.getKlass().getEspressoLanguage(), f.get(receiver));
+                return unwrapForeign(f.get(receiver));
             }
             // Class<T>.static == Klass<T>
             if (CLASS_TO_STATIC.equals(member)) {
