@@ -325,8 +325,7 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
     def calibrateLatencyTestInBackground(benchmarkSuite):
         if not BaseMicroserviceBenchmarkSuite.waitForPort(benchmarkSuite.servicePort()):
             mx.abort("Failed to find server application in {0}".format(BaseMicroserviceBenchmarkSuite.__name__))
-        # TEMP (chaeubl)
-        # benchmarkSuite.calibrateLatencyTest()
+        benchmarkSuite.calibrateLatencyTest()
         if not BaseMicroserviceBenchmarkSuite.terminateApplication(benchmarkSuite.servicePort()):
             mx.abort("Failed to terminate server application in {0}".format(BaseMicroserviceBenchmarkSuite.__name__))
 
@@ -334,8 +333,7 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
     def testLatencyInBackground(benchmarkSuite):
         if not BaseMicroserviceBenchmarkSuite.waitForPort(benchmarkSuite.servicePort()):
             mx.abort("Failed to find server application in {0}".format(BaseMicroserviceBenchmarkSuite.__name__))
-        # TEMP (chaeubl)
-        # benchmarkSuite.testLatency()
+        benchmarkSuite.testLatency()
         if not BaseMicroserviceBenchmarkSuite.terminateApplication(benchmarkSuite.servicePort()):
             mx.abort("Failed to terminate server application in {0}".format(BaseMicroserviceBenchmarkSuite.__name__))
 
