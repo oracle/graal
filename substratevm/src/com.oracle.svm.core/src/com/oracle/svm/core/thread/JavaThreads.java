@@ -70,6 +70,7 @@ import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
@@ -288,6 +289,34 @@ public abstract class JavaThreads {
         } finally {
             VMThreads.THREAD_MUTEX.unlock();
         }
+    }
+
+    /**
+     * Returns the thread size requested for this thread; otherwise, if there are no expectations,
+     * then returns 0.
+     */
+    public static long getRequestedThreadSize(Thread thread) {
+        /* Return a stack size based on parameters and command line flags. */
+        long stackSize;
+        long threadSpecificStackSize = JavaContinuations.LoomCompatibilityUtil.getStackSize(toTarget(thread));
+        if (threadSpecificStackSize != 0) {
+            /* If the user set a thread stack size at thread creation, then use that. */
+            stackSize = threadSpecificStackSize;
+        } else {
+            /* If the user set a thread stack size on the command line, then use that. */
+            stackSize = SubstrateOptions.StackSize.getValue();
+        }
+
+        if (stackSize != 0) {
+            /*
+             * Add the yellow+red zone size: This area of the stack is not accessible to the user's
+             * Java code, so it would be surprising if we gave the user less stack space to use than
+             * explicitly requested. In particular, a size less than the yellow+red size would lead
+             * to an immediate StackOverflowError.
+             */
+            stackSize += StackOverflowCheck.singleton().yellowAndRedZoneSize();
+        }
+        return stackSize;
     }
 
     /**

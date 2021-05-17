@@ -49,7 +49,6 @@ import com.oracle.svm.core.jdk.LoomJDK;
 import com.oracle.svm.core.jdk.NotLoomJDK;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
 import com.oracle.svm.core.monitor.MonitorSupport;
-import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.util.VMError;
 
 @TargetClass(Thread.class)
@@ -345,27 +344,6 @@ public final class Target_java_lang_Thread {
             throw VMError.unsupportedFeature("Single-threaded VM cannot create new threads");
         }
 
-        /* Choose a stack size based on parameters, command line flags, and system restrictions. */
-        long stackSize;
-        long threadSpecificStackSize = JavaContinuations.LoomCompatibilityUtil.getStackSize(this);
-        if (threadSpecificStackSize != 0) {
-            /* If the user set a thread stack size at thread creation, then use that. */
-            stackSize = threadSpecificStackSize;
-        } else {
-            /* If the user set a thread stack size on the command line, then use that. */
-            stackSize = SubstrateOptions.StackSize.getValue();
-        }
-
-        if (stackSize != 0) {
-            /*
-             * Add the yellow+red zone size: This area of the stack is not accessible to the user's
-             * Java code, so it would be surprising if we gave the user less stack space to use than
-             * explicitly requested. In particular, a size less than the yellow+red size would lead
-             * to an immediate StackOverflowError.
-             */
-            stackSize += StackOverflowCheck.singleton().yellowAndRedZoneSize();
-        }
-
         /*
          * The threadStatus must be set to RUNNABLE by the parent thread and before the child thread
          * starts because we are creating child threads asynchronously (there is no coordination
@@ -376,6 +354,7 @@ public final class Target_java_lang_Thread {
          */
         JavaContinuations.LoomCompatibilityUtil.setThreadStatus(this, ThreadStatus.RUNNABLE);
         wasStartedByCurrentIsolate = true;
+        long stackSize = JavaThreads.getRequestedThreadSize(JavaThreads.fromTarget(this));
         JavaThreads.singleton().startThread(JavaThreads.fromTarget(this), stackSize);
     }
 

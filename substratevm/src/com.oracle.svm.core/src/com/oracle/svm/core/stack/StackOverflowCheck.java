@@ -97,6 +97,19 @@ public interface StackOverflowCheck {
         /** The lowest address of the stack. */
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         UnsignedWord lookupStackEnd();
+
+        /**
+         * The lowest address of the stack. If the OS reserved stack memory is larger than
+         * requestedStackSize, then the value for end of the stack memory returned may be before the
+         * real stack end.
+         *
+         * @param requestedStackSize requested stack size. If zero, then the value is ignored.
+         */
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        default UnsignedWord lookupStackEnd(@SuppressWarnings("unused") UnsignedWord requestedStackSize) {
+            return lookupStackEnd();
+        }
+
     }
 
     @Fold
@@ -139,4 +152,9 @@ public interface StackOverflowCheck {
      */
     @Uninterruptible(reason = "Called by fatal error handling that is uninterruptible.")
     void disableStackOverflowChecksForFatalError();
+
+    /**
+     * Updates the stack overflow boundary of the current thread.
+     */
+    void updateStackOverflowBoundary();
 }

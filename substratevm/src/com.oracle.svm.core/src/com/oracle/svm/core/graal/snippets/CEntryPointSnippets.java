@@ -307,6 +307,10 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         if (!success) {
             return CEntryPointErrors.ISOLATE_INITIALIZATION_FAILED;
         }
+
+        /* Adjust stack overflow boundary of main thread. */
+        StackOverflowCheck.singleton().updateStackOverflowBoundary();
+
         assert !isolateInitialized;
         isolateInitialized = true;
 
