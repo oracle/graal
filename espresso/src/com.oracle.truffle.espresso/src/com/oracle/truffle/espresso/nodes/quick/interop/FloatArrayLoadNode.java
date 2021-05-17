@@ -78,9 +78,4 @@ public abstract class FloatArrayLoadNode extends QuickNode {
     float doEspresso(StaticObject array, int index) {
         return getBytecodeNode().getInterpreterToVM().getArrayFloat(index, array);
     }
-
-    @Override
-    public boolean producedForeignObject(Object[] refs) {
-        return false;
-    }
 }

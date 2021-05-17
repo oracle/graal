@@ -50,8 +50,6 @@ public abstract class BaseQuickNode extends Node implements BciProvider, Instrum
         return new BaseQuickNodeWrapper(this, probeNode);
     }
 
-    public abstract boolean producedForeignObject(Object[] refs);
-
     public boolean removedByRedefintion() {
         return false;
     }

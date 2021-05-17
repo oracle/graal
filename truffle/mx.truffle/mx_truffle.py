@@ -720,9 +720,13 @@ class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency)
                 ])
             )
 
-        self.buildDependencies = self.delegate.buildDependencies
         self.include_dirs = self.delegate.include_dirs
         self.libs = self.delegate.libs
+
+    def resolveDeps(self):
+        super(LibffiBuilderProject, self).resolveDeps()
+        self.delegate.resolveDeps()
+        self.buildDependencies += self.delegate.buildDependencies
 
     @property
     def sources(self):

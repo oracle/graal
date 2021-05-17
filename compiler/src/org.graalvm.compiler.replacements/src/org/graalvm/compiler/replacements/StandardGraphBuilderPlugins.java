@@ -1097,7 +1097,6 @@ public class StandardGraphBuilderPlugins {
             } else {
                 b.add(node);
             }
-            b.processInstruction(node);
         }
 
         protected final void createUnsafeAccess(ValueNode value, GraphBuilderContext b, UnsafeNodeConstructor nodeConstructor) {
@@ -1157,7 +1156,6 @@ public class StandardGraphBuilderPlugins {
                     b.push(unsafeAccessKind, graph.addOrUnique(phi));
                 }
                 b.setStateAfter(merge);
-                b.processInstruction(merge);
             }
         }
     }
