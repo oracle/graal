@@ -33,6 +33,7 @@ import com.oracle.truffle.api.library.DynamicDispatchLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Field;
@@ -42,7 +43,6 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.dispatch.BaseInterop;
-import com.oracle.truffle.espresso.staticobject.ClassLoaderCache;
 import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.substitutions.SuppressFBWarnings;
 
@@ -141,8 +141,8 @@ public class StaticObject implements TruffleObject, Cloneable {
         assert array != null;
         assert !(array instanceof StaticObject);
         assert array.getClass().isArray();
-        StaticObject newObj = ArrayKlass.getArrayShape(klass.getEspressoLanguage()).getFactory().create(klass);
-        ArrayKlass.getArrayProperty().setObject(newObj, array);
+        StaticObject newObj = EspressoLanguage.getArrayShape().getFactory().create(klass);
+        EspressoLanguage.getArrayProperty().setObject(newObj, array);
         return trackAllocation(klass, newObj);
     }
 
@@ -159,22 +159,21 @@ public class StaticObject implements TruffleObject, Cloneable {
     }
 
     public static StaticObject createForeign(Klass klass, Object foreignObject, InteropLibrary interopLibrary) {
-        ClassLoaderCache clc = klass.getEspressoLanguage();
         if (interopLibrary.isNull(foreignObject)) {
-            return createForeignNull(clc, foreignObject);
+            return createForeignNull(foreignObject);
         }
-        return createForeign(clc, klass, foreignObject);
+        return createForeign(klass, foreignObject);
     }
 
-    public static StaticObject createForeignNull(ClassLoaderCache clc, Object foreignObject) {
+    public static StaticObject createForeignNull(Object foreignObject) {
         assert InteropLibrary.getUncached().isNull(foreignObject);
-        return createForeign(clc, null, foreignObject);
+        return createForeign(null, foreignObject);
     }
 
-    private static StaticObject createForeign(ClassLoaderCache clc, Klass klass, Object foreignObject) {
+    private static StaticObject createForeign(Klass klass, Object foreignObject) {
         assert foreignObject != null;
-        StaticObject newObj = Klass.getForeignShape(clc).getFactory().create(klass, true);
-        Klass.getForeignProperty().setObject(newObj, foreignObject);
+        StaticObject newObj = EspressoLanguage.getForeignShape().getFactory().create(klass, true);
+        EspressoLanguage.getForeignProperty().setObject(newObj, foreignObject);
         return trackAllocation(klass, newObj);
     }
 
@@ -303,7 +302,7 @@ public class StaticObject implements TruffleObject, Cloneable {
 
     public Object rawForeignObject() {
         assert isForeignObject();
-        return Klass.getForeignProperty().getObject(this);
+        return EspressoLanguage.getForeignProperty().getObject(this);
     }
 
     public boolean isStaticStorage() {
@@ -388,7 +387,7 @@ public class StaticObject implements TruffleObject, Cloneable {
      * Start of Array manipulation.
      */
     private Object getArray() {
-        return ArrayKlass.getArrayProperty().getObject(this);
+        return EspressoLanguage.getArrayProperty().getObject(this);
     }
 
     @SuppressWarnings("unchecked")

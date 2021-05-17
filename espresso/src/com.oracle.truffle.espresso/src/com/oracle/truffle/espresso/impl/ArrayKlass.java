@@ -29,8 +29,6 @@ import static com.oracle.truffle.espresso.classfile.Constants.ACC_PRIVATE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_PROTECTED;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_PUBLIC;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -42,12 +40,6 @@ import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.StaticObject.StaticObjectFactory;
-import com.oracle.truffle.espresso.staticobject.ClassLoaderCache;
-import com.oracle.truffle.espresso.staticobject.DefaultStaticProperty;
-import com.oracle.truffle.espresso.staticobject.StaticProperty;
-import com.oracle.truffle.espresso.staticobject.StaticPropertyKind;
-import com.oracle.truffle.espresso.staticobject.StaticShape;
 import com.oracle.truffle.espresso.substitutions.Host;
 
 public final class ArrayKlass extends Klass {
@@ -55,12 +47,6 @@ public final class ArrayKlass extends Klass {
     private final Klass componentType;
     private final Klass elementalType;
     private final int dimension;
-
-    private static final StaticProperty ARRAY_PROPERTY = new DefaultStaticProperty("array", StaticPropertyKind.Object, true);
-    // This field should be static final, but until we move the static object model we cannot have a
-    // SubstrateVM feature which will allow us to set the right field offsets at image build time.
-    @CompilationFinal //
-    private static StaticShape<StaticObjectFactory> arrayShape;
 
     ArrayKlass(Klass componentType) {
         super(componentType.getContext(),
@@ -74,24 +60,6 @@ public final class ArrayKlass extends Klass {
         this.componentType = componentType;
         this.elementalType = componentType.getElementalType();
         this.dimension = Types.getArrayDimensions(getType());
-    }
-
-    public static StaticProperty getArrayProperty() {
-        return ARRAY_PROPERTY;
-    }
-
-    public static StaticShape<StaticObjectFactory> getArrayShape(ClassLoaderCache clc) {
-        if (arrayShape == null) {
-            initializeArrayShape(clc);
-        }
-        return arrayShape;
-    }
-
-    @TruffleBoundary
-    private static synchronized void initializeArrayShape(ClassLoaderCache clc) {
-        if (arrayShape == null) {
-            arrayShape = StaticShape.newBuilder(clc).property(ARRAY_PROPERTY).build(StaticObject.class, StaticObjectFactory.class);
-        }
     }
 
     @Override
