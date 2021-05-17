@@ -43,10 +43,9 @@ abstract class ShapeGenerator<T> {
 
     abstract StaticShape<T> generateShape(StaticShape<T> parentShape, Collection<StaticProperty> staticProperties);
 
-    static <T> ShapeGenerator<T> getShapeGenerator(StaticShape<T> parentShape) {
+    static <T> ShapeGenerator<T> getShapeGenerator(GeneratorClassLoader gcl, StaticShape<T> parentShape) {
         Class<?> parentStorageClass = parentShape.getStorageClass();
         Class<?> storageSuperclass = ARRAY_BASED_STORAGE ? parentStorageClass.getSuperclass() : parentStorageClass;
-        GeneratorClassLoader gcl = (GeneratorClassLoader) parentStorageClass.getClassLoader();
         return getShapeGenerator(gcl, storageSuperclass, parentShape.getFactoryInterface());
     }
 
