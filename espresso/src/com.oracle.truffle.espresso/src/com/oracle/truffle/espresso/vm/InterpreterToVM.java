@@ -462,7 +462,7 @@ public final class InterpreterToVM implements ContextAccess {
         field.setObject(obj, value);
     }
 
-    public static StaticObject newReferenceArray(Klass componentType, int length) {
+    public static StaticObject newReferenceArray(Klass componentType, int length, BytecodeNode bytecodeNode) {
         if (length < 0) {
             // componentType is not always PE constant e.g. when called from the Array#newInstance
             // substitution. The derived context and meta accessor are not PE constant
@@ -472,12 +472,20 @@ public final class InterpreterToVM implements ContextAccess {
             // The definitive solution would be to distinguish the cases where the exception klass
             // is PE constant from the cases where it's dynamic. We can further reduce the dynamic
             // cases with an inline cache in the above substitution.
+            if (bytecodeNode != null) {
+                bytecodeNode.enterImplicitExceptionProfile();
+            }
             throw throwNegativeArraySizeException(componentType.getMeta());
         }
         assert length >= 0;
         StaticObject[] arr = new StaticObject[length];
         Arrays.fill(arr, StaticObject.NULL);
         return StaticObject.createArray(componentType.getArrayClass(), arr);
+    }
+
+    public static StaticObject newReferenceArray(Klass componentType, int length) {
+        assert !componentType.isPrimitive();
+        return newReferenceArray(componentType, length, null);
     }
 
     @TruffleBoundary(transferToInterpreterOnException = false)
@@ -524,8 +532,15 @@ public final class InterpreterToVM implements ContextAccess {
     }
 
     public static StaticObject allocatePrimitiveArray(byte jvmPrimitiveType, int length, Meta meta) {
+        return allocatePrimitiveArray(jvmPrimitiveType, length, meta, null);
+    }
+
+    public static StaticObject allocatePrimitiveArray(byte jvmPrimitiveType, int length, Meta meta, BytecodeNode bytecodeNode) {
         // the constants for the cpi are loosely defined and no real cpi indices.
         if (length < 0) {
+            if (bytecodeNode != null) {
+                bytecodeNode.enterImplicitExceptionProfile();
+            }
             throw meta.throwException(meta.java_lang_NegativeArraySizeException);
         }
         // @formatter:off

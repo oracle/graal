@@ -50,9 +50,4 @@ public final class QuickenedPutFieldNode extends QuickNode {
         setFieldNode.setField(frame, primitives, refs, root, receiver, top, statementIndex);
         return -slotCount - 1; // -receiver
     }
-
-    @Override
-    public boolean producedForeignObject(Object[] refs) {
-        return false;
-    }
 }

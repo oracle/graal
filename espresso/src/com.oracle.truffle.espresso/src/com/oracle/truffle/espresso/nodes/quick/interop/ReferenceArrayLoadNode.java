@@ -52,7 +52,9 @@ public abstract class ReferenceArrayLoadNode extends QuickNode {
     public final int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
         StaticObject array = nullCheck(BytecodeNode.popObject(refs, top - 2));
         int index = BytecodeNode.popInt(primitives, top - 1);
-        BytecodeNode.putObject(refs, top - 2, executeLoad(array, index));
+        StaticObject result = executeLoad(array, index);
+        getBytecodeNode().checkNoForeignObjectAssumption(result);
+        BytecodeNode.putObject(refs, top - 2, result);
         return Bytecodes.stackEffectOf(Bytecodes.AALOAD);
     }
 
@@ -79,10 +81,5 @@ public abstract class ReferenceArrayLoadNode extends QuickNode {
     @Specialization(guards = "array.isEspressoObject()")
     StaticObject doEspresso(StaticObject array, int index) {
         return getBytecodeNode().getInterpreterToVM().getArrayObject(index, array);
-    }
-
-    @Override
-    public boolean producedForeignObject(Object[] refs) {
-        return BytecodeNode.peekObject(refs, top - 2).isForeignObject();
     }
 }

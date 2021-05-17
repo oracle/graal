@@ -492,7 +492,7 @@ public final class StaticObject implements TruffleObject {
     public void putObject(StaticObject value, int index, Meta meta, BytecodeNode bytecodeNode) {
         checkNotForeign();
         assert isArray();
-        if (index >= 0 && index < length()) {
+        if (Integer.compareUnsigned(index, length()) < 0) {
             // TODO(peterssen): Use different profiles for index-out-of-bounds and array-store
             // exceptions.
             putObjectUnsafe(arrayStoreExCheck(value, ((ArrayKlass) klass).getComponentType(), meta, bytecodeNode), index);
@@ -530,7 +530,7 @@ public final class StaticObject implements TruffleObject {
     public void setArrayByte(byte value, int index, Meta meta, BytecodeNode bytecodeNode) {
         checkNotForeign();
         assert isArray() && fields instanceof byte[];
-        if (index >= 0 && index < length()) {
+        if (Integer.compareUnsigned(index, length()) < 0) {
             UNSAFE.putByte(fields, getByteArrayOffset(index), value);
         } else {
             if (bytecodeNode != null) {
@@ -547,7 +547,7 @@ public final class StaticObject implements TruffleObject {
     public byte getArrayByte(int index, Meta meta, BytecodeNode bytecodeNode) {
         checkNotForeign();
         assert isArray() && fields instanceof byte[];
-        if (index >= 0 && index < length()) {
+        if (Integer.compareUnsigned(index, length()) < 0) {
             return UNSAFE.getByte(fields, getByteArrayOffset(index));
         } else {
             if (bytecodeNode != null) {

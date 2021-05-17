@@ -49,9 +49,4 @@ public final class InstanceOfNode extends QuickNode {
         BytecodeNode.putKind(primitives, refs, top - 1, result, JavaKind.Boolean);
         return 0; // stack effect -> pop receiver, push boolean
     }
-
-    @Override
-    public boolean producedForeignObject(Object[] refs) {
-        return false;
-    }
 }
