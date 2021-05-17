@@ -314,10 +314,10 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
             mx.abort("Failed to terminate server application in {0}".format(BaseMicroserviceBenchmarkSuite.__name__))
 
     @staticmethod
-    def testPeakPerformanceInBackground(benchmarkSuite):
+    def testPeakPerformanceInBackground(benchmarkSuite, warmup=True):
         if not BaseMicroserviceBenchmarkSuite.waitForPort(benchmarkSuite.servicePort()):
             mx.abort("Failed to find server application in {0}".format(BaseMicroserviceBenchmarkSuite.__name__))
-        benchmarkSuite.testPeakPerformance()
+        benchmarkSuite.testPeakPerformance(warmup)
         if not BaseMicroserviceBenchmarkSuite.terminateApplication(benchmarkSuite.servicePort()):
             mx.abort("Failed to terminate server application in {0}".format(BaseMicroserviceBenchmarkSuite.__name__))
 
@@ -368,9 +368,9 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
                     mx.abort("The server application unexpectedly ended with return code " + returnCode)
 
                 return returnCode
-            elif stage == 'agent' or stage == 'instrument-run':
+            elif stage == 'agent' or 'instrument-run' in stage:
                 # For the agent and the instrumented run, it is sufficient to run the peak performance workload.
-                threading.Thread(target=BaseMicroserviceBenchmarkSuite.testPeakPerformanceInBackground, args=[self]).start()
+                threading.Thread(target=BaseMicroserviceBenchmarkSuite.testPeakPerformanceInBackground, args=[self, False]).start()
                 return mx.run(server_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
             else:
                 mx.abort("Unexpected stage: " + stage)
@@ -448,7 +448,7 @@ class BaseJMeterBenchmarkSuite(BaseMicroserviceBenchmarkSuite, mx_benchmark.Aver
     def testStartupPerformance(self):
         self.startupOutput = ''
 
-    def testPeakPerformance(self):
+    def testPeakPerformance(self, warmup):
         jmeterDirectory = mx.library("APACHE_JMETER_" + self.jmeterVersion(), True).get_path(True)
         jmeterPath = os.path.join(jmeterDirectory, "apache-jmeter-" + self.jmeterVersion(), "bin/ApacheJMeter.jar")
         jmeterCmd = [mx.get_jdk().java, "-jar", jmeterPath, "-n", "-t", self.workloadConfigurationPath(), "-j", "/dev/stdout"] # pylint: disable=line-too-long
@@ -574,16 +574,17 @@ class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
         output = self.runWrk1(wrkFlags)
         self.startupOutput = self.writeWrk1Results('startup-throughput', 'startup-latency-co', output)
 
-    def testPeakPerformance(self):
+    def testPeakPerformance(self, warmup):
         configs = self.loadConfiguration("throughput")
         if len(configs) != 1:
             mx.abort("Expected exactly one lua script in the throughput configuration.")
 
-        # Warmup with a fixed number of requests.
         config = configs[0]
-        wrkFlags = self.getWarmupFlags(config)
-        warmupOutput = self.runWrk2(wrkFlags)
-        self.verifyWarmup(warmupOutput, config)
+        if warmup:
+            # Warmup with a fixed number of requests.
+            wrkFlags = self.getWarmupFlags(config)
+            warmupOutput = self.runWrk2(wrkFlags)
+            self.verifyWarmup(warmupOutput, config)
 
         # Measure peak performance.
         wrkFlags = self.getThroughputFlags(config)
