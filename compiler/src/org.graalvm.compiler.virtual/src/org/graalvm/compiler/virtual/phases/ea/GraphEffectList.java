@@ -42,6 +42,7 @@ import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.WithExceptionNode;
+import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.debug.DynamicCounterNode;
 import org.graalvm.compiler.nodes.debug.WeakCounterNode;
 import org.graalvm.compiler.nodes.memory.MemoryKill;
@@ -82,7 +83,8 @@ public final class GraphEffectList extends EffectList {
 
     /**
      * Adds the given fixed node to the graph's control flow, before position (so that the original
-     * predecessor of position will then be node's predecessor).
+     * predecessor of position will then be node's predecessor). The node must not yet be part of
+     * the graph.
      *
      * @param node The fixed node to be added to the graph.
      * @param position The fixed node before which the node should be added.
@@ -94,6 +96,13 @@ public final class GraphEffectList extends EffectList {
         });
     }
 
+    /**
+     * Add {@code node} to the graph if it is not yet part of the graph. {@code node} must be a
+     * {@link FixedNode}. If it is not yet part of the graph, it is added before {@code position}.
+     *
+     * @param node The fixed node to be added to the graph if not yet present.
+     * @param position The fixed node before which the node should be added if not yet present.
+     */
     public void ensureAdded(ValueNode node, FixedNode position) {
         add("ensure added", graph -> {
             assert position.isAlive();
@@ -116,13 +125,30 @@ public final class GraphEffectList extends EffectList {
     }
 
     /**
-     * Add the given floating node to the graph.
+     * Add the given floating node to the graph. The node must not yet be part of the graph.
      *
      * @param node The floating node to be added.
      */
     public void addFloatingNode(ValueNode node, @SuppressWarnings("unused") String cause) {
         add("add floating node", graph -> {
+            assert !node.isAlive() && !node.isDeleted();
             graph.addWithoutUniqueWithInputs(node);
+        });
+    }
+
+    /**
+     * Add {@code node} to the graph if it is not yet part of the graph. {@code node} must be a
+     * {@link FloatingNode}.
+     *
+     * @param node The floating node to be added to the graph if not yet present.
+     */
+    public void ensureFloatingAdded(ValueNode node) {
+        add("ensure floating added", graph -> {
+            assert node instanceof FloatingNode;
+            assert !node.isDeleted();
+            if (!node.isAlive()) {
+                graph.addWithoutUniqueWithInputs(node);
+            }
         });
     }
 
