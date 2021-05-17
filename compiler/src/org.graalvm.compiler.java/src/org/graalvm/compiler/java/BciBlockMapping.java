@@ -1458,7 +1458,8 @@ public class BciBlockMapping implements JavaMethodContext {
         if (loopHeaders == null) {
             loopHeaders = new BciBlock[LOOP_HEADER_INITIAL_CAPACITY];
         } else if (nextLoop >= loopHeaders.length) {
-            loopHeaders = Arrays.copyOf(loopHeaders, LOOP_HEADER_MAX_CAPACITY);
+            int newLength = 1 << (32 - Integer.numberOfLeadingZeros(nextLoop));
+            loopHeaders = Arrays.copyOf(loopHeaders, newLength);
         }
         loopHeaders[nextLoop] = block;
         block.loopId = nextLoop;
