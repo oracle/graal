@@ -64,7 +64,8 @@ public class JNIRegistrationAwt extends JNIRegistrationUtil implements Feature {
             PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_java2d");
 
             access.registerReachabilityHandler(JNIRegistrationAwt::registerFreeType,
-                            clazz(access, "sun.font.FontManagerNativeLibrary"));
+                            clazz(access, "sun.font.FontManagerNativeLibrary"),
+                            clazz(access, "sun.font.FontConfigManager"));
             PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_font");
 
             access.registerReachabilityHandler(JNIRegistrationAwt::registerLCMS,
