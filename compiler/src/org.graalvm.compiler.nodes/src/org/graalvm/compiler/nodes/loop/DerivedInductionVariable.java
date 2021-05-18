@@ -48,6 +48,12 @@ public abstract class DerivedInductionVariable extends InductionVariable {
         return base;
     }
 
+    @Override
+    public InductionVariable duplicate() {
+        InductionVariable newBase = base.duplicate();
+        return copy(newBase, copyValue(newBase));
+    }
+
     public abstract ValueNode copyValue(InductionVariable newBase);
 
     public abstract InductionVariable copy(InductionVariable newBase, ValueNode newValue);
