@@ -239,7 +239,6 @@ public abstract class DebugInfoBase {
             Path filePath = debugCodeInfo.filePath();
             String className = TypeEntry.canonicalize(debugCodeInfo.ownerType());
             String methodName = debugCodeInfo.name();
-            String symbolName = debugCodeInfo.symbolNameForMethod();
             int lo = debugCodeInfo.addressLo();
             int hi = debugCodeInfo.addressHi();
             int primaryLine = debugCodeInfo.line();
@@ -247,7 +246,7 @@ public abstract class DebugInfoBase {
             /* Search for a method defining this primary range. */
             ClassEntry classEntry = ensureClassEntry(className);
             MethodEntry methodEntry = classEntry.getMethodEntry(debugCodeInfo, this, debugContext);
-            Range primaryRange = classEntry.makePrimaryRange(symbolName, stringTable, methodEntry, lo, hi, primaryLine);
+            Range primaryRange = classEntry.makePrimaryRange(stringTable, methodEntry, lo, hi, primaryLine);
             debugContext.log(DebugContext.INFO_LEVEL, "PrimaryRange %s.%s %s %s:%d [0x%x, 0x%x]", className, methodName, filePath, fileName, primaryLine, lo, hi);
             classEntry.indexPrimary(primaryRange, debugCodeInfo.getFrameSizeChanges(), debugCodeInfo.getFrameSize());
             debugCodeInfo.lineInfoProvider().forEach(debugLineInfo -> {
@@ -255,7 +254,6 @@ public abstract class DebugInfoBase {
                 Path filePathAtLine = debugLineInfo.filePath();
                 String classNameAtLine = TypeEntry.canonicalize(debugLineInfo.ownerType());
                 String methodNameAtLine = debugLineInfo.name();
-                String symbolNameAtLine = debugLineInfo.symbolNameForMethod();
                 int loAtLine = lo + debugLineInfo.addressLo();
                 int hiAtLine = lo + debugLineInfo.addressHi();
                 int line = debugLineInfo.line();
@@ -265,7 +263,7 @@ public abstract class DebugInfoBase {
                  */
                 ClassEntry subClassEntry = ensureClassEntry(classNameAtLine);
                 MethodEntry subMethodEntry = subClassEntry.getMethodEntry(debugLineInfo, this, debugContext);
-                Range subRange = new Range(symbolNameAtLine, stringTable, subMethodEntry, loAtLine, hiAtLine, line, primaryRange);
+                Range subRange = new Range(stringTable, subMethodEntry, loAtLine, hiAtLine, line, primaryRange);
                 classEntry.indexSubRange(subRange);
                 try (DebugContext.Scope s = debugContext.scope("Subranges")) {
                     debugContext.log(DebugContext.VERBOSE_LEVEL, "SubRange %s.%s %s %s:%d 0x%x, 0x%x]", classNameAtLine, methodNameAtLine, filePathAtLine, fileNameAtLine, line, loAtLine, hiAtLine);

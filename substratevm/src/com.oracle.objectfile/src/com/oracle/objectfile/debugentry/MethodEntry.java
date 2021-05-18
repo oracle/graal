@@ -30,14 +30,21 @@ public class MethodEntry extends MemberEntry implements Comparable<MethodEntry> 
     final TypeEntry[] paramTypes;
     final String[] paramNames;
     final boolean isDeoptTarget;
+    boolean isInRange;
 
-    public MethodEntry(FileEntry fileEntry, String methodName, ClassEntry ownerType, TypeEntry valueType, TypeEntry[] paramTypes, String[] paramNames, int modifiers, boolean isDeoptTarget) {
+    final String symbolName;
+
+    public MethodEntry(FileEntry fileEntry, String symbolName, String methodName, ClassEntry ownerType,
+                    TypeEntry valueType, TypeEntry[] paramTypes, String[] paramNames, int modifiers,
+                    boolean isDeoptTarget, boolean isInRange) {
         super(fileEntry, methodName, ownerType, valueType, modifiers);
         assert ((paramTypes == null && paramNames == null) ||
                         (paramTypes != null && paramNames != null && paramTypes.length == paramNames.length));
         this.paramTypes = paramTypes;
         this.paramNames = paramNames;
         this.isDeoptTarget = isDeoptTarget;
+        this.isInRange = isInRange;
+        this.symbolName = symbolName;
     }
 
     public String methodName() {
@@ -60,6 +67,10 @@ public class MethodEntry extends MemberEntry implements Comparable<MethodEntry> 
         return paramTypes[idx];
     }
 
+    public TypeEntry[] getParamTypes() {
+        return paramTypes;
+    }
+
     public String getParamTypeName(int idx) {
         assert paramTypes != null;
         assert idx < paramTypes.length;
@@ -72,6 +83,18 @@ public class MethodEntry extends MemberEntry implements Comparable<MethodEntry> 
         assert idx < paramNames.length;
         /* N.b. param names may be null. */
         return paramNames[idx];
+    }
+
+    public boolean isInRange() {
+        return isInRange;
+    }
+
+    public void setInRange() {
+        isInRange = true;
+    }
+
+    public String getSymbolName() {
+        return symbolName;
     }
 
     public int compareTo(String methodName, String paramSignature, String returnTypeName) {
