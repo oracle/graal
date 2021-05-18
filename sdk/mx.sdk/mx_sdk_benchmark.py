@@ -646,7 +646,7 @@ class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
         result = {}
         result["throughput"] = self.extractThroughput(output)
 
-        matches = re.findall(r"\s*(\d*[.,]?\d*%)\s+(\d*[.,]?\d*)([mun]?s)$", output, re.MULTILINE)
+        matches = re.findall(r"^\s*(\d*[.,]?\d*%)\s+(\d*[.,]?\d*)([mun]?s)$", output, re.MULTILINE)
         if len(matches) <= 0:
             mx.abort("No latency results found in output")
 
@@ -727,8 +727,8 @@ class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
         actualThroughput = float(matches[0])
         if actualThroughput < expectedThroughput * 0.97 or actualThroughput > expectedThroughput * 1.03:
             # TEMP (chaeubl)
-            print("Warmup failed: expected requests/s: {:.2f}, actual requests/s: {:.2f}".format(expectedThroughput, actualThroughput))
-            # mx.abort("Warmup failed: expected requests/s: {:.2f}, actual requests/s: {:.2f}".format(expectedThroughput, actualThroughput))
+            print("Throughput verification failed: expected requests/s: {:.2f}, actual requests/s: {:.2f}".format(expectedThroughput, actualThroughput))
+            # mx.abort("Throughput verification failed: expected requests/s: {:.2f}, actual requests/s: {:.2f}".format(expectedThroughput, actualThroughput))
 
     def runWrk1(self, wrkFlags):
         distro = self.getOS()
