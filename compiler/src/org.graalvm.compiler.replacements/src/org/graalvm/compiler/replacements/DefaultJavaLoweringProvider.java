@@ -1130,6 +1130,10 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         return stamp;
     }
 
+    public final ValueNode implicitLoadConvertWithBooleanCoercionIfNecessary(StructuredGraph graph, JavaKind kind, ValueNode value) {
+        return performBooleanCoercionIfNecessary(implicitLoadConvert(graph, kind, value), kind);
+    }
+
     public final ValueNode implicitLoadConvert(StructuredGraph graph, JavaKind kind, ValueNode value) {
         return implicitLoadConvert(graph, kind, value, true);
     }
