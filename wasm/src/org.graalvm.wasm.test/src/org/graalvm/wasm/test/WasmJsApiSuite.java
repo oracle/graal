@@ -81,6 +81,7 @@ import org.graalvm.wasm.utils.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ExceptionType;
@@ -777,6 +778,20 @@ public class WasmJsApiSuite {
                 throw new RuntimeException(e);
             }
         });
+    }
+
+    @Test
+    public void testMemoryAllocationFailure() {
+        // Memory allocation should either succeed or throw an interop
+        // exception (not an internal error like OutOfMemoryError).
+        try {
+            Object[] memories = new Object[5];
+            for (int i = 0; i < memories.length; i++) {
+                memories[i] = Memory.create(new MemoryDescriptor(32767, 32767));
+            }
+        } catch (AbstractTruffleException ex) {
+            Assert.assertTrue("Should throw interop exception", InteropLibrary.getUncached(ex).isException(ex));
+        }
     }
 
     private static void runTest(Consumer<WasmContext> testCase) throws IOException {

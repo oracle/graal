@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -26,16 +26,18 @@
 
 package com.oracle.objectfile.debugentry;
 
-public class MethodEntry extends MemberEntry {
-    TypeEntry[] paramTypes;
-    String[] paramNames;
+public class MethodEntry extends MemberEntry implements Comparable<MethodEntry> {
+    final TypeEntry[] paramTypes;
+    final String[] paramNames;
+    final boolean isDeoptTarget;
 
-    public MethodEntry(FileEntry fileEntry, String methodName, ClassEntry ownerType, TypeEntry valueType, TypeEntry[] paramTypes, String[] paramNames, int modifiers) {
+    public MethodEntry(FileEntry fileEntry, String methodName, ClassEntry ownerType, TypeEntry valueType, TypeEntry[] paramTypes, String[] paramNames, int modifiers, boolean isDeoptTarget) {
         super(fileEntry, methodName, ownerType, valueType, modifiers);
         assert ((paramTypes == null && paramNames == null) ||
                         (paramTypes != null && paramNames != null && paramTypes.length == paramNames.length));
         this.paramTypes = paramTypes;
         this.paramNames = paramNames;
+        this.isDeoptTarget = isDeoptTarget;
     }
 
     public String methodName() {
@@ -72,26 +74,60 @@ public class MethodEntry extends MemberEntry {
         return paramNames[idx];
     }
 
-    public boolean match(String methodName, String paramSignature, String returnTypeName) {
-        if (!methodName.equals(this.memberName)) {
-            return false;
+    public int compareTo(String methodName, String paramSignature, String returnTypeName) {
+        int nameComparison = memberName.compareTo(methodName);
+        if (nameComparison != 0) {
+            return nameComparison;
         }
-        if (!returnTypeName.equals(valueType.getTypeName())) {
-            return false;
-        }
-        int paramCount = getParamCount();
-        if (paramCount == 0) {
-            return paramSignature.trim().length() == 0;
+        int typeComparison = valueType.getTypeName().compareTo(returnTypeName);
+        if (typeComparison != 0) {
+            return typeComparison;
         }
         String[] paramTypeNames = paramSignature.split((","));
-        if (paramCount != paramTypeNames.length) {
-            return false;
+        int length;
+        if (paramSignature.trim().length() == 0) {
+            length = 0;
+        } else {
+            length = paramTypeNames.length;
         }
-        for (int i = 0; i < paramCount; i++) {
-            if (!paramTypeNames[i].trim().equals(getParamTypeName(i))) {
-                return false;
+        int paramCountComparison = getParamCount() - length;
+        if (paramCountComparison != 0) {
+            return paramCountComparison;
+        }
+        for (int i = 0; i < getParamCount(); i++) {
+            int paraComparison = getParamTypeName(i).compareTo(paramTypeNames[i].trim());
+            if (paraComparison != 0) {
+                return paraComparison;
             }
         }
-        return true;
+        return 0;
+    }
+
+    public boolean isDeoptTarget() {
+        return isDeoptTarget;
+    }
+
+    @Override
+    public int compareTo(MethodEntry other) {
+        assert other != null;
+        int nameComparison = methodName().compareTo(other.methodName());
+        if (nameComparison != 0) {
+            return nameComparison;
+        }
+        int typeComparison = valueType.getTypeName().compareTo(other.valueType.getTypeName());
+        if (typeComparison != 0) {
+            return typeComparison;
+        }
+        int paramCountComparison = getParamCount() - other.getParamCount();
+        if (paramCountComparison != 0) {
+            return paramCountComparison;
+        }
+        for (int i = 0; i < getParamCount(); i++) {
+            int paramComparison = getParamTypeName(i).compareTo(other.getParamTypeName(i));
+            if (paramComparison != 0) {
+                return paramComparison;
+            }
+        }
+        return 0;
     }
 }

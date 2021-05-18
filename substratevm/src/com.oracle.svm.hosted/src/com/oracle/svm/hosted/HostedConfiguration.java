@@ -191,8 +191,4 @@ public class HostedConfiguration {
         final HostedInstanceClass hostedInstanceClass = (HostedInstanceClass) hUniverse.lookup(type);
         hostedInstanceClass.setNeedMonitorField();
     }
-
-    public boolean isUsingAOTProfiles() {
-        return false;
-    }
 }

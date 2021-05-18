@@ -532,6 +532,20 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         return iterateImpl(visitor, 0);
     }
 
+    /**
+     * The compilation threshold scale is a real number. We use an integer which we treat as a fixed
+     * point value for performance reasons.
+     */
+    private int compilationThresholdScale = FixedPointMath.toFixedPoint(1.0);
+
+    public int compilationThresholdScale() {
+        return compilationThresholdScale;
+    }
+
+    void setCompilationThresholdScale(int scale) {
+        this.compilationThresholdScale = scale;
+    }
+
     private static final class FrameVisitor<T> implements InspectedFrameVisitor<T> {
 
         private final FrameInstanceVisitor<T> visitor;

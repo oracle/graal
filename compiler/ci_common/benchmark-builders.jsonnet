@@ -84,6 +84,15 @@
   for suite in bench.groups.profiled_suites
   ]),
 
+  local microservice_builds = std.flattenArrays([
+    [
+    cc.daily + hw.x52 + jdk + cc.libgraal + suite,
+    cc.daily + hw.x52 + jdk + cc.jargraal + suite
+    ]
+  for jdk in [jdk8, jdk11]
+  for suite in bench.groups.microservice_suites
+  ]),
+
   // intensive weekly benchmarking
   local weekly_forks_builds = std.flattenArrays([
     std.flattenArrays([
@@ -102,7 +111,7 @@
   for suite in bench.groups.main_suites
   ]),
 
-  local all_builds = main_builds + weekly_forks_builds + profiling_builds + aarch64_builds,
+  local all_builds = main_builds + weekly_forks_builds + profiling_builds + microservice_builds + aarch64_builds,
   // adds a "defined_in" field to all builds mentioning the location of this current file
   builds:: [{ defined_in: std.thisFile } + b for b in all_builds]
 }

@@ -171,7 +171,7 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
 
     def __init__(self):
         super(BaseMicroserviceBenchmarkSuite, self).__init__()
-        self.testerOutput = ''
+        self.testerOutput = mx.TeeOutputCapture(mx.OutputCapture())
         self.timeToFirstResponseOutput = ''
         self.bmSuiteArgs = None
         self.workloadPath = None
@@ -252,7 +252,7 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
         return self.vmArgs(bmSuiteArgs) + ["-jar", self.applicationPath()]
 
     @staticmethod
-    def waitForPort(port, timeout=10):
+    def waitForPort(port, timeout=60):
         try:
             import psutil
         except ImportError:
@@ -457,7 +457,6 @@ class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
 
         runWrkCmd = [wrkPath] + wrkFlags
         mx.log("Running Wrk: {0}".format(runWrkCmd))
-        self.testerOutput = mx.TeeOutputCapture(mx.OutputCapture())
         mx.run(runWrkCmd, out=self.testerOutput, err=self.testerOutput)
 
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,12 +29,13 @@ import java.util.Collections;
 import java.util.List;
 import java.util.ListIterator;
 
+import org.graalvm.compiler.core.common.util.PhasePlan;
 import org.graalvm.compiler.nodes.StructuredGraph;
 
 /**
  * A compiler phase that can apply an ordered collection of phases to a graph.
  */
-public class PhaseSuite<C> extends BasePhase<C> {
+public class PhaseSuite<C> extends BasePhase<C> implements PhasePlan<BasePhase<? super C>> {
 
     private List<BasePhase<? super C>> phases;
     private boolean immutable;
@@ -100,8 +101,19 @@ public class PhaseSuite<C> extends BasePhase<C> {
     /**
      * Gets an unmodifiable view on the phases in this suite.
      */
+    @Override
     public List<BasePhase<? super C>> getPhases() {
         return Collections.unmodifiableList(phases);
+    }
+
+    @Override
+    public String getPhaseName(BasePhase<? super C> phase) {
+        return phase.contractorName();
+    }
+
+    @Override
+    public String toString() {
+        return String.format("%s:%n%s", getClass().getSimpleName(), new PhasePlan.Printer().toString(this));
     }
 
     /**

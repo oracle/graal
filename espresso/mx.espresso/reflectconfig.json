@@ -23,5 +23,19 @@
     "fields": [
       { "name": "VM_SUPPORTS_LONG_CAS" }
     ]
+  },
+  {
+    "name": "com.oracle.truffle.espresso.runtime.StaticObject$DefaultArrayBasedStaticObjectFactory",
+    "methods": [
+      { "name" : "<init>", "parameterTypes": ["java.lang.Object", "int", "int"] }
+    ]
+  },
+  {
+    "name": "com.oracle.truffle.espresso.runtime.StaticObject$DefaultArrayBasedStaticObject",
+    "fields": [
+      { "name": "shape", "allowUnsafeAccess": true },
+      { "name": "primitive", "allowUnsafeAccess": true },
+      { "name": "object", "allowUnsafeAccess": true }
+    ]
   }
 ]

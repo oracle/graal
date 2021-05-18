@@ -153,6 +153,23 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
     public void afterRegistration(AfterRegistrationAccess a) {
         ModuleSupport.exportAndOpenPackageToClass("java.base", "sun.security.x509", false, getClass());
         ModuleSupport.openModuleByClass(Security.class, getClass());
+        disableExperimentalFipsMode(a);
+    }
+
+    /**
+     * The SunJSSE provider had a experimental feature that bound to a FIPS crypto provider. This
+     * has been removed in JDK-8217835. We disabled explicitly here by calling SunJSSE.isFIPS(). If
+     * it was already enabled that's an error.
+     */
+    private static void disableExperimentalFipsMode(AfterRegistrationAccess a) {
+        if (JavaVersionUtil.JAVA_SPEC <= 11) {
+            try {
+                Boolean isFIPS = (Boolean) method(a, "sun.security.ssl.SunJSSE", "isFIPS").invoke(null);
+                VMError.guarantee(!isFIPS, "SunJSSE is already initialized in experimental FIPS mode.");
+            } catch (IllegalAccessException | InvocationTargetException e) {
+                VMError.shouldNotReachHere(e);
+            }
+        }
     }
 
     @Override
@@ -235,10 +252,14 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
             access.registerReachabilityHandler(SecurityServicesFeature::linkSunEC,
                             method(access, "sun.security.ec.ECDSASignature", "signDigest", byte[].class, byte[].class, byte[].class, byte[].class, int.class),
                             method(access, "sun.security.ec.ECDSASignature", "verifySignedDigest", byte[].class, byte[].class, byte[].class, byte[].class));
+            /* Ensure native calls to sun_security_ec* will be resolved as builtIn. */
+            PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_security_ec");
         }
 
         if (isPosix()) {
             access.registerReachabilityHandler(SecurityServicesFeature::linkJaas, method(access, "com.sun.security.auth.module.UnixSystem", "getUnixInfo"));
+            /* Resolve calls to com_sun_security_auth_module_UnixSystem* as builtIn. */
+            PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("com_sun_security_auth_module_UnixSystem");
         }
     }
 
@@ -247,8 +268,6 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
         /* We statically link sunec thus we classify it as builtIn library */
         PlatformNativeLibrarySupport.singleton();
         NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("sunec");
-        /* and ensure native calls to sun_security_ec* will be resolved as builtIn. */
-        PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_security_ec");
 
         nativeLibraries.addStaticJniLibrary("sunec");
         if (isPosix()) {
@@ -263,8 +282,6 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
         NativeLibraries nativeLibraries = ((DuringAnalysisAccessImpl) a).getNativeLibraries();
         /* We can statically link jaas, thus we classify it as builtIn library */
         NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary(JavaVersionUtil.JAVA_SPEC >= 11 ? "jaas" : "jaas_unix");
-        /* Resolve calls to com_sun_security_auth_module_UnixSystem* as builtIn. */
-        PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("com_sun_security_auth_module_UnixSystem");
         nativeLibraries.addStaticJniLibrary("jaas");
     }
 

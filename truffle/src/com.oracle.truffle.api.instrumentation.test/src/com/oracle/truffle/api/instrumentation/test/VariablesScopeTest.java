@@ -277,49 +277,43 @@ public class VariablesScopeTest extends AbstractInstrumentationTest {
             String scopeName = INTEROP.asString(INTEROP.toDisplayString(lexicalScope));
 
             int line = node.getSourceSection().getStartLine();
-            if (line == 1) {
-                assertEquals("Line = " + line + ", scope name: ", "local", scopeName);
-                assertEquals("Lexical arguments", 0, getKeySize(lexicalScope));
-                assertEquals("Dunamic arguments", 2, getKeySize(dynamicScope));
-                assertTrue("Argument 0: ", contains(dynamicScope, "0"));
-                assertTrue("Argument 1: ", contains(dynamicScope, "1"));
-                assertEquals("Argument 0: ", 4, read(dynamicScope, "0"));
-                assertEquals("Argument 1: ", 5, read(dynamicScope, "1"));
-            } else {
-                assertEquals("Line = " + line + ", scope name: ", "local", scopeName);
+            assertEquals("Line = " + line + ", scope name: ", "local", scopeName);
 
-                // Lexical access:
-                TruffleObject vars = (TruffleObject) lexicalScope;
-                int numVars = nodeEnter ? 2 : 3;
-                int varSize = getKeySize(vars);
+            // Lexical access:
+            TruffleObject vars = (TruffleObject) lexicalScope;
+            int numVars = nodeEnter ? (line == 1) ? 0 : 2 : 3;
+            int varSize = getKeySize(vars);
 
-                assertEquals("Line = " + line + ", num vars:", numVars, varSize);
-                if (numVars >= 1) {
-                    assertTrue("Var a: ", contains(vars, "a"));
-                    assertTrue(isNull(read(vars, "a")));
-                }
-                if (numVars >= 2) {
-                    assertTrue("Var b: ", contains(vars, "b"));
-                    assertTrue(isNull(read(vars, "b")));
-                }
-                if (numVars >= 3) {
-                    assertTrue("Var n: ", contains(vars, "n"));
-                    assertTrue(isNull(read(vars, "n")));
-                }
+            assertEquals("Line = " + line + ", num vars:", numVars, varSize);
+            if (numVars >= 1) {
+                assertTrue("Var a: ", contains(vars, "a"));
+                assertTrue(isNull(read(vars, "a")));
+            }
+            if (numVars >= 2) {
+                assertTrue("Var b: ", contains(vars, "b"));
+                assertTrue(isNull(read(vars, "b")));
+            }
+            if (numVars >= 3) {
+                assertTrue("Var n: ", contains(vars, "n"));
+                assertTrue(isNull(read(vars, "n")));
+            }
 
-                // Dynamic access:
-                vars = (TruffleObject) dynamicScope;
-                numVars = nodeEnter ? 1 : 2;
-                varSize = getKeySize(vars);
-                assertEquals("Line = " + line + ", num vars:", numVars, varSize);
-                if (numVars >= 1) {
-                    assertTrue("Var a: ", contains(vars, "a"));
-                    assertEquals("Var a: ", 10, read(vars, "a"));
-                }
-                if (numVars >= 2) {
-                    assertTrue("Var n: ", contains(vars, "n"));
-                    assertEquals("Var n: ", 2, read(vars, "n"));
-                }
+            // Dynamic access:
+            vars = (TruffleObject) dynamicScope;
+            numVars = (line == 1) ? (nodeEnter ? 0 : 3) : (nodeEnter ? 1 : 2);
+            varSize = getKeySize(vars);
+            assertEquals("Line = " + line + ", num vars:", numVars, varSize);
+            if (numVars >= 1) {
+                assertTrue("Var a: ", contains(vars, "a"));
+                assertEquals("Var a: ", 10, read(vars, "a"));
+            }
+            if (numVars >= 2) {
+                assertTrue("Var n: ", contains(vars, "n"));
+                assertEquals("Var n: ", 2, read(vars, "n"));
+            }
+            if (numVars >= 3) {
+                assertTrue("Var b: ", contains(vars, "b"));
+                assertEquals("Var b: ", true, read(vars, "b"));
             }
             if (line == 2) {
                 doTestTopScope(env);

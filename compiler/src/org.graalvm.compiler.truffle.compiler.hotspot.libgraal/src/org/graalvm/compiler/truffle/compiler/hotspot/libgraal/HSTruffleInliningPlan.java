@@ -54,7 +54,7 @@ import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleIn
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callGetURI;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callSetCallCount;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningPlanGen.callSetInlinedCallCount;
-import static org.graalvm.libgraal.jni.JNIUtil.createString;
+import static org.graalvm.nativebridge.jni.JNIUtil.createString;
 
 import java.net.URI;
 
@@ -63,13 +63,12 @@ import org.graalvm.compiler.truffle.common.TruffleCallNode;
 import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
 import org.graalvm.compiler.truffle.common.TruffleSourceLanguagePosition;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal;
-import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal;
 import org.graalvm.libgraal.LibGraal;
-import org.graalvm.libgraal.jni.HSObject;
-import org.graalvm.libgraal.jni.JNI.JNIEnv;
-import org.graalvm.libgraal.jni.JNI.JObject;
-import org.graalvm.libgraal.jni.JNI.JString;
-import org.graalvm.libgraal.jni.JNILibGraalScope;
+import org.graalvm.nativebridge.jni.HSObject;
+import org.graalvm.nativebridge.jni.JNI.JNIEnv;
+import org.graalvm.nativebridge.jni.JNI.JObject;
+import org.graalvm.nativebridge.jni.JNI.JString;
+import org.graalvm.nativebridge.jni.JNIMethodScope;
 
 import jdk.vm.ci.meta.JavaConstant;
 
@@ -78,9 +77,9 @@ import jdk.vm.ci.meta.JavaConstant;
  */
 class HSTruffleInliningPlan extends HSObject implements TruffleMetaAccessProvider {
 
-    final JNILibGraalScope<TruffleToLibGraal.Id> scope;
+    final JNIMethodScope scope;
 
-    HSTruffleInliningPlan(JNILibGraalScope<TruffleToLibGraal.Id> scope, JObject handle) {
+    HSTruffleInliningPlan(JNIMethodScope scope, JObject handle) {
         super(scope, handle);
         this.scope = scope;
     }
@@ -147,61 +146,61 @@ class HSTruffleInliningPlan extends HSObject implements TruffleMetaAccessProvide
      */
     private static final class HSTruffleSourceLanguagePosition extends HSObject implements TruffleSourceLanguagePosition {
 
-        HSTruffleSourceLanguagePosition(JNILibGraalScope<TruffleToLibGraal.Id> scope, JObject handle) {
+        HSTruffleSourceLanguagePosition(JNIMethodScope scope, JObject handle) {
             super(scope, handle);
         }
 
         @TruffleFromLibGraal(GetOffsetStart)
         @Override
         public int getOffsetStart() {
-            return callGetOffsetStart(JNILibGraalScope.env(), getHandle());
+            return callGetOffsetStart(JNIMethodScope.env(), getHandle());
         }
 
         @TruffleFromLibGraal(GetOffsetEnd)
         @Override
         public int getOffsetEnd() {
-            return callGetOffsetEnd(JNILibGraalScope.env(), getHandle());
+            return callGetOffsetEnd(JNIMethodScope.env(), getHandle());
         }
 
         @TruffleFromLibGraal(GetLineNumber)
         @Override
         public int getLineNumber() {
-            return callGetLineNumber(JNILibGraalScope.env(), getHandle());
+            return callGetLineNumber(JNIMethodScope.env(), getHandle());
         }
 
         @TruffleFromLibGraal(GetLanguage)
         @Override
         public String getLanguage() {
-            JString res = callGetLanguage(JNILibGraalScope.env(), getHandle());
-            return createString(JNILibGraalScope.env(), res);
+            JString res = callGetLanguage(JNIMethodScope.env(), getHandle());
+            return createString(JNIMethodScope.env(), res);
         }
 
         @TruffleFromLibGraal(GetDescription)
         @Override
         public String getDescription() {
-            JString res = callGetDescription(JNILibGraalScope.env(), getHandle());
-            return createString(JNILibGraalScope.env(), res);
+            JString res = callGetDescription(JNIMethodScope.env(), getHandle());
+            return createString(JNIMethodScope.env(), res);
         }
 
         @TruffleFromLibGraal(GetURI)
         @Override
         public URI getURI() {
-            JString res = callGetURI(JNILibGraalScope.env(), getHandle());
-            String stringifiedURI = createString(JNILibGraalScope.env(), res);
+            JString res = callGetURI(JNIMethodScope.env(), getHandle());
+            String stringifiedURI = createString(JNIMethodScope.env(), res);
             return stringifiedURI == null ? null : URI.create(stringifiedURI);
         }
 
         @TruffleFromLibGraal(GetNodeClassName)
         @Override
         public String getNodeClassName() {
-            JString res = callGetNodeClassName(JNILibGraalScope.env(), getHandle());
-            return createString(JNILibGraalScope.env(), res);
+            JString res = callGetNodeClassName(JNIMethodScope.env(), getHandle());
+            return createString(JNIMethodScope.env(), res);
         }
 
         @TruffleFromLibGraal(GetNodeId)
         @Override
         public int getNodeId() {
-            return callGetNodeId(JNILibGraalScope.env(), getHandle());
+            return callGetNodeId(JNIMethodScope.env(), getHandle());
         }
     }
 }

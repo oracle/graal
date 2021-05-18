@@ -4104,6 +4104,14 @@ public class FlatNodeGenFactory {
 
         CodeTree ref = var.createReference();
         CodeTreeBuilder builder = new CodeTreeBuilder(null);
+        // We need to insert memory fence if there are cached values and those are stored in a
+        // linked list. Another thread may be traversing the linked list while we are updating it
+        // here: we must ensure that the item that is being appended to the list is fully
+        // initialized.
+        builder.startStatement();
+        builder.startStaticCall(context.getTypes().MemoryFence, "storeStore");
+        builder.end();
+        builder.end();
         builder.startStatement();
         builder.string("this.", createSpecializationFieldName(specialization));
         builder.string(" = ");

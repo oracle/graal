@@ -192,12 +192,20 @@ public final class InterpreterToVM implements ContextAccess {
         }
     }
 
-    public byte getArrayByte(int index, @Host(byte[].class /* or boolean[] */) StaticObject array, BytecodeNode bytecodeNode) {
-        return array.getArrayByte(index, getMeta(), bytecodeNode);
-    }
-
     public byte getArrayByte(int index, @Host(byte[].class /* or boolean[] */) StaticObject array) {
         return getArrayByte(index, array, null);
+    }
+
+    public byte getArrayByte(int index, @Host(byte[].class /* or boolean[] */) StaticObject array, BytecodeNode bytecodeNode) {
+        try {
+            return (array.<byte[]> unwrap())[index];
+        } catch (ArrayIndexOutOfBoundsException e) {
+            if (bytecodeNode != null) {
+                bytecodeNode.enterImplicitExceptionProfile();
+            }
+            Meta meta = getMeta();
+            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
+        }
     }
 
     public char getArrayChar(int index, @Host(char[].class) StaticObject array) {
@@ -305,10 +313,15 @@ public final class InterpreterToVM implements ContextAccess {
     }
 
     public void setArrayByte(byte value, int index, @Host(byte[].class /* or boolean[] */) StaticObject array, BytecodeNode bytecodeNode) {
-        if (getJavaVersion().java9OrLater() && array.getKlass() == getMeta()._boolean_array) {
-            array.setArrayByte((byte) (value & 1), index, getMeta(), bytecodeNode);
-        } else {
-            array.setArrayByte(value, index, getMeta(), bytecodeNode);
+        byte val = getJavaVersion().java9OrLater() && array.getKlass() == getMeta()._boolean_array ? (byte) (value & 1) : value;
+        try {
+            (array.<byte[]> unwrap())[index] = val;
+        } catch (ArrayIndexOutOfBoundsException e) {
+            if (bytecodeNode != null) {
+                bytecodeNode.enterImplicitExceptionProfile();
+            }
+            Meta meta = getMeta();
+            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
         }
     }
 
@@ -345,13 +358,39 @@ public final class InterpreterToVM implements ContextAccess {
     }
 
     public void setArrayObject(StaticObject value, int index, StaticObject wrapper) {
-        wrapper.putObject(value, index, getMeta(), null);
+        setArrayObject(value, index, wrapper, null);
     }
 
     public void setArrayObject(StaticObject value, int index, StaticObject wrapper, BytecodeNode bytecodeNode) {
-        wrapper.putObject(value, index, getMeta(), bytecodeNode);
+        if (StaticObject.isNull(value) || instanceOf(value, ((ArrayKlass) wrapper.getKlass()).getComponentType())) {
+            try {
+                (wrapper.<Object[]> unwrap())[index] = value;
+            } catch (ArrayIndexOutOfBoundsException e) {
+                throwArrayIndexOutOfBoundsException(getMeta(), bytecodeNode);
+            }
+        } else {
+            // We must throw ArrayIndexOutOfBoundsException before ArrayStoreException
+            if (Integer.compareUnsigned(index, wrapper.length()) >= 0) {
+                throwArrayIndexOutOfBoundsException(getMeta(), bytecodeNode);
+            } else {
+                throwArrayStoreException(getMeta(), bytecodeNode);
+            }
+        }
     }
 
+    private static void throwArrayIndexOutOfBoundsException(Meta meta, BytecodeNode bytecodeNode) {
+        if (bytecodeNode != null) {
+            bytecodeNode.enterImplicitExceptionProfile();
+        }
+        throw meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
+    }
+
+    private static StaticObject throwArrayStoreException(Meta meta, BytecodeNode bytecodeNode) {
+        if (bytecodeNode != null) {
+            bytecodeNode.enterImplicitExceptionProfile();
+        }
+        throw meta.throwException(meta.java_lang_ArrayStoreException);
+    }
     // endregion
 
     // region Monitor enter/exit
@@ -462,7 +501,7 @@ public final class InterpreterToVM implements ContextAccess {
         field.setObject(obj, value);
     }
 
-    public static StaticObject newReferenceArray(Klass componentType, int length) {
+    public static StaticObject newReferenceArray(Klass componentType, int length, BytecodeNode bytecodeNode) {
         if (length < 0) {
             // componentType is not always PE constant e.g. when called from the Array#newInstance
             // substitution. The derived context and meta accessor are not PE constant
@@ -472,12 +511,20 @@ public final class InterpreterToVM implements ContextAccess {
             // The definitive solution would be to distinguish the cases where the exception klass
             // is PE constant from the cases where it's dynamic. We can further reduce the dynamic
             // cases with an inline cache in the above substitution.
+            if (bytecodeNode != null) {
+                bytecodeNode.enterImplicitExceptionProfile();
+            }
             throw throwNegativeArraySizeException(componentType.getMeta());
         }
         assert length >= 0;
         StaticObject[] arr = new StaticObject[length];
         Arrays.fill(arr, StaticObject.NULL);
         return StaticObject.createArray(componentType.getArrayClass(), arr);
+    }
+
+    public static StaticObject newReferenceArray(Klass componentType, int length) {
+        assert !componentType.isPrimitive();
+        return newReferenceArray(componentType, length, null);
     }
 
     @TruffleBoundary(transferToInterpreterOnException = false)
@@ -524,8 +571,15 @@ public final class InterpreterToVM implements ContextAccess {
     }
 
     public static StaticObject allocatePrimitiveArray(byte jvmPrimitiveType, int length, Meta meta) {
+        return allocatePrimitiveArray(jvmPrimitiveType, length, meta, null);
+    }
+
+    public static StaticObject allocatePrimitiveArray(byte jvmPrimitiveType, int length, Meta meta, BytecodeNode bytecodeNode) {
         // the constants for the cpi are loosely defined and no real cpi indices.
         if (length < 0) {
+            if (bytecodeNode != null) {
+                bytecodeNode.enterImplicitExceptionProfile();
+            }
             throw meta.throwException(meta.java_lang_NegativeArraySizeException);
         }
         // @formatter:off
@@ -634,7 +688,7 @@ public final class InterpreterToVM implements ContextAccess {
             Node location = element.getLocation();
             while (location != null) {
                 if (location instanceof QuickNode) {
-                    bci = ((QuickNode) location).getBCI();
+                    bci = ((QuickNode) location).getBci(element.getFrame());
                     break;
                 }
                 location = location.getParent();

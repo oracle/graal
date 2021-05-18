@@ -38,7 +38,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 /**
  * Base node for all implementations of Java methods.
  */
-public abstract class EspressoMethodNode extends EspressoPreludeNode {
+public abstract class EspressoMethodNode extends EspressoBaseMethodNode {
 
     private final MethodVersion method;
     private SourceSection sourceSection;
@@ -47,6 +47,7 @@ public abstract class EspressoMethodNode extends EspressoPreludeNode {
         this.method = method;
     }
 
+    @Override
     public MethodVersion getMethodVersion() {
         return method;
     }
@@ -113,6 +114,7 @@ public abstract class EspressoMethodNode extends EspressoPreludeNode {
         return getMethod().getContext();
     }
 
+    @Override
     public boolean shouldSplit() {
         return false;
     }

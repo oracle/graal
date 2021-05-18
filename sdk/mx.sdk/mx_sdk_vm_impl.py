@@ -1246,8 +1246,13 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
                     ]
 
                 build_args += [
-                    '--install-exit-handlers'
+                    '--install-exit-handlers',
+                    '-H:+AllowVMInspection'
                 ]
+                if has_component('svmee', stage1=True):
+                    build_args += [
+                        '-R:-UsePerfData'
+                    ]
 
                 for language, path in sorted(image_config.relative_home_paths.items()):
                     build_args += ['-Dorg.graalvm.launcher.relative.' + language + '.home=' + path]
@@ -1869,7 +1874,10 @@ class GraalVmBashLauncherBuildTask(GraalVmNativeImageBuildTask):
             return ''
 
         def _get_add_exports():
-            return self.subject.native_image_config.get_add_exports(_known_missing_jars)
+            res = self.subject.native_image_config.get_add_exports(_known_missing_jars)
+            if mx.is_windows():
+                res = ' '.join(('"{}"'.format(a) for a in res.split()))
+            return res
 
         _template_subst = mx_subst.SubstitutionEngine(mx_subst.string_substitutions)
         _template_subst.register_no_arg('module_launcher', _is_module_launcher)

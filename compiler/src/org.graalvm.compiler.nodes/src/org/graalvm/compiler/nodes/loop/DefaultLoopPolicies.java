@@ -157,7 +157,7 @@ public class DefaultLoopPolicies implements LoopPolicies {
             return FullUnrollability.TOO_LARGE;
         }
         int maxNodes = counted.isExactTripCount() ? Options.ExactFullUnrollMaxNodes.getValue(options) : Options.FullUnrollMaxNodes.getValue(options);
-        for (Node usage : counted.getCounter().valueNode().usages()) {
+        for (Node usage : counted.getLimitCheckedIV().valueNode().usages()) {
             if (usage instanceof CompareNode) {
                 CompareNode compare = (CompareNode) usage;
                 if (compare.getY().isConstant()) {
@@ -261,7 +261,11 @@ public class DefaultLoopPolicies implements LoopPolicies {
     }
 
     @Override
-    public boolean shouldUnswitch(LoopEx loop, List<ControlSplitNode> controlSplits) {
+    public UnswitchingDecision shouldUnswitch(LoopEx loop, List<ControlSplitNode> controlSplits) {
+        if (loop.loopBegin().unswitches() >= LoopMaxUnswitch.getValue(loop.loopBegin().graph().getOptions())) {
+            return UnswitchingDecision.NO;
+        }
+
         int phis = 0;
         StructuredGraph graph = loop.loopBegin().graph();
         DebugContext debug = graph.getDebug();
@@ -301,9 +305,9 @@ public class DefaultLoopPolicies implements LoopPolicies {
                         loopFrequency, phis, actualDiff <= maxDiff);
         if (actualDiff <= maxDiff) {
             // check whether we're allowed to unswitch this loop
-            return loop.canDuplicateLoop();
+            return loop.canDuplicateLoop() ? UnswitchingDecision.YES : UnswitchingDecision.NO;
         } else {
-            return false;
+            return UnswitchingDecision.NO;
         }
     }
 }

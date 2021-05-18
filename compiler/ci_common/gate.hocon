@@ -3,11 +3,11 @@ gateCmd : ["mx", "--strict-compliance"] ${gateCmdSuffix}
 
 graalWeekly: ${graal-weekly-notifications} {
   targets: ["weekly"]
-  timelimit: "45:00"
+  timelimit: "1:30:00"
 }
 graalDaily: ${graal-weekly-notifications} {
   targets: ["daily"]
-  timelimit: "45:00"
+  timelimit: "1:30:00"
 }
 gateTest : {
   environment : {

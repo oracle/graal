@@ -22,30 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.libgraal.jni;
+package org.graalvm.nativebridge.jni;
 
-import static org.graalvm.libgraal.jni.annotation.JNIFromLibGraal.Id.CreateException;
-import static org.graalvm.libgraal.jni.annotation.JNIFromLibGraal.Id.GetClassName;
-import static org.graalvm.libgraal.jni.annotation.JNIFromLibGraal.Id.GetStackTrace;
-import static org.graalvm.libgraal.jni.annotation.JNIFromLibGraal.Id.GetStackTraceElementClassName;
-import static org.graalvm.libgraal.jni.annotation.JNIFromLibGraal.Id.GetStackTraceElementFileName;
-import static org.graalvm.libgraal.jni.annotation.JNIFromLibGraal.Id.GetStackTraceElementLineNumber;
-import static org.graalvm.libgraal.jni.annotation.JNIFromLibGraal.Id.GetStackTraceElementMethodName;
-import static org.graalvm.libgraal.jni.annotation.JNIFromLibGraal.Id.GetThrowableMessage;
-import static org.graalvm.libgraal.jni.annotation.JNIFromLibGraal.Id.UpdateStackTrace;
-
-import org.graalvm.libgraal.jni.annotation.JNIFromLibGraal;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 /**
- * Entry points in HotSpot for exception handling from libgraal.
+ * Entry points in HotSpot for exception handling from a JNI native method.
  */
 @Platforms(Platform.HOSTED_ONLY.class)
-final class JNIFromLibGraalEntryPoints {
+final class JNIExceptionWrapperEntryPoints {
 
     /**
-     * Updates an exception stack trace by decoding a stack trace from libgraal.
+     * Updates an exception stack trace by decoding a stack trace from a JNI native method.
      *
      * @param target the {@link Throwable} to update
      * @param rawElements the stringified stack trace elements. Each element has a form
@@ -53,7 +42,6 @@ final class JNIFromLibGraalEntryPoints {
      *            encoded as an empty string.
      * @return the updated {@link Throwable}
      */
-    @JNIFromLibGraal(UpdateStackTrace)
     static Throwable updateStackTrace(Throwable target, String[] rawElements) {
         StackTraceElement[] elements = new StackTraceElement[rawElements.length];
         for (int i = 0; i < rawElements.length; i++) {
@@ -74,42 +62,34 @@ final class JNIFromLibGraalEntryPoints {
      * @param message the exception message
      * @return exception
      */
-    @JNIFromLibGraal(CreateException)
     static Throwable createException(String message) {
         return new RuntimeException(message);
     }
 
-    @JNIFromLibGraal(GetStackTrace)
     static StackTraceElement[] getStackTrace(Throwable throwable) {
         return throwable.getStackTrace();
     }
 
-    @JNIFromLibGraal(GetStackTraceElementClassName)
     static String getStackTraceElementClassName(StackTraceElement element) {
         return element.getClassName();
     }
 
-    @JNIFromLibGraal(GetStackTraceElementFileName)
     static String getStackTraceElementFileName(StackTraceElement element) {
         return element.getFileName();
     }
 
-    @JNIFromLibGraal(GetStackTraceElementLineNumber)
     static int getStackTraceElementLineNumber(StackTraceElement element) {
         return element.getLineNumber();
     }
 
-    @JNIFromLibGraal(GetStackTraceElementMethodName)
     static String getStackTraceElementMethodName(StackTraceElement element) {
         return element.getMethodName();
     }
 
-    @JNIFromLibGraal(GetThrowableMessage)
     static String getThrowableMessage(Throwable t) {
         return t.getMessage();
     }
 
-    @JNIFromLibGraal(GetClassName)
     static String getClassName(Class<?> clz) {
         return clz.getName();
     }

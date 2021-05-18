@@ -85,7 +85,7 @@ public class ContextInterruptStandaloneTest extends AbstractPolyglotTest {
     @Test
     public void testCancelDuringHostSleep() throws ExecutionException, InterruptedException {
         CountDownLatch beforeSleep = new CountDownLatch(1);
-        setupEnv(Context.newBuilder(ProxyLanguage.ID).allowHostClassLoading(true).allowHostClassLookup((s) -> true).allowHostAccess(HostAccess.ALL),
+        setupEnv(Context.newBuilder(ProxyLanguage.ID).allowHostClassLookup((s) -> true).allowHostAccess(HostAccess.ALL),
                         new ProxyLanguage() {
                             @Override
                             protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {

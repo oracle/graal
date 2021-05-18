@@ -76,11 +76,6 @@ public abstract class DoubleArrayLoadNode extends QuickNode {
 
     @Specialization(guards = "array.isEspressoObject()")
     double doEspresso(StaticObject array, int index) {
-        return getBytecodesNode().getInterpreterToVM().getArrayDouble(index, array);
-    }
-
-    @Override
-    public boolean producedForeignObject(Object[] refs) {
-        return false;
+        return getBytecodeNode().getInterpreterToVM().getArrayDouble(index, array);
     }
 }

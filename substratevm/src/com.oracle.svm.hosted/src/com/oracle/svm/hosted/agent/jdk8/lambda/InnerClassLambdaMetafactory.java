@@ -225,7 +225,7 @@ import sun.security.action.GetPropertyAction;
             f.setAccessible(true);
 
             if (eagerlyInitialize) {
-                UNSAFE.ensureClassInitialized(innerClass);
+                GraalUnsafeAccess.ensureClassInitialized(innerClass);
             }
             MethodHandles.Lookup implLookup = ((MethodHandles.Lookup) f.get(null));
             MethodHandle lambdaHandle = invokedType.parameterCount() == 0

@@ -28,6 +28,7 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -43,6 +44,7 @@ public final class InvokeDynamicCallSiteNode extends QuickNode {
     private final JavaKind returnKind;
     @Child private DirectCallNode callNode;
     final int resultAt;
+    final boolean returnsPrimitiveType;
 
     @CompilerDirectives.CompilationFinal(dimensions = 1) private Symbol<Type>[] parsedSignature;
 
@@ -56,6 +58,7 @@ public final class InvokeDynamicCallSiteNode extends QuickNode {
         this.hasAppendix = !StaticObject.isNull(appendix);
         this.callNode = DirectCallNode.create(target.getCallTarget());
         this.resultAt = top - Signatures.slotsForParameters(parsedSignature); // no receiver
+        this.returnsPrimitiveType = Types.isPrimitive(returnType);
     }
 
     @Override
@@ -66,16 +69,14 @@ public final class InvokeDynamicCallSiteNode extends QuickNode {
             args[args.length - 1] = appendix;
         }
         Object result = callNode.call(args);
+        if (!returnsPrimitiveType) {
+            getBytecodeNode().checkNoForeignObjectAssumption((StaticObject) result);
+        }
         return (getResultAt() - top) + BytecodeNode.putKind(primitives, refs, getResultAt(), unbasic(result, returnType), returnKind);
     }
 
     private int getResultAt() {
         return resultAt;
-    }
-
-    @Override
-    public boolean producedForeignObject(Object[] refs) {
-        return returnKind.isObject() && BytecodeNode.peekObject(refs, getResultAt()).isForeignObject();
     }
 
     // Transforms ints to sub-words

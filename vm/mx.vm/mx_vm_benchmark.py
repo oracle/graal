@@ -134,7 +134,7 @@ class NativeImageVM(GraalVm):
             self.stages = bm_suite.stages(args)
             self.last_stage = self.stages[-1]
             self.skip_agent_assertions = bm_suite.skip_agent_assertions(self.benchmark_name, args)
-            self.root_dir = self.benchmark_output_dir if self.benchmark_output_dir else mx.join(mx.suite('vm').dir, 'mxbuild')
+            self.root_dir = self.benchmark_output_dir if self.benchmark_output_dir else mx.suite('vm').get_output_root(platformDependent=False, jdkDependent=False)
             self.executable_suffix = ('-' + self.benchmark_name) if self.benchmark_name else ''
             self.executable, self.classpath_arguments, self.system_properties, self.image_run_args = NativeImageVM.extract_benchmark_arguments(args)
             self.executable_name = (os.path.splitext(os.path.basename(self.executable[1]))[0] + self.executable_suffix if self.executable[0] == '-jar' else self.executable[0] + self.executable_suffix).lower()
@@ -381,7 +381,7 @@ class NativeImageVM(GraalVm):
             if "image" not in self.current_stage and self.config.bmSuite.validateReturnCode(self.exit_code):
                 self.exit_code = 0
 
-    def rules(self, output, benchmarks, bmSuiteArgs, suite=None):
+    def rules(self, output, benchmarks, bmSuiteArgs):
         class NativeImageTimeToInt(object):
             def __call__(self, *args, **kwargs):
                 return int(float(args[0].replace(',', '')))
@@ -390,7 +390,7 @@ class NativeImageVM(GraalVm):
             def __call__(self, *args, **kwargs):
                 return int(args[0], 16)
 
-        suiteName = "" if suite is None else suite.name()
+        suiteName = self.bmSuite.name() if self.bmSuite else ""
         return [
             mx_benchmark.StdOutRule(
                 r"The executed image size for benchmark (?P<bench_suite>[a-zA-Z0-9_\-]+):(?P<benchmark>[a-zA-Z0-9_\-]+) is (?P<value>[0-9]+) B",
