@@ -77,7 +77,7 @@ class TraceFileWriter extends TraceWriter {
         }
     }
 
-    private void printArray(JsonWriter json, Object[] array) throws IOException {
+    private static void printArray(JsonWriter json, Object[] array) throws IOException {
         json.append('[');
         for (int i = 0; i < array.length; i++) {
             if (i > 0) {
@@ -93,7 +93,7 @@ class TraceFileWriter extends TraceWriter {
         json.append(']');
     }
 
-    private void printValue(JsonWriter json, Object value) throws IOException {
+    private static void printValue(JsonWriter json, Object value) throws IOException {
         String s;
         if (value instanceof byte[]) {
             s = Base64.getEncoder().encodeToString((byte[]) value);

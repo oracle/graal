@@ -69,7 +69,7 @@ public class PredefinedClassesConfiguration implements JsonPrintable {
         classes.put(hash, clazz);
     }
 
-    private String getFileName(String hash) {
+    private static String getFileName(String hash) {
         return hash + ConfigurationFiles.PREDEFINED_CLASSES_AGENT_EXTRACTED_NAME_SUFFIX;
     }
 

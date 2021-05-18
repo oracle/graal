@@ -35,8 +35,7 @@ import tempfile
 from glob import glob
 from contextlib import contextmanager
 from distutils.dir_util import mkpath, remove_tree  # pylint: disable=no-name-in-module
-from os.path import join, exists, basename, dirname
-from shutil import move
+from os.path import join, exists, dirname
 import pipes
 from xml.dom.minidom import parse
 from argparse import ArgumentParser

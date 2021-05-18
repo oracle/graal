@@ -407,19 +407,19 @@ final class Target_java_lang_ClassLoader {
     @Substitute
     @SuppressWarnings({"unused", "static-method"})
     Class<?> defineClass(byte[] b, int off, int len) throws ClassFormatError {
-        return ClassLoaderHelper.doDefineClass(SubstrateUtil.cast(this, ClassLoader.class), null, b, off, len, null);
+        return PredefinedClassesSupport.loadClass(SubstrateUtil.cast(this, ClassLoader.class), null, b, off, len, null);
     }
 
     @Substitute
     @SuppressWarnings({"unused", "static-method"})
     Class<?> defineClass(String name, byte[] b, int off, int len) throws ClassFormatError {
-        return ClassLoaderHelper.doDefineClass(SubstrateUtil.cast(this, ClassLoader.class), name, b, off, len, null);
+        return PredefinedClassesSupport.loadClass(SubstrateUtil.cast(this, ClassLoader.class), name, b, off, len, null);
     }
 
     @Substitute
     @SuppressWarnings({"unused", "static-method"})
     private Class<?> defineClass(String name, byte[] b, int off, int len, ProtectionDomain protectionDomain) {
-        return ClassLoaderHelper.doDefineClass(SubstrateUtil.cast(this, ClassLoader.class), name, b, off, len, protectionDomain);
+        return PredefinedClassesSupport.loadClass(SubstrateUtil.cast(this, ClassLoader.class), name, b, off, len, protectionDomain);
     }
 
     @Substitute
@@ -436,7 +436,7 @@ final class Target_java_lang_ClassLoader {
             b.get(array);
             off = 0;
         }
-        return ClassLoaderHelper.doDefineClass(SubstrateUtil.cast(this, ClassLoader.class), name, array, off, len, null);
+        return PredefinedClassesSupport.loadClass(SubstrateUtil.cast(this, ClassLoader.class), name, array, off, len, null);
     }
 
     @Delete
@@ -532,11 +532,5 @@ class PackageFieldTransformer implements RecomputeFieldValue.CustomFieldValueTra
         } else {
             return useConcurrentHashMap ? packages : new HashMap<>(packages);
         }
-    }
-}
-
-final class ClassLoaderHelper {
-    public static Class<?> doDefineClass(ClassLoader classLoader, String expectedName, byte[] b, int off, int len, ProtectionDomain protectionDomain) {
-        return PredefinedClassesSupport.loadClass(classLoader, expectedName, b, off, len, protectionDomain);
     }
 }

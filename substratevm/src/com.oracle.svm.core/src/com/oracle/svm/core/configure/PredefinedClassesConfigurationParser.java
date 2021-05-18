@@ -33,6 +33,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
 
+import org.graalvm.compiler.core.common.SuppressFBWarnings;
+
 import com.oracle.svm.core.util.json.JSONParser;
 import com.oracle.svm.core.util.json.JSONParserException;
 
@@ -50,6 +52,7 @@ public class PredefinedClassesConfigurationParser extends ConfigurationParser {
     }
 
     @Override
+    @SuppressFBWarnings(value = "NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE", justification = "getParent() returning null for a valid file path is almost impossible and a NullPointerException would be acceptable")
     public void parseAndRegister(Path path) throws IOException {
         try (Reader reader = Files.newBufferedReader(path)) {
             Path basePath = path.getParent().resolve(ConfigurationFiles.PREDEFINED_CLASSES_AGENT_EXTRACTED_SUBDIR);

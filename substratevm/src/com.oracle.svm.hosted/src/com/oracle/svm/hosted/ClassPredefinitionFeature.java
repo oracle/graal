@@ -58,7 +58,7 @@ public class ClassPredefinitionFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess arg) {
         AfterRegistrationAccessImpl access = (AfterRegistrationAccessImpl) arg;
-        PredefinedClassesRegistry registry = new PredefinedClassesRegistryImpl(access.getImageClassLoader());
+        PredefinedClassesRegistry registry = new PredefinedClassesRegistryImpl();
         ImageSingletons.add(PredefinedClassesRegistry.class, registry);
         PredefinedClassesConfigurationParser parser = new PredefinedClassesConfigurationParser(registry);
         ConfigurationParserUtils.parseAndRegisterConfigurations(parser, access.getImageClassLoader(), "class predefinition",
@@ -67,10 +67,7 @@ public class ClassPredefinitionFeature implements Feature {
     }
 
     private class PredefinedClassesRegistryImpl implements PredefinedClassesRegistry {
-        private final ImageClassLoader imageClassLoader;
-
-        PredefinedClassesRegistryImpl(ImageClassLoader imageClassLoader) {
-            this.imageClassLoader = imageClassLoader;
+        PredefinedClassesRegistryImpl() {
         }
 
         @Override
@@ -99,7 +96,7 @@ public class ClassPredefinitionFeature implements Feature {
                 }
 
                 String className = reader.getClassName().replace('/', '.');
-                if (imageClassLoader.forNameOrNull(className, false) != null) {
+                if (NativeImageSystemClassLoader.singleton().forNameOrNull(className, false) != null) {
                     System.out.println("Warning: skipping predefined class because the classpath already provides a class with name: " + className);
                     return;
                 }
@@ -109,7 +106,7 @@ public class ClassPredefinitionFeature implements Feature {
                     throw UserError.abort("More than one pre-defined class with the same name provided: " + className);
                 }
 
-                Class<?> definedClass = imageClassLoader.predefineClass(className, data, 0, data.length);
+                Class<?> definedClass = NativeImageSystemClassLoader.singleton().predefineClass(className, data, 0, data.length);
                 canonicalHashToClass.put(canonicalHash, definedClass);
                 nameToCanonicalHash.put(className, canonicalHash);
 
