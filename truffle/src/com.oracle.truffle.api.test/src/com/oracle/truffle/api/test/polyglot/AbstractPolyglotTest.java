@@ -82,6 +82,7 @@ public abstract class AbstractPolyglotTest {
 
     protected final void setupEnv(Context.Builder contextBuilder, ProxyInstrument instrument) {
         setupEnv(null, contextBuilder, null, instrument);
+
     }
 
     protected final void setupEnv(Context.Builder contextBuilder, ProxyLanguage language) {

@@ -92,7 +92,7 @@ class CPUSamplerCLI extends ProfilerCLI {
     static final OptionKey<CPUSampler.Mode> MODE = new OptionKey<>(CPUSampler.Mode.EXCLUDE_INLINED_ROOTS, CLI_MODE_TYPE);
     // @formatter:om
     @Option(name = "Period", help = "Period in milliseconds to sample the stack.", category = OptionCategory.USER, stability = OptionStability.STABLE) //
-    static final OptionKey<Long> SAMPLE_PERIOD = new OptionKey<>(1L);
+    static final OptionKey<Long> SAMPLE_PERIOD = new OptionKey<>(10L);
 
     @Option(name = "Delay", help = "Delay the sampling for this many milliseconds (default: 0).", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<Long> DELAY_PERIOD = new OptionKey<>(0L);

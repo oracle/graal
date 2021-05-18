@@ -24,6 +24,8 @@
  */
 package com.oracle.truffle.tools.profiler.impl;
 
+import static com.oracle.truffle.tools.profiler.impl.CPUSamplerCLI.GATHER_HIT_TIMES;
+
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
@@ -31,8 +33,6 @@ import org.graalvm.polyglot.Instrument;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.tools.profiler.CPUSampler;
-
-import static com.oracle.truffle.tools.profiler.impl.CPUSamplerCLI.GATHER_HIT_TIMES;
 
 /**
  * The {@linkplain TruffleInstrument instrument} for the CPU sampler.

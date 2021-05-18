@@ -134,9 +134,20 @@ public final class SourceSectionFilter {
         if (!InstrumentationHandler.isInstrumentableNode(node)) {
             return false;
         }
-        Set<Class<?>> tags = getProvidedTags(node);
+        return includesImpl(node, node.getSourceSection());
+    }
+
+    public boolean includes(Node node, SourceSection sourceSection) {
+        if (node != null && !InstrumentationHandler.isInstrumentableNode(node)) {
+            return false;
+        }
+        return includesImpl(node, sourceSection);
+    }
+
+    private boolean includesImpl(Node node, SourceSection sourceSection) {
+        Set<Class<?>> tags = node != null ? getProvidedTags(node) : Collections.emptySet();
         for (EventFilterExpression exp : expressions) {
-            if (!exp.isIncluded(tags, node, node.getSourceSection())) {
+            if (!exp.isIncluded(tags, node, sourceSection)) {
                 return false;
             }
         }
@@ -1508,7 +1519,7 @@ public final class SourceSectionFilter {
                                 rootSection == null ||
                                 !rootSection.getSource().isInternal() ||
                                 rootSection.getSource().isInternal() && rootNode.isInternal() : //
-                "The root's source is internal, but the root node is not. Root node = " + rootNode.getClass();
+                                "The root's source is internal, but the root node is not. Root node = " + rootNode.getClass();
                 return rootNode == null || !rootNode.isInternal();
             }
 

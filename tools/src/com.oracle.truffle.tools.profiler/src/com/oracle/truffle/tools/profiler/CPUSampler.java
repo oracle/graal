@@ -29,7 +29,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.DoubleSummaryStatistics;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -44,15 +46,14 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 
 import com.oracle.truffle.api.TruffleContext;
-import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
-import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
 import com.oracle.truffle.api.nodes.LanguageInfo;
+import com.oracle.truffle.tools.profiler.SafepointStack.StackSample;
 import com.oracle.truffle.tools.profiler.impl.CPUSamplerInstrument;
 import com.oracle.truffle.tools.profiler.impl.ProfilerToolFactory;
 
@@ -88,6 +89,13 @@ public final class CPUSampler implements Closeable {
 
         int selfCompiledHitCount;
         int selfInterpretedHitCount;
+
+        int selfSamples;
+        int totalSamples;
+
+        int[] tierTotalStatistics;
+        int[] tierSelfStatistics;
+        int inlinedSamples;
 
         final List<Long> selfHitTimes = new ArrayList<>();
 
@@ -195,7 +203,7 @@ public final class CPUSampler implements Closeable {
 
     private volatile boolean collecting;
 
-    private long period = 1;
+    private long period = 10;
 
     private long delay = 0;
 
@@ -203,16 +211,13 @@ public final class CPUSampler implements Closeable {
 
     private SourceSectionFilter filter;
 
-    private boolean stackOverflowed = false;
-
     private AtomicLong samplesTaken = new AtomicLong(0);
 
     private Timer samplerThread;
 
     private TimerTask samplerTask;
 
-    private volatile ShadowStack shadowStack;
-    private volatile EventBinding<?> stacksBinding;
+    private volatile SafepointStack safepointStack;
 
     private final Map<Thread, ProfilerNode<Payload>> rootNodes = new HashMap<>();
 
@@ -224,41 +229,76 @@ public final class CPUSampler implements Closeable {
 
     private boolean delaySamplingUntilNonInternalLangInit = true;
 
+    private final Map<TruffleContext, Map<Thread, ProfilerNode<Payload>>> activeContexts = Collections.synchronizedMap(new HashMap<>());
+
+    private static final boolean SAFEPOINT_SAMPLING = true;
+
     CPUSampler(Env env) {
         this.env = env;
+
         env.getInstrumenter().attachContextsListener(new ContextsListener() {
+
             @Override
             public void onContextCreated(TruffleContext context) {
+                synchronized (CPUSampler.this) {
+                    activeContexts.put(context, new LinkedHashMap<>());
+                }
+            }
 
+            public void onLanguageContextCreate(TruffleContext context, LanguageInfo language) {
+                pushSyntheticFrame(context, language, "CreateContext");
             }
 
             @Override
             public void onLanguageContextCreated(TruffleContext context, LanguageInfo language) {
+                popSyntheticFrame(context, language);
+            }
 
+            public void onLanguageContextCreateFailed(TruffleContext context, LanguageInfo language) {
+                popSyntheticFrame(context, language);
+            }
+
+            public void onLanguageContextInitialize(TruffleContext context, LanguageInfo language) {
+                pushSyntheticFrame(context, language, "InitializeContext");
             }
 
             @Override
             public void onLanguageContextInitialized(TruffleContext context, LanguageInfo language) {
+                popSyntheticFrame(context, language);
                 if (!language.isInternal()) {
                     nonInternalLanguageContextInitialized = true;
                 }
             }
 
+            public void onLanguageContextInitializeFailed(TruffleContext context, LanguageInfo language) {
+                popSyntheticFrame(context, language);
+            }
+
             @Override
             public void onLanguageContextFinalized(TruffleContext context, LanguageInfo language) {
-
             }
 
             @Override
             public void onLanguageContextDisposed(TruffleContext context, LanguageInfo language) {
-
             }
 
             @Override
             public void onContextClosed(TruffleContext context) {
-
+                // print?
+                synchronized (CPUSampler.this) {
+                    // print here instead?
+// activeContexts.remove(context);
+                }
             }
         }, true);
+    }
+
+    private void pushSyntheticFrame(TruffleContext context, LanguageInfo info, String message) {
+        // TODO
+    }
+
+    private void popSyntheticFrame(TruffleContext context, LanguageInfo info) {
+        // TODO
     }
 
     /**
@@ -419,19 +459,19 @@ public final class CPUSampler implements Closeable {
     public synchronized Collection<ProfilerNode<Payload>> getRootNodes() {
         ProfilerNode<Payload> mergedRoot = new ProfilerNode<>();
         for (ProfilerNode<Payload> node : rootNodes.values()) {
-            mergedRoot.deepMergeChildrenFrom(node, mergePayload, payloadFactory);
+            mergedRoot.deepMergeChildrenFrom(node, MERGE_PAYLOAD, PAYLOAD_FACTORY);
         }
         return mergedRoot.getChildren();
     }
 
-    private static Supplier<Payload> payloadFactory = new Supplier<Payload>() {
+    private static final Supplier<Payload> PAYLOAD_FACTORY = new Supplier<Payload>() {
         @Override
         public Payload get() {
             return new Payload();
         }
     };
 
-    private static BiConsumer<Payload, Payload> mergePayload = new BiConsumer<Payload, Payload>() {
+    private static final BiConsumer<Payload, Payload> MERGE_PAYLOAD = new BiConsumer<Payload, Payload>() {
         @Override
         public void accept(Payload sourcePayload, Payload destinationPayload) {
             destinationPayload.selfCompiledHitCount += sourcePayload.selfCompiledHitCount;
@@ -444,7 +484,7 @@ public final class CPUSampler implements Closeable {
         }
     };
 
-    private final Function<Payload, Payload> copyPayload = new Function<Payload, Payload>() {
+    private static final Function<Payload, Payload> COPY_PAYLOAD = new Function<Payload, Payload>() {
         @Override
         public Payload apply(Payload sourcePayload) {
             Payload destinationPayload = new Payload();
@@ -464,13 +504,34 @@ public final class CPUSampler implements Closeable {
      * @since 19.0
      */
     public synchronized Map<Thread, Collection<ProfilerNode<Payload>>> getThreadToNodesMap() {
+
+        if (activeContexts.isEmpty()) {
+            return Collections.emptyMap();
+        }
         Map<Thread, Collection<ProfilerNode<Payload>>> returnValue = new HashMap<>();
-        for (Map.Entry<Thread, ProfilerNode<Payload>> entry : rootNodes.entrySet()) {
+        for (Map.Entry<Thread, ProfilerNode<Payload>> entry : activeContexts.values().iterator().next().entrySet()) {
             ProfilerNode<Payload> copy = new ProfilerNode<>();
-            copy.deepCopyChildrenFrom(entry.getValue(), copyPayload);
+            copy.deepCopyChildrenFrom(entry.getValue(), COPY_PAYLOAD);
             returnValue.put(entry.getKey(), copy.getChildren());
         }
         return Collections.unmodifiableMap(returnValue);
+    }
+
+    public synchronized Map<TruffleContext, CPUSamplerData> getContextData() {
+        if (activeContexts.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Map<TruffleContext, Map<Thread, Collection<ProfilerNode<Payload>>>> contexts = new HashMap<>();
+        for (Entry<TruffleContext, Map<Thread, ProfilerNode<Payload>>> contextEntry : this.activeContexts.entrySet()) {
+            Map<Thread, Collection<ProfilerNode<Payload>>> threads = new HashMap<>();
+            for (Map.Entry<Thread, ProfilerNode<Payload>> threadEntry : contextEntry.getValue().entrySet()) {
+                ProfilerNode<Payload> copy = new ProfilerNode<>();
+                copy.deepCopyChildrenFrom(threadEntry.getValue(), COPY_PAYLOAD);
+                threads.put(threadEntry.getKey(), copy.getChildren());
+            }
+            contexts.put(contextEntry.getKey(), threads);
+        }
+        return contexts;
     }
 
     /**
@@ -480,6 +541,11 @@ public final class CPUSampler implements Closeable {
      */
     public synchronized void clearData() {
         samplesTaken.set(0);
+
+        for (TruffleContext context : activeContexts.keySet()) {
+            activeContexts.get(context).clear();
+        }
+
         for (ProfilerNode<Payload> node : rootNodes.values()) {
             Map<StackTraceEntry, ProfilerNode<Payload>> rootChildren = node.children;
             if (rootChildren != null) {
@@ -577,20 +643,6 @@ public final class CPUSampler implements Closeable {
         return converted;
     }
 
-    private synchronized ShadowStack initializeShadowStack() {
-        ShadowStack localShadowStack = shadowStack;
-        if (localShadowStack == null) {
-            assert stacksBinding == null;
-            SourceSectionFilter f = this.filter;
-            if (f == null) {
-                f = DEFAULT_FILTER;
-            }
-            this.shadowStack = localShadowStack = new ShadowStack(stackLimit, f, env.getInstrumenter(), TruffleLogger.getLogger(CPUSamplerInstrument.ID));
-            this.stacksBinding = this.shadowStack.install(env.getInstrumenter(), combine(f, mode), mode == Mode.EXCLUDE_INLINED_ROOTS);
-        }
-        return localShadowStack;
-    }
-
     private void resetSampling() {
         assert Thread.holdsLock(this);
         cleanup();
@@ -601,8 +653,6 @@ public final class CPUSampler implements Closeable {
         if (samplerThread == null) {
             samplerThread = new Timer("Sampling thread", true);
         }
-        this.stackOverflowed = false;
-        initializeShadowStack();
         this.samplerTask = new SamplingTimerTask();
         this.samplerThread.schedule(samplerTask, delay, period);
     }
@@ -618,7 +668,6 @@ public final class CPUSampler implements Closeable {
 
     private void cleanup() {
         assert Thread.holdsLock(this);
-        invalidateStack();
         if (samplerTask != null) {
             samplerTask.cancel();
             samplerTask = null;
@@ -636,54 +685,96 @@ public final class CPUSampler implements Closeable {
         } else if (collecting) {
             throw new ProfilerException("Cannot change sampler configuration while collecting. Call setCollecting(false) to disable collection first.");
         }
-        invalidateStack();
-    }
-
-    private void invalidateStack() {
-        ShadowStack localShadowStack = this.shadowStack;
-        if (localShadowStack != null) {
-            synchronized (this) {
-                localShadowStack = this.shadowStack;
-                if (localShadowStack != null) {
-                    if (stacksBinding != null) {
-                        stacksBinding.dispose();
-                        stacksBinding = null;
-                    }
-                    shadowStack = null;
-                } else {
-                    assert stacksBinding == null;
-                }
-            }
-        }
     }
 
     private class SamplingTimerTask extends TimerTask {
+
+        private final DoubleSummaryStatistics biasStatistic = new DoubleSummaryStatistics();
+        private final DoubleSummaryStatistics durationStatistic = new DoubleSummaryStatistics();
 
         @Override
         public void run() {
             if (delaySamplingUntilNonInternalLangInit && !nonInternalLanguageContextInitialized) {
                 return;
             }
-            long timestamp = System.currentTimeMillis();
+
             boolean sampleTaken = false;
-            ShadowStack localShadowStack = shadowStack;
-            if (localShadowStack != null) {
-                for (ShadowStack.ThreadLocalStack stack : localShadowStack.getStacks()) {
-                    ProfilerNode<Payload> threadNode;
-                    synchronized (CPUSampler.this) {
-                        threadNode = rootNodes.computeIfAbsent(stack.getThread(), new Function<Thread, ProfilerNode<Payload>>() {
+
+            long timestamp = System.currentTimeMillis();
+            TruffleContext[] contexts;
+            synchronized (CPUSampler.this) {
+                contexts = activeContexts.keySet().toArray(new TruffleContext[activeContexts.size()]);
+            }
+
+            context: for (TruffleContext context : contexts) {
+                if (context.isClosed()) {
+                    continue;
+                }
+
+                List<StackSample> samples = safepointStack.sample(env, context);
+
+                synchronized (CPUSampler.this) {
+                    Map<Thread, ProfilerNode<Payload>> nodes = activeContexts.get(context);
+                    if (nodes == null) {
+                        continue context;
+                    }
+
+                    for (StackSample sample : samples) {
+                        biasStatistic.accept(sample.biasNs);
+                        durationStatistic.accept(sample.durationNs);
+
+                        ProfilerNode<Payload> threadNode = nodes.computeIfAbsent(sample.thread, new Function<Thread, ProfilerNode<Payload>>() {
                             @Override
                             public ProfilerNode<Payload> apply(Thread thread) {
                                 return new ProfilerNode<>();
                             }
                         });
+                        sampleTaken |= sample(sample, threadNode, timestamp);
                     }
-                    sampleTaken |= sample(stack, timestamp, threadNode);
                 }
             }
+
+            if (samplesTaken.get() % 500 == 1) {
+                System.out.printf("bias %15f duration %15f %n", biasStatistic.getAverage(),
+                                durationStatistic.getAverage());
+            }
+
             if (sampleTaken) {
                 samplesTaken.incrementAndGet();
             }
+
+        }
+
+        private boolean sample(StackSample sample, ProfilerNode<Payload> threadNode, long timestamp) {
+            synchronized (CPUSampler.this) {
+                // now traverse the stack and insert the path into the tree
+                ProfilerNode<Payload> treeNode = threadNode;
+
+                for (int i = sample.stack.size() - 1; i >= 0; i--) {
+                    StackTraceEntry location = sample.stack.get(i);
+                    boolean isCompiled = location.isCompiled();
+                    treeNode = addOrUpdateChild(treeNode, location);
+                    Payload payload = treeNode.getPayload();
+                    if (i == 0) {
+                        if (isCompiled) {
+                            payload.selfCompiledHitCount++;
+                        } else {
+                            payload.selfInterpretedHitCount++;
+                        }
+                        if (gatherSelfHitTimes) {
+                            payload.selfHitTimes.add(timestamp);
+                            assert payload.selfHitTimes.size() == payload.getSelfHitCount();
+                        }
+                    }
+                    if (isCompiled) {
+                        payload.compiledHitCount++;
+                    } else {
+                        payload.interpretedHitCount++;
+                    }
+                }
+            }
+
+            return true;
         }
 
         boolean sample(ShadowStack.ThreadLocalStack stack, long timestamp, ProfilerNode<Payload> threadNode) {
@@ -691,6 +782,7 @@ public final class CPUSampler implements Closeable {
                 stackOverflowed = true;
                 return false;
             }
+
             if (stack.getStackIndex() == -1) {
                 // nothing on the stack
                 return false;
