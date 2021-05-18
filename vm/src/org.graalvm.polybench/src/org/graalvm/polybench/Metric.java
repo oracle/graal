@@ -27,6 +27,7 @@ package org.graalvm.polybench;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
+import java.util.logging.Handler;
 
 @SuppressWarnings("unused")
 interface Metric {
@@ -46,6 +47,13 @@ interface Metric {
      */
     default Map<String, String> getEngineOptions(Config config) {
         return Collections.emptyMap();
+    }
+
+    /**
+     * Allows Metric to forward engine logging into supplied logger.
+     */
+    default Handler getLogHandler() {
+        return null;
     }
 
     default void beforeIteration(boolean warmup, int iteration, Config config) {
