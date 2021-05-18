@@ -327,7 +327,7 @@ public abstract class ClassRegistry implements ContextAccess {
 
         try (DebugCloseable define = KLASS_DEFINE.scope(getContext().getTimers())) {
             // FIXME(peterssen): Do NOT create a LinkedKlass every time, use a global cache.
-            LinkedKlass linkedKlass = new LinkedKlass(parserKlass, superKlass == null ? null : superKlass.getLinkedKlass(), linkedInterfaces);
+            LinkedKlass linkedKlass = LinkedKlass.create(getEspressoLanguage(), parserKlass, superKlass == null ? null : superKlass.getLinkedKlass(), linkedInterfaces);
             klass = new ObjectKlass(context, linkedKlass, superKlass, superInterfaces, getClassLoader());
         }
 
