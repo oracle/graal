@@ -157,8 +157,9 @@ public class ClassEntry extends StructureTypeEntry {
                 assert includesDeoptTarget == false;
             }
             FileEntry primaryFileEntry = primary.getFileEntry();
-            assert primaryFileEntry != null;
-            indexLocalFileEntry(primaryFileEntry);
+            if (primaryFileEntry != null) {
+                indexLocalFileEntry(primaryFileEntry);
+            }
         }
     }
 
@@ -342,15 +343,6 @@ public class ClassEntry extends StructureTypeEntry {
 
     public ClassEntry getSuperClass() {
         return superClass;
-    }
-
-    public Range makePrimaryRange(StringTable stringTable, MethodEntry method, int lo, int hi, int primaryLine) {
-        FileEntry fileEntryToUse = method.fileEntry;
-        if (fileEntryToUse == null) {
-            /* Last chance is the class's file entry. */
-            fileEntryToUse = this.fileEntry;
-        }
-        return new Range(stringTable, method, fileEntryToUse, lo, hi, primaryLine);
     }
 
     public MethodEntry getMethodEntry(DebugMethodInfo debugMethodInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {

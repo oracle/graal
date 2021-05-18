@@ -34,7 +34,6 @@ package com.oracle.objectfile.debugentry;
 
 public class Range {
     private static final String CLASS_DELIMITER = ".";
-    private final FileEntry fileEntry;
     private final MethodEntry methodEntry;
     private final String fullMethodNameWithParams;
     private final int lo;
@@ -48,28 +47,19 @@ public class Range {
     /*
      * Create a primary range.
      */
-    public Range(StringTable stringTable, MethodEntry methodEntry, FileEntry fileEntry, int lo, int hi, int line) {
-        this(stringTable, methodEntry, fileEntry, lo, hi, line, null);
-    }
-
-    /*
-     * Create a secondary range.
-     */
-    public Range(StringTable stringTable, MethodEntry methodEntry, int lo, int hi, int line, Range primary) {
-        this(stringTable, methodEntry, methodEntry.fileEntry, lo, hi, line, primary);
+    public Range(StringTable stringTable, MethodEntry methodEntry, int lo, int hi, int line) {
+        this(stringTable, methodEntry, lo, hi, line, null);
     }
 
     /*
      * Create a primary or secondary range.
      */
-    private Range(StringTable stringTable, MethodEntry methodEntry, FileEntry fileEntry, int lo, int hi, int line,
-                    Range primary) {
-        this.fileEntry = fileEntry;
-        if (fileEntry != null) {
-            stringTable.uniqueDebugString(fileEntry.getFileName());
-            stringTable.uniqueDebugString(fileEntry.getPathName());
-        }
+    public Range(StringTable stringTable, MethodEntry methodEntry, int lo, int hi, int line, Range primary) {
         assert methodEntry != null;
+        if (methodEntry.fileEntry != null) {
+            stringTable.uniqueDebugString(methodEntry.fileEntry.getFileName());
+            stringTable.uniqueDebugString(methodEntry.fileEntry.getPathName());
+        }
         this.methodEntry = methodEntry;
         this.fullMethodNameWithParams = stringTable.uniqueString(constructClassAndMethodNameWithParams());
         this.lo = lo;
@@ -158,7 +148,7 @@ public class Range {
     }
 
     public FileEntry getFileEntry() {
-        return fileEntry;
+        return methodEntry.fileEntry;
     }
 
     public int getModifiers() {
@@ -167,11 +157,11 @@ public class Range {
 
     @Override
     public String toString() {
-        return String.format("Range(lo=0x%05x hi=0x%05x %s %s:%d)", lo, hi, constructClassAndMethodNameWithParams(), fileEntry.getFullName(), line);
+        return String.format("Range(lo=0x%05x hi=0x%05x %s %s:%d)", lo, hi, constructClassAndMethodNameWithParams(), methodEntry.getFullFileName(), line);
     }
 
     public String getFileName() {
-        return fileEntry.getFileName();
+        return methodEntry.getFileName();
     }
 
     public MethodEntry getMethodEntry() {

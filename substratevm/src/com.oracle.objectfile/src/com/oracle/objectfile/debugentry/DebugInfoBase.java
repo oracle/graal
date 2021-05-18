@@ -246,7 +246,7 @@ public abstract class DebugInfoBase {
             /* Search for a method defining this primary range. */
             ClassEntry classEntry = ensureClassEntry(className);
             MethodEntry methodEntry = classEntry.getMethodEntry(debugCodeInfo, this, debugContext);
-            Range primaryRange = classEntry.makePrimaryRange(stringTable, methodEntry, lo, hi, primaryLine);
+            Range primaryRange = new Range(stringTable, methodEntry, lo, hi, primaryLine);
             debugContext.log(DebugContext.INFO_LEVEL, "PrimaryRange %s.%s %s %s:%d [0x%x, 0x%x]", className, methodName, filePath, fileName, primaryLine, lo, hi);
             classEntry.indexPrimary(primaryRange, debugCodeInfo.getFrameSizeChanges(), debugCodeInfo.getFrameSize());
             debugCodeInfo.lineInfoProvider().forEach(debugLineInfo -> {
