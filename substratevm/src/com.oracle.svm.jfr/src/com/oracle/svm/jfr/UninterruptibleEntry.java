@@ -34,37 +34,37 @@ import org.graalvm.word.PointerBase;
 @RawStructure
 public interface UninterruptibleEntry<T extends UninterruptibleEntry<T>> extends PointerBase {
     /**
-     * Gets the next entry
+     * Gets the next entry.
      */
     @RawField
     T getNext();
 
     /**
-     * Sets the next entry
+     * Sets the next entry.
      */
     @RawField
     void setNext(T value);
 
     /**
-     * Gets the id for the entry
+     * Gets the id for the entry.
      */
     @RawField
     long getId();
 
     /**
-     * Sets the id for the entry
+     * Sets the id for the entry.
      */
     @RawField
     void setId(long value);
 
     /**
-     * Get the hashcode for the entry
+     * Get the hashcode for the entry.
      */
     @RawField
     int getHash();
 
     /**
-     * Sets the hashcode for the entry
+     * Sets the hashcode for the entry.
      */
     @RawField
     void setHash(int value);

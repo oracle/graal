@@ -30,13 +30,13 @@ package com.oracle.svm.jfr;
  */
 public interface JfrUnlockedChunkWriter {
     /**
-     * Initializes the chunk writer with the maximum size of a chunk
+     * Initializes the chunk writer with the maximum size of a chunk.
      */
     void initialize(long maxChunkSize);
 
     /**
-     * Locks the ChunkWriter returning JfrChunkWriter which provides access to chunk writing methods that require
-     * mutual exclusion
+     * Locks the chunk writer returning a {@link JfrChunkWriter} which provides access to chunk writing methods that
+     * require mutual exclusion.
      */
     JfrChunkWriter lock();
 

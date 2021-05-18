@@ -32,18 +32,10 @@ import org.graalvm.word.PointerBase;
  */
 @RawPointerTo(JfrBuffer.class)
 public interface JfrBuffers extends PointerBase {
-    /**
-     * Returns array at specific index
-     */
+
     JfrBuffers addressOf(long index);
 
-    /**
-     * Writes JfrBuffer into the array
-     */
     void write(JfrBuffer value);
 
-    /**
-     * Reads JfrBuffer from the array
-     */
     JfrBuffer read();
 }

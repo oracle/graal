@@ -36,7 +36,7 @@ import org.graalvm.word.PointerBase;
 @RawStructure
 public interface JfrNativeEventWriterData extends PointerBase {
     /**
-     * Gets the JfrBuffer that data will be written to
+     * Gets the JfrBuffer that data will be written to.
      */
     @RawField
     JfrBuffer getJfrBuffer();
@@ -55,21 +55,18 @@ public interface JfrNativeEventWriterData extends PointerBase {
 
     /**
      * Sets the start position for the current event write.
-     * @param value
      */
     @RawField
     void setStartPos(Pointer value);
 
     /**
      * Gets the current position of the event write. This position is moved forward as data is written for an event
-     * @return
      */
     @RawField
     Pointer getCurrentPos();
 
     /**
      * Sets the current position of the event write.
-     * @return
      */
     @RawField
     void setCurrentPos(Pointer value);
@@ -81,7 +78,7 @@ public interface JfrNativeEventWriterData extends PointerBase {
     Pointer getEndPos();
 
     /**
-     * Sets the end position for the current event write
+     * Sets the end position for the current event write.
      */
     @RawField
     void setEndPos(Pointer value);
