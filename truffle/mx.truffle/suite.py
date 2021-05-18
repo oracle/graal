@@ -604,6 +604,7 @@ suite = {
       "subDir" : "src",
       "native" : "shared_lib",
       "deliverable" : "trufflenfi",
+      "use_jdk_headers" : True,
       "buildDependencies" : [
         "libffi",
         "com.oracle.truffle.nfi.backend.libffi",
