@@ -390,7 +390,6 @@ class NativeImageVM(GraalVm):
             def __call__(self, *args, **kwargs):
                 return int(args[0], 16)
 
-        suiteName = self.bmSuite.name() if self.bmSuite else ""
         return [
             mx_benchmark.StdOutRule(
                 r"The executed image size for benchmark (?P<bench_suite>[a-zA-Z0-9_\-]+):(?P<benchmark>[a-zA-Z0-9_\-]+) is (?P<value>[0-9]+) B",
@@ -422,7 +421,6 @@ class NativeImageVM(GraalVm):
                     "metric.object": ("<type>", str)
                 }),
             mx_benchmark.StdOutRule(r'^\[\S+:[0-9]+\][ ]+\[total\]:[ ]+(?P<time>[0-9,.]+?) ms', {
-                "bench-suite": suiteName,
                 "benchmark": benchmarks[0],
                 "metric.name": "compile-time",
                 "metric.type": "numeric",
@@ -434,7 +432,6 @@ class NativeImageVM(GraalVm):
                 "metric.object": "total",
             }),
             mx_benchmark.StdOutRule(r'^\[\S+:[0-9]+\][ ]+(?P<phase>\w+?):[ ]+(?P<time>[0-9,.]+?) ms', {
-                "bench-suite": suiteName,
                 "benchmark": benchmarks[0],
                 "metric.name": "compile-time",
                 "metric.type": "numeric",
@@ -446,7 +443,6 @@ class NativeImageVM(GraalVm):
                 "metric.object": ("<phase>", str),
             }),
             mx_benchmark.StdOutRule(r'^[ ]*[0-9]+[ ]+.(?P<section>[a-zA-Z0-9._-]+?)[ ]+(?P<size>[0-9a-f]+?)[ ]+', {
-                "bench-suite": suiteName,
                 "benchmark": benchmarks[0],
                 "metric.name": "binary-section-size",
                 "metric.type": "numeric",
@@ -458,7 +454,6 @@ class NativeImageVM(GraalVm):
                 "metric.object": ("<section>", str),
             }),
             mx_benchmark.JsonStdOutFileRule(r'^# Printing analysis results stats to: (?P<path>\S+?)$', 'path', {
-                "bench-suite": suiteName,
                 "benchmark": benchmarks[0],
                 "metric.name": "analysis-stats",
                 "metric.type": "numeric",
@@ -470,7 +465,6 @@ class NativeImageVM(GraalVm):
                 "metric.object": "reachable-types",
             }, ['total_reachable_types']),
             mx_benchmark.JsonStdOutFileRule(r'^# Printing analysis results stats to: (?P<path>\S+?)$', 'path', {
-                "bench-suite": suiteName,
                 "benchmark": benchmarks[0],
                 "metric.name": "analysis-stats",
                 "metric.type": "numeric",
@@ -482,7 +476,6 @@ class NativeImageVM(GraalVm):
                 "metric.object": "reachable-methods",
             }, ['total_reachable_methods']),
             mx_benchmark.JsonStdOutFileRule(r'^# Printing analysis results stats to: (?P<path>\S+?)$', 'path', {
-                "bench-suite": suiteName,
                 "benchmark": benchmarks[0],
                 "metric.name": "analysis-stats",
                 "metric.type": "numeric",
@@ -494,7 +487,6 @@ class NativeImageVM(GraalVm):
                 "metric.object": "reachable-fields",
             }, ['total_reachable_fields']),
             mx_benchmark.JsonStdOutFileRule(r'^# Printing analysis results stats to: (?P<path>\S+?)$', 'path', {
-                "bench-suite": suiteName,
                 "benchmark": benchmarks[0],
                 "metric.name": "analysis-stats",
                 "metric.type": "numeric",
