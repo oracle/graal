@@ -375,9 +375,18 @@ public abstract class ClassRegistry implements ContextAccess {
     }
 
     public void onClassRenamed(ObjectKlass renamedKlass) {
-        // First remove class loader constraint if newType was previously loaded.
-        // That class instance will either be assigned a patched name, or marked
-        // as removed.
+        // this method is constructed so that any existing class loader constraint
+        // for the new type is removed from the class registries first. This allows
+        // a clean addition of a new class loader constraint for the new type for a
+        // different klass object.
+
+        // The old type of the renamed klass object will not be handled within this
+        // method. There are two possible ways in which the old type is handled, 1)
+        // if another renamed class instance now has the old type, it will also go
+        // through this method directly or 2) if no klass instance has the new type
+        // the old klass instance will be marked as removed and will follow a direct
+        // path to ClassRegistries.removeUnloadedKlassConstraint().
+
         Klass loadedKlass = findLoadedKlass(renamedKlass.getType());
         if (loadedKlass != null) {
             context.getRegistries().removeUnloadedKlassConstraint(loadedKlass, renamedKlass.getType());
