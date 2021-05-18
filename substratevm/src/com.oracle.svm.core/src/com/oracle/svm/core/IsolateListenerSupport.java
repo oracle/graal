@@ -31,9 +31,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.graal.snippets.CEntryPointSnippets.IsolateCreationWatcher;
 
@@ -76,13 +74,5 @@ public class IsolateListenerSupport {
     public interface IsolateListener {
         @Uninterruptible(reason = "Thread state not yet set up.")
         void afterCreateIsolate(Isolate isolate);
-    }
-}
-
-@AutomaticFeature
-class IsolateListenerFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(IsolateListenerSupport.class, new IsolateListenerSupport());
     }
 }
