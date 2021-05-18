@@ -51,7 +51,6 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.UserError.UserException;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ExceptionSynthesizer;
-import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.NativeImageOptions;
 
 import jdk.vm.ci.meta.JavaField;
@@ -310,21 +309,6 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             }
 
             super.genIf(x, cond, y);
-        }
-
-        @Override
-        protected boolean shouldComplementProbability() {
-            /*
-             * Probabilities from AOT profiles are about canonical conditions as they are coming
-             * from Graal IR. That is, they are collected after `BytecodeParser` has done conversion
-             * to Graal IR. Unfortunately, `BytecodeParser` assumes that probabilities are about
-             * original conditions and loads them before conversion to Graal IR.
-             *
-             * Therefore, in order to maintain correct probabilities we need to prevent
-             * `BytecodeParser` from complementing probability during transformations such as
-             * negation of a condition, or elimination of logical negation.
-             */
-            return !HostedConfiguration.instance().isUsingAOTProfiles();
         }
 
         @Override
