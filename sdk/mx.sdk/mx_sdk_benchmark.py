@@ -627,7 +627,7 @@ class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
         for i in range(numScripts):
             # Measure latency using a constant rate (based on the previously measured max throughput).
             config = configs[i]
-            expectedRate = int(self.calibratedThroughput[i] * 0.85)
+            expectedRate = int(self.calibratedThroughput[i] * 0.75)
             wrkFlags = self.getLatencyFlags(config, expectedRate)
             constantRateOutput = self.runWrk2(wrkFlags)
             self.verifyThroughput(constantRateOutput, expectedRate)
