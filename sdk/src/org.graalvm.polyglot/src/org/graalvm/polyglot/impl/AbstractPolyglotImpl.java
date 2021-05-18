@@ -208,6 +208,8 @@ public abstract class AbstractPolyglotImpl {
     ManagementAccess management;
     IOAccess io;
 
+    AbstractPolyglotImpl next;
+
     public final void setMonitoring(ManagementAccess monitoring) {
         this.management = monitoring;
     }
@@ -215,6 +217,14 @@ public abstract class AbstractPolyglotImpl {
     public final void setConstructors(APIAccess constructors) {
         this.api = constructors;
         initialize();
+    }
+
+    public final void setNext(AbstractPolyglotImpl next) {
+        this.next = next;
+    }
+
+    protected final AbstractPolyglotImpl getNext() {
+        return next;
     }
 
     public final void setIO(IOAccess ioAccess) {
@@ -244,9 +254,11 @@ public abstract class AbstractPolyglotImpl {
     protected void initialize() {
     }
 
-    public abstract Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, boolean useSystemProperties, boolean allowExperimentalOptions,
+    public abstract Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> options, boolean useSystemProperties, boolean allowExperimentalOptions,
                     boolean boundEngine,
                     MessageTransport messageInterceptor, Object logHandlerOrStream, HostAccess conf);
+
+    public abstract int getPriority();
 
     public abstract void preInitializeEngine();
 

@@ -121,6 +121,11 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         polyglotImpl = this;
     }
 
+    @Override
+    public int getPriority() {
+        return 0; // default priority
+    }
+
     static PolyglotImpl getInstance() {
         if (polyglotImpl == null) {
             /*

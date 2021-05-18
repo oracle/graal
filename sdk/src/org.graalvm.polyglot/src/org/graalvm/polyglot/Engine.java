@@ -40,6 +40,37 @@
  */
 package org.graalvm.polyglot;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.Reader;
+import java.lang.reflect.AnnotatedElement;
+import java.lang.reflect.Method;
+import java.net.URI;
+import java.net.URL;
+import java.nio.charset.Charset;
+import java.nio.file.Path;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.ServiceLoader;
+import java.util.Set;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.logging.Handler;
+import java.util.logging.Level;
+
 import org.graalvm.collections.UnmodifiableEconomicSet;
 import org.graalvm.home.HomeFinder;
 import org.graalvm.nativeimage.ImageInfo;
@@ -59,34 +90,6 @@ import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
 import org.graalvm.polyglot.management.ExecutionEvent;
-
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.Reader;
-import java.lang.reflect.AnnotatedElement;
-import java.lang.reflect.Method;
-import java.net.URI;
-import java.net.URL;
-import java.nio.charset.Charset;
-import java.nio.file.Path;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.ServiceLoader;
-import java.util.Set;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Predicate;
-import java.util.logging.Handler;
-import java.util.logging.Level;
 
 /**
  * An execution engine for Graal {@linkplain Language guest languages} that allows to inspect the
@@ -551,6 +554,8 @@ public final class Engine implements AutoCloseable {
 
     static class APIAccessImpl extends AbstractPolyglotImpl.APIAccess {
 
+        private static final APIAccessImpl INSTANCE = new APIAccessImpl();
+
         APIAccessImpl() {
         }
 
@@ -723,13 +728,14 @@ public final class Engine implements AutoCloseable {
 
     private static final boolean JDK8_OR_EARLIER = System.getProperty("java.specification.version").compareTo("1.9") < 0;
 
+    @SuppressWarnings("unchecked")
     private static AbstractPolyglotImpl initEngineImpl() {
         return AccessController.doPrivileged(new PrivilegedAction<AbstractPolyglotImpl>() {
             public AbstractPolyglotImpl run() {
-                AbstractPolyglotImpl engine = null;
+                AbstractPolyglotImpl polyglot = null;
                 Class<?> servicesClass = null;
                 if (Boolean.getBoolean("graalvm.ForcePolyglotInvalid")) {
-                    engine = createInvalidPolyglotImpl();
+                    polyglot = loadAndValidateProviders(createInvalidPolyglotImpl());
                 } else {
                     if (JDK8_OR_EARLIER) {
                         try {
@@ -738,8 +744,8 @@ public final class Engine implements AutoCloseable {
                         }
                         if (servicesClass != null) {
                             try {
-                                Method m = servicesClass.getDeclaredMethod("loadSingle", Class.class, boolean.class);
-                                engine = (AbstractPolyglotImpl) m.invoke(null, AbstractPolyglotImpl.class, false);
+                                Method m = servicesClass.getDeclaredMethod("load", Class.class);
+                                polyglot = loadAndValidateProviders(((Iterable<? extends AbstractPolyglotImpl>) m.invoke(null, AbstractPolyglotImpl.class)).iterator());
                             } catch (Throwable e) {
                                 // Fail fast for other errors
                                 throw new InternalError(e);
@@ -748,29 +754,39 @@ public final class Engine implements AutoCloseable {
                     }
                 }
 
-                if (engine == null) {
+                if (polyglot == null) {
                     // >= JDK 9.
-                    engine = searchServiceLoader();
+                    polyglot = loadAndValidateProviders(searchServiceLoader());
                 }
-                if (engine == null) {
-                    engine = createInvalidPolyglotImpl();
+                if (polyglot == null) {
+                    polyglot = loadAndValidateProviders(createInvalidPolyglotImpl());
                 }
-                if (engine != null) {
-                    engine.setConstructors(new APIAccessImpl());
-                }
-                return engine;
+                return polyglot;
             }
 
-            private AbstractPolyglotImpl searchServiceLoader() throws InternalError {
-                Iterator<AbstractPolyglotImpl> providers = ServiceLoader.load(AbstractPolyglotImpl.class).iterator();
-                if (providers.hasNext()) {
+            private Iterator<? extends AbstractPolyglotImpl> searchServiceLoader() throws InternalError {
+                return ServiceLoader.load(AbstractPolyglotImpl.class).iterator();
+            }
+
+            private AbstractPolyglotImpl loadAndValidateProviders(Iterator<? extends AbstractPolyglotImpl> providers) throws AssertionError {
+                List<AbstractPolyglotImpl> impls = new ArrayList<>();
+                while (providers.hasNext()) {
                     AbstractPolyglotImpl found = providers.next();
-                    if (providers.hasNext()) {
-                        throw new InternalError(String.format("Multiple %s providers found", AbstractPolyglotImpl.class.getName()));
+                    for (AbstractPolyglotImpl impl : impls) {
+                        if (impl.getClass().getName().equals(found.getClass().getName())) {
+                            throw new AssertionError("Same polyglot impl found twice on the classpath.");
+                        }
                     }
-                    return found;
+                    impls.add(found);
                 }
-                return null;
+                Collections.sort(impls, Comparator.comparing(AbstractPolyglotImpl::getPriority));
+                AbstractPolyglotImpl prev = null;
+                for (AbstractPolyglotImpl impl : impls) {
+                    impl.setNext(prev);
+                    impl.setConstructors(APIAccessImpl.INSTANCE);
+                    prev = impl;
+                }
+                return prev;
             }
         });
     }
@@ -779,8 +795,8 @@ public final class Engine implements AutoCloseable {
      * Use static factory method with AbstractPolyglotImpl to avoid class loading of the
      * PolyglotInvalid class by the Java verifier.
      */
-    static AbstractPolyglotImpl createInvalidPolyglotImpl() {
-        return new PolyglotInvalid();
+    static Iterator<? extends AbstractPolyglotImpl> createInvalidPolyglotImpl() {
+        return Arrays.asList(new PolyglotInvalid()).iterator();
     }
 
     private static class PolyglotInvalid extends AbstractPolyglotImpl {
@@ -801,6 +817,11 @@ public final class Engine implements AutoCloseable {
                 }
             });
             PolyglotInvalid.AOT = aot.booleanValue();
+        }
+
+        @Override
+        public int getPriority() {
+            return Integer.MIN_VALUE;
         }
 
         @Override
