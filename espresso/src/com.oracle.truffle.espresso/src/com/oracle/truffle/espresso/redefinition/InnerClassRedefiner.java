@@ -20,22 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.impl;
-
-import com.oracle.truffle.espresso.classfile.ClassfileParser;
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.jdwp.api.ErrorCodes;
-import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
-import com.oracle.truffle.espresso.jdwp.impl.JDWP;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+package com.oracle.truffle.espresso.redefinition;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.instrument.IllegalClassFormatException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -46,7 +37,19 @@ import java.util.WeakHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public final class InnerClassRedefiner implements DefineKlassListener {
+import com.oracle.truffle.espresso.classfile.ClassfileParser;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.impl.ClassRegistry;
+import com.oracle.truffle.espresso.impl.ConstantPoolPatcher;
+import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.jdwp.api.ErrorCodes;
+import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
+import com.oracle.truffle.espresso.jdwp.impl.JDWP;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.StaticObject;
+
+public final class InnerClassRedefiner {
 
     public static final Pattern ANON_INNER_CLASS_PATTERN = Pattern.compile(".*\\$\\d+.*");
     public static final int METHOD_FINGERPRINT_EQUALS = 8;
@@ -72,11 +75,11 @@ public final class InnerClassRedefiner implements DefineKlassListener {
         this.context = context;
     }
 
-    public HotSwapClassInfo[] matchAnonymousInnerClasses(RedefineInfo[] redefineInfos, List<ObjectKlass> removedInnerClasses) {
+    public HotSwapClassInfo[] matchAnonymousInnerClasses(List<RedefineInfo> redefineInfos, List<ObjectKlass> removedInnerClasses) throws RedefintionNotSupportedException {
         hotswapState.clear();
-        ArrayList<RedefineInfo> unhandled = new ArrayList<>(redefineInfos.length);
-        Collections.addAll(unhandled, redefineInfos);
-        Map<Symbol<Symbol.Name>, HotSwapClassInfo> handled = new HashMap<>(redefineInfos.length);
+        ArrayList<RedefineInfo> unhandled = new ArrayList<>(redefineInfos);
+
+        Map<Symbol<Symbol.Name>, HotSwapClassInfo> handled = new HashMap<>(redefineInfos.size());
         // build inner/outer relationship from top-level to leaf class in order
         // each round below handles classes where the outer class was previously
         // handled
@@ -149,7 +152,7 @@ public final class InnerClassRedefiner implements DefineKlassListener {
         }
     }
 
-    private void fetchMissingInnerClasses(HotSwapClassInfo hotswapInfo) {
+    private void fetchMissingInnerClasses(HotSwapClassInfo hotswapInfo) throws RedefintionNotSupportedException {
         StaticObject definingLoader = hotswapInfo.getClassLoader();
 
         ArrayList<Symbol<Symbol.Name>> innerNames = new ArrayList<>(1);
@@ -215,7 +218,8 @@ public final class InnerClassRedefiner implements DefineKlassListener {
         return context.getNames().getOrCreate(strName.substring(0, strName.lastIndexOf('$')));
     }
 
-    private void matchClassInfo(HotSwapClassInfo hotSwapInfo, List<ObjectKlass> removedInnerClasses, Map<StaticObject, Map<Symbol<Symbol.Name>, Symbol<Symbol.Name>>> renamingRules) {
+    private void matchClassInfo(HotSwapClassInfo hotSwapInfo, List<ObjectKlass> removedInnerClasses, Map<StaticObject, Map<Symbol<Symbol.Name>, Symbol<Symbol.Name>>> renamingRules)
+                    throws RedefintionNotSupportedException {
         Klass klass = hotSwapInfo.getKlass();
         // try to fetch all direct inner classes
         // based on the constant pool in the class bytes
@@ -326,7 +330,12 @@ public final class InnerClassRedefiner implements DefineKlassListener {
             // register a listener on the registry to fill in
             // future loaded anonymous inner classes
             ClassRegistry classRegistry = context.getRegistries().getClassRegistry(klass.getDefiningClassLoader());
-            classRegistry.registerOnLoadListener(this);
+            classRegistry.registerOnLoadListener(new DefineKlassListener() {
+                @Override
+                public void onKlassDefined(ObjectKlass objectKlass) {
+                    InnerClassRedefiner.this.onKlassDefined(objectKlass);
+                }
+            });
 
             // do a one-time look up of all currently loaded
             // classes for this loader and fill in the map
@@ -334,15 +343,18 @@ public final class InnerClassRedefiner implements DefineKlassListener {
             for (Klass loadedKlass : loadedKlasses) {
                 if (loadedKlass instanceof ObjectKlass) {
                     ObjectKlass objectKlass = (ObjectKlass) loadedKlass;
-                    Symbol<Symbol.Name> klassName = loadedKlass.getName();
-                    if (klassName.toString().contains("$")) {
-                        Symbol<Symbol.Type> outerType = context.getTypes().fromName(getOuterClassName(klassName));
-                        Set<ObjectKlass> innerKlasses = classLoaderMap.get(outerType);
-                        if (innerKlasses == null) {
-                            innerKlasses = new HashSet<>(1);
-                            classLoaderMap.put(outerType, innerKlasses);
+                    Matcher matcher = ANON_INNER_CLASS_PATTERN.matcher(loadedKlass.getNameAsString());
+                    if (matcher.matches()) {
+                        Symbol<Symbol.Name> outerClassName = getOuterClassName(loadedKlass.getName());
+                        if (outerClassName != null && outerClassName.length() > 0) {
+                            Symbol<Symbol.Type> outerType = context.getTypes().fromName(outerClassName);
+                            Set<ObjectKlass> innerKlasses = classLoaderMap.get(outerType);
+                            if (innerKlasses == null) {
+                                innerKlasses = new HashSet<>(1);
+                                classLoaderMap.put(outerType, innerKlasses);
+                            }
+                            innerKlasses.add(objectKlass);
                         }
-                        innerKlasses.add(objectKlass);
                     }
                 }
             }
@@ -353,8 +365,7 @@ public final class InnerClassRedefiner implements DefineKlassListener {
         return innerClasses != null ? innerClasses : new HashSet<>(0);
     }
 
-    @Override
-    public void onKlassDefined(ObjectKlass klass) {
+    private void onKlassDefined(ObjectKlass klass) {
         Matcher matcher = ANON_INNER_CLASS_PATTERN.matcher(klass.getNameAsString());
 
         if (matcher.matches()) {

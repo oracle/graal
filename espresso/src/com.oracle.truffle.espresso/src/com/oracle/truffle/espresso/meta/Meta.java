@@ -646,6 +646,32 @@ public final class Meta implements ContextAccess {
         java_util_NoSuchElementException = knownKlass(Type.java_util_NoSuchElementException);
 
         interopDispatch = new InteropKlassesDispatch(this);
+
+        // used for class redefinition
+        java_lang_reflect_Proxy = knownKlass(Type.java_lang_reflect_Proxy);
+
+        // java.beans package only available if java.desktop module is present on JDK9+
+        java_beans_ThreadGroupContext = loadKlassWithBootClassLoader(Type.java_beans_ThreadGroupContext);
+        java_beans_Introspector = loadKlassWithBootClassLoader(Type.java_beans_Introspector);
+
+        java_beans_ThreadGroupContext_init = java_beans_ThreadGroupContext != null ? java_beans_ThreadGroupContext.requireDeclaredMethod(Name._init_, Signature._void) : null;
+        java_beans_ThreadGroupContext_removeBeanInfo = java_beans_ThreadGroupContext != null ? java_beans_ThreadGroupContext.requireDeclaredMethod(Name.removeBeanInfo, Signature._void_Class) : null;
+        java_beans_Introspector_flushFromCaches = java_beans_Introspector != null ? java_beans_Introspector.requireDeclaredMethod(Name.flushFromCaches, Signature._void_Class) : null;
+
+        // sun.misc.Proxygenerator -> java.lang.reflect.Proxygenerator in JDK 9
+        if (getJavaVersion().java8OrEarlier()) {
+            sun_misc_ProxyGenerator = knownKlass(Type.sun_misc_ProxyGenerator);
+            sun_misc_ProxyGenerator_generateProxyClass = sun_misc_ProxyGenerator.lookupDeclaredMethod(Name.generateProxyClass, Signature._byte_array_String_Class_array_int);
+
+            java_lang_reflect_ProxyGenerator = null;
+            java_lang_reflect_ProxyGenerator_generateProxyClass = null;
+        } else {
+            sun_misc_ProxyGenerator = null;
+            sun_misc_ProxyGenerator_generateProxyClass = null;
+
+            java_lang_reflect_ProxyGenerator = knownKlass(Type.java_lang_reflect_ProxyGenerator);
+            java_lang_reflect_ProxyGenerator_generateProxyClass = java_lang_reflect_ProxyGenerator.requireDeclaredMethod(Name.generateProxyClass, Signature._byte_array_String_Class_array_int);
+        }
     }
 
     /**
@@ -794,6 +820,18 @@ public final class Meta implements ContextAccess {
     public final Field java_lang_Integer_value;
     public final Field java_lang_Double_value;
     public final Field java_lang_Long_value;
+
+    // used by class redefinition
+    public final ObjectKlass java_lang_reflect_Proxy;
+    public final ObjectKlass sun_misc_ProxyGenerator;
+    public final Method sun_misc_ProxyGenerator_generateProxyClass;
+    public final ObjectKlass java_lang_reflect_ProxyGenerator;
+    public final Method java_lang_reflect_ProxyGenerator_generateProxyClass;
+    public final ObjectKlass java_beans_ThreadGroupContext;
+    public final Method java_beans_ThreadGroupContext_init;
+    public final Method java_beans_ThreadGroupContext_removeBeanInfo;
+    public final ObjectKlass java_beans_Introspector;
+    public final Method java_beans_Introspector_flushFromCaches;
 
     // Guest String.
     public final Field java_lang_String_value;

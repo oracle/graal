@@ -502,6 +502,11 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> PARSE_ERROR = StaticSymbols.putName("PARSE_ERROR");
         public static final Symbol<Name> create = StaticSymbols.putName("create");
 
+        // Class redefinition plugin helpers
+        public static final Symbol<Name> flushFromCaches = StaticSymbols.putName("flushFromCaches");
+        public static final Symbol<Name> generateProxyClass = StaticSymbols.putName("generateProxyClass");
+        public static final Symbol<Name> removeBeanInfo = StaticSymbols.putName("removeBeanInfo");
+
     }
 
     /**
@@ -550,6 +555,13 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> java_io_PrintStream = StaticSymbols.putType("Ljava/io/PrintStream;");
 
         public static final Symbol<Type> jdk_internal_loader_ClassLoaders$PlatformClassLoader = StaticSymbols.putType("Ljdk/internal/loader/ClassLoaders$PlatformClassLoader;");
+
+        public static final Symbol<Type> java_beans_Introspector = StaticSymbols.putType("Ljava/beans/Introspector;");
+        public static final Symbol<Type> java_beans_ThreadGroupContext = StaticSymbols.putType("Ljava/beans/ThreadGroupContext;");
+
+        public static final Symbol<Type> java_lang_reflect_Proxy = StaticSymbols.putType("Ljava/lang/reflect/Proxy;");
+        public static final Symbol<Type> java_lang_reflect_ProxyGenerator = StaticSymbols.putType("Ljava/lang/reflect/ProxyGenerator;");
+        public static final Symbol<Type> sun_misc_ProxyGenerator = StaticSymbols.putType("Lsun/misc/ProxyGenerator;");
 
         // Primitive types.
         public static final Symbol<Type> _boolean = StaticSymbols.putType("Z" /* boolean */);
@@ -847,6 +859,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> Object_long_int_int_int_int = StaticSymbols.putSignature(Type.java_lang_Object, Type._long, Type._int, Type._int, Type._int, Type._int);
         public static final Symbol<Signature> Object_long_int_int_int_Object_array = StaticSymbols.putSignature(Type.java_lang_Object, Type._long, Type._int, Type._int, Type._int,
                         Type.java_lang_Object_array);
+        public static final Symbol<Signature> _byte_array_String_Class_array_int = StaticSymbols.putSignature(Type._byte_array, Type.java_lang_String, Type.java_lang_Class_array, Type._int);
 
         public static final Symbol<Signature> Boolean_boolean = StaticSymbols.putSignature(Type.java_lang_Boolean, Type._boolean);
         public static final Symbol<Signature> Byte_byte = StaticSymbols.putSignature(Type.java_lang_Byte, Type._byte);

@@ -20,23 +20,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.impl;
+package com.oracle.truffle.espresso.redefinition;
 
-public final class ChangePacket {
+import com.oracle.truffle.espresso.impl.ObjectKlass;
 
-    public final HotSwapClassInfo info;
-    public final ParserKlass parserKlass;
-    public final ClassRedefinition.ClassChange classChange;
-    public final DetectedChange detectedChange;
-
-    public ChangePacket(HotSwapClassInfo redefineInfo, ParserKlass parserKlass, ClassRedefinition.ClassChange classChange, DetectedChange detectedChange) {
-        this.info = redefineInfo;
-        this.parserKlass = parserKlass;
-        this.classChange = classChange;
-        this.detectedChange = detectedChange;
-    }
-
-    public ChangePacket(HotSwapClassInfo redefineInfo, ClassRedefinition.ClassChange classChange) {
-        this(redefineInfo, null, classChange, null);
-    }
+public interface DefineKlassListener {
+    void onKlassDefined(ObjectKlass klass);
 }
