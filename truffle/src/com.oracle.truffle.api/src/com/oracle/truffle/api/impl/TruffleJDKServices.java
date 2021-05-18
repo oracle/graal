@@ -75,6 +75,17 @@ final class TruffleJDKServices {
     }
 
     /**
+     * Updates Truffle module to read the {@code client}'s module. This method is a no-op if
+     * {@code client} is in the Truffle module, or the Truffle module already reads {@code client}'s
+     * module.
+     *
+     * @param client class in a module that should be added into modules read by the Truffle module.
+     */
+    static void addReads(Class<?> client) {
+        throw shouldNotReachHere();
+    }
+
+    /**
      * Gets the ordered list of loaders for {@link Service} providers.
      *
      * @param serviceClass defines service class

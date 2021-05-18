@@ -985,6 +985,10 @@ public abstract class Accessor {
             TruffleJDKServices.addUses(service);
         }
 
+        public void addReads(Class<?> client) {
+            TruffleJDKServices.addReads(client);
+        }
+
         public Object getUnnamedModule(ClassLoader classLoader) {
             return TruffleJDKServices.getUnnamedModule(classLoader);
         }
