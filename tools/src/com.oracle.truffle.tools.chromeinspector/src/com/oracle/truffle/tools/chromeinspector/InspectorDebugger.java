@@ -1082,10 +1082,16 @@ public final class InspectorDebugger extends DebuggerDomain {
                         // Debugger has been disabled while waiting on locks
                         return;
                     }
-                    if (se.hasSourceElement(SourceElement.ROOT) && !se.hasSourceElement(SourceElement.STATEMENT) && se.getSuspendAnchor() == SuspendAnchor.BEFORE && se.getBreakpoints().isEmpty()) {
-                        // Suspend requested and we're at the begining of a ROOT.
-                        debuggerSession.suspendNextExecution();
-                        return;
+                    DebugValue returnValue = se.getReturnValue();
+                    if (se.hasSourceElement(SourceElement.ROOT) && se.getBreakpoints().isEmpty()) {
+                        if ((!se.hasSourceElement(SourceElement.STATEMENT) && se.getSuspendAnchor() == SuspendAnchor.BEFORE) ||
+                                        (se.getSuspendAnchor() == SuspendAnchor.AFTER && returnValue == null)) {
+                            // We're at the begining of a `RootTag` node, or
+                            // we're at the end of `RootTag` node and have no return value.
+                            // Do not suspend in this case, not to cause distrations.
+                            se.prepareStepInto(STEP_CONFIG);
+                            return;
+                        }
                     }
                     synchronized (suspendLock) {
                         running = false;
@@ -1097,7 +1103,6 @@ public final class InspectorDebugger extends DebuggerDomain {
                         runningUnwind = false;
                     }
                     JSONObject jsonParams = new JSONObject();
-                    DebugValue returnValue = se.getReturnValue();
                     if (!se.hasSourceElement(SourceElement.ROOT)) {
                         // It is misleading to see return values on call exit,
                         // when we show it at function exit

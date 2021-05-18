@@ -25,8 +25,16 @@ package com.oracle.truffle.espresso;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.nodes.interop.GetBindingsNode;
+import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.StaticObject.StaticObjectFactory;
+import com.oracle.truffle.espresso.staticobject.ClassLoaderCache;
+import com.oracle.truffle.espresso.staticobject.DefaultStaticProperty;
+import com.oracle.truffle.espresso.staticobject.StaticProperty;
+import com.oracle.truffle.espresso.staticobject.StaticPropertyKind;
+import com.oracle.truffle.espresso.staticobject.StaticShape;
 import org.graalvm.home.Version;
 import org.graalvm.options.OptionDescriptors;
 
@@ -59,7 +67,7 @@ import com.oracle.truffle.espresso.substitutions.Substitutions;
                 contextPolicy = TruffleLanguage.ContextPolicy.EXCLUSIVE, //
                 dependentLanguages = {"nfi", "llvm"})
 @ProvidedTags({StandardTags.RootTag.class, StandardTags.RootBodyTag.class, StandardTags.StatementTag.class})
-public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
+public final class EspressoLanguage extends TruffleLanguage<EspressoContext> implements ClassLoaderCache {
 
     public static final String ID = "java";
     public static final String NAME = "Java";
@@ -82,6 +90,22 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     private final Signatures signatures;
 
     private long startupClockNanos = 0;
+
+    private ClassLoader cl;
+
+    private static final StaticClassLoaderCache staticCLC = new StaticClassLoaderCache();
+
+    private static final StaticProperty ARRAY_PROPERTY = new DefaultStaticProperty("array", StaticPropertyKind.Object, true);
+    // This field should be static final, but until we move the static object model we cannot have a
+    // SubstrateVM feature which will allow us to set the right field offsets at image build time.
+    @CompilerDirectives.CompilationFinal //
+    private static StaticShape<StaticObjectFactory> arrayShape;
+
+    private static final StaticProperty FOREIGN_PROPERTY = new DefaultStaticProperty("foreignObject", StaticPropertyKind.Object, true);
+    // This field should be static final, but until we move the static object model we cannot have a
+    // SubstrateVM feature which will allow us to set the right field offsets at image build time.
+    @CompilerDirectives.CompilationFinal //
+    private static StaticShape<StaticObjectFactory> foreignShape;
 
     public EspressoLanguage() {
         // Initialize statically defined symbols and substitutions.
@@ -209,4 +233,63 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         context.disposeThread(thread);
     }
 
+    @Override
+    public void setClassLoader(ClassLoader cl) {
+        this.cl = cl;
+    }
+
+    @Override
+    public ClassLoader getClassLoader() {
+        return cl;
+    }
+
+    public static StaticProperty getArrayProperty() {
+        return ARRAY_PROPERTY;
+    }
+
+    public static StaticShape<StaticObjectFactory> getArrayShape() {
+        if (arrayShape == null) {
+            initializeArrayShape();
+        }
+        return arrayShape;
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private static synchronized void initializeArrayShape() {
+        if (arrayShape == null) {
+            arrayShape = StaticShape.newBuilder(staticCLC).property(ARRAY_PROPERTY).build(StaticObject.class, StaticObjectFactory.class);
+        }
+    }
+
+    public static StaticProperty getForeignProperty() {
+        return FOREIGN_PROPERTY;
+    }
+
+    public static StaticShape<StaticObjectFactory> getForeignShape() {
+        if (foreignShape == null) {
+            initializeForeignShape();
+        }
+        return foreignShape;
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private static synchronized void initializeForeignShape() {
+        if (foreignShape == null) {
+            foreignShape = StaticShape.newBuilder(staticCLC).property(FOREIGN_PROPERTY).build(StaticObject.class, StaticObjectFactory.class);
+        }
+    }
+
+    private static class StaticClassLoaderCache implements ClassLoaderCache {
+        private ClassLoader cl;
+
+        @Override
+        public void setClassLoader(ClassLoader cl) {
+            this.cl = cl;
+        }
+
+        @Override
+        public ClassLoader getClassLoader() {
+            return cl;
+        }
+    }
 }

@@ -34,7 +34,7 @@ import com.oracle.objectfile.debugentry.PrimaryEntry;
 import com.oracle.objectfile.debugentry.Range;
 import org.graalvm.compiler.debug.DebugContext;
 
-import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -102,7 +102,7 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
              * Align to 2 * address size.
              */
             pos += DW_AR_HEADER_PAD_SIZE;
-            LinkedList<PrimaryEntry> classPrimaryEntries = classEntry.getPrimaryEntries();
+            List<PrimaryEntry> classPrimaryEntries = classEntry.getPrimaryEntries();
             if (classEntry.includesDeoptTarget()) {
                 /* Deopt targets are in a higher address range so delay emit for them. */
                 for (PrimaryEntry classPrimaryEntry : classPrimaryEntries) {
@@ -123,7 +123,7 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
                  * Align to 2 * address size.
                  */
                 pos += DW_AR_HEADER_PAD_SIZE;
-                LinkedList<PrimaryEntry> classPrimaryEntries = classEntry.getPrimaryEntries();
+                List<PrimaryEntry> classPrimaryEntries = classEntry.getPrimaryEntries();
                 for (PrimaryEntry classPrimaryEntry : classPrimaryEntries) {
                     if (classPrimaryEntry.getPrimary().isDeoptTarget()) {
                         pos += 2 * 8;
@@ -167,7 +167,7 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
             int lastpos = pos;
             int length = DW_AR_HEADER_SIZE + DW_AR_HEADER_PAD_SIZE - 4;
             int cuIndex = getCUIndex(classEntry);
-            LinkedList<PrimaryEntry> classPrimaryEntries = classEntry.getPrimaryEntries();
+            List<PrimaryEntry> classPrimaryEntries = classEntry.getPrimaryEntries();
             /*
              * Count only real methods, omitting deopt targets.
              */
@@ -218,7 +218,7 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
                 int lastpos = pos;
                 int length = DW_AR_HEADER_SIZE + DW_AR_HEADER_PAD_SIZE - 4;
                 int cuIndex = getDeoptCUIndex(classEntry);
-                LinkedList<PrimaryEntry> classPrimaryEntries = classEntry.getPrimaryEntries();
+                List<PrimaryEntry> classPrimaryEntries = classEntry.getPrimaryEntries();
                 /*
                  * Count only linkage stubs.
                  */

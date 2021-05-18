@@ -140,7 +140,8 @@ public abstract class LocalLiveness {
 
     private boolean traceEnd(DebugContext debug, BciBlock block, int blockID) {
         if (debug.isLogEnabled()) {
-            debug.logv("  end   B%d  [%d, %d]  in: %s  out: %s  gen: %s  kill: %s", block.getId(), block.startBci, block.endBci, debugLiveIn(blockID), debugLiveOut(blockID), debugLiveGen(blockID),
+            debug.logv("  end   B%d  [%d, %d]  in: %s  out: %s  gen: %s  kill: %s", block.getId(), block.startBci, block.getEndBci(), debugLiveIn(blockID), debugLiveOut(blockID),
+                            debugLiveGen(blockID),
                             debugLiveKill(blockID));
         }
         return true;
@@ -155,7 +156,8 @@ public abstract class LocalLiveness {
 
     private boolean traceStart(DebugContext debug, BciBlock block, int blockID) {
         if (debug.isLogEnabled()) {
-            debug.logv("  start B%d  [%d, %d]  in: %s  out: %s  gen: %s  kill: %s", block.getId(), block.startBci, block.endBci, debugLiveIn(blockID), debugLiveOut(blockID), debugLiveGen(blockID),
+            debug.logv("  start B%d  [%d, %d]  in: %s  out: %s  gen: %s  kill: %s", block.getId(), block.startBci, block.getEndBci(), debugLiveIn(blockID), debugLiveOut(blockID),
+                            debugLiveGen(blockID),
                             debugLiveKill(blockID));
         }
         return true;
@@ -222,13 +224,13 @@ public abstract class LocalLiveness {
     protected abstract void storeOne(int blockID, int local);
 
     private void computeLocalLiveness(BytecodeStream stream, BciBlock block) {
-        if (block.isExceptionDispatch()) {
+        if (!block.isInstructionBlock()) {
             return;
         }
         int blockID = block.getId();
         int localIndex;
         stream.setBCI(block.startBci);
-        while (stream.currentBCI() <= block.endBci) {
+        while (stream.currentBCI() <= block.getEndBci()) {
             switch (stream.currentBC()) {
                 case LLOAD:
                 case DLOAD:

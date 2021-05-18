@@ -104,13 +104,6 @@ public final class Field extends Member<Type> implements FieldRef {
         return linkedField.getSlot();
     }
 
-    /**
-     * The offset in the field array of an actual instance.
-     */
-    public int getOffset() {
-        return linkedField.getOffset();
-    }
-
     @Override
     public String toString() {
         return getDeclaringKlass().getNameAsString() + "." + getName() + ": " + getType();

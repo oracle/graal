@@ -67,9 +67,4 @@ public abstract class DoubleArrayStoreNode extends QuickNode {
     void doEspresso(StaticObject array, int index, double value) {
         getBytecodeNode().getInterpreterToVM().setArrayDouble(value, index, array);
     }
-
-    @Override
-    public boolean producedForeignObject(Object[] refs) {
-        return false;
-    }
 }

@@ -276,8 +276,7 @@ import jdk.vm.ci.meta.JavaMethod;
  * list).
  * <p>
  * If a bytecode is covered by multiple exception handlers, a chain of exception dispatch blocks is
- * created so that multiple exception handler types can be checked. The chains are re-used if
- * multiple bytecodes are covered by the same exception handlers.
+ * created so that multiple exception handler types can be checked.
  * <p>
  * Note that exception unwinds, i.e., bytecodes that can throw an exception but the exception is not
  * handled in this method, do not end a basic block. Not modeling the exception unwind block reduces
@@ -300,7 +299,7 @@ import jdk.vm.ci.meta.JavaMethod;
  * The algorithms and analysis in this class are conservative and do not use any assumptions or
  * profiling information.
  */
-public final class BciBlockMapping implements JavaMethodContext {
+public class BciBlockMapping implements JavaMethodContext {
     public static class Options {
         @Option(help = "When enabled, some limited amount of duplication will be performed in order compile code containing irreducible loops.")//
         public static final OptionKey<Boolean> DuplicateIrreducibleLoops = new OptionKey<>(true);
@@ -314,7 +313,7 @@ public final class BciBlockMapping implements JavaMethodContext {
 
         int id = UNASSIGNED_ID;
         final int startBci;
-        int endBci; // The bci of the last bytecode in the block
+        private int endBci; // The bci of the last bytecode in the block
         private boolean isExceptionEntry;
         private boolean isLoopHeader;
         int loopId;
@@ -350,6 +349,11 @@ public final class BciBlockMapping implements JavaMethodContext {
             this.successors = new ArrayList<>();
         }
 
+        protected BciBlock(int startBci, int endBci) {
+            this(startBci);
+            this.endBci = endBci;
+        }
+
         public boolean bciUnique() {
             return jsrData == null && !duplicate;
         }
@@ -360,6 +364,10 @@ public final class BciBlockMapping implements JavaMethodContext {
 
         public int getEndBci() {
             return endBci;
+        }
+
+        public void setEndBci(int bci) {
+            endBci = bci;
         }
 
         public long getLoops() {
@@ -453,12 +461,20 @@ public final class BciBlockMapping implements JavaMethodContext {
             return isExceptionEntry;
         }
 
+        public void setIsExceptionEntry() {
+            isExceptionEntry = true;
+        }
+
         public BciBlock getSuccessor(int index) {
             return successors.get(index);
         }
 
         public int getLoopId() {
             return loopId;
+        }
+
+        public boolean isDuplicate() {
+            return duplicate;
         }
 
         private JSRData getOrCreateJSRData() {
@@ -567,8 +583,13 @@ public final class BciBlockMapping implements JavaMethodContext {
             successors.clear();
         }
 
-        public boolean isExceptionDispatch() {
-            return false;
+        /**
+         * A block is considered to be an instruction block if during parsing nodes the bytecodes
+         * within the range [startBci, endBci] are generated when processing this block by
+         * BytecodeProcess.processBlock.
+         */
+        public boolean isInstructionBlock() {
+            return true;
         }
 
         public void getDebugProperties(Map<String, ? super Object> properties) {
@@ -594,9 +615,8 @@ public final class BciBlockMapping implements JavaMethodContext {
         /**
          * Constructor for a normal dispatcher.
          */
-        ExceptionDispatchBlock(ExceptionHandler handler, int deoptBci) {
-            super(handler.getHandlerBCI());
-            this.endBci = startBci;
+        protected ExceptionDispatchBlock(ExceptionHandler handler, int deoptBci) {
+            super(handler.getHandlerBCI(), handler.getHandlerBCI());
             this.deoptBci = deoptBci;
             this.handler = handler;
         }
@@ -604,16 +624,25 @@ public final class BciBlockMapping implements JavaMethodContext {
         /**
          * Constructor for the method unwind dispatcher.
          */
-        ExceptionDispatchBlock(int deoptBci) {
-            super(deoptBci);
-            this.endBci = deoptBci;
+        protected ExceptionDispatchBlock(int deoptBci) {
+            super(deoptBci, deoptBci);
             this.deoptBci = deoptBci;
             this.handler = null;
         }
 
         @Override
-        public boolean isExceptionDispatch() {
-            return true;
+        public void setEndBci(int bci) {
+            throw GraalError.shouldNotReachHere();
+        }
+
+        @Override
+        public void setIsExceptionEntry() {
+            throw GraalError.shouldNotReachHere("Dispatch block cannot be exception entry.");
+        }
+
+        @Override
+        public boolean isInstructionBlock() {
+            return false;
         }
 
         @Override
@@ -689,14 +718,14 @@ public final class BciBlockMapping implements JavaMethodContext {
     public final Bytecode code;
     public boolean hasJsrBytecodes;
 
-    private final ExceptionHandler[] exceptionHandlers;
+    protected final ExceptionHandler[] exceptionHandlers;
     private BciBlock startBlock;
     private BciBlock[] loopHeaders;
 
     private static final int LOOP_HEADER_MAX_CAPACITY = Long.SIZE;
     private static final int LOOP_HEADER_INITIAL_CAPACITY = 4;
 
-    private int blocksNotYetAssignedId;
+    protected int blocksNotYetAssignedId;
     private final DebugContext debug;
     private int postJsrBlockCount;
     private int newDuplicateBlocks;
@@ -705,7 +734,7 @@ public final class BciBlockMapping implements JavaMethodContext {
     /**
      * Creates a new BlockMap instance from {@code code}.
      */
-    private BciBlockMapping(Bytecode code, DebugContext debug) {
+    protected BciBlockMapping(Bytecode code, DebugContext debug) {
         this.code = code;
         this.debug = debug;
         this.exceptionHandlers = code.getExceptionHandlers();
@@ -761,7 +790,7 @@ public final class BciBlockMapping implements JavaMethodContext {
         }
     }
 
-    private boolean verify() {
+    protected boolean verify() {
         for (BciBlock block : blocks) {
             assert blocks[block.getId()] == block;
             for (int i = 0; i < block.getSuccessorCount(); i++) {
@@ -779,8 +808,29 @@ public final class BciBlockMapping implements JavaMethodContext {
         // start basic blocks at all exception handler blocks and mark them as exception entries
         for (ExceptionHandler h : this.exceptionHandlers) {
             BciBlock xhandler = makeBlock(blockMap, h.getHandlerBCI());
-            xhandler.isExceptionEntry = true;
+            xhandler.setIsExceptionEntry();
         }
+    }
+
+    /**
+     * Check whether this bci should be the start of a new block.
+     */
+    protected boolean isStartOfNewBlock(BciBlock[] blockMap, BciBlock current, int bci) {
+        /*
+         * A new block must be created if either there is not a block currently being processed this
+         * bci can be appended to (current == null) or if this bci is has an explicit predecessor
+         * from another block (blockMap[bci] != null).
+         */
+        return current == null || blockMap[bci] != null;
+    }
+
+    /**
+     * Retrieve the instruction block corresponding to this bci. The criteria for being an
+     * instruction block is defined at BlockMap.isInstructionBlock.
+     */
+    protected BciBlock getInstructionBlock(BciBlock[] blockMap, int bci) {
+        assert blockMap[bci].isInstructionBlock();
+        return blockMap[bci];
     }
 
     private void iterateOverBytecodes(BciBlock[] blockMap, BytecodeStream stream) {
@@ -792,15 +842,16 @@ public final class BciBlockMapping implements JavaMethodContext {
         while (stream.currentBC() != Bytecodes.END) {
             int bci = stream.currentBCI();
 
-            if (current == null || blockMap[bci] != null) {
+            if (isStartOfNewBlock(blockMap, current, bci)) {
                 BciBlock b = makeBlock(blockMap, bci);
                 if (current != null) {
-                    addSuccessor(blockMap, current.endBci, b);
+                    addSuccessor(blockMap, current.getEndBci(), b);
                 }
                 current = b;
             }
             blockMap[bci] = current;
-            current.endBci = bci;
+            current = getInstructionBlock(blockMap, bci);
+            current.setEndBci(bci);
 
             switch (stream.currentBC()) {
                 case IRETURN: // fall through
@@ -814,7 +865,7 @@ public final class BciBlockMapping implements JavaMethodContext {
                 }
                 case ATHROW: {
                     current = null;
-                    ExceptionDispatchBlock handler = handleExceptions(blockMap, bci);
+                    ExceptionDispatchBlock handler = handleExceptions(blockMap, false, bci);
                     if (handler != null) {
                         addSuccessor(blockMap, bci, handler);
                     }
@@ -882,8 +933,8 @@ public final class BciBlockMapping implements JavaMethodContext {
                 case INVOKEVIRTUAL:
                 case INVOKEDYNAMIC: {
                     current = null;
-                    addSuccessor(blockMap, bci, makeBlock(blockMap, stream.nextBCI()));
-                    ExceptionDispatchBlock handler = handleExceptions(blockMap, bci);
+                    addInvokeNormalSuccessor(blockMap, bci, makeBlock(blockMap, stream.nextBCI()));
+                    ExceptionDispatchBlock handler = handleExceptions(blockMap, true, bci);
                     if (handler != null) {
                         addSuccessor(blockMap, bci, handler);
                     }
@@ -930,7 +981,7 @@ public final class BciBlockMapping implements JavaMethodContext {
                      * because the class initializer is allowed to throw an exception, which
                      * requires proper exception handling.
                      */
-                    ExceptionDispatchBlock handler = handleExceptions(blockMap, bci);
+                    ExceptionDispatchBlock handler = handleExceptions(blockMap, false, bci);
                     if (handler != null) {
                         current = null;
                         addSuccessor(blockMap, bci, makeBlock(blockMap, stream.nextBCI()));
@@ -1085,29 +1136,41 @@ public final class BciBlockMapping implements JavaMethodContext {
         }
     }
 
+    /**
+     * A hook for subclasses to insert additional blocks around a newly created BciBlock.
+     */
+    @SuppressWarnings("unused")
+    protected BciBlock processNewBciBlock(BciBlock[] blockMap, int bci, BciBlock newBlock) {
+        /* By default, no additional processing is needed. */
+        return newBlock;
+    }
+
     private BciBlock makeBlock(BciBlock[] blockMap, int startBci) {
         BciBlock oldBlock = blockMap[startBci];
         if (oldBlock == null) {
             BciBlock newBlock = new BciBlock(startBci);
             blocksNotYetAssignedId++;
             blockMap[startBci] = newBlock;
-            return newBlock;
+            return processNewBciBlock(blockMap, startBci, newBlock);
 
         } else if (oldBlock.startBci != startBci) {
-            // Backward branch into the middle of an already processed block.
-            // Add the correct fall-through successor.
+            /*
+             * Backward branch into the middle of an already processed block. Split prior block and
+             * add the correct fall-through successor.
+             */
+            assert oldBlock.isInstructionBlock();
             BciBlock newBlock = new BciBlock(startBci);
             blocksNotYetAssignedId++;
-            newBlock.endBci = oldBlock.endBci;
+            newBlock.setEndBci(oldBlock.getEndBci());
             for (BciBlock oldSuccessor : oldBlock.getSuccessors()) {
                 newBlock.addSuccessor(oldSuccessor);
             }
 
-            oldBlock.endBci = startBci - 1;
+            oldBlock.setEndBci(startBci - 1);
             oldBlock.clearSucccessors();
             oldBlock.addSuccessor(newBlock);
 
-            for (int i = startBci; i <= newBlock.endBci; i++) {
+            for (int i = startBci; i <= newBlock.getEndBci(); i++) {
                 blockMap[i] = newBlock;
             }
             return newBlock;
@@ -1129,12 +1192,19 @@ public final class BciBlockMapping implements JavaMethodContext {
         }
     }
 
-    private static void addSuccessor(BciBlock[] blockMap, int predBci, BciBlock sux) {
-        BciBlock predecessor = blockMap[predBci];
-        if (sux.isExceptionEntry) {
+    private void addSuccessor(BciBlock[] blockMap, int predBci, BciBlock sux) {
+        BciBlock predecessor = getInstructionBlock(blockMap, predBci);
+        if (sux.isExceptionEntry()) {
             throw new PermanentBailoutException("Exception handler can be reached by both normal and exceptional control flow");
         }
         predecessor.addSuccessor(sux);
+    }
+
+    /**
+     * Logic for adding an the "normal" invoke successor link.
+     */
+    protected void addInvokeNormalSuccessor(BciBlock[] blockMap, int invokeBci, BciBlock sux) {
+        addSuccessor(blockMap, invokeBci, sux);
     }
 
     private final ArrayList<BciBlock> jsrVisited = new ArrayList<>();
@@ -1204,7 +1274,17 @@ public final class BciBlockMapping implements JavaMethodContext {
         return true;
     }
 
-    private ExceptionDispatchBlock handleExceptions(BciBlock[] blockMap, int bci) {
+    /**
+     * A hook for subclasses to insert additional blocks around a newly created
+     * ExceptionDispatchBlock.
+     */
+    @SuppressWarnings("unused")
+    protected ExceptionDispatchBlock processNewExceptionDispatchBlock(int bci, boolean isInvoke, ExceptionDispatchBlock handler) {
+        /* By default, no additional processing is needed. */
+        return handler;
+    }
+
+    private ExceptionDispatchBlock handleExceptions(BciBlock[] blockMap, boolean isInvoke, int bci) {
         ExceptionDispatchBlock lastHandler = null;
         int dispatchBlocks = 0;
 
@@ -1230,7 +1310,7 @@ public final class BciBlockMapping implements JavaMethodContext {
             }
         }
         blocksNotYetAssignedId += dispatchBlocks;
-        return lastHandler;
+        return processNewExceptionDispatchBlock(bci, isInvoke, lastHandler);
     }
 
     private void computeBlockOrder(BciBlock[] blockMap) {
@@ -1307,11 +1387,11 @@ public final class BciBlockMapping implements JavaMethodContext {
             if (b == null) {
                 continue;
             }
-            sb.append("B").append(getId.applyAsInt(b)).append("[").append(b.startBci).append("..").append(b.endBci).append("]");
+            sb.append("B").append(getId.applyAsInt(b)).append("[").append(b.startBci).append("..").append(b.getEndBci()).append("]");
             if (b.isLoopHeader) {
                 sb.append(" LoopHeader");
             }
-            if (b.isExceptionEntry) {
+            if (b.isExceptionEntry()) {
                 sb.append(" ExceptionEntry");
             }
             if (b instanceof ExceptionDispatchBlock) {
@@ -1365,7 +1445,7 @@ public final class BciBlockMapping implements JavaMethodContext {
     private void makeLoopHeader(BciBlock block) {
         assert !block.isLoopHeader;
         block.isLoopHeader = true;
-        if (block.isExceptionEntry) {
+        if (block.isExceptionEntry()) {
             // Loops that are implicitly formed by an exception handler lead to all sorts of
             // corner cases.
             // Don't compile such methods for now, until we see a concrete case that allows
@@ -1567,9 +1647,14 @@ public final class BciBlockMapping implements JavaMethodContext {
         return true;
     }
 
-    @SuppressWarnings("try")
     public static BciBlockMapping create(BytecodeStream stream, Bytecode code, OptionValues options, DebugContext debug) {
         BciBlockMapping map = new BciBlockMapping(code, debug);
+        buildMap(stream, code, options, debug, map);
+        return map;
+    }
+
+    @SuppressWarnings("try")
+    protected static void buildMap(BytecodeStream stream, Bytecode code, OptionValues options, DebugContext debug, BciBlockMapping map) {
         try (Scope scope = debug.scope("BciBlockMapping", map)) {
             map.build(stream, options);
             if (debug.isDumpEnabled(DebugContext.INFO_LEVEL)) {
@@ -1578,8 +1663,6 @@ public final class BciBlockMapping implements JavaMethodContext {
         } catch (Throwable t) {
             throw debug.handle(t);
         }
-
-        return map;
     }
 
     public BciBlock[] getLoopHeaders() {
