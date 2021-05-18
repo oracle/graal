@@ -5,21 +5,21 @@ suite = {
   "javac.lint.overrides": "none",
 
   "libraries" : {
-    "TIKA_1.0.4": {
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/tika-1.0.4-SNAPSHOT.zip"],
-      "sha1": "a559a65385f129b0b6a0b300f662b62cd2d0299e",
+    "TIKA_1.0.5": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/tika-1.0.5-SNAPSHOT.zip"],
+      "sha1": "a02f0e8c4b6b77eca8f9d723cbc493b0e25c286c",
       "packedResource": True,
     },
 
-    "PETCLINIC_0.1.4": {
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/petclinic-jpa-0.1.4-SNAPSHOT.zip"],
-      "sha1": "da9ce47da2af49abf56a055cb7802aac55d58545",
+    "PETCLINIC_0.1.5": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/petclinic-jpa-0.1.5-SNAPSHOT.zip"],
+      "sha1": "48fa6858af9c0a64212d80d9f896c59e41f90a43",
       "packedResource": True,
     },
 
-    "SHOPCART_0.3.3": {
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/shopcart-0.3.3.zip"],
-      "sha1": "691f02e1460406f3689ce52e4f11cb3eb378766b",
+    "SHOPCART_0.3.4": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/shopcart-0.3.4.zip"],
+      "sha1": "d6e751800914747e2549e35f7e9facf00c190b4a",
       "packedResource": True,
     },
 
