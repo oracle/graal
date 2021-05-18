@@ -187,7 +187,7 @@ public abstract class AbstractInstrumentationTest extends AbstractPolyglotTest {
     }
 
     private Object getPolyglotEngine() {
-        return ReflectionUtils.getField(engine, "impl");
+        return ReflectionUtils.getField(engine, "receiver");
     }
 
     @After

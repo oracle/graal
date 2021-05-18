@@ -97,6 +97,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
     });
 
+    final PolyglotEngineDispatch engineDispatch = new PolyglotEngineDispatch(this);
     private final PolyglotSource sourceImpl = new PolyglotSource(this);
     private final PolyglotSourceSection sourceSectionImpl = new PolyglotSourceSection(this);
     private final PolyglotManagement executionListenerImpl = new PolyglotManagement(this);
@@ -275,9 +276,9 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                                 logHandler);
             }
 
-            Engine engine = getAPIAccess().newEngine(impl);
+            Engine engine = getAPIAccess().newEngine(engineDispatch, impl);
             impl.creatorApi = engine;
-            impl.currentApi = getAPIAccess().newEngine(impl);
+            impl.currentApi = getAPIAccess().newEngine(engineDispatch, impl);
 
             return engine;
         } catch (Throwable t) {

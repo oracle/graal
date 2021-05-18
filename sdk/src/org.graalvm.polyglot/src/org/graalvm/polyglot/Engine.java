@@ -108,10 +108,13 @@ import org.graalvm.polyglot.management.ExecutionEvent;
  */
 public final class Engine implements AutoCloseable {
 
-    final AbstractEngineImpl impl;
+    final AbstractEngineImpl<Object> impl;
+    final Object receiver;
 
-    Engine(AbstractEngineImpl impl) {
-        this.impl = impl;
+    @SuppressWarnings("unchecked")
+    <T> Engine(AbstractEngineImpl<T> impl, T receiver) {
+        this.impl = (AbstractEngineImpl<Object>) impl;
+        this.receiver = receiver;
     }
 
     private static final class ImplHolder {
@@ -160,7 +163,7 @@ public final class Engine implements AutoCloseable {
      * @since 19.0
      */
     public Map<String, Language> getLanguages() {
-        return impl.getLanguages();
+        return impl.getLanguages(receiver);
     }
 
     /**
@@ -173,7 +176,7 @@ public final class Engine implements AutoCloseable {
      * @since 19.0
      */
     public Map<String, Instrument> getInstruments() {
-        return impl.getInstruments();
+        return impl.getInstruments(receiver);
     }
 
     /**
@@ -193,7 +196,7 @@ public final class Engine implements AutoCloseable {
      * @since 19.0
      */
     public OptionDescriptors getOptions() {
-        return impl.getOptions();
+        return impl.getOptions(receiver);
     }
 
     /**
@@ -224,7 +227,7 @@ public final class Engine implements AutoCloseable {
      * @since 19.0
      */
     public void close(boolean cancelIfExecuting) {
-        impl.close(this, cancelIfExecuting);
+        impl.close(receiver, this, cancelIfExecuting);
     }
 
     /**
@@ -251,7 +254,7 @@ public final class Engine implements AutoCloseable {
      * @since 19.0
      */
     public String getImplementationName() {
-        return impl.getImplementationName();
+        return impl.getImplementationName(receiver);
     }
 
     /**
@@ -300,7 +303,7 @@ public final class Engine implements AutoCloseable {
      * @since 20.3
      */
     public Set<Source> getCachedSources() {
-        return impl.getCachedSources();
+        return impl.getCachedSources(receiver);
     }
 
     static AbstractPolyglotImpl getImpl() {
@@ -322,7 +325,7 @@ public final class Engine implements AutoCloseable {
         return getImpl().findActiveEngines();
     }
 
-    private static final Engine EMPTY = new Engine(null);
+    private static final Engine EMPTY = new Engine(null, null);
 
     /**
      *
@@ -565,8 +568,8 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public Engine newEngine(AbstractEngineImpl impl) {
-            return new Engine(impl);
+        public <T> Engine newEngine(AbstractEngineImpl<T> impl, T receiver) {
+            return new Engine(impl, receiver);
         }
 
         @Override
@@ -610,8 +613,13 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public AbstractEngineImpl getImpl(Engine value) {
-            return value.impl;
+        public Object getReceiver(Engine value) {
+            return value.receiver;
+        }
+
+        @Override
+        public AbstractEngineImpl<Object> getImpl(Engine engine) {
+            return engine.impl;
         }
 
         @Override
@@ -895,7 +903,7 @@ public final class Engine implements AutoCloseable {
                 }
 
                 @Override
-                public Object attachExecutionListener(Engine engine, Consumer<ExecutionEvent> onEnter, Consumer<ExecutionEvent> onReturn, boolean expressions, boolean statements,
+                public Object attachExecutionListener(Object engine, Consumer<ExecutionEvent> onEnter, Consumer<ExecutionEvent> onReturn, boolean expressions, boolean statements,
                                 boolean roots,
                                 Predicate<Source> sourceFilter, Predicate<String> rootFilter, boolean collectInputValues, boolean collectReturnValues, boolean collectErrors) {
                     throw noPolyglotImplementationFound();

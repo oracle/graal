@@ -843,8 +843,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
 
     @Override
     public Value getBindings(String languageId) {
-        PolyglotLanguage language = requirePublicLanguage(languageId);
-        PolyglotLanguageContext languageContext = getContext(language);
+        PolyglotLanguageContext languageContext = lookupLanguageContext(languageId);
         assert languageContext != null;
         Object prev = hostEnter(languageContext);
         try {
@@ -1008,11 +1007,10 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
 
     @Override
     public boolean initializeLanguage(String languageId) {
-        PolyglotLanguage language = requirePublicLanguage(languageId);
-        PolyglotLanguageContext languageContext = getContext(language);
+        PolyglotLanguageContext languageContext = lookupLanguageContext(languageId);
         Object prev = hostEnter(languageContext);
         try {
-            return initializeLanguage(language);
+            return initializeLanguage(languageContext.language);
         } catch (Throwable t) {
             throw PolyglotImpl.guestToHostException(languageContext, t, true);
         } finally {
@@ -1022,8 +1020,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
 
     @Override
     public Value parse(String languageId, Object sourceImpl) {
-        PolyglotLanguage language = requirePublicLanguage(languageId);
-        PolyglotLanguageContext languageContext = getContext(language);
+        PolyglotLanguageContext languageContext = lookupLanguageContext(languageId);
         assert languageContext != null;
         Object prev = hostEnter(languageContext);
         try {
@@ -1039,10 +1036,20 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         }
     }
 
+    private PolyglotLanguageContext lookupLanguageContext(String languageId) {
+        PolyglotLanguageContext languageContext;
+        try {
+            PolyglotLanguage language = requirePublicLanguage(languageId);
+            languageContext = getContext(language);
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException(engine, e);
+        }
+        return languageContext;
+    }
+
     @Override
     public Value eval(String languageId, Object sourceImpl) {
-        PolyglotLanguage language = requirePublicLanguage(languageId);
-        PolyglotLanguageContext languageContext = getContext(language);
+        PolyglotLanguageContext languageContext = lookupLanguageContext(languageId);
         assert languageContext != null;
         Object prev = hostEnter(languageContext);
         try {

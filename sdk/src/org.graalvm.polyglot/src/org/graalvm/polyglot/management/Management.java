@@ -70,6 +70,7 @@ final class Management {
     }
 
     private static class ManagementAccessImpl extends ManagementAccess {
+
         @Override
         public ExecutionEvent newExecutionEvent(Object event) {
             return new ExecutionEvent(event);

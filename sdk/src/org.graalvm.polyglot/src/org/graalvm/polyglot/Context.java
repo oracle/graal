@@ -1685,7 +1685,7 @@ public final class Context implements AutoCloseable {
                 engineBuilder.allowExperimentalOptions(experimentalOptions);
                 engineBuilder.setBoundEngine(true);
                 engine = engineBuilder.build();
-                Context ctx = engine.impl.createContext(null, null, null, hostClassLookupEnabled, hostAccess, polyglotAccess, nativeAccess, createThread,
+                Context ctx = engine.impl.createContext(engine.receiver, null, null, null, hostClassLookupEnabled, hostAccess, polyglotAccess, nativeAccess, createThread,
                                 io, hostClassLoading, experimentalOptions,
                                 localHostLookupFilter, Collections.emptyMap(), arguments == null ? Collections.emptyMap() : arguments,
                                 onlyLanguages, customFileSystem, customLogHandler, createProcess, processHandler, environmentAccess, environment, zone, limits,
@@ -1695,7 +1695,7 @@ public final class Context implements AutoCloseable {
                 if (messageTransport != null) {
                     throw new IllegalStateException("Cannot use MessageTransport in a context that shares an Engine.");
                 }
-                return engine.impl.createContext(out, err, in, hostClassLookupEnabled, hostAccess, polyglotAccess, nativeAccess, createThread,
+                return engine.impl.createContext(engine.receiver, out, err, in, hostClassLookupEnabled, hostAccess, polyglotAccess, nativeAccess, createThread,
                                 io, hostClassLoading, experimentalOptions,
                                 localHostLookupFilter, options == null ? Collections.emptyMap() : options, arguments == null ? Collections.emptyMap() : arguments,
                                 onlyLanguages, customFileSystem, customLogHandler, createProcess, processHandler, environmentAccess, environment, zone, limits,

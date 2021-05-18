@@ -40,30 +40,6 @@
  */
 package org.graalvm.polyglot.impl;
 
-import org.graalvm.collections.UnmodifiableEconomicSet;
-import org.graalvm.options.OptionDescriptors;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.EnvironmentAccess;
-import org.graalvm.polyglot.HostAccess;
-import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
-import org.graalvm.polyglot.Instrument;
-import org.graalvm.polyglot.Language;
-import org.graalvm.polyglot.PolyglotAccess;
-import org.graalvm.polyglot.PolyglotException;
-import org.graalvm.polyglot.PolyglotException.StackFrame;
-import org.graalvm.polyglot.ResourceLimitEvent;
-import org.graalvm.polyglot.ResourceLimits;
-import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.SourceSection;
-import org.graalvm.polyglot.TypeLiteral;
-import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.io.ByteSequence;
-import org.graalvm.polyglot.io.FileSystem;
-import org.graalvm.polyglot.io.MessageTransport;
-import org.graalvm.polyglot.io.ProcessHandler;
-import org.graalvm.polyglot.management.ExecutionEvent;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -90,6 +66,30 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
+
+import org.graalvm.collections.UnmodifiableEconomicSet;
+import org.graalvm.options.OptionDescriptors;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.EnvironmentAccess;
+import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
+import org.graalvm.polyglot.Instrument;
+import org.graalvm.polyglot.Language;
+import org.graalvm.polyglot.PolyglotAccess;
+import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.PolyglotException.StackFrame;
+import org.graalvm.polyglot.ResourceLimitEvent;
+import org.graalvm.polyglot.ResourceLimits;
+import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.SourceSection;
+import org.graalvm.polyglot.TypeLiteral;
+import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.io.ByteSequence;
+import org.graalvm.polyglot.io.FileSystem;
+import org.graalvm.polyglot.io.MessageTransport;
+import org.graalvm.polyglot.io.ProcessHandler;
+import org.graalvm.polyglot.management.ExecutionEvent;
 
 @SuppressWarnings("unused")
 public abstract class AbstractPolyglotImpl {
@@ -134,7 +134,7 @@ public abstract class AbstractPolyglotImpl {
             }
         }
 
-        public abstract Engine newEngine(AbstractEngineImpl impl);
+        public abstract <T> Engine newEngine(AbstractEngineImpl<T> impl, T receiver);
 
         public abstract Context newContext(AbstractContextImpl impl);
 
@@ -156,7 +156,9 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract AbstractContextImpl getImpl(Context context);
 
-        public abstract AbstractEngineImpl getImpl(Engine engine);
+        public abstract Object getReceiver(Engine engine);
+
+        public abstract AbstractEngineImpl<Object> getImpl(Engine engine);
 
         public abstract AbstractExceptionImpl getImpl(PolyglotException value);
 
@@ -272,8 +274,15 @@ public abstract class AbstractPolyglotImpl {
 
     public abstract static class AbstractManagementImpl {
 
-        protected AbstractManagementImpl(AbstractPolyglotImpl engineImpl) {
-            Objects.requireNonNull(engineImpl);
+        AbstractPolyglotImpl polyglotImpl;
+
+        protected AbstractManagementImpl(AbstractPolyglotImpl polyglotImpl) {
+            Objects.requireNonNull(polyglotImpl);
+            this.polyglotImpl = polyglotImpl;
+        }
+
+        public final AbstractPolyglotImpl getPolyglotImpl() {
+            return polyglotImpl;
         }
 
         public abstract List<Value> getExecutionEventInputValues(Object impl);
@@ -292,7 +301,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract void closeExecutionListener(Object impl);
 
-        public abstract Object attachExecutionListener(Engine engine, Consumer<ExecutionEvent> onEnter,
+        public abstract Object attachExecutionListener(Object engine, Consumer<ExecutionEvent> onEnter,
                         Consumer<ExecutionEvent> onReturn,
                         boolean expressions,
                         boolean statements,
@@ -449,27 +458,26 @@ public abstract class AbstractPolyglotImpl {
 
     }
 
-    public abstract static class AbstractEngineImpl {
+    public abstract static class AbstractEngineImpl<T> {
 
         protected AbstractEngineImpl(AbstractPolyglotImpl impl) {
             Objects.requireNonNull(impl);
         }
 
-        public abstract Language requirePublicLanguage(String id);
+        public abstract Language requirePublicLanguage(T receiver, String id);
 
-        public abstract Instrument requirePublicInstrument(String id);
+        public abstract Instrument requirePublicInstrument(T receiver, String id);
 
         // Runtime
+        public abstract void close(T receiver, Object apiObject, boolean cancelIfExecuting);
 
-        public abstract void close(Engine sourceEngine, boolean cancelIfExecuting);
+        public abstract Map<String, Instrument> getInstruments(T receiver);
 
-        public abstract Map<String, Instrument> getInstruments();
+        public abstract Map<String, Language> getLanguages(T receiver);
 
-        public abstract Map<String, Language> getLanguages();
+        public abstract OptionDescriptors getOptions(T receiver);
 
-        public abstract OptionDescriptors getOptions();
-
-        public abstract Context createContext(OutputStream out, OutputStream err, InputStream in, boolean allowHostAccess,
+        public abstract Context createContext(T receiver, OutputStream out, OutputStream err, InputStream in, boolean allowHostAccess,
                         HostAccess hostAccess,
                         PolyglotAccess polyglotAccess,
                         boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostIO, boolean allowHostClassLoading, boolean allowExperimentalOptions, Predicate<String> classFilter,
@@ -477,9 +485,9 @@ public abstract class AbstractPolyglotImpl {
                         Map<String, String[]> arguments, String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream, boolean allowCreateProcess, ProcessHandler processHandler,
                         EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory, ClassLoader hostClassLoader);
 
-        public abstract String getImplementationName();
+        public abstract String getImplementationName(T receiver);
 
-        public abstract Set<Source> getCachedSources();
+        public abstract Set<Source> getCachedSources(T receiver);
 
     }
 
