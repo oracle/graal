@@ -201,7 +201,7 @@
       ["bench-uploader.py", "bench-results.json"],
 
       // tika-odt
-      c.hwlocIfNuma(self.is_numa, $.mx_benchmark + ["tika-wrk:odt-tiny"] +          $.bench_arguments + ["-Xms32m",   "-Xmx112m",  "-XX:ActiveProcessorCount=1"], node=self.numa_nodes[0]),
+      c.hwlocIfNuma(self.is_numa, $.mx_benchmark + ["tika-wrk:odt-tiny"] +          $.bench_arguments + ["-Xms32m",   "-Xmx150m",  "-XX:ActiveProcessorCount=1"], node=self.numa_nodes[0]),
       ["bench-uploader.py", "bench-results.json"],
 
       c.hwlocIfNuma(self.is_numa, $.mx_benchmark + ["tika-wrk:odt-small"] +         $.bench_arguments + ["-Xms64m",   "-Xmx250m",  "-XX:ActiveProcessorCount=2"], node=self.numa_nodes[0]),
