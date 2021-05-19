@@ -425,7 +425,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
 
     private int writeLineNumberTable(DebugContext context, ClassEntry classEntry, byte[] buffer, int p) {
         int pos = p;
-        // if the class has not associated file then don't generate line onfo
+        // if the class has no associated file then don't generate line info
         if (classEntry.getFileEntry() == null) {
             return pos;
         }
