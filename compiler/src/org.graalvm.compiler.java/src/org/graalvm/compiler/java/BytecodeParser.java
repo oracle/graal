@@ -2940,11 +2940,10 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
 
     private Target checkLoopExit(Target target, BciBlock targetBlock) {
         if (currentBlock != null) {
-            BitSet exits = andNot(currentBlock.loops, targetBlock.loops);
+            BitSet exits = difference(currentBlock.loops, targetBlock.loops);
             if (!exits.isEmpty()) {
                 LoopExitNode firstLoopExit = null;
                 LoopExitNode lastLoopExit = null;
-
 
                 ArrayList<BciBlock> exitLoops = new ArrayList<>(exits.cardinality());
                 for (int pos = -1; (pos = exits.nextSetBit(pos + 1)) >= 0;) {
@@ -3080,7 +3079,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                  * placeholder that later can be replaced with a MergeNode when we see this block
                  * again.
                  */
-                if (canReuseInstruction && (block.getPredecessorCount() == 1 || !controlFlowSplit) && !block.isLoopHeader() && andNot(currentBlock.loops, block.loops).isEmpty() &&
+                if (canReuseInstruction && (block.getPredecessorCount() == 1 || !controlFlowSplit) && !block.isLoopHeader() && difference(currentBlock.loops, block.loops).isEmpty() &&
                                 currentBlock.getJsrScope() == block.getJsrScope()) {
                     /*
                      * If we know that no BeginNode is necessary, then we can avoid allocating and
@@ -3717,7 +3716,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
 
     public boolean isPotentialCountedLoopExit(LogicNode condition, BciBlock target) {
         if (currentBlock != null) {
-            BitSet exits = andNot(currentBlock.loops, target.loops);
+            BitSet exits = difference(currentBlock.loops, target.loops);
             if (!exits.isEmpty()) {
                 return condition instanceof CompareNode;
             }
@@ -3725,17 +3724,17 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         return false;
     }
 
-    private static BitSet andNot(BitSet left, BitSet right) {
-        BitSet result = (BitSet) left.clone();
-        result.andNot(right);
-        return result;
-    }
-
     /**
      * Hook for subclasses to generate custom nodes before an IfNode.
      */
     @SuppressWarnings("unused")
     protected void postProcessIfNode(ValueNode node) {
+    }
+
+    private static BitSet difference(BitSet left, BitSet right) {
+        BitSet result = (BitSet) left.clone();
+        result.andNot(right);
+        return result;
     }
 
     private boolean tryGenConditionalForIf(BciBlock trueBlock, BciBlock falseBlock, LogicNode condition, int oldBci, int trueBlockInt, int falseBlockInt) {
