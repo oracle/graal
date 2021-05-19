@@ -271,6 +271,24 @@ def test():
     checker = Checker("break on substituted method", rexp)
     checker.check(exec_string, skip_fails=False)
 
+    # look up greet methods
+    # expect "All functions matching regular expression "greet":"
+    # expect ""
+    # expect "File hello/Hello.java:"
+    # expect "      ....greeter(...);"
+    # expect "      hello.Hello$NamedGreeter *hello.Hello$Greeter::greet();"
+    # expect ""
+    # expect "File hello/target_hello_Hello_DefaultGreeter.java:"
+    # expect "      hello.Hello$DefaultGreeter *hello.Hello$Greeter::greet();"
+    exec_string = execute("info func greet")
+    rexp = [r'All functions matching regular expression "greet":',
+            r"File hello/Hello\.java:",
+            r"%svoid hello.Hello\$NamedGreeter::greet\(void\);"%maybe_spaces_pattern,
+            r"File hello/Target_hello_Hello_DefaultGreeter\.java:",
+            r"%svoid hello.Hello\$DefaultGreeter::greet\(void\);"%maybe_spaces_pattern]
+    checker = Checker("info func greet", rexp)
+    checker.check(exec_string, skip_fails=True)
+
     # look up PrintStream.println methods
     # expect "All functions matching regular expression "java.io.PrintStream.println":"
     # expect ""
