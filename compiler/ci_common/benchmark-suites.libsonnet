@@ -185,19 +185,19 @@
 
       // wrk
       // shopcart
-      c.hwlocIfNuma(self.is_numa, $.mx_benchmark + ["shopcart-wrk:mixed-tiny"] +    $.bench_arguments + ["-Xms32m",   "-Xmx112m",  "-XX:ActiveProcessorCount=1",  "-XX:MaxDirectMemorySize=128m"], node=self.numa_nodes[0]),
+      c.hwlocIfNuma(self.is_numa, $.mx_benchmark + ["shopcart-wrk:mixed-tiny"] +    $.bench_arguments + ["-Xms32m",   "-Xmx112m",  "-XX:ActiveProcessorCount=1",  "-XX:MaxDirectMemorySize=256m"], node=self.numa_nodes[0]),
       ["bench-uploader.py", "bench-results.json"],
 
-      c.hwlocIfNuma(self.is_numa, $.mx_benchmark + ["shopcart-wrk:mixed-small"] +   $.bench_arguments + ["-Xms64m",   "-Xmx224m",  "-XX:ActiveProcessorCount=2",  "-XX:MaxDirectMemorySize=256m"], node=self.numa_nodes[0]),
+      c.hwlocIfNuma(self.is_numa, $.mx_benchmark + ["shopcart-wrk:mixed-small"] +   $.bench_arguments + ["-Xms64m",   "-Xmx224m",  "-XX:ActiveProcessorCount=2",  "-XX:MaxDirectMemorySize=512m"], node=self.numa_nodes[0]),
       ["bench-uploader.py", "bench-results.json"],
 
-      c.hwlocIfNuma(self.is_numa, $.mx_benchmark + ["shopcart-wrk:mixed-medium"] +  $.bench_arguments + ["-Xms128m",  "-Xmx512m",  "-XX:ActiveProcessorCount=4",  "-XX:MaxDirectMemorySize=512m"], node=self.numa_nodes[0]),
+      c.hwlocIfNuma(self.is_numa, $.mx_benchmark + ["shopcart-wrk:mixed-medium"] +  $.bench_arguments + ["-Xms128m",  "-Xmx512m",  "-XX:ActiveProcessorCount=4",  "-XX:MaxDirectMemorySize=1024m"], node=self.numa_nodes[0]),
       ["bench-uploader.py", "bench-results.json"],
 
-      c.hwlocIfNuma(self.is_numa, $.mx_benchmark + ["shopcart-wrk:mixed-large"] +   $.bench_arguments + ["-Xms512m",  "-Xmx3072m", "-XX:ActiveProcessorCount=16", "-XX:MaxDirectMemorySize=2048m"], node=self.numa_nodes[0]),
+      c.hwlocIfNuma(self.is_numa, $.mx_benchmark + ["shopcart-wrk:mixed-large"] +   $.bench_arguments + ["-Xms512m",  "-Xmx3072m", "-XX:ActiveProcessorCount=16", "-XX:MaxDirectMemorySize=4096m"], node=self.numa_nodes[0]),
       ["bench-uploader.py", "bench-results.json"],
 
-      c.hwlocIfNuma(self.is_numa, $.mx_benchmark + ["shopcart-wrk:mixed-huge"] +    $.bench_arguments + ["-Xms1024m", "-Xmx8192m", "-XX:ActiveProcessorCount=32", "-XX:MaxDirectMemorySize=4096m"], node=self.numa_nodes[0]),
+      c.hwlocIfNuma(self.is_numa, $.mx_benchmark + ["shopcart-wrk:mixed-huge"] +    $.bench_arguments + ["-Xms1024m", "-Xmx8192m", "-XX:ActiveProcessorCount=32", "-XX:MaxDirectMemorySize=8192m"], node=self.numa_nodes[0]),
       ["bench-uploader.py", "bench-results.json"],
 
       // tika-odt
