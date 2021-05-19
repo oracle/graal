@@ -237,13 +237,13 @@ public enum AArch64ArithmeticOp {
                     masm.eor(size, dst, src, b.asLong());
                     break;
                 case SHL:
-                    masm.shl(size, dst, src, b.asLong());
+                    masm.lsl(size, dst, src, b.asLong());
                     break;
                 case LSHR:
-                    masm.lshr(size, dst, src, b.asLong());
+                    masm.lsr(size, dst, src, b.asLong());
                     break;
                 case ASHR:
-                    masm.ashr(size, dst, src, b.asLong());
+                    masm.asr(size, dst, src, b.asLong());
                     break;
                 case ROR:
                     masm.ror(size, dst, src, (int) b.asLong());
@@ -335,13 +335,13 @@ public enum AArch64ArithmeticOp {
                     masm.eon(size, dst, src1, src2);
                     break;
                 case SHL:
-                    masm.shl(size, dst, src1, src2);
+                    masm.lsl(size, dst, src1, src2);
                     break;
                 case LSHR:
-                    masm.lshr(size, dst, src1, src2);
+                    masm.lsr(size, dst, src1, src2);
                     break;
                 case ASHR:
-                    masm.ashr(size, dst, src1, src2);
+                    masm.asr(size, dst, src1, src2);
                     break;
                 case RORV:
                     masm.rorv(size, dst, src1, src2);
