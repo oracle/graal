@@ -104,8 +104,8 @@ public class HostedField implements OriginalFieldProvider, SharedField, Comparab
         return wrapped.isAccessed();
     }
 
-    public boolean isInImageHeap() {
-        return wrapped.isInImageHeap();
+    public boolean isRead() {
+        return wrapped.isRead();
     }
 
     @Override
