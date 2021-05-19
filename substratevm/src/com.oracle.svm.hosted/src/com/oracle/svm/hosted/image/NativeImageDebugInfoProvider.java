@@ -206,16 +206,17 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             if (originalType != null) {
                 return originalType;
             }
-            /* Check for replacement of the original method only. */
-            ResolvedJavaMethod javaMethod = hostedMethod.getWrapped().getWrapped();
-            if (javaMethod instanceof SubstitutionMethod) {
-                return ((SubstitutionMethod) javaMethod).getOriginal().getDeclaringClass();
-            } else if (javaMethod instanceof CustomSubstitutionMethod) {
-                return ((CustomSubstitutionMethod) javaMethod).getOriginal().getDeclaringClass();
-            }
-            return hostedType.getWrapped().getWrapped();
         }
         ResolvedJavaMethod javaMethod = hostedMethod.getWrapped().getWrapped();
+        /* If this is a SubstitutionMethod we might need the target not the original */
+        if (javaMethod instanceof SubstitutionMethod) {
+            SubstitutionMethod substitutionMethod = (SubstitutionMethod)javaMethod;
+            if (wantOriginal) {
+                return substitutionMethod.getOriginal().getDeclaringClass();
+            } else {
+                return substitutionMethod.getAnnotated().getDeclaringClass();
+            }
+        }
         return javaMethod.getDeclaringClass();
     }
 
@@ -228,14 +229,17 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             if (originalType != null) {
                 return originalType;
             }
-            /* Check for replacement of the original field only. */
-            ResolvedJavaField javaField = hostedField.wrapped.wrapped;
-            if (javaField instanceof SubstitutionField) {
-                return ((SubstitutionField) javaField).getOriginal().getDeclaringClass();
-            }
-            return hostedType.getWrapped().getWrapped();
         }
         ResolvedJavaField javaField = hostedField.wrapped.wrapped;
+        /* If this is a SubstitutionMethod we might need the target not the original */
+        if (javaField instanceof SubstitutionField) {
+            SubstitutionField substitutionField = (SubstitutionField)javaField;
+            if (wantOriginal) {
+                return substitutionField.getOriginal().getDeclaringClass();
+            } else {
+                return substitutionField.getAnnotated().getDeclaringClass();
+            }
+        }
         return javaField.getDeclaringClass();
     }
 
@@ -1184,21 +1188,16 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
         @SuppressWarnings("try")
         private void computeFullFilePath() {
-            ResolvedJavaType declaringClass = method.getDeclaringClass();
+            ResolvedJavaType declaringClass;
+            // if we have a HostedMethod then deal with substitutions
+            if (method instanceof HostedMethod) {
+                declaringClass = getJavaType((HostedMethod)method, false);
+            } else {
+                declaringClass = method.getDeclaringClass();
+            }
             Class<?> clazz = null;
             if (declaringClass instanceof OriginalClassProvider) {
                 clazz = ((OriginalClassProvider) declaringClass).getJavaClass();
-            }
-            /*
-             * HostedType wraps an AnalysisType and both HostedType and AnalysisType punt calls to
-             * getSourceFilename to the wrapped class so for consistency we need to do the path
-             * lookup relative to the doubly unwrapped HostedType or singly unwrapped AnalysisType.
-             */
-            if (declaringClass instanceof HostedType) {
-                declaringClass = ((HostedType) declaringClass).getWrapped();
-            }
-            if (declaringClass instanceof AnalysisType) {
-                declaringClass = ((AnalysisType) declaringClass).getWrapped();
             }
             SourceManager sourceManager = ImageSingletons.lookup(SourceManager.class);
             try (DebugContext.Scope s = debugContext.scope("DebugCodeInfo", declaringClass)) {
