@@ -740,6 +740,9 @@ public final class EspressoContext {
     @SuppressWarnings("unchecked")
     @TruffleBoundary
     public <T> T lookup(Class<? extends InternalRedefinitionPlugin> pluginType) {
+        if (redefinitionPlugins == null) {
+            return null;
+        }
         return (T) redefinitionPlugins.get(pluginType);
     }
 
