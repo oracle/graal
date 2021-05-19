@@ -995,8 +995,8 @@ suite = {
             "subDir": "src",
             "description" : "SubstrateVM image builder components",
             "dependencies": [
-                "com.oracle.svm.graal",  # necessary until Truffle is fully supported on Windows (GR-7941)
-                "com.oracle.svm.truffle",  # necessary until Truffle is fully supported on Windows (GR-7941)
+                "com.oracle.svm.graal",
+                "com.oracle.svm.truffle",
                 "com.oracle.svm.hosted",
                 "com.oracle.svm.core",
                 "com.oracle.svm.core.graal.amd64",
