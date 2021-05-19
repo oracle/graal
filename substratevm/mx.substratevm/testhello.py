@@ -263,6 +263,14 @@ def test():
                           r"%s = 1000"%(wildcard_pattern))
         checker.check(exec_string, skip_fails=False)
 
+
+    # set a break point at hello.Hello$DefaultGreeter::greet
+    # expect "Breakpoint 2 at 0x[0-9a-f]+: file hello/Target_Hello_DefaultGreeter.java, line [0-9]+."
+    exec_string = execute("break hello.Hello$DefaultGreeter::greet")
+    rexp = r"Breakpoint 2 at %s: file hello/Target_hello_Hello_DefaultGreeter\.java, line %s\."%(address_pattern, digits_pattern)
+    checker = Checker("break on substituted method", rexp)
+    checker.check(exec_string, skip_fails=False)
+
     # look up PrintStream.println methods
     # expect "All functions matching regular expression "java.io.PrintStream.println":"
     # expect ""
@@ -282,9 +290,9 @@ def test():
     checker.check(exec_string)
 
     # set a break point at PrintStream.println(String)
-    # expect "Breakpoint 2 at 0x[0-9a-f]+: java.base/java/io/PrintStream.java, line [0-9]+."
+    # expect "Breakpoint 3 at 0x[0-9a-f]+: java.base/java/io/PrintStream.java, line [0-9]+."
     exec_string = execute("break java.io.PrintStream::println(java.lang.String *)")
-    rexp = r"Breakpoint 2 at %s: file .*java/io/PrintStream\.java, line %s\."%(address_pattern, digits_pattern)
+    rexp = r"Breakpoint 3 at %s: file .*java/io/PrintStream\.java, line %s\."%(address_pattern, digits_pattern)
     checker = Checker('break println', rexp)
     checker.check(exec_string, skip_fails=False)
 
@@ -400,7 +408,8 @@ def test():
         print(checker)
         sys.exit(1)
 
-    # continue to next breakpoint
+    # continue to next 2 breakpoints
+    execute("continue")
     execute("continue")
 
     # run backtrace to check we are in java.io.PrintStream::println(java.lang.String)
