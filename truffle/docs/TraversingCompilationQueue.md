@@ -8,7 +8,7 @@ This document gives motivation and an overview of this approach.
 During execution of guest code each Truffle call target counts how many times it was executed as well as how many loop iterations happened during those executions (i.e. the target's "call and loop count"). 
 Once this counter reaches a certain threshold the call target is deemed "hot" and scheduled for compilation.
 In order to minimize the impact this has on the execution of the guest code the notion that the target should be compiled is made concrete as a [compilation task](https://github.com/oracle/graal/blob/master/compiler/src/org.graalvm.compiler.truffle.runtime/src/org/graalvm/compiler/truffle/runtime/CompilationTask.java) and placed into a [compilation queue](https://github.com/oracle/graal/blob/master/compiler/src/org.graalvm.compiler.truffle.runtime/src/org/graalvm/compiler/truffle/runtime/BackgroundCompileQueue.java) to await compilation.
-The Truffle runtime spawns several dedicated threads that take tasks from the queue and compile the specified call targets.
+The Truffle runtime spawns several compiler threads (`--engine.CompilerThreads`) that take tasks from the queue and compile the specified call targets.
 
 The initial implementation of the compilation queue in Truffle was a straightforward FIFO queue.
 This approach has important limitations with respect to warmup characteristics of the guest code execution. 
@@ -54,7 +54,7 @@ This approach has been shown to underperform in certain scenarios and might be i
 
 When comparing two tasks of the same tier, we first consider their compilation history and give priority to tasks which were previously compiled with a higher compiler tier.
 For example, if a call target get first-tier compiled, then gets invalidated for some reason and then gets queued for a first-tier compilation again, it takes priority over all other first tier targets that have never before been compiled.
-The reasoning is that if it was previously compiled, it is obviously important and should not be penalized more than necessary by it's invalidation.
+The reasoning is that if it was previously compiled, it is obviously important and should not be penalized more than necessary by its invalidation.
 
 Finally, if the two previous conditions can't differentiate the priority between two tasks we give priority to the task with the higher "weight".
 The weight is a function of the target's call and loop count and time. 
@@ -64,20 +64,20 @@ This gives a priority boost to targets that are currently "very hot" when compar
 
 For performance reasons the weight for tasks is cached and reused for a period of 1ms. If the cached value is older than 1ms, it is recalculated.
 
-The traversing compilation queue is on by default as of version 21.2.0 and can be disabled using the `--engine.TraversingCompilationQueue` option.
+The traversing compilation queue is on by default as of version 21.2.0 and can be disabled using `--engine.TraversingCompilationQueue=false`.
 
 ## Dynamic Compilation Thresholds
 
-One problem of the traversing compilation queue is that needs to traverse all the entries in the queue to get up-to-date weights and chose the highest priority task.
+One problem of the traversing compilation queue is that it needs to traverse all the entries in the queue to get up-to-date weights and choose the highest priority task.
 This does not have a significant performance impact as long as the size of the queue remains reasonable.
-This means that in order to always choose the highest priority task in a reasonable about of time we need to ensure that queue does not grow indefinitely.
+This means that in order to always choose the highest priority task in a reasonable about of time we need to ensure that the queue does not grow indefinitely.
 
 This is achieved by an approach we call ["dynamic compilation thresholds"](https://github.com/oracle/graal/blob/master/compiler/src/org.graalvm.compiler.truffle.runtime/src/org/graalvm/compiler/truffle/runtime/DynamicThresholdsQueue.java).
 Simply put, dynamic compilation thresholds means that the compilation threshold (the one each call target's call and loop count is compared against when determining whether to compile it) may change over time depending on the state of the queue. 
 If the queue is overloaded we aim to increase the compilation thresholds to reduce the number of incoming compilation tasks, i.e. targets need to be "more hot" to get scheduled for compilation.
 On the other hand, if the queue is close to empty, we can reduce the compilation thresholds to allow more targets to get scheduled for compilation, i.e. the compilation threads are in danger of idling so let's give them even "less hot" targets to compile.
 
-We call this changing of the thresholds "scaling" as the thresholds are in practise just multiple by a "scale factor" determined by a `scale` function.
+We call this changing of the thresholds "scaling" as the thresholds are in practice just multiple by a "scale factor" determined by a `scale` function.
 The scale function takes as input the "load" of the queue, which is the number of tasks in the queue divided by the number of compiler threads.
 We intentionally control for the number of compiler threads since the raw number of tasks in the queue is not a good proxy of how much compilation pressure there is.
 For example, let's assume that an average compilation takes 100ms and that there are 160 tasks in the queue.
@@ -87,7 +87,7 @@ On the other hand, a runtime with 2 compiler thread will take approximately `80 
 The scale function is defined by 3 parameters: `--engine.DynamicCompilationThresholdsMinScale`, `--engine.DynamicCompilationThresholdsMinNormalLoad` and `DynamicCompilationThresholdsMaxNormalLoad`.
 
 The `--engine.DynamicCompilationThresholdsMinScale` option defines how low we are willing to scale the thresholds.
-It has a default value of 0.1, meaning that the compilation thresholds will never be scaled bellow 10% of their default value.
+It has a default value of 0.1, meaning that the compilation thresholds will never be scaled below 10% of their default value.
 This in practice means that, by definition, `scale(0) = DynamicCompilationThresholdsMinScale` or for default values `scale(0) = 0.1`
 
 The `--engine.DynamicCompilationThresholdsMinNormalLoad` option defines the minimal load at which compilation thresholds will not be scaled.
@@ -95,7 +95,7 @@ This means that as long as the load of the queue is above this value the runtime
 This in practice means that, by definition, `scale(DynamicCompilationThresholdsMinScale) = 1` or for default values `scale(10) = 1`
 
 The `--engine.DynamicCompilationThresholdsMaxNormalLoad` option defines the maximal load at which compilation thresholds will not be scaled.
-This means that as long as the load of the queue is bellow this value the runtime will not *scale up* the compilation thresholds.
+This means that as long as the load of the queue is below this value the runtime will not *scale up* the compilation thresholds.
 This in practice means that, by definition, `scale(DynamicCompilationThresholdsMaxScale) = 1` or for default values `scale(90) = 1`
 
 So far we've defined the `scale` function at 3 points.
@@ -130,4 +130,4 @@ MinScale >|/     .                               .
 ```
 
 The dynamic thresholds only work with the traversing compilation queue and are on by default as of version 21.2.0.
-They can be disabled with the `--engine.DynamicCompilationThresholds` flag.
+They can be disabled with `--engine.DynamicCompilationThresholds=false`.
