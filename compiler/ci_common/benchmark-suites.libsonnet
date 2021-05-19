@@ -236,7 +236,7 @@
       c.hwlocIfNuma(self.is_numa, $.mx_benchmark + ["petclinic-wrk:mixed-huge"] +   $.bench_arguments + ["-Xms640m", "-Xmx3072m", "-XX:ActiveProcessorCount=32"], node=self.numa_nodes[0]),
       ["bench-uploader.py", "bench-results.json"]
     ],
-    timelimit: "5:00:00"
+    timelimit: "7:00:00"
   },
 
   // JMH microbenchmarks
