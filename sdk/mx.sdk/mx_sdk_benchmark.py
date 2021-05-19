@@ -197,9 +197,10 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
         self.latencyOutput = ''
         self.bmSuiteArgs = None
         self.workloadPath = None
+        self.measureLatency = None
         self.parser = argparse.ArgumentParser()
-        self.parser.add_argument(
-            "--workload-configuration", type=str, default=None, help="Path to workload configuration.")
+        self.parser.add_argument("--workload-configuration", type=str, default=None, help="Path to workload configuration.")
+        self.parser.add_argument("--skip-latency-measurements", action='store_true', default=False, help="Determines if the latency measurements should be skipped.")
 
     def benchSuiteName(self):
         return self.name()
@@ -355,15 +356,16 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
                 if not self.validateReturnCode(returnCode):
                     mx.abort("The server application unexpectedly ended with return code " + returnCode)
 
-                threading.Thread(target=BaseMicroserviceBenchmarkSuite.calibrateLatencyTestInBackground, args=[self]).start()
-                returnCode = mx.run(server_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
-                if not self.validateReturnCode(returnCode):
-                    mx.abort("The server application unexpectedly ended with return code " + returnCode)
+                if self.measureLatency:
+                    threading.Thread(target=BaseMicroserviceBenchmarkSuite.calibrateLatencyTestInBackground, args=[self]).start()
+                    returnCode = mx.run(server_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
+                    if not self.validateReturnCode(returnCode):
+                        mx.abort("The server application unexpectedly ended with return code " + returnCode)
 
-                threading.Thread(target=BaseMicroserviceBenchmarkSuite.testLatencyInBackground, args=[self]).start()
-                returnCode = mx.run(server_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
-                if not self.validateReturnCode(returnCode):
-                    mx.abort("The server application unexpectedly ended with return code " + returnCode)
+                    threading.Thread(target=BaseMicroserviceBenchmarkSuite.testLatencyInBackground, args=[self]).start()
+                    returnCode = mx.run(server_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
+                    if not self.validateReturnCode(returnCode):
+                        mx.abort("The server application unexpectedly ended with return code " + returnCode)
 
                 return returnCode
             elif stage == 'agent' or 'instrument-run' in stage:
@@ -396,6 +398,7 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
         self.benchmark_name = benchmarks[0]
         args, remainder = self.parser.parse_known_args(self.bmSuiteArgs)
         self.workloadPath = args.workload_configuration
+        self.measureLatency = not args.skip_latency_measurements
 
         if not self.inNativeMode():
             mx.disable_command_mapper_hooks()
@@ -406,13 +409,14 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
             threading.Thread(target=BaseMicroserviceBenchmarkSuite.testPeakPerformanceInBackground, args=[self]).start()
             datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
 
-            mx.disable_command_mapper_hooks()
-            threading.Thread(target=BaseMicroserviceBenchmarkSuite.calibrateLatencyTestInBackground, args=[self]).start()
-            datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
+            if self.measureLatency:
+                mx.disable_command_mapper_hooks()
+                threading.Thread(target=BaseMicroserviceBenchmarkSuite.calibrateLatencyTestInBackground, args=[self]).start()
+                datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
 
-            threading.Thread(target=BaseMicroserviceBenchmarkSuite.testLatencyInBackground, args=[self]).start()
-            datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
-            mx.enable_command_mapper_hooks()
+                threading.Thread(target=BaseMicroserviceBenchmarkSuite.testLatencyInBackground, args=[self]).start()
+                datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
+                mx.enable_command_mapper_hooks()
 
             return datapoints
         else:
@@ -636,7 +640,7 @@ class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
         self.latencyOutput = self.writeWrk2Results('throughput-for-peak-latency', 'peak-latency', results)
 
     def extractThroughput(self, output):
-        matches = re.findall(r"^Requests/sec:\s*(\d*[.,]?\d*)$", output, re.MULTILINE)
+        matches = re.findall(r"^Requests/sec:\s*(\d*[.,]?\d*)\s*$", output, re.MULTILINE)
         if len(matches) != 1:
             mx.abort("Expected exactly one throughput result in the output: " + str(matches))
 
@@ -646,7 +650,7 @@ class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
         result = {}
         result["throughput"] = self.extractThroughput(output)
 
-        matches = re.findall(r"^\s*(\d*[.,]?\d*%)\s+(\d*[.,]?\d*)([mun]?s)$", output, re.MULTILINE)
+        matches = re.findall(r"^\s*(\d*[.,]?\d*%)\s+(\d*[.,]?\d*)([mun]?s)\s*$", output, re.MULTILINE)
         if len(matches) <= 0:
             mx.abort("No latency results found in output")
 
@@ -692,13 +696,13 @@ class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
 
     def writeWrk1Results(self, throughputPrefix, latencyPrefix, output):
         result = []
-        matches = re.findall(r"^Requests/sec:\s*\d*[.,]?\d*$", output, re.MULTILINE)
+        matches = re.findall(r"^Requests/sec:\s*\d*[.,]?\d*\s*$", output, re.MULTILINE)
         if len(matches) != 1:
             mx.abort("Expected exactly one throughput result in the output: " + str(matches))
 
         result.append(throughputPrefix + " " + matches[0])
 
-        matches = re.findall(r"^\s*(\d*[.,]?\d*%)\s+(\d*[.,]?\d*)([mun]?s)$", output, re.MULTILINE)
+        matches = re.findall(r"^\s*(\d*[.,]?\d*%)\s+(\d*[.,]?\d*)([mun]?s)\s*$", output, re.MULTILINE)
         if len(matches) <= 0:
             mx.abort("No latency results found in output")
 
@@ -720,7 +724,7 @@ class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
         self.verifyThroughput(output, expectedThroughput)
 
     def verifyThroughput(self, output, expectedThroughput):
-        matches = re.findall(r"^Requests/sec:\s*(?P<throughput>\d*[.,]?\d*)$", output, re.MULTILINE)
+        matches = re.findall(r"^Requests/sec:\s*(?P<throughput>\d*[.,]?\d*)\s*$", output, re.MULTILINE)
         if len(matches) != 1:
             mx.abort("Expected exactly one throughput result in the output: " + str(matches))
 
@@ -775,9 +779,9 @@ class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
         wrkFlags += self.getThroughputFlags(config)
         return wrkFlags
 
-    def getWrkFlags(self, config, measureLatency):
+    def getWrkFlags(self, config, latency):
         args = []
-        if measureLatency:
+        if latency:
             args += ['--latency']
 
         args += ['--connections', str(config['connections'])]
@@ -800,7 +804,7 @@ class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
         # "Requests/sec:   5453.61"
         return [
             mx_benchmark.StdOutRule(
-                r"^startup-throughput Requests/sec:\s*(?P<throughput>\d*[.,]?\d*)$",
+                r"^startup-throughput Requests/sec:\s*(?P<throughput>\d*[.,]?\d*)\s*$",
                 {
                     "benchmark": benchmarks[0],
                     "bench-suite": self.benchSuiteName(),
@@ -811,7 +815,7 @@ class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
                 }
             ),
             mx_benchmark.StdOutRule(
-                r"^peak-throughput Requests/sec:\s*(?P<throughput>\d*[.,]?\d*)$",
+                r"^peak-throughput Requests/sec:\s*(?P<throughput>\d*[.,]?\d*)\s*$",
                 {
                     "benchmark": benchmarks[0],
                     "bench-suite": self.benchSuiteName(),
@@ -822,7 +826,7 @@ class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
                 }
             ),
             mx_benchmark.StdOutRule(
-                r"^throughput-for-peak-latency Requests/sec:\s*(?P<throughput>\d*[.,]?\d*)$",
+                r"^throughput-for-peak-latency Requests/sec:\s*(?P<throughput>\d*[.,]?\d*)\s*$",
                 {
                     "benchmark": benchmarks[0],
                     "bench-suite": self.benchSuiteName(),
@@ -833,7 +837,7 @@ class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
                 }
             ),
             mx_benchmark.StdOutRule(
-                r"^startup-latency-co\s+(?P<percentile>\d*[.,]?\d*)%\s+(?P<latency>\d*[.,]?\d*)(?P<unit>ms)$",
+                r"^startup-latency-co\s+(?P<percentile>\d*[.,]?\d*)%\s+(?P<latency>\d*[.,]?\d*)(?P<unit>ms)\s*$",
                 {
                     "benchmark": benchmarks[0],
                     "bench-suite": self.benchSuiteName(),
@@ -845,7 +849,7 @@ class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
                 }
             ),
             mx_benchmark.StdOutRule(
-                r"^peak-latency-co\s+(?P<percentile>\d*[.,]?\d*)%\s+(?P<latency>\d*[.,]?\d*)(?P<unit>ms)$",
+                r"^peak-latency-co\s+(?P<percentile>\d*[.,]?\d*)%\s+(?P<latency>\d*[.,]?\d*)(?P<unit>ms)\s*$",
                 {
                     "benchmark": benchmarks[0],
                     "bench-suite": self.benchSuiteName(),
@@ -857,7 +861,7 @@ class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
                 }
             ),
             mx_benchmark.StdOutRule(
-                r"^peak-latency\s+(?P<percentile>\d*[.,]?\d*)%\s+(?P<latency>\d*[.,]?\d*)(?P<unit>ms)$",
+                r"^peak-latency\s+(?P<percentile>\d*[.,]?\d*)%\s+(?P<latency>\d*[.,]?\d*)(?P<unit>ms)\s*$",
                 {
                     "benchmark": benchmarks[0],
                     "bench-suite": self.benchSuiteName(),
