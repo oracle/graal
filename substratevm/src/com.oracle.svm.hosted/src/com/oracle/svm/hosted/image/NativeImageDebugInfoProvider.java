@@ -186,7 +186,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
      * need to use the original to name the owning type to ensure that names found in method param
      * and return types resolve correctly.
      */
-    protected static ResolvedJavaType getJavaType(HostedType hostedType, boolean wantOriginal) {
+    protected static ResolvedJavaType getDeclaringClass(HostedType hostedType, boolean wantOriginal) {
         ResolvedJavaType javaType;
         if (wantOriginal) {
             /* Check for wholesale replacement of the original class. */
@@ -197,7 +197,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         return hostedType.getWrapped().getWrapped();
     }
 
-    protected static ResolvedJavaType getJavaType(HostedMethod hostedMethod, boolean wantOriginal) {
+    protected static ResolvedJavaType getDeclaringClass(HostedMethod hostedMethod, boolean wantOriginal) {
         if (wantOriginal) {
             /* Check for wholesale replacement of the original class. */
             HostedType hostedType = hostedMethod.getDeclaringClass();
@@ -220,7 +220,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         return javaMethod.getDeclaringClass();
     }
 
-    protected static ResolvedJavaType getJavaType(HostedField hostedField, boolean wantOriginal) {
+    protected static ResolvedJavaType getDeclaringClass(HostedField hostedField, boolean wantOriginal) {
         if (wantOriginal) {
             /* Check for wholesale replacement of the original class. */
             HostedType hostedType = hostedField.getDeclaringClass();
@@ -258,7 +258,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
     private static String toJavaName(JavaType javaType) {
         if (javaType instanceof HostedType) {
-            return getJavaType((HostedType) javaType, true).toJavaName();
+            return getDeclaringClass((HostedType) javaType, true).toJavaName();
         }
         return javaType.toJavaName();
     }
@@ -270,7 +270,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
         @SuppressWarnings("try")
         NativeImageDebugFileInfo(HostedType hostedType) {
-            ResolvedJavaType javaType = getJavaType(hostedType, false);
+            ResolvedJavaType javaType = getDeclaringClass(hostedType, false);
             Class<?> clazz = hostedType.getJavaClass();
             SourceManager sourceManager = ImageSingletons.lookup(SourceManager.class);
             try (DebugContext.Scope s = debugContext.scope("DebugFileInfo", hostedType)) {
@@ -282,7 +282,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
         @SuppressWarnings("try")
         NativeImageDebugFileInfo(HostedMethod hostedMethod) {
-            ResolvedJavaType javaType = getJavaType(hostedMethod, false);
+            ResolvedJavaType javaType = getDeclaringClass(hostedMethod, false);
             HostedType hostedType = hostedMethod.getDeclaringClass();
             Class<?> clazz = hostedType.getJavaClass();
             SourceManager sourceManager = ImageSingletons.lookup(SourceManager.class);
@@ -295,7 +295,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
         @SuppressWarnings("try")
         NativeImageDebugFileInfo(HostedField hostedField) {
-            ResolvedJavaType javaType = getJavaType(hostedField, false);
+            ResolvedJavaType javaType = getDeclaringClass(hostedField, false);
             HostedType hostedType = hostedField.getDeclaringClass();
             Class<?> clazz = hostedType.getJavaClass();
             SourceManager sourceManager = ImageSingletons.lookup(SourceManager.class);
@@ -351,7 +351,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         public String toJavaName(@SuppressWarnings("hiding") HostedType hostedType) {
-            return getJavaType(hostedType, true).toJavaName();
+            return getDeclaringClass(hostedType, true).toJavaName();
         }
 
         @Override
@@ -577,7 +577,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
              * lookup relative to the doubly unwrapped HostedType.
              */
             if (superClass != null) {
-                return getJavaType(superClass, true).toJavaName();
+                return getDeclaringClass(superClass, true).toJavaName();
             }
             return null;
         }
@@ -671,7 +671,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             public String name() {
                 String name = hostedMethod.format("%n");
                 if ("<init>".equals(name)) {
-                    name = getJavaType(hostedMethod, true).toJavaName();
+                    name = getDeclaringClass(hostedMethod, true).toJavaName();
                     if (name.indexOf('.') >= 0) {
                         name = name.substring(name.lastIndexOf('.') + 1);
                     }
@@ -889,7 +889,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
         @Override
         public String ownerType() {
-            return getJavaType(hostedMethod, true).toJavaName();
+            return getDeclaringClass(hostedMethod, true).toJavaName();
         }
 
         @Override
@@ -902,7 +902,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             }
             String name = targetMethod.getName();
             if (name.equals("<init>")) {
-                name = getJavaType(hostedMethod, true).toJavaName();
+                name = getDeclaringClass(hostedMethod, true).toJavaName();
                 if (name.indexOf('.') >= 0) {
                     name = name.substring(name.lastIndexOf('.') + 1);
                 }
@@ -1078,7 +1078,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         @Override
         public String ownerType() {
             if (method instanceof HostedMethod) {
-                return getJavaType((HostedMethod) method, true).toJavaName();
+                return getDeclaringClass((HostedMethod) method, true).toJavaName();
             } else {
                 return method.getDeclaringClass().toJavaName();
             }
@@ -1098,7 +1098,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             String name = targetMethod.getName();
             if (name.equals("<init>")) {
                 if (method instanceof HostedMethod) {
-                    name = getJavaType((HostedMethod) method, true).toJavaName();
+                    name = getDeclaringClass((HostedMethod) method, true).toJavaName();
                     if (name.indexOf('.') >= 0) {
                         name = name.substring(name.lastIndexOf('.') + 1);
                     }
@@ -1191,7 +1191,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             ResolvedJavaType declaringClass;
             // if we have a HostedMethod then deal with substitutions
             if (method instanceof HostedMethod) {
-                declaringClass = getJavaType((HostedMethod)method, false);
+                declaringClass = getDeclaringClass((HostedMethod)method, false);
             } else {
                 declaringClass = method.getDeclaringClass();
             }
