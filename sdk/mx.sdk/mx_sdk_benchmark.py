@@ -698,7 +698,7 @@ class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
 
         result.append(throughputPrefix + " " + matches[0])
 
-        matches = re.findall(r"\s*(\d*[.,]?\d*%)\s+(\d*[.,]?\d*)([mun]?s)$", output, re.MULTILINE)
+        matches = re.findall(r"^\s*(\d*[.,]?\d*%)\s+(\d*[.,]?\d*)([mun]?s)$", output, re.MULTILINE)
         if len(matches) <= 0:
             mx.abort("No latency results found in output")
 
