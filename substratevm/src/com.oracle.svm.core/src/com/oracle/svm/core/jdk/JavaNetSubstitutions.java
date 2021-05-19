@@ -46,14 +46,19 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Delete;
+import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.util.LazyFinalReference;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
+
+import sun.net.NetProperties;
 
 @TargetClass(java.net.URL.class)
 final class Target_java_net_URL {
@@ -76,6 +81,30 @@ final class Target_java_net_URL {
     @SuppressWarnings("unused")
     public static void setURLStreamHandlerFactory(URLStreamHandlerFactory fac) {
         VMError.unsupportedFeature("Setting a custom URLStreamHandlerFactory.");
+    }
+}
+
+@TargetClass(className = "sun.net.spi.DefaultProxySelector")
+final class Target_sun_net_spi_DefaultProxySelector {
+
+    @Alias @InjectAccessors(DefaultProxySelectorSystemProxiesAccessor.class) //
+    static boolean hasSystemProxies;
+
+    @Alias
+    static native boolean init();
+}
+
+class DefaultProxySelectorSystemProxiesAccessor {
+    static final LazyFinalReference<Boolean> hasSystemProxies = new LazyFinalReference<>(() -> {
+        Boolean b = NetProperties.getBoolean("java.net.useSystemProxies");
+        if (b != null && b) {
+            return Target_sun_net_spi_DefaultProxySelector.init();
+        }
+        return false;
+    });
+
+    static boolean get() {
+        return hasSystemProxies.get();
     }
 }
 
