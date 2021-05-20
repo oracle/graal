@@ -24,14 +24,11 @@
  */
 package com.oracle.svm.jfr;
 
-import java.io.IOException;
-
-import com.oracle.svm.jfr.traceid.JfrTraceIdEpoch;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.jfr.traceid.JfrTraceIdEpoch;
 
 /**
  * This class is only used for Java-level JFR events. Therefore, we can use Java heap memory for the
@@ -55,9 +52,7 @@ public class JfrStringRepository implements JfrRepository {
     }
 
     @Override
-    public int write(JfrChunkWriter writer) throws IOException {
-        assert VMOperation.isInProgressAtSafepoint();
-
+    public int write(JfrChunkWriter writer) {
         return 0;
 
         // writer.writeCompressedLong(JfrTypes.String.getId());

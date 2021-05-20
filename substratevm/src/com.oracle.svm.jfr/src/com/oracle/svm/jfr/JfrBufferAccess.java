@@ -68,10 +68,11 @@ public final class JfrBufferAccess {
         ImageSingletons.lookup(UnmanagedMemorySupport.class).free(buffer);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Prevent safepoints as those could change the top pointer.")
     public static void reinitialize(JfrBuffer buffer) {
         Pointer pos = getDataStart(buffer);
         buffer.setPos(pos);
+        buffer.setTop(pos);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -79,12 +80,12 @@ public final class JfrBufferAccess {
         return buffer.getAcquired() == ACQUIRED;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "We must guarantee that all buffers are in unacquired state when entering a safepoint.", callerMustBe = true)
     public static boolean acquire(JfrBuffer buffer) {
         return ((Pointer) buffer).logicCompareAndSwapInt(JfrBuffer.offsetOfAcquired(), NOT_ACQUIRED, ACQUIRED, NamedLocationIdentity.OFF_HEAP_LOCATION);
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "We must guarantee that all buffers are in unacquired state when entering a safepoint.", callerMustBe = true)
     public static void release(JfrBuffer buffer) {
         // TODO: check which location identity is used for accessing - must match the one above
         assert buffer.getAcquired() == ACQUIRED;
@@ -111,14 +112,19 @@ public final class JfrBufferAccess {
         return getDataEnd(buffer).subtract(buffer.getPos());
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Prevent safepoints as those could change the top pointer.", callerMustBe = true)
     public static UnsignedWord getUnflushedSize(JfrBuffer buffer) {
-        return buffer.getPos().subtract(getDataStart(buffer));
+        return buffer.getPos().subtract(buffer.getTop());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void increasePos(JfrBuffer buffer, UnsignedWord delta) {
         buffer.setPos(buffer.getPos().add(delta));
+    }
+
+    @Uninterruptible(reason = "Prevent safepoints as those could change the top pointer.")
+    public static void increaseTop(JfrBuffer buffer, UnsignedWord delta) {
+        buffer.setTop(buffer.getTop().add(delta));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

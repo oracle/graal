@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.jfr;
 
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
 import org.graalvm.compiler.word.Word;
@@ -111,7 +110,7 @@ public class JfrSymbolRepository implements JfrRepository {
     }
 
     @Override
-    public int write(JfrChunkWriter writer) throws IOException {
+    public int write(JfrChunkWriter writer) {
         JfrSymbolHashtable table = getTable(true);
         if (table.getSize() == 0) {
             return 0;
@@ -136,7 +135,7 @@ public class JfrSymbolRepository implements JfrRepository {
         return 1;
     }
 
-    private void writeSymbol(JfrChunkWriter writer, JfrSymbol symbol) throws IOException {
+    private void writeSymbol(JfrChunkWriter writer, JfrSymbol symbol) {
         writer.writeCompressedLong(symbol.getId());
         writer.writeByte(JfrChunkWriter.StringEncoding.UTF8_BYTE_ARRAY.byteValue);
         byte[] value = symbol.getValue().getBytes(StandardCharsets.UTF_8);

@@ -73,11 +73,13 @@ public class JfrGlobalMemory {
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public JfrBuffers getBuffers() {
         assert buffers.isNonNull();
         return buffers;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getBufferCount() {
         return bufferCount;
     }
@@ -88,15 +90,18 @@ public class JfrGlobalMemory {
         if (promotionBuffer.isNull()) {
             return false;
         }
-
-        // Copy all committed but not yet flushed memory to the promotion buffer.
+        boolean shouldSignal;
         JfrRecorderThread recorderThread = SubstrateJVM.getRecorderThread();
-        assert JfrBufferAccess.getAvailableSize(promotionBuffer).aboveOrEqual(unflushedSize);
-        UnmanagedMemoryUtil.copy(JfrBufferAccess.getDataStart(threadLocalBuffer), promotionBuffer.getPos(), unflushedSize);
-        JfrBufferAccess.increasePos(promotionBuffer, unflushedSize);
-        boolean shouldSignal = recorderThread.shouldSignal(promotionBuffer);
-        releasePromotionBuffer(promotionBuffer);
-
+        try {
+            // Copy all committed but not yet flushed memory to the promotion buffer.
+            assert JfrBufferAccess.getAvailableSize(promotionBuffer).aboveOrEqual(unflushedSize);
+            UnmanagedMemoryUtil.copy(threadLocalBuffer.getTop(), promotionBuffer.getPos(), unflushedSize);
+            JfrBufferAccess.increasePos(promotionBuffer, unflushedSize);
+            shouldSignal = recorderThread.shouldSignal(promotionBuffer);
+        } finally {
+             releasePromotionBuffer(promotionBuffer);
+        }
+        JfrBufferAccess.increaseTop(threadLocalBuffer, unflushedSize);
         // Notify the thread that writes the global memory to disk.
         if (shouldSignal) {
             recorderThread.signal();

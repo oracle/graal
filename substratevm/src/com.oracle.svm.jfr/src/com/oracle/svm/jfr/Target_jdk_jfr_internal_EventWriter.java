@@ -31,6 +31,10 @@ import com.oracle.svm.core.annotate.TargetClass;
 public final class Target_jdk_jfr_internal_EventWriter {
     @Alias
     @SuppressWarnings("unused")
+    boolean notified;
+
+    @Alias
+    @SuppressWarnings("unused")
     Target_jdk_jfr_internal_EventWriter(long startPos, long maxPos, long startPosAddress, long threadID, boolean valid) {
     }
 }

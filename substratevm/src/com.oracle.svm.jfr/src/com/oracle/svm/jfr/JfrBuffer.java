@@ -78,6 +78,12 @@ public interface JfrBuffer extends PointerBase {
      * @see JfrBufferAccess#release(JfrBuffer)
      */
     @RawField
+    Pointer getTop();
+
+    @RawField
+    void setTop(Pointer value);
+
+    @RawField
     int getAcquired();
 
     /**

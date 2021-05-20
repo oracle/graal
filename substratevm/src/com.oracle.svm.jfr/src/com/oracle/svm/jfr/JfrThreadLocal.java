@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.jfr;
 
+import com.oracle.svm.core.thread.VMOperation;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -205,6 +206,25 @@ public class JfrThreadLocal implements ThreadListener {
         return result;
     }
 
+    @Uninterruptible(reason = "Accesses a JFR buffer.", callerMustBe = true)
+    public static JfrBuffer getJavaBuffer(IsolateThread thread) {
+        assert(VMOperation.isInProgressAtSafepoint());
+        return javaBuffer.get(thread);
+    }
+
+    @Uninterruptible(reason = "Accesses a JFR buffer.", callerMustBe = true)
+    public static JfrBuffer getNativeBuffer(IsolateThread thread) {
+        assert(VMOperation.isInProgressAtSafepoint());
+        return nativeBuffer.get(thread);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static void notifyEventWriter(IsolateThread thread) {
+        if (javaEventWriter.get(thread) != null) {
+            javaEventWriter.get(thread).notified = true;
+        }
+    }
+
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     public static JfrBuffer flush(JfrBuffer threadLocalBuffer, UnsignedWord uncommitted, int requested) {
         assert threadLocalBuffer.isNonNull();
@@ -213,17 +233,18 @@ public class JfrThreadLocal implements ThreadListener {
         UnsignedWord unflushedSize = JfrBufferAccess.getUnflushedSize(threadLocalBuffer);
         if (unflushedSize.aboveThan(0)) {
             JfrGlobalMemory globalMemory = SubstrateJVM.getGlobalMemory();
-            if (globalMemory.write(threadLocalBuffer, unflushedSize)) {
-                // Copy all uncommitted memory to the start of the thread local buffer.
-                UnmanagedMemoryUtil.copy(threadLocalBuffer.getPos(), JfrBufferAccess.getDataStart(threadLocalBuffer), uncommitted);
-                JfrBufferAccess.reinitialize(threadLocalBuffer);
-            } else {
+            if (!globalMemory.write(threadLocalBuffer, unflushedSize)) {
                 JfrBufferAccess.reinitialize(threadLocalBuffer);
                 writeDataLoss(threadLocalBuffer, unflushedSize);
                 return WordFactory.nullPointer();
             }
         }
 
+        if (uncommitted.aboveThan(0)) {
+            // Copy all uncommitted memory to the start of the thread local buffer.
+            UnmanagedMemoryUtil.copy(threadLocalBuffer.getPos(), JfrBufferAccess.getDataStart(threadLocalBuffer), uncommitted);
+        }
+        JfrBufferAccess.reinitialize(threadLocalBuffer);
         assert JfrBufferAccess.getUnflushedSize(threadLocalBuffer).equal(0);
         if (result.getSize().aboveOrEqual(uncommitted.add(requested))) {
             return result;
