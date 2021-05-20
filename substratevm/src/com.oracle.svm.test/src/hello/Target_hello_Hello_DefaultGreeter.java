@@ -31,10 +31,11 @@ import com.oracle.svm.core.annotate.TargetClass;
 
 @TargetClass(value = Hello.DefaultGreeter.class)
 final class Target_hello_Hello_DefaultGreeter {
-    // Checkstyle: stop
+    @SuppressWarnings("static-method")
     @Substitute
     public void greet() {
+        // Checkstyle: stop
         System.out.println("Hello, substituted world!");
+        // Checkstyle: resume
     }
-    // Checkstyle: resume
 }

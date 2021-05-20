@@ -442,7 +442,8 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
             // the primary method might be a substitution and not in the primary class file
             FileEntry fileEntry = primaryRange.getFileEntry();
             if (fileEntry == null) {
-                log(context, "  [0x%08x] primary range [0x%08x, 0x%08x] skipped (no file) %s", pos, debugTextBase + primaryRange.getLo(), debugTextBase + primaryRange.getHi(), primaryRange.getFullMethodNameWithParams());
+                log(context, "  [0x%08x] primary range [0x%08x, 0x%08x] skipped (no file) %s", pos, debugTextBase + primaryRange.getLo(), debugTextBase + primaryRange.getHi(),
+                                primaryRange.getFullMethodNameWithParams());
                 continue;
             }
             String file = fileEntry.getFileName();
@@ -464,7 +465,8 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
             /*
              * Set state for primary.
              */
-            log(context, "  [0x%08x] primary range [0x%08x, 0x%08x] %s %s:%d", pos, debugTextBase + primaryRange.getLo(), debugTextBase + primaryRange.getHi(), primaryRange.getFullMethodNameWithParams(),
+            log(context, "  [0x%08x] primary range [0x%08x, 0x%08x] %s %s:%d", pos, debugTextBase + primaryRange.getLo(), debugTextBase + primaryRange.getHi(),
+                            primaryRange.getFullMethodNameWithParams(),
                             file, primaryRange.getLine());
 
             /*
@@ -526,7 +528,8 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
                 long subLine = subrange.getLine();
                 long subAddressLo = subrange.getLo();
                 long subAddressHi = subrange.getHi();
-                log(context, "  [0x%08x] sub range [0x%08x, 0x%08x] %s %s:%d", pos, debugTextBase + subAddressLo, debugTextBase + subAddressHi, subrange.getFullMethodNameWithParams(), subfile, subLine);
+                log(context, "  [0x%08x] sub range [0x%08x, 0x%08x] %s %s:%d", pos, debugTextBase + subAddressLo, debugTextBase + subAddressHi, subrange.getFullMethodNameWithParams(), subfile,
+                                subLine);
                 if (subLine < 0) {
                     /*
                      * No line info so stay at previous file:line.
