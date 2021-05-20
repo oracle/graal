@@ -60,10 +60,10 @@ public abstract class AggregateLiteralInPlaceNode extends LLVMStatementNode {
     private static final ByteArraySupport byteSupport = ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN ? ByteArraySupport.bigEndian() : ByteArraySupport.littleEndian();
 
     /**
-     * This node initializes a block of memory with a with combination of raw bytes and explicit
-     * store nodes. When executed, it transfers all bytes from {@code data} to the target (using i8
-     * and i64 stores as appropriate), except for those covered by a node in {@code stores}. Every
-     * store node has a corresponding entry in {@code offsets} and {@sizes}.
+     * This node initializes a block of memory with a combination of raw bytes and explicit store
+     * nodes. When executed, it transfers all bytes from {@code data} to the target (using i8 and
+     * i64 stores as appropriate), except for those covered by a node in {@code stores}. Every store
+     * node has a corresponding entry in {@code offsets} and {@sizes}.
      */
     public AggregateLiteralInPlaceNode(byte[] data, LLVMOffsetStoreNode[] stores, int[] offsets, int[] sizes, int[] bufferOffsets, LLVMGlobal[] descriptors) {
         assert offsets.length == stores.length + 1 && stores.length == sizes.length;
@@ -86,6 +86,7 @@ public abstract class AggregateLiteralInPlaceNode extends LLVMStatementNode {
         writeObjects(frame, context);
     }
 
+    @ExplodeLoop
     private void writePrimitives(LLVMContext context, LLVMI8OffsetStoreNode storeI8, LLVMI64OffsetStoreNode storeI64) {
         int offset = 0;
         int nextStore = 0;
