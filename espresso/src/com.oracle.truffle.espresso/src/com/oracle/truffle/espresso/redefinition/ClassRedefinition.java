@@ -69,7 +69,6 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
 public final class ClassRedefinition {
 
     @CompilationFinal static volatile RedefineAssumption current = new RedefineAssumption();
-    private static final RedefinitionSupport REDEFINITION_SUPPORT = RedefinitionSupport.REMOVE_METHOD;
 
     private static final Object redefineLock = new Object();
     private static volatile boolean locked = false;
@@ -79,24 +78,20 @@ public final class ClassRedefinition {
     private final Ids<Object> ids;
     private final RedefineListener redefineListener;
 
-    private enum RedefinitionSupport {
-        METHOD_BODY,
+    enum ClassChange {
+        // currently supported
+        NO_CHANGE,
+        CONSTANT_POOL_CHANGE,
+        METHOD_BODY_CHANGE,
+        CLASS_NAME_CHANGED,
         ADD_METHOD,
         REMOVE_METHOD,
-        ARBITRARY
-    }
-
-    enum ClassChange {
-        NO_CHANGE,
-        CLASS_NAME_CHANGED,
-        METHOD_BODY_CHANGE,
-        ADD_METHOD,
+        NEW_CLASS,
+        FIELD_OBJECT_TYPE_CHANGE,
+        // currently unsupported
         SCHEMA_CHANGE,
         HIERARCHY_CHANGE,
-        REMOVE_METHOD,
         CLASS_MODIFIERS_CHANGE,
-        CONSTANT_POOL_CHANGE,
-        NEW_CLASS,
         INVALID;
     }
 
@@ -224,43 +219,11 @@ public final class ClassRedefinition {
                 case METHOD_BODY_CHANGE:
                 case CONSTANT_POOL_CHANGE:
                 case CLASS_NAME_CHANGED:
+                case ADD_METHOD:
+                case REMOVE_METHOD:
+                case FIELD_OBJECT_TYPE_CHANGE:
                     doRedefineClass(packet, refreshSubClasses);
                     return 0;
-                case ADD_METHOD:
-                    if (isAddMethodSupported()) {
-                        doRedefineClass(packet, refreshSubClasses);
-                        return 0;
-                    } else {
-                        return ErrorCodes.ADD_METHOD_NOT_IMPLEMENTED;
-                    }
-                case REMOVE_METHOD:
-                    if (isRemoveMethodSupported()) {
-                        doRedefineClass(packet, refreshSubClasses);
-                        return 0;
-                    } else {
-                        return ErrorCodes.DELETE_METHOD_NOT_IMPLEMENTED;
-                    }
-                case SCHEMA_CHANGE:
-                    if (isArbitraryChangesSupported()) {
-                        doRedefineClass(packet, refreshSubClasses);
-                        return 0;
-                    } else {
-                        return ErrorCodes.SCHEMA_CHANGE_NOT_IMPLEMENTED;
-                    }
-                case CLASS_MODIFIERS_CHANGE:
-                    if (isArbitraryChangesSupported()) {
-                        doRedefineClass(packet, refreshSubClasses);
-                        return 0;
-                    } else {
-                        return ErrorCodes.CLASS_MODIFIERS_CHANGE_NOT_IMPLEMENTED;
-                    }
-                case HIERARCHY_CHANGE:
-                    if (isArbitraryChangesSupported()) {
-                        doRedefineClass(packet, refreshSubClasses);
-                        return 0;
-                    } else {
-                        return ErrorCodes.HIERARCHY_CHANGE_NOT_IMPLEMENTED;
-                    }
                 case NEW_CLASS:
                     ClassInfo classInfo = packet.info;
 
@@ -278,6 +241,12 @@ public final class ClassRedefinition {
                         packet.info.setKlass(newKlass);
                     }
                     return 0;
+                case SCHEMA_CHANGE:
+                    return ErrorCodes.SCHEMA_CHANGE_NOT_IMPLEMENTED;
+                case CLASS_MODIFIERS_CHANGE:
+                    return ErrorCodes.CLASS_MODIFIERS_CHANGE_NOT_IMPLEMENTED;
+                case HIERARCHY_CHANGE:
+                    return ErrorCodes.HIERARCHY_CHANGE_NOT_IMPLEMENTED;
                 default:
                     return 0;
             }
@@ -286,18 +255,6 @@ public final class ClassRedefinition {
             // we get from parsing the class file
             return ErrorCodes.INVALID_CLASS_FORMAT;
         }
-    }
-
-    private static boolean isArbitraryChangesSupported() {
-        return REDEFINITION_SUPPORT == RedefinitionSupport.ARBITRARY;
-    }
-
-    private static boolean isAddMethodSupported() {
-        return REDEFINITION_SUPPORT == RedefinitionSupport.ADD_METHOD || isRemoveMethodSupported() || isArbitraryChangesSupported();
-    }
-
-    private static boolean isRemoveMethodSupported() {
-        return REDEFINITION_SUPPORT == RedefinitionSupport.REMOVE_METHOD || isArbitraryChangesSupported();
     }
 
     // detect all types of class changes, but return early when a change that require arbitrary
@@ -310,19 +267,11 @@ public final class ClassRedefinition {
 
         // detect class-level changes
         if (newParserKlass.getFlags() != oldParserKlass.getFlags()) {
-            if (isArbitraryChangesSupported()) {
-                return ClassChange.CLASS_MODIFIERS_CHANGE;
-            } else {
-                throw new RedefintionNotSupportedException(ErrorCodes.CLASS_MODIFIERS_CHANGE_NOT_IMPLEMENTED);
-            }
+            throw new RedefintionNotSupportedException(ErrorCodes.CLASS_MODIFIERS_CHANGE_NOT_IMPLEMENTED);
         }
 
         if (!newParserKlass.getSuperKlass().equals(oldParserKlass.getSuperKlass()) || !Arrays.equals(newParserKlass.getSuperInterfaces(), oldParserKlass.getSuperInterfaces())) {
-            if (isArbitraryChangesSupported()) {
-                return ClassChange.HIERARCHY_CHANGE;
-            } else {
-                throw new RedefintionNotSupportedException(ErrorCodes.HIERARCHY_CHANGE_NOT_IMPLEMENTED);
-            }
+            throw new RedefintionNotSupportedException(ErrorCodes.HIERARCHY_CHANGE_NOT_IMPLEMENTED);
         }
 
         // detect field changes
@@ -330,11 +279,7 @@ public final class ClassRedefinition {
         ParserField[] newFields = newParserKlass.getFields();
 
         if (oldFields.length != newFields.length) {
-            if (isArbitraryChangesSupported()) {
-                return ClassChange.SCHEMA_CHANGE;
-            } else {
-                throw new RedefintionNotSupportedException(ErrorCodes.SCHEMA_CHANGE_NOT_IMPLEMENTED);
-            }
+            throw new RedefintionNotSupportedException(ErrorCodes.SCHEMA_CHANGE_NOT_IMPLEMENTED);
         }
 
         for (int i = 0; i < oldFields.length; i++) {
@@ -348,17 +293,14 @@ public final class ClassRedefinition {
                     if (isPatched && matcher.matches()) {
                         // special outer pointer in nested anonymous inner classes
                         collectedChanges.addOuterField(oldField);
+                        result = ClassChange.FIELD_OBJECT_TYPE_CHANGE;
                     }
                     found = true;
                     break;
                 }
             }
             if (!found) {
-                if (isArbitraryChangesSupported()) {
-                    return ClassChange.SCHEMA_CHANGE;
-                } else {
-                    throw new RedefintionNotSupportedException(ErrorCodes.SCHEMA_CHANGE_NOT_IMPLEMENTED);
-                }
+                throw new RedefintionNotSupportedException(ErrorCodes.SCHEMA_CHANGE_NOT_IMPLEMENTED);
             }
         }
 
@@ -463,7 +405,7 @@ public final class ClassRedefinition {
                     Method oldMethod, ParserMethod oldParserMethod, ParserMethod newMethod) {
         // mark constructors of nested anonymous inner classes
         // if they include an anonymous inner class type parameter
-        if (Symbol.Name._init_.equals(oldParserMethod.getName()) && !Symbol.Signature._void.equals(oldParserMethod.getSignature())) {
+        if (Symbol.Name._init_.equals(oldParserMethod.getName()) && Symbol.Signature._void != oldParserMethod.getSignature()) {
             // only mark constructors that contain the outer anonymous inner class
             Matcher matcher = InnerClassRedefiner.ANON_INNER_CLASS_PATTERN.matcher(oldParserMethod.getSignature().toString());
             if (matcher.matches()) {
