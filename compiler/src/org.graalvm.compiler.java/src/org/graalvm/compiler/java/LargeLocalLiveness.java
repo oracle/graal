@@ -107,14 +107,9 @@ public final class LargeLocalLiveness extends LocalLiveness {
         }
 
         BciBlock block = blocks[blockID];
-        long tmp = block.loops;
-        int pos = 0;
-        while (tmp != 0) {
-            if ((tmp & 1L) == 1L) {
-                this.localsChangedInLoop[pos].set(local);
-            }
-            tmp >>>= 1;
-            ++pos;
+        BitSet loops = block.loops;
+        for (int pos = -1; (pos = loops.nextSetBit(pos + 1)) >= 0;) {
+            this.localsChangedInLoop[pos].set(local);
         }
     }
 

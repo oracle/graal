@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,8 @@ package org.graalvm.compiler.core.test;
 import org.graalvm.compiler.java.BciBlockMapping;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.junit.Test;
+
+import java.util.Random;
 
 /**
  * Tests that the {@link BciBlockMapping} can handle code with a lot of blocks. The test code is
@@ -1412,5 +1414,148 @@ public class BciBlockMappingTest extends GraalCompilerTest {
         blackhole("8.0-42.0", "" + aDouble);
         blackhole("8.025", "" + aDouble);
         blackhole("C(87)-96.0", "" + aDouble);
+    }
+
+    @Test
+    public void testManyLoops() {
+        parseEager("manyLoops", AllowAssumptions.NO);
+    }
+
+    public int manyLoops() {
+        Random rng = new Random();
+        int count = 0;
+        // @formatter:off
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        while (rng.nextBoolean()) { ++count; }
+        /* 129th */ while (rng.nextBoolean()) { ++count; }
+        /* 130th */ while (rng.nextBoolean()) { ++count; }
+        // @formatter:on
+        return count;
     }
 }
