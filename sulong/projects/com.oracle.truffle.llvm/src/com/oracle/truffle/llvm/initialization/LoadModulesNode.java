@@ -233,7 +233,7 @@ public final class LoadModulesNode extends LLVMRootNode {
             BitSet visited;
             ArrayDeque<CallTarget> que = null;
             LLVMScope resultScope = null;
-            RTLDFlags localOrGlobal = RTLDFlags.RTLD_DEFAULT;
+            RTLDFlags localOrGlobal = RTLDFlags.RTLD_OPEN_DEFAULT;
 
             // check for arguments for dlOpen
             if (frame.getArguments().length > 0 && (frame.getArguments()[0] instanceof RTLDFlags)) {
@@ -273,7 +273,7 @@ public final class LoadModulesNode extends LLVMRootNode {
                 if (!visited.get(id)) {
                     visited.set(id);
                     addIDToLocalScope(localScope, bitcodeID);
-                    if (RTLDFlags.RTLD_DEFAULT.isActive(localOrGlobal)) {
+                    if (RTLDFlags.RTLD_OPEN_DEFAULT.isActive(localOrGlobal)) {
                         initScopes.execute(context.getGlobalScope());
                         initScopes.execute(localScope);
                         // create the returning scope.
@@ -301,7 +301,7 @@ public final class LoadModulesNode extends LLVMRootNode {
             }
 
             if (context.isLibraryAlreadyLoaded(bitcodeID)) {
-                if (RTLDFlags.RTLD_DEFAULT.isActive(localOrGlobal)) {
+                if (RTLDFlags.RTLD_OPEN_DEFAULT.isActive(localOrGlobal)) {
                     return resultScope;
                 } else {
                     return localScope;
@@ -364,7 +364,7 @@ public final class LoadModulesNode extends LLVMRootNode {
             }
 
             if (LLVMLoadingPhase.ALL == phase) {
-                if (RTLDFlags.RTLD_DEFAULT.isActive(localOrGlobal)) {
+                if (RTLDFlags.RTLD_OPEN_DEFAULT.isActive(localOrGlobal)) {
                     return resultScope;
                 } else {
                     return localScope;
