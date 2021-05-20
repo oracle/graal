@@ -191,7 +191,7 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
                      */
                     result = TypeFlowBuilder.create(bb, node, SourceTypeFlow.class, () -> {
                         SourceTypeFlow src = new SourceTypeFlow(node, TypeState.forExactType(bb, (AnalysisType) objStamp.type(), !objStamp.nonNull()));
-                        methodFlow.addSource(src);
+                        methodFlow.addMiscEntry(src);
                         return src;
                     });
                 } else {

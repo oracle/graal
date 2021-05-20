@@ -145,7 +145,7 @@ final class EnumSwitchFeature implements GraalFeature {
     }
 
     private void onMethodParsed(AnalysisMethod method, StructuredGraph graph) {
-        boolean methodSafeForExecution = graph != null && graph.getNodes().filter(node -> node instanceof EnsureClassInitializedNode).isEmpty();
+        boolean methodSafeForExecution = graph.getNodes().filter(node -> node instanceof EnsureClassInitializedNode).isEmpty();
 
         Boolean existingValue = methodsSafeForExecution.put(method, methodSafeForExecution);
         assert existingValue == null : "Method parsed twice: " + method.format("%H.%n(%p)");

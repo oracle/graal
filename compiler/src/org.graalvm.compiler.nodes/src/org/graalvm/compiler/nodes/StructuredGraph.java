@@ -679,14 +679,15 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
      */
     @Override
     protected Graph copy(String newName, Consumer<UnmodifiableEconomicMap<Node, Node>> duplicationMapCallback, DebugContext debugForCopy) {
-        return copy(newName, duplicationMapCallback, compilationId, debugForCopy);
+        return copy(newName, rootMethod, getOptions(), duplicationMapCallback, compilationId, debugForCopy);
     }
 
     @SuppressWarnings("try")
-    private StructuredGraph copy(String newName, Consumer<UnmodifiableEconomicMap<Node, Node>> duplicationMapCallback, CompilationIdentifier newCompilationId, DebugContext debugForCopy) {
+    private StructuredGraph copy(String newName, ResolvedJavaMethod rootMethodForCopy, OptionValues optionsForCopy, Consumer<UnmodifiableEconomicMap<Node, Node>> duplicationMapCallback,
+                    CompilationIdentifier newCompilationId, DebugContext debugForCopy) {
         AllowAssumptions allowAssumptions = allowAssumptions();
         StructuredGraph copy = new StructuredGraph(newName,
-                        method(),
+                        rootMethodForCopy,
                         entryBCI,
                         assumptions == null ? null : new Assumptions(),
                         speculationLog,
@@ -695,7 +696,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
                         methods != null ? new ArrayList<>(methods) : null,
                         trackNodeSourcePosition,
                         newCompilationId,
-                        getOptions(), debugForCopy, null, callerContext);
+                        optionsForCopy, debugForCopy, null, callerContext);
         if (allowAssumptions == AllowAssumptions.YES && assumptions != null) {
             copy.assumptions.record(assumptions);
         }
@@ -727,7 +728,11 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
      *            accessed by multiple threads).
      */
     public StructuredGraph copyWithIdentifier(CompilationIdentifier newCompilationId, DebugContext debugForCopy) {
-        return copy(name, null, newCompilationId, debugForCopy);
+        return copy(name, rootMethod, getOptions(), null, newCompilationId, debugForCopy);
+    }
+
+    public StructuredGraph copy(ResolvedJavaMethod rootMethodForCopy, OptionValues optionsForCopy, DebugContext debugForCopy) {
+        return copy(name, rootMethodForCopy, optionsForCopy, null, compilationId, debugForCopy);
     }
 
     public ParameterNode getParameter(int index) {
