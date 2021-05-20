@@ -534,6 +534,18 @@ public class StaticObject implements TruffleObject, Cloneable {
             this.primitive = new byte[primitiveArraySize];
             this.object = new Object[objectArraySize];
         }
+
+        private DefaultArrayBasedStaticObject(DefaultArrayBasedStaticObject other) {
+            super(other.getKlass(), other.isForeignObject());
+            this.shape = other.shape;
+            this.primitive = other.primitive == null ? null : other.primitive.clone();
+            this.object = other.object == null ? null : other.object.clone();
+        }
+
+        @Override
+        public Object clone() {
+            return new DefaultArrayBasedStaticObject(this);
+        }
     }
 
     // This class mimics the layout of generated storage factory classes
