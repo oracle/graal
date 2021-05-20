@@ -1407,9 +1407,14 @@ public class BciBlockMapping implements JavaMethodContext {
                 sb.append("]");
             }
             if (!b.loops.isEmpty() && loopHeadersMap != null) {
-                sb.append(" Loops=");
-                String s = b.loops.toString().replace('{', '[').replace('}', ']');
-                sb.append(s);
+                sb.append(" Loops=[");
+                for (int pos = -1; (pos = b.loops.nextSetBit(pos + 1)) >= 0;) {
+                    if (sb.charAt(sb.length() - 1) != '[') {
+                        sb.append(", ");
+                    }
+                    sb.append("B").append(getId.applyAsInt(loopHeadersMap[pos]));
+                }
+                sb.append("]");
             }
             sb.append(System.lineSeparator());
         }
@@ -1459,7 +1464,7 @@ public class BciBlockMapping implements JavaMethodContext {
         block.loops.set(nextLoop);
         debug.log("makeLoopHeader(%s) -> %s", block, block.loops);
         if (loopHeaders == null) {
-            loopHeaders = new BciBlock[LOOP_HEADER_INITIAL_CAPACITY];
+            loopHeaders = new BciBlock[Math.max(nextPowerOfTwo(nextLoop), LOOP_HEADER_INITIAL_CAPACITY)];
         } else if (nextLoop >= loopHeaders.length) {
             int newLength = nextPowerOfTwo(nextLoop);
             loopHeaders = Arrays.copyOf(loopHeaders, newLength);
