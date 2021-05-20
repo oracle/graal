@@ -280,6 +280,26 @@ public class HostLanguageService extends AbstractHostService {
         }
     }
 
+    @Override
+    public void pin(Object receiver) {
+        if (receiver instanceof ScopedGuestObject) {
+            ScopedGuestObject sgo = (ScopedGuestObject) receiver;
+            sgo.pin();
+        } else {
+            throw ScopedGuestObject.createNoScopeException();
+        }
+    }
+
+    @Override
+    public void release(Object receiver) {
+        if (receiver instanceof ScopedGuestObject) {
+            ScopedGuestObject sgo = (ScopedGuestObject) receiver;
+            sgo.release();
+        } else {
+            throw ScopedGuestObject.createNoScopeException();
+        }
+    }
+
     private static boolean isGuestToHostCallFromHostInterop(StackTraceElement element) {
         assert assertClassNameUnchanged(GuestToHostCalls.class, "com.oracle.truffle.host.HostObject$GuestToHostCalls");
         assert assertClassNameUnchanged(GuestToHostCodeCache.class, "com.oracle.truffle.host.GuestToHostCodeCache");
@@ -315,6 +335,14 @@ public class HostLanguageService extends AbstractHostService {
             default:
                 return false;
         }
+    }
+
+    @Override
+    public Object unpackIfScoped(Object receiver) {
+        if (receiver instanceof ScopedGuestObject) {
+            return ((ScopedGuestObject) receiver).delegate;
+        }
+        return receiver;
     }
 
 }

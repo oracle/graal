@@ -1512,7 +1512,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             if (valueContext != this) {
                 valueReceiver = this.migrateValue(valueReceiver, valueContext);
             }
-            return valueReceiver;
+            return engine.host.unpackIfScoped(valueReceiver);
         } else if (PolyglotWrapper.isInstance(hostValue)) {
             return migrateHostWrapper(PolyglotWrapper.asInstance(hostValue));
         } else {

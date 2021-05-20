@@ -176,4 +176,19 @@ public class GuestToHostService extends AbstractHostService {
         return -1;
     }
 
+    @Override
+    public void pin(Object receiver) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void release(Object receiver) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Object unpackIfScoped(Object receiver) {
+        throw new UnsupportedOperationException();
+    }
+
 }

@@ -1180,6 +1180,16 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         }
     }
 
+    @Override
+    public void pin(Object receiver) {
+        engine.host.pin(receiver);
+    }
+
+    @Override
+    public void release(Object receiver) {
+        engine.host.release(receiver);
+    }
+
     @TruffleBoundary
     static final RuntimeException getHashValuesIteratorUnsupported(PolyglotLanguageContext context, Object receiver) {
         throw unsupported(context, receiver, "getHashValuesIterator()", "hasHashEntries()");

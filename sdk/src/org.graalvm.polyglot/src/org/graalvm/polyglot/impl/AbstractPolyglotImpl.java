@@ -48,6 +48,7 @@ import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.Reader;
 import java.lang.reflect.AnnotatedElement;
+import java.lang.reflect.Executable;
 import java.lang.reflect.Type;
 import java.net.URI;
 import java.net.URL;
@@ -191,6 +192,8 @@ public abstract class AbstractPolyglotImpl {
         public abstract boolean allowsAccess(HostAccess access, AnnotatedElement element);
 
         public abstract boolean allowsImplementation(HostAccess access, Class<?> type);
+
+        public abstract boolean isMethodScoped(HostAccess access, Executable e);
 
         public abstract boolean isArrayAccessible(HostAccess access);
 
@@ -659,7 +662,6 @@ public abstract class AbstractPolyglotImpl {
         public abstract boolean isEngineException(RuntimeException e);
 
         public abstract RuntimeException unboxEngineException(RuntimeException e);
-
     }
 
     public abstract static class AbstractHostService {
@@ -716,6 +718,12 @@ public abstract class AbstractPolyglotImpl {
         public abstract int findNextGuestToHostStackTraceElement(StackTraceElement firstElement, StackTraceElement[] hostStack, int nextElementIndex);
 
         public abstract Object migrateValue(Object hostContext, Object value, Object valueContext);
+
+        public abstract void pin(Object receiver);
+
+        public abstract void release(Object receiver);
+
+        public abstract Object unpackIfScoped(Object receiver);
 
     }
 
@@ -989,6 +997,9 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Value getHashValuesIterator(Object context, Object receiver);
 
+        public abstract void release(Object receiver);
+
+        public abstract void pin(Object receiver);
     }
 
     public abstract Class<?> loadLanguageClass(String className);

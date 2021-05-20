@@ -78,11 +78,40 @@ abstract class HostMethodDesc {
         private final boolean varArgs;
         @CompilationFinal(dimensions = 1) private final Class<?>[] parameterTypes;
         @CompilationFinal(dimensions = 1) private final Type[] genericParameterTypes;
+        @CompilationFinal(dimensions = 1) private final int[] scopedParameters;
+        @CompilationFinal private final int scopedParameterCount;
+        private static final Class<?>[] unscopedTypes = {Boolean.class, Byte.class, Short.class, Character.class, Integer.class, Long.class, Float.class, Double.class, String.class};
 
-        protected SingleMethod(Executable executable) {
+        protected SingleMethod(Executable executable, boolean parametersScoped) {
             this.varArgs = executable.isVarArgs();
             this.parameterTypes = executable.getParameterTypes();
             this.genericParameterTypes = executable.getGenericParameterTypes();
+            int[] scopedParams = null;
+            int cnt = 0;
+            if (parametersScoped) {
+                scopedParams = new int[parameterTypes.length];
+                for (int i = 0; i < parameterTypes.length; i++) {
+                    if (isScoped(parameterTypes[i])) {
+                        scopedParams[i] = cnt++;
+                    } else {
+                        scopedParams[i] = ScopedGuestObject.NO_SCOPE;
+                    }
+                }
+            }
+            this.scopedParameters = scopedParams;
+            this.scopedParameterCount = cnt;
+        }
+
+        private static boolean isScoped(Class<?> c) {
+            if (c.isPrimitive()) {
+                return false;
+            }
+            for (Class<?> unscopedType : unscopedTypes) {
+                if (c.isAssignableFrom(unscopedType)) {
+                    return false;
+                }
+            }
+            return true;
         }
 
         public abstract Executable getReflectionMethod();
@@ -103,6 +132,18 @@ abstract class HostMethodDesc {
 
         public Type[] getGenericParameterTypes() {
             return genericParameterTypes;
+        }
+
+        public final boolean hasScopedParameters() {
+            return scopedParameterCount > 0;
+        }
+
+        public final int[] getScopedParameters() {
+            return this.scopedParameters;
+        }
+
+        public final int getScopedParameterCount() {
+            return this.scopedParameterCount;
         }
 
         @Override
@@ -129,21 +170,21 @@ abstract class HostMethodDesc {
             return getReflectionMethod() instanceof Constructor<?>;
         }
 
-        static SingleMethod unreflect(Method reflectionMethod) {
+        static SingleMethod unreflect(Method reflectionMethod, boolean scoped) {
             assert isAccessible(reflectionMethod);
             if (TruffleOptions.AOT || isCallerSensitive(reflectionMethod)) {
-                return new MethodReflectImpl(reflectionMethod);
+                return new MethodReflectImpl(reflectionMethod, scoped);
             } else {
-                return new MethodMHImpl(reflectionMethod);
+                return new MethodMHImpl(reflectionMethod, scoped);
             }
         }
 
-        static SingleMethod unreflect(Constructor<?> reflectionConstructor) {
+        static SingleMethod unreflect(Constructor<?> reflectionConstructor, boolean scoped) {
             assert isAccessible(reflectionConstructor);
             if (TruffleOptions.AOT || isCallerSensitive(reflectionConstructor)) {
-                return new ConstructorReflectImpl(reflectionConstructor);
+                return new ConstructorReflectImpl(reflectionConstructor, scoped);
             } else {
-                return new ConstructorMHImpl(reflectionConstructor);
+                return new ConstructorMHImpl(reflectionConstructor, scoped);
             }
         }
 
@@ -170,8 +211,8 @@ abstract class HostMethodDesc {
 
         abstract static class ReflectBase extends SingleMethod {
 
-            ReflectBase(Executable executable) {
-                super(executable);
+            ReflectBase(Executable executable, boolean scoped) {
+                super(executable, scoped);
             }
 
             @Override
@@ -185,8 +226,8 @@ abstract class HostMethodDesc {
         private static final class MethodReflectImpl extends ReflectBase {
             private final Method reflectionMethod;
 
-            MethodReflectImpl(Method reflectionMethod) {
-                super(reflectionMethod);
+            MethodReflectImpl(Method reflectionMethod, boolean scoped) {
+                super(reflectionMethod, scoped);
                 this.reflectionMethod = reflectionMethod;
             }
 
@@ -227,8 +268,8 @@ abstract class HostMethodDesc {
         private static final class ConstructorReflectImpl extends ReflectBase {
             private final Constructor<?> reflectionConstructor;
 
-            ConstructorReflectImpl(Constructor<?> reflectionConstructor) {
-                super(reflectionConstructor);
+            ConstructorReflectImpl(Constructor<?> reflectionConstructor, boolean scoped) {
+                super(reflectionConstructor, scoped);
                 this.reflectionConstructor = reflectionConstructor;
             }
 
@@ -264,8 +305,8 @@ abstract class HostMethodDesc {
         abstract static class MHBase extends SingleMethod {
             @CompilationFinal private MethodHandle methodHandle;
 
-            MHBase(Executable executable) {
-                super(executable);
+            MHBase(Executable executable, boolean scoped) {
+                super(executable, scoped);
             }
 
             @Override
@@ -320,8 +361,8 @@ abstract class HostMethodDesc {
         private static final class MethodMHImpl extends MHBase {
             private final Method reflectionMethod;
 
-            MethodMHImpl(Method reflectionMethod) {
-                super(reflectionMethod);
+            MethodMHImpl(Method reflectionMethod, boolean scoped) {
+                super(reflectionMethod, scoped);
                 this.reflectionMethod = reflectionMethod;
             }
 
@@ -357,8 +398,8 @@ abstract class HostMethodDesc {
         private static final class ConstructorMHImpl extends MHBase {
             private final Constructor<?> reflectionConstructor;
 
-            ConstructorMHImpl(Constructor<?> reflectionConstructor) {
-                super(reflectionConstructor);
+            ConstructorMHImpl(Constructor<?> reflectionConstructor, boolean scoped) {
+                super(reflectionConstructor, scoped);
                 this.reflectionConstructor = reflectionConstructor;
             }
 
