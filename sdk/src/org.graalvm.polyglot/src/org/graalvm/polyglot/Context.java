@@ -307,10 +307,13 @@ import org.graalvm.polyglot.proxy.Proxy;
  */
 public final class Context implements AutoCloseable {
 
-    final AbstractContextImpl impl;
+    final AbstractContextImpl<Object> impl;
+    final Object receiver;
 
-    Context(AbstractContextImpl impl) {
-        this.impl = impl;
+    @SuppressWarnings("unchecked")
+    <T> Context(AbstractContextImpl<T> impl, T context) {
+        this.impl = (AbstractContextImpl<Object>) impl;
+        this.receiver = context;
     }
 
     /**
@@ -320,7 +323,7 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public Engine getEngine() {
-        return impl.getEngineImpl(this);
+        return impl.getEngineImpl(receiver, this);
     }
 
     /**
@@ -350,7 +353,7 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public Value eval(Source source) {
-        return impl.eval(source.getLanguage(), source.impl);
+        return impl.eval(receiver, source.getLanguage(), source.impl);
     }
 
     /**
@@ -431,7 +434,7 @@ public final class Context implements AutoCloseable {
      * @since 20.2
      */
     public Value parse(Source source) throws PolyglotException {
-        return impl.parse(source.getLanguage(), source.impl);
+        return impl.parse(receiver, source.getLanguage(), source.impl);
     }
 
     /**
@@ -494,7 +497,7 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public Value getPolyglotBindings() {
-        return impl.getPolyglotBindings();
+        return impl.getPolyglotBindings(receiver);
     }
 
     /**
@@ -511,7 +514,7 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public Value getBindings(String languageId) {
-        return impl.getBindings(languageId);
+        return impl.getBindings(receiver, languageId);
     }
 
     /**
@@ -527,7 +530,7 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public boolean initialize(String languageId) {
-        return impl.initializeLanguage(languageId);
+        return impl.initializeLanguage(receiver, languageId);
     }
 
     /**
@@ -536,7 +539,7 @@ public final class Context implements AutoCloseable {
      * @since 19.3
      */
     public void resetLimits() {
-        impl.resetLimits();
+        impl.resetLimits(receiver);
     }
 
     /**
@@ -686,7 +689,7 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public Value asValue(Object hostValue) {
-        return impl.asValue(hostValue);
+        return impl.asValue(receiver, hostValue);
     }
 
     /**
@@ -703,7 +706,7 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public void enter() {
-        impl.explicitEnter(this);
+        impl.explicitEnter(receiver, this);
     }
 
     /**
@@ -715,7 +718,7 @@ public final class Context implements AutoCloseable {
     public boolean equals(Object obj) {
         if (obj instanceof Context) {
             Context other = ((Context) obj);
-            return impl.equals(other.impl);
+            return receiver.equals(other.receiver);
         }
         return false;
     }
@@ -727,7 +730,7 @@ public final class Context implements AutoCloseable {
      */
     @Override
     public int hashCode() {
-        return impl.hashCode();
+        return receiver.hashCode();
     }
 
     /**
@@ -740,7 +743,7 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public void leave() {
-        impl.explicitLeave(this);
+        impl.explicitLeave(receiver, this);
     }
 
     /**
@@ -767,7 +770,7 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public void close(boolean cancelIfExecuting) {
-        impl.close(this, cancelIfExecuting);
+        impl.close(receiver, this, cancelIfExecuting);
     }
 
     /**
@@ -810,7 +813,7 @@ public final class Context implements AutoCloseable {
      * @since 20.3
      */
     public void interrupt(Duration timeout) throws TimeoutException {
-        if (!impl.interrupt(this, timeout)) {
+        if (!impl.interrupt(receiver, this, timeout)) {
             throw new TimeoutException("Interrupt timed out.");
         }
     }
@@ -858,7 +861,7 @@ public final class Context implements AutoCloseable {
      * @since 21.1
      */
     public void safepoint() {
-        impl.safepoint();
+        impl.safepoint(receiver);
     }
 
     /**
@@ -917,7 +920,7 @@ public final class Context implements AutoCloseable {
         return EMPTY.new Builder(permittedLanguages);
     }
 
-    private static final Context EMPTY = new Context(null);
+    private static final Context EMPTY = new Context(null, null);
 
     static final Predicate<String> UNSET_HOST_LOOKUP = new Predicate<String>() {
         public boolean test(String t) {

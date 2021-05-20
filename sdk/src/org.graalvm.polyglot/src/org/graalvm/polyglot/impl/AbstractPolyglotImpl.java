@@ -79,6 +79,7 @@ import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.PolyglotException.StackFrame;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextImpl;
 import org.graalvm.polyglot.ResourceLimitEvent;
 import org.graalvm.polyglot.ResourceLimits;
 import org.graalvm.polyglot.Source;
@@ -136,7 +137,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract <T> Engine newEngine(AbstractEngineImpl<T> impl, T receiver);
 
-        public abstract Context newContext(AbstractContextImpl impl);
+        public abstract <T> Context newContext(AbstractContextImpl<T> impl, T receiver);
 
         public abstract PolyglotException newLanguageException(String message, AbstractExceptionImpl impl);
 
@@ -150,11 +151,13 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract SourceSection newSourceSection(Source source, Object impl);
 
+        public abstract Object getReceiver(Context value);
+
         public abstract Object getReceiver(Value value);
 
         public abstract AbstractValueImpl getImpl(Value value);
 
-        public abstract AbstractContextImpl getImpl(Context context);
+        public abstract AbstractContextImpl<Object> getImpl(Context context);
 
         public abstract Object getReceiver(Engine engine);
 
@@ -422,39 +425,37 @@ public abstract class AbstractPolyglotImpl {
 
     }
 
-    public abstract static class AbstractContextImpl {
+    public abstract static class AbstractContextImpl<T> {
 
         protected AbstractContextImpl(AbstractPolyglotImpl impl) {
-            if (!getClass().getName().equals("com.oracle.truffle.polyglot.PolyglotContextImpl")) {
-                throw new AssertionError("Only one implementation of AbstractContextImpl allowed.");
-            }
+            Objects.requireNonNull(impl);
         }
 
-        public abstract boolean initializeLanguage(String languageId);
+        public abstract boolean initializeLanguage(T receiver, String languageId);
 
-        public abstract Value eval(String language, Object sourceImpl);
+        public abstract Value eval(T receiver, String language, Object sourceImpl);
 
-        public abstract Value parse(String language, Object sourceImpl);
+        public abstract Value parse(T receiver, String language, Object sourceImpl);
 
-        public abstract Engine getEngineImpl(Context sourceContext);
+        public abstract Engine getEngineImpl(T receiver, Context sourceContext);
 
-        public abstract void close(Context sourceContext, boolean interuptExecution);
+        public abstract void close(T receiver, Context sourceContext, boolean interuptExecution);
 
-        public abstract boolean interrupt(Context sourceContext, Duration timeout);
+        public abstract boolean interrupt(T receiver, Context sourceContext, Duration timeout);
 
-        public abstract Value asValue(Object hostValue);
+        public abstract Value asValue(T receiver, Object hostValue);
 
-        public abstract void explicitEnter(Context sourceContext);
+        public abstract void explicitEnter(T receiver, Context sourceContext);
 
-        public abstract void explicitLeave(Context sourceContext);
+        public abstract void explicitLeave(T receiver, Context sourceContext);
 
-        public abstract Value getBindings(String language);
+        public abstract Value getBindings(T receiver, String language);
 
-        public abstract Value getPolyglotBindings();
+        public abstract Value getPolyglotBindings(T receiver);
 
-        public abstract void resetLimits();
+        public abstract void resetLimits(T receiver);
 
-        public abstract void safepoint();
+        public abstract void safepoint(T receiver);
 
     }
 

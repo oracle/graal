@@ -869,9 +869,9 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     void addContext(PolyglotContextImpl context) {
         assert Thread.holdsLock(this.lock);
 
-        Context api = impl.getAPIAccess().newContext(context);
+        Context api = impl.getAPIAccess().newContext(PolyglotContextDispatch.INSTANCE, context);
         context.creatorApi = api;
-        context.currentApi = impl.getAPIAccess().newContext(context);
+        context.currentApi = impl.getAPIAccess().newContext(PolyglotContextDispatch.INSTANCE, context);
 
         if (limits != null) {
             limits.validate(context.config.limits);

@@ -563,7 +563,7 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public AbstractContextImpl getImpl(Context context) {
+        public AbstractContextImpl<Object> getImpl(Context context) {
             return context.impl;
         }
 
@@ -578,8 +578,13 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public Context newContext(AbstractContextImpl impl) {
-            return new Context(impl);
+        public <T> Context newContext(AbstractContextImpl<T> impl, T receiver) {
+            return new Context(impl, receiver);
+        }
+
+        @Override
+        public Object getReceiver(Context value) {
+            return value.receiver;
         }
 
         @Override
