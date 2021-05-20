@@ -209,7 +209,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         ResolvedJavaMethod javaMethod = hostedMethod.getWrapped().getWrapped();
         /* If this is a SubstitutionMethod we might need the target not the original */
         if (javaMethod instanceof SubstitutionMethod) {
-            SubstitutionMethod substitutionMethod = (SubstitutionMethod)javaMethod;
+            SubstitutionMethod substitutionMethod = (SubstitutionMethod) javaMethod;
             if (wantOriginal) {
                 return substitutionMethod.getOriginal().getDeclaringClass();
             } else {
@@ -232,7 +232,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         ResolvedJavaField javaField = hostedField.wrapped.wrapped;
         /* If this is a SubstitutionMethod we might need the target not the original */
         if (javaField instanceof SubstitutionField) {
-            SubstitutionField substitutionField = (SubstitutionField)javaField;
+            SubstitutionField substitutionField = (SubstitutionField) javaField;
             if (wantOriginal) {
                 return substitutionField.getOriginal().getDeclaringClass();
             } else {
@@ -1190,7 +1190,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             ResolvedJavaType declaringClass;
             // if we have a HostedMethod then deal with substitutions
             if (method instanceof HostedMethod) {
-                declaringClass = getDeclaringClass((HostedMethod)method, false);
+                declaringClass = getDeclaringClass((HostedMethod) method, false);
             } else {
                 declaringClass = method.getDeclaringClass();
             }
