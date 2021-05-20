@@ -44,7 +44,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.dispatch.BaseInterop;
-import com.oracle.truffle.espresso.substitutions.SuppressFBWarnings;
+import com.oracle.truffle.espresso.substitutions.JavaType;
 
 /**
  * Implementation of the Espresso object model.

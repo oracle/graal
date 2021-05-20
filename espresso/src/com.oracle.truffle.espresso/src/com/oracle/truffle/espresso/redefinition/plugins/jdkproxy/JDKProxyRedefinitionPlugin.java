@@ -36,15 +36,15 @@ import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
 import com.oracle.truffle.espresso.redefinition.plugins.api.InternalRedefinitionPlugin;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.substitutions.Host;
+import com.oracle.truffle.espresso.substitutions.JavaType;
 
 public final class JDKProxyRedefinitionPlugin extends InternalRedefinitionPlugin {
 
     private final Map<KlassRef, List<ProxyCache>> cache = Collections.synchronizedMap(new HashMap<>());
     private DirectCallNode proxyGeneratorMethodCallNode;
 
-    public synchronized void collectProxyArguments(@Host(String.class) StaticObject proxyName,
-                    @Host(Class[].class) StaticObject interfaces,
+    public synchronized void collectProxyArguments(@JavaType(String.class) StaticObject proxyName,
+                    @JavaType(Class[].class) StaticObject interfaces,
                     int classModifier,
                     DirectCallNode generatorMethodCallNode) {
         if (proxyGeneratorMethodCallNode == null) {
