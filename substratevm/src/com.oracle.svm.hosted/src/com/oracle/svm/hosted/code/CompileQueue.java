@@ -1004,7 +1004,6 @@ public class CompileQueue {
                     GraalCompiler.compileGraph(graph, method, backend.getProviders(), backend, null, getOptimisticOpts(), method.getProfilingInfo(), suites, lirSuites, result,
                                     new HostedCompilationResultBuilderFactory(), false);
                 }
-                method.getProfilingInfo().setCompilerIRSize(StructuredGraph.class, method.compilationInfo.graph.getNodeCount());
                 method.compilationInfo.numNodesAfterCompilation = graph.getNodeCount();
 
                 if (method.compilationInfo.isDeoptTarget()) {
