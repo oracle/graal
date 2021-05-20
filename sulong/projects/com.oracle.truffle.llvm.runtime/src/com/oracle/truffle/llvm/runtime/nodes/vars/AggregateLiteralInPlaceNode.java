@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -86,7 +86,6 @@ public abstract class AggregateLiteralInPlaceNode extends LLVMStatementNode {
         writeObjects(frame, context);
     }
 
-    @ExplodeLoop
     private void writePrimitives(LLVMContext context, LLVMI8OffsetStoreNode storeI8, LLVMI64OffsetStoreNode storeI64) {
         int offset = 0;
         int nextStore = 0;
