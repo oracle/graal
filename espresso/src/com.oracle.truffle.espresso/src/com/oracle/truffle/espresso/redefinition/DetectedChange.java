@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.redefinition;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.ParserField;
 import com.oracle.truffle.espresso.impl.ParserMethod;
 
 import java.util.ArrayList;
@@ -39,13 +40,13 @@ public final class DetectedChange {
     private final Map<Method, ParserMethod> changedMethodBodies = new HashMap<>();
     private final List<ParserMethod> addedMethods = new ArrayList<>();
     private final Set<Method> removedMethods = new HashSet<>();
-    private final List<Field> outerFields = new ArrayList<>();
-    private boolean clinitChanged;
+    private final Map<Field, ParserField> changedObjectTypeFields = new HashMap<>();
+    private boolean classInitializerChanged;
 
     void addMethodBodyChange(Method oldMethod, ParserMethod newMethod) {
         changedMethodBodies.put(oldMethod, newMethod);
         if (oldMethod.getName() == Symbol.Name._clinit_) {
-            clinitChanged = true;
+            classInitializerChanged = true;
         }
     }
 
@@ -77,15 +78,16 @@ public final class DetectedChange {
         addedMethods.addAll(newMethods);
     }
 
-    public void addOuterField(Field oldField) {
-        outerFields.add(oldField);
+    public void addObjectTypeFieldChange(Field oldField, ParserField newField) {
+        changedObjectTypeFields.put(oldField, newField);
     }
 
-    public List<Field> getOuterFields() {
-        return Collections.unmodifiableList(outerFields);
+    public Map<Field, ParserField> getChangedObjectTypeFields() {
+        return Collections.unmodifiableMap(changedObjectTypeFields);
     }
 
     public boolean clinitChanged() {
-        return clinitChanged;
+        return classInitializerChanged;
     }
+
 }

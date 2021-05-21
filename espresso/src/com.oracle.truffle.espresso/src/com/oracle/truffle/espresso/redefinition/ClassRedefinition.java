@@ -284,19 +284,33 @@ public final class ClassRedefinition {
 
         for (int i = 0; i < oldFields.length; i++) {
             Field oldField = oldFields[i];
-            // verify that there is a new corresponding field
+            // search for a new corresponding field
             boolean found = false;
             for (int j = 0; j < newFields.length; j++) {
                 ParserField newField = newFields[j];
+                // first look for a perfect match
                 if (isUnchangedField(oldField, newField)) {
+                    // A nested anonymous inner class may contain a field reference to the outer class instance.
+                    // Since we match against the patched (inner class rename rules applied) if the current class
+                    // was patched (renamed) the resulting outer field pointer will have a changed type. Hence
+                    // we should mark it as a changed object type field.
                     Matcher matcher = InnerClassRedefiner.ANON_INNER_CLASS_PATTERN.matcher(oldField.getType().toString());
                     if (isPatched && matcher.matches()) {
-                        // special outer pointer in nested anonymous inner classes
-                        collectedChanges.addOuterField(oldField);
+                        collectedChanges.addObjectTypeFieldChange(oldField, newField);
                         result = ClassChange.FIELD_OBJECT_TYPE_CHANGE;
                     }
                     found = true;
                     break;
+                } else if (oldField.getName() == newField.getName() && oldField.getType() != newField.getType()) {
+                    // OK, field type changed
+                    if (oldField.getType().length() > 1 && newField.getType().length() > 1) {
+                        // object type field changed to another object type
+                        collectedChanges.addObjectTypeFieldChange(oldField, newField);
+                        result = ClassChange.FIELD_OBJECT_TYPE_CHANGE;
+                        found = true;
+                        break;
+                    }
+                    // all other combinations of field type changes are not currently supported
                 }
             }
             if (!found) {
@@ -559,7 +573,7 @@ public final class ClassRedefinition {
     }
 
     private static boolean isUnchangedField(Field oldField, ParserField newField) {
-        boolean same = oldField.getName().equals(newField.getName()) && oldField.getType().equals(newField.getType()) && oldField.getModifiers() == newField.getFlags();
+        boolean same = oldField.getName() == newField.getName() && oldField.getType() == newField.getType() && oldField.getModifiers() == newField.getFlags();
 
         if (same) {
             // check field attributes
@@ -573,7 +587,7 @@ public final class ClassRedefinition {
             for (Attribute oldAttribute : oldAttributes) {
                 boolean found = false;
                 for (Attribute newAttribute : newAttributes) {
-                    if (oldAttribute.getName().equals(newAttribute.getName()) && Arrays.equals(oldAttribute.getData(), newAttribute.getData())) {
+                    if (oldAttribute.getName() == newAttribute.getName() && Arrays.equals(oldAttribute.getData(), newAttribute.getData())) {
                         found = true;
                         break;
                     }
