@@ -29,6 +29,8 @@ package org.graalvm.compiler.api.directives;
 /**
  * Directives that influence the compilation of methods by Graal. They don't influence the semantics
  * of the code, but they are useful for unit testing and benchmarking.
+ *
+ * Any methods defined in this class should be intrinsified via invocation plugins.
  */
 public final class GraalDirectives {
 
