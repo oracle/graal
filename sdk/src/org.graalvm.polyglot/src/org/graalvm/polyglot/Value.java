@@ -1369,18 +1369,27 @@ public final class Value {
      * assert context.eval("js", "42").as(Integer.class) == 42;
      * assert context.eval("js", "({foo:'bar'})").as(Map.class).get("foo").equals("bar");
      * assert context.eval("js", "[42]").as(List.class).get(0).equals(42);
-     * assert ((Map&lt;String, Object>)context.eval("js", "[{foo:'bar'}]").as(List.class).get(0)).get("foo").equals("bar");
+     * assert ((Map&lt;String, Object>) context.eval("js", "[{foo:'bar'}]").as(List.class).get(0)).get("foo").equals("bar");
      *
-     * &#64;FunctionalInterface interface IntFunction { int foo(int value); }
+     * &#64;FunctionalInterface
+     * interface IntFunction {
+     *     int foo(int value);
+     * }
      * assert context.eval("js", "(function(a){return a})").as(IntFunction.class).foo(42).asInt() == 42;
      *
-     * &#64;FunctionalInterface interface StringListFunction { int foo(List&lt;String&gt; value); }
-     * assert context.eval("js", "(function(a){return a.length})")
-     *               .as(StringListFunction.class).foo(new String[]{"42"}).asInt() == 1;
+     * &#64;FunctionalInterface
+     * interface StringListFunction {
+     *     int foo(List&lt;String&gt; value);
+     * }
+     * assert context.eval("js", "(function(a){return a.length})").as(StringListFunction.class).foo(new String[]{"42"}).asInt() == 1;
      *
-     * public abstract class AbstractClass { public AbstractClass() {} int foo(int value); }
-     * assert context.eval("js", "({foo: function(a){return a}})")
-     *               .as(AbstractClass.class).foo(42).asInt() == 42;
+     * public abstract class AbstractClass {
+     *     public AbstractClass() {
+     *     }
+     *
+     *     int foo(int value);
+     * }
+     * assert context.eval("js", "({foo: function(a){return a}})").as(AbstractClass.class).foo(42).asInt() == 42;
      * </pre>
      *
      * <h3>Object target type mapping</h3>
@@ -1749,7 +1758,12 @@ public final class Value {
      * @since 19.3.0
      */
     public Context getContext() {
-        return impl.getContext();
+        Object context = impl.getContext();
+        if (context == null) {
+            return null;
+        }
+        Context api = (Context) Engine.getImpl().getContextImpl().getAPI(impl.getContext());
+        return api.currentAPI;
     }
 
     /**

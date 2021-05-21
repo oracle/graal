@@ -56,7 +56,6 @@ import java.util.function.Supplier;
 import java.util.logging.Handler;
 
 import org.graalvm.options.OptionDescriptors;
-import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
@@ -97,10 +96,12 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
     });
 
-    final PolyglotEngineDispatch engineDispatch = new PolyglotEngineDispatch(this);
     private final PolyglotSource sourceImpl = new PolyglotSource(this);
     private final PolyglotSourceSection sourceSectionImpl = new PolyglotSourceSection(this);
     private final PolyglotManagement executionListenerImpl = new PolyglotManagement(this);
+    private final PolyglotEngineDispatch engineImpl = new PolyglotEngineDispatch(this);
+    private final PolyglotContextDispatch contextImpl = new PolyglotContextDispatch(this);
+
     private final AtomicReference<PolyglotEngineImpl> preInitializedEngineRef = new AtomicReference<>();
     private final Function<Source, org.graalvm.polyglot.Source> sourceConstructor = new Function<Source, org.graalvm.polyglot.Source>() {
         public org.graalvm.polyglot.Source apply(Source t) {
@@ -155,11 +156,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     }
 
     @Override
-    public Context getLimitEventContext(Object impl) {
-        return (Context) impl;
-    }
-
-    @Override
     public Object buildLimits(long statementLimit, Predicate<org.graalvm.polyglot.Source> statementLimitSourceFilter,
                     Consumer<ResourceLimitEvent> onLimit) {
         try {
@@ -193,18 +189,30 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         return executionListenerImpl;
     }
 
+    @SuppressWarnings("unchecked")
+    @Override
+    public AbstractContextImpl<Object> getContextImpl() {
+        return (AbstractContextImpl<Object>) ((AbstractContextImpl<? extends Object>) contextImpl);
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public AbstractEngineImpl<Object> getEngineImpl() {
+        return (AbstractEngineImpl<Object>) ((AbstractEngineImpl<? extends Object>) engineImpl);
+    }
+
     /**
      * Internal method do not use.
      */
     @Override
-    public Context getCurrentContext() {
+    public Object getCurrentContext() {
         try {
             PolyglotContextImpl context = PolyglotContextImpl.currentNotEntered();
             if (context == null) {
                 throw PolyglotEngineException.illegalState(
                                 "No current context is available. Make sure the Java method is invoked by a Graal guest language or a context is entered using Context.enter().");
             }
-            return context.currentApi;
+            return context;
         } catch (Throwable t) {
             throw PolyglotImpl.guestToHostException(this, t);
         }
@@ -214,7 +222,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
      * Internal method do not use.
      */
     @Override
-    public Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> originalOptions, boolean useSystemProperties, final boolean allowExperimentalOptions,
+    public Object buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> originalOptions, boolean useSystemProperties, final boolean allowExperimentalOptions,
                     boolean boundEngine,
                     MessageTransport messageInterceptor, Object logHandlerOrStream, HostAccess conf) {
         PolyglotEngineImpl impl = null;
@@ -276,11 +284,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                                 logHandler);
             }
 
-            Engine engine = getAPIAccess().newEngine(engineDispatch, impl);
-            impl.creatorApi = engine;
-            impl.currentApi = getAPIAccess().newEngine(engineDispatch, impl);
-
-            return engine;
+            return impl;
         } catch (Throwable t) {
             if (impl == null) {
                 throw PolyglotImpl.guestToHostException(this, t);
@@ -371,7 +375,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     }
 
     @Override
-    public Collection<Engine> findActiveEngines() {
+    public Collection<? extends Object> findActiveEngines() {
         return PolyglotEngineImpl.findActiveEngines();
     }
 

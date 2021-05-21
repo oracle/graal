@@ -110,11 +110,20 @@ public final class Engine implements AutoCloseable {
 
     final AbstractEngineImpl<Object> impl;
     final Object receiver;
+    final Engine currentAPI;
 
     @SuppressWarnings("unchecked")
     <T> Engine(AbstractEngineImpl<T> impl, T receiver) {
         this.impl = (AbstractEngineImpl<Object>) impl;
         this.receiver = receiver;
+        this.currentAPI = new Engine(this);
+    }
+
+    @SuppressWarnings("unchecked")
+    private <T> Engine(Engine engine) {
+        this.impl = engine.impl;
+        this.receiver = engine.receiver;
+        this.currentAPI = null;
     }
 
     private static final class ImplHolder {
@@ -206,12 +215,7 @@ public final class Engine implements AutoCloseable {
      */
     @SuppressWarnings("static-method")
     public String getVersion() {
-        String version = HomeFinder.getInstance().getVersion();
-        if (version.equals("snapshot")) {
-            return "Development Build";
-        } else {
-            return version;
-        }
+        return impl.getVersion(receiver);
     }
 
     /**
@@ -227,6 +231,9 @@ public final class Engine implements AutoCloseable {
      * @since 19.0
      */
     public void close(boolean cancelIfExecuting) {
+        if (currentAPI == null) {
+            throw new IllegalStateException("Engine instances that were indirectly received using Context.getCurrent() cannot be closed.");
+        }
         impl.close(receiver, this, cancelIfExecuting);
     }
 
@@ -321,8 +328,9 @@ public final class Engine implements AutoCloseable {
      * Used internally to find all active engines. Do not hold on to the returned collection
      * permanently as this may cause memory leaks.
      */
+    @SuppressWarnings("unchecked")
     static Collection<Engine> findActiveEngines() {
-        return getImpl().findActiveEngines();
+        return (Collection<Engine>) getImpl().findActiveEngines();
     }
 
     private static final Engine EMPTY = new Engine(null, null);
@@ -549,8 +557,11 @@ public final class Engine implements AutoCloseable {
             if (loadedImpl == null) {
                 throw new IllegalStateException("The Polyglot API implementation failed to load.");
             }
-            return loadedImpl.buildEngine(out, err, in, options, useSystemProperties, allowExperimentalOptions,
+            Object receiver = loadedImpl.buildEngine(out, err, in, options, useSystemProperties, allowExperimentalOptions,
                             boundEngine, messageTransport, customLogHandler, null);
+            Engine engine = new Engine(loadedImpl.getEngineImpl(), receiver);
+            engine.impl.setAPI(receiver, engine);
+            return engine;
         }
 
     }
@@ -568,18 +579,8 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public <T> Engine newEngine(AbstractEngineImpl<T> impl, T receiver) {
-            return new Engine(impl, receiver);
-        }
-
-        @Override
         public AbstractExceptionImpl getImpl(PolyglotException value) {
             return value.impl;
-        }
-
-        @Override
-        public <T> Context newContext(AbstractContextImpl<T> impl, T receiver) {
-            return new Context(impl, receiver);
         }
 
         @Override
@@ -615,6 +616,11 @@ public final class Engine implements AutoCloseable {
         @Override
         public SourceSection newSourceSection(Source source, Object impl) {
             return new SourceSection(source, impl);
+        }
+
+        @Override
+        public void notifyInnerContextCreated(Object engineReceiver, Object contextReceiver) {
+            Context.createContextAPI(engineReceiver, contextReceiver);
         }
 
         @Override
@@ -854,7 +860,7 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public Context getLimitEventContext(Object impl) {
+        public AbstractContextImpl<Object> getContextImpl() {
             throw noPolyglotImplementationFound();
         }
 
@@ -962,6 +968,11 @@ public final class Engine implements AutoCloseable {
 
         @Override
         public FileSystem newDefaultFileSystem() {
+            throw noPolyglotImplementationFound();
+        }
+
+        @Override
+        public AbstractEngineImpl<Object> getEngineImpl() {
             throw noPolyglotImplementationFound();
         }
 

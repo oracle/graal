@@ -79,7 +79,6 @@ import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.PolyglotException.StackFrame;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextImpl;
 import org.graalvm.polyglot.ResourceLimitEvent;
 import org.graalvm.polyglot.ResourceLimits;
 import org.graalvm.polyglot.Source;
@@ -135,10 +134,6 @@ public abstract class AbstractPolyglotImpl {
             }
         }
 
-        public abstract <T> Engine newEngine(AbstractEngineImpl<T> impl, T receiver);
-
-        public abstract <T> Context newContext(AbstractContextImpl<T> impl, T receiver);
-
         public abstract PolyglotException newLanguageException(String message, AbstractExceptionImpl impl);
 
         public abstract Language newLanguage(AbstractLanguageImpl impl);
@@ -150,6 +145,8 @@ public abstract class AbstractPolyglotImpl {
         public abstract Source newSource(Object impl);
 
         public abstract SourceSection newSourceSection(Source source, Object impl);
+
+        public abstract void notifyInnerContextCreated(Object engineReceiver, Object contextReceiver);
 
         public abstract Object getReceiver(Context value);
 
@@ -228,7 +225,7 @@ public abstract class AbstractPolyglotImpl {
         this.next = next;
     }
 
-    protected final AbstractPolyglotImpl getNext() {
+    public final AbstractPolyglotImpl getNext() {
         return next;
     }
 
@@ -259,7 +256,7 @@ public abstract class AbstractPolyglotImpl {
     protected void initialize() {
     }
 
-    public abstract Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> options, boolean useSystemProperties, boolean allowExperimentalOptions,
+    public abstract Object buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> options, boolean useSystemProperties, boolean allowExperimentalOptions,
                     boolean boundEngine,
                     MessageTransport messageInterceptor, Object logHandlerOrStream, HostAccess conf);
 
@@ -274,6 +271,10 @@ public abstract class AbstractPolyglotImpl {
     public abstract AbstractSourceSectionImpl getSourceSectionImpl();
 
     public abstract AbstractManagementImpl getManagementImpl();
+
+    public abstract AbstractEngineImpl<Object> getEngineImpl();
+
+    public abstract AbstractContextImpl<Object> getContextImpl();
 
     public abstract static class AbstractManagementImpl {
 
@@ -437,17 +438,15 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Value parse(T receiver, String language, Object sourceImpl);
 
-        public abstract Engine getEngineImpl(T receiver, Context sourceContext);
+        public abstract void close(T receiver, boolean interuptExecution);
 
-        public abstract void close(T receiver, Context sourceContext, boolean interuptExecution);
-
-        public abstract boolean interrupt(T receiver, Context sourceContext, Duration timeout);
+        public abstract boolean interrupt(T receiver, Duration timeout);
 
         public abstract Value asValue(T receiver, Object hostValue);
 
-        public abstract void explicitEnter(T receiver, Context sourceContext);
+        public abstract void explicitEnter(T receiver);
 
-        public abstract void explicitLeave(T receiver, Context sourceContext);
+        public abstract void explicitLeave(T receiver);
 
         public abstract Value getBindings(T receiver, String language);
 
@@ -457,6 +456,10 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract void safepoint(T receiver);
 
+        public abstract void setAPI(T receiver, Object key);
+
+        public abstract Object getAPI(T receiver);
+
     }
 
     public abstract static class AbstractEngineImpl<T> {
@@ -464,6 +467,10 @@ public abstract class AbstractPolyglotImpl {
         protected AbstractEngineImpl(AbstractPolyglotImpl impl) {
             Objects.requireNonNull(impl);
         }
+
+        public abstract void setAPI(T receiver, Object key);
+
+        public abstract Object getAPI(T receiver);
 
         public abstract Language requirePublicLanguage(T receiver, String id);
 
@@ -478,7 +485,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract OptionDescriptors getOptions(T receiver);
 
-        public abstract Context createContext(T receiver, OutputStream out, OutputStream err, InputStream in, boolean allowHostAccess,
+        public abstract Object createContext(T receiver, OutputStream out, OutputStream err, InputStream in, boolean allowHostAccess,
                         HostAccess hostAccess,
                         PolyglotAccess polyglotAccess,
                         boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostIO, boolean allowHostClassLoading, boolean allowExperimentalOptions, Predicate<String> classFilter,
@@ -489,6 +496,8 @@ public abstract class AbstractPolyglotImpl {
         public abstract String getImplementationName(T receiver);
 
         public abstract Set<Source> getCachedSources(T receiver);
+
+        public abstract String getVersion(T receiver);
 
     }
 
@@ -661,7 +670,7 @@ public abstract class AbstractPolyglotImpl {
             return false;
         }
 
-        public Context getContext() {
+        public Object getContext() {
             return null;
         }
 
@@ -870,17 +879,15 @@ public abstract class AbstractPolyglotImpl {
 
     public abstract Class<?> loadLanguageClass(String className);
 
-    public abstract Context getCurrentContext();
+    public abstract Object getCurrentContext();
 
-    public abstract Collection<Engine> findActiveEngines();
+    public abstract Collection<? extends Object> findActiveEngines();
 
     public abstract Value asValue(Object o);
 
     public abstract <S, T> Object newTargetTypeMapping(Class<S> sourceType, Class<T> targetType, Predicate<S> acceptsValue, Function<S, T> convertValue, TargetMappingPrecedence precedence);
 
     public abstract Object buildLimits(long statementLimit, Predicate<Source> statementLimitSourceFilter, Consumer<ResourceLimitEvent> onLimit);
-
-    public abstract Context getLimitEventContext(Object impl);
 
     public abstract FileSystem newDefaultFileSystem();
 

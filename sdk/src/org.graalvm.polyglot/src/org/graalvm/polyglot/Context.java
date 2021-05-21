@@ -61,6 +61,7 @@ import java.util.function.Predicate;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextImpl;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
@@ -309,11 +310,29 @@ public final class Context implements AutoCloseable {
 
     final AbstractContextImpl<Object> impl;
     final Object receiver;
+    final Context currentAPI;
+    final Engine engine;
 
     @SuppressWarnings("unchecked")
-    <T> Context(AbstractContextImpl<T> impl, T context) {
+    private <T> Context(AbstractContextImpl<T> impl, T receiver, Engine engine) {
         this.impl = (AbstractContextImpl<Object>) impl;
-        this.receiver = context;
+        this.receiver = receiver;
+        this.engine = engine;
+        this.currentAPI = new Context(this);
+    }
+
+    private Context() {
+        this.impl = null;
+        this.receiver = null;
+        this.engine = null;
+        this.currentAPI = null;
+    }
+
+    private <T> Context(Context creatorAPI) {
+        this.impl = creatorAPI.impl;
+        this.receiver = creatorAPI.receiver;
+        this.engine = creatorAPI.engine.currentAPI;
+        this.currentAPI = null;
     }
 
     /**
@@ -323,7 +342,7 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public Engine getEngine() {
-        return impl.getEngineImpl(receiver, this);
+        return engine;
     }
 
     /**
@@ -706,7 +725,8 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public void enter() {
-        impl.explicitEnter(receiver, this);
+        checkCreatorAccess("entered");
+        impl.explicitEnter(receiver);
     }
 
     /**
@@ -743,7 +763,14 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public void leave() {
-        impl.explicitLeave(receiver, this);
+        checkCreatorAccess("left");
+        impl.explicitLeave(receiver);
+    }
+
+    private void checkCreatorAccess(String operation) {
+        if (this.currentAPI == null) {
+            throw new IllegalStateException(String.format("Context instances that were received using Context.get() cannot be %s.", operation));
+        }
     }
 
     /**
@@ -770,7 +797,8 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public void close(boolean cancelIfExecuting) {
-        impl.close(receiver, this, cancelIfExecuting);
+        checkCreatorAccess("closed");
+        impl.close(receiver, cancelIfExecuting);
     }
 
     /**
@@ -813,7 +841,8 @@ public final class Context implements AutoCloseable {
      * @since 20.3
      */
     public void interrupt(Duration timeout) throws TimeoutException {
-        if (!impl.interrupt(receiver, this, timeout)) {
+        checkCreatorAccess("interrupted");
+        if (!impl.interrupt(receiver, timeout)) {
             throw new TimeoutException("Interrupt timed out.");
         }
     }
@@ -893,7 +922,11 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public static Context getCurrent() {
-        return Engine.getImpl().getCurrentContext();
+        AbstractPolyglotImpl impl = Engine.getImpl();
+        Object ctx = impl.getCurrentContext();
+        Context context = (Context) impl.getContextImpl().getAPI(ctx);
+        assert context != null : "context identifier must be set";
+        return context.currentAPI;
     }
 
     /**
@@ -920,7 +953,15 @@ public final class Context implements AutoCloseable {
         return EMPTY.new Builder(permittedLanguages);
     }
 
-    private static final Context EMPTY = new Context(null, null);
+    static Context createContextAPI(Object engineReceiver, Object contextReceiver) {
+        AbstractPolyglotImpl impl = Engine.getImpl();
+        Engine engine = (Engine) impl.getEngineImpl().getAPI(engineReceiver);
+        Context context = new Context(impl.getContextImpl(), contextReceiver, engine);
+        context.impl.setAPI(contextReceiver, context);
+        return context;
+    }
+
+    private static final Context EMPTY = new Context();
 
     static final Predicate<String> UNSET_HOST_LOOKUP = new Predicate<String>() {
         public boolean test(String t) {
@@ -1666,6 +1707,7 @@ public final class Context implements AutoCloseable {
             }
             String localCurrentWorkingDirectory = currentWorkingDirectory == null ? null : currentWorkingDirectory.toString();
             Engine engine = this.sharedEngine;
+            Object ctx;
             if (engine == null) {
                 org.graalvm.polyglot.Engine.Builder engineBuilder = Engine.newBuilder().options(options == null ? Collections.emptyMap() : options);
                 if (out != null) {
@@ -1688,22 +1730,22 @@ public final class Context implements AutoCloseable {
                 engineBuilder.allowExperimentalOptions(experimentalOptions);
                 engineBuilder.setBoundEngine(true);
                 engine = engineBuilder.build();
-                Context ctx = engine.impl.createContext(engine.receiver, null, null, null, hostClassLookupEnabled, hostAccess, polyglotAccess, nativeAccess, createThread,
+                ctx = engine.impl.createContext(engine.receiver, null, null, null, hostClassLookupEnabled, hostAccess, polyglotAccess, nativeAccess, createThread,
                                 io, hostClassLoading, experimentalOptions,
                                 localHostLookupFilter, Collections.emptyMap(), arguments == null ? Collections.emptyMap() : arguments,
                                 onlyLanguages, customFileSystem, customLogHandler, createProcess, processHandler, environmentAccess, environment, zone, limits,
                                 localCurrentWorkingDirectory, hostClassLoader);
-                return ctx;
             } else {
                 if (messageTransport != null) {
                     throw new IllegalStateException("Cannot use MessageTransport in a context that shares an Engine.");
                 }
-                return engine.impl.createContext(engine.receiver, out, err, in, hostClassLookupEnabled, hostAccess, polyglotAccess, nativeAccess, createThread,
+                ctx = engine.impl.createContext(engine.receiver, out, err, in, hostClassLookupEnabled, hostAccess, polyglotAccess, nativeAccess, createThread,
                                 io, hostClassLoading, experimentalOptions,
                                 localHostLookupFilter, options == null ? Collections.emptyMap() : options, arguments == null ? Collections.emptyMap() : arguments,
                                 onlyLanguages, customFileSystem, customLogHandler, createProcess, processHandler, environmentAccess, environment, zone, limits,
                                 localCurrentWorkingDirectory, hostClassLoader);
             }
+            return createContextAPI(engine.receiver, ctx);
         }
 
         private boolean orAllAccess(Boolean optionalBoolean) {

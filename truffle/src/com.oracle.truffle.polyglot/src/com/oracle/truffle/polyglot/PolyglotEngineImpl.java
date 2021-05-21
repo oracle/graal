@@ -78,9 +78,8 @@ import java.util.logging.Level;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
+import org.graalvm.home.HomeFinder;
 import org.graalvm.options.OptionDescriptors;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Instrument;
@@ -154,13 +153,12 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     static final LocalLocation[] EMPTY_LOCATIONS = new LocalLocation[0];
 
     final Object lock = new Object();
-    Engine creatorApi; // effectively final
-    Engine currentApi;
     final Object instrumentationHandler;
     final PolyglotImpl impl;
     DispatchOutputStream out;       // effectively final
     DispatchOutputStream err;       // effectively final
     InputStream in;                 // effectively final
+    Object api;
 
     final Map<String, PolyglotLanguage> idToLanguage;
     final Map<String, PolyglotLanguage> classToLanguage;
@@ -453,11 +451,11 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         return OptionDescriptors.createUnion(engineOptionDescriptors, compilerOptionDescriptors);
     }
 
-    static Collection<Engine> findActiveEngines() {
+    static Collection<Object> findActiveEngines() {
         synchronized (ENGINES) {
-            List<Engine> engines = new ArrayList<>(ENGINES.size());
+            List<Object> engines = new ArrayList<>(ENGINES.size());
             for (PolyglotEngineImpl engine : ENGINES.keySet()) {
-                engines.add(engine.creatorApi);
+                engines.add(engine.api);
             }
             return engines;
         }
@@ -868,10 +866,6 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
     void addContext(PolyglotContextImpl context) {
         assert Thread.holdsLock(this.lock);
-
-        Context api = impl.getAPIAccess().newContext(PolyglotContextDispatch.INSTANCE, context);
-        context.creatorApi = api;
-        context.currentApi = impl.getAPIAccess().newContext(PolyglotContextDispatch.INSTANCE, context);
 
         if (limits != null) {
             limits.validate(context.config.limits);
@@ -1552,7 +1546,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     }
 
     @SuppressWarnings({"all"})
-    public Context createContext(OutputStream configOut, OutputStream configErr, InputStream configIn, boolean allowHostLookup,
+    public Object createContext(OutputStream configOut, OutputStream configErr, InputStream configIn, boolean allowHostLookup,
                     HostAccess hostAccess,
                     PolyglotAccess polyglotAccess, boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostIO,
                     boolean allowHostClassLoading, boolean allowExperimentalOptions, Predicate<String> classFilter, Map<String, String> options,
@@ -1701,7 +1695,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             }
         }
         checkTruffleRuntime();
-        return context.creatorApi;
+        return context;
     }
 
     private PolyglotContextImpl loadPreinitializedContext(PolyglotContextConfig config, HostAccess hostAccess) {
@@ -1754,8 +1748,6 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     PolyglotEngineImpl engine = new PolyglotEngineImpl(this);
                     ensureClosed(true, false);
                     synchronized (engine.lock) {
-                        engine.creatorApi = getAPIAccess().newEngine(engine.getImpl().engineDispatch, engine);
-                        engine.currentApi = getAPIAccess().newEngine(engine.getImpl().engineDispatch, engine);
                         engine.initializeHostAccess(hostAccess);
                         context = new PolyglotContextImpl(engine, config);
                         engine.addContext(context);
@@ -2042,6 +2034,16 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             return true;
         }
 
+    }
+
+    @SuppressWarnings("static-method")
+    String getVersion() {
+        String version = HomeFinder.getInstance().getVersion();
+        if (version.equals("snapshot")) {
+            return "Development Build";
+        } else {
+            return version;
+        }
     }
 
 }

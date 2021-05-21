@@ -389,7 +389,7 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
     public String getVersion() {
         final String version = cache.getVersion();
         if (version.equals("inherit")) {
-            return engine.creatorApi.getVersion();
+            return engine.getVersion();
         } else {
             return version;
         }
@@ -466,8 +466,8 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
             throw shouldNotReachHere(String.format("Context reference was used from an Engine that is currently not entered. " +
                             "ContextReference of engine %s was used but engine %s is currently entered. " +
                             "ContextReference must not be shared between multiple Engine instances.",
-                            languageContext.language.engine.creatorApi,
-                            this.engine.creatorApi));
+                            languageContext.language.engine,
+                            this.engine));
         }
         return true;
     }

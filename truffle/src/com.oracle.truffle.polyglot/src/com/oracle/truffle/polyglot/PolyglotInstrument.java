@@ -263,7 +263,7 @@ class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.tr
     public String getVersion() {
         final String version = cache.getVersion();
         if (version.equals("inherit")) {
-            return engine.creatorApi.getVersion();
+            return engine.getVersion();
         } else {
             return version;
         }

@@ -42,14 +42,10 @@ package com.oracle.truffle.polyglot;
 
 import java.time.Duration;
 
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextImpl;
 
 final class PolyglotContextDispatch extends AbstractContextImpl<PolyglotContextImpl> {
-
-    static final PolyglotContextDispatch INSTANCE = new PolyglotContextDispatch(PolyglotImpl.getInstance());
 
     protected PolyglotContextDispatch(PolyglotImpl impl) {
         super(impl);
@@ -71,18 +67,13 @@ final class PolyglotContextDispatch extends AbstractContextImpl<PolyglotContextI
     }
 
     @Override
-    public Engine getEngineImpl(PolyglotContextImpl receiver, Context sourceContext) {
-        return receiver.getEngineImpl(sourceContext);
+    public void close(PolyglotContextImpl receiver, boolean interuptExecution) {
+        receiver.close(interuptExecution);
     }
 
     @Override
-    public void close(PolyglotContextImpl receiver, Context sourceContext, boolean interuptExecution) {
-        receiver.close(sourceContext, interuptExecution);
-    }
-
-    @Override
-    public boolean interrupt(PolyglotContextImpl receiver, Context sourceContext, Duration timeout) {
-        return receiver.interrupt(sourceContext, timeout);
+    public boolean interrupt(PolyglotContextImpl receiver, Duration timeout) {
+        return receiver.interrupt(timeout);
     }
 
     @Override
@@ -91,13 +82,13 @@ final class PolyglotContextDispatch extends AbstractContextImpl<PolyglotContextI
     }
 
     @Override
-    public void explicitEnter(PolyglotContextImpl receiver, Context sourceContext) {
-        receiver.explicitEnter(sourceContext);
+    public void explicitEnter(PolyglotContextImpl receiver) {
+        receiver.explicitEnter();
     }
 
     @Override
-    public void explicitLeave(PolyglotContextImpl receiver, Context sourceContext) {
-        receiver.explicitLeave(sourceContext);
+    public void explicitLeave(PolyglotContextImpl receiver) {
+        receiver.explicitLeave();
     }
 
     @Override
@@ -119,4 +110,16 @@ final class PolyglotContextDispatch extends AbstractContextImpl<PolyglotContextI
     public void safepoint(PolyglotContextImpl receiver) {
         receiver.safepoint();
     }
+
+    @Override
+    public Object getAPI(PolyglotContextImpl receiver) {
+        return receiver.api;
+    }
+
+    @Override
+    public void setAPI(PolyglotContextImpl receiver, Object key) {
+        assert receiver.api == null : "identifier can only be set once";
+        receiver.api = key;
+    }
+
 }

@@ -48,7 +48,6 @@ import java.util.Set;
 import java.util.function.Predicate;
 
 import org.graalvm.options.OptionDescriptors;
-import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Instrument;
@@ -66,6 +65,17 @@ final class PolyglotEngineDispatch extends AbstractEngineImpl<PolyglotEngineImpl
 
     protected PolyglotEngineDispatch(AbstractPolyglotImpl impl) {
         super(impl);
+    }
+
+    @Override
+    public Object getAPI(PolyglotEngineImpl receiver) {
+        return receiver.api;
+    }
+
+    @Override
+    public void setAPI(PolyglotEngineImpl receiver, Object key) {
+        assert receiver.api == null : "API can only be initialized once";
+        receiver.api = key;
     }
 
     @Override
@@ -89,9 +99,6 @@ final class PolyglotEngineDispatch extends AbstractEngineImpl<PolyglotEngineImpl
     @Override
     public void close(PolyglotEngineImpl receiver, Object apiObject, boolean cancelIfExecuting) {
         try {
-            if (apiObject != receiver.creatorApi) {
-                throw PolyglotEngineException.illegalState("Engine instances that were indirectly received using Context.getCurrent() cannot be closed.");
-            }
             receiver.ensureClosed(cancelIfExecuting, false);
         } catch (Throwable t) {
             throw PolyglotImpl.guestToHostException(receiver, t);
@@ -126,7 +133,7 @@ final class PolyglotEngineDispatch extends AbstractEngineImpl<PolyglotEngineImpl
     }
 
     @Override
-    public Context createContext(PolyglotEngineImpl receiver, OutputStream out, OutputStream err, InputStream in, boolean allowHostAccess, HostAccess hostAccess, PolyglotAccess polyglotAccess,
+    public Object createContext(PolyglotEngineImpl receiver, OutputStream out, OutputStream err, InputStream in, boolean allowHostAccess, HostAccess hostAccess, PolyglotAccess polyglotAccess,
                     boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostIO, boolean allowHostClassLoading, boolean allowExperimentalOptions, Predicate<String> classFilter,
                     Map<String, String> options, Map<String, String[]> arguments, String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream, boolean allowCreateProcess,
                     ProcessHandler processHandler, EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory,
@@ -149,6 +156,15 @@ final class PolyglotEngineDispatch extends AbstractEngineImpl<PolyglotEngineImpl
     public Set<Source> getCachedSources(PolyglotEngineImpl receiver) {
         try {
             return receiver.getCachedSources();
+        } catch (Throwable t) {
+            throw PolyglotImpl.guestToHostException(receiver, t);
+        }
+    }
+
+    @Override
+    public String getVersion(PolyglotEngineImpl receiver) {
+        try {
+            return receiver.getVersion();
         } catch (Throwable t) {
             throw PolyglotImpl.guestToHostException(receiver, t);
         }

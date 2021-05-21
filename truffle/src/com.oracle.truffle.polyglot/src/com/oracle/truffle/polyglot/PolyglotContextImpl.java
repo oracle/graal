@@ -72,8 +72,6 @@ import java.util.logging.Level;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.options.OptionValues;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.Value;
@@ -176,6 +174,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
      */
     volatile PolyglotThreadInfo cachedThreadInfo = PolyglotThreadInfo.NULL;
 
+    volatile Object api;
     volatile boolean interrupting;
 
     /*
@@ -198,9 +197,6 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
     @CompilationFinal(dimensions = 1) final PolyglotLanguageContext[] contexts;
     /* Duplicated context impl array for efficient context lookup. */
     @CompilationFinal(dimensions = 1) final Object[] contextImpls;
-
-    Context creatorApi; // effectively final
-    Context currentApi; // effectively final
 
     final TruffleContext creatorTruffleContext;
     final TruffleContext currentTruffleContext;
@@ -510,9 +506,8 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         return context;
     }
 
-    public synchronized void explicitEnter(Context sourceContext) {
+    public synchronized void explicitEnter() {
         try {
-            checkCreatorAccess(sourceContext, "entered");
             PolyglotContextImpl prev = engine.enter(this, engine.getUncachedLocation(), true);
             PolyglotThreadInfo current = getCachedThreadInfo();
             assert current.getThread() == Thread.currentThread();
@@ -522,14 +517,13 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         }
     }
 
-    public synchronized void explicitLeave(Context sourceContext) {
+    public synchronized void explicitLeave() {
         if (closed || closingThread == Thread.currentThread()) {
             // explicit leaves if already closed are allowed.
             // as close may automatically leave the context on threads.
             return;
         }
         try {
-            checkCreatorAccess(sourceContext, "left");
             PolyglotThreadInfo current = getCachedThreadInfo();
             LinkedList<PolyglotContextImpl> stack = current.explicitContextStack;
             if (stack.isEmpty() || current.getThread() == null) {
@@ -538,12 +532,6 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             engine.leave(stack.removeLast(), this);
         } catch (Throwable t) {
             throw PolyglotImpl.guestToHostException(engine, t);
-        }
-    }
-
-    private void checkCreatorAccess(Context context, String operation) {
-        if (context != creatorApi) {
-            throw PolyglotEngineException.illegalState(String.format("Context instances that were received using Context.get() cannot be %s.", operation));
         }
     }
 
@@ -1094,13 +1082,8 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         }
     }
 
-    public Engine getEngineImpl(Context sourceContext) {
-        return sourceContext == creatorApi ? engine.creatorApi : engine.currentApi;
-    }
-
-    public void close(Context sourceContext, boolean cancelIfExecuting) {
+    public void close(boolean cancelIfExecuting) {
         try {
-            checkCreatorAccess(sourceContext, "closed");
             if (cancelIfExecuting) {
                 /*
                  * Cancel does invalidate. We always need to invalidate before force-closing a
@@ -1163,9 +1146,8 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         }
     }
 
-    public boolean interrupt(Context sourceContext, Duration timeout) {
+    public boolean interrupt(Duration timeout) {
         try {
-            checkCreatorAccess(sourceContext, "interrupted");
             if (parent != null) {
                 throw PolyglotEngineException.illegalState("Cannot interrupt inner context separately.");
             }

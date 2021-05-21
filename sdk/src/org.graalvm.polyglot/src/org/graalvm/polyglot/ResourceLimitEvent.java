@@ -49,10 +49,10 @@ package org.graalvm.polyglot;
  */
 public final class ResourceLimitEvent {
 
-    private final Object impl;
+    private final Object contextReceiver;
 
-    ResourceLimitEvent(Object impl) {
-        this.impl = impl;
+    ResourceLimitEvent(Object contextReceiver) {
+        this.contextReceiver = contextReceiver;
     }
 
     /**
@@ -61,7 +61,7 @@ public final class ResourceLimitEvent {
      * @since 19.3
      */
     public Context getContext() {
-        return Engine.getImpl().getLimitEventContext(impl);
+        return (Context) Engine.getImpl().getContextImpl().getAPI(contextReceiver);
     }
 
     /**
