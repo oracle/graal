@@ -82,7 +82,6 @@ import com.oracle.svm.hosted.analysis.flow.SVMMethodTypeFlowBuilder;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -682,16 +681,7 @@ public class Inflation extends BigBang {
          * type fields of type C can be of any type compatible with their declared type.
          */
 
-        if (SVMHost.isUnknownClass(type)) {
-            return false;
-        }
-
-        if (type.isArray() && SVMHost.isUnknownClass(type.getComponentType())) {
-            // TODO are arrays of unknown value types also unknown?
-            throw JVMCIError.unimplemented();
-        }
-
-        return true;
+        return !SVMHost.isUnknownClass(type);
     }
 
     /**
