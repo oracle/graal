@@ -126,6 +126,17 @@ public abstract class AbstractPolyglotImpl {
         public abstract OutputStream getOutputStream(ProcessHandler.Redirect redirect);
     }
 
+    public abstract static class PolyglotAccessor {
+        protected PolyglotAccessor() {
+            if (!getClass().getCanonicalName().equals("org.graalvm.polyglot.Engine.PolyglotAccessorImpl")) {
+                throw new AssertionError("Only one implementation of PolyglotAccessor allowed. " + getClass().getCanonicalName());
+            }
+        }
+
+        public abstract Object getReceiver(Engine engine);
+
+    }
+
     public abstract static class APIAccess {
 
         protected APIAccess() {
@@ -153,12 +164,6 @@ public abstract class AbstractPolyglotImpl {
         public abstract Object getReceiver(Value value);
 
         public abstract AbstractValueImpl getImpl(Value value);
-
-        public abstract AbstractContextImpl<Object> getImpl(Context context);
-
-        public abstract Object getReceiver(Engine engine);
-
-        public abstract AbstractEngineImpl<Object> getImpl(Engine engine);
 
         public abstract AbstractExceptionImpl getImpl(PolyglotException value);
 
@@ -211,6 +216,7 @@ public abstract class AbstractPolyglotImpl {
     IOAccess io;
 
     AbstractPolyglotImpl next;
+    PolyglotAccessor accessor;
 
     public final void setMonitoring(ManagementAccess monitoring) {
         this.management = monitoring;
@@ -219,6 +225,14 @@ public abstract class AbstractPolyglotImpl {
     public final void setConstructors(APIAccess constructors) {
         this.api = constructors;
         initialize();
+    }
+
+    public final PolyglotAccessor getAccessor() {
+        return accessor;
+    }
+
+    public final void setAccessor(PolyglotAccessor accessor) {
+        this.accessor = accessor;
     }
 
     public final void setNext(AbstractPolyglotImpl next) {
@@ -272,9 +286,9 @@ public abstract class AbstractPolyglotImpl {
 
     public abstract AbstractManagementImpl getManagementImpl();
 
-    public abstract AbstractEngineImpl<Object> getEngineImpl();
+    public abstract AbstractEngineImpl getEngineImpl();
 
-    public abstract AbstractContextImpl<Object> getContextImpl();
+    public abstract AbstractContextImpl getContextImpl();
 
     public abstract static class AbstractManagementImpl {
 
@@ -426,66 +440,66 @@ public abstract class AbstractPolyglotImpl {
 
     }
 
-    public abstract static class AbstractContextImpl<T> {
+    public abstract static class AbstractContextImpl {
 
         protected AbstractContextImpl(AbstractPolyglotImpl impl) {
             Objects.requireNonNull(impl);
         }
 
-        public abstract boolean initializeLanguage(T receiver, String languageId);
+        public abstract boolean initializeLanguage(Object receiver, String languageId);
 
-        public abstract Value eval(T receiver, String language, Object sourceImpl);
+        public abstract Value eval(Object receiver, String language, Object sourceImpl);
 
-        public abstract Value parse(T receiver, String language, Object sourceImpl);
+        public abstract Value parse(Object receiver, String language, Object sourceImpl);
 
-        public abstract void close(T receiver, boolean interuptExecution);
+        public abstract void close(Object receiver, boolean interuptExecution);
 
-        public abstract boolean interrupt(T receiver, Duration timeout);
+        public abstract boolean interrupt(Object receiver, Duration timeout);
 
-        public abstract Value asValue(T receiver, Object hostValue);
+        public abstract Value asValue(Object receiver, Object hostValue);
 
-        public abstract void explicitEnter(T receiver);
+        public abstract void explicitEnter(Object receiver);
 
-        public abstract void explicitLeave(T receiver);
+        public abstract void explicitLeave(Object receiver);
 
-        public abstract Value getBindings(T receiver, String language);
+        public abstract Value getBindings(Object receiver, String language);
 
-        public abstract Value getPolyglotBindings(T receiver);
+        public abstract Value getPolyglotBindings(Object receiver);
 
-        public abstract void resetLimits(T receiver);
+        public abstract void resetLimits(Object receiver);
 
-        public abstract void safepoint(T receiver);
+        public abstract void safepoint(Object receiver);
 
-        public abstract void setAPI(T receiver, Object key);
+        public abstract void setAPI(Object receiver, Object key);
 
-        public abstract Object getAPI(T receiver);
+        public abstract Object getAPI(Object receiver);
 
     }
 
-    public abstract static class AbstractEngineImpl<T> {
+    public abstract static class AbstractEngineImpl {
 
         protected AbstractEngineImpl(AbstractPolyglotImpl impl) {
             Objects.requireNonNull(impl);
         }
 
-        public abstract void setAPI(T receiver, Object key);
+        public abstract void setAPI(Object receiver, Object key);
 
-        public abstract Object getAPI(T receiver);
+        public abstract Object getAPI(Object receiver);
 
-        public abstract Language requirePublicLanguage(T receiver, String id);
+        public abstract Language requirePublicLanguage(Object receiver, String id);
 
-        public abstract Instrument requirePublicInstrument(T receiver, String id);
+        public abstract Instrument requirePublicInstrument(Object receiver, String id);
 
         // Runtime
-        public abstract void close(T receiver, Object apiObject, boolean cancelIfExecuting);
+        public abstract void close(Object receiver, Object apiObject, boolean cancelIfExecuting);
 
-        public abstract Map<String, Instrument> getInstruments(T receiver);
+        public abstract Map<String, Instrument> getInstruments(Object receiver);
 
-        public abstract Map<String, Language> getLanguages(T receiver);
+        public abstract Map<String, Language> getLanguages(Object receiver);
 
-        public abstract OptionDescriptors getOptions(T receiver);
+        public abstract OptionDescriptors getOptions(Object receiver);
 
-        public abstract Object createContext(T receiver, OutputStream out, OutputStream err, InputStream in, boolean allowHostAccess,
+        public abstract Object createContext(Object receiver, OutputStream out, OutputStream err, InputStream in, boolean allowHostAccess,
                         HostAccess hostAccess,
                         PolyglotAccess polyglotAccess,
                         boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostIO, boolean allowHostClassLoading, boolean allowExperimentalOptions, Predicate<String> classFilter,
@@ -493,11 +507,11 @@ public abstract class AbstractPolyglotImpl {
                         Map<String, String[]> arguments, String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream, boolean allowCreateProcess, ProcessHandler processHandler,
                         EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory, ClassLoader hostClassLoader);
 
-        public abstract String getImplementationName(T receiver);
+        public abstract String getImplementationName(Object receiver);
 
-        public abstract Set<Source> getCachedSources(T receiver);
+        public abstract Set<Source> getCachedSources(Object receiver);
 
-        public abstract String getVersion(T receiver);
+        public abstract String getVersion(Object receiver);
 
     }
 

@@ -308,14 +308,14 @@ import org.graalvm.polyglot.proxy.Proxy;
  */
 public final class Context implements AutoCloseable {
 
-    final AbstractContextImpl<Object> impl;
+    final AbstractContextImpl impl;
     final Object receiver;
     final Context currentAPI;
     final Engine engine;
 
     @SuppressWarnings("unchecked")
-    private <T> Context(AbstractContextImpl<T> impl, T receiver, Engine engine) {
-        this.impl = (AbstractContextImpl<Object>) impl;
+    private <T> Context(AbstractContextImpl impl, T receiver, Engine engine) {
+        this.impl = impl;
         this.receiver = receiver;
         this.engine = engine;
         this.currentAPI = new Context(this);

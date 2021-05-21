@@ -45,81 +45,81 @@ import java.time.Duration;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextImpl;
 
-final class PolyglotContextDispatch extends AbstractContextImpl<PolyglotContextImpl> {
+final class PolyglotContextDispatch extends AbstractContextImpl {
 
     protected PolyglotContextDispatch(PolyglotImpl impl) {
         super(impl);
     }
 
     @Override
-    public boolean initializeLanguage(PolyglotContextImpl receiver, String languageId) {
-        return receiver.initializeLanguage(languageId);
+    public boolean initializeLanguage(Object receiver, String languageId) {
+        return ((PolyglotContextImpl) receiver).initializeLanguage(languageId);
     }
 
     @Override
-    public Value eval(PolyglotContextImpl receiver, String language, Object sourceImpl) {
-        return receiver.eval(language, sourceImpl);
+    public Value eval(Object receiver, String language, Object sourceImpl) {
+        return ((PolyglotContextImpl) receiver).eval(language, sourceImpl);
     }
 
     @Override
-    public Value parse(PolyglotContextImpl receiver, String language, Object sourceImpl) {
-        return receiver.parse(language, sourceImpl);
+    public Value parse(Object receiver, String language, Object sourceImpl) {
+        return ((PolyglotContextImpl) receiver).parse(language, sourceImpl);
     }
 
     @Override
-    public void close(PolyglotContextImpl receiver, boolean interuptExecution) {
-        receiver.close(interuptExecution);
+    public void close(Object receiver, boolean interuptExecution) {
+        ((PolyglotContextImpl) receiver).close(interuptExecution);
     }
 
     @Override
-    public boolean interrupt(PolyglotContextImpl receiver, Duration timeout) {
-        return receiver.interrupt(timeout);
+    public boolean interrupt(Object receiver, Duration timeout) {
+        return ((PolyglotContextImpl) receiver).interrupt(timeout);
     }
 
     @Override
-    public Value asValue(PolyglotContextImpl receiver, Object hostValue) {
-        return receiver.asValue(hostValue);
+    public Value asValue(Object receiver, Object hostValue) {
+        return ((PolyglotContextImpl) receiver).asValue(hostValue);
     }
 
     @Override
-    public void explicitEnter(PolyglotContextImpl receiver) {
-        receiver.explicitEnter();
+    public void explicitEnter(Object receiver) {
+        ((PolyglotContextImpl) receiver).explicitEnter();
     }
 
     @Override
-    public void explicitLeave(PolyglotContextImpl receiver) {
-        receiver.explicitLeave();
+    public void explicitLeave(Object receiver) {
+        ((PolyglotContextImpl) receiver).explicitLeave();
     }
 
     @Override
-    public Value getBindings(PolyglotContextImpl receiver, String language) {
-        return receiver.getBindings(language);
+    public Value getBindings(Object receiver, String language) {
+        return ((PolyglotContextImpl) receiver).getBindings(language);
     }
 
     @Override
-    public Value getPolyglotBindings(PolyglotContextImpl receiver) {
-        return receiver.getPolyglotBindings();
+    public Value getPolyglotBindings(Object receiver) {
+        return ((PolyglotContextImpl) receiver).getPolyglotBindings();
     }
 
     @Override
-    public void resetLimits(PolyglotContextImpl receiver) {
-        receiver.resetLimits();
+    public void resetLimits(Object receiver) {
+        ((PolyglotContextImpl) receiver).resetLimits();
     }
 
     @Override
-    public void safepoint(PolyglotContextImpl receiver) {
-        receiver.safepoint();
+    public void safepoint(Object receiver) {
+        ((PolyglotContextImpl) receiver).safepoint();
     }
 
     @Override
-    public Object getAPI(PolyglotContextImpl receiver) {
-        return receiver.api;
+    public Object getAPI(Object receiver) {
+        return ((PolyglotContextImpl) receiver).api;
     }
 
     @Override
-    public void setAPI(PolyglotContextImpl receiver, Object key) {
-        assert receiver.api == null : "identifier can only be set once";
-        receiver.api = key;
+    public void setAPI(Object receiver, Object key) {
+        assert ((PolyglotContextImpl) receiver).api == null : "identifier can only be set once";
+        ((PolyglotContextImpl) receiver).api = key;
     }
 
 }

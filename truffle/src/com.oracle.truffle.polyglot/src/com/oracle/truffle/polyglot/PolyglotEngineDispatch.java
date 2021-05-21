@@ -61,25 +61,27 @@ import org.graalvm.polyglot.io.ProcessHandler;
 
 import com.oracle.truffle.api.Truffle;
 
-final class PolyglotEngineDispatch extends AbstractEngineImpl<PolyglotEngineImpl> {
+final class PolyglotEngineDispatch extends AbstractEngineImpl {
 
     protected PolyglotEngineDispatch(AbstractPolyglotImpl impl) {
         super(impl);
     }
 
     @Override
-    public Object getAPI(PolyglotEngineImpl receiver) {
-        return receiver.api;
+    public Object getAPI(Object receiver) {
+        return ((PolyglotEngineImpl) receiver).api;
     }
 
     @Override
-    public void setAPI(PolyglotEngineImpl receiver, Object key) {
+    public void setAPI(Object oreceiver, Object key) {
+        PolyglotEngineImpl receiver = (PolyglotEngineImpl) oreceiver;
         assert receiver.api == null : "API can only be initialized once";
         receiver.api = key;
     }
 
     @Override
-    public Language requirePublicLanguage(PolyglotEngineImpl receiver, String id) {
+    public Language requirePublicLanguage(Object oreceiver, String id) {
+        PolyglotEngineImpl receiver = (PolyglotEngineImpl) oreceiver;
         try {
             return receiver.requirePublicLanguage(id);
         } catch (Throwable t) {
@@ -88,7 +90,8 @@ final class PolyglotEngineDispatch extends AbstractEngineImpl<PolyglotEngineImpl
     }
 
     @Override
-    public Instrument requirePublicInstrument(PolyglotEngineImpl receiver, String id) {
+    public Instrument requirePublicInstrument(Object oreceiver, String id) {
+        PolyglotEngineImpl receiver = (PolyglotEngineImpl) oreceiver;
         try {
             return receiver.requirePublicInstrument(id);
         } catch (Throwable t) {
@@ -97,7 +100,8 @@ final class PolyglotEngineDispatch extends AbstractEngineImpl<PolyglotEngineImpl
     }
 
     @Override
-    public void close(PolyglotEngineImpl receiver, Object apiObject, boolean cancelIfExecuting) {
+    public void close(Object oreceiver, Object apiObject, boolean cancelIfExecuting) {
+        PolyglotEngineImpl receiver = (PolyglotEngineImpl) oreceiver;
         try {
             receiver.ensureClosed(cancelIfExecuting, false);
         } catch (Throwable t) {
@@ -106,7 +110,8 @@ final class PolyglotEngineDispatch extends AbstractEngineImpl<PolyglotEngineImpl
     }
 
     @Override
-    public Map<String, Instrument> getInstruments(PolyglotEngineImpl receiver) {
+    public Map<String, Instrument> getInstruments(Object oreceiver) {
+        PolyglotEngineImpl receiver = (PolyglotEngineImpl) oreceiver;
         try {
             return receiver.getInstruments();
         } catch (Throwable t) {
@@ -115,7 +120,8 @@ final class PolyglotEngineDispatch extends AbstractEngineImpl<PolyglotEngineImpl
     }
 
     @Override
-    public Map<String, Language> getLanguages(PolyglotEngineImpl receiver) {
+    public Map<String, Language> getLanguages(Object oreceiver) {
+        PolyglotEngineImpl receiver = (PolyglotEngineImpl) oreceiver;
         try {
             return receiver.getLanguages();
         } catch (Throwable t) {
@@ -124,7 +130,8 @@ final class PolyglotEngineDispatch extends AbstractEngineImpl<PolyglotEngineImpl
     }
 
     @Override
-    public OptionDescriptors getOptions(PolyglotEngineImpl receiver) {
+    public OptionDescriptors getOptions(Object oreceiver) {
+        PolyglotEngineImpl receiver = (PolyglotEngineImpl) oreceiver;
         try {
             return receiver.getOptions();
         } catch (Throwable t) {
@@ -133,18 +140,20 @@ final class PolyglotEngineDispatch extends AbstractEngineImpl<PolyglotEngineImpl
     }
 
     @Override
-    public Object createContext(PolyglotEngineImpl receiver, OutputStream out, OutputStream err, InputStream in, boolean allowHostAccess, HostAccess hostAccess, PolyglotAccess polyglotAccess,
+    public Object createContext(Object oreceiver, OutputStream out, OutputStream err, InputStream in, boolean allowHostAccess, HostAccess hostAccess, PolyglotAccess polyglotAccess,
                     boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostIO, boolean allowHostClassLoading, boolean allowExperimentalOptions, Predicate<String> classFilter,
                     Map<String, String> options, Map<String, String[]> arguments, String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream, boolean allowCreateProcess,
                     ProcessHandler processHandler, EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory,
                     ClassLoader hostClassLoader) {
+        PolyglotEngineImpl receiver = (PolyglotEngineImpl) oreceiver;
         return receiver.createContext(out, err, in, allowHostAccess, hostAccess, polyglotAccess, allowNativeAccess, allowCreateThread, allowHostIO, allowHostClassLoading, allowExperimentalOptions,
                         classFilter, options, arguments, onlyLanguages, fileSystem, logHandlerOrStream, allowCreateProcess, processHandler, environmentAccess, environment, zone, limitsImpl,
                         currentWorkingDirectory, hostClassLoader);
     }
 
     @Override
-    public String getImplementationName(PolyglotEngineImpl receiver) {
+    public String getImplementationName(Object oreceiver) {
+        PolyglotEngineImpl receiver = (PolyglotEngineImpl) oreceiver;
         try {
             return Truffle.getRuntime().getName();
         } catch (Throwable t) {
@@ -153,7 +162,8 @@ final class PolyglotEngineDispatch extends AbstractEngineImpl<PolyglotEngineImpl
     }
 
     @Override
-    public Set<Source> getCachedSources(PolyglotEngineImpl receiver) {
+    public Set<Source> getCachedSources(Object oreceiver) {
+        PolyglotEngineImpl receiver = (PolyglotEngineImpl) oreceiver;
         try {
             return receiver.getCachedSources();
         } catch (Throwable t) {
@@ -162,7 +172,8 @@ final class PolyglotEngineDispatch extends AbstractEngineImpl<PolyglotEngineImpl
     }
 
     @Override
-    public String getVersion(PolyglotEngineImpl receiver) {
+    public String getVersion(Object oreceiver) {
+        PolyglotEngineImpl receiver = (PolyglotEngineImpl) oreceiver;
         try {
             return receiver.getVersion();
         } catch (Throwable t) {

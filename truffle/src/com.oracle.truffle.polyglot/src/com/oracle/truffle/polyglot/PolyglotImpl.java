@@ -191,14 +191,14 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
     @SuppressWarnings("unchecked")
     @Override
-    public AbstractContextImpl<Object> getContextImpl() {
-        return (AbstractContextImpl<Object>) ((AbstractContextImpl<? extends Object>) contextImpl);
+    public PolyglotContextDispatch getContextImpl() {
+        return contextImpl;
     }
 
     @SuppressWarnings("unchecked")
     @Override
-    public AbstractEngineImpl<Object> getEngineImpl() {
-        return (AbstractEngineImpl<Object>) ((AbstractEngineImpl<? extends Object>) engineImpl);
+    public PolyglotEngineDispatch getEngineImpl() {
+        return engineImpl;
     }
 
     /**

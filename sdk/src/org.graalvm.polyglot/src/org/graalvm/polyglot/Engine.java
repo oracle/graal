@@ -79,7 +79,6 @@ import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.PolyglotException.StackFrame;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractEngineImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractExceptionImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractInstrumentImpl;
@@ -108,13 +107,13 @@ import org.graalvm.polyglot.management.ExecutionEvent;
  */
 public final class Engine implements AutoCloseable {
 
-    final AbstractEngineImpl<Object> impl;
+    final AbstractEngineImpl impl;
     final Object receiver;
     final Engine currentAPI;
 
     @SuppressWarnings("unchecked")
-    <T> Engine(AbstractEngineImpl<T> impl, T receiver) {
-        this.impl = (AbstractEngineImpl<Object>) impl;
+    <T> Engine(AbstractEngineImpl impl, T receiver) {
+        this.impl = impl;
         this.receiver = receiver;
         this.currentAPI = new Engine(this);
     }
@@ -566,16 +565,22 @@ public final class Engine implements AutoCloseable {
 
     }
 
+    static class PolyglotAccessorImpl extends AbstractPolyglotImpl.PolyglotAccessor {
+
+        private static final AbstractPolyglotImpl.PolyglotAccessor INSTANCE = new PolyglotAccessorImpl();
+
+        @Override
+        public Object getReceiver(Engine engine) {
+            return engine.receiver;
+        }
+
+    }
+
     static class APIAccessImpl extends AbstractPolyglotImpl.APIAccess {
 
         private static final APIAccessImpl INSTANCE = new APIAccessImpl();
 
         APIAccessImpl() {
-        }
-
-        @Override
-        public AbstractContextImpl<Object> getImpl(Context context) {
-            return context.impl;
         }
 
         @Override
@@ -621,16 +626,6 @@ public final class Engine implements AutoCloseable {
         @Override
         public void notifyInnerContextCreated(Object engineReceiver, Object contextReceiver) {
             Context.createContextAPI(engineReceiver, contextReceiver);
-        }
-
-        @Override
-        public Object getReceiver(Engine value) {
-            return value.receiver;
-        }
-
-        @Override
-        public AbstractEngineImpl<Object> getImpl(Engine engine) {
-            return engine.impl;
         }
 
         @Override
@@ -803,6 +798,8 @@ public final class Engine implements AutoCloseable {
                 for (AbstractPolyglotImpl impl : impls) {
                     impl.setNext(prev);
                     impl.setConstructors(APIAccessImpl.INSTANCE);
+                    impl.setAccessor(PolyglotAccessorImpl.INSTANCE);
+                    impl.setAccessor(null);
                     prev = impl;
                 }
                 return prev;
@@ -860,7 +857,7 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public AbstractContextImpl<Object> getContextImpl() {
+        public AbstractContextImpl getContextImpl() {
             throw noPolyglotImplementationFound();
         }
 
@@ -972,7 +969,7 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public AbstractEngineImpl<Object> getEngineImpl() {
+        public AbstractEngineImpl getEngineImpl() {
             throw noPolyglotImplementationFound();
         }
 
