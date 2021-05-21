@@ -70,7 +70,6 @@ import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedPrimitiveType;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.substitute.InjectedFieldsType;
-import com.oracle.svm.hosted.substitute.SubstitutionField;
 import com.oracle.svm.hosted.substitute.SubstitutionMethod;
 import com.oracle.svm.hosted.substitute.SubstitutionType;
 
@@ -209,6 +208,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         return javaMethod.getDeclaringClass();
     }
 
+    @SuppressWarnings("unused")
     protected static ResolvedJavaType getDeclaringClass(HostedField hostedField, boolean wantOriginal) {
         /* for now fields are always reported as belonging to the original class */
         return getOriginal(hostedField.getDeclaringClass());
