@@ -67,6 +67,7 @@ public class JfrManager {
     }
 
     void setup() {
+        parseFlightRecorderLogging(Options.FlightRecorderLogging.getValue());
         if (Options.FlightRecorder.getValue()) {
             periodicEventSetup();
             initRecording();
@@ -79,6 +80,10 @@ public class JfrManager {
             // a shutdown hook.
             assert !SubstrateJVM.isInitialized();
         }
+    }
+
+    private static void parseFlightRecorderLogging(String option) {
+        SubstrateJVM.getJfrLogging().parseConfiguration(option);
     }
 
     private static void periodicEventSetup() throws SecurityException {
@@ -236,6 +241,9 @@ public class JfrManager {
 
         @Option(help = "Start flight recording with options.")//
         public static final RuntimeOptionKey<String> StartFlightRecording = new RuntimeOptionKey<>("");
+
+        @Option(help = "file:doc-files/FlightRecorderLoggingHelp.txt")//
+        public static final RuntimeOptionKey<String> FlightRecorderLogging = new RuntimeOptionKey<>("all=warning");
     }
 
     private enum JfrStartArgument {
