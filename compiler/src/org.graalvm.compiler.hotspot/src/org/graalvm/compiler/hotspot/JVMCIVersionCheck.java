@@ -59,14 +59,14 @@ public final class JVMCIVersionCheck {
             return false;
         }
 
-        static Version parse(String vmVersion) {
+        static Version parse(String vmVersion, Map<String, String> props) {
             Matcher m = Pattern.compile(".*-jvmci-(\\d+)\\.(\\d+)-b(\\d+).*").matcher(vmVersion);
             if (m.matches()) {
                 try {
                     int major = Integer.parseInt(m.group(1));
                     int minor = Integer.parseInt(m.group(2));
                     int build = Integer.parseInt(m.group(3));
-                    String jvmciVersionFile = System.getProperty("JVMCIVersionCheck.jvmci.version.file");
+                    String jvmciVersionFile = props.get("JVMCIVersionCheck.jvmci.version.file");
                     if (jvmciVersionFile != null) {
                         try {
                             Files.write(Paths.get(jvmciVersionFile), String.format("%d,%d,%d", major, minor, build).getBytes());
@@ -253,7 +253,7 @@ public final class JVMCIVersionCheck {
 
     private void run(boolean exitOnFailure, Version minVersion) {
         if (javaSpecVersion.compareTo("1.9") < 0) {
-            Version v = Version.parse(vmVersion);
+            Version v = Version.parse(vmVersion, props);
             if (v != null) {
                 if (v.isLessThan(minVersion)) {
                     failVersionCheck(exitOnFailure, "The VM does not support the minimum JVMCI API version required by Graal: %s < %s.%n", v, minVersion);
@@ -274,7 +274,7 @@ public final class JVMCIVersionCheck {
             }
             if (vmVersion.contains("-jvmci-")) {
                 // A "labsjdk"
-                Version v = Version.parse(vmVersion);
+                Version v = Version.parse(vmVersion, props);
                 if (v != null) {
                     if (v.isLessThan(minVersion)) {
                         failVersionCheck(exitOnFailure, "The VM does not support the minimum JVMCI API version required by Graal: %s < %s.%n", v, minVersion);

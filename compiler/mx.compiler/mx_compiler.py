@@ -28,7 +28,7 @@
 
 from __future__ import print_function
 import os
-from os.path import join, exists, getmtime, basename, dirname, isdir
+from os.path import join, exists, getmtime, basename, dirname, isdir, islink
 from argparse import ArgumentParser, RawDescriptionHelpFormatter, REMAINDER
 import re
 import stat
@@ -1050,8 +1050,9 @@ class GraalArchiveParticipant:
         self.services = services
         self.arc = arc
 
-    def __add__(self, arcname, contents): # pylint: disable=unexpected-special-method-signature
-
+    def __process__(self, arcname, contents_supplier, is_source):
+        if is_source:
+            return False
         def add_serviceprovider(service, provider, version):
             if version is None:
                 # Non-versioned service
@@ -1070,7 +1071,7 @@ class GraalArchiveParticipant:
                 pass
             else:
                 provider = m.group(2)
-                for service in _decode(contents).strip().split(os.linesep):
+                for service in _decode(contents_supplier()).strip().split(os.linesep):
                     assert service
                     version = m.group(1)
                     add_serviceprovider(service, provider, version)
@@ -1092,9 +1093,6 @@ class GraalArchiveParticipant:
                 provider = arcname[:-len('.class'):].replace('/', '.')
                 service = 'org.graalvm.compiler.options.OptionDescriptors'
                 add_serviceprovider(service, provider, version)
-        return False
-
-    def __addsrc__(self, arcname, contents):
         return False
 
     def __closing__(self):
@@ -1313,7 +1311,12 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
         mx.log('Updating/creating {} from {} using intermediate directory {} since {}'.format(dst_jdk_dir, src_jdk.home, tmp_dst_jdk_dir, update_reason))
         def _copy_file(src, dst):
             mx.log('Copying {} to {}'.format(src, dst))
-            shutil.copyfile(src, dst)
+            if mx.can_symlink():
+                if exists(dst) and islink(dst):
+                    os.remove(dst)
+                os.symlink(src, dst)
+            else:
+                shutil.copyfile(src, dst)
 
         vm_name = 'Server VM Graal'
         for d in _graal_config().jvmci_dists:
@@ -1346,7 +1349,8 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
                 boot_jars += _graal_config().jvmci_parent_jars
 
             for src_jar in boot_jars:
-                _copy_file(src_jar, join(boot_dir, basename(src_jar)))
+                dst_jar = join(boot_dir, basename(src_jar))
+                _copy_file(src_jar, dst_jar)
 
         else:
             module_dists = _graal_config().dists
