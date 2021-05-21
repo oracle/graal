@@ -131,10 +131,6 @@ public abstract class LoadFieldTypeFlow extends AccessFieldTypeFlow {
              */
 
             TypeState objectState = objectFlow.getState();
-            if (objectState.isUnknown()) {
-                bb.reportIllegalUnknownUse(graphRef.getMethod(), source, "Illegal: Field loading from UnknownTypeState objects. Field: " + field);
-                return;
-            }
             objectState = filterObjectState(bb, objectState);
             /* Iterate over the receiver objects. */
             for (AnalysisObject object : objectState.objects()) {

@@ -60,7 +60,6 @@ import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.ByteArrayReader;
 import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.VMError;
@@ -586,14 +585,14 @@ class CodeInfoVerifier {
     }
 
     private static ValueInfo findActualArrayElement(ValueInfo[] actualObject, UnsignedWord expectedOffset) {
-        DynamicHub hub = KnownIntrinsics.convertUnknownValue(SubstrateObjectConstant.asObject(actualObject[0].getValue()), DynamicHub.class);
+        DynamicHub hub = (DynamicHub) SubstrateObjectConstant.asObject(actualObject[0].getValue());
         ObjectLayout objectLayout = ConfigurationValues.getObjectLayout();
         assert LayoutEncoding.isArray(hub.getLayoutEncoding());
         return findActualValue(actualObject, expectedOffset, objectLayout, LayoutEncoding.getArrayBaseOffset(hub.getLayoutEncoding()), 2);
     }
 
     private static ValueInfo findActualField(ValueInfo[] actualObject, UnsignedWord expectedOffset) {
-        DynamicHub hub = KnownIntrinsics.convertUnknownValue(SubstrateObjectConstant.asObject(actualObject[0].getValue()), DynamicHub.class);
+        DynamicHub hub = (DynamicHub) SubstrateObjectConstant.asObject(actualObject[0].getValue());
         ObjectLayout objectLayout = ConfigurationValues.getObjectLayout();
         assert LayoutEncoding.isInstance(hub.getLayoutEncoding());
         return findActualValue(actualObject, expectedOffset, objectLayout, WordFactory.unsigned(objectLayout.getFirstFieldOffset()), 1);

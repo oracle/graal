@@ -124,11 +124,6 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
             assert this.isClone();
 
             TypeState arrayState = getObjectState();
-            if (arrayState.isUnknown()) {
-                bb.reportIllegalUnknownUse(graphRef.getMethod(), source, "Illegal: Index loading from UnknownTypeState. Load: " + source);
-                return;
-            }
-
             for (AnalysisObject object : arrayState.objects()) {
                 if (bb.analysisPolicy().relaxTypeFlowConstraints() && !object.type().isArray()) {
                     /* Ignore non-array types when type flow constraints are relaxed. */
@@ -141,12 +136,6 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
 
                 /* Add the indexed load flow as a use to the elements flow. */
                 TypeFlow<?> elementsFlow = object.getArrayElementsFlow(bb, false);
-                if (elementsFlow.getState().isUnknown()) {
-                    bb.getUnsupportedFeatures().addMessage(graphRef.getMethod().format("%H.%n(%p)"), graphRef.getMethod(),
-                                    "Illegal: Index loading UnknownTypeState from array. Store: " + this.getSource());
-                    return;
-                }
-
                 elementsFlow.addUse(bb, this);
             }
         }
@@ -197,11 +186,6 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
             assert this.isClone();
 
             TypeState objectState = getObjectState();
-            if (objectState.isUnknown()) {
-                bb.reportIllegalUnknownUse(graphRef.getMethod(), source, "Illegal: Unsafe loading from UnknownTypeState. Load: " + source);
-                return;
-            }
-
             for (AnalysisObject object : objectState.objects()) {
                 AnalysisType objectType = object.type();
                 if (objectType.isArray()) {
@@ -217,21 +201,11 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
                      * point.
                      */
                     TypeFlow<?> elementsFlow = object.getArrayElementsFlow(bb, false);
-                    if (elementsFlow.getState().equals(TypeState.forUnknown())) {
-                        bb.getUnsupportedFeatures().addMessage(graphRef.getMethod().format("%H.%n(%p)"), graphRef.getMethod(),
-                                        "Illegal: Unsafe loading UnknownTypeState from object. Load:" + this.getSource());
-                        return;
-                    }
                     elementsFlow.addUse(bb, this);
                 } else {
                     for (AnalysisField field : objectType.unsafeAccessedFields()) {
                         assert field != null;
                         TypeFlow<?> fieldFlow = object.getInstanceFieldFlow(bb, this.method(), field, false);
-                        if (fieldFlow.getState().isUnknown()) {
-                            bb.getUnsupportedFeatures().addMessage(graphRef.getMethod().format("%H.%n(%p)"), graphRef.getMethod(),
-                                            "Illegal: Unsafe loading UnknownTypeState from object. Load: " + this.getSource());
-                            return;
-                        }
                         fieldFlow.addUse(bb, this);
                     }
                 }
@@ -300,10 +274,6 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
             assert this.isClone();
 
             TypeState objectState = getObjectState();
-            if (objectState.isUnknown()) {
-                bb.reportIllegalUnknownUse(graphRef.getMethod(), source, "Illegal: Unsafe loading from UnknownTypeState. Load: " + source);
-                return;
-            }
 
             for (AnalysisObject object : objectState.objects()) {
                 AnalysisType objectType = object.type();
@@ -311,13 +281,6 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
 
                 for (AnalysisField field : objectType.unsafeAccessedFields(partitionKind)) {
                     TypeFlow<?> fieldFlow = object.getInstanceFieldFlow(bb, this.method(), field, false);
-
-                    if (fieldFlow.getState().isUnknown()) {
-                        bb.getUnsupportedFeatures().addMessage(graphRef.getMethod().format("%H.%n(%p)"), graphRef.getMethod(),
-                                        "Illegal: Unsafe loading UnknownTypeState from object. Load: " + this.getSource());
-                        return;
-                    }
-
                     fieldFlow.addUse(bb, this);
                 }
             }

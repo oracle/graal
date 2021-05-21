@@ -347,21 +347,11 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
                 /* Collect the field referenced types. */
                 for (AnalysisField field : getInstanceFields(true)) {
                     TypeState state = field.getInstanceFieldTypeState();
-                    if (!state.isUnknown()) {
-                        /*
-                         * If the field state is unknown we don't process the state. Unknown means
-                         * that the state can contain any object of any type, but the core analysis
-                         * guarantees that there is no path on which the objects of an unknown type
-                         * state are converted to and used as java objects; they are just used as
-                         * data.
-                         */
-                        for (AnalysisType type : state.types()) {
-                            /* Add the assignable types, as discovered by the static analysis. */
-                            type.getTypeFlow(bb, false).getState().types().forEach(referencedTypesSet::add);
-                        }
+                    for (AnalysisType type : state.types()) {
+                        /* Add the assignable types, as discovered by the static analysis. */
+                        type.getTypeFlow(bb, false).getState().types().forEach(referencedTypesSet::add);
                     }
                 }
-
             }
 
             referencedTypes = new ArrayList<>(referencedTypesSet);

@@ -73,12 +73,6 @@ public class FilterTypeFlow extends TypeFlow<BytecodePosition> {
 
     @Override
     public TypeState filter(BigBang bb, TypeState update) {
-        if (update.isUnknown()) {
-            // Filtering UnknownTypeState would otherwise return EmptyTypeState.
-            bb.reportIllegalUnknownUse(graphRef.getMethod(), source, "Illegal: Filter of UnknownTypeState objects.");
-            return TypeState.forEmpty();
-        }
-
         TypeState result;
         if (isExact) {
             /*

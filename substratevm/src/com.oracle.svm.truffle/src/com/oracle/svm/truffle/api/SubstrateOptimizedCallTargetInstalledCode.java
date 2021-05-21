@@ -37,7 +37,6 @@ import com.oracle.svm.core.code.UntetheredCodeInfo;
 import com.oracle.svm.core.code.UntetheredCodeInfoAccess;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.deopt.SubstrateSpeculationLog;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
 
@@ -159,7 +158,7 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
         if (start != 0) {
             SubstrateOptimizedCallTarget.CallBoundaryFunctionPointer target = WordFactory.pointer(start);
             Object result = target.invoke(callTarget, args);
-            return KnownIntrinsics.convertUnknownValue(result, Object.class);
+            return result;
         } else {
             return callTarget.invokeCallBoundary(args);
         }

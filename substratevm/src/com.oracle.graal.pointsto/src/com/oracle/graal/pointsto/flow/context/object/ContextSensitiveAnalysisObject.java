@@ -25,8 +25,8 @@
 package com.oracle.graal.pointsto.flow.context.object;
 
 import java.lang.reflect.Modifier;
-import java.util.Collections;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 
@@ -190,17 +190,8 @@ public class ContextSensitiveAnalysisObject extends AnalysisObject {
                         FieldTypeStore fieldTypeStore = instanceFieldsTypeStore.get(i);
                         if (fieldTypeStore != null) {
                             FieldTypeFlow fieldFlow = ((UnifiedFieldTypeStore) fieldTypeStore).readWriteFlow();
-                            if (!fieldFlow.getState().isUnknown()) {
-                                /*
-                                 * If the field state is unknown we don't process the state. Unknown
-                                 * means that the state can contain any object of any type, but the
-                                 * core analysis guarantees that there is no path on which the
-                                 * objects of an unknown type state are converted to and used as
-                                 * java objects; they are just used as data.
-                                 */
-                                for (AnalysisObject object : fieldFlow.getState().objects()) {
-                                    objectsSet.add(object);
-                                }
+                            for (AnalysisObject object : fieldFlow.getState().objects()) {
+                                objectsSet.add(object);
                             }
                         }
                     }
