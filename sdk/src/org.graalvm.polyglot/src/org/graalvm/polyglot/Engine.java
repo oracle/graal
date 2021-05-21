@@ -584,21 +584,6 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public AbstractExceptionImpl getImpl(PolyglotException value) {
-            return value.impl;
-        }
-
-        @Override
-        public Object getReceiver(Context value) {
-            return value.receiver;
-        }
-
-        @Override
-        public PolyglotException newLanguageException(String message, AbstractExceptionImpl impl) {
-            return new PolyglotException(message, impl);
-        }
-
-        @Override
         public Language newLanguage(AbstractLanguageImpl impl) {
             return new Language(impl);
         }
@@ -654,6 +639,11 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
+        public PolyglotException newLanguageException(String message, AbstractExceptionImpl impl, Object receiver) {
+            return new PolyglotException(message, impl, receiver);
+        }
+
+        @Override
         public AbstractStackFrameImpl getImpl(StackFrame value) {
             return value.impl;
         }
@@ -664,8 +654,13 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public StackFrame newPolyglotStackTraceElement(PolyglotException e, AbstractStackFrameImpl impl) {
-            return e.new StackFrame(impl);
+        public Object getReceiver(PolyglotException polyglot) {
+            return polyglot.receiver;
+        }
+
+        @Override
+        public StackFrame newPolyglotStackTraceElement(Object e, AbstractStackFrameImpl impl) {
+            return ((PolyglotException) e).new StackFrame(impl);
         }
 
         @Override
@@ -799,7 +794,6 @@ public final class Engine implements AutoCloseable {
                     impl.setNext(prev);
                     impl.setConstructors(APIAccessImpl.INSTANCE);
                     impl.setAccessor(PolyglotAccessorImpl.INSTANCE);
-                    impl.setAccessor(null);
                     prev = impl;
                 }
                 return prev;
@@ -858,6 +852,11 @@ public final class Engine implements AutoCloseable {
 
         @Override
         public AbstractContextImpl getContextImpl() {
+            throw noPolyglotImplementationFound();
+        }
+
+        @Override
+        public AbstractExceptionImpl getExceptionImpl() {
             throw noPolyglotImplementationFound();
         }
 

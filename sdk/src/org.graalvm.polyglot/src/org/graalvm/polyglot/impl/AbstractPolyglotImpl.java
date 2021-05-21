@@ -69,7 +69,6 @@ import java.util.function.Predicate;
 
 import org.graalvm.collections.UnmodifiableEconomicSet;
 import org.graalvm.options.OptionDescriptors;
-import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.HostAccess;
@@ -145,8 +144,6 @@ public abstract class AbstractPolyglotImpl {
             }
         }
 
-        public abstract PolyglotException newLanguageException(String message, AbstractExceptionImpl impl);
-
         public abstract Language newLanguage(AbstractLanguageImpl impl);
 
         public abstract Instrument newInstrument(AbstractInstrumentImpl impl);
@@ -159,13 +156,11 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract void notifyInnerContextCreated(Object engineReceiver, Object contextReceiver);
 
-        public abstract Object getReceiver(Context value);
+        public abstract Object getReceiver(PolyglotException polyglot);
 
         public abstract Object getReceiver(Value value);
 
         public abstract AbstractValueImpl getImpl(Value value);
-
-        public abstract AbstractExceptionImpl getImpl(PolyglotException value);
 
         public abstract AbstractStackFrameImpl getImpl(StackFrame value);
 
@@ -175,7 +170,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract ResourceLimitEvent newResourceLimitsEvent(Object impl);
 
-        public abstract StackFrame newPolyglotStackTraceElement(PolyglotException e, AbstractStackFrameImpl impl);
+        public abstract StackFrame newPolyglotStackTraceElement(Object e, AbstractStackFrameImpl impl);
 
         public abstract List<Object> getTargetMappings(HostAccess access);
 
@@ -206,6 +201,8 @@ public abstract class AbstractPolyglotImpl {
         public abstract String validatePolyglotAccess(PolyglotAccess access, UnmodifiableEconomicSet<String> language);
 
         public abstract Object getImpl(ResourceLimits value);
+
+        public abstract PolyglotException newLanguageException(String message, AbstractExceptionImpl impl, Object receiver);
 
     }
 
@@ -289,6 +286,8 @@ public abstract class AbstractPolyglotImpl {
     public abstract AbstractEngineImpl getEngineImpl();
 
     public abstract AbstractContextImpl getContextImpl();
+
+    public abstract AbstractExceptionImpl getExceptionImpl();
 
     public abstract static class AbstractManagementImpl {
 
@@ -521,41 +520,41 @@ public abstract class AbstractPolyglotImpl {
             Objects.requireNonNull(engineImpl);
         }
 
-        public abstract boolean isInternalError();
+        public abstract boolean isInternalError(Object receiver);
 
-        public abstract boolean isCancelled();
+        public abstract boolean isCancelled(Object receiver);
 
-        public abstract boolean isExit();
+        public abstract boolean isExit(Object receiver);
 
-        public abstract int getExitStatus();
+        public abstract int getExitStatus(Object receiver);
 
-        public abstract Iterable<StackFrame> getPolyglotStackTrace();
+        public abstract Iterable<StackFrame> getPolyglotStackTrace(Object receiver);
 
-        public abstract boolean isSyntaxError();
+        public abstract boolean isSyntaxError(Object receiver);
 
-        public abstract Value getGuestObject();
+        public abstract Value getGuestObject(Object receiver);
 
-        public abstract boolean isIncompleteSource();
+        public abstract boolean isIncompleteSource(Object receiver);
 
-        public abstract void onCreate(PolyglotException api);
+        public abstract void onCreate(Object receiver, PolyglotException api);
 
-        public abstract void printStackTrace(PrintStream s);
+        public abstract void printStackTrace(Object receiver, PrintStream s);
 
-        public abstract void printStackTrace(PrintWriter s);
+        public abstract void printStackTrace(Object receiver, PrintWriter s);
 
-        public abstract StackTraceElement[] getStackTrace();
+        public abstract StackTraceElement[] getStackTrace(Object receiver);
 
-        public abstract String getMessage();
+        public abstract String getMessage(Object receiver);
 
-        public abstract boolean isHostException();
+        public abstract boolean isHostException(Object receiver);
 
-        public abstract Throwable asHostException();
+        public abstract Throwable asHostException(Object receiver);
 
-        public abstract SourceSection getSourceLocation();
+        public abstract SourceSection getSourceLocation(Object receiver);
 
-        public abstract boolean isResourceExhausted();
+        public abstract boolean isResourceExhausted(Object receiver);
 
-        public abstract boolean isInterrupted();
+        public abstract boolean isInterrupted(Object receiver);
 
     }
 
