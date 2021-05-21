@@ -163,11 +163,11 @@ public final class ObjectKlass extends Klass {
         System.arraycopy(skFieldTable, 0, fieldTable, 0, skFieldTable.length);
         localFieldTableIndex = skFieldTable.length;
         for (int i = 0; i < lkInstanceFields.length; i++) {
-            Field instanceField = new Field(this, lkInstanceFields[i], lkInstanceFields[i].isHidden());
+            Field instanceField = new Field(this, lkInstanceFields[i]);
             fieldTable[localFieldTableIndex + i] = instanceField;
         }
         for (int i = 0; i < lkStaticFields.length; i++) {
-            Field staticField = new Field(this, lkStaticFields[i], false);
+            Field staticField = new Field(this, lkStaticFields[i]);
             staticFieldTable[i] = staticField;
         }
 
@@ -1117,7 +1117,7 @@ public final class ObjectKlass extends Klass {
                         for (LinkedField instanceField : instanceFields) {
                             if (instanceField.getName().equals(outerField.getName())) {
                                 // replace with new field
-                                fieldTable[i] = new Field(this, instanceField, false);
+                                fieldTable[i] = new Field(this, instanceField);
                             }
                         }
                     }

@@ -50,14 +50,12 @@ public final class Field extends Member<Type> implements FieldRef {
     private final LinkedField linkedField;
     private final ObjectKlass holder;
     private volatile Klass typeKlassCache;
-    private final boolean hidden;
 
     @CompilationFinal private Symbol<ModifiedUTF8> genericSignature = null;
 
-    public Field(ObjectKlass holder, LinkedField linkedField, boolean hidden) {
+    public Field(ObjectKlass holder, LinkedField linkedField) {
         this.linkedField = linkedField;
         this.holder = holder;
-        this.hidden = hidden;
     }
 
     @Override
@@ -66,9 +64,6 @@ public final class Field extends Member<Type> implements FieldRef {
     }
 
     public Symbol<Type> getType() {
-        if (hidden) {
-            return null;
-        }
         return linkedField.getType();
     }
 
@@ -89,7 +84,7 @@ public final class Field extends Member<Type> implements FieldRef {
     }
 
     public boolean isHidden() {
-        return hidden;
+        return linkedField.isHidden();
     }
 
     public JavaKind getKind() {
