@@ -23,7 +23,7 @@
  * questions.
  */
 
-package com.oracle.svm.jfrtest;
+package com.oracle.svm.test.jdk11.jfrtest;
 
 import java.io.DataInput;
 import java.io.EOFException;
@@ -97,8 +97,6 @@ public final class RecordingInput implements DataInput, AutoCloseable {
 
     @Override
     public void readFully(byte[] dest, int offset, int length) throws IOException {
-        // TODO: Optimize, use Arrays.copy if all bytes are in current block
-        // array
         for (int i = 0; i < length; i++) {
             dest[i + offset] = readByte();
         }
@@ -265,7 +263,7 @@ public final class RecordingInput implements DataInput, AutoCloseable {
             return new String(c);
         }
         byte[] bytes = new byte[length];
-        readFully(bytes); // TODO: optimize, check size, and copy only if needed
+        readFully(bytes);
         if (encoding == STRING_ENCODING_UTF8_BYTE_ARRAY) {
             return new String(bytes, UTF8);
         }

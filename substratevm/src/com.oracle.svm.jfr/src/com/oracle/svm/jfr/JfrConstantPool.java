@@ -24,48 +24,18 @@
  */
 package com.oracle.svm.jfr;
 
-import org.graalvm.nativeimage.c.struct.RawField;
-import org.graalvm.nativeimage.c.struct.RawStructure;
-import org.graalvm.word.PointerBase;
+import com.oracle.svm.core.annotate.Uninterruptible;
 
 /**
- * The common interface for the LinkedList entries that can be used in an {@link UninterruptibleHashtable}.
+ * Epoch-based storage for metadata. Switching the epoch and iterating the collected data may only
+ * be done at a safepoint. All methods that manipulate data in the constant pool must be
+ * {@link Uninterruptible} to guarantee that a safepoint always sees a consistent state. Otherwise,
+ * other JFR code could see partially added data when it tries to iterate the data at a safepoint.
  */
-@RawStructure
-public interface UninterruptibleEntry<T extends UninterruptibleEntry<T>> extends PointerBase {
+public interface JfrConstantPool {
     /**
-     * Gets the next entry.
+     * Persists the data of the previous epoch. May only be called at a safepoint, after the epoch
+     * changed.
      */
-    @RawField
-    T getNext();
-
-    /**
-     * Sets the next entry.
-     */
-    @RawField
-    void setNext(T value);
-
-    /**
-     * Gets the id for the entry.
-     */
-    @RawField
-    long getId();
-
-    /**
-     * Sets the id for the entry.
-     */
-    @RawField
-    void setId(long value);
-
-    /**
-     * Get the hashcode for the entry.
-     */
-    @RawField
-    int getHash();
-
-    /**
-     * Sets the hashcode for the entry.
-     */
-    @RawField
-    void setHash(int value);
+    int write(JfrChunkWriter writer);
 }

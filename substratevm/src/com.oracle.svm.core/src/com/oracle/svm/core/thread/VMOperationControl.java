@@ -331,7 +331,7 @@ public final class VMOperationControl {
          */
         VMOperationControl control = VMOperationControl.get();
         OpInProgress opInProgress = control.getInProgress();
-        if (VMOperation.isInProgress(opInProgress) && !opInProgress.getOperation().isJavaSynchronizationAllowed()) {
+        if (VMOperation.isInProgress(opInProgress)) {
             Log.log().string(message).newline();
             VMError.shouldNotReachHere("Should not reach here: Not okay to block.");
         }

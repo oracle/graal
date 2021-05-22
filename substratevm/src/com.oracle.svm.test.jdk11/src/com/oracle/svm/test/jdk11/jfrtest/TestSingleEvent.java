@@ -24,7 +24,7 @@
  * questions.
  */
 
-package com.oracle.svm.jfrtest;
+package com.oracle.svm.test.jdk11.jfrtest;
 
 import jdk.jfr.Recording;
 
@@ -72,14 +72,12 @@ public class TestSingleEvent {
 
     private void verifyConstantPools(RecordingInput input, long cpoolPos) throws IOException {
         input.position(cpoolPos);
-        // TODO: When we actually parse the constant pool, we should verify the size.
         input.readInt(); // size
         long typeId = input.readLong();
         assertEquals(CONSTANT_POOL_TYPE_ID, typeId);
         input.readLong(); // timestamp
         input.readLong(); // duration
         long delta = input.readLong();
-        // TODO: Actually parse and verify constant pool here.
         if (delta != 0) {
             verifyConstantPools(input, cpoolPos + delta);
         }

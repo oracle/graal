@@ -51,8 +51,6 @@ public class JavaThreadStatistics extends Event {
     @Label("Peak Threads") @Description("Peak live thread count since JVM start or when peak count was reset") long peakCount;
 
     public static void emitJavaThreadStats() {
-        // TODO: should be rewritten as a native JFR event. Same applies to some of the other events
-        // in this package.
         JavaThreadStatistics threadStats = new JavaThreadStatistics();
         ThreadMXBean threadMXBean = ManagementFactory.getThreadMXBean();
 

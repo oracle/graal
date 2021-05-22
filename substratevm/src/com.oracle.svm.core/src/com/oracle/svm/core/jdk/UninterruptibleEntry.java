@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,16 +22,51 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.jfr;
+package com.oracle.svm.core.jdk;
 
-import java.io.IOException;
-import java.nio.file.Path;
+import org.graalvm.nativeimage.c.struct.RawField;
+import org.graalvm.nativeimage.c.struct.RawStructure;
+import org.graalvm.word.PointerBase;
 
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.TargetClass;
+/**
+ * The common interface for the LinkedList entries that can be used in an
+ * {@link UninterruptibleHashtable}.
+ */
+@RawStructure
+public interface UninterruptibleEntry<T extends UninterruptibleEntry<T>> extends PointerBase {
+    /**
+     * Gets the next entry.
+     */
+    @RawField
+    T getNext();
 
-@TargetClass(value = jdk.jfr.internal.jfc.JFC.class, onlyWith = JfrEnabled.class)
-public final class Target_jdk_jfr_internal_jfc_JFC {
-    @Alias
-    static native String nullSafeFileName(Path file) throws IOException;
+    /**
+     * Sets the next entry.
+     */
+    @RawField
+    void setNext(T value);
+
+    /**
+     * Gets the id for the entry.
+     */
+    @RawField
+    long getId();
+
+    /**
+     * Sets the id for the entry.
+     */
+    @RawField
+    void setId(long value);
+
+    /**
+     * Get the hashcode for the entry.
+     */
+    @RawField
+    int getHash();
+
+    /**
+     * Sets the hashcode for the entry.
+     */
+    @RawField
+    void setHash(int value);
 }

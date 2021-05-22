@@ -74,6 +74,7 @@ public interface JfrBuffer extends PointerBase {
 
     /**
      * Gets the acquired value. Used to control concurrent access to the buffer.
+     *
      * @see JfrBufferAccess#acquire(JfrBuffer)
      * @see JfrBufferAccess#release(JfrBuffer)
      */
@@ -88,6 +89,7 @@ public interface JfrBuffer extends PointerBase {
 
     /**
      * Sets the acquired value.
+     *
      * @see JfrBufferAccess#acquire(JfrBuffer)
      * @see JfrBufferAccess#release(JfrBuffer)
      */

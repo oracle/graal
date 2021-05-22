@@ -24,7 +24,7 @@
  * questions.
  */
 
-package com.oracle.svm.jfrtest;
+package com.oracle.svm.test.jdk11.jfrtest;
 
 import java.io.File;
 import java.io.IOException;

@@ -46,12 +46,9 @@ import jdk.jfr.internal.JVM;
 class SubstrateJVM {
     private final JfrOptionSet options;
     private final JfrNativeEventSetting[] eventSettings;
-    private final JfrStringRepository stringRepo;
     private final JfrSymbolRepository symbolRepo;
     private final JfrTypeRepository typeRepo;
-    private final JfrMethodRepository methodRepo;
-    private final JfrStackTraceRepository stackTraceRepo;
-    private final JfrRepository[] repositories;
+    private final JfrConstantPool[] repositories;
 
     private final JfrThreadLocal threadLocal;
     private final JfrGlobalMemory globalMemory;
@@ -76,15 +73,11 @@ class SubstrateJVM {
             eventSettings[i] = new JfrNativeEventSetting();
         }
 
-        stringRepo = new JfrStringRepository();
         symbolRepo = new JfrSymbolRepository();
         typeRepo = new JfrTypeRepository();
-        methodRepo = new JfrMethodRepository(typeRepo, symbolRepo);
-        stackTraceRepo = new JfrStackTraceRepository(methodRepo);
-        JfrFrameTypeSerializer frameTypeSerializer = new JfrFrameTypeSerializer();
-        // NOTE: The ordering of repositories in the array dictates the order in which the repositories
-        // (constant pools) will be written in the recording.
-        repositories = new JfrRepository[]{frameTypeSerializer, stringRepo, typeRepo, methodRepo, stackTraceRepo, symbolRepo};
+        // The ordering in the array dictates the order in which the repositories (constant pools)
+        // will be written in the recording.
+        repositories = new JfrConstantPool[]{typeRepo, symbolRepo};
 
         threadLocal = new JfrThreadLocal();
         globalMemory = new JfrGlobalMemory();
@@ -126,11 +119,6 @@ class SubstrateJVM {
     @Fold
     public static JfrSymbolRepository getSymbolRepository() {
         return get().symbolRepo;
-    }
-
-    @Fold
-    public static JfrMethodRepository getMethodRepository() {
-        return get().methodRepo;
     }
 
     @Fold
@@ -190,7 +178,6 @@ class SubstrateJVM {
         }
 
         globalMemory.teardown();
-        stackTraceRepo.teardown();
         symbolRepo.teardown();
 
         initialized = false;
@@ -199,7 +186,8 @@ class SubstrateJVM {
 
     /** See {@link JVM#getStackTraceId}. */
     public long getStackTraceId(int skipCount) {
-        return stackTraceRepo.recordStackTrace(skipCount);
+        // Stack traces are not supported at the moment.
+        return 0;
     }
 
     /** See {@link JVM#getThreadId}. */
@@ -365,7 +353,7 @@ class SubstrateJVM {
 
     /** See {@link JVM#setRepositoryLocation}. */
     public void setRepositoryLocation(String dirText) {
-        // TODO: implement
+        // Would only be used in case of an emergency dump, which is not supported at the moment.
     }
 
     /** See {@link JVM#abort}. */
@@ -385,7 +373,8 @@ class SubstrateJVM {
 
     /** See {@link JVM#addStringConstant}. */
     public boolean addStringConstant(boolean expectedEpoch, long id, String value) {
-        return stringRepo.add(expectedEpoch, id, value);
+        // This 'implementation' will cause the EventWriter to always write strings by value.
+        return !expectedEpoch;
     }
 
     /** See {@link JVM#log}. */
@@ -395,7 +384,7 @@ class SubstrateJVM {
 
     /** See {@link JVM#subscribeLogLevel}. */
     public void subscribeLogLevel(LogTag lt, int tagSetId) {
-        // TODO: implement
+        // Currently unused because logging support is minimal.
     }
 
     /** See {@link JVM#getEventWriter}. */

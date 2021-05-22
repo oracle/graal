@@ -647,7 +647,10 @@ suite = {
                 "mx:JUNIT_TOOL",
                 "sdk:GRAAL_SDK",
             ],
-            "requires" : ["java.compiler"],
+            "requires" : [
+                "java.compiler",
+                "jdk.jfr",
+            ],
             "checkstyle": "com.oracle.svm.core",
             "workingSets": "SVM",
             "annotationProcessors": [

@@ -24,17 +24,21 @@
  * questions.
  */
 
-package com.oracle.svm.jfrtest;
+package com.oracle.svm.test.jdk11.jfrtest;
 
-import jdk.jfr.Description;
-import jdk.jfr.Event;
-import jdk.jfr.Label;
-import jdk.jfr.StackTrace;
+import java.io.IOException;
 
-@Label("String Event")
-@Description("An event with a string payload")
-@StackTrace(false)
-public class StringEvent extends Event {
+import jdk.jfr.Recording;
 
-    @Label("Message") public String message;
+/**
+ * Utility class to handle recording.
+ */
+public interface JFR {
+    Recording startRecording(String recordingName) throws Exception;
+
+    Recording startRecording(String recordingName, String configName) throws Exception;
+
+    void endRecording(Recording recording) throws Exception;
+
+    void cleanupRecording(Recording recording) throws IOException;
 }

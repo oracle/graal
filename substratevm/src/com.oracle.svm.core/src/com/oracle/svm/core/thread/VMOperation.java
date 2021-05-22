@@ -44,21 +44,15 @@ import com.oracle.svm.core.util.VMError;
 public abstract class VMOperation {
     private final String name;
     private final SystemEffect systemEffect;
-    private final boolean allowJavaSynchronization;
 
-    protected VMOperation(String name, SystemEffect systemEffect, boolean allowJavaSynchronization) {
+    protected VMOperation(String name, SystemEffect systemEffect) {
         this.name = name;
         this.systemEffect = systemEffect;
-        this.allowJavaSynchronization = allowJavaSynchronization;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public final String getName() {
         return name;
-    }
-
-    public boolean isJavaSynchronizationAllowed() {
-        return allowJavaSynchronization;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

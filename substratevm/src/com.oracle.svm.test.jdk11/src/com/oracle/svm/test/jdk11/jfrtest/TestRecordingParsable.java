@@ -24,24 +24,31 @@
  * questions.
  */
 
-package com.oracle.svm.jfrtest;
+package com.oracle.svm.test.jdk11.jfrtest;
 
 import jdk.jfr.Recording;
+import jdk.jfr.consumer.RecordingFile;
 
+import static org.junit.Assert.assertNotNull;
 import org.junit.Test;
 
-public class TestJFRCompiles {
+public class TestRecordingParsable {
 
     @Test
     public void test() throws Exception {
         JFR jfr = new LocalJFR();
-        Recording recording = jfr.startRecording("TestSingleEvent");
+        Recording recording = jfr.startRecording("TestRecordingParsable");
 
         StringEvent event = new StringEvent();
         event.message = "Event has been generated!";
         event.commit();
 
         jfr.endRecording(recording);
-        jfr.cleanupRecording(recording);
+
+        try (RecordingFile recordingFile = new RecordingFile(recording.getDestination())) {
+            assertNotNull(recordingFile);
+        } finally {
+            jfr.cleanupRecording(recording);
+        }
     }
 }
