@@ -53,17 +53,7 @@ public abstract class JavaVMOperation extends VMOperation implements VMOperation
     private volatile boolean finished;
 
     protected JavaVMOperation(String name, SystemEffect systemEffect) {
-        this(name, systemEffect, false);
-    }
-
-    /**
-     * Avoid using this constructor as there is hardly ever any need for Java synchronization in VM
-     * operations. If Java synchronization is needed for some reason, be very careful about
-     * deadlocks, especially regarding the scenarios mentioned in
-     * {@link VMOperationControl#guaranteeOkayToBlock}.
-     */
-    protected JavaVMOperation(String name, SystemEffect systemEffect, boolean allowJavaSynchronization) {
-        super(name, systemEffect, allowJavaSynchronization);
+        super(name, systemEffect);
         /*
          * Calling SplittableRandomAccessors#getDefaultGen() here to prevent
          * SplittableRandomAccessors#initialize synchronized method call inside VMOperation lock,

@@ -229,7 +229,6 @@ public final class JfrNativeEventWriter {
         if (newBuffer.isNull()) {
             // The flush failed for some reason (e.g., because not enough global memory was
             // available).
-            // TODO: here, we lose the current event. Shouldn't that be recorded somewhere?
             cancel(data);
             return false;
         }

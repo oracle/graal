@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2021, 2021, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,31 +24,17 @@
  * questions.
  */
 
-package com.oracle.svm.jfrtest;
+package com.oracle.svm.test.jdk11.jfrtest;
 
-import jdk.jfr.Recording;
+import jdk.jfr.Description;
+import jdk.jfr.Event;
+import jdk.jfr.Label;
+import jdk.jfr.StackTrace;
 
-import static org.junit.Assert.assertNotNull;
+@Label("String Event")
+@Description("An event with a string payload")
+@StackTrace(false)
+public class StringEvent extends Event {
 
-import jdk.jfr.consumer.RecordingFile;
-import org.junit.Test;
-
-public class TestClassEvent {
-    @Test
-    public void test() throws Exception {
-        JFR jfr = new LocalJFR();
-        Recording recording = jfr.startRecording("TestSingleEvent");
-
-        ClassEvent event = new ClassEvent();
-        event.clazz = TestClassEvent.class;
-        event.commit();
-
-        jfr.endRecording(recording);
-        try (RecordingFile recordingFile = new RecordingFile(recording.getDestination())) {
-            assertNotNull(recordingFile);
-        } finally {
-            jfr.cleanupRecording(recording);
-        }
-    }
-
+    @Label("Message") public String message;
 }

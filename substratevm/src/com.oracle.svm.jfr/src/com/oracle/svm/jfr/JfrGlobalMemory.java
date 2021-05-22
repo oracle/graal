@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.jfr;
 
+import com.oracle.svm.core.util.VMError;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.UnmanagedMemory;
@@ -99,7 +100,7 @@ public class JfrGlobalMemory {
             JfrBufferAccess.increasePos(promotionBuffer, unflushedSize);
             shouldSignal = recorderThread.shouldSignal(promotionBuffer);
         } finally {
-             releasePromotionBuffer(promotionBuffer);
+            releasePromotionBuffer(promotionBuffer);
         }
         JfrBufferAccess.increaseTop(threadLocalBuffer, unflushedSize);
         // Notify the thread that writes the global memory to disk.
@@ -146,13 +147,13 @@ public class JfrGlobalMemory {
     }
 
     @Uninterruptible(reason = "Epoch must not change while in this method.")
-    private static void discardOldest() {
-        // TODO: implement
+    private static boolean shouldDiscard() {
+        // Currently unused as in-memory recording is not supported yet.
+        return false;
     }
 
     @Uninterruptible(reason = "Epoch must not change while in this method.")
-    private static boolean shouldDiscard() {
-        // TODO: implement
-        return false;
+    private static void discardOldest() {
+        throw VMError.shouldNotReachHere("Not supported at the moment.");
     }
 }

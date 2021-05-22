@@ -44,15 +44,8 @@ public class JfrTraceId {
 
     private static final int TRACE_ID_SHIFT = 16;
 
-    // Epoch stuff
-    private static final long USED_BIT = 1;
-    private static final int EPOCH_1_SHIFT = 0;
-    private static final int EPOCH_2_SHIFT = 1;
-    private static final long USED_EPOCH_1_BIT = USED_BIT << EPOCH_1_SHIFT;
-    private static final long USED_EPOCH_2_BIT = USED_BIT << EPOCH_2_SHIFT;
-
-    private static final long JDK_JFR_EVENT_SUBKLASS = 16;
-    private static final long JDK_JFR_EVENT_KLASS = 32;
+    private static final long JDK_JFR_EVENT_SUBCLASS = 16;
+    private static final long JDK_JFR_EVENT_CLASS = 32;
     private static final long EVENT_HOST_KLASS = 64;
 
     @Fold
@@ -104,20 +97,20 @@ public class JfrTraceId {
     private static void tagAsJdkJfrEvent(int index) {
         JfrTraceIdMap map = getTraceIdMap();
         long id = map.getId(index);
-        map.setId(index, id | JDK_JFR_EVENT_KLASS);
+        map.setId(index, id | JDK_JFR_EVENT_CLASS);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     private static void tagAsJdkJfrEventSub(int index) {
         JfrTraceIdMap map = getTraceIdMap();
         long id = map.getId(index);
-        map.setId(index, id | JDK_JFR_EVENT_SUBKLASS);
+        map.setId(index, id | JDK_JFR_EVENT_SUBCLASS);
     }
 
     private static boolean isEventClass(int index) {
         JfrTraceIdMap map = getTraceIdMap();
         long id = map.getId(index);
-        return (id & (JDK_JFR_EVENT_KLASS | JDK_JFR_EVENT_SUBKLASS)) != 0;
+        return (id & (JDK_JFR_EVENT_CLASS | JDK_JFR_EVENT_SUBCLASS)) != 0;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -126,32 +119,37 @@ public class JfrTraceId {
         if (getTraceIdMap().getId(index) != -1) {
             return;
         }
-        // We are picking up the host trace-ID here. This is important because host JFR will build
-        // some datastructures that preserve the trace-IDs itself, and those end up in the image.
-        // We need to be in sync with that information, otherwise events may get dropped or other
-        // inconsistencies.
-        long typeId;
-        if (clazz == void.class) {
-            // void doesn't seem to be one of the known types in Type.java, but it would crash when
-            // queried in Hotspot. Trouble is that some code appears to be calling JVM.getTypeId() or similar
-            // at run-time, at which point it's expected that we have an entry in the table. Let's map it
-            // to 0 which is also TYPE_NONE in Hotspot's JFR. Maybe it should be added to the known types in
-            // Hotspot's Type.java.
-            typeId = 0;
-        } else {
-            typeId = Type.getTypeId(clazz);
-        }
+        long typeId = getTypeId(clazz);
         getTraceIdMap().setId(index, typeId << TRACE_ID_SHIFT);
 
         if ((jdk.internal.event.Event.class == clazz || jdk.jfr.Event.class == clazz) &&
-                clazz.getClassLoader() == null || clazz.getClassLoader() == ClassLoader.getSystemClassLoader()) {
-
+                        clazz.getClassLoader() == null || clazz.getClassLoader() == ClassLoader.getSystemClassLoader()) {
             tagAsJdkJfrEvent(index);
         }
         if ((jdk.internal.event.Event.class.isAssignableFrom(clazz) || jdk.jfr.Event.class.isAssignableFrom(clazz)) &&
-                clazz.getClassLoader() == null || clazz.getClassLoader() == ClassLoader.getSystemClassLoader()) {
-
+                        clazz.getClassLoader() == null || clazz.getClassLoader() == ClassLoader.getSystemClassLoader()) {
             tagAsJdkJfrEventSub(index);
+        }
+    }
+
+    private static long getTypeId(Class<?> clazz) {
+        /*
+         * We are picking up the host trace-ID here. This is important because host JFR will build
+         * some datastructures that preserve the trace-IDs itself, and those end up in the image. We
+         * need to be in sync with that information, otherwise events may get dropped or other
+         * inconsistencies.
+         */
+        if (clazz == void.class) {
+            /*
+             * void doesn't seem to be one of the known types in Type.java, but it would crash when
+             * queried in Hotspot. Trouble is that some code appears to be calling JVM.getTypeId()
+             * or similar at run-time, at which point it's expected that we have an entry in the
+             * table. Let's map it to 0 which is also TYPE_NONE in Hotspot's JFR. Maybe it should be
+             * added to the known types in Hotspot's Type.java.
+             */
+            return 0;
+        } else {
+            return Type.getTypeId(clazz);
         }
     }
 }

@@ -38,7 +38,7 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 public abstract class NativeVMOperation extends VMOperation {
     @Platforms(value = Platform.HOSTED_ONLY.class)
     protected NativeVMOperation(String name, SystemEffect systemEffect) {
-        super(name, systemEffect, false);
+        super(name, systemEffect);
     }
 
     public void enqueue(NativeVMOperationData data) {

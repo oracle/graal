@@ -27,6 +27,7 @@ package com.oracle.svm.jfr.traceid;
 
 //Checkstyle: allow reflection
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.util.ReflectionUtil;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
@@ -65,7 +66,8 @@ public class JfrTraceIdEpoch {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public JfrTraceIdEpoch() { }
+    public JfrTraceIdEpoch() {
+    }
 
     public long getEpochAddress() {
         UnsignedWord epochFieldOffset = WordFactory.unsigned(UNSAFE.objectFieldOffset(EPOCH_FIELD));
@@ -74,6 +76,7 @@ public class JfrTraceIdEpoch {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void changeEpoch() {
+        assert VMOperation.isInProgressAtSafepoint();
         epoch = !epoch;
     }
 

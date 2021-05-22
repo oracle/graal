@@ -79,8 +79,6 @@ public class JfrThreadLocal implements ThreadListener {
         this.threadLocalBufferSize = bufferSize;
     }
 
-    // TODO: we probably need to move a part of this logic as the ThreadStartEvent seems to assume
-    // that it is executed by the parent thread and not by the newly started thread.
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     @Override
     public void beforeThreadRun(IsolateThread isolateThread, Thread javaThread) {
@@ -89,46 +87,13 @@ public class JfrThreadLocal implements ThreadListener {
         // object.
         Target_java_lang_Thread t = SubstrateUtil.cast(javaThread, Target_java_lang_Thread.class);
         traceId.set(isolateThread, t.getId());
-
-        if (SubstrateJVM.isRecording()) {
-            JfrBuffer buffer = getNativeBuffer();
-            if (buffer.isNonNull()) {
-                // TODO: write a thread checkpoint so that JFR knows about the newly started thread.
-
-                // Write a thread start event.
-                JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
-                JfrNativeEventWriterDataAccess.initialize(data, buffer);
-
-                JfrNativeEventWriter.beginEventWrite(data, false);
-                JfrNativeEventWriter.putLong(data, JfrEvents.ThreadStartEvent.getId());
-                JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks()); // start time
-                JfrNativeEventWriter.putThread(data, isolateThread); // thread triggering the event
-                JfrNativeEventWriter.putThread(data, isolateThread); // started thread
-                JfrNativeEventWriter.putThread(data, WordFactory.nullPointer()); // parent thread
-                JfrNativeEventWriter.endEventWrite(data, false);
-            }
-        }
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     @Override
     public void afterThreadExit(IsolateThread isolateThread, Thread javaThread) {
-        // Write a ThreadEndEvent if necessary.
+        // Flush all buffers if necessary.
         if (SubstrateJVM.isRecording()) {
-            JfrBuffer buffer = getNativeBuffer();
-            if (buffer.isNonNull()) {
-                JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
-                JfrNativeEventWriterDataAccess.initialize(data, buffer);
-
-                JfrNativeEventWriter.beginEventWrite(data, false);
-                JfrNativeEventWriter.putLong(data, JfrEvents.ThreadEndEvent.getId());
-                JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks()); // start time
-                JfrNativeEventWriter.putThread(data, isolateThread); // thread triggering the event
-                JfrNativeEventWriter.putThread(data, isolateThread); // thread that exits
-                JfrNativeEventWriter.endEventWrite(data, false);
-            }
-
-            // Flush all buffers.
             JfrBuffer jb = javaBuffer.get(isolateThread);
             if (jb.isNonNull()) {
                 flush(jb, WordFactory.unsigned(0), 0);
@@ -208,13 +173,13 @@ public class JfrThreadLocal implements ThreadListener {
 
     @Uninterruptible(reason = "Accesses a JFR buffer.", callerMustBe = true)
     public static JfrBuffer getJavaBuffer(IsolateThread thread) {
-        assert(VMOperation.isInProgressAtSafepoint());
+        assert (VMOperation.isInProgressAtSafepoint());
         return javaBuffer.get(thread);
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.", callerMustBe = true)
     public static JfrBuffer getNativeBuffer(IsolateThread thread) {
-        assert(VMOperation.isInProgressAtSafepoint());
+        assert (VMOperation.isInProgressAtSafepoint());
         return nativeBuffer.get(thread);
     }
 
@@ -229,7 +194,6 @@ public class JfrThreadLocal implements ThreadListener {
     public static JfrBuffer flush(JfrBuffer threadLocalBuffer, UnsignedWord uncommitted, int requested) {
         assert threadLocalBuffer.isNonNull();
 
-        JfrBuffer result = threadLocalBuffer;
         UnsignedWord unflushedSize = JfrBufferAccess.getUnflushedSize(threadLocalBuffer);
         if (unflushedSize.aboveThan(0)) {
             JfrGlobalMemory globalMemory = SubstrateJVM.getGlobalMemory();
@@ -246,8 +210,8 @@ public class JfrThreadLocal implements ThreadListener {
         }
         JfrBufferAccess.reinitialize(threadLocalBuffer);
         assert JfrBufferAccess.getUnflushedSize(threadLocalBuffer).equal(0);
-        if (result.getSize().aboveOrEqual(uncommitted.add(requested))) {
-            return result;
+        if (threadLocalBuffer.getSize().aboveOrEqual(uncommitted.add(requested))) {
+            return threadLocalBuffer;
         }
         return WordFactory.nullPointer();
     }

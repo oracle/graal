@@ -24,21 +24,24 @@
  * questions.
  */
 
-package com.oracle.svm.jfrtest;
-
-import java.io.IOException;
+package com.oracle.svm.test.jdk11.jfrtest;
 
 import jdk.jfr.Recording;
 
-/**
- * Utility class to handle recording.
- */
-public interface JFR {
-    Recording startRecording(String recordingName) throws Exception;
+import org.junit.Test;
 
-    Recording startRecording(String recordingName, String configName) throws Exception;
+public class TestJFRCompiles {
 
-    void endRecording(Recording recording) throws Exception;
+    @Test
+    public void test() throws Exception {
+        JFR jfr = new LocalJFR();
+        Recording recording = jfr.startRecording("TestSingleEvent");
 
-    void cleanupRecording(Recording recording) throws IOException;
+        StringEvent event = new StringEvent();
+        event.message = "Event has been generated!";
+        event.commit();
+
+        jfr.endRecording(recording);
+        jfr.cleanupRecording(recording);
+    }
 }

@@ -311,8 +311,7 @@ public final class Target_jdk_jfr_internal_JVM {
     /** See {@link JVM#addStringConstant}. */
     @Substitute
     public static boolean addStringConstant(boolean epoch, long id, String s) {
-        // This 'implementation' will cause the EventWriter to always write strings by value.
-        return !epoch;
+        return SubstrateJVM.get().addStringConstant(epoch, id, s);
     }
 
     /** See {@link JVM#getEpochAddress}. */

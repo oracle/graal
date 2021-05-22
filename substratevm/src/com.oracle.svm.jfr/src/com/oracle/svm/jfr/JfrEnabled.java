@@ -37,6 +37,6 @@ public class JfrEnabled implements BooleanSupplier {
     }
 
     public static boolean get() {
-        return VMInspection.isEnabled() && JavaVersionUtil.JAVA_SPEC >= 11;
+        return VMInspection.isEnabled() && JavaVersionUtil.JAVA_SPEC == 11;
     }
 }

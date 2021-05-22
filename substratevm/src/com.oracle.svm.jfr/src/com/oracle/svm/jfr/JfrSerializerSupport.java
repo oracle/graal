@@ -24,18 +24,41 @@
  */
 package com.oracle.svm.jfr;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import java.util.Arrays;
+
+import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 /**
- * Epoch-based storage for metadata. Switching the epoch and iterating the collected data may only
- * be done at a safepoint. All methods that manipulate data in the repository must be
- * {@link Uninterruptible} to guarantee that a safepoint always sees a consistent state. Otherwise,
- * other JFR code could see partially added data when it tries to iterate the data at a safepoint.
+ * Support for registering and querying {@link JfrConstantPool}s that serialize data.
  */
-public interface JfrRepository {
-    /**
-     * Persists the data of the previous epoch. May only be called at a safepoint, after the epoch
-     * changed.
-     */
-    int write(JfrChunkWriter writer);
+public class JfrSerializerSupport {
+    private JfrConstantPool[] serializers;
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public JfrSerializerSupport() {
+        serializers = new JfrConstantPool[0];
+    }
+
+    // Checkstyle: allow synchronization.
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public synchronized void register(JfrConstantPool serializer) {
+        assert serializer != null;
+        int oldLength = serializers.length;
+        // We expect a very small number of serializers, so only increase the size by 1.
+        serializers = Arrays.copyOf(serializers, oldLength + 1);
+        serializers[oldLength] = serializer;
+    }
+    // Checkstyle: disallow synchronization.
+
+    @Fold
+    public static JfrSerializerSupport get() {
+        return ImageSingletons.lookup(JfrSerializerSupport.class);
+    }
+
+    public JfrConstantPool[] getSerializers() {
+        return serializers;
+    }
 }

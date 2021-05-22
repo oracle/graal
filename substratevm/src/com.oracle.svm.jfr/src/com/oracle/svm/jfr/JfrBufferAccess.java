@@ -87,7 +87,6 @@ public final class JfrBufferAccess {
 
     @Uninterruptible(reason = "We must guarantee that all buffers are in unacquired state when entering a safepoint.", callerMustBe = true)
     public static void release(JfrBuffer buffer) {
-        // TODO: check which location identity is used for accessing - must match the one above
         assert buffer.getAcquired() == ACQUIRED;
         buffer.setAcquired(NOT_ACQUIRED);
     }

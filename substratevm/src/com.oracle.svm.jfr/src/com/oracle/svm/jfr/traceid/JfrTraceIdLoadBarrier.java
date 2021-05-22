@@ -25,12 +25,11 @@
 
 package com.oracle.svm.jfr.traceid;
 
+import java.util.function.Consumer;
+
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
-import com.oracle.svm.core.thread.VMOperation;
-
-import java.util.function.Consumer;
 
 public class JfrTraceIdLoadBarrier {
     private static final UninterruptibleUtils.AtomicInteger classCount0 = new UninterruptibleUtils.AtomicInteger(0);
@@ -87,9 +86,6 @@ public class JfrTraceIdLoadBarrier {
         return JfrTraceId.getTraceId(clazz);
     }
 
-    // Note: Using Consumer<Class<?>> directly drags in other implementations which are not uninterruptible.
-    public interface ClassConsumer extends Consumer<Class<?>> {}
-
     public static void doClasses(ClassConsumer kc, boolean epoch) {
         long predicate = JfrTraceId.TRANSIENT_BIT;
         predicate |= epoch ? JfrTraceIdEpoch.EPOCH_1_BIT : JfrTraceIdEpoch.EPOCH_0_BIT;
@@ -101,5 +97,10 @@ public class JfrTraceIdLoadBarrier {
             }
         }
         assert usedClassCount == classCount(epoch);
+    }
+
+    // Using Consumer<Class<?>> directly drags in other implementations which are not
+    // uninterruptible.
+    public interface ClassConsumer extends Consumer<Class<?>> {
     }
 }
