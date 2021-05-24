@@ -441,6 +441,10 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
         advance(-1);
     }
 
+    private void retreat(int len) {
+        advance(-len);
+    }
+
     private void advance(int len) {
         switch (mode) {
             case Str:
@@ -932,6 +936,19 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
      */
     private boolean backreference() {
         if (curChar() >= '1' && curChar() <= '9') {
+            // if there are three octal digits following a backslash,
+            // always treat that as an octal escape
+            String octalEscape = getUpTo(3, PythonFlavorProcessor::isOctDigit);
+            if (octalEscape.length() == 3) {
+                int codePoint = Integer.parseInt(octalEscape, 8);
+                if (codePoint > 0377) {
+                    throw syntaxErrorAtRel(PyErrorMessages.invalidOctalEscape(octalEscape), 1 + octalEscape.length());
+                }
+                emitChar(codePoint);
+                return true;
+            } else {
+                retreat(octalEscape.length());
+            }
             String number = getUpTo(2, PythonFlavorProcessor::isDecDigit);
             int groupNumber = Integer.parseInt(number);
             if (groupNumber > groups) {
@@ -941,7 +958,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
             if (getLocalFlags().isIgnoreCase()) {
                 bailOut("case insensitive backreferences not supported");
             } else {
-                emitSnippet("\\" + number);
+                emitSnippet("(?:\\" + number + ")");
             }
             return true;
         } else {
