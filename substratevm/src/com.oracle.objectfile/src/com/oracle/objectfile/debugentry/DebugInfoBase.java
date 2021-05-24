@@ -245,7 +245,7 @@ public abstract class DebugInfoBase {
 
             /* Search for a method defining this primary range. */
             ClassEntry classEntry = ensureClassEntry(className);
-            MethodEntry methodEntry = classEntry.getMethodEntry(debugCodeInfo, this, debugContext);
+            MethodEntry methodEntry = classEntry.ensureMethodEntryForDebugRangeInfo(debugCodeInfo, this, debugContext);
             Range primaryRange = new Range(stringTable, methodEntry, lo, hi, primaryLine);
             debugContext.log(DebugContext.INFO_LEVEL, "PrimaryRange %s.%s %s %s:%d [0x%x, 0x%x]", className, methodName, filePath, fileName, primaryLine, lo, hi);
             classEntry.indexPrimary(primaryRange, debugCodeInfo.getFrameSizeChanges(), debugCodeInfo.getFrameSize());
@@ -262,7 +262,7 @@ public abstract class DebugInfoBase {
                  * symbol for them and don't see a break in the address range.
                  */
                 ClassEntry subClassEntry = ensureClassEntry(classNameAtLine);
-                MethodEntry subMethodEntry = subClassEntry.getMethodEntry(debugLineInfo, this, debugContext);
+                MethodEntry subMethodEntry = subClassEntry.ensureMethodEntryForDebugRangeInfo(debugLineInfo, this, debugContext);
                 Range subRange = new Range(stringTable, subMethodEntry, loAtLine, hiAtLine, line, primaryRange);
                 classEntry.indexSubRange(subRange);
                 try (DebugContext.Scope s = debugContext.scope("Subranges")) {
