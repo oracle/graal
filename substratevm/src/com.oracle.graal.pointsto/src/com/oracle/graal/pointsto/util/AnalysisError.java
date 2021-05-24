@@ -30,6 +30,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.reports.ReportUtils;
 
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -94,7 +95,7 @@ public class AnalysisError extends Error {
 
         private static String message(AnalysisMethod method) {
             String msg = String.format("Error encountered while parsing %s %n", method.format("%H.%n(%P)"));
-            msg += parsingContext(method);
+            msg += "Parsing context:" + ReportUtils.parsingContext(method);
             return msg;
         }
 
@@ -111,23 +112,10 @@ public class AnalysisError extends Error {
             String msg = String.format("Field %s is not present on type %s. ", field.format("%H.%n"), type.toJavaName());
             if (context != null) {
                 msg += String.format("Error encountered while analysing %s %n", context.format("%H.%n(%P)"));
-                msg += parsingContext(context);
+                msg += "Parsing context:" + ReportUtils.parsingContext(context);
             }
             return msg;
         }
-    }
-
-    private static String parsingContext(AnalysisMethod method) {
-        StringBuilder msg = new StringBuilder("Parsing context:");
-        if (method.getTypeFlow().getParsingContext().length > 0) {
-            for (StackTraceElement e : method.getTypeFlow().getParsingContext()) {
-                msg.append(String.format("%n\tparsing %s", e));
-            }
-            msg.append(String.format("%n"));
-        } else {
-            msg.append(String.format(" <no parsing context available> %n"));
-        }
-        return msg.toString();
     }
 
     public static TypeNotFoundError typeNotFound(ResolvedJavaType type) {

@@ -5,18 +5,22 @@ For more details see the following guides: [JDK8](https://docs.oracle.com/javase
 
 The JCA framework uses a provider architecture to access security services such as digital signatures, message digests, certificates and certificate validation, encryption (symmetric/asymmetric block/stream ciphers), key generation and management, and secure random number generation, etc.
 To achieve algorithm independence and extensibility it relies on reflection, therefore it requires a custom configuration in Native Image.
-The Native Image builder uses static analysis to discover which of these services are used.
+By default the Native Image builder uses static analysis to discover which of these services are used (see next section for details).
+The automatic registration of security services can be disabled with `-H:-EnableSecurityServicesFeature`.
+Then a custom reflection configuraion file or feature can be used to register the security services required by a specific application.
 
-Each provider registers concrete implementation classes for the algorithms it supports.
+# Security services automatic registration
+The mechanism, implemented in the `com.oracle.svm.hosted.SecurityServicesFeature` class, uses reachability of specific API methods in the JCA framework to determine which security services are used.
+
+Each JCA provider registers concrete implementation classes for the algorithms it supports.
 Each of the service classes (`Signature`, `Cipher`, `Mac`, `KeyPair`, `KeyGenerator`, `KeyFactory`, `KeyStore`, etc.,) declares a series of `getInstance(<algorithm>, <provider>)` factory methods which provide a concrete service implementation.
 When a specific algorithm is requested the framework searches the registered providers for the corresponding implementation classes and it dynamically allocates objects for concrete service implementations.
 The Native Image builder uses static analysis to discover which of these services are used.
 It does so by registering reachability handlers for each of the `getInstance()` factory methods.
 When it determines that a `getInstance()` method is reachable at run time it automatically performs the reflection registration for all the concrete implementations of the corresponding service type.
-This mechanism is implemented in the `com.oracle.svm.hosted.SecurityServicesFeature` class.
 
-The simplest images contain support for the `SecureRandom` and `MessageDigest` engines from the `SUN` provider.
-These are core security services needed by the VM itself.
+Tracing of the security services automatic registation can be enabled with `-H:+TraceSecurityServices`.
+The report will detail all registered service classes, the API methods that triggered registration, and the parsing context for each reachable API method.
 
 Note: The `--enable-all-security-services` option is now deprecated and it will be removed in a future release.
 
