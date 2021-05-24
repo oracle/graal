@@ -728,7 +728,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         }
 
         pos = writeParameterDeclarationAbbrevs(context, buffer, pos);
-        
+
         /* write a null abbrev to terminate the sequence */
         pos = writeNullAbbrev(context, buffer, pos);
         return pos;
