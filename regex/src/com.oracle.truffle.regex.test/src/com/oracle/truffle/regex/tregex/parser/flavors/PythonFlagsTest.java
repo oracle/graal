@@ -58,7 +58,7 @@ public class PythonFlagsTest {
         assertTrue(parse("m").isMultiLine());
         assertTrue(parse("s").isDotAll());
         assertTrue(parse("t").isTemplate());
-        assertTrue(parse("u").isUnicode());
+        assertTrue(parse("u").isUnicodeExplicitlySet());
         assertTrue(parse("x").isVerbose());
         assertTrue(parse("y").isSticky());
     }

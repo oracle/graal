@@ -104,4 +104,9 @@ public class PythonTests extends RegexTestBase {
         expectSyntaxError("\\119", "", PyErrorMessages.invalidGroupReference("11"));
         test("()()()()()()()()()()()\\119", "", "9", 0, true, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
     }
+
+    @Test
+    public void gr29331() {
+        test("(?a)x", "", "x", 0, true, 0, 1);
+    }
 }
