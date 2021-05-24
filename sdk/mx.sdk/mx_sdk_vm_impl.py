@@ -1853,7 +1853,7 @@ class GraalVmBashLauncherBuildTask(GraalVmNativeImageBuildTask):
         def _get_extra_jvm_args():
             image_config = self.subject.native_image_config
             extra_jvm_args = mx.list_to_cmd_line(image_config.extra_jvm_args)
-            if not _jlink_libraries():
+            if not _jlink_libraries() and _src_jdk_version >= 9:
                 if mx.is_windows():
                     extra_jvm_args = ' '.join([extra_jvm_args, r"--upgrade-module-path %location%\..\..\jvmci\graal.jar",
                                                r"--add-modules org.graalvm.truffle,org.graalvm.sdk",
@@ -1869,7 +1869,7 @@ class GraalVmBashLauncherBuildTask(GraalVmNativeImageBuildTask):
             return ' '.join(image_config.option_vars)
 
         def _get_launcher_args():
-            if not _jlink_libraries():
+            if not _jlink_libraries() and _src_jdk_version >= 9:
                 return '-J--add-exports=jdk.internal.vm.ci/jdk.vm.ci.code=jdk.internal.vm.compiler'
             return ''
 
