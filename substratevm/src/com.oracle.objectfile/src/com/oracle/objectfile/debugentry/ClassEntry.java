@@ -357,7 +357,7 @@ public class ClassEntry extends StructureTypeEntry {
             MethodEntry methodEntry = methodIterator.next();
             int comparisonResult = methodEntry.compareTo(methodName, paramSignature, returnTypeName);
             if (comparisonResult == 0) {
-                methodEntry.setInRange();
+                methodEntry.setInRange(debugInfoBase, debugRangeInfo);
                 return methodEntry;
             } else if (comparisonResult > 0) {
                 methodIterator.previous();

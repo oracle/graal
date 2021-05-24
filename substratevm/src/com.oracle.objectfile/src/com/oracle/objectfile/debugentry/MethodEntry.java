@@ -26,6 +26,10 @@
 
 package com.oracle.objectfile.debugentry;
 
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugRangeInfo;
+
+import java.nio.file.Path;
+
 public class MethodEntry extends MemberEntry implements Comparable<MethodEntry> {
     final TypeEntry[] paramTypes;
     final String[] paramNames;
@@ -89,7 +93,21 @@ public class MethodEntry extends MemberEntry implements Comparable<MethodEntry> 
         return isInRange;
     }
 
-    public void setInRange() {
+    public void setInRange(DebugInfoBase debugInfoBase, DebugRangeInfo debugRangeInfo) {
+        if (isInRange) {
+            assert fileEntry == debugInfoBase.ensureFileEntry(debugRangeInfo.fileName(), debugRangeInfo.filePath(), debugRangeInfo.cachePath());
+            return;
+        }
+        /*
+         * If the MethodEntry was added by traversing the DeclaredMethods of a Class its fileEntry
+         * will point to the original source file, thus it will be wrong for substituted methods. As
+         * a result when setting a MethodEntry as isInRange we also make sure that its fileEntry
+         * reflects the file info associated with the corresponding Range.
+         */
+        String fileName = debugRangeInfo.fileName();
+        Path filePath = debugRangeInfo.filePath();
+        Path cachePath = debugRangeInfo.cachePath();
+        fileEntry = debugInfoBase.ensureFileEntry(fileName, filePath, cachePath);
         isInRange = true;
     }
 
