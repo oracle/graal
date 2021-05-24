@@ -297,14 +297,11 @@ public class ClassEntry extends StructureTypeEntry {
             paramTypeArray[idx++] = paramType;
         }
         paramNameArray = paramNames.toArray(paramNameArray);
-        String fileName = debugMethodInfo.fileName();
-        Path filePath = debugMethodInfo.filePath();
-        Path cachePath = debugMethodInfo.cachePath();
         /*
          * n.b. the method file may differ from the owning class file when the method is a
          * substitution
          */
-        FileEntry methodFileEntry = debugInfoBase.ensureFileEntry(fileName, filePath, cachePath);
+        FileEntry methodFileEntry = debugInfoBase.ensureFileEntry(debugMethodInfo);
         return new MethodEntry(methodFileEntry, debugMethodInfo.symbolNameForMethod(), methodName, this, resultType,
                         paramTypeArray, paramNameArray, modifiers, debugMethodInfo.isDeoptTarget(), fromRangeInfo);
     }
@@ -349,10 +346,10 @@ public class ClassEntry extends StructureTypeEntry {
 
     public MethodEntry ensureMethodEntryForDebugRangeInfo(DebugRangeInfo debugRangeInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
         assert listIsSorted(methods);
+        ListIterator<MethodEntry> methodIterator = methods.listIterator();
         String methodName = debugInfoBase.uniqueDebugString(debugRangeInfo.name());
         String paramSignature = debugRangeInfo.paramSignature();
         String returnTypeName = debugRangeInfo.valueType();
-        ListIterator<MethodEntry> methodIterator = methods.listIterator();
         while (methodIterator.hasNext()) {
             MethodEntry methodEntry = methodIterator.next();
             int comparisonResult = methodEntry.compareTo(methodName, paramSignature, returnTypeName);
