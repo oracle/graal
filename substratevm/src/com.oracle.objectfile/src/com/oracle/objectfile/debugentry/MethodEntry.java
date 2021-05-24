@@ -91,11 +91,22 @@ public class MethodEntry extends MemberEntry implements Comparable<MethodEntry> 
         return isInRange;
     }
 
-    public void setInRange(DebugInfoBase debugInfoBase, DebugRangeInfo debugRangeInfo) {
+    /**
+     * Sets {@code isInRange} and ensures that the {@code fileEntry} is up to date. If the
+     * MethodEntry was added by traversing the DeclaredMethods of a Class its fileEntry will point
+     * to the original source file, thus it will be wrong for substituted methods. As a result when
+     * setting a MethodEntry as isInRange we also make sure that its fileEntry reflects the file
+     * info associated with the corresponding Range.
+     *
+     * @param debugInfoBase
+     * @param debugRangeInfo
+     */
+    public void setInRangeAndUpdateFileEntry(DebugInfoBase debugInfoBase, DebugRangeInfo debugRangeInfo) {
         if (isInRange) {
             assert fileEntry == debugInfoBase.ensureFileEntry(debugRangeInfo);
             return;
         }
+        isInRange = true;
         /*
          * If the MethodEntry was added by traversing the DeclaredMethods of a Class its fileEntry
          * will point to the original source file, thus it will be wrong for substituted methods. As
@@ -103,7 +114,6 @@ public class MethodEntry extends MemberEntry implements Comparable<MethodEntry> 
          * reflects the file info associated with the corresponding Range.
          */
         fileEntry = debugInfoBase.ensureFileEntry(debugRangeInfo);
-        isInRange = true;
     }
 
     public String getSymbolName() {
