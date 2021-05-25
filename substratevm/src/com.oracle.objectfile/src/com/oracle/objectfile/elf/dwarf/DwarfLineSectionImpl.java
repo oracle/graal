@@ -425,24 +425,31 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
 
     private int writeLineNumberTable(DebugContext context, ClassEntry classEntry, byte[] buffer, int p) {
         int pos = p;
-        FileEntry fileEntry = classEntry.getFileEntry();
-        if (fileEntry == null) {
+        // if the class has no associated file then don't generate line info
+        if (classEntry.getFileEntry() == null) {
             return pos;
         }
         /*
-         * The primary file entry should always be first in the local files list.
+         * The class file entry should always be first in the local files list.
          */
         assert classEntry.localFilesIdx() == 1;
         String primaryClassName = classEntry.getTypeName();
         String primaryFileName = classEntry.getFileName();
-        String file = primaryFileName;
-        int fileIdx = 1;
         log(context, "  [0x%08x] primary class %s", pos, primaryClassName);
-        log(context, "  [0x%08x] primary file %s", pos, primaryFileName);
+        log(context, "  [0x%08x] primary class file %s", pos, primaryFileName);
         for (PrimaryEntry primaryEntry : classEntry.getPrimaryEntries()) {
             Range primaryRange = primaryEntry.getPrimary();
+            // the primary method might be a substitution and not in the primary class file
+            FileEntry fileEntry = primaryRange.getFileEntry();
+            if (fileEntry == null) {
+                log(context, "  [0x%08x] primary range [0x%08x, 0x%08x] skipped (no file) %s", pos, debugTextBase + primaryRange.getLo(), debugTextBase + primaryRange.getHi(),
+                                primaryRange.getFullMethodNameWithParams());
+                continue;
+            }
+            String file = fileEntry.getFileName();
+            int fileIdx = classEntry.localFilesIdx(fileEntry);
             /*
-             * Each primary represents a method i.e. a contiguous sequence of subranges. we assume
+             * Each primary represents a method i.e. a contiguous sequence of subranges. we write
              * the default state at the start of each sequence because we always post an
              * end_sequence when we finish all the subranges in the method.
              */
@@ -458,8 +465,9 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
             /*
              * Set state for primary.
              */
-            log(context, "  [0x%08x] primary range [0x%08x, 0x%08x] %s:%d", pos, debugTextBase + primaryRange.getLo(), debugTextBase + primaryRange.getHi(), primaryRange.getFullMethodNameWithParams(),
-                            primaryRange.getLine());
+            log(context, "  [0x%08x] primary range [0x%08x, 0x%08x] %s %s:%d", pos, debugTextBase + primaryRange.getLo(), debugTextBase + primaryRange.getHi(),
+                            primaryRange.getFullMethodNameWithParams(),
+                            file, primaryRange.getLine());
 
             /*
              * Initialize and write a row for the start of the primary method.
@@ -520,7 +528,8 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
                 long subLine = subrange.getLine();
                 long subAddressLo = subrange.getLo();
                 long subAddressHi = subrange.getHi();
-                log(context, "  [0x%08x] sub range [0x%08x, 0x%08x] %s:%d", pos, debugTextBase + subAddressLo, debugTextBase + subAddressHi, subrange.getFullMethodNameWithParams(), subLine);
+                log(context, "  [0x%08x] sub range [0x%08x, 0x%08x] %s %s:%d", pos, debugTextBase + subAddressLo, debugTextBase + subAddressHi, subrange.getFullMethodNameWithParams(), subfile,
+                                subLine);
                 if (subLine < 0) {
                     /*
                      * No line info so stay at previous file:line.
@@ -629,7 +638,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
             }
             pos = writeEndSequenceOp(context, buffer, pos);
         }
-        log(context, "  [0x%08x] primary file processed %s", pos, primaryFileName);
+        log(context, "  [0x%08x] primary class processed %s", pos, primaryClassName);
 
         return pos;
     }
