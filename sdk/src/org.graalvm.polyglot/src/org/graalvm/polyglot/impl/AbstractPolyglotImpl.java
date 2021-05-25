@@ -158,13 +158,15 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Language newLanguage(AbstractLanguageImpl impl);
 
-        public abstract Instrument newInstrument(AbstractInstrumentImpl impl);
+        public abstract Instrument newInstrument(AbstractInstrumentImpl impl, Object receiver);
 
         public abstract Value newValue(Object value, AbstractValueImpl impl);
 
         public abstract Source newSource(Object impl);
 
         public abstract SourceSection newSourceSection(Source source, Object impl);
+
+        public abstract Object getReceiver(Instrument instrument);
 
         public abstract Object getReceiver(Engine engine);
 
@@ -182,7 +184,11 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract AbstractInstrumentImpl getImpl(Instrument value);
 
-        public abstract ResourceLimitEvent newResourceLimitsEvent(Object impl);
+        public abstract AbstractEngineImpl getImpl(Engine engine);
+
+        public abstract AbstractContextImpl getImpl(Context context);
+
+        public abstract ResourceLimitEvent newResourceLimitsEvent(Context context);
 
         public abstract StackFrame newPolyglotStackTraceElement(Object e, AbstractStackFrameImpl impl);
 
@@ -296,12 +302,6 @@ public abstract class AbstractPolyglotImpl {
     public abstract AbstractSourceSectionImpl getSourceSectionImpl();
 
     public abstract AbstractManagementImpl getManagementImpl();
-
-    public abstract AbstractEngineImpl getEngineImpl();
-
-    public abstract AbstractContextImpl getContextImpl();
-
-    public abstract AbstractExceptionImpl getExceptionImpl();
 
     public abstract static class AbstractManagementImpl {
 
@@ -598,15 +598,15 @@ public abstract class AbstractPolyglotImpl {
             Objects.requireNonNull(engineImpl);
         }
 
-        public abstract String getId();
+        public abstract String getId(Object receiver);
 
-        public abstract String getName();
+        public abstract String getName(Object receiver);
 
-        public abstract OptionDescriptors getOptions();
+        public abstract OptionDescriptors getOptions(Object receiver);
 
-        public abstract String getVersion();
+        public abstract String getVersion(Object receiver);
 
-        public abstract <T> T lookup(Class<T> type);
+        public abstract <T> T lookup(Object receiver, Class<T> type);
 
     }
 

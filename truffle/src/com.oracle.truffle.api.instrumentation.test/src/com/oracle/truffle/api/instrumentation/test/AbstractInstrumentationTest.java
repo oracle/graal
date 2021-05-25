@@ -151,13 +151,13 @@ public abstract class AbstractInstrumentationTest extends AbstractPolyglotTest {
 
     @SuppressWarnings("static-method")
     protected final boolean isInitialized(Instrument instrument) {
-        Object instrumentImpl = ReflectionUtils.getField(instrument, "impl");
+        Object instrumentImpl = ReflectionUtils.getField(instrument, "receiver");
         return (Boolean) ReflectionUtils.getField(instrumentImpl, "initialized");
     }
 
     @SuppressWarnings("static-method")
     protected final boolean isCreated(Instrument instrument) {
-        Object instrumentImpl = ReflectionUtils.getField(instrument, "impl");
+        Object instrumentImpl = ReflectionUtils.getField(instrument, "receiver");
         return (Boolean) ReflectionUtils.getField(instrumentImpl, "created");
     }
 

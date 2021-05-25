@@ -57,9 +57,11 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractInstrumentImpl;
 public final class Instrument {
 
     final AbstractInstrumentImpl impl;
+    final Object receiver;
 
-    Instrument(AbstractInstrumentImpl impl) {
+    Instrument(AbstractInstrumentImpl impl, Object receiver) {
         this.impl = impl;
+        this.receiver = receiver;
     }
 
     /**
@@ -69,7 +71,7 @@ public final class Instrument {
      * @since 19.0
      */
     public String getId() {
-        return impl.getId();
+        return impl.getId(receiver);
     }
 
     /**
@@ -79,7 +81,7 @@ public final class Instrument {
      * @since 19.0
      */
     public String getName() {
-        return impl.getName();
+        return impl.getName(receiver);
     }
 
     /**
@@ -89,7 +91,7 @@ public final class Instrument {
      * @since 19.0
      */
     public OptionDescriptors getOptions() {
-        return impl.getOptions();
+        return impl.getOptions(receiver);
     }
 
     /**
@@ -99,7 +101,7 @@ public final class Instrument {
      * @since 19.0
      */
     public String getVersion() {
-        return impl.getVersion();
+        return impl.getVersion(receiver);
     }
 
     /**
@@ -113,7 +115,7 @@ public final class Instrument {
      * @since 19.0
      */
     public <T> T lookup(Class<T> type) {
-        return impl.lookup(type);
+        return impl.lookup(receiver, type);
     }
 
 }

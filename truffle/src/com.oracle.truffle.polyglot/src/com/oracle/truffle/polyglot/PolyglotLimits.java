@@ -298,7 +298,7 @@ final class PolyglotLimits {
                 return null;
             }
             try {
-                onEvent.accept(engine.getImpl().getAPIAccess().newResourceLimitsEvent(context));
+                onEvent.accept(engine.getImpl().getAPIAccess().newResourceLimitsEvent(context.api));
             } catch (Throwable t) {
                 return PolyglotImpl.hostToGuestException(context, t);
             }

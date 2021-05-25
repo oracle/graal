@@ -103,6 +103,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     private final PolyglotEngineDispatch engineImpl = new PolyglotEngineDispatch(this);
     private final PolyglotContextDispatch contextImpl = new PolyglotContextDispatch(this);
     private final PolyglotExceptionDispatch exceptionImpl = new PolyglotExceptionDispatch(this);
+    private final PolyglotInstrumentDispatch instrumentImpl = new PolyglotInstrumentDispatch(this);
 
     private final AtomicReference<PolyglotEngineImpl> preInitializedEngineRef = new AtomicReference<>();
     private final Function<Source, org.graalvm.polyglot.Source> sourceConstructor = new Function<Source, org.graalvm.polyglot.Source>() {
@@ -191,19 +192,20 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         return executionListenerImpl;
     }
 
-    @Override
     public PolyglotContextDispatch getContextImpl() {
         return contextImpl;
     }
 
-    @Override
     public PolyglotEngineDispatch getEngineImpl() {
         return engineImpl;
     }
 
-    @Override
     public PolyglotExceptionDispatch getExceptionImpl() {
         return exceptionImpl;
+    }
+
+    public PolyglotInstrumentDispatch getInstrumentImpl() {
+        return instrumentImpl;
     }
 
     /**
@@ -616,4 +618,5 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
 
     }
+
 }

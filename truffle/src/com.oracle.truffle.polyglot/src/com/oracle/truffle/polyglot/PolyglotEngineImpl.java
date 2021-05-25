@@ -739,7 +739,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         for (InstrumentCache instrumentCache : cachedInstruments) {
             PolyglotInstrument instrumentImpl = new PolyglotInstrument(this, instrumentCache);
             instrumentImpl.info = LANGUAGE.createInstrument(instrumentImpl, instrumentCache.getId(), instrumentCache.getName(), instrumentCache.getVersion());
-            Instrument instrument = impl.getAPIAccess().newInstrument(instrumentImpl);
+            Instrument instrument = impl.getAPIAccess().newInstrument(impl.getInstrumentImpl(), instrumentImpl);
             instrumentImpl.api = instrument;
 
             String id = instrumentImpl.cache.getId();

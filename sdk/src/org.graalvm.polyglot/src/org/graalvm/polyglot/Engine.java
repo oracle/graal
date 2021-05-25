@@ -601,8 +601,13 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public Instrument newInstrument(AbstractInstrumentImpl impl) {
-            return new Instrument(impl);
+        public Instrument newInstrument(AbstractInstrumentImpl impl, Object receiver) {
+            return new Instrument(impl, receiver);
+        }
+
+        @Override
+        public Object getReceiver(Instrument instrument) {
+            return instrument.receiver;
         }
 
         @Override
@@ -631,8 +636,18 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public ResourceLimitEvent newResourceLimitsEvent(Object impl) {
-            return new ResourceLimitEvent(impl);
+        public AbstractContextImpl getImpl(Context context) {
+            return context.impl;
+        }
+
+        @Override
+        public AbstractEngineImpl getImpl(Engine engine) {
+            return engine.impl;
+        }
+
+        @Override
+        public ResourceLimitEvent newResourceLimitsEvent(Context context) {
+            return new ResourceLimitEvent(context);
         }
 
         @Override
@@ -868,16 +883,6 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public AbstractContextImpl getContextImpl() {
-            throw noPolyglotImplementationFound();
-        }
-
-        @Override
-        public AbstractExceptionImpl getExceptionImpl() {
-            throw noPolyglotImplementationFound();
-        }
-
-        @Override
         public AbstractManagementImpl getManagementImpl() {
             return new AbstractManagementImpl(this) {
 
@@ -981,11 +986,6 @@ public final class Engine implements AutoCloseable {
 
         @Override
         public FileSystem newDefaultFileSystem() {
-            throw noPolyglotImplementationFound();
-        }
-
-        @Override
-        public AbstractEngineImpl getEngineImpl() {
             throw noPolyglotImplementationFound();
         }
 

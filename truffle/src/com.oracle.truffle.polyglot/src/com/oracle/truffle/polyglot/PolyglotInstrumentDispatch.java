@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,42 +38,40 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.polyglot;
+package com.oracle.truffle.polyglot;
 
-/**
- * Event triggered by a resource limit for a context. Event objects are short-lived and should not
- * be stored. Their use should be limited to the duration of the event.
- *
- * @see ResourceLimits
- * @since 19.3
- */
-public final class ResourceLimitEvent {
+import org.graalvm.options.OptionDescriptors;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractInstrumentImpl;
 
-    private final Context context;
+final class PolyglotInstrumentDispatch extends AbstractInstrumentImpl {
 
-    ResourceLimitEvent(Context context) {
-        this.context = context;
+    protected PolyglotInstrumentDispatch(PolyglotImpl impl) {
+        super(impl);
     }
 
-    /**
-     * The context for which the limit was exceeded. Never <code>null</code>.
-     *
-     * @since 19.3
-     */
-    public Context getContext() {
-        return context;
-    }
-
-    /**
-     * {@inheritDoc}
-     *
-     * @since 19.3
-     */
     @Override
-    public String toString() {
-        StringBuilder b = new StringBuilder("ResourceLimitEvent[");
-        b.append(getContext().toString());
-        b.append("]");
-        return b.toString();
+    public String getId(Object receiver) {
+        return ((PolyglotInstrument) receiver).getId();
     }
+
+    @Override
+    public String getName(Object receiver) {
+        return ((PolyglotInstrument) receiver).getName();
+    }
+
+    @Override
+    public OptionDescriptors getOptions(Object receiver) {
+        return ((PolyglotInstrument) receiver).getOptions();
+    }
+
+    @Override
+    public String getVersion(Object receiver) {
+        return ((PolyglotInstrument) receiver).getVersion();
+    }
+
+    @Override
+    public <T> T lookup(Object receiver, Class<T> type) {
+        return ((PolyglotInstrument) receiver).lookup(type);
+    }
+
 }
