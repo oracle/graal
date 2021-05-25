@@ -138,4 +138,15 @@ public class PythonTests extends RegexTestBase {
         test("()??\\1", "", "", 0, true, 0, 0, 0, 0);
         test("(?:a|())*?\\1", "", "a", 0, true, 0, 1, 1, 1);
     }
+
+    @Test
+    public void quantifiersOnLookaroundAssertions() {
+        test("(?=(a))?", "", "a", 0, true, 0, 0, 0, 1);
+        test("(?=(a))??", "", "a", 0, true, 0, 0, -1, -1);
+        test("(?=(a))??\\1", "", "a", 0, true, 0, 1, 0, 1);
+
+        test("a(?<=(a))?", "", "aa", 0, true, 0, 1, 0, 1);
+        test("a(?<=(a))??", "", "aa", 0, true, 0, 1, -1, -1);
+        test("a(?<=(a))??\\1", "", "aa", 0, true, 0, 2, 0, 1);
+    }
 }
