@@ -57,9 +57,11 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractLanguageImpl;
 public final class Language {
 
     final AbstractLanguageImpl impl;
+    final Object receiver;
 
-    Language(AbstractLanguageImpl impl) {
+    Language(AbstractLanguageImpl impl, Object receiver) {
         this.impl = impl;
+        this.receiver = receiver;
     }
 
     /**
@@ -70,7 +72,7 @@ public final class Language {
      * @since 19.0
      */
     public String getId() {
-        return impl.getId();
+        return impl.getId(receiver);
     }
 
     /**
@@ -80,7 +82,7 @@ public final class Language {
      * @since 19.0
      */
     public String getName() {
-        return impl.getName();
+        return impl.getName(receiver);
     }
 
     /**
@@ -90,7 +92,7 @@ public final class Language {
      * @since 19.0
      */
     public String getImplementationName() {
-        return impl.getImplementationName();
+        return impl.getImplementationName(receiver);
     }
 
     /**
@@ -99,7 +101,7 @@ public final class Language {
      * @since 19.0
      */
     public String getVersion() {
-        return impl.getVersion();
+        return impl.getVersion(receiver);
     }
 
     /**
@@ -110,7 +112,7 @@ public final class Language {
      * @since 19.0
      */
     public boolean isInteractive() {
-        return impl.isInteractive();
+        return impl.isInteractive(receiver);
     }
 
     /**
@@ -122,7 +124,7 @@ public final class Language {
      * @since 19.0
      */
     public OptionDescriptors getOptions() {
-        return impl.getOptions();
+        return impl.getOptions(receiver);
     }
 
     /**
@@ -135,7 +137,7 @@ public final class Language {
      * @since 19.0
      */
     public String getDefaultMimeType() {
-        return impl.getDefaultMimeType();
+        return impl.getDefaultMimeType(receiver);
     }
 
     /**
@@ -145,7 +147,7 @@ public final class Language {
      * @since 19.0
      */
     public Set<String> getMimeTypes() {
-        return impl.getMimeTypes();
+        return impl.getMimeTypes(receiver);
     }
 
 }

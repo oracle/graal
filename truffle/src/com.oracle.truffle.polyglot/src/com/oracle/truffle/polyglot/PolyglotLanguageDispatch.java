@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,44 +38,57 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.polyglot.management;
+package com.oracle.truffle.polyglot;
 
-import java.lang.reflect.Method;
+import java.util.Set;
 
-import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractManagementImpl;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.ManagementAccess;
+import org.graalvm.options.OptionDescriptors;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractLanguageImpl;
 
-/*
- * Class to manage package access.
- */
-final class Management {
+final class PolyglotLanguageDispatch extends AbstractLanguageImpl {
 
-    private Management() {
+    protected PolyglotLanguageDispatch(PolyglotImpl impl) {
+        super(impl);
     }
 
-    static final AbstractManagementImpl IMPL = initImpl();
-
-    private static AbstractManagementImpl initImpl() {
-        try {
-            Method method = Engine.class.getDeclaredMethod("getImpl");
-            method.setAccessible(true);
-            AbstractPolyglotImpl impl = (AbstractPolyglotImpl) method.invoke(null);
-            impl.setMonitoring(new ManagementAccessImpl());
-            return impl.getManagementImpl();
-        } catch (Exception e) {
-            throw new IllegalStateException("Failed to initialize execution listener class.", e);
-        }
+    @Override
+    public String getName(Object receiver) {
+        return ((PolyglotLanguage) receiver).getName();
     }
 
-    private static final class ManagementAccessImpl extends ManagementAccess {
+    @Override
+    public String getImplementationName(Object receiver) {
+        return ((PolyglotLanguage) receiver).getImplementationName();
+    }
 
-        @Override
-        public ExecutionEvent newExecutionEvent(Object event) {
-            return new ExecutionEvent(event);
-        }
+    @Override
+    public boolean isInteractive(Object receiver) {
+        return ((PolyglotLanguage) receiver).isInteractive();
+    }
 
+    @Override
+    public String getVersion(Object receiver) {
+        return ((PolyglotLanguage) receiver).getVersion();
+    }
+
+    @Override
+    public String getId(Object receiver) {
+        return ((PolyglotLanguage) receiver).getId();
+    }
+
+    @Override
+    public OptionDescriptors getOptions(Object receiver) {
+        return ((PolyglotLanguage) receiver).getOptions();
+    }
+
+    @Override
+    public Set<String> getMimeTypes(Object receiver) {
+        return ((PolyglotLanguage) receiver).getMimeTypes();
+    }
+
+    @Override
+    public String getDefaultMimeType(Object receiver) {
+        return ((PolyglotLanguage) receiver).getDefaultMimeType();
     }
 
 }

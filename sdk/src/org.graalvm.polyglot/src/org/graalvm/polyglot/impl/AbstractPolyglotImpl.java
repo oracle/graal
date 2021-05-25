@@ -156,7 +156,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Context newContext(AbstractContextImpl impl, Object receiver, Engine engine);
 
-        public abstract Language newLanguage(AbstractLanguageImpl impl);
+        public abstract Language newLanguage(AbstractLanguageImpl impl, Object receiver);
 
         public abstract Instrument newInstrument(AbstractInstrumentImpl impl, Object receiver);
 
@@ -616,21 +616,21 @@ public abstract class AbstractPolyglotImpl {
             Objects.requireNonNull(engineImpl);
         }
 
-        public abstract String getName();
+        public abstract String getName(Object receiver);
 
-        public abstract String getImplementationName();
+        public abstract String getImplementationName(Object receiver);
 
-        public abstract boolean isInteractive();
+        public abstract boolean isInteractive(Object receiver);
 
-        public abstract String getVersion();
+        public abstract String getVersion(Object receiver);
 
-        public abstract String getId();
+        public abstract String getId(Object receiver);
 
-        public abstract OptionDescriptors getOptions();
+        public abstract OptionDescriptors getOptions(Object receiver);
 
-        public abstract Set<String> getMimeTypes();
+        public abstract Set<String> getMimeTypes(Object receiver);
 
-        public abstract String getDefaultMimeType();
+        public abstract String getDefaultMimeType(Object receiver);
     }
 
     public abstract static class AbstractValueImpl {

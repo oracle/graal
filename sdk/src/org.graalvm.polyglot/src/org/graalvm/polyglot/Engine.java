@@ -596,8 +596,8 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public Language newLanguage(AbstractLanguageImpl impl) {
-            return new Language(impl);
+        public Language newLanguage(AbstractLanguageImpl impl, Object receiver) {
+            return new Language(impl, receiver);
         }
 
         @Override

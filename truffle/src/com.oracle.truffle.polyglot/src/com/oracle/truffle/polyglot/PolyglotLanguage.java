@@ -51,13 +51,12 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Language;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractLanguageImpl;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -69,7 +68,7 @@ import com.oracle.truffle.api.utilities.NeverValidAssumption;
 import com.oracle.truffle.polyglot.PolyglotLocals.LocalLocation;
 import com.oracle.truffle.polyglot.PolyglotReferences.AbstractContextReference;
 
-final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
+final class PolyglotLanguage implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
 
     final PolyglotEngineImpl engine;
     final LanguageCache cache;
@@ -100,7 +99,6 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
     volatile LocalLocation[] previousContextThreadLocalLocations;
 
     PolyglotLanguage(PolyglotEngineImpl engine, LanguageCache cache, int index, boolean host, RuntimeException initError) {
-        super(engine.impl);
         this.engine = engine;
         this.cache = cache;
         this.initError = initError;
@@ -175,7 +173,6 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
         return host;
     }
 
-    @Override
     public OptionDescriptors getOptions() {
         try {
             engine.checkState();
@@ -356,7 +353,6 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
         return optionValues;
     }
 
-    @Override
     public String getDefaultMimeType() {
         return cache.getDefaultMimeType();
     }
@@ -365,27 +361,22 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
         optionValues = null;
     }
 
-    @Override
     public String getName() {
         return cache.getName();
     }
 
-    @Override
     public String getImplementationName() {
         return cache.getImplementationName();
     }
 
-    @Override
     public boolean isInteractive() {
         return cache.isInteractive();
     }
 
-    @Override
     public Set<String> getMimeTypes() {
         return cache.getMimeTypes();
     }
 
-    @Override
     public String getVersion() {
         final String version = cache.getVersion();
         if (version.equals("inherit")) {
@@ -395,7 +386,6 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
         }
     }
 
-    @Override
     public String getId() {
         return cache.getId();
     }

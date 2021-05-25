@@ -834,7 +834,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
     private PolyglotLanguage createLanguage(LanguageCache cache, int index, RuntimeException initError) {
         PolyglotLanguage languageImpl = new PolyglotLanguage(this, cache, index, index == HOST_LANGUAGE_INDEX, initError);
-        Language language = impl.getAPIAccess().newLanguage(languageImpl);
+        Language language = impl.getAPIAccess().newLanguage(impl.getLanguageImpl(), languageImpl);
         languageImpl.api = language;
         return languageImpl;
     }
