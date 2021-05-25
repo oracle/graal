@@ -1758,12 +1758,12 @@ public final class Value {
      * @since 19.3.0
      */
     public Context getContext() {
-        Object context = impl.getContext();
-        if (context == null) {
-            return null;
+        Context context = impl.getContext();
+        if (context != null && context.currentAPI != null) {
+            return context.currentAPI;
+        } else {
+            return context;
         }
-        Context api = (Context) Engine.getImpl().getContextImpl().getAPI(impl.getContext());
-        return api.currentAPI;
     }
 
     /**

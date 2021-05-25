@@ -61,7 +61,7 @@ public final class ResourceLimitEvent {
      * @since 19.3
      */
     public Context getContext() {
-        return (Context) Engine.getImpl().getContextImpl().getAPI(contextReceiver);
+        return Engine.getImpl().getContextImpl().getAPI(contextReceiver);
     }
 
     /**

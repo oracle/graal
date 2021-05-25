@@ -61,7 +61,6 @@ import java.util.function.Predicate;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextImpl;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
@@ -314,11 +313,12 @@ public final class Context implements AutoCloseable {
     final Engine engine;
 
     @SuppressWarnings("unchecked")
-    private <T> Context(AbstractContextImpl impl, T receiver, Engine engine) {
+    <T> Context(AbstractContextImpl impl, T receiver, Engine engine) {
         this.impl = impl;
         this.receiver = receiver;
         this.engine = engine;
         this.currentAPI = new Context(this);
+        impl.setAPI(receiver, this);
     }
 
     private Context() {
@@ -922,11 +922,12 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public static Context getCurrent() {
-        AbstractPolyglotImpl impl = Engine.getImpl();
-        Object ctx = impl.getCurrentContext();
-        Context context = (Context) impl.getContextImpl().getAPI(ctx);
-        assert context != null : "context identifier must be set";
-        return context.currentAPI;
+        Context context = Engine.getImpl().getCurrentContext();
+        if (context.currentAPI == null) {
+            return context;
+        } else {
+            return context.currentAPI;
+        }
     }
 
     /**
@@ -951,14 +952,6 @@ public final class Context implements AutoCloseable {
      */
     public static Builder newBuilder(String... permittedLanguages) {
         return EMPTY.new Builder(permittedLanguages);
-    }
-
-    static Context createContextAPI(Object engineReceiver, Object contextReceiver) {
-        AbstractPolyglotImpl impl = Engine.getImpl();
-        Engine engine = (Engine) impl.getEngineImpl().getAPI(engineReceiver);
-        Context context = new Context(impl.getContextImpl(), contextReceiver, engine);
-        context.impl.setAPI(contextReceiver, context);
-        return context;
     }
 
     private static final Context EMPTY = new Context();
@@ -1707,7 +1700,7 @@ public final class Context implements AutoCloseable {
             }
             String localCurrentWorkingDirectory = currentWorkingDirectory == null ? null : currentWorkingDirectory.toString();
             Engine engine = this.sharedEngine;
-            Object ctx;
+            Context ctx;
             if (engine == null) {
                 org.graalvm.polyglot.Engine.Builder engineBuilder = Engine.newBuilder().options(options == null ? Collections.emptyMap() : options);
                 if (out != null) {
@@ -1745,7 +1738,7 @@ public final class Context implements AutoCloseable {
                                 onlyLanguages, customFileSystem, customLogHandler, createProcess, processHandler, environmentAccess, environment, zone, limits,
                                 localCurrentWorkingDirectory, hostClassLoader);
             }
-            return createContextAPI(engine.receiver, ctx);
+            return ctx;
         }
 
         private boolean orAllAccess(Boolean optionalBoolean) {

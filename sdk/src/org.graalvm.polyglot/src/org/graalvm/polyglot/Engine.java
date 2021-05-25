@@ -79,6 +79,7 @@ import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.PolyglotException.StackFrame;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractEngineImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractExceptionImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractInstrumentImpl;
@@ -116,6 +117,9 @@ public final class Engine implements AutoCloseable {
         this.impl = impl;
         this.receiver = receiver;
         this.currentAPI = new Engine(this);
+        if (impl != null) {
+            impl.setAPI(receiver, this);
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -556,10 +560,8 @@ public final class Engine implements AutoCloseable {
             if (loadedImpl == null) {
                 throw new IllegalStateException("The Polyglot API implementation failed to load.");
             }
-            Object receiver = loadedImpl.buildEngine(out, err, in, options, useSystemProperties, allowExperimentalOptions,
+            Engine engine = loadedImpl.buildEngine(out, err, in, options, useSystemProperties, allowExperimentalOptions,
                             boundEngine, messageTransport, customLogHandler, null);
-            Engine engine = new Engine(loadedImpl.getEngineImpl(), receiver);
-            engine.impl.setAPI(receiver, engine);
             return engine;
         }
 
@@ -581,6 +583,16 @@ public final class Engine implements AutoCloseable {
         private static final APIAccessImpl INSTANCE = new APIAccessImpl();
 
         APIAccessImpl() {
+        }
+
+        @Override
+        public Context newContext(AbstractContextImpl impl, Object receiver, Engine engine) {
+            return new Context(impl, receiver, engine);
+        }
+
+        @Override
+        public Engine newEngine(AbstractEngineImpl impl, Object receiver) {
+            return new Engine(impl, receiver);
         }
 
         @Override
@@ -606,11 +618,6 @@ public final class Engine implements AutoCloseable {
         @Override
         public SourceSection newSourceSection(Source source, Object impl) {
             return new SourceSection(source, impl);
-        }
-
-        @Override
-        public void notifyInnerContextCreated(Object engineReceiver, Object contextReceiver) {
-            Context.createContextAPI(engineReceiver, contextReceiver);
         }
 
         @Override
@@ -651,6 +658,16 @@ public final class Engine implements AutoCloseable {
         @Override
         public Object getReceiver(Value value) {
             return value.receiver;
+        }
+
+        @Override
+        public Object getReceiver(Context context) {
+            return context.receiver;
+        }
+
+        @Override
+        public Object getReceiver(Engine engine) {
+            return engine.receiver;
         }
 
         @Override

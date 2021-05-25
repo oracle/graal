@@ -80,6 +80,7 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.home.HomeFinder;
 import org.graalvm.options.OptionDescriptors;
+import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Instrument;
@@ -158,7 +159,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     DispatchOutputStream out;       // effectively final
     DispatchOutputStream err;       // effectively final
     InputStream in;                 // effectively final
-    Object api;
+    Engine api;
 
     final Map<String, PolyglotLanguage> idToLanguage;
     final Map<String, PolyglotLanguage> classToLanguage;
@@ -1546,7 +1547,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     }
 
     @SuppressWarnings({"all"})
-    public Object createContext(OutputStream configOut, OutputStream configErr, InputStream configIn, boolean allowHostLookup,
+    public PolyglotContextImpl createContext(OutputStream configOut, OutputStream configErr, InputStream configIn, boolean allowHostLookup,
                     HostAccess hostAccess,
                     PolyglotAccess polyglotAccess, boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostIO,
                     boolean allowHostClassLoading, boolean allowExperimentalOptions, Predicate<String> classFilter, Map<String, String> options,

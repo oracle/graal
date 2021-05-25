@@ -72,6 +72,7 @@ import java.util.logging.Level;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.options.OptionValues;
+import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.Value;
@@ -174,7 +175,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
      */
     volatile PolyglotThreadInfo cachedThreadInfo = PolyglotThreadInfo.NULL;
 
-    volatile Object api;
+    volatile Context api;
     volatile boolean interrupting;
 
     /*

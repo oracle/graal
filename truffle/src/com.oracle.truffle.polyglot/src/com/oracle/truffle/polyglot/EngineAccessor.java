@@ -793,7 +793,7 @@ final class EngineAccessor extends Accessor {
             PolyglotContextImpl impl;
             synchronized (creator.context) {
                 impl = new PolyglotContextImpl(creator, config);
-                impl.getAPIAccess().notifyInnerContextCreated(impl.engine, impl);
+                impl.api = creator.getImpl().getAPIAccess().newContext(creator.getImpl().getContextImpl(), impl, creator.context.engine.api);
             }
             synchronized (impl) {
                 impl.initializeContextLocals();

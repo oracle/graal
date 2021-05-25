@@ -56,6 +56,7 @@ import java.util.function.Supplier;
 import java.util.logging.Handler;
 
 import org.graalvm.options.OptionDescriptors;
+import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
@@ -209,14 +210,18 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
      * Internal method do not use.
      */
     @Override
-    public Object getCurrentContext() {
+    public Context getCurrentContext() {
         try {
             PolyglotContextImpl context = PolyglotContextImpl.currentNotEntered();
             if (context == null) {
                 throw PolyglotEngineException.illegalState(
                                 "No current context is available. Make sure the Java method is invoked by a Graal guest language or a context is entered using Context.enter().");
             }
-            return context;
+            Context api = context.api;
+            if (api == null) {
+                context.api = api = getAPIAccess().newContext(contextImpl, context, context.engine.api);
+            }
+            return api;
         } catch (Throwable t) {
             throw PolyglotImpl.guestToHostException(this, t);
         }
@@ -226,7 +231,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
      * Internal method do not use.
      */
     @Override
-    public Object buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> originalOptions, boolean useSystemProperties, final boolean allowExperimentalOptions,
+    public Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> originalOptions, boolean useSystemProperties, final boolean allowExperimentalOptions,
                     boolean boundEngine,
                     MessageTransport messageInterceptor, Object logHandlerOrStream, HostAccess conf) {
         PolyglotEngineImpl impl = null;
@@ -287,8 +292,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                                 messageInterceptor,
                                 logHandler);
             }
-
-            return impl;
+            return getAPIAccess().newEngine(engineImpl, impl);
         } catch (Throwable t) {
             if (impl == null) {
                 throw PolyglotImpl.guestToHostException(this, t);

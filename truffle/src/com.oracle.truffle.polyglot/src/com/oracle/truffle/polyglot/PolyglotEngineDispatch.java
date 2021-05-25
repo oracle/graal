@@ -48,13 +48,14 @@ import java.util.Set;
 import java.util.function.Predicate;
 
 import org.graalvm.options.OptionDescriptors;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractEngineImpl;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.ProcessHandler;
@@ -63,20 +64,21 @@ import com.oracle.truffle.api.Truffle;
 
 final class PolyglotEngineDispatch extends AbstractEngineImpl {
 
-    protected PolyglotEngineDispatch(AbstractPolyglotImpl impl) {
-        super(impl);
+    private final PolyglotImpl polyglot;
+
+    protected PolyglotEngineDispatch(PolyglotImpl polyglot) {
+        super(polyglot);
+        this.polyglot = polyglot;
     }
 
     @Override
-    public Object getAPI(Object receiver) {
+    public Engine getAPI(Object receiver) {
         return ((PolyglotEngineImpl) receiver).api;
     }
 
     @Override
-    public void setAPI(Object oreceiver, Object key) {
-        PolyglotEngineImpl receiver = (PolyglotEngineImpl) oreceiver;
-        assert receiver.api == null : "API can only be initialized once";
-        receiver.api = key;
+    public void setAPI(Object oreceiver, Engine engine) {
+        ((PolyglotEngineImpl) oreceiver).api = engine;
     }
 
     @Override
@@ -140,15 +142,17 @@ final class PolyglotEngineDispatch extends AbstractEngineImpl {
     }
 
     @Override
-    public Object createContext(Object oreceiver, OutputStream out, OutputStream err, InputStream in, boolean allowHostAccess, HostAccess hostAccess, PolyglotAccess polyglotAccess,
+    public Context createContext(Object oreceiver, OutputStream out, OutputStream err, InputStream in, boolean allowHostAccess, HostAccess hostAccess, PolyglotAccess polyglotAccess,
                     boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostIO, boolean allowHostClassLoading, boolean allowExperimentalOptions, Predicate<String> classFilter,
                     Map<String, String> options, Map<String, String[]> arguments, String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream, boolean allowCreateProcess,
                     ProcessHandler processHandler, EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory,
                     ClassLoader hostClassLoader) {
         PolyglotEngineImpl receiver = (PolyglotEngineImpl) oreceiver;
-        return receiver.createContext(out, err, in, allowHostAccess, hostAccess, polyglotAccess, allowNativeAccess, allowCreateThread, allowHostIO, allowHostClassLoading, allowExperimentalOptions,
+        PolyglotContextImpl context = receiver.createContext(out, err, in, allowHostAccess, hostAccess, polyglotAccess, allowNativeAccess, allowCreateThread, allowHostIO, allowHostClassLoading,
+                        allowExperimentalOptions,
                         classFilter, options, arguments, onlyLanguages, fileSystem, logHandlerOrStream, allowCreateProcess, processHandler, environmentAccess, environment, zone, limitsImpl,
                         currentWorkingDirectory, hostClassLoader);
+        return polyglot.getAPIAccess().newContext(polyglot.getContextImpl(), context, receiver.api);
     }
 
     @Override

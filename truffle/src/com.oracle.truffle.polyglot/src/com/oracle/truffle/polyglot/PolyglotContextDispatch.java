@@ -42,6 +42,7 @@ package com.oracle.truffle.polyglot;
 
 import java.time.Duration;
 
+import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextImpl;
 
@@ -112,14 +113,13 @@ final class PolyglotContextDispatch extends AbstractContextImpl {
     }
 
     @Override
-    public Object getAPI(Object receiver) {
+    public Context getAPI(Object receiver) {
         return ((PolyglotContextImpl) receiver).api;
     }
 
     @Override
-    public void setAPI(Object receiver, Object key) {
-        assert ((PolyglotContextImpl) receiver).api == null : "identifier can only be set once";
-        ((PolyglotContextImpl) receiver).api = key;
+    public void setAPI(Object receiver, Context context) {
+        ((PolyglotContextImpl) receiver).api = context;
     }
 
 }

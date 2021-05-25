@@ -69,6 +69,7 @@ import java.util.function.Predicate;
 
 import org.graalvm.collections.UnmodifiableEconomicSet;
 import org.graalvm.options.OptionDescriptors;
+import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.HostAccess;
@@ -90,6 +91,12 @@ import org.graalvm.polyglot.io.MessageTransport;
 import org.graalvm.polyglot.io.ProcessHandler;
 import org.graalvm.polyglot.management.ExecutionEvent;
 
+/**
+ * This class is intended to be used by polyglot implementations. Methods in this class are not
+ * intended to be used directly.
+ *
+ * This class and its inner classes break compatibility without notice.
+ */
 @SuppressWarnings("unused")
 public abstract class AbstractPolyglotImpl {
 
@@ -125,6 +132,9 @@ public abstract class AbstractPolyglotImpl {
         public abstract OutputStream getOutputStream(ProcessHandler.Redirect redirect);
     }
 
+    /*
+     * From other polyglot packages to this package.
+     */
     public abstract static class PolyglotAccessor {
         protected PolyglotAccessor() {
             if (!getClass().getCanonicalName().equals("org.graalvm.polyglot.Engine.PolyglotAccessorImpl")) {
@@ -144,6 +154,10 @@ public abstract class AbstractPolyglotImpl {
             }
         }
 
+        public abstract Engine newEngine(AbstractEngineImpl impl, Object receiver);
+
+        public abstract Context newContext(AbstractContextImpl impl, Object receiver, Engine engine);
+
         public abstract Language newLanguage(AbstractLanguageImpl impl);
 
         public abstract Instrument newInstrument(AbstractInstrumentImpl impl);
@@ -154,7 +168,9 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract SourceSection newSourceSection(Source source, Object impl);
 
-        public abstract void notifyInnerContextCreated(Object engineReceiver, Object contextReceiver);
+        public abstract Object getReceiver(Engine engine);
+
+        public abstract Object getReceiver(Context context);
 
         public abstract Object getReceiver(PolyglotException polyglot);
 
@@ -267,7 +283,7 @@ public abstract class AbstractPolyglotImpl {
     protected void initialize() {
     }
 
-    public abstract Object buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> options, boolean useSystemProperties, boolean allowExperimentalOptions,
+    public abstract Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> options, boolean useSystemProperties, boolean allowExperimentalOptions,
                     boolean boundEngine,
                     MessageTransport messageInterceptor, Object logHandlerOrStream, HostAccess conf);
 
@@ -469,9 +485,9 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract void safepoint(Object receiver);
 
-        public abstract void setAPI(Object receiver, Object key);
+        public abstract void setAPI(Object receiver, Context key);
 
-        public abstract Object getAPI(Object receiver);
+        public abstract Context getAPI(Object receiver);
 
     }
 
@@ -481,9 +497,9 @@ public abstract class AbstractPolyglotImpl {
             Objects.requireNonNull(impl);
         }
 
-        public abstract void setAPI(Object receiver, Object key);
+        public abstract void setAPI(Object receiver, Engine key);
 
-        public abstract Object getAPI(Object receiver);
+        public abstract Engine getAPI(Object receiver);
 
         public abstract Language requirePublicLanguage(Object receiver, String id);
 
@@ -498,7 +514,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract OptionDescriptors getOptions(Object receiver);
 
-        public abstract Object createContext(Object receiver, OutputStream out, OutputStream err, InputStream in, boolean allowHostAccess,
+        public abstract Context createContext(Object receiver, OutputStream out, OutputStream err, InputStream in, boolean allowHostAccess,
                         HostAccess hostAccess,
                         PolyglotAccess polyglotAccess,
                         boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostIO, boolean allowHostClassLoading, boolean allowExperimentalOptions, Predicate<String> classFilter,
@@ -683,7 +699,7 @@ public abstract class AbstractPolyglotImpl {
             return false;
         }
 
-        public Object getContext() {
+        public Context getContext() {
             return null;
         }
 
@@ -892,7 +908,7 @@ public abstract class AbstractPolyglotImpl {
 
     public abstract Class<?> loadLanguageClass(String className);
 
-    public abstract Object getCurrentContext();
+    public abstract Context getCurrentContext();
 
     public abstract Collection<? extends Object> findActiveEngines();
 
