@@ -62,7 +62,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.SourceSection;
 import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueImpl;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueDispatch;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -144,7 +144,7 @@ import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.WriteBufferLongNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropCodeCacheFactory.WriteBufferShortNodeGen;
 
-abstract class PolyglotValue extends AbstractValueImpl {
+abstract class PolyglotValue extends AbstractValueDispatch {
 
     private static final String TRUNCATION_SUFFIX = "...";
 

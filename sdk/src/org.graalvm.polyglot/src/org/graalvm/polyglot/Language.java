@@ -44,7 +44,7 @@ import java.util.Set;
 
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractLanguageImpl;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractLanguageDispatch;
 
 /**
  * A handle for a Graal language installed in an {@link Engine engine}. The handle provides access
@@ -56,11 +56,11 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractLanguageImpl;
  */
 public final class Language {
 
-    final AbstractLanguageImpl impl;
+    final AbstractLanguageDispatch dispatch;
     final Object receiver;
 
-    Language(AbstractLanguageImpl impl, Object receiver) {
-        this.impl = impl;
+    Language(AbstractLanguageDispatch dispatch, Object receiver) {
+        this.dispatch = dispatch;
         this.receiver = receiver;
     }
 
@@ -72,7 +72,7 @@ public final class Language {
      * @since 19.0
      */
     public String getId() {
-        return impl.getId(receiver);
+        return dispatch.getId(receiver);
     }
 
     /**
@@ -82,7 +82,7 @@ public final class Language {
      * @since 19.0
      */
     public String getName() {
-        return impl.getName(receiver);
+        return dispatch.getName(receiver);
     }
 
     /**
@@ -92,7 +92,7 @@ public final class Language {
      * @since 19.0
      */
     public String getImplementationName() {
-        return impl.getImplementationName(receiver);
+        return dispatch.getImplementationName(receiver);
     }
 
     /**
@@ -101,7 +101,7 @@ public final class Language {
      * @since 19.0
      */
     public String getVersion() {
-        return impl.getVersion(receiver);
+        return dispatch.getVersion(receiver);
     }
 
     /**
@@ -112,7 +112,7 @@ public final class Language {
      * @since 19.0
      */
     public boolean isInteractive() {
-        return impl.isInteractive(receiver);
+        return dispatch.isInteractive(receiver);
     }
 
     /**
@@ -124,7 +124,7 @@ public final class Language {
      * @since 19.0
      */
     public OptionDescriptors getOptions() {
-        return impl.getOptions(receiver);
+        return dispatch.getOptions(receiver);
     }
 
     /**
@@ -137,7 +137,7 @@ public final class Language {
      * @since 19.0
      */
     public String getDefaultMimeType() {
-        return impl.getDefaultMimeType(receiver);
+        return dispatch.getDefaultMimeType(receiver);
     }
 
     /**
@@ -147,7 +147,7 @@ public final class Language {
      * @since 19.0
      */
     public Set<String> getMimeTypes() {
-        return impl.getMimeTypes(receiver);
+        return dispatch.getMimeTypes(receiver);
     }
 
 }

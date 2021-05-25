@@ -172,12 +172,12 @@ public abstract class AbstractInstrumentationTest extends AbstractPolyglotTest {
     }
 
     static final com.oracle.truffle.api.source.Source sourceToImpl(Source source) {
-        return (com.oracle.truffle.api.source.Source) ReflectionUtils.getField(source, "impl");
+        return (com.oracle.truffle.api.source.Source) ReflectionUtils.getField(source, "receiver");
     }
 
     @SuppressWarnings("static-method")
     protected final com.oracle.truffle.api.source.SourceSection getSectionImpl(SourceSection sourceSection) {
-        return (com.oracle.truffle.api.source.SourceSection) ReflectionUtils.getField(sourceSection, "impl");
+        return (com.oracle.truffle.api.source.SourceSection) ReflectionUtils.getField(sourceSection, "receiver");
     }
 
     protected final SourceSection createSection(Source source, int charIndex, int length) {

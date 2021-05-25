@@ -44,9 +44,9 @@ import java.time.Duration;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextImpl;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextDispatch;
 
-final class PolyglotContextDispatch extends AbstractContextImpl {
+final class PolyglotContextDispatch extends AbstractContextDispatch {
 
     protected PolyglotContextDispatch(PolyglotImpl impl) {
         super(impl);

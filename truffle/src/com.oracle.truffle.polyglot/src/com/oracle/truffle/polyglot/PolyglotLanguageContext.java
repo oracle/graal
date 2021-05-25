@@ -822,7 +822,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                 language.engine.leaveIfNeeded(prev, this.context);
             }
         }
-        return getAPIAccess().newValue(receiver, cache);
+        return getAPIAccess().newValue(cache, receiver);
     }
 
     synchronized PolyglotValue lookupValueCache(Object guestValue) {
@@ -867,7 +867,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                         }
                         cachedContext = languageContext;
                         cachedValue = cache;
-                        return apiAccess.newValue(receiver, cache);
+                        return apiAccess.newValue(cache, receiver);
                     } else {
                         // TODO this needs to be rewritten to cache that uses
                         // InteropCodeCache and does not store the context in a node directly
@@ -883,7 +883,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                         CompilerDirectives.transferToInterpreterAndInvalidate();
                         // invalid state retry next time for now do generic
                     } else {
-                        return apiAccess.newValue(receiver, cache);
+                        return apiAccess.newValue(cache, receiver);
                     }
                 } else {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -908,7 +908,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     Object toGuestValue(Node parentNode, Object hostValue) {
         if (hostValue instanceof Value) {
             Value receiverValue = (Value) hostValue;
-            PolyglotValue valueImpl = (PolyglotValue) getAPIAccess().getImpl(receiverValue);
+            PolyglotValue valueImpl = (PolyglotValue) getAPIAccess().getDispatch(receiverValue);
             PolyglotContextImpl valueContext = valueImpl.languageContext != null ? valueImpl.languageContext.context : null;
             Object valueReceiver = getAPIAccess().getReceiver(receiverValue);
             if (valueContext != this.context) {

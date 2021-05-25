@@ -41,7 +41,7 @@
 package org.graalvm.polyglot;
 
 import org.graalvm.options.OptionDescriptors;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractInstrumentImpl;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractInstrumentDispatch;
 
 /**
  * A handle for an <em>instrument</em> installed in an {@link Engine engine}. The instrument is
@@ -56,11 +56,11 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractInstrumentImpl;
  */
 public final class Instrument {
 
-    final AbstractInstrumentImpl impl;
+    final AbstractInstrumentDispatch dispatch;
     final Object receiver;
 
-    Instrument(AbstractInstrumentImpl impl, Object receiver) {
-        this.impl = impl;
+    Instrument(AbstractInstrumentDispatch dispatch, Object receiver) {
+        this.dispatch = dispatch;
         this.receiver = receiver;
     }
 
@@ -71,7 +71,7 @@ public final class Instrument {
      * @since 19.0
      */
     public String getId() {
-        return impl.getId(receiver);
+        return dispatch.getId(receiver);
     }
 
     /**
@@ -81,7 +81,7 @@ public final class Instrument {
      * @since 19.0
      */
     public String getName() {
-        return impl.getName(receiver);
+        return dispatch.getName(receiver);
     }
 
     /**
@@ -91,7 +91,7 @@ public final class Instrument {
      * @since 19.0
      */
     public OptionDescriptors getOptions() {
-        return impl.getOptions(receiver);
+        return dispatch.getOptions(receiver);
     }
 
     /**
@@ -101,7 +101,7 @@ public final class Instrument {
      * @since 19.0
      */
     public String getVersion() {
-        return impl.getVersion(receiver);
+        return dispatch.getVersion(receiver);
     }
 
     /**
@@ -115,7 +115,7 @@ public final class Instrument {
      * @since 19.0
      */
     public <T> T lookup(Class<T> type) {
-        return impl.lookup(receiver, type);
+        return dispatch.lookup(receiver, type);
     }
 
 }

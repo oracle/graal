@@ -43,9 +43,9 @@ package com.oracle.truffle.polyglot;
 import java.util.Set;
 
 import org.graalvm.options.OptionDescriptors;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractLanguageImpl;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractLanguageDispatch;
 
-final class PolyglotLanguageDispatch extends AbstractLanguageImpl {
+final class PolyglotLanguageDispatch extends AbstractLanguageDispatch {
 
     protected PolyglotLanguageDispatch(PolyglotImpl impl) {
         super(impl);

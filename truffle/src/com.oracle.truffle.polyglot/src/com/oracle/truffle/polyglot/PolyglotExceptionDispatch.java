@@ -48,9 +48,9 @@ import org.graalvm.polyglot.PolyglotException.StackFrame;
 import org.graalvm.polyglot.SourceSection;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractExceptionImpl;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractExceptionDispatch;
 
-final class PolyglotExceptionDispatch extends AbstractExceptionImpl {
+final class PolyglotExceptionDispatch extends AbstractExceptionDispatch {
 
     protected PolyglotExceptionDispatch(AbstractPolyglotImpl engineImpl) {
         super(engineImpl);

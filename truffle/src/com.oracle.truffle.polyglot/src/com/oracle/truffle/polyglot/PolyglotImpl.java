@@ -97,14 +97,14 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         }
     });
 
-    private final PolyglotSource sourceImpl = new PolyglotSource(this);
-    private final PolyglotSourceSection sourceSectionImpl = new PolyglotSourceSection(this);
-    private final PolyglotManagement executionListenerImpl = new PolyglotManagement(this);
-    private final PolyglotEngineDispatch engineImpl = new PolyglotEngineDispatch(this);
-    private final PolyglotContextDispatch contextImpl = new PolyglotContextDispatch(this);
-    private final PolyglotExceptionDispatch exceptionImpl = new PolyglotExceptionDispatch(this);
-    private final PolyglotInstrumentDispatch instrumentImpl = new PolyglotInstrumentDispatch(this);
-    private final PolyglotLanguageDispatch languageImpl = new PolyglotLanguageDispatch(this);
+    private final PolyglotSourceDispatch sourceDispatch = new PolyglotSourceDispatch(this);
+    private final PolyglotSourceSectionDispatch sourceSectionDispatch = new PolyglotSourceSectionDispatch(this);
+    private final PolyglotManagementDispatch executionListenerDispatch = new PolyglotManagementDispatch(this);
+    final PolyglotEngineDispatch engineDispatch = new PolyglotEngineDispatch(this);
+    final PolyglotContextDispatch contextDispatch = new PolyglotContextDispatch(this);
+    final PolyglotExceptionDispatch exceptionDispatch = new PolyglotExceptionDispatch(this);
+    final PolyglotInstrumentDispatch instrumentDispatch = new PolyglotInstrumentDispatch(this);
+    final PolyglotLanguageDispatch languageDispatch = new PolyglotLanguageDispatch(this);
 
     private final AtomicReference<PolyglotEngineImpl> preInitializedEngineRef = new AtomicReference<>();
     private final Function<Source, org.graalvm.polyglot.Source> sourceConstructor = new Function<Source, org.graalvm.polyglot.Source>() {
@@ -154,7 +154,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
     @Override
     protected void initialize() {
-        this.hostNull = getAPIAccess().newValue(HostObject.NULL, PolyglotValue.createHostNull(this));
+        this.hostNull = getAPIAccess().newValue(PolyglotValue.createHostNull(this), HostObject.NULL);
         PolyglotValue.createDefaultValues(this, null, primitiveValues);
         disconnectedHostValue = new PolyglotValue.HostValue(this);
     }
@@ -173,44 +173,24 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
      * Internal method do not use.
      */
     @Override
-    public AbstractSourceImpl getSourceImpl() {
-        return sourceImpl;
+    public AbstractSourceDispatch getSourceDispatch() {
+        return sourceDispatch;
     }
 
     /**
      * Internal method do not use.
      */
     @Override
-    public AbstractSourceSectionImpl getSourceSectionImpl() {
-        return sourceSectionImpl;
+    public AbstractSourceSectionDispatch getSourceSectionDispatch() {
+        return sourceSectionDispatch;
     }
 
     /**
      * Internal method do not use.
      */
     @Override
-    public AbstractManagementImpl getManagementImpl() {
-        return executionListenerImpl;
-    }
-
-    public PolyglotContextDispatch getContextImpl() {
-        return contextImpl;
-    }
-
-    public PolyglotEngineDispatch getEngineImpl() {
-        return engineImpl;
-    }
-
-    public PolyglotExceptionDispatch getExceptionImpl() {
-        return exceptionImpl;
-    }
-
-    public PolyglotInstrumentDispatch getInstrumentImpl() {
-        return instrumentImpl;
-    }
-
-    public PolyglotLanguageDispatch getLanguageImpl() {
-        return languageImpl;
+    public AbstractManagementDispatch getManagementDispatch() {
+        return executionListenerDispatch;
     }
 
     /**
@@ -226,7 +206,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             }
             Context api = context.api;
             if (api == null) {
-                context.api = api = getAPIAccess().newContext(contextImpl, context, context.engine.api);
+                context.api = api = getAPIAccess().newContext(contextDispatch, context, context.engine.api);
             }
             return api;
         } catch (Throwable t) {
@@ -299,7 +279,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                                 messageInterceptor,
                                 logHandler);
             }
-            return getAPIAccess().newEngine(engineImpl, impl);
+            return getAPIAccess().newEngine(engineDispatch, impl);
         } catch (Throwable t) {
             if (impl == null) {
                 throw PolyglotImpl.guestToHostException(this, t);
@@ -416,7 +396,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         if (hostValue == null) {
             return hostNull;
         } else if (isGuestPrimitive(hostValue)) {
-            return getAPIAccess().newValue(hostValue, primitiveValues.get(hostValue.getClass()));
+            return getAPIAccess().newValue(primitiveValues.get(hostValue.getClass()), hostValue);
         } else if (HostWrapper.isInstance(hostValue)) {
             HostWrapper hostWrapper = HostWrapper.asInstance(hostValue);
             // host wrappers can nicely reuse the associated context
@@ -439,7 +419,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             } else {
                 guestValue = HostObject.forObject(hostValue, null);
             }
-            return getAPIAccess().newValue(guestValue, disconnectedHostValue);
+            return getAPIAccess().newValue(disconnectedHostValue, guestValue);
         }
     }
 
@@ -574,7 +554,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             }
         }
         APIAccess access = getInstance().getAPIAccess();
-        return access.newLanguageException(exceptionImpl.getMessage(), getInstance().getExceptionImpl(), exceptionImpl);
+        return access.newLanguageException(exceptionImpl.getMessage(), getInstance().exceptionDispatch, exceptionImpl);
     }
 
     static <T extends Throwable> PolyglotException guestToHostException(PolyglotEngineImpl engine, T e) {
@@ -583,7 +563,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
         APIAccess access = engine.getAPIAccess();
         PolyglotExceptionImpl exceptionImpl = new PolyglotExceptionImpl(engine, false, e);
-        return access.newLanguageException(exceptionImpl.getMessage(), getInstance().getExceptionImpl(), exceptionImpl);
+        return access.newLanguageException(exceptionImpl.getMessage(), getInstance().exceptionDispatch, exceptionImpl);
     }
 
     /**
@@ -599,7 +579,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
         APIAccess access = polyglot.getAPIAccess();
         PolyglotExceptionImpl exceptionImpl = new PolyglotExceptionImpl(polyglot, e);
-        return access.newLanguageException(exceptionImpl.getMessage(), getInstance().getExceptionImpl(), exceptionImpl);
+        return access.newLanguageException(exceptionImpl.getMessage(), getInstance().exceptionDispatch, exceptionImpl);
     }
 
     static boolean isGuestPrimitive(Object receiver) {

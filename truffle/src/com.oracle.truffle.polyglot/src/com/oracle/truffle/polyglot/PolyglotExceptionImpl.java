@@ -360,12 +360,12 @@ final class PolyglotExceptionImpl {
             int languageIdLength = 0; // java
             for (StackFrame traceElement : getPolyglotStackTrace()) {
                 if (!traceElement.isHostFrame()) {
-                    languageIdLength = Math.max(languageIdLength, polyglot.getAPIAccess().getImpl(traceElement).getLanguage().getId().length());
+                    languageIdLength = Math.max(languageIdLength, polyglot.getAPIAccess().getDispatch(traceElement).getLanguage().getId().length());
                 }
             }
 
             for (StackFrame traceElement : getPolyglotStackTrace()) {
-                s.println("\tat " + polyglot.getAPIAccess().getImpl(traceElement).toStringImpl(languageIdLength));
+                s.println("\tat " + polyglot.getAPIAccess().getDispatch(traceElement).toStringImpl(languageIdLength));
             }
 
             // Print cause, if any
@@ -581,7 +581,7 @@ final class PolyglotExceptionImpl {
         return new MergedHostGuestIterator<>(hostStack, guestFrames, inHostLanguage, new Function<StackTraceElement, StackFrame>() {
             @Override
             public StackFrame apply(StackTraceElement element) {
-                return apiAccess.newPolyglotStackTraceElement(impl.api, PolyglotExceptionFrame.createHost(impl, element));
+                return apiAccess.newPolyglotStackTraceElement(PolyglotExceptionFrame.createHost(impl, element), impl.api);
             }
         }, new Function<TruffleStackTraceElement, StackFrame>() {
 
@@ -593,7 +593,7 @@ final class PolyglotExceptionImpl {
                 this.firstGuestFrame = false;
                 PolyglotExceptionFrame guest = PolyglotExceptionFrame.createGuest(impl, guestFrame, first);
                 if (guest != null) {
-                    return apiAccess.newPolyglotStackTraceElement(impl.api, guest);
+                    return apiAccess.newPolyglotStackTraceElement(guest, impl.api);
                 } else {
                     return null;
                 }

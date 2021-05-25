@@ -56,24 +56,19 @@ import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractEngineImpl;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractEngineDispatch;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.ProcessHandler;
 
 import com.oracle.truffle.api.Truffle;
 
-final class PolyglotEngineDispatch extends AbstractEngineImpl {
+final class PolyglotEngineDispatch extends AbstractEngineDispatch {
 
     private final PolyglotImpl polyglot;
 
     protected PolyglotEngineDispatch(PolyglotImpl polyglot) {
         super(polyglot);
         this.polyglot = polyglot;
-    }
-
-    @Override
-    public Engine getAPI(Object receiver) {
-        return ((PolyglotEngineImpl) receiver).api;
     }
 
     @Override
@@ -152,7 +147,7 @@ final class PolyglotEngineDispatch extends AbstractEngineImpl {
                         allowExperimentalOptions,
                         classFilter, options, arguments, onlyLanguages, fileSystem, logHandlerOrStream, allowCreateProcess, processHandler, environmentAccess, environment, zone, limitsImpl,
                         currentWorkingDirectory, hostClassLoader);
-        return polyglot.getAPIAccess().newContext(polyglot.getContextImpl(), context, receiver.api);
+        return polyglot.getAPIAccess().newContext(polyglot.contextDispatch, context, receiver.api);
     }
 
     @Override

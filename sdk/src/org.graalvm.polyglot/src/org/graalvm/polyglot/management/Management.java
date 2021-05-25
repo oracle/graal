@@ -44,7 +44,7 @@ import java.lang.reflect.Method;
 
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractManagementImpl;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractManagementDispatch;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.ManagementAccess;
 
 /*
@@ -55,15 +55,15 @@ final class Management {
     private Management() {
     }
 
-    static final AbstractManagementImpl IMPL = initImpl();
+    static final AbstractManagementDispatch IMPL = initImpl();
 
-    private static AbstractManagementImpl initImpl() {
+    private static AbstractManagementDispatch initImpl() {
         try {
             Method method = Engine.class.getDeclaredMethod("getImpl");
             method.setAccessible(true);
             AbstractPolyglotImpl impl = (AbstractPolyglotImpl) method.invoke(null);
             impl.setMonitoring(new ManagementAccessImpl());
-            return impl.getManagementImpl();
+            return impl.getManagementDispatch();
         } catch (Exception e) {
             throw new IllegalStateException("Failed to initialize execution listener class.", e);
         }

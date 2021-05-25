@@ -57,18 +57,18 @@ import java.util.function.Supplier;
 
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractSourceImpl;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractSourceDispatch;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.polyglot.io.FileSystem;
 
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.source.Source.SourceBuilder;
 
-class PolyglotSource extends AbstractSourceImpl {
+class PolyglotSourceDispatch extends AbstractSourceDispatch {
 
     private volatile Object defaultFileSystemContext;
 
-    protected PolyglotSource(AbstractPolyglotImpl engineImpl) {
+    protected PolyglotSourceDispatch(AbstractPolyglotImpl engineImpl) {
         super(engineImpl);
     }
 

@@ -50,7 +50,7 @@ import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.SourceSection;
 import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractManagementImpl;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractManagementDispatch;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.ManagementAccess;
 import org.graalvm.polyglot.management.ExecutionEvent;
 
@@ -69,12 +69,12 @@ import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.RootNode;
 
-final class PolyglotManagement extends AbstractManagementImpl {
+final class PolyglotManagementDispatch extends AbstractManagementDispatch {
 
     static final Object[] EMPTY_ARRAY = new Object[0];
     private final PolyglotImpl engineImpl;
 
-    PolyglotManagement(PolyglotImpl engineImpl) {
+    PolyglotManagementDispatch(PolyglotImpl engineImpl) {
         super(engineImpl);
         this.engineImpl = engineImpl;
     }
