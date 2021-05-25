@@ -423,7 +423,7 @@ public final class ExecutionListener implements AutoCloseable {
          */
         public ExecutionListener attach(Engine engine) {
             return new ExecutionListener(
-                            Management.IMPL.attachExecutionListener(Management.IMPL.getPolyglotImpl().getAccessor().getReceiver(engine), onEnter, onReturn, expressions, statements, roots,
+                            Management.IMPL.attachExecutionListener(Management.IMPL.getPolyglotImpl().getAPIAccess().getReceiver(engine), onEnter, onReturn, expressions, statements, roots,
                                             sourceFilter, rootNameFilter, collectInputValues, collectReturnValues, collectExceptions));
         }
     }

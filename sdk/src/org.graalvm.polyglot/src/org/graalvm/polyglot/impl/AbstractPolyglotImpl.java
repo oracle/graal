@@ -130,20 +130,6 @@ public abstract class AbstractPolyglotImpl {
         public abstract OutputStream getOutputStream(ProcessHandler.Redirect redirect);
     }
 
-    /*
-     * From other polyglot packages to this package.
-     */
-    public abstract static class PolyglotAccessor {
-        protected PolyglotAccessor() {
-            if (!getClass().getCanonicalName().equals("org.graalvm.polyglot.Engine.PolyglotAccessorImpl")) {
-                throw new AssertionError("Only one implementation of PolyglotAccessor allowed. " + getClass().getCanonicalName());
-            }
-        }
-
-        public abstract Object getReceiver(Engine engine);
-
-    }
-
     public abstract static class APIAccess {
 
         protected APIAccess() {
@@ -233,7 +219,6 @@ public abstract class AbstractPolyglotImpl {
     IOAccess io;
 
     AbstractPolyglotImpl next;
-    PolyglotAccessor accessor;
 
     public final void setMonitoring(ManagementAccess monitoring) {
         this.management = monitoring;
@@ -242,14 +227,6 @@ public abstract class AbstractPolyglotImpl {
     public final void setConstructors(APIAccess constructors) {
         this.api = constructors;
         initialize();
-    }
-
-    public final PolyglotAccessor getAccessor() {
-        return accessor;
-    }
-
-    public final void setAccessor(PolyglotAccessor accessor) {
-        this.accessor = accessor;
     }
 
     public final void setNext(AbstractPolyglotImpl next) {

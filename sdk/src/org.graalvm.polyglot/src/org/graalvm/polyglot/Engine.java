@@ -567,17 +567,6 @@ public final class Engine implements AutoCloseable {
 
     }
 
-    static class PolyglotAccessorImpl extends AbstractPolyglotImpl.PolyglotAccessor {
-
-        private static final AbstractPolyglotImpl.PolyglotAccessor INSTANCE = new PolyglotAccessorImpl();
-
-        @Override
-        public Object getReceiver(Engine engine) {
-            return engine.receiver;
-        }
-
-    }
-
     static class APIAccessImpl extends AbstractPolyglotImpl.APIAccess {
 
         private static final APIAccessImpl INSTANCE = new APIAccessImpl();
@@ -825,7 +814,6 @@ public final class Engine implements AutoCloseable {
                 for (AbstractPolyglotImpl impl : impls) {
                     impl.setNext(prev);
                     impl.setConstructors(APIAccessImpl.INSTANCE);
-                    impl.setAccessor(PolyglotAccessorImpl.INSTANCE);
                     prev = impl;
                 }
                 return prev;
