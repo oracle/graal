@@ -390,12 +390,20 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             return true;
         }
 
-        private static boolean isDeoptimizationEnabled() {
+        protected static boolean isDeoptimizationEnabled() {
             return DeoptimizationSupport.enabled() && !SubstrateUtil.isBuildingLibgraal();
         }
 
         protected boolean isMethodDeoptTarget() {
             return method instanceof SharedMethod && ((SharedMethod) method).isDeoptTarget();
+        }
+
+        @Override
+        protected boolean asyncExceptionLiveness() {
+            /*
+             * Currently native-image does not support asynchronous exceptions.
+             */
+            return false;
         }
 
         @Override

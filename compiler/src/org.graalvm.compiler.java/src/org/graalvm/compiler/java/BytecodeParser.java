@@ -1012,7 +1012,15 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
     }
 
     protected BciBlockMapping generateBlockMap() {
-        return BciBlockMapping.create(stream, code, options, graph.getDebug());
+        return BciBlockMapping.create(stream, code, options, graph.getDebug(), asyncExceptionLiveness());
+    }
+
+    /**
+     * Return true if the {@link LocalLiveness local liveness} calculation should consider async
+     * exceptions that might occur at any bci covered by an exception handler.
+     */
+    protected boolean asyncExceptionLiveness() {
+        return true;
     }
 
     @SuppressWarnings("try")
@@ -1045,7 +1053,8 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
 
             try (DebugContext.Scope s = debug.scope("LivenessAnalysis")) {
                 int maxLocals = method.getMaxLocals();
-                liveness = LocalLiveness.compute(debug, stream, blockMap.getBlocks(), maxLocals, blockMap.getLoopCount());
+                liveness = LocalLiveness.compute(debug, stream, blockMap, maxLocals, blockMap.getLoopCount(), asyncExceptionLiveness());
+                blockMap.clearLivenessMetadata();
             } catch (Throwable e) {
                 throw debug.handle(e);
             }

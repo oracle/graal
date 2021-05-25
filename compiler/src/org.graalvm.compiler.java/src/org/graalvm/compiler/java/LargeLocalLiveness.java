@@ -33,20 +33,23 @@ public final class LargeLocalLiveness extends LocalLiveness {
     private BitSet[] localsLiveOut;
     private BitSet[] localsLiveGen;
     private BitSet[] localsLiveKill;
+    private BitSet[] localsLiveAsync;
     private BitSet[] localsChangedInLoop;
 
-    public LargeLocalLiveness(BciBlock[] blocks, int maxLocals, int loopCount) {
-        super(blocks);
+    public LargeLocalLiveness(BciBlockMapping mapping, int maxLocals, int loopCount, boolean asyncLiveness) {
+        super(mapping, asyncLiveness);
         int blocksSize = blocks.length;
         localsLiveIn = new BitSet[blocksSize];
         localsLiveOut = new BitSet[blocksSize];
         localsLiveGen = new BitSet[blocksSize];
         localsLiveKill = new BitSet[blocksSize];
+        localsLiveAsync = new BitSet[blocksSize];
         for (int i = 0; i < blocksSize; i++) {
             localsLiveIn[i] = new BitSet(maxLocals);
             localsLiveOut[i] = new BitSet(maxLocals);
             localsLiveGen[i] = new BitSet(maxLocals);
             localsLiveKill[i] = new BitSet(maxLocals);
+            localsLiveAsync[i] = new BitSet(maxLocals);
         }
         localsChangedInLoop = new BitSet[loopCount];
         for (int i = 0; i < loopCount; ++i) {
@@ -80,8 +83,18 @@ public final class LargeLocalLiveness extends LocalLiveness {
     }
 
     @Override
+    protected int liveAsyncCardinality(int blockID) {
+        return localsLiveAsync[blockID].cardinality();
+    }
+
+    @Override
     protected void propagateLiveness(int blockID, int successorID) {
         localsLiveOut[blockID].or(localsLiveIn[successorID]);
+    }
+
+    @Override
+    protected void propagateAsyncLiveness(int blockID, int successorID) {
+        localsLiveAsync[blockID].or(localsLiveIn[successorID]);
     }
 
     @Override
@@ -91,6 +104,7 @@ public final class LargeLocalLiveness extends LocalLiveness {
         liveIn.or(localsLiveOut[blockID]);
         liveIn.andNot(localsLiveKill[blockID]);
         liveIn.or(localsLiveGen[blockID]);
+        liveIn.or(localsLiveAsync[blockID]);
     }
 
     @Override
