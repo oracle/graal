@@ -90,6 +90,12 @@ public class PythonTests extends RegexTestBase {
     }
 
     @Test
+    public void gr28906() {
+        test("^(\\|)?([^()]+)\\1$", "y", "a|", 0, false);
+        test("^(\\|)?([^()]+)\\1$", "y", "|a", 0, false);
+    }
+
+    @Test
     public void gr29318() {
         // \11 is a backreference to group 11
         expectSyntaxError("\\11", "", PyErrorMessages.invalidGroupReference("11"));
@@ -108,5 +114,28 @@ public class PythonTests extends RegexTestBase {
     @Test
     public void gr29331() {
         test("(?a)x", "", "x", 0, true, 0, 1);
+    }
+
+    @Test
+    public void backreferencesToUnmatchedGroupsFail() {
+        test("(a)?\\1", "", "", 0, false);
+    }
+
+    @Test
+    public void nestedCaptureGroupsKeptOnLoopReentry() {
+        test("(?:(a)|(b))+", "", "ab", 0, true, 0, 2, 0, 1, 1, 2);
+        test("(?:(a)|b\\1){2}", "", "aba", 0, true, 0, 3, 0, 1);
+    }
+
+    @Test
+    public void failingEmptyChecksDontBacktrack() {
+        test("(?:|a)?", "", "a", 0, true, 0, 0);
+        test("(?:a|())*", "", "a", 0, true, 0, 1, 1, 1);
+    }
+
+    @Test
+    public void emptyChecksBacktrackingAndNestedCaptureGroupInteractions() {
+        test("()??\\1", "", "", 0, true, 0, 0, 0, 0);
+        test("(?:a|())*?\\1", "", "a", 0, true, 0, 1, 1, 1);
     }
 }
