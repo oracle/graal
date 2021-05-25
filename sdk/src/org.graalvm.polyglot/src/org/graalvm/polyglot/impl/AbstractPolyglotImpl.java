@@ -95,15 +95,13 @@ import org.graalvm.polyglot.management.ExecutionEvent;
  * This class is intended to be used by polyglot implementations. Methods in this class are not
  * intended to be used directly.
  *
- * This class and its inner classes break compatibility without notice.
+ * This class and its inner classes break compatibility without notice. Do not use, unless you know
+ * what you are doing.
  */
 @SuppressWarnings("unused")
 public abstract class AbstractPolyglotImpl {
 
     protected AbstractPolyglotImpl() {
-        if (!getClass().getName().equals("com.oracle.truffle.polyglot.PolyglotImpl") && !getClass().getName().equals("org.graalvm.polyglot.Engine$PolyglotInvalid")) {
-            throw new AssertionError("Only one implementation Engine.Impl allowed.");
-        }
     }
 
     public abstract static class ManagementAccess {
