@@ -485,9 +485,10 @@ abstract class ToHostNode extends Node {
                 throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must have array elements.");
             }
         } else if (targetType == Function.class) {
+            TypeAndClass<?> paramType = getGenericParameterType(genericType, 0);
             TypeAndClass<?> returnType = getGenericParameterType(genericType, 1);
             if (interop.isExecutable(value) || interop.isInstantiable(value)) {
-                obj = PolyglotFunction.create(languageContext, value, returnType.clazz, returnType.type);
+                obj = PolyglotFunction.create(languageContext, value, returnType.clazz, returnType.type, paramType.clazz, paramType.type);
             } else if (interop.hasMembers(value)) {
                 obj = HostInteropReflect.newProxyInstance(targetType, value, languageContext);
             } else {

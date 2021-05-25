@@ -922,7 +922,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
 
             @Override
             protected Object executeImpl(PolyglotLanguageContext languageContext, Object receiver, Object[] args) {
-                return apply.execute(languageContext, receiver, args[ARGUMENT_OFFSET], Object.class, Object.class);
+                return apply.execute(languageContext, receiver, args[ARGUMENT_OFFSET]);
             }
         }
 
