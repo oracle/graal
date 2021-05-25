@@ -278,7 +278,11 @@ public class SVMHost implements HostVM {
          * Due to using {@link NativeImageSystemClassLoader}, a class's ClassLoader during runtime
          * may be different than the class used to load it during native-image generation.
          */
-        ClassLoader runtimeClassLoader = ClassLoaderFeature.getRuntimeClassLoader(javaClass.getClassLoader());
+        ClassLoader classloader = javaClass.getClassLoader();
+        if (classloader == null) {
+            classloader = BootLoaderSupport.getBootLoader();
+        }
+        ClassLoader runtimeClassLoader = ClassLoaderFeature.getRuntimeClassLoader(classloader);
         if (runtimeClassLoader != null) {
             Package packageValue = javaClass.getPackage();
             if (packageValue != null) {
