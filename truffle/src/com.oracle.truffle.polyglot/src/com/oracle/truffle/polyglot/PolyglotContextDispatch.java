@@ -113,11 +113,6 @@ final class PolyglotContextDispatch extends AbstractContextImpl {
     }
 
     @Override
-    public Context getAPI(Object receiver) {
-        return ((PolyglotContextImpl) receiver).api;
-    }
-
-    @Override
     public void setAPI(Object receiver, Context context) {
         ((PolyglotContextImpl) receiver).api = context;
     }

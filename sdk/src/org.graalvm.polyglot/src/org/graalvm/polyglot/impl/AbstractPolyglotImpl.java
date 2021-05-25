@@ -462,8 +462,6 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract void setAPI(Object receiver, Context key);
 
-        public abstract Context getAPI(Object receiver);
-
     }
 
     public abstract static class AbstractEngineImpl {
@@ -473,8 +471,6 @@ public abstract class AbstractPolyglotImpl {
         }
 
         public abstract void setAPI(Object receiver, Engine key);
-
-        public abstract Engine getAPI(Object receiver);
 
         public abstract Language requirePublicLanguage(Object receiver, String id);
 
