@@ -147,7 +147,7 @@ final class PolyglotEngineDispatch extends AbstractEngineDispatch {
                         allowExperimentalOptions,
                         classFilter, options, arguments, onlyLanguages, fileSystem, logHandlerOrStream, allowCreateProcess, processHandler, environmentAccess, environment, zone, limitsImpl,
                         currentWorkingDirectory, hostClassLoader);
-        return polyglot.getAPIAccess().newContext(polyglot.contextDispatch, context, receiver.api);
+        return polyglot.getAPIAccess().newContext(polyglot.contextDispatch, context, context.engine.api);
     }
 
     @Override
