@@ -39,10 +39,6 @@ final class LinkedField extends StaticProperty {
         this.slot = slot;
     }
 
-    public static LinkedField createHidden(Symbol<Name> name, int slot) {
-        return new LinkedField(new ParserField(ParserField.HIDDEN, name, Type.java_lang_Object, null), slot);
-    }
-
     /**
      * This method is required by the Static Object Model. In Espresso we should rather call
      * `getName()` and use Symbols.
