@@ -156,6 +156,29 @@ public class GR31558 extends AbstractPolyglotTest {
         }));
     }
 
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    @Test
+    public void testValueAsCustomFunction() {
+        new FunctionApplyTestObj().testFunction("hi", context.asValue(new ArgumentsCollectorFunction()).as(MyFunction.class));
+        new FunctionApplyTestObj().testFunction("hi", context.asValue(new ArgumentsCollectorFunction()).as(new TypeLiteral<MyFunction<Object, Object>>() {
+        }));
+
+        Function<Object[], Object> handler = context.asValue(new ArgumentsCollectorFunction()).as(new TypeLiteral<MyFunction<Object[], Object>>() {
+        });
+        expectArrayArg(1, handler.apply(new String[]{"hi"}));
+        expectArrayArg(2, handler.apply(new String[]{"hi", "wow"}));
+
+        Function<int[], Object> handlerInt = context.asValue(new ArgumentsCollectorFunction()).as(new TypeLiteral<MyFunction<int[], Object>>() {
+        });
+        expectArrayArg(1, handlerInt.apply(new int[]{42}));
+        expectArrayArg(2, handlerInt.apply(new int[]{42, 43}));
+    }
+
+    @FunctionalInterface
+    interface MyFunction<T, R> extends Function<T, R> {
+        R apply(T t);
+    }
+
     private void expectArrayArg(int elementCount, Object result) {
         assertEquals(Arrays.toString(actualArguments), 1, actualArguments.length);
         assertEquals("EXECUTE", result);
