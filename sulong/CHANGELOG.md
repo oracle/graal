@@ -4,6 +4,10 @@ Fixes:
 
 * Fix LLVM toolchain not working correctly for C++ on MacOS 11.3.
 
+New features:
+
+* Support implicitly typed XADD instructions in inline assembly.
+
 # Version 21.1.0
 
 New features:

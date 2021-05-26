@@ -1218,6 +1218,41 @@ public class AsmFactory {
                 LLVMX86_ConversionNode.LLVMX86_Pmovmskb128 pmovmskb128 = LLVMX86_ConversionNodeFactory.LLVMX86_Pmovmskb128NodeGen.create(srcA);
                 out = pmovmskb128;
                 break;
+            case "xadd":
+                srcA = getOperandLoad(dstType, a);
+                srcB = getOperandLoad(dstType, b);
+                switch (getPrimitiveType(dstType)) {
+                    case I8: {
+                        LLVMAMD64WriteValueNode dst1 = getRegisterStore(PrimitiveType.I8, a);
+                        LLVMAMD64WriteValueNode dst2 = getStore(dstType, dst);
+                        LLVMAMD64WriteTupelNode res = LLVMAMD64WriteTupelNodeGen.create(dst1, dst2);
+                        statements.add(LLVMAMD64XaddbNodeGen.create(getUpdateCPZSOFlagsNode(), res, srcA, srcB));
+                        return;
+                    }
+                    case I16: {
+                        LLVMAMD64WriteValueNode dst1 = getRegisterStore(PrimitiveType.I16, a);
+                        LLVMAMD64WriteValueNode dst2 = getStore(dstType, dst);
+                        LLVMAMD64WriteTupelNode res = LLVMAMD64WriteTupelNodeGen.create(dst1, dst2);
+                        statements.add(LLVMAMD64XaddwNodeGen.create(getUpdateCPZSOFlagsNode(), res, srcA, srcB));
+                        return;
+                    }
+                    case I32: {
+                        LLVMAMD64WriteValueNode dst1 = getRegisterStore(PrimitiveType.I32, a);
+                        LLVMAMD64WriteValueNode dst2 = getStore(dstType, dst);
+                        LLVMAMD64WriteTupelNode res = LLVMAMD64WriteTupelNodeGen.create(dst1, dst2);
+                        statements.add(LLVMAMD64XaddlNodeGen.create(getUpdateCPZSOFlagsNode(), res, srcA, srcB));
+                        return;
+                    }
+                    case I64: {
+                        LLVMAMD64WriteValueNode dst1 = getRegisterStore(PrimitiveType.I64, a);
+                        LLVMAMD64WriteValueNode dst2 = getStore(dstType, dst);
+                        LLVMAMD64WriteTupelNode res = LLVMAMD64WriteTupelNodeGen.create(dst1, dst2);
+                        statements.add(LLVMAMD64XaddqNodeGen.create(getUpdateCPZSOFlagsNode(), res, srcA, srcB));
+                        return;
+                    }
+                    default:
+                        throw invalidOperandType(dstType);
+                }
             default:
                 statements.add(LLVMUnsupportedInstructionNode.create(UnsupportedReason.INLINE_ASSEMBLER, operation));
                 return;
