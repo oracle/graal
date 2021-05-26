@@ -52,7 +52,9 @@ import java.util.function.Function;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
+import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -71,74 +73,87 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
-public class GR31558 {
+public class GR31558 extends AbstractPolyglotTest {
     Object[] actualArguments;
 
-    @Test
-    public void testApplyArray() {
-        HostAccess.Builder builder = HostAccess.newBuilder().//
+    @Before
+    public void before() {
+        HostAccess.Builder hostAccessBuilder = HostAccess.newBuilder().//
                         allowAccessAnnotatedBy(HostAccess.Export.class).//
                         allowPublicAccess(false).//
                         allowArrayAccess(true).//
                         allowIterableAccess(true).//
                         allowIteratorAccess(true).//
                         allowImplementationsAnnotatedBy(FunctionalInterface.class);
-        HostAccess accessConfig = builder.build();
         Context.Builder contextBuilder = Context.newBuilder();
-        contextBuilder.allowHostAccess(accessConfig);
-        try (Context c = contextBuilder.build()) {
-            ProxyLanguage.setDelegate(new ProxyLanguage() {
-                @Override
-                protected CallTarget parse(ParsingRequest request) throws Exception {
-                    String src = request.getSource().getCharacters().toString();
-                    RootCallTarget invokeTestApi;
-                    if ("testFunction".equals(src)) {
-                        invokeTestApi = Truffle.getRuntime().createCallTarget(new RootNode(ProxyLanguage.getCurrentLanguage()) {
-                            @Override
-                            public Object execute(VirtualFrame frame) {
-                                try {
-                                    InteropLibrary interop = InteropLibrary.getUncached();
-                                    Object test = frame.getArguments()[0];
+        contextBuilder.allowHostAccess(hostAccessBuilder.build());
 
-                                    interop.invokeMember(test, "testFunction", "hi", new ArgumentsCollectorFunction());
+        setupEnv(contextBuilder, new ProxyLanguage() {
+            @Override
+            protected CallTarget parse(ParsingRequest request) throws Exception {
+                String src = request.getSource().getCharacters().toString();
+                RootCallTarget invokeTestApi;
+                if ("testFunction".equals(src)) {
+                    invokeTestApi = Truffle.getRuntime().createCallTarget(new RootNode(ProxyLanguage.getCurrentLanguage()) {
+                        @Override
+                        public Object execute(VirtualFrame frame) {
+                            try {
+                                InteropLibrary interop = InteropLibrary.getUncached();
+                                Object test = frame.getArguments()[0];
 
-                                    if (interop.isMemberExisting(test, "testMap")) {
-                                        interop.invokeMember(test, "testFunction", "hi", new ArgumentsCollectorFunction(false, false, false, true));
-                                    }
-                                    if (interop.isMemberExisting(test, "testMapEntry")) {
-                                        interop.invokeMember(test, "testMapEntry", "hi", new ArgumentsCollectorFunction(false, false, true, false));
-                                    }
-                                    if (interop.isMemberExisting(test, "testList")) {
-                                        interop.invokeMember(test, "testList", "hi", new ArgumentsCollectorFunction(false, false, true, false));
-                                    }
-                                    if (interop.isMemberExisting(test, "testIterator")) {
-                                        interop.invokeMember(test, "testIterator", "hi", new ArgumentsCollectorFunction(false, true, false, false));
-                                    }
-                                    if (interop.isMemberExisting(test, "testIterable")) {
-                                        interop.invokeMember(test, "testIterable", "hi", new ArgumentsCollectorFunction(true, false, false, false));
-                                    }
+                                interop.invokeMember(test, "testFunction", "hi", new ArgumentsCollectorFunction());
 
-                                    return "success";
-                                } catch (UnsupportedMessageException | UnknownIdentifierException | ArityException | UnsupportedTypeException e) {
-                                    CompilerDirectives.transferToInterpreter();
-                                    throw new AssertionError(e);
+                                if (interop.isMemberExisting(test, "testMap")) {
+                                    interop.invokeMember(test, "testFunction", "hi", new ArgumentsCollectorFunction(false, false, false, true));
                                 }
+                                if (interop.isMemberExisting(test, "testMapEntry")) {
+                                    interop.invokeMember(test, "testMapEntry", "hi", new ArgumentsCollectorFunction(false, false, true, false));
+                                }
+                                if (interop.isMemberExisting(test, "testList")) {
+                                    interop.invokeMember(test, "testList", "hi", new ArgumentsCollectorFunction(false, false, true, false));
+                                }
+                                if (interop.isMemberExisting(test, "testIterator")) {
+                                    interop.invokeMember(test, "testIterator", "hi", new ArgumentsCollectorFunction(false, true, false, false));
+                                }
+                                if (interop.isMemberExisting(test, "testIterable")) {
+                                    interop.invokeMember(test, "testIterable", "hi", new ArgumentsCollectorFunction(true, false, false, false));
+                                }
+
+                                return "success";
+                            } catch (UnsupportedMessageException | UnknownIdentifierException | ArityException | UnsupportedTypeException e) {
+                                CompilerDirectives.transferToInterpreter();
+                                throw new AssertionError(e);
                             }
-                        });
-                    } else {
-                        throw new IllegalArgumentException(src);
-                    }
-                    return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(new HostExceptionTest.CatcherObject(invokeTestApi)));
+                        }
+                    });
+                } else {
+                    throw new IllegalArgumentException(src);
                 }
-            });
-            c.initialize(ProxyLanguage.ID);
-            c.eval(ProxyLanguage.ID, "testFunction").execute(new FunctionApplyTestObj());
-            c.eval(ProxyLanguage.ID, "testFunction").execute(new FunctionApplyTestObjArray());
-            c.eval(ProxyLanguage.ID, "testFunction").execute(new FunctionApplyTestIntArray());
-            c.eval(ProxyLanguage.ID, "testFunction").execute(new FunctionApplyTestRaw());
-        }
+                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(new HostExceptionTest.CatcherObject(invokeTestApi)));
+            }
+        });
+    }
+
+    @Test
+    public void testApplyArray() {
+        context.eval(ProxyLanguage.ID, "testFunction").execute(new FunctionApplyTestObj());
+        context.eval(ProxyLanguage.ID, "testFunction").execute(new FunctionApplyTestObjArray());
+        context.eval(ProxyLanguage.ID, "testFunction").execute(new FunctionApplyTestIntArray());
+        context.eval(ProxyLanguage.ID, "testFunction").execute(new FunctionApplyTestRaw());
+    }
+
+    @Test
+    public void testValueAsFunction() {
+        new FunctionApplyTestRaw().testFunction("hi", context.asValue(new ArgumentsCollectorFunction()).as(Function.class));
+        new FunctionApplyTestObj().testFunction("hi", context.asValue(new ArgumentsCollectorFunction()).as(new TypeLiteral<Function<Object, Object>>() {
+        }));
+        new FunctionApplyTestObjArray().testFunction("hi", context.asValue(new ArgumentsCollectorFunction()).as(new TypeLiteral<Function<Object[], Object>>() {
+        }));
+        new FunctionApplyTestIntArray().testFunction("hi", context.asValue(new ArgumentsCollectorFunction()).as(new TypeLiteral<Function<int[], Object>>() {
+        }));
     }
 
     private void expectArrayArg(int elementCount, Object result) {
