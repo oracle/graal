@@ -72,6 +72,14 @@ public class JfrTraceId {
     }
 
     @Uninterruptible(reason = "Epoch must not change.")
+    public static void clearUsedThisEpoch(Class<?> clazz, boolean epoch) {
+        long bits = epoch ? JfrTraceIdEpoch.EPOCH_1_BIT : JfrTraceIdEpoch.EPOCH_0_BIT;
+        JfrTraceIdMap map = getTraceIdMap();
+        long id = map.getId(clazz);
+        map.setId(clazz, id & ~bits);
+    }
+
+    @Uninterruptible(reason = "Epoch must not change.")
     public static boolean isUsedThisEpoch(Class<?> clazz) {
         return predicate(clazz, TRANSIENT_BIT | JfrTraceIdEpoch.getInstance().thisEpochBit());
     }

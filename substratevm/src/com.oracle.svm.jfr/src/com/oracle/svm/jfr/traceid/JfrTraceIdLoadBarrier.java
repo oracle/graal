@@ -97,9 +97,11 @@ public class JfrTraceIdLoadBarrier {
             if (JfrTraceId.predicate(clazz, predicate)) {
                 kc.accept(clazz);
                 usedClassCount++;
+                JfrTraceId.clearUsedThisEpoch(clazz, epoch);
             }
         }
         assert usedClassCount == classCount(epoch);
+        clear();
     }
 
     // Using Consumer<Class<?>> directly drags in other implementations which are not
