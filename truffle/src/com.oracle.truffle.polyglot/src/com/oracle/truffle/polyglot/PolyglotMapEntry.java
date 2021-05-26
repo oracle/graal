@@ -52,6 +52,7 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 
 import java.lang.reflect.Type;
 import java.util.Map;
+import java.util.Objects;
 
 class PolyglotMapEntry<K, V> implements Map.Entry<K, V>, HostWrapper {
 
@@ -208,8 +209,8 @@ class PolyglotMapEntry<K, V> implements Map.Entry<K, V>, HostWrapper {
                 }
                 PolyglotMapEntry.Cache.Key other = (PolyglotMapEntry.Cache.Key) obj;
                 return receiverClass == other.receiverClass &&
-                                keyClass == other.keyClass && keyType == other.keyType &&
-                                valueClass == other.valueClass && valueType == other.valueType;
+                                keyClass == other.keyClass && Objects.equals(keyType, other.keyType) &&
+                                valueClass == other.valueClass && Objects.equals(valueType, other.valueType);
             }
         }
 

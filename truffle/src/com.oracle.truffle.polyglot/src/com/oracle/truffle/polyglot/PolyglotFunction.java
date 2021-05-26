@@ -162,8 +162,8 @@ final class PolyglotFunction<T, R> implements Function<T, R>, HostWrapper {
             }
             Apply other = (Apply) obj;
             return receiverClass == other.receiverClass &&
-                            returnType == other.returnType && returnClass == other.returnClass &&
-                            paramClass == other.paramClass && paramType == other.paramType;
+                            returnClass == other.returnClass && Objects.equals(returnType, other.returnType) &&
+                            paramClass == other.paramClass && Objects.equals(paramType, other.paramType);
         }
 
         private static CallTarget lookup(PolyglotLanguageContext languageContext, Class<?> receiverClass, Class<?> returnClass, Type returnType, Class<?> paramClass, Type paramType) {

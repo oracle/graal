@@ -43,6 +43,7 @@ package com.oracle.truffle.polyglot;
 import java.lang.reflect.Type;
 import java.util.AbstractList;
 import java.util.List;
+import java.util.Objects;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -196,7 +197,10 @@ class PolyglotList<T> extends AbstractList<T> implements HostWrapper {
 
             @Override
             public int hashCode() {
-                return 31 * (31 * (valueType == null ? 0 : valueType.hashCode()) + receiverClass.hashCode()) + valueClass.hashCode();
+                int res = receiverClass.hashCode();
+                res = res * 31 + valueClass.hashCode();
+                res = res * 31 + (valueType == null ? 0 : valueType.hashCode());
+                return res;
             }
 
             @Override
@@ -207,7 +211,7 @@ class PolyglotList<T> extends AbstractList<T> implements HostWrapper {
                     return false;
                 }
                 Key other = (Key) obj;
-                return valueType == other.valueType && valueClass == other.valueClass && receiverClass == other.receiverClass;
+                return receiverClass == other.receiverClass && valueClass == other.valueClass && Objects.equals(valueType, other.valueType);
             }
         }
 

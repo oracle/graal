@@ -471,9 +471,9 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                     return false;
                 }
                 Key other = (Key) obj;
-                return keyClass == other.keyClass && keyType == other.keyType &&
-                                valueClass == other.valueClass && valueType == other.valueType &&
-                                receiverClass == other.receiverClass;
+                return receiverClass == other.receiverClass &&
+                                keyClass == other.keyClass && Objects.equals(keyType, other.keyType) &&
+                                valueClass == other.valueClass && Objects.equals(valueType, other.valueType);
             }
         }
 
