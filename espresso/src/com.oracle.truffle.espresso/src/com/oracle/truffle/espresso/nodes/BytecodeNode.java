@@ -270,7 +270,6 @@ import com.oracle.truffle.espresso.bytecode.MapperBCI;
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.classfile.attributes.BootstrapMethodsAttribute;
-import com.oracle.truffle.espresso.classfile.attributes.CodeAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.LineNumberTableAttribute;
 import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.DoubleConstant;

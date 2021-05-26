@@ -314,8 +314,9 @@ public final class EspressoContext {
     }
 
     public EspressoLanguageCache getCache() {
-        if (languageCache == null)
+        if (languageCache == null) {
             languageCache = getJavaVersion().java8OrEarlier() ? language.getV8Cache() : language.getV11Cache();
+        }
         return languageCache;
     }
 

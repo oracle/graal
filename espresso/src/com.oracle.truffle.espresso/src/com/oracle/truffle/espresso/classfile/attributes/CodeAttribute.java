@@ -26,9 +26,7 @@ package com.oracle.truffle.espresso.classfile.attributes;
 import static com.oracle.truffle.espresso.classfile.ClassfileParser.JAVA_6_VERSION;
 
 import java.io.PrintStream;
-import java.util.Arrays;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.descriptors.Symbol;
