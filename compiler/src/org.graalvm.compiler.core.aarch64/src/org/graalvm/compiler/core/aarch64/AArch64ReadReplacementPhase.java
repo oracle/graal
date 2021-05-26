@@ -26,7 +26,10 @@
 
 package org.graalvm.compiler.core.aarch64;
 
+import org.graalvm.compiler.core.common.type.IntegerStamp;
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.calc.SignExtendNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
@@ -50,8 +53,9 @@ public class AArch64ReadReplacementPhase extends Phase {
             if (node instanceof ReadNode && !(node instanceof VolatileReadNode)) {
                 ReadNode readNode = (ReadNode) node;
                 if (readNode.hasExactlyOneUsage()) {
+                    Stamp stamp = readNode.getAccessStamp(NodeView.DEFAULT);
                     Node usage = readNode.usages().first();
-                    if (usage instanceof ZeroExtendNode || usage instanceof SignExtendNode) {
+                    if ((usage instanceof ZeroExtendNode || usage instanceof SignExtendNode) && stamp instanceof IntegerStamp) {
                         AArch64ReadNode.replace(readNode);
                     }
                 }

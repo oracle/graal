@@ -1456,7 +1456,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @return value between 0 and size - 1 inclusive that is equivalent to shiftAmt according to
      *         JLS.
      */
-    private static int clampShiftAmt(int size, long shiftAmt) {
+    public static int clampShiftAmt(int size, long shiftAmt) {
         assert size == 32 || size == 64;
         return (int) (shiftAmt & (size - 1));
     }

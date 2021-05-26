@@ -32,9 +32,9 @@ import static org.graalvm.compiler.lir.aarch64.AArch64ArithmeticOp.ARMv8Constant
 import static org.graalvm.compiler.lir.aarch64.AArch64ArithmeticOp.ARMv8ConstantCategory.NONE;
 import static org.graalvm.compiler.lir.aarch64.AArch64ArithmeticOp.ARMv8ConstantCategory.SHIFT;
 
-import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
-import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ElementSize;
 import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDSize;
+import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ElementSize;
+import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.debug.GraalError;
@@ -723,23 +723,25 @@ public enum AArch64ArithmeticOp {
             Register dst = asRegister(result);
             Register src = asRegister(a);
 
+            long immValue = b.asLong();
+            int clampedShift = AArch64MacroAssembler.clampShiftAmt(eSize == ElementSize.DoubleWord ? 64 : 32, immValue);
             switch (op) {
                 case OR:
                     masm.neon.moveVV(size, dst, src);
-                    masm.neon.orrVI(size, eSize, dst, b.asLong());
+                    masm.neon.orrVI(size, eSize, dst, immValue);
                     break;
                 case BIC:
                     masm.neon.moveVV(size, dst, src);
-                    masm.neon.bicVI(size, eSize, dst, b.asLong());
+                    masm.neon.bicVI(size, eSize, dst, immValue);
                     break;
                 case SHL:
-                    masm.neon.shlVVI(size, eSize, dst, src, b.asInt());
+                    masm.neon.shlVVI(size, eSize, dst, src, clampedShift);
                     break;
                 case LSHR:
-                    masm.neon.ushrVVI(size, eSize, dst, src, b.asInt());
+                    masm.neon.ushrVVI(size, eSize, dst, src, clampedShift);
                     break;
                 case ASHR:
-                    masm.neon.sshrVVI(size, eSize, dst, src, b.asInt());
+                    masm.neon.sshrVVI(size, eSize, dst, src, clampedShift);
                     break;
 
                 default:
@@ -754,8 +756,12 @@ public enum AArch64ArithmeticOp {
 
         @Opcode private final AArch64ArithmeticOp op;
         @Def(REG) protected AllocatableValue result;
-        @Use(REG) protected AllocatableValue a;
-        @Use(REG) protected AllocatableValue b;
+        /*
+         * a & b cannot be assigned the same reg as the result reg, as c is moved into the result
+         * reg before a & b are used.
+         */
+        @Alive(REG) protected AllocatableValue a;
+        @Alive(REG) protected AllocatableValue b;
         @Use(REG) protected AllocatableValue c;
 
         /**
