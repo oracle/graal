@@ -60,6 +60,7 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Trace
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceSplitting;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceSplittingSummary;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceTransferToInterpreter;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraversingQueueFirstTierBonus;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraversingQueueWeightingBothTiers;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraversingQueueFirstTierPriority;
 import static org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime.getRuntime;
@@ -141,6 +142,7 @@ public final class EngineData {
     @CompilationFinal public boolean priorityQueue;
     @CompilationFinal public boolean weightingBothTiers;
     @CompilationFinal public boolean traversingFirstTierPriority;
+    @CompilationFinal public double traversingFirstTierBonus;
 
     // computed fields.
     @CompilationFinal public int callThresholdInInterpreter;
@@ -268,6 +270,7 @@ public final class EngineData {
         priorityQueue = options.get(PriorityQueue);
         weightingBothTiers = options.get(TraversingQueueWeightingBothTiers);
         traversingFirstTierPriority = options.get(TraversingQueueFirstTierPriority);
+        traversingFirstTierBonus= options.get(TraversingQueueFirstTierBonus);
 
         this.returnTypeSpeculation = options.get(ReturnTypeSpeculation);
         this.argumentTypeSpeculation = options.get(ArgumentTypeSpeculation);
