@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,35 +26,20 @@ package org.graalvm.compiler.hotspot.amd64.test;
 
 import static org.junit.Assume.assumeTrue;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.graalvm.compiler.api.test.Graal;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.runtime.RuntimeProvider;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
 
-@RunWith(Parameterized.class)
-public class BinaryMathStubTest extends GraalCompilerTest {
-
-    @Parameterized.Parameters(name = "{0}")
-    public static List<Object[]> data() {
-        ArrayList<Object[]> ret = new ArrayList<>();
-        ret.add(new Object[]{"pow"});
-        return ret;
-    }
+public class MathPower0Point5Test extends GraalCompilerTest {
 
     private static final double[] inputs = {0.0D, -0.0D, 0.5D, Math.PI / 2, 2.0D, Math.PI, -1.0D, Double.MAX_VALUE, Double.MIN_VALUE, Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY};
-    private final String stub;
 
-    public BinaryMathStubTest(String stub) {
-        this.stub = stub;
+    public MathPower0Point5Test() {
     }
 
     @Before
@@ -63,16 +48,14 @@ public class BinaryMathStubTest extends GraalCompilerTest {
         assumeTrue("skipping AMD64 specific test", arch instanceof AMD64);
     }
 
-    public static double pow(double x, double y) {
-        return Math.pow(x, y);
+    public static double pow(double x) {
+        return Math.pow(Math.abs(x), 0.5D);
     }
 
     @Test
-    public void testStub() {
+    public void testPow() {
         for (double x : inputs) {
-            for (double y : inputs) {
-                test(stub, x, y);
-            }
+            test("pow", x);
         }
     }
 }
