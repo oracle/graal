@@ -179,13 +179,10 @@ class PolyglotMapEntry<K, V> implements Map.Entry<K, V>, HostWrapper {
 
             Key(Class<?> receiverClass, Class<?> keyClass, Type keyType,
                             Class<?> valueClass, Type valueType) {
-                assert receiverClass != null;
-                assert keyClass != null;
-                assert valueClass != null;
-                this.receiverClass = receiverClass;
-                this.keyClass = keyClass;
+                this.receiverClass = Objects.requireNonNull(receiverClass);
+                this.keyClass = Objects.requireNonNull(keyClass);
                 this.keyType = keyType;
-                this.valueClass = valueClass;
+                this.valueClass = Objects.requireNonNull(valueClass);
                 this.valueType = valueType;
             }
 

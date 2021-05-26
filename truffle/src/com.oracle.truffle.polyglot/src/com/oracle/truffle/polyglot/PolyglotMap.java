@@ -443,12 +443,10 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
 
             Key(Class<?> receiverClass, Class<?> keyClass, Type keyType,
                             Class<?> valueClass, Type valueType) {
-                assert receiverClass != null;
-                assert keyClass != null;
-                this.receiverClass = receiverClass;
-                this.keyClass = keyClass;
+                this.receiverClass = Objects.requireNonNull(receiverClass);
+                this.keyClass = Objects.requireNonNull(keyClass);
                 this.keyType = keyType;
-                this.valueClass = valueClass;
+                this.valueClass = Objects.requireNonNull(valueClass);
                 this.valueType = valueType;
             }
 

@@ -116,10 +116,10 @@ final class PolyglotFunction<T, R> implements Function<T, R>, HostWrapper {
         @Child private PolyglotExecuteNode apply;
 
         Apply(Class<?> receiverType, Class<?> returnClass, Type returnType, Class<?> paramClass, Type paramType) {
-            this.receiverClass = receiverType;
-            this.returnClass = returnClass;
+            this.receiverClass = Objects.requireNonNull(receiverType);
+            this.returnClass = Objects.requireNonNull(returnClass);
             this.returnType = returnType;
-            this.paramClass = paramClass;
+            this.paramClass = Objects.requireNonNull(paramClass);
             this.paramType = paramType;
         }
 
