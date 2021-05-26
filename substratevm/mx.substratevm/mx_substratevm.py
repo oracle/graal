@@ -389,10 +389,11 @@ def svm_gate_body(args, tasks):
         if t:
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
                 testlib = mx_subst.path_substitutions.substitute('-Dnative.test.lib=<path:truffle:TRUFFLE_TEST_NATIVE>/<lib:nativetest>')
+                isolation_testlib = mx_subst.path_substitutions.substitute('-Dnative.isolation.test.lib=<path:truffle:TRUFFLE_TEST_NATIVE>/<lib:isolationtest>')
                 native_unittest_args = ['com.oracle.truffle.nfi.test', '--build-args', '--language:nfi',
                                         '-H:MaxRuntimeCompileMethods=2000',
                                         '-H:+TruffleCheckBlackListedMethods',
-                                        '--run-args', testlib, '--very-verbose', '--enable-timing']
+                                        '--run-args', testlib, isolation_testlib, '--very-verbose', '--enable-timing']
                 native_unittest(native_unittest_args)
 
     with Task('Musl static hello world and JVMCI version check', tasks, tags=[GraalTags.muslcbuild]) as t:

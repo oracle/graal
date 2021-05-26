@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,24 +22,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-#include <trufflenfi.h>
-
 #include "common.h"
 
-static TruffleContext *ctx;
-static double (*globalCallback)(double x);
+static int global_static_state;
 
-EXPORT void initializeGlobalContext(TruffleEnv *env) {
-    ctx = env->getTruffleContext();
-}
-
-EXPORT TruffleObject registerGlobalCallback(double (*callback)(double)) {
-    TruffleEnv *env = ctx->getTruffleEnv();
-    globalCallback = callback;
-    TruffleObject callbackObj = env->getClosureObject(callback);
-    return env->releaseAndReturn(callbackObj);
-}
-
-EXPORT double testGlobalCallback(double arg) {
-    return globalCallback(arg);
+EXPORT int get_and_set(int new_value) {
+    int old_value = global_static_state;
+    global_static_state = new_value;
+    return old_value;
 }
