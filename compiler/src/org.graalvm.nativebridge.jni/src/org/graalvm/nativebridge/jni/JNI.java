@@ -38,6 +38,7 @@ import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.nativeimage.c.struct.CField;
+import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
@@ -45,6 +46,7 @@ import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.nativeimage.c.type.CShortPointer;
 import org.graalvm.nativeimage.c.type.VoidPointer;
 import org.graalvm.word.PointerBase;
+import org.graalvm.word.WordBase;
 
 import jdk.vm.ci.services.Services;
 
@@ -334,6 +336,66 @@ public final class JNI {
 
         @CField("IsInstanceOf")
         IsInstanceOf getIsInstanceOf();
+
+        @CField
+        GetJavaVM getGetJavaVM();
+    }
+
+    public interface GetJavaVM extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        int call(JNIEnv env, JNIJavaVMPointer javaVMOutParam);
+    }
+
+    @CPointerTo(JNIEnv.class)
+    public interface JNIEnvironmentPointer extends PointerBase {
+        JNIEnv read();
+
+        void write(JNIEnv value);
+    }
+
+    public interface AttachCurrentThread extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        int call(JNIJavaVM vm, JNIEnvironmentPointer envOut, WordBase attr);
+    }
+
+    public interface AttachCurrentThreadAsDaemon extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        int call(JNIJavaVM vm, JNIEnvironmentPointer envOut, WordBase attr);
+    }
+
+    public interface DetachCurrentThread extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        int call(JNIJavaVM vm);
+    }
+
+    @CContext(JNIHeaderDirectives.class)
+    @CStruct(value = "JNIInvokeInterface_", addStructKeyword = true)
+    public interface JNIInvokeInterface extends PointerBase {
+        @CField
+        AttachCurrentThread getAttachCurrentThread();
+
+        @CField
+        AttachCurrentThreadAsDaemon getAttachCurrentThreadAsDaemon();
+
+        @CField
+        DetachCurrentThread getDetachCurrentThread();
+    }
+
+    @CContext(JNIHeaderDirectives.class)
+    @CStruct(value = "JavaVM_", addStructKeyword = true)
+    public interface JNIJavaVM extends PointerBase {
+        @CField("functions")
+        JNIInvokeInterface getFunctions();
+
+        @CField("functions")
+        void setFunctions(JNIInvokeInterface fns);
+    }
+
+    @CPointerTo(JNIJavaVM.class)
+    public interface JNIJavaVMPointer extends PointerBase {
+        JNIJavaVM read();
+
+        void write(JNIJavaVM value);
     }
 
     public interface CallStaticIntMethodA extends CFunctionPointer {
