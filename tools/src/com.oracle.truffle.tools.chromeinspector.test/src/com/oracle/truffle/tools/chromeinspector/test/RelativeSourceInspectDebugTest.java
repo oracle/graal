@@ -340,7 +340,7 @@ public class RelativeSourceInspectDebugTest {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         try (Context context = Context.newBuilder().option("inspect.SourcePath", sourcePath).out(out).err(out).build()) {
             Instrument inspector = context.getEngine().getInstruments().get("inspect");
-            OptionValues optionValues = (OptionValues) ReflectionUtils.getField(ReflectionUtils.getField(inspector, "impl"), "optionValues");
+            OptionValues optionValues = (OptionValues) ReflectionUtils.getField(ReflectionUtils.getField(inspector, "receiver"), "optionValues");
             List<URI> spValue = (List<URI>) optionValues.get(inspector.getOptions().get("inspect.SourcePath").getKey());
             if (validator != null) {
                 validator.accept(spValue.get(0));
