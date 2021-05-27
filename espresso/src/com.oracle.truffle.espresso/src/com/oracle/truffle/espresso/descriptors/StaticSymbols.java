@@ -72,7 +72,7 @@ public final class StaticSymbols {
     }
 
     public static Symbols freeze() {
-        //frozen = true;
+        frozen = true;
         return symbols;
     }
 }
