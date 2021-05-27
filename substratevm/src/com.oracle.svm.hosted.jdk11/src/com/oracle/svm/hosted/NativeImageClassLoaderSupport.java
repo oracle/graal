@@ -179,7 +179,7 @@ public class NativeImageClassLoaderSupport extends AbstractNativeImageClassLoade
         }
     }
 
-    private final AddExportsAndOpensFormatValue asAddExportsAndOpensFormatValue(Pair<String, String> valueOrigin) {
+    private AddExportsAndOpensFormatValue asAddExportsAndOpensFormatValue(Pair<String, String> valueOrigin) {
         String optionOrigin = valueOrigin.getRight();
         String optionValue = valueOrigin.getLeft();
 
