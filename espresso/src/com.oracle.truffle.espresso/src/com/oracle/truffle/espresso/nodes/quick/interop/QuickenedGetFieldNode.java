@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,9 +34,9 @@ public final class QuickenedGetFieldNode extends QuickNode {
 
     @Child AbstractGetFieldNode getFieldNode;
 
-    public QuickenedGetFieldNode(int top, int callerBCI, int statementIndex, Field field) {
+    public QuickenedGetFieldNode(int top, int callerBCI, int statementIndex, Field.FieldVersion field) {
         super(top, callerBCI);
-        assert !field.isStatic();
+        assert !field.getField().isStatic();
         this.getFieldNode = AbstractGetFieldNode.create(field);
         this.statementIndex = statementIndex;
     }

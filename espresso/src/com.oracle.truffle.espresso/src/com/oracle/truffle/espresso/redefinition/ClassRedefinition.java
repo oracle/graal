@@ -296,7 +296,7 @@ public final class ClassRedefinition {
                     // we should mark it as a changed object type field.
                     Matcher matcher = InnerClassRedefiner.ANON_INNER_CLASS_PATTERN.matcher(oldField.getType().toString());
                     if (isPatched && matcher.matches()) {
-                        collectedChanges.addObjectTypeFieldChange(oldField, newField);
+                        collectedChanges.addObjectTypeFieldChange(oldField, finalParserKlass.getFields()[i]);
                         result = ClassChange.FIELD_OBJECT_TYPE_CHANGE;
                     }
                     found = true;

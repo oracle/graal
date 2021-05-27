@@ -2306,7 +2306,7 @@ public final class MethodVerifier implements ContextAccess {
             if (superKlass.getType() == fieldHolderType) {
                 final Field field;
                 try {
-                    field = pool.resolvedFieldAt(thisKlass, fieldCPI);
+                    field = pool.resolvedFieldAt(thisKlass, fieldCPI).getField();
                 } catch (EspressoException e) {
                     if (getMeta().java_lang_IllegalArgumentException.isAssignableFrom(e.getExceptionObject().getKlass())) {
                         throw new VerifyError(EspressoException.getMessage(e.getExceptionObject()));
