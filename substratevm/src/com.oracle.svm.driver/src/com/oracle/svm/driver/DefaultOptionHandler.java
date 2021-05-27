@@ -269,6 +269,10 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             NativeImage.showWarning("Ignoring server-mode native-image argument " + headArg + ".");
             String serverOptionCommand = headArg.substring(serverOptionPrefix.length());
             if (!serverOptionCommand.startsWith("session=")) {
+                /*
+                 * All but the --server-session=... option used to exit(0). We want to simulate that
+                 * behaviour for proper backward compatibility.
+                 */
                 System.exit(0);
             }
             return true;
