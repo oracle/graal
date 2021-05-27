@@ -66,7 +66,6 @@ public class JfrTypeRepository implements JfrConstantPool {
         return count;
     }
 
-    // TEMP (chaeubl): why is the class loader not visited?
     private void visitClass(TypeInfo typeInfo, Class<?> clazz) {
         if (clazz != null && typeInfo.addClass(clazz)) {
             visitPackage(typeInfo, clazz.getPackage(), clazz.getModule());
