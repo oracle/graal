@@ -38,6 +38,7 @@ import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.nativeimage.c.struct.CField;
+import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
@@ -49,6 +50,15 @@ import org.graalvm.word.PointerBase;
 import jdk.vm.ci.services.Services;
 
 public final class JNI {
+
+    public static final int JNI_OK = 0;
+    public static final int JNI_ERR = -1; /* unknown error */
+    public static final int JNI_EDETACHED = -2; /* thread detached from the VM */
+    public static final int JNI_EVERSION = -3; /* JNI version error */
+    public static final int JNI_ENOMEM = -4; /* not enough memory */
+    public static final int JNI_EEXIST = -5; /* VM already created */
+    public static final int JNI_EINVAL = -6; /* invalid arguments */
+    public static final int JNI_VERSION_1_8 = 0x00010008;
 
     private JNI() {
         throw new IllegalStateException("No instance allowed");
@@ -143,6 +153,13 @@ public final class JNI {
     public interface JNIEnv extends PointerBase {
         @CField("functions")
         JNINativeInterface getFunctions();
+    }
+
+    @CPointerTo(JNIEnv.class)
+    public interface JNIEnvPointer extends PointerBase {
+        JNIEnv readJNIEnv();
+
+        void writeJNIEnv(JNIEnv env);
     }
 
     @CContext(JNIHeaderDirectives.class)
@@ -334,6 +351,61 @@ public final class JNI {
 
         @CField("IsInstanceOf")
         IsInstanceOf getIsInstanceOf();
+
+        @CField("GetJavaVM")
+        GetJavaVM getGetJavaVM();
+    }
+
+    @CContext(JNIHeaderDirectives.class)
+    @CStruct(value = "JavaVM_", addStructKeyword = true)
+    public interface JavaVM extends PointerBase {
+        @CField("functions")
+        JNIInvokeInterface getFunctions();
+    }
+
+    @CPointerTo(JavaVM.class)
+    public interface JavaVMPointer extends PointerBase {
+        JavaVM readJavaVM();
+
+        void writeJavaVM(JavaVM javaVM);
+    }
+
+    @CContext(JNIHeaderDirectives.class)
+    @CStruct(value = "JavaVMAttachArgs", addStructKeyword = true)
+    public interface JavaVMAttachArgs extends PointerBase {
+        @CField("version")
+        int getVersion();
+
+        @CField("version")
+        void setVersion(int version);
+
+        @CField("name")
+        CCharPointer getName();
+
+        @CField("name")
+        void setName(CCharPointer name);
+
+        @CField("group")
+        JObject getGroup();
+
+        @CField("group")
+        void setGroup(JObject group);
+    }
+
+    @CContext(JNIHeaderDirectives.class)
+    @CStruct(value = "JNIInvokeInterface_", addStructKeyword = true)
+    public interface JNIInvokeInterface extends PointerBase {
+        @CField("AttachCurrentThread")
+        AttachCurrentThread getAttachCurrentThread();
+
+        @CField("AttachCurrentThreadAsDaemon")
+        AttachCurrentThreadAsDaemon getAttachCurrentThreadAsDaemon();
+
+        @CField("DetachCurrentThread")
+        DetachCurrentThread getDetachCurrentThread();
+
+        @CField("GetEnv")
+        GetEnv getGetEnv();
     }
 
     public interface CallStaticIntMethodA extends CFunctionPointer {
@@ -644,6 +716,31 @@ public final class JNI {
     public interface SetStaticBooleanField extends CFunctionPointer {
         @InvokeCFunctionPointer
         void call(JNIEnv env, JClass clazz, JFieldID fieldID, boolean value);
+    }
+
+    public interface GetJavaVM extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        int call(JNIEnv env, JavaVMPointer javaVMOut);
+    }
+
+    public interface AttachCurrentThread extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        int call(JavaVM vm, JNIEnvPointer envOut, JavaVMAttachArgs args);
+    }
+
+    public interface AttachCurrentThreadAsDaemon extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        int call(JavaVM vm, JNIEnvPointer envOut, JavaVMAttachArgs args);
+    }
+
+    public interface DetachCurrentThread extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        int call(JavaVM vm);
+    }
+
+    public interface GetEnv extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        int call(JavaVM vm, JNIEnvPointer envOut, int version);
     }
 
     static class JNIHeaderDirectives implements CContext.Directives {
