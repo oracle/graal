@@ -1027,12 +1027,14 @@ def _check_latest_jvmci_version(jdk):
 
     current, latest = get_current_jvmci_version(), get_latest_jvmci_version()
     if current is not None and latest is not None and current < latest:
-        msg = 'JVMCI version of JAVA_HOME is less than that specifed in the "jdks" section of {}: {} < {} '.format(
-            os.path.normpath(common_path),
+        common_path = os.path.normpath(common_path)
+        msg = 'JVMCI version of JAVA_HOME is older than in {}: {} < {} '.format(
+            common_path,
             jvmci_version_str(current),
             jvmci_version_str(latest))
         msg += os.linesep + 'This poses the risk of hitting JVMCI bugs that have already been fixed.'
-        msg += os.linesep + 'Consider using (e.g. via "mx fetch-jdk") a JVMCI JDK Graal is gated against.'
+        msg += os.linesep + 'Consider using {}, which you can get via:'.format(jvmci_version_str(latest))
+        msg += os.linesep + 'mx fetch-jdk --configuration {} --to ~/.mx/cache/jdks'.format(common_path)
         mx.warn(msg)
 
 class GraalArchiveParticipant:
