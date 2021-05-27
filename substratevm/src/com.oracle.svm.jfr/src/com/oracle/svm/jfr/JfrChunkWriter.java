@@ -86,6 +86,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
 
     @Override
     public JfrChunkWriter lock() {
+        assert !VMOperation.isInProgressAtSafepoint() : "could cause deadlocks";
         lock.lock();
         return this;
     }
@@ -133,9 +134,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         boolean success = getFileSupport().write(fd, buffer.getTop(), unflushedSize);
         JfrBufferAccess.increaseTop(buffer, unflushedSize);
         if (!success) {
-            // TODO Write failed, but data can be for a specific epoch
-            // At the moment, that data is lost. Error handling needs
-            // to be investigated
+            // We lost some data because the write failed.
             return false;
         }
         return getFileSupport().position(fd).greaterThan(WordFactory.signed(notificationThreshold));
@@ -331,21 +330,6 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         return RawFileOperationSupport.bigEndian();
     }
 
-    public enum StringEncoding {
-        NULL(0),
-        EMPTY_STRING(1),
-        CONSTANT_POOL(2),
-        UTF8_BYTE_ARRAY(3),
-        CHAR_ARRAY(4),
-        LATIN1_BYTE_ARRAY(5);
-
-        public byte byteValue;
-
-        StringEncoding(int byteValue) {
-            this.byteValue = (byte) byteValue;
-        }
-    }
-
     public void writeString(String str) {
         if (str.isEmpty()) {
             getFileSupport().writeByte(fd, StringEncoding.EMPTY_STRING.byteValue);
@@ -361,8 +345,22 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         return JfrNativeEventWriter.makePaddedInt(NumUtil.safeToInt(sizeWritten));
     }
 
-    private class JfrCloseFileOperation extends JavaVMOperation {
+    public enum StringEncoding {
+        NULL(0),
+        EMPTY_STRING(1),
+        CONSTANT_POOL(2),
+        UTF8_BYTE_ARRAY(3),
+        CHAR_ARRAY(4),
+        LATIN1_BYTE_ARRAY(5);
 
+        public byte byteValue;
+
+        StringEncoding(int byteValue) {
+            this.byteValue = (byte) byteValue;
+        }
+    }
+
+    private class JfrCloseFileOperation extends JavaVMOperation {
         protected JfrCloseFileOperation() {
             // Some of the JDK code that deals with files uses Java synchronization. So, we need to
             // allow Java synchronization for this VM operation.
@@ -377,9 +375,8 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         /**
          * We need to ensure that all JFR events that are triggered by the current thread are
          * recorded for the next epoch. Otherwise, those JFR events could pollute the data that we
-         * currently try to persist. To ensure that, we must execute the following steps
-         * uninterruptibly: - Flush all buffers (native, Java and global) to disk - Set all Java
-         * EventWriter.notified values - Change the epoch
+         * currently try to persist. To ensure that, we must uninterruptibly flush all data that is
+         * currently in-flight.
          */
         @Uninterruptible(reason = "Prevent pollution of the current thread's thread local JFR buffer.")
         private void changeEpoch() {

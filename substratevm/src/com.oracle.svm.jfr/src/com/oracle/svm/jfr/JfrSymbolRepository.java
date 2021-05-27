@@ -76,11 +76,6 @@ public class JfrSymbolRepository implements JfrConstantPool {
     }
 
     @Uninterruptible(reason = "Epoch must not change while in this method.")
-    public long getSymbolId(Class<?> clazz, boolean previousEpoch) {
-        return getSymbolId(clazz.getName(), previousEpoch, true);
-    }
-
-    @Uninterruptible(reason = "Epoch must not change while in this method.")
     public long getSymbolId(String imageHeapString, boolean previousEpoch) {
         return getSymbolId(imageHeapString, previousEpoch, false);
     }

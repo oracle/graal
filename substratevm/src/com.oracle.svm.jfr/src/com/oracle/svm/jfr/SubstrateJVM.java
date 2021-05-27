@@ -44,8 +44,7 @@ import jdk.jfr.internal.EventWriter;
 import jdk.jfr.internal.JVM;
 
 /**
- * Manager class that handles most JFR Java API
- * @see Target_jdk_jfr_internal_JVM
+ * Manager class that handles most JFR Java API {@see Target_jdk_jfr_internal_JVM}.
  */
 class SubstrateJVM {
     private final JfrOptionSet options;
@@ -79,8 +78,8 @@ class SubstrateJVM {
 
         symbolRepo = new JfrSymbolRepository();
         typeRepo = new JfrTypeRepository();
-        // The ordering in the array dictates the order in which the repositories (constant pools)
-        // will be written in the recording.
+        // The ordering in the array dictates the order in which the constant pools will be written
+        // in the recording.
         repositories = new JfrConstantPool[]{typeRepo, symbolRepo};
 
         threadLocal = new JfrThreadLocal();

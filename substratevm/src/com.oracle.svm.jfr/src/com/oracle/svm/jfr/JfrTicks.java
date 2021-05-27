@@ -29,8 +29,8 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Utility class to manage ticks for event timestamps based on an
- * initial start point when the system initializes
+ * Utility class to manage ticks for event timestamps based on an initial start point when the
+ * system initializes.
  */
 public final class JfrTicks {
     private static long initialTicks;

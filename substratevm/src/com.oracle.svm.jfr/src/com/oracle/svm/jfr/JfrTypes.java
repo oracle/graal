@@ -32,7 +32,7 @@ import org.graalvm.nativeimage.Platforms;
 import java.util.List;
 
 /**
- * Enum to map static types against their ids in the JDK
+ * Maps JFR types against their IDs in the JDK.
  */
 public enum JfrTypes {
     Class("java.lang.Class"),
