@@ -2180,6 +2180,7 @@ suite = {
           "org.graalvm.compiler.truffle.jfr            to jdk.internal.vm.compiler.truffle.jfr",
           "org.graalvm.libgraal                        to jdk.internal.vm.compiler.management",
           "org.graalvm.util                            to jdk.internal.vm.compiler.management",
+          "org.graalvm.compiler.truffle.runtime"
         ],
         "uses" : [
           "com.oracle.truffle.api.impl.TruffleLocator",

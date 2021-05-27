@@ -85,6 +85,9 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
 
     public abstract EspressoRootNode split();
 
+    // Split this node, retaining the same frame layout but using a different method node.
+    public abstract EspressoRootNode splitWithMethod(EspressoBaseMethodNode methodNode);
+
     @Override
     public boolean isCloningAllowed() {
         return getMethodNode().shouldSplit();
@@ -230,13 +233,18 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
             super(frameDescriptor, methodNode, true);
         }
 
-        Synchronized(Synchronized split) {
-            super(split, split.getFrameDescriptor(), split.getMethodNode());
+        Synchronized(Synchronized split, EspressoBaseMethodNode methodNode) {
+            super(split, split.getFrameDescriptor(), methodNode);
         }
 
         @Override
         public EspressoRootNode split() {
-            return new Synchronized(this);
+            return new Synchronized(this, this.getMethodNode());
+        }
+
+        @Override
+        public EspressoRootNode splitWithMethod(EspressoBaseMethodNode methodNode) {
+            return new Synchronized(this, methodNode);
         }
 
         @Override
@@ -270,14 +278,20 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
             super(frameDescriptor, methodNode, methodNode.getMethod().usesMonitors());
         }
 
-        Default(Default split) {
-            super(split, split.getFrameDescriptor(), split.getMethodNode());
+        Default(Default split, EspressoBaseMethodNode methodNode) {
+            super(split, split.getFrameDescriptor(), methodNode);
         }
 
         @Override
         public EspressoRootNode split() {
-            return new Default(this);
+            return new Default(this, this.getMethodNode());
         }
+
+        @Override
+        public EspressoRootNode splitWithMethod(EspressoBaseMethodNode methodNode) {
+            return new Default(this, methodNode);
+        }
+
 
         @Override
         public Object execute(VirtualFrame frame) {

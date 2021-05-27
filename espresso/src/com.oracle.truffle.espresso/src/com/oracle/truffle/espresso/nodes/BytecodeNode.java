@@ -257,6 +257,7 @@ import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
@@ -340,6 +341,10 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
+import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
+import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntimeListener;
+import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+
 /**
  * Bytecode interpreter loop.
  *
@@ -406,6 +411,25 @@ public final class BytecodeNode extends EspressoMethodNode {
 
     private final LivenessAnalysis livenessAnalysis;
 
+    private final OptimizedCallTarget[] osrTargets;
+    private final int startBCI;
+    private volatile boolean canCompile = true;
+
+    private final boolean isOSRNode;
+
+    private static final class EspressoOSRReturnException extends ControlFlowException {
+        private static final long serialVersionUID = 117347248600170993L;
+        private final Object result;
+
+        public EspressoOSRReturnException(Object result) {
+            this.result = result;
+        }
+
+        public Object getResult() {
+            return result;
+        }
+    }
+
     public BytecodeNode(MethodVersion method, FrameDescriptor frameDescriptor) {
         super(method);
         CompilerAsserts.neverPartOfCompilation();
@@ -418,11 +442,48 @@ public final class BytecodeNode extends EspressoMethodNode {
         this.noForeignObjects = Truffle.getRuntime().createAssumption("noForeignObjects");
         this.implicitExceptionProfile = false;
         this.livenessAnalysis = LivenessAnalysis.analyze(method.getMethod());
+        this.osrTargets = new OptimizedCallTarget[bs.endBCI()];
+        this.startBCI = 0;
+        this.isOSRNode = false;
     }
 
     public BytecodeNode(BytecodeNode copy) {
         this(copy.getMethodVersion(), copy.getRootNode().getFrameDescriptor());
         getContext().getLogger().log(Level.FINE, "Copying node for {}", getMethod());
+    }
+
+    private synchronized BytecodeNode fromBCI(int startBCI) {
+        // TODO: Support shared references to the bytecode + quick node arrays. Right now, this is
+        // not possible. The interpreter is resilient to concurrent quickening, but synchronizes on
+        // the BytecodeNode owning the code to do this. When we create OSR BytecodeNodes with
+        // different startBCIs, we lose that safety. Thus, right now we have to atomically clone the
+        // bytecode and quick nodes when constructing an OSR BytecodeNode.
+        return new BytecodeNode(this.getMethodVersion(), primitivesSlot, refsSlot, bciSlot, noForeignObjects,
+                        implicitExceptionProfile, livenessAnalysis, startBCI, instrumentation,
+                        bs.cloneCode(), Arrays.copyOf(nodes, nodes.length), Arrays.copyOf(sparseNodes, sparseNodes.length));
+    }
+
+    private BytecodeNode(MethodVersion method, FrameSlot primitivesSlot, FrameSlot refsSlot, FrameSlot bciSlot,
+                    Assumption noForeignObjects, boolean implicitExceptionProfile, LivenessAnalysis livenessAnalysis,
+                    int startBCI, InstrumentationSupport instrumentation, byte[] code, BaseQuickNode[] nodes,
+                    BaseQuickNode[] sparseNodes) {
+        super(method);
+        CompilerAsserts.neverPartOfCompilation();
+        this.bs = new BytecodeStream(code);
+        this.stackOverflowErrorInfo = getMethod().getSOEHandlerInfo();
+        this.primitivesSlot = primitivesSlot;
+        this.refsSlot = refsSlot;
+        this.bciSlot = bciSlot;
+        this.noForeignObjects = noForeignObjects;
+        this.implicitExceptionProfile = implicitExceptionProfile;
+        this.livenessAnalysis = livenessAnalysis;
+        this.osrTargets = new OptimizedCallTarget[bs.endBCI()];
+        this.startBCI = startBCI;
+        this.isOSRNode = true;
+
+        this.instrumentation = instrumentation;
+        this.nodes = nodes;
+        this.sparseNodes = sparseNodes;
     }
 
     public SourceSection getSourceSectionAtBCI(int bci) {
@@ -629,22 +690,38 @@ public final class BytecodeNode extends EspressoMethodNode {
     // endregion Local accessors
 
     @Override
+    @ExplodeLoop
     void initializeBody(VirtualFrame frame) {
         int slotCount = getMethod().getMaxLocals() + getMethod().getMaxStackSize();
         CompilerAsserts.partialEvaluationConstant(slotCount);
+        Object[] arguments = frame.getArguments();
         long[] primitives = new long[slotCount];
         Object[] refs = new Object[slotCount];
+        if (isOSRNode) {
+            assert arguments.length == 2;
+            long[] callerPrimitives = (long[]) arguments[0];
+            Object[] callerRefs = (Object[]) arguments[1];
+            assert callerPrimitives.length == slotCount && callerRefs.length == slotCount;
+            for (int i = 0; i < slotCount; i++) {
+                // copy locals into our frame
+                primitives[i] = callerPrimitives[i];
+                refs[i] = callerRefs[i];
+                // we will not continue executing in the caller, so free up the locals
+                EspressoFrame.clear(callerPrimitives, callerRefs, i);
+            }
+        } else {
+            initArguments(arguments, primitives, refs);
+        }
         frame.setObject(primitivesSlot, primitives);
         frame.setObject(refsSlot, refs);
-        initArguments(frame.getArguments(), primitives, refs);
         // initialize the bci slot
-        setBCI(frame, 0);
+        setBCI(frame, startBCI);
     }
 
     @Override
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
     Object executeBody(VirtualFrame frame) {
-        int curBCI = 0;
+        int curBCI = startBCI;
         int top = 0;
         final InstrumentationSupport instrument = this.instrumentation;
         int statementIndex = -1;
@@ -1387,6 +1464,11 @@ public final class BytecodeNode extends EspressoMethodNode {
                         throw e;
                     }
                 }
+            } catch (EspressoOSRReturnException e) {
+                if (loopCount[0] > 0) {
+                    LoopNode.reportLoopCount(this, loopCount[0]);
+                }
+                return e.getResult();
             } catch (EspressoExitException e) {
                 CompilerDirectives.transferToInterpreter();
                 getRoot().abortMonitor(frame);
@@ -1627,6 +1709,11 @@ public final class BytecodeNode extends EspressoMethodNode {
         if (targetBCI <= curBCI) {
             checkStopping();
             if (++loopCount[0] >= REPORT_LOOP_STRIDE) {
+                if (CompilerDirectives.inInterpreter() && canCompile) {
+                    // piggyback on this counter for now. we may want a different parameter for OSR.
+                    tryOSR(primitives, refs, targetBCI);
+                }
+
                 LoopNode.reportLoopCount(this, REPORT_LOOP_STRIDE);
                 loopCount[0] = 0;
             }
@@ -1636,6 +1723,63 @@ public final class BytecodeNode extends EspressoMethodNode {
         }
         livenessAnalysis.performOnEdge(primitives, refs, curBCI, targetBCI);
         return nextStatementIndex;
+    }
+
+    private void tryOSR(long[] primitives, Object[] refs, int targetBCI) {
+        CompilerAsserts.neverPartOfCompilation();
+
+        OptimizedCallTarget osrTarget = osrTargets[targetBCI];
+        if (osrTarget == null) {
+            synchronized (osrTargets) {
+                osrTarget = osrTargets[targetBCI];
+                if (osrTarget == null) {  // double checked locking
+                    System.err.println("~~~~ Requesting OSR for bci " + targetBCI + " on method " + getMethod().getDeclaringKlass().getNameAsString() + "." + getMethod().getNameAsString());
+                    osrTargets[targetBCI] = osrTarget = requestOSR(targetBCI);
+                }
+            }
+        }
+        if (!osrTarget.isSubmittedForCompilation()) {
+            if (osrTarget.isValid()) {
+                System.err.println("~~~~ Calling OSR for bci " + targetBCI + " on method " + getMethod().getDeclaringKlass().getNameAsString() + "." + getMethod().getNameAsString());
+                Object result = osrTarget.callOSR(primitives, refs);
+                System.err.println("~~~~ Returned from OSR call to bci " + targetBCI + " on method " + getMethod().getDeclaringKlass().getNameAsString() + "." + getMethod().getNameAsString() +
+                                ". Result = " + result);
+                throw new EspressoOSRReturnException(result);
+            } else {
+                // TODO: do we need synchronization here?
+                System.err.println("~~~~ OSR for bci " + targetBCI + " on method " + getMethod().getDeclaringKlass().getNameAsString() + "." + getMethod().getNameAsString() + " failed!");
+                osrTarget.invalidate("OSR compilation failed or cancelled");
+                osrTargets[targetBCI] = null;
+            }
+        }
+
+    }
+
+    private OptimizedCallTarget requestOSR(int bci) {
+        synchronized (osrTargets) {
+            assert osrTargets[bci] == null;
+
+            BytecodeNode toCompile = this.fromBCI(bci);
+            GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
+            OptimizedCallTarget osrTarget = runtime.createOSRCallTarget(getRoot().splitWithMethod(toCompile));
+
+            runtime.addListener(new GraalTruffleRuntimeListener() {
+                @Override
+                public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout, int tier) {
+                    if (permanentBailout && target == osrTarget) {
+                        System.err.println("~~~~ OSR for bci " + bci + " failed: " + reason);
+                        canCompile = false;
+                    }
+                }
+            });
+
+            if (!osrTarget.acceptForCompilation()) {
+                canCompile = false;
+            }
+            osrTarget.compile(true);
+            this.osrTargets[bci] = osrTarget;
+            return osrTarget;
+        }
     }
 
     private void checkStopping() {
