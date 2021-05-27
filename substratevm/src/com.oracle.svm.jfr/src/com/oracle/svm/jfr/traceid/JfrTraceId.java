@@ -74,7 +74,7 @@ public class JfrTraceId {
     @Uninterruptible(reason = "Epoch must not change.")
     public static void clearUsedThisEpoch(Class<?> clazz, boolean epoch) {
         long bits = epoch ? JfrTraceIdEpoch.EPOCH_1_BIT : JfrTraceIdEpoch.EPOCH_0_BIT;
-        JfrTraceIdMap map = getTraceIdMap();
+        JfrTraceIdMap map = JfrTraceIdMap.singleton();
         long id = map.getId(clazz);
         map.setId(clazz, id & ~bits);
     }

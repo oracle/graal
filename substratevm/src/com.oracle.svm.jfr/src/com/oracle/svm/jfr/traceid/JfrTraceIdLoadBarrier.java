@@ -101,7 +101,6 @@ public class JfrTraceIdLoadBarrier {
             }
         }
         assert usedClassCount == classCount(epoch);
-        clear();
     }
 
     // Using Consumer<Class<?>> directly drags in other implementations which are not
