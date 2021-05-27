@@ -157,6 +157,10 @@ public final class Classpath {
             return null;
         }
 
+        public void close() {
+
+        }
+
     }
 
     /**
@@ -294,6 +298,18 @@ public final class Classpath {
             return true;
         }
 
+        @Override
+        public void close() {
+            if (zipFile != null) {
+                try {
+                    zipFile.close();
+                } catch (IOException e) {
+
+                } finally {
+                    zipFile = null;
+                }
+            }
+        }
     }
 
     /**
@@ -590,5 +606,12 @@ public final class Classpath {
             z++;
         }
         return result;
+    }
+
+    /**
+     * Closes open entries in the current instance, such as {@link Archive} entries which use {@link ZipFile} instances.
+     */
+    public void closeEntries() {
+        entries.forEach(Entry::close);
     }
 }

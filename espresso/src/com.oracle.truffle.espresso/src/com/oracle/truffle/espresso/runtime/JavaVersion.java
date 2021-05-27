@@ -73,4 +73,8 @@ public final class JavaVersion {
     public String toString() {
         return Integer.toString(version);
     }
+
+    public boolean matchesVersion(int version) {
+        return this.version == version;
+    }
 }

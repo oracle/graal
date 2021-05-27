@@ -210,6 +210,10 @@ class EspressoShutdownHandler implements ContextAccess {
     private void teardown(boolean killThreads) {
         assert isClosing();
 
+        if (!getContext().isInitialized()) {
+            return;
+        }
+
         getVM().getJvmti().postVmDeath();
 
         getContext().prepareDispose();

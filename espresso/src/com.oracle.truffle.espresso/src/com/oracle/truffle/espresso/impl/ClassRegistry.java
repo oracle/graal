@@ -270,7 +270,6 @@ public abstract class ClassRegistry implements ContextAccess {
     private ParserKlass getParserKlass(byte[] bytes, String strType) {
         // May throw guest ClassFormatError, NoClassDefFoundError.
         ParserKlass parserKlass = context.getCache().getOrCreateParserKlass(strType, bytes, context);
-//        ParserKlass parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), strType, null, context);
         Meta meta = getMeta();
         if (!loaderIsBootOrPlatform(getClassLoader(), meta) && parserKlass.getName().toString().startsWith("java/")) {
             throw meta.throwExceptionWithMessage(meta.java_lang_SecurityException, "Define class in prohibited package name: " + parserKlass.getName());
