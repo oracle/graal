@@ -676,7 +676,7 @@ public final class Engine implements AutoCloseable {
 
         @Override
         public Object getReceiver(PolyglotException polyglot) {
-            return polyglot.receiver;
+            return polyglot.impl;
         }
 
         @Override
