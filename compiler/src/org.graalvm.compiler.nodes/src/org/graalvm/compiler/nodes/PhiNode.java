@@ -260,6 +260,8 @@ public abstract class PhiNode extends FloatingNode implements Canonicalizable {
         return true;
     }
 
+    public abstract ProxyNode createProxyFor(LoopExitNode lex);
+
     /**
      * Create a phi of the same kind on the given merge.
      *

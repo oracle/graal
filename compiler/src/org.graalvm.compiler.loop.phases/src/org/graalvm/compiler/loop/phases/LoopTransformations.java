@@ -38,8 +38,6 @@ import org.graalvm.compiler.graph.Graph.Mark;
 import org.graalvm.compiler.graph.Graph.NodeEventScope;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Position;
-import org.graalvm.compiler.nodes.spi.Simplifiable;
-import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractEndNode;
@@ -62,6 +60,7 @@ import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.SafepointNode;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
 import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.VirtualState.NodePositionClosure;
@@ -72,12 +71,14 @@ import org.graalvm.compiler.nodes.extended.OpaqueNode;
 import org.graalvm.compiler.nodes.extended.SwitchNode;
 import org.graalvm.compiler.nodes.loop.CountedLoopInfo;
 import org.graalvm.compiler.nodes.loop.DefaultLoopPolicies;
+import org.graalvm.compiler.nodes.loop.InductionVariable.Direction;
 import org.graalvm.compiler.nodes.loop.LoopEx;
 import org.graalvm.compiler.nodes.loop.LoopFragment;
 import org.graalvm.compiler.nodes.loop.LoopFragmentInside;
 import org.graalvm.compiler.nodes.loop.LoopFragmentWhole;
-import org.graalvm.compiler.nodes.loop.InductionVariable.Direction;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
+import org.graalvm.compiler.nodes.spi.Simplifiable;
+import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.util.IntegerHelper;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
@@ -223,6 +224,31 @@ public abstract class LoopTransformations {
         }
     }
 
+    /**
+     * Create unique framestates for the loop exits of this loop: unique states ensure that virtual
+     * instance nodes of this framestate are not shared with other framestates.
+     *
+     * Loop exit states and virtual object state inputs: The loop exit state can have a (transitive)
+     * virtual object state input that is shared with other states outside the loop. Without a
+     * dedicated state (with virtual object state inputs) for the loop exit state we can no longer
+     * answer the question what is inside the loop (which virtual object state) and which is outside
+     * given that we create new loop exits after existing ones. Thus, we create a dedicated state
+     * for the exit that can later be duplicated cleanly.
+     */
+    public static void ensureExitsHaveUniqueStates(LoopEx loop) {
+        if (loop.loopBegin().graph().getGuardsStage() == GuardsStage.AFTER_FSA) {
+            return;
+        }
+        for (LoopExitNode lex : loop.loopBegin().loopExits()) {
+            FrameState oldState = lex.stateAfter();
+            lex.setStateAfter(lex.stateAfter().duplicateWithVirtualState());
+            if (oldState.hasNoUsages()) {
+                GraphUtil.killWithUnusedFloatingInputs(oldState);
+            }
+        }
+        loop.invalidateFragmentsAndIVs();
+    }
+
     // This function splits candidate loops into pre, main and post loops,
     // dividing the iteration space to facilitate the majority of iterations
     // being executed in a main loop, which will have RCE implemented upon it.
@@ -294,6 +320,10 @@ public abstract class LoopTransformations {
         assert loop.loopBegin().loopExits().isEmpty() || loop.loopBegin().graph().isAfterStage(StageFlag.VALUE_PROXY_REMOVAL) ||
                         loop.counted().getCountedExit() instanceof LoopExitNode : "Can only unroll loops, if they have exits, if the counted exit is a regular loop exit " + loop;
         StructuredGraph graph = loop.loopBegin().graph();
+
+        // prepare clean exit states
+        ensureExitsHaveUniqueStates(loop);
+
         graph.getDebug().log("LoopTransformations.insertPrePostLoops %s", loop);
 
         LoopFragmentWhole preLoop = loop.whole();

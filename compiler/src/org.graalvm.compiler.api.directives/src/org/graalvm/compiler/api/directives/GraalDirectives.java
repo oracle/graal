@@ -81,6 +81,12 @@ public final class GraalDirectives {
     }
 
     /**
+     * A call to this method will disable strip mining of the enclosing loop in the compiler.
+     */
+    public static void neverStripMine() {
+    }
+
+    /**
      * A call to this method will assume a stable dimension array if {@code t} is a constant array
      * and {@code i} a constant integer.
      */
