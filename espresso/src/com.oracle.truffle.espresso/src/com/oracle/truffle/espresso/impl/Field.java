@@ -55,7 +55,7 @@ public final class Field extends Member<Type> implements FieldRef {
     @CompilationFinal private FieldVersion fieldVersion;
     @CompilationFinal private boolean changedByRedefinition = false;
 
-    public Field(ObjectKlass holder, LinkedField linkedField, boolean hidden, RuntimeConstantPool pool) {
+    public Field(ObjectKlass holder, LinkedField linkedField, RuntimeConstantPool pool) {
         this.linkedField = linkedField;
         this.holder = holder;
         this.fieldVersion = new FieldVersion(linkedField.getType(), pool);
