@@ -25,30 +25,30 @@
  */
 package com.oracle.svm.jfr.logging;
 
-import com.oracle.svm.jfr.JfrEnabled;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.jfr.JfrEnabled;
+
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
 @TargetClass(value = jdk.jfr.internal.LogTag.class, onlyWith = JfrEnabled.class)
 final class Target_jdk_jfr_internal_LogTag {
-    //Checkstyle: stop field name check
-    @Alias static Target_jdk_jfr_internal_LogTag JFR;
-    @Alias static Target_jdk_jfr_internal_LogTag JFR_SYSTEM;
-    @Alias static Target_jdk_jfr_internal_LogTag JFR_SYSTEM_EVENT;
-    @Alias static Target_jdk_jfr_internal_LogTag JFR_SYSTEM_SETTING;
-    @Alias static Target_jdk_jfr_internal_LogTag JFR_SYSTEM_BYTECODE;
-    @Alias static Target_jdk_jfr_internal_LogTag JFR_SYSTEM_PARSER;
-    @Alias static Target_jdk_jfr_internal_LogTag JFR_SYSTEM_METADATA;
-    @Alias static Target_jdk_jfr_internal_LogTag JFR_METADATA;
-    @Alias static Target_jdk_jfr_internal_LogTag JFR_EVENT;
-    @Alias static Target_jdk_jfr_internal_LogTag JFR_SETTING;
-    @Alias static Target_jdk_jfr_internal_LogTag JFR_DCMD;
-    //Checkstyle: resume field name check
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ComputeTagSetLevel.class) //
+    volatile int tagSetLevel;
 
-    @Alias volatile int tagSetLevel;
     @Alias int id;
+}
 
-    @Alias
-    static native Target_jdk_jfr_internal_LogTag[] values();
+@Platforms(Platform.HOSTED_ONLY.class)
+class ComputeTagSetLevel implements RecomputeFieldValue.CustomFieldValueComputer {
+    @Override
+    public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+        // Reset the value as it gets set during the image build.
+        return JfrLogConfiguration.JfrLogLevel.OFF.level;
+    }
 }

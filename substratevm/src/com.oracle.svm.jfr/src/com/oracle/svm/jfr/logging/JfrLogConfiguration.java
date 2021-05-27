@@ -25,56 +25,34 @@
  */
 package com.oracle.svm.jfr.logging;
 
-import com.oracle.svm.core.util.UserError;
+import java.util.EnumMap;
+import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.util.UserError;
+
+import jdk.jfr.internal.LogLevel;
 import jdk.jfr.internal.LogTag;
 
-import java.util.Map;
-import java.util.EnumMap;
-import java.util.EnumSet;
-import java.util.Set;
-
 /**
- * Handles configuration for flight recorder logging.
+ * Parses the flight recorder logging configuration and enables the logging according to that
+ * configuration.
  */
 class JfrLogConfiguration {
     private static final String EMPTY_STRING_DEFAULT_CONFIG = "all=info";
-    private static final Map<LogTag, Set<JfrLogTag>> tagSetTags = new EnumMap<LogTag, Set<JfrLogTag>>(LogTag.class);
-
-    private JfrLogSelection[] selections;
-
-    static {
-        tagSetTags.put(LogTag.JFR, EnumSet.of(JfrLogTag.JFR));
-        tagSetTags.put(LogTag.JFR_SYSTEM, EnumSet.of(JfrLogTag.JFR, JfrLogTag.SYSTEM));
-        tagSetTags.put(LogTag.JFR_SYSTEM_EVENT, EnumSet.of(JfrLogTag.JFR, JfrLogTag.SYSTEM, JfrLogTag.EVENT));
-        tagSetTags.put(LogTag.JFR_SYSTEM_SETTING, EnumSet.of(JfrLogTag.JFR, JfrLogTag.SYSTEM, JfrLogTag.SETTING));
-        tagSetTags.put(LogTag.JFR_SYSTEM_BYTECODE, EnumSet.of(JfrLogTag.JFR, JfrLogTag.SYSTEM, JfrLogTag.BYTECODE));
-        tagSetTags.put(LogTag.JFR_SYSTEM_PARSER, EnumSet.of(JfrLogTag.JFR, JfrLogTag.SYSTEM, JfrLogTag.PARSER));
-        tagSetTags.put(LogTag.JFR_SYSTEM_METADATA, EnumSet.of(JfrLogTag.JFR, JfrLogTag.SYSTEM, JfrLogTag.METADATA));
-        tagSetTags.put(LogTag.JFR_METADATA, EnumSet.of(JfrLogTag.JFR, JfrLogTag.METADATA));
-        tagSetTags.put(LogTag.JFR_EVENT, EnumSet.of(JfrLogTag.JFR, JfrLogTag.EVENT));
-        tagSetTags.put(LogTag.JFR_SETTING, EnumSet.of(JfrLogTag.JFR, JfrLogTag.SETTING));
-        tagSetTags.put(LogTag.JFR_DCMD, EnumSet.of(JfrLogTag.JFR, JfrLogTag.DCMD));
-    }
+    static final Map<LogTag, Set<JfrLogTag>> LOG_TAG_SETS = createLogTagSets();
 
     @Platforms(Platform.HOSTED_ONLY.class)
     JfrLogConfiguration() {
     }
 
-    static Map<LogTag, Set<JfrLogTag>> getTagSetTags() {
-        return tagSetTags;
-    }
-
     void parse(String str) {
-        // See LogTag#tagSetLevel.
-        // Should initially be set to 100, but is automatically set to 4 during image build time.
-        for (Target_jdk_jfr_internal_LogTag tagSet : Target_jdk_jfr_internal_LogTag.values()) {
-            tagSet.tagSetLevel = 100;
-        }
-
         if (str.equalsIgnoreCase("disable")) {
             return;
         }
@@ -87,49 +65,66 @@ class JfrLogConfiguration {
         }
 
         String[] splitConfig = config.split(",");
-        selections = new JfrLogSelection[splitConfig.length];
+        JfrLogSelection[] selections = new JfrLogSelection[splitConfig.length];
 
         int index = 0;
         for (String s : splitConfig) {
             selections[index++] = JfrLogSelection.parse(s);
         }
-        setLogTagSetLevels();
-        verifySelections();
+        setLogTagSetLevels(selections);
+        verifySelections(selections);
     }
 
-    private void setLogTagSetLevels() {
-        for (LogTag tagSet : LogTag.values()) {
-            JfrLogLevel jfrLogLevel = JfrLogLevel.WARNING;
+    private void setLogTagSetLevels(JfrLogSelection[] selections) {
+        LogTag[] values = LogTag.values();
+        for (LogTag logTagSet : values) {
+            JfrLogLevel logLevel = JfrLogLevel.WARNING;
             for (JfrLogSelection selection : selections) {
-                if ((selection.wildcard && tagSetTags.get(tagSet).containsAll(selection.tags))
-                        || (selection.tags.equals(tagSetTags.get(tagSet)))) {
-                    jfrLogLevel = selection.level;
+                if ((selection.wildcard && LOG_TAG_SETS.get(logTagSet).containsAll(selection.tags)) || (selection.tags.equals(LOG_TAG_SETS.get(logTagSet)))) {
+                    logLevel = selection.level;
                     selection.matchesATagSet = true;
-                        }
+                }
             }
-            Target_jdk_jfr_internal_LogTag.values()[tagSet.ordinal()].tagSetLevel = jfrLogLevel.level;
+            SubstrateUtil.cast(logTagSet, Target_jdk_jfr_internal_LogTag.class).tagSetLevel = logLevel.level;
         }
     }
 
-    private void verifySelections() {
+    private void verifySelections(JfrLogSelection[] selections) {
         for (JfrLogSelection selection : selections) {
             if (!selection.matchesATagSet) {
                 throw UserError.abort("No tag set matches tag combination %s for FlightRecorderLogging",
-                        selection.tags.toString().toLowerCase() + (selection.wildcard ? "*" : ""));
+                                selection.tags.toString().toLowerCase() + (selection.wildcard ? "*" : ""));
             }
         }
+    }
+
+    private static Map<LogTag, Set<JfrLogTag>> createLogTagSets() {
+        Map<LogTag, Set<JfrLogTag>> result = new EnumMap<>(LogTag.class);
+        result.put(LogTag.JFR, EnumSet.of(JfrLogTag.JFR));
+        result.put(LogTag.JFR_SYSTEM, EnumSet.of(JfrLogTag.JFR, JfrLogTag.SYSTEM));
+        result.put(LogTag.JFR_SYSTEM_EVENT, EnumSet.of(JfrLogTag.JFR, JfrLogTag.SYSTEM, JfrLogTag.EVENT));
+        result.put(LogTag.JFR_SYSTEM_SETTING, EnumSet.of(JfrLogTag.JFR, JfrLogTag.SYSTEM, JfrLogTag.SETTING));
+        result.put(LogTag.JFR_SYSTEM_BYTECODE, EnumSet.of(JfrLogTag.JFR, JfrLogTag.SYSTEM, JfrLogTag.BYTECODE));
+        result.put(LogTag.JFR_SYSTEM_PARSER, EnumSet.of(JfrLogTag.JFR, JfrLogTag.SYSTEM, JfrLogTag.PARSER));
+        result.put(LogTag.JFR_SYSTEM_METADATA, EnumSet.of(JfrLogTag.JFR, JfrLogTag.SYSTEM, JfrLogTag.METADATA));
+        result.put(LogTag.JFR_METADATA, EnumSet.of(JfrLogTag.JFR, JfrLogTag.METADATA));
+        result.put(LogTag.JFR_EVENT, EnumSet.of(JfrLogTag.JFR, JfrLogTag.EVENT));
+        result.put(LogTag.JFR_SETTING, EnumSet.of(JfrLogTag.JFR, JfrLogTag.SETTING));
+        result.put(LogTag.JFR_DCMD, EnumSet.of(JfrLogTag.JFR, JfrLogTag.DCMD));
+        return result;
     }
 
     private static class JfrLogSelection {
         private final Set<JfrLogTag> tags;
         private final JfrLogLevel level;
         private final boolean wildcard;
-        private boolean matchesATagSet = false;
+        private boolean matchesATagSet;
 
         JfrLogSelection(Set<JfrLogTag> tags, JfrLogLevel level, boolean wildcard) {
             this.tags = tags;
             this.level = level;
             this.wildcard = wildcard;
+            this.matchesATagSet = false;
         }
 
         private static JfrLogSelection parse(String str) {
@@ -140,11 +135,11 @@ class JfrLogConfiguration {
             String tagsStr;
             int equalsIndex;
             if ((equalsIndex = str.indexOf('=')) > 0) {
+                String value = str.substring(equalsIndex + 1);
                 try {
-                    level = JfrLogLevel.valueOf(str.substring(equalsIndex + 1).toUpperCase());
+                    level = JfrLogLevel.valueOf(value.toUpperCase());
                 } catch (IllegalArgumentException | NullPointerException e) {
-                    throw UserError.abort(e, "Invalid log level '%s' for FlightRecorderLogging.",
-                            str.substring(equalsIndex + 1));
+                    throw UserError.abort(e, "Invalid log level '%s' for FlightRecorderLogging.", value);
                 }
                 tagsStr = str.substring(0, equalsIndex);
             } else {
@@ -168,6 +163,21 @@ class JfrLogConfiguration {
                 }
             }
             return new JfrLogSelection(tags, level, wildcard);
+        }
+    }
+
+    public enum JfrLogLevel {
+        TRACE(JfrLogging.getLevel(LogLevel.TRACE)),
+        DEBUG(JfrLogging.getLevel(LogLevel.DEBUG)),
+        INFO(JfrLogging.getLevel(LogLevel.INFO)),
+        WARNING(JfrLogging.getLevel(LogLevel.WARN)),
+        ERROR(JfrLogging.getLevel(LogLevel.ERROR)),
+        OFF(100);
+
+        final int level;
+
+        JfrLogLevel(int level) {
+            this.level = level;
         }
     }
 }

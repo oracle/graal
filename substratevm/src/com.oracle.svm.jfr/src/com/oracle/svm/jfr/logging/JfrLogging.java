@@ -27,20 +27,26 @@ package com.oracle.svm.jfr.logging;
 
 import com.oracle.svm.core.log.Log;
 
+import com.oracle.svm.util.ReflectionUtil;
+import jdk.jfr.internal.LogLevel;
+import jdk.jfr.internal.LogTag;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import java.util.NoSuchElementException;
+import java.util.Arrays;
 
 public class JfrLogging {
     private final JfrLogConfiguration configuration;
+    private final String[] logLevels;
+    private final String[] logTagSets;
     private int levelDecorationFill = 0;
     private int tagSetDecorationFill = 0;
-
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public JfrLogging() {
         configuration = new JfrLogConfiguration();
+        logLevels = createLogLevels();
+        logTagSets = createLogTagSets();
     }
 
     public void parseConfiguration(String config) {
@@ -48,16 +54,8 @@ public class JfrLogging {
     }
 
     public void log(int tagSetId, int level, String message) {
-        Log log = Log.log();
-        logDecorations(log, tagSetId, level);
-        log.spaces(1).string(message).newline();
-    }
-
-    private void logDecorations(Log log, int tagSetId, int level) {
-        String levelDecoration = getLogLevel(level).toString().toLowerCase();
-        String tagSetDecoration = JfrLogConfiguration.getTagSetTags().get(getLogTagSet(tagSetId))
-            .toString().toLowerCase().replaceAll("\\s", "");
-        tagSetDecoration = tagSetDecoration.substring(1, tagSetDecoration.length() - 1);
+        String levelDecoration = logLevels[level];
+        String tagSetDecoration = logTagSets[tagSetId];
 
         if (levelDecoration.length() > levelDecorationFill) {
             levelDecorationFill = levelDecoration.length();
@@ -66,29 +64,52 @@ public class JfrLogging {
             tagSetDecorationFill = tagSetDecoration.length();
         }
 
-        log.character('[');
+        Log log = Log.log();
+        log.string("[");
         log.string(levelDecoration, levelDecorationFill, Log.LEFT_ALIGN);
         log.string("][");
         log.string(tagSetDecoration, tagSetDecorationFill, Log.LEFT_ALIGN);
-        log.character(']');
+        log.string("] ");
+        log.string(message).newline();
     }
 
-    private static JfrLogLevel getLogLevel(int level) {
-        for (JfrLogLevel jfrLogLevel : JfrLogLevel.values()) {
-            if (jfrLogLevel.level == level) {
-                return jfrLogLevel;
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private static String[] createLogLevels() {
+        LogLevel[] values = LogLevel.values();
+        String[] result = new String[values.length];
+        for (LogLevel logLevel : values) {
+            if (getLevel(logLevel) >= result.length) {
+                result = Arrays.copyOf(result, getLevel(logLevel) + 1);
             }
+            result[getLevel(logLevel)] = logLevel.toString().toLowerCase();
         }
-        throw new NoSuchElementException();
+        return result;
     }
 
-    private static Target_jdk_jfr_internal_LogTag getLogTagSet(int tagSetId) {
-        for (Target_jdk_jfr_internal_LogTag tagSet : Target_jdk_jfr_internal_LogTag.values()) {
-            if (tagSet.id == tagSetId) {
-                return tagSet;
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private static String[] createLogTagSets() {
+        LogTag[] values = LogTag.values();
+        String[] result = new String[JfrLogConfiguration.LOG_TAG_SETS.size()];
+        for (LogTag logTagSet : values) {
+            StringBuilder str = new StringBuilder();
+            for (JfrLogTag logTag : JfrLogConfiguration.LOG_TAG_SETS.get(logTagSet)) {
+                if (str.length() > 0) {
+                    str.append(",");
+                }
+                str.append(logTag.toString().toLowerCase());
             }
+            result[getId(logTagSet)] = str.toString();
         }
-        throw new NoSuchElementException();
+        return result;
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static int getLevel(LogLevel logLevel) {
+        return ReflectionUtil.readField(LogLevel.class, "level", logLevel);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private static int getId(LogTag logTag) {
+        return ReflectionUtil.readField(LogTag.class, "id", logTag);
+    }
 }

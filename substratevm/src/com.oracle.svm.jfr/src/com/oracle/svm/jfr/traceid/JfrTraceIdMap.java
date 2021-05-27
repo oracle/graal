@@ -29,22 +29,26 @@ package com.oracle.svm.jfr.traceid;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.hub.DynamicHub;
+import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import java.util.Arrays;
 
 /**
- * Map for storing trace ids. Initialized before compilation with static
- * class count from analysis
- * @see JfrTraceId
+ * Map for storing trace ids. Initialized before compilation with static class count from analysis.
  */
 public class JfrTraceIdMap {
-    @UnknownObjectField(types = {long[].class})
-    private long[] traceIDs;
+    @UnknownObjectField(types = {long[].class}) private long[] traceIDs;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public JfrTraceIdMap() {
+    }
+
+    @Fold
+    static JfrTraceIdMap singleton() {
+        return ImageSingletons.lookup(JfrTraceIdMap.class);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

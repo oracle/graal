@@ -31,7 +31,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 /**
- * Holder for Java JFR events
+ * Holds all JFR Java-level event classes.
  */
 public class JfrJavaEvents {
     private static final List<Class<? extends Event>> EVENT_CLASSES = new ArrayList<>();

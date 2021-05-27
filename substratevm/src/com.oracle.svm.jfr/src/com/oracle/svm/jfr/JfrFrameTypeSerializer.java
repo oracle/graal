@@ -28,7 +28,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 /**
- * Used to serialize frame types into the chunk
+ * Used to serialize all predefined frame types into the chunk.
  */
 public class JfrFrameTypeSerializer implements JfrConstantPool {
     @Platforms(Platform.HOSTED_ONLY.class)

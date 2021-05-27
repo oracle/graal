@@ -39,8 +39,7 @@ import jdk.jfr.internal.EventWriter;
 import sun.misc.Unsafe;
 
 /**
- * Used to access the Java event writer class
- * @see jdk.jfr.internal.EventWriter
+ * Used to access the Java event writer class, see {@link jdk.jfr.internal.EventWriter}.
  */
 public final class JfrEventWriterAccess implements Feature {
     private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();

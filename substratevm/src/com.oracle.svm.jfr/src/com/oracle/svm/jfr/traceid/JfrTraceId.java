@@ -26,23 +26,18 @@
 
 package com.oracle.svm.jfr.traceid;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
-import jdk.jfr.internal.Type;
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.annotate.Uninterruptible;
+
+import jdk.jfr.internal.Type;
+
 /**
- * The unique trace id for class constant pool entries. When classes are referenced in events, a unique id is tagged
- * as in-use for the current epoch. When the current chunk is closed the class constants and their child data
- * (classloader, module, package, etc.) that are tagged will be emitted as part of the CheckpointEvent so references
- * to the class via the unique trace id can be read
- *
- * The trace id uses internal bits to hold data about the tagged class
- *
- * @see com.oracle.svm.jfr.JfrTypeRepository for writing of the types constant pool entries
+ * When a class is referenced in an event, the unique ID of that class is tagged as in-use for the
+ * current JFR epoch.
  */
+// TEMP (chaeubl): why is this never reset?
 public class JfrTraceId {
 
     public static final long BIT = 1;
@@ -58,21 +53,16 @@ public class JfrTraceId {
     private static final long JDK_JFR_EVENT_CLASS = 32;
     private static final long EVENT_HOST_KLASS = 64;
 
-    @Fold
-    static JfrTraceIdMap getTraceIdMap() {
-        return ImageSingletons.lookup(JfrTraceIdMap.class);
-    }
-
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void tag(Class<?> clazz, long bits) {
-        JfrTraceIdMap map = getTraceIdMap();
+        JfrTraceIdMap map = JfrTraceIdMap.singleton();
         long id = map.getId(clazz);
         map.setId(clazz, id | (bits & 0xff));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean predicate(Class<?> clazz, long bits) {
-        JfrTraceIdMap map = getTraceIdMap();
+        JfrTraceIdMap map = JfrTraceIdMap.singleton();
         long id = map.getId(clazz);
         return (id & bits) != 0;
     }
@@ -89,13 +79,13 @@ public class JfrTraceId {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long getTraceIdRaw(Class<?> clazz) {
-        return getTraceIdMap().getId(clazz);
+        return JfrTraceIdMap.singleton().getId(clazz);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long getTraceId(Class<?> clazz) {
-        long traceid = getTraceIdRaw(clazz);
-        return traceid >>> TRACE_ID_SHIFT;
+        long id = getTraceIdRaw(clazz);
+        return id >>> TRACE_ID_SHIFT;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -104,41 +94,28 @@ public class JfrTraceId {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    private static void tagAsJdkJfrEvent(int index) {
-        JfrTraceIdMap map = getTraceIdMap();
+    private static void tag(int index, long value) {
+        JfrTraceIdMap map = JfrTraceIdMap.singleton();
         long id = map.getId(index);
-        map.setId(index, id | JDK_JFR_EVENT_CLASS);
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    private static void tagAsJdkJfrEventSub(int index) {
-        JfrTraceIdMap map = getTraceIdMap();
-        long id = map.getId(index);
-        map.setId(index, id | JDK_JFR_EVENT_SUBCLASS);
-    }
-
-    private static boolean isEventClass(int index) {
-        JfrTraceIdMap map = getTraceIdMap();
-        long id = map.getId(index);
-        return (id & (JDK_JFR_EVENT_CLASS | JDK_JFR_EVENT_SUBCLASS)) != 0;
+        map.setId(index, id | value);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void assign(Class<?> clazz, int index) {
         assert clazz != null;
-        if (getTraceIdMap().getId(index) != -1) {
+        if (JfrTraceIdMap.singleton().getId(index) != -1) {
             return;
         }
         long typeId = getTypeId(clazz);
-        getTraceIdMap().setId(index, typeId << TRACE_ID_SHIFT);
+        JfrTraceIdMap.singleton().setId(index, typeId << TRACE_ID_SHIFT);
 
         if ((jdk.internal.event.Event.class == clazz || jdk.jfr.Event.class == clazz) &&
                         clazz.getClassLoader() == null || clazz.getClassLoader() == ClassLoader.getSystemClassLoader()) {
-            tagAsJdkJfrEvent(index);
+            tag(index, JDK_JFR_EVENT_CLASS);
         }
         if ((jdk.internal.event.Event.class.isAssignableFrom(clazz) || jdk.jfr.Event.class.isAssignableFrom(clazz)) &&
                         clazz.getClassLoader() == null || clazz.getClassLoader() == ClassLoader.getSystemClassLoader()) {
-            tagAsJdkJfrEventSub(index);
+            tag(index, JDK_JFR_EVENT_SUBCLASS);
         }
     }
 
