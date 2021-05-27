@@ -37,7 +37,6 @@ import jdk.jfr.internal.Type;
  * When a class is referenced in an event, the unique ID of that class is tagged as in-use for the
  * current JFR epoch.
  */
-// TEMP (chaeubl): why is this never reset?
 public class JfrTraceId {
 
     public static final long BIT = 1;
