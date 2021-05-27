@@ -49,6 +49,24 @@ public class MonitorIdNode extends ValueNode implements IterableNodeType, LIRLow
     protected int lockDepth;
     protected boolean eliminated;
 
+    /**
+     * We use the BCI as an identity for balanced locking.
+     */
+    protected int bci;
+
+    protected boolean identityMerged;
+
+    public MonitorIdNode(int lockDepth, int bci) {
+        this(TYPE, lockDepth);
+        this.bci = bci;
+    }
+
+    public MonitorIdNode(int lockDepth, int bci, boolean merged) {
+        this(TYPE, lockDepth);
+        this.bci = bci;
+        this.identityMerged = merged;
+    }
+
     public MonitorIdNode(int lockDepth) {
         this(TYPE, lockDepth);
     }
@@ -56,6 +74,18 @@ public class MonitorIdNode extends ValueNode implements IterableNodeType, LIRLow
     protected MonitorIdNode(NodeClass<? extends MonitorIdNode> c, int lockDepth) {
         super(c, StampFactory.forVoid());
         this.lockDepth = lockDepth;
+    }
+
+    public int getBci() {
+        return bci;
+    }
+
+    /**
+     * Determines if this monitor ID node is the result of merging two monitor operations that have
+     * been duplicated as a result of e.g. bytecode duplication because of irrecudible loops.
+     */
+    public boolean isIdentityMerged() {
+        return identityMerged;
     }
 
     public int getLockDepth() {
@@ -78,4 +108,20 @@ public class MonitorIdNode extends ValueNode implements IterableNodeType, LIRLow
     public void generate(NodeLIRBuilderTool generator) {
         // nothing to do
     }
+
+    /**
+     * Determine if the two monitor ID nodes represent locking of the same bytecode location.
+     */
+    public static boolean monitorIdentityEquals(MonitorIdNode m1, MonitorIdNode m2) {
+        if (m1 == m2) {
+            return true;
+        }
+        if (m1.getLockDepth() == m2.getLockDepth()) {
+            if (m1.getBci() == m2.getBci()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
 }

@@ -415,13 +415,21 @@ public final class FrameStateBuilder implements SideEffectsState {
             throw new PermanentBailoutException(incompatibilityErrorMessage("unbalanced monitors - locked objects do not match", other));
         }
         for (int i = 0; i < lockedObjects.length; i++) {
+            if (monitorIds[i] != other.monitorIds[i]) {
+                if (MonitorIdNode.monitorIdentityEquals(monitorIds[i], other.monitorIds[i])) {
+                    continue;
+                }
+                throw new PermanentBailoutException(incompatibilityErrorMessage("unbalanced monitors - monitors do not match", other));
+            }
+            // ID's match now also the objects should match
             if (originalValue(lockedObjects[i], false) != originalValue(other.lockedObjects[i], false)) {
                 throw new PermanentBailoutException(incompatibilityErrorMessage("unbalanced monitors - locked objects do not match", other));
             }
-            if (monitorIds[i] != other.monitorIds[i]) {
-                throw new PermanentBailoutException(incompatibilityErrorMessage("unbalanced monitors - monitors do not match", other));
-            }
         }
+    }
+
+    private MonitorIdNode createMergedMonitorID(MonitorIdNode id1) {
+        return graph.addWithoutUnique(new MonitorIdNode(id1.getLockDepth(), id1.getBci(), true));
     }
 
     public void merge(AbstractMergeNode block, FrameStateBuilder other) {
@@ -434,8 +442,11 @@ public final class FrameStateBuilder implements SideEffectsState {
             stack[i] = merge(stack[i], other.stack[i], block);
         }
         for (int i = 0; i < lockedObjects.length; i++) {
+            assert monitorIds[i] == other.monitorIds[i] || MonitorIdNode.monitorIdentityEquals(monitorIds[i], other.monitorIds[i]);
             lockedObjects[i] = merge(lockedObjects[i], other.lockedObjects[i], block);
-            assert monitorIds[i] == other.monitorIds[i];
+            if (monitorIds[i] != other.monitorIds[i]) {
+                monitorIds[i] = createMergedMonitorID(monitorIds[i]);
+            }
         }
 
         if (sideEffects == null) {
