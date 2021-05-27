@@ -142,7 +142,6 @@ public final class Target_sun_misc_Unsafe {
         }
 
         LinkedKlass linkedKlass = context.getCache().getOrCreateLinkedKlass(parserKlass, superKlass == null ? null : superKlass.getLinkedKlass(), linkedInterfaces);
-        //LinkedKlass linkedKlass = new LinkedKlass(parserKlass, superKlass == null ? null : superKlass.getLinkedKlass(), linkedInterfaces);
 
         ObjectKlass klass = new ObjectKlass(context, linkedKlass, superKlass, superInterfaces, classLoader, hostKlass);
 

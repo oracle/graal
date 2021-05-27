@@ -1102,7 +1102,6 @@ public final class ObjectKlass extends Klass {
         }
 
         LinkedKlass linkedKlass = getContext().getCache().getOrCreateLinkedKlass(parserKlass, getSuperKlass().getLinkedKlass(), interfaces);
-        //LinkedKlass linkedKlass = new LinkedKlass(parserKlass, getSuperKlass().getLinkedKlass(), interfaces);
 
         // fields
         if (!change.getOuterFields().isEmpty()) {
