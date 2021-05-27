@@ -1419,6 +1419,18 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
+     * dst = src & (~imm).
+     *
+     * @param size register size. Has to be 32 or 64.
+     * @param dst general purpose register. May not be null or stackpointer.
+     * @param src general purpose register. May not be null or stackpointer.
+     * @param imm immediate to encode.
+     */
+    public void bic(int size, Register dst, Register src, long imm) {
+        super.and(size, dst, src, ~(imm));
+    }
+
+    /**
      * dst = src1 ^ (~src2).
      *
      * @param size register size. Has to be 32 or 64.

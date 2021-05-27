@@ -521,6 +521,8 @@ public abstract class AArch64ASIMDAssembler {
     private static final int UBit = 0b1 << 29;
 
     public enum ASIMDInstruction {
+        /* Advanced SIMD load/store multiple structures (C4-296). */
+        LD1(0b0111 << 12),
 
         /* Advanced SIMD load/store multiple structures (C4-296). */
         ST1_MULTIPLE_4R(0b0010 << 12),
@@ -608,6 +610,7 @@ public abstract class AArch64ASIMDAssembler {
         CMTST(0b10001 << 11),
         MLA(0b10010 << 11),
         MUL(0b10011 << 11),
+        ADDP(0b10111 << 11),
         /* size 0x */
         FMLA(0b11001 << 11),
         FADD(0b11010 << 11),
@@ -816,6 +819,11 @@ public abstract class AArch64ASIMDAssembler {
         emitInt(instr.encoding | baseEncoding | qBit(setQBit) | imm5Encoding | rd(dst) | rs1(src));
     }
 
+    private void loadEncoding(ASIMDInstruction instr, boolean setQBit, Register dst, Register src, int postIndexEncoding) {
+        int baseEncoding = 0b0_0_0011000_1_000000_0010_00_00000_00000;
+        emitInt(instr.encoding | baseEncoding | qBit(setQBit) | rd(dst) | rs1(src) | postIndexEncoding);
+    }
+
     private void twoRegMiscEncoding(ASIMDInstruction instr, ASIMDSize size, int eSizeEncoding, Register dst, Register src) {
         twoRegMiscEncoding(instr, size == ASIMDSize.FullReg, eSizeEncoding, dst, src);
     }
@@ -857,6 +865,14 @@ public abstract class AArch64ASIMDAssembler {
         assert (imm7 & 0b0000_111) != imm7;
         int baseEncoding = 0b0_0_0_011110_0000_000_00000_1_00000_00000;
         emitInt(instr.encoding | baseEncoding | qBit(setQBit) | imm7 << 16 | rd(dst) | rs1(src));
+    }
+
+    private static int getLoadPostIndexEncodingReg(Register offset) {
+        return (0b1 << 23) | rs2(offset);
+    }
+
+    private static int getLoadPostIndexEncodingImm(boolean postIndexed) {
+        return postIndexed ? (0b1 << 23) | (0b11111 << 16) : 0;
     }
 
     /**
@@ -917,6 +933,28 @@ public abstract class AArch64ASIMDAssembler {
         assert src2.getRegisterCategory().equals(SIMD);
 
         threeSameEncoding(ASIMDInstruction.ADD, size, elemSizeXX(eSize), dst, src1, src2);
+    }
+
+    /**
+     * C7.2.5 Add pairwise vector.<br>
+     * <p>
+     * From the manual: "This instruction creates a vector by concatenating the vector elements of
+     * the first source SIMD&FP register after the vector elements of the second source SIMD&FP
+     * register, reads each pair of adjacent vector elements from the concatenated vector, adds each
+     * pair of values together, places the result into a vector, and writes the vector to the
+     * destination SIMD&FP register."
+     *
+     * @param size register size.
+     * @param elementSize width of each addition operand.
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     */
+    public void addpVV(ASIMDSize size, ElementSize elementSize, Register dst, Register src1, Register src2) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src1.getRegisterCategory().equals(SIMD);
+        assert src2.getRegisterCategory().equals(SIMD);
+        threeSameEncoding(ASIMDInstruction.ADDP, size, elemSizeXX(elementSize), dst, src1, src2);
     }
 
     /**
@@ -2184,6 +2222,55 @@ public abstract class AArch64ASIMDAssembler {
      */
     public void mvniVI(ASIMDSize size, Register dst, long imm) {
         modifiedImmEncoding(ImmediateOp.MVNI, size, dst, imm);
+    }
+
+    /**
+     * C7.2.178 LD1 (multiple structures) with an optional post-index immediate offset.<br>
+     * This instruction loads multiple single-element structures to one SIMD&FP register and
+     * optionally increments the address by the number of bytes read. Note that LD1 instruction also
+     * supports loading multiple single-element structures to two, three or four registers.
+     * Currently, this method supports loading only one SIMD&FP register.
+     *
+     * <code>for i in 0..n-1<br>
+     * do dst[i] = value_at_address(src + i) endfor<br>
+     * src = src + n</code>
+     *
+     * @param size register size.
+     * @param dst SIMD register.
+     * @param src CPU register.
+     * @param postIndexedImm boolean value signify if the address register should be incremented
+     *            after a load completes.
+     */
+    public void loadV1(ASIMDSize size, Register dst, Register src, boolean postIndexedImm) {
+        // TODO: Add support for loading multiple structures using LD1
+        loadV1(size, dst, src, getLoadPostIndexEncodingImm(postIndexedImm));
+    }
+
+    /**
+     * C7.2.178 LD1 (multiple structures) with post-index register offset.<br>
+     * This instruction loads multiple single-element structures to one SIMD&FP register and later
+     * increments the address by the value specified in offset register. Note that LD1 instruction
+     * also supports loading multiple single-element structures to two, three or four registers.
+     * Currently, this method supports loading only one SIMD&FP register.
+     *
+     * <code>for i in 0..n-1<br>
+     * do dst[i] = value_at_address(src + i) endfor<br>
+     * src = src + offset</code>
+     *
+     * @param size register size.
+     * @param dst SIMD register.
+     * @param src CPU register.
+     * @param offset CPU register with post-index value.
+     */
+    public void loadV1(ASIMDSize size, Register dst, Register src, Register offset) {
+        // TODO: Add support for loading multiple structures using LD1
+        loadV1(size, dst, src, getLoadPostIndexEncodingReg(offset));
+    }
+
+    private void loadV1(ASIMDSize size, Register dst, Register src, int postIndexOffset) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src.getRegisterCategory().equals(CPU);
+        loadEncoding(ASIMDInstruction.LD1, size == ASIMDSize.FullReg, dst, src, postIndexOffset);
     }
 
     /**

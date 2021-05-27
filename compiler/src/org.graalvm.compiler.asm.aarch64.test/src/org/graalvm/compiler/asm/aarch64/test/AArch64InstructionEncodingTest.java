@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2019, Arm Limited. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021 Arm Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -94,6 +94,20 @@ public class AArch64InstructionEncodingTest extends GraalTest {
         }
     }
 
+    private class LoadvEncodingTestCase extends AArch64InstructionEncodingTestCase {
+        LoadvEncodingTestCase(int expected, ASIMDSize size, Register dst, Register src, Register offset) {
+            super(expected);
+            assembler.neon.loadV1(size, dst, src, offset);
+            closeAssembler();
+        }
+
+        LoadvEncodingTestCase(int expected, ASIMDSize size, Register dst, Register src, boolean postIndexedImm) {
+            super(expected);
+            assembler.neon.loadV1(size, dst, src, postIndexedImm);
+            closeAssembler();
+        }
+    }
+
     private static final int invalidInstructionCode = 0x00000000;
 
     private void assertWrapper(AArch64InstructionEncodingTestCase testCase) {
@@ -146,5 +160,15 @@ public class AArch64InstructionEncodingTest extends GraalTest {
     @SuppressWarnings("unused")
     public void testUmovInvalidSrcIdx() {
         new UmovEncodingTestCase(invalidInstructionCode, ElementSize.DoubleWord, AArch64.r0, 2, AArch64.v0);
+    }
+
+    @Test
+    public void testLoadv() {
+        assertWrapper(new LoadvEncodingTestCase(0x70404c, ASIMDSize.FullReg, AArch64.v0, AArch64.r0, false));
+        assertWrapper(new LoadvEncodingTestCase(0x70df4c, ASIMDSize.FullReg, AArch64.v0, AArch64.r0, true));
+        assertWrapper(new LoadvEncodingTestCase(0x70400c, ASIMDSize.HalfReg, AArch64.v0, AArch64.r0, false));
+        assertWrapper(new LoadvEncodingTestCase(0x70df0c, ASIMDSize.HalfReg, AArch64.v0, AArch64.r0, true));
+        assertWrapper(new LoadvEncodingTestCase(0x70c14c, ASIMDSize.FullReg, AArch64.v0, AArch64.r0, AArch64.r1));
+        assertWrapper(new LoadvEncodingTestCase(0x70c10c, ASIMDSize.HalfReg, AArch64.v0, AArch64.r0, AArch64.r1));
     }
 }
