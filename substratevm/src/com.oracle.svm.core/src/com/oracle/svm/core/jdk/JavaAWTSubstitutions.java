@@ -32,6 +32,7 @@ import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
@@ -126,8 +127,17 @@ public final class JavaAWTSubstitutions {
     static final class Target_sun_font_FontConfigManager_FcCompFont {
     }
 
+    private static final class SunFontManagerEnabled implements BooleanSupplier {
+
+        @Override
+        public boolean getAsBoolean() {
+            return new JDK11OrLater().getAsBoolean() && !SubstrateOptions.StaticExecutable.getValue();
+        }
+
+    }
+
     // Used in Target_sun_font_FcFontConfiguration#init()
-    @TargetClass(className = "sun.font.SunFontManager", onlyWith = JDK11OrLater.class)
+    @TargetClass(className = "sun.font.SunFontManager", onlyWith = SunFontManagerEnabled.class)
     static final class Target_sun_font_SunFontManager {
     }
 
@@ -664,6 +674,67 @@ public final class JavaAWTSubstitutions {
         }
     }
 
+    /*
+     * These classes transitively use libfontconfig. All libfontconfig uses are done through dlsym,
+     * which doesn't work in a static executable. Simply not linking against fontconfig is not
+     * enough - we must @Delete these classes to prevent linker errors.
+     */
+
+    @TargetClass(className = "sun.java2d.loops.DrawGlyphListAA", onlyWith = FontsDisabled.class)
+    @Delete(value = FontsDisabled.FONTS_DISABLED_REASON)
+    static final class Target_sun_java2d_loops_DrawGlyphListAA {
+    }
+
+    @TargetClass(className = "sun.java2d.loops.DrawGlyphList", onlyWith = FontsDisabled.class)
+    @Delete(value = FontsDisabled.FONTS_DISABLED_REASON)
+    static final class Target_sun_java2d_loops_DrawGlyphList {
+    }
+
+    @TargetClass(className = "sun.java2d.loops.DrawGlyphListLCD", onlyWith = FontsDisabled.class)
+    @Delete(value = FontsDisabled.FONTS_DISABLED_REASON)
+    static final class Target_sun_java2d_loops_DrawGlyphListLCD {
+    }
+
+    @TargetClass(className = "sun.font.SunLayoutEngine", onlyWith = FontsDisabled.class)
+    @Delete(value = FontsDisabled.FONTS_DISABLED_REASON)
+    static final class Target_sun_font_SunLayoutEngine {
+    }
+
+    @TargetClass(className = "sun.font.FreetypeFontScaler", onlyWith = FontsDisabled.class)
+    @Delete(value = FontsDisabled.FONTS_DISABLED_REASON)
+    static final class Target_sun_font_FreetypeFontScaler {
+    }
+
+    @TargetClass(className = "sun.font.NativeFont", onlyWith = FontsDisabled.class)
+    @Delete(value = FontsDisabled.FONTS_DISABLED_REASON)
+    static final class Target_sun_font_NativeFont {
+    }
+
+    @TargetClass(className = "sun.font.StrikeCache", onlyWith = FontsDisabled.class)
+    @Delete(value = FontsDisabled.FONTS_DISABLED_REASON)
+    static final class Target_sun_font_StrikeCache {
+    }
+
+    @TargetClass(className = "sun.font.NativeStrikeDisposer", onlyWith = FontsDisabled.class)
+    @Delete(value = FontsDisabled.FONTS_DISABLED_REASON)
+    static final class Target_sun_font_NativeStrikeDisposer {
+    }
+
+    @TargetClass(className = "sun.font.NativeStrike", onlyWith = FontsDisabled.class)
+    @Delete(value = FontsDisabled.FONTS_DISABLED_REASON)
+    static final class Target_sun_font_NativeStrike {
+    }
+
+    @TargetClass(className = "sun.font.SunFontManager", onlyWith = FontsDisabled.class)
+    @Delete(value = FontsDisabled.FONTS_DISABLED_REASON)
+    static final class Target_sun_font_SunFontManagerDeleted {
+    }
+
+    @TargetClass(className = "sun.font.NullFontScaler", onlyWith = FontsDisabled.class)
+    @Delete(value = FontsDisabled.FONTS_DISABLED_REASON)
+    static final class Target_sun_font_NullFontScaler {
+    }
+
     // To support headless mode
     static class IsHeadless implements BooleanSupplier {
         @Override
@@ -672,4 +743,14 @@ public final class JavaAWTSubstitutions {
         }
     }
     // Checkstyle: resume
+
+    static class FontsDisabled implements BooleanSupplier {
+        @Override
+        public boolean getAsBoolean() {
+            return new JDK11OrLater().getAsBoolean() && SubstrateOptions.StaticExecutable.getValue();
+        }
+
+        public static final String FONTS_DISABLED_REASON = "AWT uses fontconfig to implement font related functionality on Linux. All fontconfig uses happen through dlsym which doesn't work in a static executable. " +
+                        "Try avoiding the use of this class in the project or turn off static executable generation.";
+    }
 }

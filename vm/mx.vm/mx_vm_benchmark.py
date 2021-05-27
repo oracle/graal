@@ -371,13 +371,10 @@ class NativeImageVM(GraalVm):
             self.command = command
             return self
 
-        def execute_command(self, final_command=False, vm=None):
-            write_output = final_command or self.is_gate
+        def execute_command(self, vm=None):
+            write_output = self.current_stage == 'run' or self.is_gate
             cmd = self.command
-            if final_command and vm is not None:
-                # only apply the command manipulation hooks when running the final image
-                cmd = mx.apply_command_mapper_hooks(cmd, vm.command_mapper_hooks)
-            self.exit_code = self.config.bmSuite.run_stage(self.current_stage, cmd, self.stdout(write_output), self.stderr(write_output), self.cwd, False)
+            self.exit_code = self.config.bmSuite.run_stage(vm, self.current_stage, cmd, self.stdout(write_output), self.stderr(write_output), self.cwd, False)
             if "image" not in self.current_stage and self.config.bmSuite.validateReturnCode(self.exit_code):
                 self.exit_code = 0
 
@@ -560,7 +557,7 @@ class NativeImageVM(GraalVm):
     def run_stage_run(self, config, stages, out):
         image_path = os.path.join(config.output_dir, config.final_image_name)
         with stages.set_command([image_path] + config.image_run_args + config.extra_run_args) as s:
-            s.execute_command(True, vm=self)
+            s.execute_command(vm=self)
             if s.exit_code == 0:
                 # The image size for benchmarks is tracked by printing on stdout and matching the rule.
                 image_size = os.stat(image_path).st_size

@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.jdk;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.configure.ResourcesRegistry;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
@@ -148,6 +149,13 @@ public class JNIRegistrationAwt extends JNIRegistrationUtil implements Feature {
     }
 
     private static void registerFreeType(DuringAnalysisAccess access) {
+        if (SubstrateOptions.StaticExecutable.getValue()) {
+            /*
+             * Freetype uses fontconfig through dlsym. This may not work in a statically linked
+             * executable
+             */
+            return;
+        }
         NativeLibraries nativeLibraries = getNativeLibraries(access);
 
         NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("fontmanager");

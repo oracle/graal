@@ -57,6 +57,7 @@ import org.graalvm.compiler.nodes.extended.UnboxNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.LoadIndexedNode;
+import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.java.StoreIndexedNode;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.compiler.phases.util.Providers;
@@ -64,12 +65,14 @@ import org.graalvm.compiler.replacements.GraphKit;
 import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.word.WordBase;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.meta.SubstrateLoweringProvider;
 import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
+import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.util.VMError;
 
@@ -91,12 +94,17 @@ public class SubstrateGraphKit extends GraphKit {
 
     public SubstrateGraphKit(DebugContext debug, ResolvedJavaMethod stubMethod, Providers providers, WordTypes wordTypes, GraphBuilderConfiguration.Plugins graphBuilderPlugins,
                     CompilationIdentifier compilationId) {
-        super(debug, stubMethod, providers, wordTypes, graphBuilderPlugins, compilationId, null);
+        super(debug, stubMethod, providers, wordTypes, graphBuilderPlugins, compilationId, null, SubstrateOptions.parseOnce());
         assert wordTypes != null : "Support for Word types is mandatory";
         frameState = new FrameStateBuilder(this, stubMethod, graph);
         frameState.disableKindVerification();
         frameState.initializeForMethodStart(null, true, graphBuilderPlugins);
         graph.start().setStateAfter(frameState.create(bci(), graph.start()));
+    }
+
+    @Override
+    protected MethodCallTargetNode createMethodCallTarget(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, StampPair returnStamp, int bci) {
+        return new SubstrateMethodCallTargetNode(invokeKind, targetMethod, args, returnStamp, null, null);
     }
 
     public SubstrateLoweringProvider getLoweringProvider() {

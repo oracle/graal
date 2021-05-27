@@ -102,8 +102,9 @@ public abstract class TypeFlow<T> {
      * individual type flows to subscribe themselves directly to the type flows of their declared
      * types if they need further updates.
      * <p/>
-     * When static analysis results are built in {@link StaticAnalysisResultsBuilder#makeResults}
-     * the type state is considered only if the type flow was not marked as saturated.
+     * When static analysis results are built in
+     * {@link StaticAnalysisResultsBuilder#makeOrApplyResults} the type state is considered only if
+     * the type flow was not marked as saturated.
      * <p/>
      * The initial value is false, i.e., the flow is initially not saturated.
      */

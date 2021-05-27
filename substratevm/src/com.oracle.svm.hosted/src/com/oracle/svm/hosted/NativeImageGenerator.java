@@ -940,7 +940,8 @@ public class NativeImageGenerator {
         SubstitutionProcessor aSubstitutions = createAnalysisSubstitutionProcessor(originalMetaAccess, originalSnippetReflection, cEnumProcessor, automaticSubstitutions,
                         annotationSubstitutions, additionalSubstitutions);
 
-        SVMHost hostVM = new SVMHost(options, buildExecutor, loader.getClassLoader(), classInitializationSupport, automaticSubstitutions);
+        SVMHost hostVM = HostedConfiguration.instance().createHostVM(options, buildExecutor, loader.getClassLoader(), classInitializationSupport, automaticSubstitutions);
+
         automaticSubstitutions.init(loader, originalMetaAccess);
         AnalysisPolicy analysisPolicy = PointstoOptions.AllocationSiteSensitiveHeap.getValue(options) ? new BytecodeSensitiveAnalysisPolicy(options)
                         : new DefaultAnalysisPolicy(options);

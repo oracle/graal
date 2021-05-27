@@ -102,6 +102,16 @@ public class LoopsData {
         return loops;
     }
 
+    public List<LoopEx> nonCountedLoops() {
+        List<LoopEx> nonCounted = new ArrayList<>();
+        for (LoopEx loop : loops()) {
+            if (!loop.isCounted()) {
+                nonCounted.add(loop);
+            }
+        }
+        return nonCounted;
+    }
+
     public List<LoopEx> countedLoops() {
         List<LoopEx> counted = new ArrayList<>();
         for (LoopEx loop : loops()) {

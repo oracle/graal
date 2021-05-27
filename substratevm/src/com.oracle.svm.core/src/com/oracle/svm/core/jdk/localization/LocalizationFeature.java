@@ -63,6 +63,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -156,7 +157,7 @@ public abstract class LocalizationFeature implements Feature {
         public static final HostedOptionKey<Boolean> IncludeAllLocales = new HostedOptionKey<>(false);
 
         @Option(help = "Optimize the resource bundle lookup using a simple map.", type = OptionType.User)//
-        public static final HostedOptionKey<Boolean> LocalizationOptimizedMode = new HostedOptionKey<>(true);
+        public static final HostedOptionKey<Boolean> LocalizationOptimizedMode = new HostedOptionKey<>(JavaVersionUtil.JAVA_SPEC == 8);
 
         @Option(help = "Store the resource bundle content more efficiently in the fallback mode.", type = OptionType.User)//
         public static final HostedOptionKey<Boolean> LocalizationSubstituteLoadLookup = new HostedOptionKey<>(true);

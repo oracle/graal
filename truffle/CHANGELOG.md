@@ -15,6 +15,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * `DebugValue` methods `hashCode()` and `equals()` provide result of the interop `identityHashCode` and `isIdentical` calls on the corresponding guest objects, respectively.
 * Enabled by default the traversing compilation queue with dynamic thresholds, see `PolyglotCompilerOptions#TraversingCompilationQueue`, `PolyglotCompilerOptions#DynamicCompilationThresholds`, `PolyglotCompilerOptions#DynamicCompilerThresholdsMinScale`, `PolyglotCompilerOptions#DynamicCompilerThresholdsMinNormalLoad` and `PolyglotCompilerOptions#DynamicCompilerThresholdsMaxNormalLoad`.
 * Added `LoopConditionProfile#create()` as an alias of `createCountingProfile()` so it can be used like `@Cached LoopConditionProfile loopProfile`.
+* Enabled by default the traversing compilation queue with dynamic thresholds. See [the documentation](https://github.com/oracle/graal/blob/master/truffle/docs/TraversingCompilationQueue.md) for more information.
 
 ## Version 21.1.0
 * Added methods into `Instrumenter` that create bindings to be attached later on. Added `EventBinding.attach()` method.
@@ -23,7 +24,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added `ContextsListener.onLanguageContextCreate`, `ContextsListener.onLanguageContextCreateFailed`, `ContextsListener.onLanguageContextInitialize`, and `ContextsListener.onLanguageContextInitializeFailed`  to allow instruments to listen to language context creation start events, language context creation failure events, language context initialization start events, and language context initialization failure events, respectively.
 * Added `CompilerDirectives.isExact(Object, Class)` to check whether a value is of an exact type. This method should be used instead of the `value != null && value.getClass() == exactClass` pattern.
 * Added `Frame.clear(FrameSlot)`. This allows the compiler to reason about the liveness of local variables. Languages are recommended to use it when applicable.
-* Added `@GenerateAOT` to support preparation for AOT specializing nodes. Read the (AOT tutorial)[https://github.com/oracle/graal/blob/master/truffle/docs/AOT.md] to get started with Truffle and AOT compilation.
+* Added `@GenerateAOT` to support preparation for AOT specializing nodes. Read the [AOT tutorial](https://github.com/oracle/graal/blob/master/truffle/docs/AOT.md) to get started with Truffle and AOT compilation.
 * Profiles now can be disabled using `Profile.disable()` and reset using `Profile.reset()`.
 * Added `--engine.CompileAOTOnCreate` option to trigger AOT compilation on call target create.
 * Added new messages to `InteropLibrary` for interacting with buffer-like objects:

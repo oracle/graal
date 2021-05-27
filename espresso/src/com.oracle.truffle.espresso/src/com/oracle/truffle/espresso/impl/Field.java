@@ -56,10 +56,14 @@ public final class Field extends Member<Type> implements FieldRef {
     @CompilationFinal private boolean changedByRedefinition = false;
 
     public Field(ObjectKlass holder, LinkedField linkedField, boolean hidden, RuntimeConstantPool pool) {
-        super(hidden ? null : linkedField.getType(), linkedField.getName());
         this.linkedField = linkedField;
         this.holder = holder;
         this.fieldVersion = new FieldVersion(linkedField.getType(), pool);
+    }
+
+    @Override
+    public Symbol<Name> getName() {
+        return linkedField.getName();
     }
 
     public Symbol<Type> getType() {
@@ -100,7 +104,7 @@ public final class Field extends Member<Type> implements FieldRef {
     }
 
     public boolean isHidden() {
-        return getDescriptor() == null;
+        return linkedField.isHidden();
     }
 
     public JavaKind getKind() {
@@ -635,12 +639,12 @@ public final class Field extends Member<Type> implements FieldRef {
 
     @Override
     public String getNameAsString() {
-        return super.getName().toString();
+        return getName().toString();
     }
 
     @Override
     public String getTypeAsString() {
-        return super.getDescriptor().toString();
+        return getType().toString();
     }
 
     @Override

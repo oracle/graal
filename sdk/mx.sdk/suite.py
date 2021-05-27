@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion" : "5.292.5",
+  "mxversion" : "5.297.0",
   "name" : "sdk",
   "version" : "21.2.0",
   "release" : False,
@@ -79,10 +79,10 @@ suite = {
   "imports": {},
   "libraries" : {
     "WRK": {
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/wrk.tar.gz"],
-      "sha1": "04b97d4d90b3d73dc3cd37b225d8aa3d6bca42da",
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/wrk-a211dd5.tar.gz"],
+      "sha1": "6052d4452e190e707309c575fa2852a0035c5f34",
       "packedResource": True,
-      "license": "Apache-2.0",
+      "license": "Apache-2.0-wrk-a211dd5",
     },
     "WRK2": {
       "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/wrk2.tar.gz"],
@@ -302,6 +302,10 @@ suite = {
     "Apache-2.0-LLVM" : {
       "name" : "Apache License 2.0 with LLVM Exceptions",
       "url" : "http://releases.llvm.org/9.0.0/LICENSE.TXT"
+    },
+    "Apache-2.0-wrk-a211dd5" : {
+      "name" : "Modified Apache 2.0 License",
+      "url" : "https://raw.githubusercontent.com/wg/wrk/a211dd5a7050b1f9e8a9870b95513060e72ac4a0/LICENSE"
     },
 },
 

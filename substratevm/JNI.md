@@ -32,7 +32,6 @@ Also, `-H:JNIConfigurationResources` can be specified to load one or several con
 
 Alternatively, a custom `Feature` implementation can register program elements before and during the analysis phase of the native image build using the `JNIRuntimeAccess` class. For example:
 ```java
-@AutomaticFeature
 class JNIRegistrationFeature implements Feature {
   public void beforeAnalysis(BeforeAnalysisAccess access) {
     try {
@@ -49,6 +48,7 @@ class JNIRegistrationFeature implements Feature {
   }
 }
 ```
+To activate the custom feature `--features=<fully qualified name of JNIRegistrationFeature class>` needs to be passed to native-image. [Native Image Build Configuration](BuildConfiguration.md) explains how this can be automated with a `native-image.properties` file in `META-INF/native-image`.
 
 ## Object Handles
 JNI does not permit direct access to Java objects.

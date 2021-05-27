@@ -431,7 +431,11 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
             }
             throw new NoClassDefFoundError(className);
         }
-        return metaAccess.lookupJavaType(c);
+        ResolvedJavaType type = metaAccess.lookupJavaType(c);
+        // In some situations, we may need the class to be linked now, especially if we are
+        // compiling immediately (e.g., to successfully devirtualize FrameWithoutBoxing methods).
+        type.link();
+        return type;
     }
 
     protected void installDefaultListeners() {

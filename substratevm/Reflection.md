@@ -121,7 +121,6 @@ Also, `-H:ReflectionConfigurationResources` can be specified to load one or seve
 
 Alternatively, a custom `Feature` implementation can register program elements before and during the analysis phase of the native image build using the `RuntimeReflection` class. For example:
 ```java
-@AutomaticFeature
 class RuntimeReflectionRegistrationFeature implements Feature {
   public void beforeAnalysis(BeforeAnalysisAccess access) {
     try {
@@ -137,6 +136,7 @@ class RuntimeReflectionRegistrationFeature implements Feature {
   }
 }
 ```
+To activate the custom feature `--features=<fully qualified name of RuntimeReflectionRegistrationFeature class>` needs to be passed to native-image. [Native Image Build Configuration](BuildConfiguration.md) explains how this can be automated with a `native-image.properties` file in `META-INF/native-image`.
 
 ### Use of Reflection during Native Image Generation
 Reflection can be used without restrictions during a native image generation, for example, in static initializers.

@@ -67,6 +67,7 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.reports.CallTreePrinter;
 import com.oracle.graal.pointsto.util.AnalysisError.TypeNotFoundError;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.annotate.UnknownPrimitiveField;
 import com.oracle.svm.core.graal.meta.SubstrateReplacements;
@@ -98,7 +99,7 @@ public class Inflation extends BigBang {
 
     public Inflation(OptionValues options, AnalysisUniverse universe, HostedProviders providers, AnnotationSubstitutionProcessor annotationSubstitutionProcessor, ForkJoinPool executor,
                     Runnable heartbeatCallback) {
-        super(options, universe, providers, universe.hostVM(), executor, heartbeatCallback, new SubstrateUnsupportedFeatures());
+        super(options, universe, providers, universe.hostVM(), executor, heartbeatCallback, new SubstrateUnsupportedFeatures(), SubstrateOptions.parseOnce());
         this.annotationSubstitutionProcessor = annotationSubstitutionProcessor;
 
         String[] targetCallers = new String[]{"com\\.oracle\\.graal\\.", "org\\.graalvm[^\\.polyglot\\.nativeapi]"};

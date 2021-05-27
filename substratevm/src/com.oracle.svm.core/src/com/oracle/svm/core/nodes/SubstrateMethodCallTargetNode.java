@@ -22,17 +22,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.nodes;
-
-import java.util.Map;
+package com.oracle.svm.core.nodes;
 
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
-
-import com.oracle.graal.pointsto.results.StaticAnalysisResults;
 
 import jdk.vm.ci.meta.JavaMethodProfile;
 import jdk.vm.ci.meta.JavaTypeProfile;
@@ -42,42 +38,20 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public final class SubstrateMethodCallTargetNode extends MethodCallTargetNode {
     public static final NodeClass<SubstrateMethodCallTargetNode> TYPE = NodeClass.create(SubstrateMethodCallTargetNode.class);
 
-    protected final StaticAnalysisResults staticAnalysisResults;
-    protected final int bci;
+    private JavaMethodProfile methodProfile;
 
-    public SubstrateMethodCallTargetNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, StampPair returnStamp, StaticAnalysisResults staticAnalysisResults, int bci) {
-        super(TYPE, invokeKind, targetMethod, arguments, returnStamp, staticAnalysisResults.getTypeProfile(bci));
-        this.staticAnalysisResults = staticAnalysisResults;
-        this.bci = bci;
+    public SubstrateMethodCallTargetNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, StampPair returnStamp, JavaTypeProfile typeProfile,
+                    JavaMethodProfile methodProfile) {
+        super(TYPE, invokeKind, targetMethod, arguments, returnStamp, typeProfile);
+        this.methodProfile = methodProfile;
     }
 
-    public StaticAnalysisResults getStaticAnalysisResults() {
-        return staticAnalysisResults;
-    }
-
-    public int getBci() {
-        return bci;
-    }
-
-    public JavaTypeProfile getTypeProfile() {
-        return getProfile();
+    public void setProfiles(JavaTypeProfile typeProfile, JavaMethodProfile methodProfile) {
+        this.profile = typeProfile;
+        this.methodProfile = methodProfile;
     }
 
     public JavaMethodProfile getMethodProfile() {
-        return staticAnalysisResults.getMethodProfile(bci);
-    }
-
-    public JavaTypeProfile getInvokeResultTypeProfile() {
-        return staticAnalysisResults.getInvokeResultTypeProfile(bci);
-    }
-
-    @Override
-    public Map<Object, Object> getDebugProperties(Map<Object, Object> map) {
-
-        map.put("typeProfile", getTypeProfile());
-        map.put("methodProfile", getMethodProfile());
-        map.put("resultTypeProfile", getInvokeResultTypeProfile());
-
-        return super.getDebugProperties(map);
+        return methodProfile;
     }
 }
