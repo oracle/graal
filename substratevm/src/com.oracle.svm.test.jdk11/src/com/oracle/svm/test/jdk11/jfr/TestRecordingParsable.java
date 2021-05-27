@@ -24,7 +24,7 @@
  * questions.
  */
 
-package com.oracle.svm.test.jdk11.jfrtest;
+package com.oracle.svm.test.jdk11.jfr;
 
 import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordingFile;

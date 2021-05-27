@@ -23,14 +23,14 @@
  * questions.
  */
 
-package com.oracle.svm.test.jdk11.jfrtest;
+package com.oracle.svm.test.jdk11.jfr;
 
 import java.io.DataInput;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.oracle.svm.test.jdk11.jfrtest.MetadataDescriptor.Element;
+import com.oracle.svm.test.jdk11.jfr.MetadataDescriptor.Element;
 
 /**
  * Parses metadata.
