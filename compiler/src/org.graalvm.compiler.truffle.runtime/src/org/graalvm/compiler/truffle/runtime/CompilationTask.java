@@ -66,7 +66,8 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
     private int lastCount;
     private long lastTime;
     private double lastWeight;
-    private TruffleInlining inliningData = new TruffleInlining();
+
+    private final TruffleInlining inliningData = new TruffleInlining();
 
     private CompilationTask(BackgroundCompileQueue.Priority priority, WeakReference<OptimizedCallTarget> targetRef, Consumer<CompilationTask> action, long id) {
         this.priority = priority;
