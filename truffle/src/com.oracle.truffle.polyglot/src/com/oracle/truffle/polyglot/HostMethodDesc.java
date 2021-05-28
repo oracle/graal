@@ -58,6 +58,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.polyglot.HostLanguage.HostContext;
 
 abstract class HostMethodDesc {
 
@@ -117,7 +118,7 @@ abstract class HostMethodDesc {
 
         public abstract Object invoke(Object receiver, Object[] arguments) throws Throwable;
 
-        public abstract Object invokeGuestToHost(Object receiver, Object[] arguments, PolyglotEngineImpl engine, PolyglotLanguageContext context, Node node);
+        public abstract Object invokeGuestToHost(Object receiver, Object[] arguments, GuestToHostCodeCache cache, HostContext context, Node node);
 
         @Override
         public boolean isMethod() {
@@ -175,10 +176,9 @@ abstract class HostMethodDesc {
             }
 
             @Override
-            public Object invokeGuestToHost(Object receiver, Object[] arguments, PolyglotEngineImpl engine, PolyglotLanguageContext languageContext, Node node) {
-                CallTarget target = engine.getHostToGuestCodeCache().reflectionHostInvoke;
-                assert target == languageContext.context.engine.getHostToGuestCodeCache().reflectionHostInvoke;
-                return GuestToHostRootNode.guestToHostCall(node, target, languageContext, receiver, this, arguments);
+            public Object invokeGuestToHost(Object receiver, Object[] arguments, GuestToHostCodeCache cache, HostContext hostContext, Node node) {
+                CallTarget target = cache.reflectionHostInvoke;
+                return GuestToHostRootNode.guestToHostCall(node, target, hostContext, receiver, this, arguments);
             }
 
         }
@@ -300,7 +300,7 @@ abstract class HostMethodDesc {
             }
 
             @Override
-            public Object invokeGuestToHost(Object receiver, Object[] arguments, PolyglotEngineImpl engine, PolyglotLanguageContext languageContext, Node node) {
+            public Object invokeGuestToHost(Object receiver, Object[] arguments, GuestToHostCodeCache cache, HostContext hostContext, Node node) {
                 MethodHandle handle = methodHandle;
                 if (handle == null) {
                     if (CompilerDirectives.isPartialEvaluationConstant(this)) {
@@ -311,9 +311,9 @@ abstract class HostMethodDesc {
                     }
                     methodHandle = handle = makeMethodHandle();
                 }
-                CallTarget target = engine.getHostToGuestCodeCache().methodHandleHostInvoke;
+                CallTarget target = cache.methodHandleHostInvoke;
                 CompilerAsserts.partialEvaluationConstant(target);
-                return GuestToHostRootNode.guestToHostCall(node, target, languageContext, receiver, handle, arguments);
+                return GuestToHostRootNode.guestToHostCall(node, target, hostContext, receiver, handle, arguments);
             }
 
         }

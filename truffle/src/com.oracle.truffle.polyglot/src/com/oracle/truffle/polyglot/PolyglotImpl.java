@@ -74,6 +74,7 @@ import com.oracle.truffle.api.impl.DispatchOutputStream;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.polyglot.HostLanguage.HostContext;
 import com.oracle.truffle.polyglot.PolyglotEngineImpl.LogConfig;
 import com.oracle.truffle.polyglot.PolyglotLoggers.EngineLoggerProvider;
 
@@ -88,14 +89,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     static final Object[] EMPTY_ARGS = new Object[0];
     static final String OPTION_GROUP_ENGINE = "engine";
     static final String PROP_ALLOW_EXPERIMENTAL_OPTIONS = OptionValuesImpl.SYSTEM_PROPERTY_PREFIX + OPTION_GROUP_ENGINE + ".AllowExperimentalOptions";
-
-    @SuppressWarnings("serial") private static final HostException STACKOVERFLOW_ERROR = new HostException(new StackOverflowError() {
-        @SuppressWarnings("sync-override")
-        @Override
-        public Throwable fillInStackTrace() {
-            return this;
-        }
-    });
 
     private final PolyglotSourceDispatch sourceDispatch = new PolyglotSourceDispatch(this);
     private final PolyglotSourceSectionDispatch sourceSectionDispatch = new PolyglotSourceSectionDispatch(this);
@@ -232,7 +225,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             DispatchOutputStream dispatchOut = INSTRUMENT.createDispatchOutput(resolvedOut);
             DispatchOutputStream dispatchErr = INSTRUMENT.createDispatchOutput(resolvedErr);
             Handler logHandler = PolyglotLoggers.asHandler(logHandlerOrStream);
-            ClassLoader contextClassLoader = TruffleOptions.AOT ? null : Thread.currentThread().getContextClassLoader();
             boolean useAllowExperimentalOptions = allowExperimentalOptions || Boolean.parseBoolean(EngineAccessor.RUNTIME.getSavedProperty(PROP_ALLOW_EXPERIMENTAL_OPTIONS));
 
             Map<String, String> options = new HashMap<>(originalOptions);
@@ -252,6 +244,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             }
 
             if (impl != null) {
+                ClassLoader contextClassLoader = TruffleOptions.AOT ? null : Thread.currentThread().getContextClassLoader();
                 impl.patch(dispatchOut,
                                 dispatchErr,
                                 resolvedIn,
@@ -265,6 +258,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                                 logHandler);
             }
             if (impl == null) {
+                HostLanguage host = new HostLanguage();
                 impl = new PolyglotEngineImpl(this,
                                 dispatchOut,
                                 dispatchErr,
@@ -274,7 +268,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                                 loggerProvider,
                                 options,
                                 useAllowExperimentalOptions,
-                                contextClassLoader,
+                                host,
                                 boundEngine, false,
                                 messageInterceptor,
                                 logHandler);
@@ -329,8 +323,9 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         DispatchOutputStream err = INSTRUMENT.createDispatchOutput(System.err);
         Handler logHandler = PolyglotEngineImpl.createLogHandler(logConfig, err);
         EngineLoggerProvider loggerProvider = new PolyglotLoggers.EngineLoggerProvider(logHandler, logConfig.logLevels);
+        HostLanguage host = new HostLanguage();
         final PolyglotEngineImpl engine = new PolyglotEngineImpl(this, out, err, System.in, engineOptions, logConfig.logLevels, loggerProvider, options, true,
-                        TruffleOptions.AOT ? null : Thread.currentThread().getContextClassLoader(), true, true, null, logHandler);
+                        host, true, true, null, logHandler);
         return engine;
     }
 
@@ -413,7 +408,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             if (hostValue instanceof TruffleObject) {
                 guestValue = hostValue;
             } else if (hostValue instanceof Proxy) {
-                guestValue = PolyglotProxy.toProxyGuestObject((Proxy) hostValue);
+                guestValue = PolyglotProxy.toProxyGuestObject(null, (Proxy) hostValue);
             } else if (hostValue instanceof Class) {
                 guestValue = HostObject.forClass((Class<?>) hostValue, null);
             } else {
@@ -451,10 +446,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         return getAPIAccess().newSourceSection(polyglotSource, sourceSection);
     }
 
-    static <T extends Throwable> RuntimeException hostToGuestException(PolyglotLanguageContext context, T e) {
-        return hostToGuestException(context.context, e);
-    }
-
     /**
      * Performs necessary conversions for exceptions coming from the polyglot embedding API and
      * thrown to the language or engine. The conversion must happen exactly once per API call, that
@@ -462,7 +453,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
      */
     @SuppressWarnings("deprecation")
     @TruffleBoundary
-    static <T extends Throwable> RuntimeException hostToGuestException(PolyglotContextImpl context, T e) {
+    static <T extends Throwable> RuntimeException hostToGuestException(HostContext hostContext, T e) {
         assert !(e instanceof PolyglotEngineException) : "engine exceptions not expected here";
         assert !(e instanceof HostException) : "host exceptions not expected here";
 
@@ -470,13 +461,15 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             throw (ThreadDeath) e;
         } else if (e instanceof PolyglotException) {
             PolyglotException polyglot = (PolyglotException) e;
-            if (context != null) {
-                PolyglotExceptionImpl exceptionImpl = ((PolyglotExceptionImpl) context.getImpl().getAPIAccess().getReceiver(polyglot));
-                if (exceptionImpl.context == context || exceptionImpl.context == null || exceptionImpl.isHostException()) {
+            if (hostContext != null) {
+                PolyglotContextImpl context = hostContext.internalContext.context;
+                APIAccess api = context.getAPIAccess();
+                PolyglotExceptionImpl exceptionImpl = ((PolyglotExceptionImpl) api.getReceiver(polyglot));
+                if (exceptionImpl.context == hostContext.internalContext.context || exceptionImpl.context == null || exceptionImpl.isHostException()) {
                     // for values of the same context the TruffleException is allowed to be unboxed
                     // for host exceptions no guest values are bound therefore it can also be
                     // unboxed
-                    Throwable original = ((PolyglotExceptionImpl) context.getImpl().getAPIAccess().getReceiver(polyglot)).exception;
+                    Throwable original = ((PolyglotExceptionImpl) api.getReceiver(polyglot)).exception;
                     if (original instanceof RuntimeException) {
                         throw (RuntimeException) original;
                     } else if (original instanceof Error) {
@@ -487,12 +480,12 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             }
         }
         try {
-            return new HostException(e);
+            return new HostException(e, hostContext);
         } catch (StackOverflowError stack) {
             /*
              * Cannot create a new host exception. Use a readily prepared instance.
              */
-            return STACKOVERFLOW_ERROR;
+            return hostContext.stackoverflowError;
         }
     }
 

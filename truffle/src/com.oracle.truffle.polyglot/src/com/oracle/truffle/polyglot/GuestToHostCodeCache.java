@@ -76,7 +76,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.polyglot.HostMethodDesc.SingleMethod;
 import com.oracle.truffle.polyglot.HostMethodDesc.SingleMethod.MHBase;
 
-final class HostToGuestCodeCache {
+final class GuestToHostCodeCache {
 
     final CallTarget methodHandleHostInvoke = GuestToHostRootNode.createGuestToHost(new GuestToHostRootNode(HostObject.class, "doInvoke") {
         @Override

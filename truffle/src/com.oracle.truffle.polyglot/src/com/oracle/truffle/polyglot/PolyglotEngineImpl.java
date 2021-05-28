@@ -172,7 +172,6 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
     @CompilationFinal OptionValuesImpl engineOptionValues;
 
-    ClassLoader contextClassLoader;     // effectively final
     // true if engine is implicitly bound to a context and therefore closed with the context
     boolean boundEngine;    // effectively final
 
@@ -200,7 +199,6 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     // field used by the TruffleRuntime implementation to persist state per Engine
     final Object runtimeData;
     Map<String, Level> logLevels;    // effectively final
-    HostClassCache hostClassCache; // effectively final
     private volatile Object engineLoggers;
     private volatile Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectorsSupplier;
 
@@ -209,7 +207,6 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     final boolean conservativeContextReferences;
     private final MessageTransport messageInterceptor;
     private volatile int asynchronousStackDepth = 0;
-    @CompilationFinal private HostToGuestCodeCache hostToGuestCodeCache;
 
     final SpecializationStatistics specializationStatistics;
     Function<String, TruffleLogger> engineLoggerSupplier;   // effectively final
@@ -224,21 +221,23 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
      */
     @CompilationFinal private volatile Node noLocation;
 
+    final HostLanguage host;
+
     PolyglotEngineImpl(PolyglotImpl impl, DispatchOutputStream out, DispatchOutputStream err, InputStream in, OptionValuesImpl engineOptions,
                     Map<String, Level> logLevels,
                     EngineLoggerProvider engineLogger, Map<String, String> options,
-                    boolean allowExperimentalOptions, ClassLoader contextClassLoader, boolean boundEngine, boolean preInitialization,
+                    boolean allowExperimentalOptions, HostLanguage hostLanguage, boolean boundEngine, boolean preInitialization,
                     MessageTransport messageInterceptor, Handler logHandler) {
         this.messageInterceptor = messageInterceptor;
         this.impl = impl;
         this.out = out;
         this.err = err;
         this.in = in;
-        this.contextClassLoader = contextClassLoader;
         this.logHandler = logHandler;
         this.logLevels = logLevels;
         this.boundEngine = boundEngine;
         this.storeEngine = RUNTIME.isStoreEnabled(engineOptions);
+        this.host = hostLanguage;
 
         Map<String, LanguageInfo> languageInfos = new LinkedHashMap<>();
         this.idToLanguage = Collections.unmodifiableMap(initializeLanguages(languageInfos));
@@ -315,15 +314,6 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         }
     }
 
-    HostToGuestCodeCache getHostToGuestCodeCache() {
-        HostToGuestCodeCache cache = this.hostToGuestCodeCache;
-        if (cache == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            hostToGuestCodeCache = cache = new HostToGuestCodeCache();
-        }
-        return cache;
-    }
-
     Node getUncachedLocation() {
         Node location = this.noLocation;
         if (location == null) {
@@ -350,7 +340,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         this.out = prototype.out;
         this.err = prototype.err;
         this.in = prototype.in;
-        this.contextClassLoader = prototype.contextClassLoader;
+        this.host = prototype.host;
         this.boundEngine = prototype.boundEngine;
         this.logHandler = prototype.logHandler;
         this.runtimeData = RUNTIME.createRuntimeData(prototype.engineOptionValues, prototype.engineLoggerSupplier);
@@ -476,7 +466,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         this.out = newOut;
         this.err = newErr;
         this.in = newIn;
-        this.contextClassLoader = newContextClassLoader;
+        this.host.contextClassLoader = newContextClassLoader;
         boolean wasBound = this.boundEngine;
         this.boundEngine = newBoundEngine;
         this.logHandler = newLogHandler;
@@ -789,7 +779,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             }
         }
 
-        this.hostLanguage = createLanguage(LanguageCache.createHostLanguageCache(), HOST_LANGUAGE_INDEX, null);
+        this.hostLanguage = createLanguage(LanguageCache.createHostLanguageCache(this.host), HOST_LANGUAGE_INDEX, null);
 
         int index = 1;
         for (LanguageCache cache : serializedLanguages) {
@@ -1279,30 +1269,6 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         ENGINES.clear();
     }
 
-    void initializeHostAccess(HostAccess policy) {
-        assert Thread.holdsLock(this.lock);
-        assert policy != null;
-        HostClassCache cache = HostClassCache.findOrInitialize(getAPIAccess(), policy, contextClassLoader);
-        if (this.hostClassCache != null) {
-            if (this.hostClassCache.hostAccess.equals(cache.hostAccess)) {
-                /*
-                 * The cache can be effectively be reused if the same host access configuration
-                 * applies.
-                 */
-            } else {
-                throw PolyglotEngineException.illegalState("Found different host access configuration for a context with a shared engine. " +
-                                "The host access configuration must be the same for all contexts of an engine. " +
-                                "Provide the same host access configuration using the Context.Builder.allowHostAccess method when constructing the context.");
-            }
-        } else {
-            this.hostClassCache = cache;
-        }
-    }
-
-    HostClassCache getHostClassCache() {
-        return hostClassCache;
-    }
-
     @TruffleBoundary
     int getAsynchronousStackDepth() {
         return asynchronousStackDepth;
@@ -1528,7 +1494,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     throw PolyglotEngineException.illegalArgument("Automatically created engines cannot be used to create more than one context. " +
                                     "Use Engine.newBuilder().build() to construct a new engine and pass it using Context.newBuilder().engine(engine).build().");
                 }
-                initializeHostAccess(hostAccess);
+                host.initializeHostAccess(hostAccess);
             }
             EconomicSet<String> allowedLanguages = EconomicSet.create();
             if (onlyLanguages.length == 0) {
@@ -1714,7 +1680,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     PolyglotEngineImpl engine = new PolyglotEngineImpl(this);
                     ensureClosed(true, false);
                     synchronized (engine.lock) {
-                        engine.initializeHostAccess(hostAccess);
+                        engine.host.initializeHostAccess(hostAccess);
                         context = new PolyglotContextImpl(engine, config);
                         engine.addContext(context);
                     }

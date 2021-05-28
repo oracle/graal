@@ -173,7 +173,7 @@ abstract class HostToGuestRootNode extends RootNode {
     }
 
     static <T> T installHostCodeCache(PolyglotLanguageContext languageContext, Object key, T value, Class<T> expectedType) {
-        T result = expectedType.cast(languageContext.getLanguageInstance().hostInteropCodeCache.putIfAbsent(key, value));
+        T result = expectedType.cast(languageContext.getLanguageInstance().hostToGuestCodeCache.putIfAbsent(key, value));
         if (result != null) {
             return result;
         } else {
@@ -182,7 +182,7 @@ abstract class HostToGuestRootNode extends RootNode {
     }
 
     static <T> T lookupHostCodeCache(PolyglotLanguageContext languageContext, Object key, Class<T> expectedType) {
-        return expectedType.cast(languageContext.getLanguageInstance().hostInteropCodeCache.get(key));
+        return expectedType.cast(languageContext.getLanguageInstance().hostToGuestCodeCache.get(key));
     }
 
 }

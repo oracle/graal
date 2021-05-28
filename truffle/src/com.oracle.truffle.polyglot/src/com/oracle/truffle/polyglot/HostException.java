@@ -40,9 +40,10 @@
  */
 package com.oracle.truffle.polyglot;
 
-import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.polyglot.HostLanguage.HostContext;
 
 /**
  * Exception wrapper for an error occurred in the host language.
@@ -55,12 +56,12 @@ final class HostException extends AbstractTruffleException {
     final HostObject delegate;
 
     HostException(Throwable original) {
-        this(original, PolyglotContextImpl.currentNotEntered());
+        this(original, PolyglotContextImpl.currentNotEntered().getHostContextImpl());
     }
 
-    HostException(Throwable original, PolyglotContextImpl context) {
+    HostException(Throwable original, HostContext context) {
         this.original = original;
-        this.delegate = HostObject.forException(original, context != null ? context.getHostContext() : null, this);
+        this.delegate = HostObject.forException(original, context, this);
     }
 
     Throwable getOriginal() {
@@ -71,4 +72,5 @@ final class HostException extends AbstractTruffleException {
     public String getMessage() {
         return getOriginal().getMessage();
     }
+
 }

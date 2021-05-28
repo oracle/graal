@@ -75,6 +75,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.polyglot.HostLanguage.HostContext;
 
 @GenerateUncached
 abstract class ToHostNode extends Node {
@@ -101,33 +102,33 @@ abstract class ToHostNode extends Node {
 
     static final int[] PRIORITIES = {HIGHEST, STRICT, LOOSE, COERCE, FUNCTION_PROXY, OBJECT_PROXY_IFACE, OBJECT_PROXY_CLASS, HOST_PROXY, LOWEST};
 
-    public abstract Object execute(Object value, Class<?> targetType, Type genericType, PolyglotLanguageContext languageContext, boolean useTargetMapping);
+    public abstract Object execute(Object value, Class<?> targetType, Type genericType, HostContext context, boolean useTargetMapping);
 
     @SuppressWarnings("unused")
     @Specialization(guards = {"targetType == cachedTargetType"}, limit = "LIMIT")
     protected Object doCached(Object operand,
                     Class<?> targetType,
                     Type genericType,
-                    PolyglotLanguageContext languageContext,
+                    HostContext context,
                     boolean useCustomTargetTypes,
                     @CachedLibrary("operand") InteropLibrary interop,
                     @Cached("targetType") Class<?> cachedTargetType,
                     @Cached("isPrimitiveTarget(cachedTargetType)") boolean primitiveTarget,
-                    @Cached("allowsImplementation(languageContext, targetType)") boolean allowsImplementation,
+                    @Cached("allowsImplementation(context, targetType)") boolean allowsImplementation,
                     @Cached TargetMappingNode targetMapping,
                     @Cached BranchProfile error) {
-        return convertImpl(operand, cachedTargetType, genericType, allowsImplementation, primitiveTarget, languageContext, interop, useCustomTargetTypes, targetMapping, error);
+        return convertImpl(operand, cachedTargetType, genericType, allowsImplementation, primitiveTarget, context, interop, useCustomTargetTypes, targetMapping, error);
     }
 
     @TruffleBoundary
-    static boolean allowsImplementation(PolyglotLanguageContext languagecontext, Class<?> type) {
-        if (languagecontext == null) {
+    static boolean allowsImplementation(HostContext hostContext, Class<?> type) {
+        if (hostContext == null) {
             return false;
         }
         if (!HostInteropReflect.isAbstractType(type)) {
             return false;
         }
-        HostClassDesc classDesc = languagecontext.getEngine().getHostClassCache().forClass(type);
+        HostClassDesc classDesc = hostContext.getHostClassCache().forClass(type);
         return classDesc.isAllowsImplementation() && classDesc.isAllowedTargetType();
     }
 
@@ -135,10 +136,10 @@ abstract class ToHostNode extends Node {
     @TruffleBoundary
     protected static Object doGeneric(Object operand,
                     Class<?> targetType, Type genericType,
-                    PolyglotLanguageContext languageContext,
+                    HostContext context,
                     boolean useTargetMapping) {
-        return convertImpl(operand, targetType, genericType, allowsImplementation(languageContext, targetType),
-                        isPrimitiveTarget(targetType), languageContext,
+        return convertImpl(operand, targetType, genericType, allowsImplementation(context, targetType),
+                        isPrimitiveTarget(targetType), context,
                         InteropLibrary.getUncached(operand),
                         useTargetMapping,
                         TargetMappingNode.getUncached(),
@@ -188,9 +189,9 @@ abstract class ToHostNode extends Node {
     }
 
     private static Object convertImpl(Object value, Class<?> targetType, Type genericType, boolean allowsImplementation, boolean primitiveTargetType,
-                    PolyglotLanguageContext languageContext, InteropLibrary interop, boolean useCustomTargetTypes, TargetMappingNode targetMapping, BranchProfile error) {
+                    HostContext context, InteropLibrary interop, boolean useCustomTargetTypes, TargetMappingNode targetMapping, BranchProfile error) {
         if (useCustomTargetTypes) {
-            Object result = targetMapping.execute(value, targetType, languageContext, interop, false, HIGHEST, STRICT);
+            Object result = targetMapping.execute(value, targetType, context, interop, false, HIGHEST, STRICT);
             if (result != TargetMappingNode.NO_RESULT) {
                 return result;
             }
@@ -207,7 +208,7 @@ abstract class ToHostNode extends Node {
         }
 
         if (useCustomTargetTypes) {
-            convertedValue = targetMapping.execute(value, targetType, languageContext, interop, false, STRICT + 1, LOOSE);
+            convertedValue = targetMapping.execute(value, targetType, context, interop, false, STRICT + 1, LOOSE);
             if (convertedValue != TargetMappingNode.NO_RESULT) {
                 return convertedValue;
             }
@@ -220,15 +221,15 @@ abstract class ToHostNode extends Node {
             }
         }
 
-        if (targetType == Value.class && languageContext != null) {
-            return value instanceof Value ? value : languageContext.asValue(value);
+        if (targetType == Value.class && context != null) {
+            return value instanceof Value ? value : context.asValue(value);
         } else if (interop.isNull(value)) {
             if (targetType.isPrimitive()) {
-                throw HostInteropErrors.nullCoercion(languageContext, value, targetType);
+                throw HostInteropErrors.nullCoercion(context, value, targetType);
             }
             return null;
         } else if (value instanceof TruffleObject) {
-            convertedValue = asJavaObject((TruffleObject) value, targetType, genericType, allowsImplementation, languageContext);
+            convertedValue = asJavaObject((TruffleObject) value, targetType, genericType, allowsImplementation, context.internalContext);
             if (convertedValue != null) {
                 return convertedValue;
             }
@@ -238,13 +239,13 @@ abstract class ToHostNode extends Node {
             convertedValue = value;
         } else {
             if (useCustomTargetTypes) {
-                Object result = targetMapping.execute(value, targetType, languageContext, interop, false, LOOSE + 1, LOWEST);
+                Object result = targetMapping.execute(value, targetType, context, interop, false, LOOSE + 1, LOWEST);
                 if (result != TargetMappingNode.NO_RESULT) {
                     return result;
                 }
             }
             error.enter();
-            throw HostInteropErrors.cannotConvertPrimitive(languageContext, value, targetType);
+            throw HostInteropErrors.cannotConvertPrimitive(context, value, targetType);
         }
         return targetType.cast(convertedValue);
     }
@@ -267,7 +268,7 @@ abstract class ToHostNode extends Node {
 
     @SuppressWarnings({"unused"})
     static boolean canConvert(Object value, Class<?> targetType, Type genericType, Boolean allowsImplementation,
-                    PolyglotLanguageContext languageContext, int priority,
+                    HostContext hostContext, int priority,
                     InteropLibrary interop,
                     TargetMappingNode targetMapping) {
         if (targetMapping != null) {
@@ -275,7 +276,7 @@ abstract class ToHostNode extends Node {
              * For canConvert the order of target type mappings does not really matter, as the
              * question is whether any conversion can be performed.
              */
-            if (targetMapping.execute(value, targetType, languageContext, interop, true, HIGHEST, priority) == Boolean.TRUE) {
+            if (targetMapping.execute(value, targetType, hostContext, interop, true, HIGHEST, priority) == Boolean.TRUE) {
                 return true;
             }
         }
@@ -288,7 +289,7 @@ abstract class ToHostNode extends Node {
                 return false;
             }
             return true;
-        } else if (targetType == Value.class && languageContext != null) {
+        } else if (targetType == Value.class && hostContext != null) {
             return true;
         } else if (isPrimitiveTarget(targetType)) {
             Object convertedValue = convertLossLess(value, targetType, interop);
@@ -348,11 +349,11 @@ abstract class ToHostNode extends Node {
                 return false;
             } else {
                 if (priority >= FUNCTION_PROXY && HostInteropReflect.isFunctionalInterface(targetType) &&
-                                (interop.isExecutable(value) || interop.isInstantiable(value)) && checkAllowsImplementation(targetType, allowsImplementation, languageContext)) {
+                                (interop.isExecutable(value) || interop.isInstantiable(value)) && checkAllowsImplementation(targetType, allowsImplementation, hostContext)) {
                     return true;
                 } else if (((priority >= OBJECT_PROXY_IFACE && targetType.isInterface()) || (priority >= OBJECT_PROXY_CLASS && HostInteropReflect.isAbstractType(targetType))) &&
                                 interop.hasMembers(value) &&
-                                checkAllowsImplementation(targetType, allowsImplementation, languageContext)) {
+                                checkAllowsImplementation(targetType, allowsImplementation, hostContext)) {
                     return true;
                 } else {
                     return false;
@@ -364,10 +365,10 @@ abstract class ToHostNode extends Node {
         }
     }
 
-    private static boolean checkAllowsImplementation(Class<?> targetType, Boolean allowsImplementation, PolyglotLanguageContext languageContext) {
+    private static boolean checkAllowsImplementation(Class<?> targetType, Boolean allowsImplementation, HostContext hostContext) {
         boolean implementations;
         if (allowsImplementation == null) {
-            implementations = allowsImplementation(languageContext, targetType);
+            implementations = allowsImplementation(hostContext, targetType);
         } else {
             implementations = allowsImplementation;
         }
@@ -723,7 +724,7 @@ abstract class ToHostNode extends Node {
             } catch (UnsupportedMessageException e) {
                 throw HostInteropErrors.arrayReadUnsupported(languageContext, receiver, componentType);
             }
-            Object hostValue = ToHostNodeGen.getUncached().execute(guestValue, componentType, genericComponentType, languageContext, true);
+            Object hostValue = ToHostNodeGen.getUncached().execute(guestValue, componentType, genericComponentType, languageContext.context.getHostContextImpl(), true);
             Array.set(array, i, hostValue);
         }
         return array;

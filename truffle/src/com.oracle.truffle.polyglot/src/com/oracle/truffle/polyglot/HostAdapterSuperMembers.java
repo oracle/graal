@@ -163,7 +163,7 @@ final class HostAdapterSuperMembers implements TruffleObject {
 
     @TruffleBoundary
     private String[] collectSuperMembers() {
-        HostClassDesc classDesc = HostClassDesc.forClass(this.adapter.getEngine(), this.adapter.getLookupClass());
+        HostClassDesc classDesc = HostClassDesc.forClass(this.adapter.context, this.adapter.getLookupClass());
         EconomicSet<String> names = EconomicSet.create();
         Collection<String> methodNames = classDesc.getMethodNames(false, true);
         for (String name : methodNames) {

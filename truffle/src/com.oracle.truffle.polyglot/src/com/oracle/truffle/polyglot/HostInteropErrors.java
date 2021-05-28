@@ -45,6 +45,7 @@ import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.polyglot.HostLanguage.HostContext;
 
 final class HostInteropErrors {
 
@@ -52,14 +53,14 @@ final class HostInteropErrors {
     }
 
     @TruffleBoundary
-    static RuntimeException nullCoercion(PolyglotLanguageContext languageContext, Object nullValue, Type targetType) {
+    static RuntimeException nullCoercion(HostContext context, Object nullValue, Type targetType) {
         throw PolyglotEngineException.nullPointer(String.format("Cannot convert null value %s to Java type '%s'.",
-                        getValueInfo(languageContext, nullValue),
+                        getValueInfo(context, nullValue),
                         targetType.getTypeName()));
     }
 
     @TruffleBoundary
-    static RuntimeException cannotConvertPrimitive(PolyglotLanguageContext languageContext, Object value, Class<?> targetType) {
+    static RuntimeException cannotConvertPrimitive(HostContext context, Object value, Class<?> targetType) {
         String reason;
         if (ToHostNode.isPrimitiveTarget(targetType)) {
             reason = "Invalid or lossy primitive coercion.";
@@ -67,15 +68,15 @@ final class HostInteropErrors {
             reason = "Unsupported target type.";
         }
         return PolyglotEngineException.classCast(String.format("Cannot convert %s to Java type '%s': %s",
-                        getValueInfo(languageContext, value),
+                        getValueInfo(context, value),
                         targetType.getTypeName(),
                         reason));
     }
 
     @TruffleBoundary
-    static RuntimeException cannotConvert(PolyglotLanguageContext languageContext, Object value, Type targetType, String reason) {
+    static RuntimeException cannotConvert(PolyglotLanguageContext context, Object value, Type targetType, String reason) {
         return PolyglotEngineException.classCast(String.format("Cannot convert %s to Java type '%s': %s",
-                        getValueInfo(languageContext, value),
+                        getValueInfo(context, value),
                         targetType.getTypeName(),
                         reason));
     }
@@ -227,6 +228,10 @@ final class HostInteropErrors {
     }
 
     private static String[] formatArgs(PolyglotLanguageContext context, Object[] arguments) {
+        return formatArgs(context.context, arguments);
+    }
+
+    private static String[] formatArgs(PolyglotContextImpl context, Object[] arguments) {
         String[] formattedArgs = new String[arguments.length];
         for (int i = 0; i < arguments.length; i++) {
             formattedArgs[i] = getValueInfo(context, arguments[i]);
@@ -234,8 +239,16 @@ final class HostInteropErrors {
         return formattedArgs;
     }
 
-    static String getValueInfo(PolyglotLanguageContext languageContext, Object value) {
-        return PolyglotValue.getValueInfo(languageContext, value);
+    static String getValueInfo(PolyglotLanguageContext context, Object value) {
+        return PolyglotValue.getValueInfo(context != null ? context.context : null, value);
+    }
+
+    static String getValueInfo(HostContext context, Object value) {
+        return PolyglotValue.getValueInfo(context != null ? context.internalContext : null, value);
+    }
+
+    static String getValueInfo(PolyglotContextImpl context, Object value) {
+        return PolyglotValue.getValueInfo(context, value);
     }
 
     @TruffleBoundary

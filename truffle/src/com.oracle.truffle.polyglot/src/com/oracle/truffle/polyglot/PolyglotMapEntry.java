@@ -288,7 +288,7 @@ class PolyglotMapEntry<K, V> implements Map.Entry<K, V>, HostWrapper {
                         error.enter();
                         throw invalidArrayIndex(languageContext, receiver, e.getInvalidIndex());
                     }
-                    return toHost.execute(result, elementClass, elementType, languageContext, true);
+                    return toHost.execute(result, elementClass, elementType, languageContext.context.getHostContextImpl(), true);
                 } else {
                     error.enter();
                     throw unsupported(languageContext, receiver);

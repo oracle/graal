@@ -529,7 +529,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                             @Cached ToGuestValueNode toGuest) {
                 Object key = args[ARGUMENT_OFFSET];
                 if (interop.hasHashEntries(receiver)) {
-                    return interop.isHashEntryReadable(receiver, toGuest.execute(languageContext, key));
+                    return interop.isHashEntryReadable(receiver, toGuest.execute(languageContext.context.getHostContextImpl(), key));
                 }
                 if (cache.memberKey && interop.hasMembers(receiver)) {
                     if (isObjectKey(key)) {
@@ -623,7 +623,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                 Object result;
                 try {
                     if (interop.hasHashEntries(receiver)) {
-                        result = interop.readHashValue(receiver, toGuest.execute(languageContext, key));
+                        result = interop.readHashValue(receiver, toGuest.execute(languageContext.context.getHostContextImpl(), key));
                     } else if (cache.memberKey && interop.hasMembers(receiver)) {
                         if (isObjectKey(key)) {
                             result = interop.readMember(receiver, ((String) key));
@@ -643,7 +643,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                     error.enter();
                     return null;
                 }
-                return toHost.execute(result, cache.valueClass, cache.valueType, languageContext, true);
+                return toHost.execute(result, cache.valueClass, cache.valueType, languageContext.context.getHostContextImpl(), true);
             }
         }
 
@@ -665,11 +665,11 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                             @Cached ToGuestValueNode toGuest,
                             @Cached BranchProfile error) {
                 Object key = args[ARGUMENT_OFFSET];
-                Object guestValue = toGuest.execute(languageContext, args[ARGUMENT_OFFSET + 1]);
+                Object guestValue = toGuest.execute(languageContext.context.getHostContextImpl(), args[ARGUMENT_OFFSET + 1]);
                 try {
                     boolean supported = false;
                     if (interop.hasHashEntries(receiver)) {
-                        interop.writeHashEntry(receiver, toGuest.execute(languageContext, key), guestValue);
+                        interop.writeHashEntry(receiver, toGuest.execute(languageContext.context.getHostContextImpl(), key), guestValue);
                         return null;
                     } else if (cache.memberKey && interop.hasMembers(receiver)) {
                         supported = true;
@@ -731,7 +731,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                 try {
                     boolean supported = false;
                     if (interop.hasHashEntries(receiver)) {
-                        interop.removeHashEntry(receiver, toGuest.execute(languageContext, key));
+                        interop.removeHashEntry(receiver, toGuest.execute(languageContext.context.getHostContextImpl(), key));
                         return null;
                     } else if (cache.memberKey && interop.hasMembers(receiver)) {
                         supported = true;
@@ -786,8 +786,8 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                 try {
                     boolean supported = false;
                     if (interop.hasHashEntries(receiver)) {
-                        Object guestKey = toGuest.execute(languageContext, key);
-                        Object guestExcpectedValue = toGuest.execute(languageContext, expectedValue);
+                        Object guestKey = toGuest.execute(languageContext.context.getHostContextImpl(), key);
+                        Object guestExcpectedValue = toGuest.execute(languageContext.context.getHostContextImpl(), expectedValue);
                         Object readValue = interop.readHashValue(receiver, guestKey);
                         if (!equalsBoundary(guestExcpectedValue, readValue)) {
                             return false;
@@ -799,7 +799,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                         if (isObjectKey(key)) {
                             String member = (String) key;
                             Object readValue = interop.readMember(receiver, member);
-                            Object guestExpectedValue = toGuest.execute(languageContext, expectedValue);
+                            Object guestExpectedValue = toGuest.execute(languageContext.context.getHostContextImpl(), expectedValue);
                             if (!equalsBoundary(guestExpectedValue, readValue)) {
                                 return false;
                             }
@@ -811,7 +811,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                         if (isArrayKey(key)) {
                             int index = intValue(key);
                             Object readValue = interop.readArrayElement(receiver, index);
-                            Object guestExpectedValue = toGuest.execute(languageContext, expectedValue);
+                            Object guestExpectedValue = toGuest.execute(languageContext.context.getHostContextImpl(), expectedValue);
                             if (!equalsBoundary(guestExpectedValue, readValue)) {
                                 return false;
                             }
@@ -864,7 +864,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                         Type useKeyType = cache.keyType != null ? cache.keyType : Object.class;
                         Type useValueType = cache.valueType != null ? cache.valueType : Object.class;
                         genericType = new ParameterizedTypeImpl(Iterator.class, new ParameterizedTypeImpl(Map.Entry.class, useKeyType, useValueType));
-                        return toHost.execute(iterator, Iterator.class, genericType, languageContext, true);
+                        return toHost.execute(iterator, Iterator.class, genericType, languageContext.context.getHostContextImpl(), true);
                     } catch (UnsupportedMessageException e) {
                         error.enter();
                         throw HostInteropErrors.mapUnsupported(languageContext, receiver, getKeyType(), getValueType(), "iterator");

@@ -52,6 +52,11 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 
+import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
+import org.graalvm.polyglot.proxy.Proxy;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -68,6 +73,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.polyglot.HostAdapterFactory.AdapterResult;
 import com.oracle.truffle.polyglot.HostLanguage.HostContext;
@@ -77,10 +83,41 @@ import com.oracle.truffle.polyglot.HostLanguage.HostContext;
  */
 final class HostLanguage extends TruffleLanguage<HostContext> {
 
-    @CompilationFinal private volatile PolyglotEngineImpl internalEngine;
+    @CompilationFinal private GuestToHostCodeCache hostToGuestCodeCache;
+    @CompilationFinal HostClassCache hostClassCache; // effectively final
+    @CompilationFinal ClassLoader contextClassLoader;     // effectively final
 
-    HostToGuestCodeCache getHostToGuestCache() {
-        return internalEngine.getHostToGuestCodeCache();
+    HostLanguage() {
+        this.contextClassLoader = TruffleOptions.AOT ? null : Thread.currentThread().getContextClassLoader();
+    }
+
+    GuestToHostCodeCache getGuestToHostCache() {
+        GuestToHostCodeCache cache = this.hostToGuestCodeCache;
+        if (cache == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            hostToGuestCodeCache = cache = new GuestToHostCodeCache();
+        }
+        return cache;
+    }
+
+    void initializeHostAccess(HostAccess policy) {
+        assert policy != null;
+        HostClassCache cache = HostClassCache.findOrInitialize(PolyglotImpl.getInstance().getAPIAccess(), policy, contextClassLoader);
+
+        if (this.hostClassCache != null) {
+            if (this.hostClassCache.hostAccess.equals(cache.hostAccess)) {
+                /*
+                 * The cache can be effectively be reused if the same host access configuration
+                 * applies.
+                 */
+            } else {
+                throw PolyglotEngineException.illegalState("Found different host access configuration for a context with a shared engine. " +
+                                "The host access configuration must be the same for all contexts of an engine. " +
+                                "Provide the same host access configuration using the Context.Builder.allowHostAccess method when constructing the context.");
+            }
+        } else {
+            this.hostClassCache = cache;
+        }
     }
 
     static final class HostContext {
@@ -90,12 +127,28 @@ final class HostLanguage extends TruffleLanguage<HostContext> {
         private final Object topScope = new TopScopeObject(this);
         private volatile HostClassLoader classloader;
         private final HostLanguage language;
+        @SuppressWarnings("serial") final HostException stackoverflowError = new HostException(new StackOverflowError() {
+            @SuppressWarnings("sync-override")
+            @Override
+            public Throwable fillInStackTrace() {
+                return this;
+            }
+        }, this);
+
         final ClassValue<Map<List<Class<?>>, AdapterResult>> adapterCache = new ClassValue<Map<List<Class<?>>, AdapterResult>>() {
             @Override
             protected Map<List<Class<?>>, AdapterResult> computeValue(Class<?> type) {
                 return new ConcurrentHashMap<>();
             }
         };
+
+        public HostClassCache getHostClassCache() {
+            return language.hostClassCache;
+        }
+
+        GuestToHostCodeCache getGuestToHostCache() {
+            return language.getGuestToHostCache();
+        }
 
         HostContext(HostLanguage language) {
             this.language = language;
@@ -123,7 +176,7 @@ final class HostLanguage extends TruffleLanguage<HostContext> {
         HostClassLoader getClassloader() {
             if (classloader == null) {
                 ClassLoader parentClassLoader = internalContext.context.config.hostClassLoader != null ? internalContext.context.config.hostClassLoader
-                                : internalContext.getEngine().contextClassLoader;
+                                : language.contextClassLoader;
                 classloader = new HostClassLoader(this, parentClassLoader);
             }
             return classloader;
@@ -199,12 +252,53 @@ final class HostLanguage extends TruffleLanguage<HostContext> {
 
         void initializeInternal(PolyglotLanguageContext hostContext) {
             this.internalContext = hostContext;
-            PolyglotEngineImpl engine = this.language.internalEngine;
-            if (engine != null) {
-                assert engine == hostContext.getEngine();
-            }
-            this.language.internalEngine = hostContext.getEngine();
         }
+
+        <T extends Throwable> RuntimeException hostToGuestException(T e) {
+            return PolyglotImpl.hostToGuestException(this, e);
+        }
+
+        public Value asValue(Object value) {
+            return internalContext.asValue(value);
+        }
+
+        Object toGuestValue(Class<?> receiver) {
+            return HostObject.forClass(receiver, this);
+        }
+
+        private APIAccess getAPIAccess() {
+            return internalContext.getAPIAccess();
+        }
+
+        Object toGuestValue(Node parentNode, Object hostValue) {
+            if (hostValue instanceof Value) {
+                Value receiverValue = (Value) hostValue;
+                PolyglotValue valueImpl = (PolyglotValue) getAPIAccess().getDispatch(receiverValue);
+                PolyglotContextImpl valueContext = valueImpl.languageContext != null ? valueImpl.languageContext.context : null;
+                Object valueReceiver = getAPIAccess().getReceiver(receiverValue);
+                if (valueContext != this.internalContext.context) {
+                    valueReceiver = internalContext.migrateValue(parentNode, valueReceiver, valueContext);
+                }
+                return valueReceiver;
+            } else if (PolyglotImpl.isGuestPrimitive(hostValue)) {
+                return hostValue;
+            } else if (hostValue instanceof Proxy) {
+                return PolyglotProxy.toProxyGuestObject(this, (Proxy) hostValue);
+            } else if (hostValue instanceof TruffleObject) {
+                return hostValue;
+            } else if (hostValue instanceof Class) {
+                return HostObject.forClass((Class<?>) hostValue, this);
+            } else if (hostValue == null) {
+                return HostObject.NULL;
+            } else if (hostValue.getClass().isArray()) {
+                return HostObject.forObject(hostValue, this);
+            } else if (HostWrapper.isInstance(hostValue)) {
+                return internalContext.migrateHostWrapper(parentNode, HostWrapper.asInstance(hostValue));
+            } else {
+                return HostInteropReflect.asTruffleViaReflection(hostValue, this);
+            }
+        }
+
     }
 
     @SuppressWarnings("serial")
@@ -230,7 +324,7 @@ final class HostLanguage extends TruffleLanguage<HostContext> {
         } else {
             wrapped = value;
         }
-        return HostObject.forObject(wrapped, context.internalContext);
+        return HostObject.forObject(wrapped, context);
     }
 
     @Override
@@ -248,7 +342,7 @@ final class HostLanguage extends TruffleLanguage<HostContext> {
                 }
                 HostContext context = contextRef.get();
                 Class<?> allTarget = context.findClass(sourceString);
-                return context.internalContext.toGuestValue(allTarget);
+                return context.toGuestValue(allTarget);
             }
         });
     }
@@ -330,7 +424,7 @@ final class HostLanguage extends TruffleLanguage<HostContext> {
         @ExportMessage
         @TruffleBoundary
         Object readMember(String member) {
-            return HostObject.forStaticClass(context.findClass(member), context.internalContext);
+            return HostObject.forStaticClass(context.findClass(member), context);
         }
 
         @SuppressWarnings("static-method")

@@ -947,7 +947,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
     }
 
     HostContext getHostContextImpl() {
-        return (HostContext) getHostContext().getContextImpl();
+        return (HostContext) contextImpls[PolyglotEngineImpl.HOST_LANGUAGE_INDEX];
     }
 
     @Override
@@ -1306,7 +1306,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             } else {
                 targetLanguageContext = getHostContext();
             }
-            return targetLanguageContext.asValue(targetLanguageContext.toGuestValue(null, hostValue));
+            return targetLanguageContext.asValue(getHostContextImpl().toGuestValue(null, hostValue));
         } catch (Throwable e) {
             throw PolyglotImpl.guestToHostException(this.getHostContext(), e, true);
         } finally {

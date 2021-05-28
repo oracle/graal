@@ -72,6 +72,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.polyglot.HostAdapterFactory.AdapterResult;
+import com.oracle.truffle.polyglot.HostLanguage.HostContext;
 import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToGuestValuesNode;
 
 final class HostInteropReflect {
@@ -108,8 +109,8 @@ final class HostInteropReflect {
     }
 
     @CompilerDirectives.TruffleBoundary
-    static HostMethodDesc findMethod(PolyglotEngineImpl impl, Class<?> clazz, String name, boolean onlyStatic) {
-        HostClassDesc classDesc = HostClassDesc.forClass(impl, clazz);
+    static HostMethodDesc findMethod(HostContext context, Class<?> clazz, String name, boolean onlyStatic) {
+        HostClassDesc classDesc = HostClassDesc.forClass(context, clazz);
         HostMethodDesc foundMethod = classDesc.lookupMethod(name, onlyStatic);
         if (foundMethod == null && isSignature(name)) {
             foundMethod = classDesc.lookupMethodBySignature(name, onlyStatic);
@@ -121,14 +122,14 @@ final class HostInteropReflect {
     }
 
     @CompilerDirectives.TruffleBoundary
-    static HostFieldDesc findField(PolyglotEngineImpl impl, Class<?> clazz, String name, boolean onlyStatic) {
-        HostClassDesc classDesc = HostClassDesc.forClass(impl, clazz);
+    static HostFieldDesc findField(HostContext context, Class<?> clazz, String name, boolean onlyStatic) {
+        HostClassDesc classDesc = HostClassDesc.forClass(context, clazz);
         return classDesc.lookupField(name, onlyStatic);
     }
 
     @TruffleBoundary
     static boolean isReadable(HostObject object, Class<?> clazz, String name, boolean onlyStatic, boolean isClass) {
-        HostClassDesc classDesc = HostClassDesc.forClass(object.getEngine(), clazz);
+        HostClassDesc classDesc = HostClassDesc.forClass(object.context, clazz);
         HostMethodDesc foundMethod = classDesc.lookupMethod(name, onlyStatic);
         if (foundMethod != null) {
             return true;
@@ -168,7 +169,7 @@ final class HostInteropReflect {
 
     @TruffleBoundary
     static boolean isModifiable(HostObject object, Class<?> clazz, String name, boolean onlyStatic) {
-        HostClassDesc classDesc = HostClassDesc.forClass(object.getEngine(), clazz);
+        HostClassDesc classDesc = HostClassDesc.forClass(object.context, clazz);
         HostFieldDesc foundField = classDesc.lookupField(name, onlyStatic);
         if (foundField != null && !foundField.isFinal()) {
             return true;
@@ -178,7 +179,7 @@ final class HostInteropReflect {
 
     @TruffleBoundary
     static boolean isInvokable(HostObject object, Class<?> clazz, String name, boolean onlyStatic) {
-        HostClassDesc classDesc = HostClassDesc.forClass(object.getEngine(), clazz);
+        HostClassDesc classDesc = HostClassDesc.forClass(object.context, clazz);
         HostMethodDesc foundMethod = classDesc.lookupMethod(name, onlyStatic);
         if (foundMethod != null) {
             return true;
@@ -198,7 +199,7 @@ final class HostInteropReflect {
 
     @TruffleBoundary
     static boolean isInternal(HostObject object, Class<?> clazz, String name, boolean onlyStatic) {
-        HostClassDesc classDesc = HostClassDesc.forClass(object.getEngine(), clazz);
+        HostClassDesc classDesc = HostClassDesc.forClass(object.context, clazz);
         HostMethodDesc foundMethod = classDesc.lookupMethod(name, onlyStatic);
         if (foundMethod != null) {
             return false;
@@ -254,15 +255,15 @@ final class HostInteropReflect {
         return found;
     }
 
-    static Object asTruffleViaReflection(Object obj, PolyglotLanguageContext languageContext) {
+    static Object asTruffleViaReflection(Object obj, HostContext context) {
         if (obj instanceof Proxy) {
-            return asTruffleObjectProxy(obj, languageContext);
+            return asTruffleObjectProxy(obj, context);
         }
-        return HostObject.forObject(obj, languageContext);
+        return HostObject.forObject(obj, context);
     }
 
     @CompilerDirectives.TruffleBoundary
-    private static Object asTruffleObjectProxy(Object obj, PolyglotLanguageContext languageContext) {
+    private static Object asTruffleObjectProxy(Object obj, HostContext context) {
         if (Proxy.isProxyClass(obj.getClass())) {
             InvocationHandler h = Proxy.getInvocationHandler(obj);
             if (h instanceof FunctionProxyHandler) {
@@ -271,7 +272,7 @@ final class HostInteropReflect {
                 return ((ObjectProxyHandler) h).obj;
             }
         }
-        return HostObject.forObject(obj, languageContext);
+        return HostObject.forObject(obj, context);
     }
 
     @TruffleBoundary
@@ -280,24 +281,24 @@ final class HostInteropReflect {
     }
 
     @TruffleBoundary
-    static Object newAdapterInstance(Class<?> clazz, Object obj, PolyglotLanguageContext languageContext) throws IllegalArgumentException {
+    static Object newAdapterInstance(Class<?> clazz, Object obj, PolyglotLanguageContext context) throws IllegalArgumentException {
         if (TruffleOptions.AOT) {
             throw PolyglotEngineException.unsupported("Unsupported target type.");
         }
-
-        HostClassDesc classDesc = HostClassDesc.forClass(languageContext.getEngine(), clazz);
-        AdapterResult adapter = classDesc.getAdapter(languageContext.context.getHostContextImpl());
+        HostContext hostContext = context.context.getHostContextImpl();
+        HostClassDesc classDesc = HostClassDesc.forClass(hostContext, clazz);
+        AdapterResult adapter = classDesc.getAdapter(hostContext);
         if (!adapter.isAutoConvertible()) {
             throw PolyglotEngineException.illegalArgument("Cannot convert to " + clazz);
         }
         HostMethodDesc.SingleMethod adapterConstructor = adapter.getValueConstructor();
         Object[] arguments = new Object[]{obj};
         try {
-            return ((HostObject) HostExecuteNodeGen.getUncached().execute(adapterConstructor, null, arguments, languageContext)).obj;
+            return ((HostObject) HostExecuteNodeGen.getUncached().execute(adapterConstructor, null, arguments, hostContext)).obj;
         } catch (UnsupportedTypeException e) {
-            throw HostInteropErrors.invalidExecuteArgumentType(languageContext, null, e.getSuppliedValues());
+            throw HostInteropErrors.invalidExecuteArgumentType(context, null, e.getSuppliedValues());
         } catch (ArityException e) {
-            throw HostInteropErrors.invalidExecuteArity(languageContext, null, arguments, e.getExpectedMinArity(), e.getExpectedMaxArity(), e.getActualArity());
+            throw HostInteropErrors.invalidExecuteArity(context, null, arguments, e.getExpectedMinArity(), e.getExpectedMaxArity(), e.getActualArity());
         }
     }
 
@@ -317,8 +318,8 @@ final class HostInteropReflect {
     }
 
     @CompilerDirectives.TruffleBoundary
-    static String[] findUniquePublicMemberNames(PolyglotEngineImpl engine, Class<?> clazz, boolean isStatic, boolean isClass, boolean includeInternal) throws SecurityException {
-        HostClassDesc classDesc = HostClassDesc.forClass(engine, clazz);
+    static String[] findUniquePublicMemberNames(HostContext context, Class<?> clazz, boolean isStatic, boolean isClass, boolean includeInternal) throws SecurityException {
+        HostClassDesc classDesc = HostClassDesc.forClass(context, clazz);
         EconomicSet<String> names = EconomicSet.create();
         names.addAll(classDesc.getFieldNames(isStatic));
         names.addAll(classDesc.getMethodNames(isStatic, includeInternal));
@@ -622,7 +623,7 @@ class ObjectProxyNode extends HostToGuestRootNode {
     @Override
     protected Object executeImpl(PolyglotLanguageContext languageContext, Object receiver, Object[] args) {
         Method method = (Method) args[ARGUMENT_OFFSET];
-        Object[] arguments = toGuests.apply(languageContext, (Object[]) args[ARGUMENT_OFFSET + 1]);
+        Object[] arguments = toGuests.apply(languageContext.context.getHostContextImpl(), (Object[]) args[ARGUMENT_OFFSET + 1]);
         return proxyInvoke.execute(languageContext, receiver, method, arguments);
     }
 
@@ -682,7 +683,7 @@ abstract class ProxyInvokeNode extends Node {
                     @Cached("create()") ToHostNode toHost,
                     @Cached BranchProfile error) {
         Object result = invokeOrExecute(languageContext, receiver, arguments, name, receivers, members, branchProfile, error);
-        return toHost.execute(result, returnClass, returnType, languageContext, true);
+        return toHost.execute(result, returnClass, returnType, languageContext.context.getHostContextImpl(), true);
     }
 
     @TruffleBoundary

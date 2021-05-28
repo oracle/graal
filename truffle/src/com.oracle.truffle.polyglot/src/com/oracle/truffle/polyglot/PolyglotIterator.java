@@ -292,7 +292,7 @@ class PolyglotIterator<T> implements Iterator<T>, HostWrapper {
                         error.enter();
                         throw HostInteropErrors.iteratorConcurrentlyModified(languageContext, receiver, cache.valueType);
                     }
-                    return toHost.execute(next, cache.valueClass, cache.valueType, languageContext, true);
+                    return toHost.execute(next, cache.valueClass, cache.valueType, languageContext.context.getHostContextImpl(), true);
                 } catch (StopIterationException e) {
                     stop.enter();
                     if (lastHasNext == TriState.TRUE) {

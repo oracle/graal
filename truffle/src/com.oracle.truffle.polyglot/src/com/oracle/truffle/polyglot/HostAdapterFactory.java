@@ -59,13 +59,13 @@ import com.oracle.truffle.polyglot.HostLanguage.HostContext;
 final class HostAdapterFactory {
 
     @TruffleBoundary
-    static AdapterResult getAdapterClassFor(PolyglotEngineImpl engine, HostContext hostContext, Class<?>[] types, Object classOverrides) {
+    static AdapterResult getAdapterClassFor(HostContext hostContext, Class<?>[] types, Object classOverrides) {
         assert types.length > 0;
-        HostClassCache hostClassCache = engine.getHostClassCache();
+        HostClassCache hostClassCache = hostContext.getHostClassCache();
         HostClassLoader hostClassLoader = hostContext.getClassloader();
         if (classOverrides == null) {
             if (types.length == 1) {
-                HostClassDesc classDesc = HostClassDesc.forClass(engine, types[0]);
+                HostClassDesc classDesc = HostClassDesc.forClass(hostClassCache, types[0]);
                 return classDesc.getAdapter(hostContext);
             } else {
                 Map<List<Class<?>>, AdapterResult> map = hostContext.adapterCache.get(getTypeForCache(types));

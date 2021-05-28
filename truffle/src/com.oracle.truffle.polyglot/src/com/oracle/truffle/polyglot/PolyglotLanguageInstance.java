@@ -69,8 +69,8 @@ final class PolyglotLanguageInstance implements VMObject {
 
     private final PolyglotSourceCache sourceCache;
     final Map<Class<?>, InteropCodeCache> valueCodeCache;
-    final Map<Object, Object> hostInteropCodeCache;
 
+    final Map<Object, Object> hostToGuestCodeCache = new ConcurrentHashMap<>();
     private volatile OptionValuesImpl firstOptionValues;
     private volatile boolean multiContextInitialized;
     private final Assumption singleContext = Truffle.getRuntime().createAssumption("Single context per language instance.");
@@ -97,7 +97,6 @@ final class PolyglotLanguageInstance implements VMObject {
         this.language = language;
         this.sourceCache = new PolyglotSourceCache();
         this.valueCodeCache = new ConcurrentHashMap<>();
-        this.hostInteropCodeCache = new ConcurrentHashMap<>();
         try {
             this.spi = (TruffleLanguage<Object>) language.cache.loadLanguage();
             LANGUAGE.initializeLanguage(spi, language.info, language, this);

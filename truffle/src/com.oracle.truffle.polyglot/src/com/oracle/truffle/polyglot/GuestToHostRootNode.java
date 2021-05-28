@@ -47,6 +47,7 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.polyglot.HostLanguage.HostContext;
 
 abstract class GuestToHostRootNode extends RootNode {
 
@@ -83,7 +84,7 @@ abstract class GuestToHostRootNode extends RootNode {
         } catch (InteropException e) {
             throw silenceException(RuntimeException.class, e);
         } catch (Throwable e) {
-            throw PolyglotImpl.hostToGuestException((PolyglotLanguageContext) arguments[0], e);
+            throw ((HostContext) arguments[0]).hostToGuestException(e);
         }
     }
 

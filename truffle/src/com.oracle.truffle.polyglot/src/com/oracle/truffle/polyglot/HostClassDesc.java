@@ -70,8 +70,13 @@ import com.oracle.truffle.polyglot.HostMethodDesc.SingleMethod;
 
 final class HostClassDesc {
     @TruffleBoundary
-    static HostClassDesc forClass(PolyglotEngineImpl impl, Class<?> clazz) {
-        return impl.getHostClassCache().forClass(clazz);
+    static HostClassDesc forClass(HostContext context, Class<?> clazz) {
+        return context.getHostClassCache().forClass(clazz);
+    }
+
+    @TruffleBoundary
+    static HostClassDesc forClass(HostClassCache cache, Class<?> clazz) {
+        return cache.forClass(clazz);
     }
 
     private final Class<?> type;

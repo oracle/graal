@@ -193,7 +193,7 @@ final class HostClassCache {
 
     @TruffleBoundary
     public static HostClassCache forInstance(HostObject receiver) {
-        return receiver.getEngine().getHostClassCache();
+        return receiver.context.getHostClassCache();
     }
 
     @TruffleBoundary

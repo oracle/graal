@@ -52,6 +52,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.polyglot.HostLanguage.HostContext;
 import com.oracle.truffle.polyglot.TargetMappingNodeGen.SingleMappingNodeGen;
 
 @GenerateUncached
@@ -59,12 +60,12 @@ abstract class TargetMappingNode extends Node {
 
     public static final Object NO_RESULT = new Object();
 
-    abstract Object execute(Object value, Class<?> targetType, PolyglotLanguageContext languageContext, InteropLibrary interop, boolean checkOnly, int startPriority, int endPriority);
+    abstract Object execute(Object value, Class<?> targetType, HostContext hostContext, InteropLibrary interop, boolean checkOnly, int startPriority, int endPriority);
 
     @SuppressWarnings("unused")
     @Specialization(guards = "targetType != null")
     @ExplodeLoop
-    protected Object doCached(Object operand, Class<?> targetType, PolyglotLanguageContext context, InteropLibrary interop, boolean checkOnly, int startPriority, int endPriority,
+    protected Object doCached(Object operand, Class<?> targetType, HostContext context, InteropLibrary interop, boolean checkOnly, int startPriority, int endPriority,
                     @Cached(value = "getMappings(context, targetType)", dimensions = 1) PolyglotTargetMapping[] mappings,
                     @Cached(value = "createMappingNodes(mappings)") SingleMappingNode[] mappingNodes) {
         assert startPriority <= endPriority;
@@ -89,10 +90,10 @@ abstract class TargetMappingNode extends Node {
     @Specialization(replaces = "doCached")
     @SuppressWarnings("unused")
     @TruffleBoundary
-    protected Object doUncached(Object operand, Class<?> targetType, PolyglotLanguageContext context, InteropLibrary interop, boolean checkOnly, int startPriority, int endPriority) {
+    protected Object doUncached(Object operand, Class<?> targetType, HostContext hostContext, InteropLibrary interop, boolean checkOnly, int startPriority, int endPriority) {
         assert startPriority <= endPriority;
         Object result = NO_RESULT;
-        PolyglotTargetMapping[] mappings = getMappings(context, targetType);
+        PolyglotTargetMapping[] mappings = getMappings(hostContext, targetType);
         if (mappings != null) {
             SingleMappingNode uncachedNode = SingleMappingNodeGen.getUncached();
             for (int i = 0; i < mappings.length; i++) {
@@ -102,7 +103,7 @@ abstract class TargetMappingNode extends Node {
                 } else if (mapping.hostPriority > endPriority) {
                     break; // break because mappings are ordered by hostPriority
                 }
-                result = uncachedNode.execute(operand, mappings[i], context, interop, checkOnly);
+                result = uncachedNode.execute(operand, mappings[i], hostContext, interop, checkOnly);
                 if (result != NO_RESULT) {
                     break;
                 }
@@ -112,11 +113,11 @@ abstract class TargetMappingNode extends Node {
     }
 
     @TruffleBoundary
-    static PolyglotTargetMapping[] getMappings(PolyglotLanguageContext context, Class<?> targetType) {
-        if (context == null) {
+    static PolyglotTargetMapping[] getMappings(HostContext hostContext, Class<?> targetType) {
+        if (hostContext == null) {
             return HostClassCache.EMPTY_MAPPINGS;
         }
-        return context.getEngine().getHostClassCache().getMappings(targetType);
+        return hostContext.getHostClassCache().getMappings(targetType);
     }
 
     @TruffleBoundary
@@ -143,11 +144,11 @@ abstract class TargetMappingNode extends Node {
     @SuppressWarnings("unchecked")
     abstract static class SingleMappingNode extends Node {
 
-        abstract Object execute(Object receiver, PolyglotTargetMapping targetMapping, PolyglotLanguageContext context, InteropLibrary interop, boolean checkOnly);
+        abstract Object execute(Object receiver, PolyglotTargetMapping targetMapping, HostContext context, InteropLibrary interop, boolean checkOnly);
 
         @Specialization
         protected Object doDefault(Object receiver, @SuppressWarnings("unused") PolyglotTargetMapping cachedMapping,
-                        PolyglotLanguageContext context, InteropLibrary interop, boolean checkOnly,
+                        HostContext context, InteropLibrary interop, boolean checkOnly,
                         @Cached ConditionProfile acceptsProfile,
                         @Cached(value = "allowsImplementation(context, cachedMapping.sourceType)", allowUncached = true) boolean allowsImplementation,
                         @Cached ToHostNode toHostRecursive) {
@@ -171,28 +172,28 @@ abstract class TargetMappingNode extends Node {
             }
         }
 
-        static boolean allowsImplementation(PolyglotLanguageContext context, Class<?> type) {
+        static boolean allowsImplementation(HostContext context, Class<?> type) {
             return ToHostNode.allowsImplementation(context, type);
         }
 
         @TruffleBoundary
-        private static Object convert(PolyglotLanguageContext languageContext, Function<Object, Object> converter, Object value) {
+        private static Object convert(HostContext context, Function<Object, Object> converter, Object value) {
             try {
                 return converter.apply(value);
             } catch (ClassCastException t) {
                 // we allow class cast exceptions
                 throw PolyglotEngineException.classCast(t.getMessage());
             } catch (Throwable t) {
-                throw PolyglotImpl.hostToGuestException(languageContext, t);
+                throw context.hostToGuestException(t);
             }
         }
 
         @TruffleBoundary
-        private static boolean checkPredicate(PolyglotLanguageContext languageContext, Object convertedValue, Predicate<Object> predicate) {
+        private static boolean checkPredicate(HostContext context, Object convertedValue, Predicate<Object> predicate) {
             try {
                 return predicate.test(convertedValue);
             } catch (Throwable t) {
-                throw PolyglotImpl.hostToGuestException(languageContext, t);
+                throw context.hostToGuestException(t);
             }
         }
     }

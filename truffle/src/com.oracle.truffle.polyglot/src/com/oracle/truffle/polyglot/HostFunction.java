@@ -52,18 +52,19 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.utilities.TriState;
+import com.oracle.truffle.polyglot.HostLanguage.HostContext;
 
 @ExportLibrary(InteropLibrary.class)
 final class HostFunction implements TruffleObject {
 
-    final HostMethodDesc method;
     final Object obj;
-    final PolyglotLanguageContext languageContext;
+    final HostMethodDesc method;
+    final HostContext context;
 
-    HostFunction(HostMethodDesc method, Object obj, PolyglotLanguageContext languageContext) {
+    HostFunction(HostMethodDesc method, Object obj, HostContext context) {
         this.method = method;
         this.obj = obj;
-        this.languageContext = languageContext;
+        this.context = context;
     }
 
     public static boolean isInstance(TruffleObject obj) {
@@ -82,7 +83,7 @@ final class HostFunction implements TruffleObject {
 
     @ExportMessage
     Object execute(Object[] args, @Cached HostExecuteNode execute) throws UnsupportedTypeException, ArityException {
-        return execute.execute(method, obj, args, languageContext);
+        return execute.execute(method, obj, args, context);
     }
 
     @SuppressWarnings("static-method")
@@ -130,7 +131,7 @@ final class HostFunction implements TruffleObject {
     public boolean equals(Object o) {
         if (o instanceof HostFunction) {
             HostFunction other = (HostFunction) o;
-            return this.method == other.method && this.obj == other.obj && this.languageContext == other.languageContext;
+            return this.method == other.method && this.obj == other.obj && this.context == other.context;
         }
         return false;
     }
