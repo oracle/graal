@@ -44,11 +44,9 @@ import org.graalvm.nativebridge.jni.JNIMethodScope;
  */
 final class HSTruffleCompilationTask extends HSObject implements TruffleCompilationTask {
 
-    private final JNIMethodScope scope;
 
-    HSTruffleCompilationTask(JNIMethodScope scope, JObject handle) {
-        super(scope, handle);
-        this.scope = scope;
+    HSTruffleCompilationTask(JObject handle) {
+        super(JNIMethodScope.scope(), handle);
     }
 
     @TruffleFromLibGraal(IsCancelled)
@@ -66,6 +64,6 @@ final class HSTruffleCompilationTask extends HSObject implements TruffleCompilat
     @TruffleFromLibGraal(InliningData)
     @Override
     public TruffleInliningData inliningData() {
-        return new HSTruffleInliningData(scope, callInliningData(env(), getHandle()));
+        return new HSTruffleInliningData(JNIMethodScope.scope(), callInliningData(env(), getHandle()));
     }
 }
