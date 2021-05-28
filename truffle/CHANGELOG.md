@@ -16,6 +16,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Enabled by default the traversing compilation queue with dynamic thresholds, see `PolyglotCompilerOptions#TraversingCompilationQueue`, `PolyglotCompilerOptions#DynamicCompilationThresholds`, `PolyglotCompilerOptions#DynamicCompilerThresholdsMinScale`, `PolyglotCompilerOptions#DynamicCompilerThresholdsMinNormalLoad` and `PolyglotCompilerOptions#DynamicCompilerThresholdsMaxNormalLoad`.
 * Added `LoopConditionProfile#create()` as an alias of `createCountingProfile()` so it can be used like `@Cached LoopConditionProfile loopProfile`.
 * Enabled by default the traversing compilation queue with dynamic thresholds. See [the documentation](https://github.com/oracle/graal/blob/master/truffle/docs/TraversingCompilationQueue.md) for more information.
+* Added `DebuggerSession.createPrimitiveValue()` to create a `DebugValue` from a primitive value. Use it instead of `DebugValue.set(primitiveValue)` which is now deprecated.
 
 ## Version 21.1.0
 * Added methods into `Instrumenter` that create bindings to be attached later on. Added `EventBinding.attach()` method.
