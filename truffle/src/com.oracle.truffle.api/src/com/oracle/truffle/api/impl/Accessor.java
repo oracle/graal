@@ -1072,36 +1072,33 @@ public abstract class Accessor {
     private static final Accessor.JDKSupport JDKSERVICES = new JDKSupport();
 
     protected Accessor() {
-        switch (this.getClass().getName()) {
-            case "com.oracle.truffle.api.LanguageAccessor":
-            case "com.oracle.truffle.api.TruffleAccessor":
-            case "com.oracle.truffle.api.nodes.NodeAccessor":
-            case "com.oracle.truffle.api.instrumentation.InstrumentAccessor":
-            case "com.oracle.truffle.api.source.SourceAccessor":
-            case "com.oracle.truffle.api.interop.InteropAccessor":
-            case "com.oracle.truffle.api.exception.ExceptionAccessor":
-            case "com.oracle.truffle.api.io.IOAccessor":
-            case "com.oracle.truffle.api.frame.FrameAccessor":
-            case "com.oracle.truffle.polyglot.EngineAccessor":
-            case "com.oracle.truffle.api.utilities.JSONHelper.DumpAccessor":// OK, classes
-                                                                            // initializing
-                                                                            // accessors
-                break;
-            case "com.oracle.truffle.api.debug.Debugger$AccessorDebug":
-            case "com.oracle.truffle.tck.instrumentation.VerifierInstrument$TruffleTCKAccessor":
-            case "com.oracle.truffle.api.instrumentation.test.AbstractInstrumentationTest$TestAccessor":
-            case "com.oracle.truffle.api.test.polyglot.TestAPIAccessor":
-            case "com.oracle.truffle.api.impl.TVMCIAccessor":
-            case "com.oracle.truffle.api.impl.DefaultRuntimeAccessor":
-            case "org.graalvm.compiler.truffle.runtime.GraalRuntimeAccessor":
-            case "org.graalvm.compiler.truffle.runtime.debug.CompilerDebugAccessor":
-            case "com.oracle.truffle.api.dsl.DSLAccessor":
-            case "com.oracle.truffle.api.memory.MemoryFenceAccessor":
-            case "com.oracle.truffle.api.library.LibraryAccessor":// OK, classes allowed to use
-                                                                  // accessors
-                break;
-            default:
-                throw new IllegalStateException(this.getClass().getName());
+        String thisClassName = this.getClass().getName();
+        if ("com.oracle.truffle.api.LanguageAccessor".equals(thisClassName) ||
+                        "com.oracle.truffle.api.TruffleAccessor".equals(thisClassName) ||
+                        "com.oracle.truffle.api.nodes.NodeAccessor".equals(thisClassName) ||
+                        "com.oracle.truffle.api.instrumentation.InstrumentAccessor".equals(thisClassName) ||
+                        "com.oracle.truffle.api.source.SourceAccessor".equals(thisClassName) ||
+                        "com.oracle.truffle.api.interop.InteropAccessor".equals(thisClassName) ||
+                        "com.oracle.truffle.api.exception.ExceptionAccessor".equals(thisClassName) ||
+                        "com.oracle.truffle.api.io.IOAccessor".equals(thisClassName) ||
+                        "com.oracle.truffle.api.frame.FrameAccessor".equals(thisClassName) ||
+                        "com.oracle.truffle.polyglot.EngineAccessor".equals(thisClassName) ||
+                        "com.oracle.truffle.api.utilities.JSONHelper.DumpAccessor".equals(thisClassName)) {
+            // OK, classes initializing accessors
+        } else if ("com.oracle.truffle.api.debug.Debugger$AccessorDebug".equals(thisClassName) ||
+                        "com.oracle.truffle.tck.instrumentation.VerifierInstrument$TruffleTCKAccessor".equals(thisClassName) ||
+                        "com.oracle.truffle.api.instrumentation.test.AbstractInstrumentationTest$TestAccessor".equals(thisClassName) ||
+                        "com.oracle.truffle.api.test.polyglot.TestAPIAccessor".equals(thisClassName) ||
+                        "com.oracle.truffle.api.impl.TVMCIAccessor".equals(thisClassName) ||
+                        "com.oracle.truffle.api.impl.DefaultRuntimeAccessor".equals(thisClassName) ||
+                        "org.graalvm.compiler.truffle.runtime.GraalRuntimeAccessor".equals(thisClassName) ||
+                        "org.graalvm.compiler.truffle.runtime.debug.CompilerDebugAccessor".equals(thisClassName) ||
+                        "com.oracle.truffle.api.dsl.DSLAccessor".equals(thisClassName) ||
+                        "com.oracle.truffle.api.memory.MemoryFenceAccessor".equals(thisClassName) ||
+                        "com.oracle.truffle.api.library.LibraryAccessor".equals(thisClassName)) {
+            // OK, classes allowed to use accessors
+        } else {
+            throw new IllegalStateException(thisClassName);
         }
     }
 
