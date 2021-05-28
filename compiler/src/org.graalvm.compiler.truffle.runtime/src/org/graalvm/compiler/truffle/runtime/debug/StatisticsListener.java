@@ -35,8 +35,6 @@ import java.util.IntSummaryStatistics;
 import java.util.LongSummaryStatistics;
 import java.util.Map;
 import java.util.Objects;
-import java.util.SortedSet;
-import java.util.TreeSet;
 import java.util.function.Function;
 import java.util.logging.Level;
 
@@ -164,7 +162,8 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
     @Override
     public synchronized void onCompilationInvalidated(OptimizedCallTarget target, Object source, CharSequence reason) {
         invalidations++;
-        invalidatedReasons.accept(Arrays.asList(Objects.toString(reason)), target);
+        String useReason = reason == null ? "Unknown Reason" : reason.toString();
+        invalidatedReasons.accept(Arrays.asList(useReason), target);
     }
 
     @Override
@@ -443,9 +442,7 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
             if (normalize) {
                 normalize();
             }
-            SortedSet<T> sortedSet = new TreeSet<>(Comparator.comparing((T c) -> -types.get(c).getSum()));
-            sortedSet.addAll(types.keySet());
-            sortedSet.forEach(c -> {
+            types.keySet().stream().sorted(Comparator.comparing((T c) -> -types.get(c).getSum())).forEach(c -> {
                 String label = String.format("    %s", toStringFunction.apply(c));
                 TargetIntStatistics statistic = types.get(c);
                 if (onlyCount) {

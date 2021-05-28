@@ -968,12 +968,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     @Override
     public final String toString() {
-        CompilerAsserts.neverPartOfCompilation();
-        String superString = rootNode.toString();
-        if (sourceCallTarget != null) {
-            superString += " <split-" + Integer.toHexString(hashCode()) + ">";
-        }
-        return superString;
+        return getName();
     }
 
     /**
