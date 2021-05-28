@@ -45,7 +45,6 @@ import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.polyglot.HostLanguage.HostContext;
 
 final class HostInteropErrors {
 

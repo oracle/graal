@@ -43,7 +43,6 @@ package com.oracle.truffle.polyglot;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.polyglot.HostLanguage.HostContext;
 
 /**
  * Exception wrapper for an error occurred in the host language.

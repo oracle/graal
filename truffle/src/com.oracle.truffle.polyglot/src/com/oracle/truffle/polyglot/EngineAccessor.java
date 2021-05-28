@@ -108,7 +108,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.polyglot.HostAdapterFactory.AdapterResult;
-import com.oracle.truffle.polyglot.HostLanguage.HostContext;
 import com.oracle.truffle.polyglot.PolyglotImpl.VMObject;
 import com.oracle.truffle.polyglot.PolyglotLocals.InstrumentContextLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.InstrumentContextThreadLocal;
@@ -593,7 +592,7 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public Object lookupHostSymbol(Object polyglotLanguageContext, TruffleLanguage.Env env, String symbolName) {
-            HostLanguage.HostContext hostContext = ((PolyglotLanguageContext) polyglotLanguageContext).context.getHostContextImpl();
+            HostContext hostContext = ((PolyglotLanguageContext) polyglotLanguageContext).context.getHostContextImpl();
             Class<?> clazz = hostContext.findClass(symbolName);
             if (clazz == null) {
                 return null;
@@ -603,7 +602,7 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public Object asHostSymbol(Object polyglotLanguageContext, Class<?> symbolClass) {
-            HostLanguage.HostContext hostContext = ((PolyglotLanguageContext) polyglotLanguageContext).context.getHostContextImpl();
+            HostContext hostContext = ((PolyglotLanguageContext) polyglotLanguageContext).context.getHostContextImpl();
             return HostObject.forStaticClass(symbolClass, hostContext);
         }
 
@@ -935,7 +934,7 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public void addToHostClassPath(Object polyglotLanguageContext, TruffleFile entry) {
-            HostLanguage.HostContext hostContext = ((PolyglotLanguageContext) polyglotLanguageContext).context.getHostContextImpl();
+            HostContext hostContext = ((PolyglotLanguageContext) polyglotLanguageContext).context.getHostContextImpl();
             hostContext.addToHostClasspath(entry);
         }
 

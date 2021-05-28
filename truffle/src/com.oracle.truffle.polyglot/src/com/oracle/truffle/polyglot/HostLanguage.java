@@ -43,40 +43,22 @@ package com.oracle.truffle.polyglot;
 import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 
 import java.io.IOException;
-import java.lang.reflect.Array;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Predicate;
 
 import org.graalvm.polyglot.HostAccess;
-import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
-import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.polyglot.HostAdapterFactory.AdapterResult;
-import com.oracle.truffle.polyglot.HostLanguage.HostContext;
 
 /*
  * Java host language implementation.
@@ -120,189 +102,8 @@ final class HostLanguage extends TruffleLanguage<HostContext> {
         }
     }
 
-    static final class HostContext {
-
-        @CompilationFinal volatile PolyglotLanguageContext internalContext;
-        final Map<String, Class<?>> classCache = new HashMap<>();
-        private final Object topScope = new TopScopeObject(this);
-        private volatile HostClassLoader classloader;
-        private final HostLanguage language;
-        @SuppressWarnings("serial") final HostException stackoverflowError = new HostException(new StackOverflowError() {
-            @SuppressWarnings("sync-override")
-            @Override
-            public Throwable fillInStackTrace() {
-                return this;
-            }
-        }, this);
-
-        final ClassValue<Map<List<Class<?>>, AdapterResult>> adapterCache = new ClassValue<Map<List<Class<?>>, AdapterResult>>() {
-            @Override
-            protected Map<List<Class<?>>, AdapterResult> computeValue(Class<?> type) {
-                return new ConcurrentHashMap<>();
-            }
-        };
-
-        public HostClassCache getHostClassCache() {
-            return language.hostClassCache;
-        }
-
-        GuestToHostCodeCache getGuestToHostCache() {
-            return language.getGuestToHostCache();
-        }
-
-        HostContext(HostLanguage language) {
-            this.language = language;
-        }
-
-        @TruffleBoundary
-        Class<?> findClass(String className) {
-            checkHostAccessAllowed();
-
-            Class<?> loadedClass = classCache.get(className);
-            if (loadedClass == null) {
-                loadedClass = findClassImpl(className);
-                classCache.put(className, loadedClass);
-            }
-            assert loadedClass != null;
-            return loadedClass;
-        }
-
-        private void checkHostAccessAllowed() {
-            if (!internalContext.context.config.hostLookupAllowed) {
-                throw new HostLanguageException(String.format("Host class access is not allowed."));
-            }
-        }
-
-        HostClassLoader getClassloader() {
-            if (classloader == null) {
-                ClassLoader parentClassLoader = internalContext.context.config.hostClassLoader != null ? internalContext.context.config.hostClassLoader
-                                : language.contextClassLoader;
-                classloader = new HostClassLoader(this, parentClassLoader);
-            }
-            return classloader;
-        }
-
-        private Class<?> findClassImpl(String className) {
-            validateClass(className);
-            if (className.endsWith("[]")) {
-                Class<?> componentType = findClass(className.substring(0, className.length() - 2));
-                return Array.newInstance(componentType, 0).getClass();
-            }
-            Class<?> primitiveType = getPrimitiveTypeByName(className);
-            if (primitiveType != null) {
-                return primitiveType;
-            }
-            try {
-                ClassLoader classLoader = getClassloader();
-                Class<?> foundClass = classLoader.loadClass(className);
-                Object currentModule = EngineAccessor.JDKSERVICES.getUnnamedModule(classLoader);
-                if (EngineAccessor.JDKSERVICES.verifyModuleVisibility(currentModule, foundClass)) {
-                    return foundClass;
-                } else {
-                    throw new HostLanguageException(String.format("Access to host class %s is not allowed or does not exist.", className));
-                }
-            } catch (ClassNotFoundException e) {
-                throw new HostLanguageException(String.format("Access to host class %s is not allowed or does not exist.", className));
-            }
-        }
-
-        void validateClass(String className) {
-            Predicate<String> classFilter = internalContext.context.config.classFilter;
-            if (classFilter != null && !classFilter.test(className)) {
-                throw new HostLanguageException(String.format("Access to host class %s is not allowed.", className));
-            }
-        }
-
-        private static Class<?> getPrimitiveTypeByName(String className) {
-            switch (className) {
-                case "boolean":
-                    return boolean.class;
-                case "byte":
-                    return byte.class;
-                case "char":
-                    return char.class;
-                case "double":
-                    return double.class;
-                case "float":
-                    return float.class;
-                case "int":
-                    return int.class;
-                case "long":
-                    return long.class;
-                case "short":
-                    return short.class;
-                default:
-                    return null;
-            }
-        }
-
-        public void addToHostClasspath(TruffleFile classpathEntry) {
-            checkHostAccessAllowed();
-            if (TruffleOptions.AOT) {
-                throw new HostLanguageException(String.format("Cannot add classpath entry %s in native mode.", classpathEntry.getName()));
-            }
-            if (!internalContext.context.config.hostClassLoadingAllowed) {
-                throw new HostLanguageException(String.format("Host class loading is not allowed."));
-            }
-            if (FileSystems.hasNoIOFileSystem(classpathEntry)) {
-                throw new HostLanguageException("Host class loading is disabled without IO permissions.");
-            }
-            getClassloader().addClasspathRoot(classpathEntry);
-        }
-
-        void initializeInternal(PolyglotLanguageContext hostContext) {
-            this.internalContext = hostContext;
-        }
-
-        <T extends Throwable> RuntimeException hostToGuestException(T e) {
-            return PolyglotImpl.hostToGuestException(this, e);
-        }
-
-        public Value asValue(Object value) {
-            return internalContext.asValue(value);
-        }
-
-        Object toGuestValue(Class<?> receiver) {
-            return HostObject.forClass(receiver, this);
-        }
-
-        private APIAccess getAPIAccess() {
-            return internalContext.getAPIAccess();
-        }
-
-        Object toGuestValue(Node parentNode, Object hostValue) {
-            if (hostValue instanceof Value) {
-                Value receiverValue = (Value) hostValue;
-                PolyglotValue valueImpl = (PolyglotValue) getAPIAccess().getDispatch(receiverValue);
-                PolyglotContextImpl valueContext = valueImpl.languageContext != null ? valueImpl.languageContext.context : null;
-                Object valueReceiver = getAPIAccess().getReceiver(receiverValue);
-                if (valueContext != this.internalContext.context) {
-                    valueReceiver = internalContext.migrateValue(parentNode, valueReceiver, valueContext);
-                }
-                return valueReceiver;
-            } else if (PolyglotImpl.isGuestPrimitive(hostValue)) {
-                return hostValue;
-            } else if (hostValue instanceof Proxy) {
-                return PolyglotProxy.toProxyGuestObject(this, (Proxy) hostValue);
-            } else if (hostValue instanceof TruffleObject) {
-                return hostValue;
-            } else if (hostValue instanceof Class) {
-                return HostObject.forClass((Class<?>) hostValue, this);
-            } else if (hostValue == null) {
-                return HostObject.NULL;
-            } else if (hostValue.getClass().isArray()) {
-                return HostObject.forObject(hostValue, this);
-            } else if (HostWrapper.isInstance(hostValue)) {
-                return internalContext.migrateHostWrapper(parentNode, HostWrapper.asInstance(hostValue));
-            } else {
-                return HostInteropReflect.asTruffleViaReflection(hostValue, this);
-            }
-        }
-
-    }
-
     @SuppressWarnings("serial")
-    private static class HostLanguageException extends AbstractTruffleException {
+    static class HostLanguageException extends AbstractTruffleException {
 
         HostLanguageException(String message) {
             super(message);
@@ -374,104 +175,6 @@ final class HostLanguage extends TruffleLanguage<HostContext> {
     @Override
     protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
         return true;
-    }
-
-    @ExportLibrary(InteropLibrary.class)
-    static final class TopScopeObject implements TruffleObject {
-
-        private final HostContext context;
-
-        private TopScopeObject(HostContext context) {
-            this.context = context;
-        }
-
-        @SuppressWarnings("static-method")
-        @ExportMessage
-        boolean hasLanguage() {
-            return true;
-        }
-
-        @SuppressWarnings("static-method")
-        @ExportMessage
-        Class<? extends TruffleLanguage<?>> getLanguage() {
-            return HostLanguage.class;
-        }
-
-        @SuppressWarnings("static-method")
-        @ExportMessage
-        boolean isScope() {
-            return true;
-        }
-
-        @SuppressWarnings("static-method")
-        @ExportMessage
-        boolean hasMembers() {
-            return true;
-        }
-
-        @ExportMessage
-        @TruffleBoundary
-        Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-            return new ClassNamesObject(context.classCache.keySet());
-        }
-
-        @ExportMessage
-        @TruffleBoundary
-        boolean isMemberReadable(String member) {
-            return context.findClass(member) != null;
-        }
-
-        @ExportMessage
-        @TruffleBoundary
-        Object readMember(String member) {
-            return HostObject.forStaticClass(context.findClass(member), context);
-        }
-
-        @SuppressWarnings("static-method")
-        @ExportMessage
-        Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
-            return "Static Scope";
-        }
-    }
-
-    @ExportLibrary(InteropLibrary.class)
-    static final class ClassNamesObject implements TruffleObject {
-
-        final ArrayList<String> names;
-
-        private ClassNamesObject(Set<String> names) {
-            this.names = new ArrayList<>(names);
-        }
-
-        @SuppressWarnings("static-method")
-        @ExportMessage
-        boolean hasArrayElements() {
-            return true;
-        }
-
-        @ExportMessage
-        @TruffleBoundary
-        Object readArrayElement(long index) throws InvalidArrayIndexException {
-            if (index < 0L || index > Integer.MAX_VALUE) {
-                throw InvalidArrayIndexException.create(index);
-            }
-            try {
-                return names.get((int) index);
-            } catch (IndexOutOfBoundsException ioob) {
-                throw InvalidArrayIndexException.create(index);
-            }
-        }
-
-        @ExportMessage
-        @TruffleBoundary
-        long getArraySize() {
-            return names.size();
-        }
-
-        @ExportMessage
-        boolean isArrayElementReadable(long index) {
-            return index >= 0 && index < getArraySize();
-        }
     }
 
 }

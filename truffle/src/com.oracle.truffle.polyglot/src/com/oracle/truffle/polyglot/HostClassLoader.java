@@ -41,7 +41,7 @@
 package com.oracle.truffle.polyglot;
 
 import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.polyglot.HostLanguage.HostContext;
+
 import java.io.Closeable;
 import java.io.EOFException;
 import java.io.IOException;

@@ -51,7 +51,6 @@ import org.graalvm.polyglot.Value;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.polyglot.HostLanguage.HostContext;
 
 /**
  * A factory class that generates host adapter classes.

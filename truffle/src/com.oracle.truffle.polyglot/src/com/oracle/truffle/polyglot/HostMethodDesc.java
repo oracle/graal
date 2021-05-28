@@ -58,7 +58,6 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.polyglot.HostLanguage.HostContext;
 
 abstract class HostMethodDesc {
 

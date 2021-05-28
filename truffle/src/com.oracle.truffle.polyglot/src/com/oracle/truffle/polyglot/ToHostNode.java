@@ -75,7 +75,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.polyglot.HostLanguage.HostContext;
 
 @GenerateUncached
 abstract class ToHostNode extends Node {

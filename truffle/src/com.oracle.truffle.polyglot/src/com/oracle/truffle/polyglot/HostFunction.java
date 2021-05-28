@@ -52,7 +52,6 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.utilities.TriState;
-import com.oracle.truffle.polyglot.HostLanguage.HostContext;
 
 @ExportLibrary(InteropLibrary.class)
 final class HostFunction implements TruffleObject {
