@@ -44,7 +44,6 @@ import org.graalvm.nativebridge.jni.JNIMethodScope;
  */
 final class HSTruffleCompilationTask extends HSObject implements TruffleCompilationTask {
 
-
     HSTruffleCompilationTask(JObject handle) {
         super(JNIMethodScope.scope(), handle);
     }

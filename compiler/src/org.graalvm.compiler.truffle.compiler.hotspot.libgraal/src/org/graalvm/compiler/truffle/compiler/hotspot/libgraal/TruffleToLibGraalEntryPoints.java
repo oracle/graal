@@ -254,7 +254,7 @@ final class TruffleToLibGraalEntryPoints {
                 HotSpotTruffleCompilerImpl compiler = LibGraalObjectHandles.resolve(compilerHandle, HotSpotTruffleCompilerImpl.class);
                 TruffleDebugContext debugContext = LibGraalObjectHandles.resolve(debugContextHandle, TruffleDebugContext.class);
                 Map<String, Object> options = decodeOptions(env, hsOptions);
-                TruffleCompilationTask task = hsTask.isNull() ? null : new HSTruffleCompilationTask(scope, hsTask);
+                TruffleCompilationTask task = hsTask.isNull() ? null : new HSTruffleCompilationTask(hsTask);
                 TruffleCompilerListener listener = hsListener.isNull() ? null : new HSTruffleCompilerListener(scope, hsListener);
                 compiler.doCompile(debugContext, compilation, options, task, listener);
             }
