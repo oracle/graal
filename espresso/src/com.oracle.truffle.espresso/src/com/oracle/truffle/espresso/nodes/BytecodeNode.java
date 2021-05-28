@@ -412,10 +412,7 @@ public final class BytecodeNode extends EspressoMethodNode {
     private final LivenessAnalysis livenessAnalysis;
 
     private final OptimizedCallTarget[] osrTargets;
-    private final int startBCI;
     private volatile boolean canCompile = true;
-
-    private final boolean isOSRNode;
 
     private static final class EspressoOSRReturnException extends ControlFlowException {
         private static final long serialVersionUID = 117347248600170993L;
@@ -443,47 +440,11 @@ public final class BytecodeNode extends EspressoMethodNode {
         this.implicitExceptionProfile = false;
         this.livenessAnalysis = LivenessAnalysis.analyze(method.getMethod());
         this.osrTargets = new OptimizedCallTarget[bs.endBCI()];
-        this.startBCI = 0;
-        this.isOSRNode = false;
     }
 
     public BytecodeNode(BytecodeNode copy) {
         this(copy.getMethodVersion(), copy.getRootNode().getFrameDescriptor());
         getContext().getLogger().log(Level.FINE, "Copying node for {}", getMethod());
-    }
-
-    private synchronized BytecodeNode fromBCI(int startBCI) {
-        // TODO: Support shared references to the bytecode + quick node arrays. Right now, this is
-        // not possible. The interpreter is resilient to concurrent quickening, but synchronizes on
-        // the BytecodeNode owning the code to do this. When we create OSR BytecodeNodes with
-        // different startBCIs, we lose that safety. Thus, right now we have to atomically clone the
-        // bytecode and quick nodes when constructing an OSR BytecodeNode.
-        return new BytecodeNode(this.getMethodVersion(), primitivesSlot, refsSlot, bciSlot, noForeignObjects,
-                        implicitExceptionProfile, livenessAnalysis, startBCI, instrumentation,
-                        bs.cloneCode(), Arrays.copyOf(nodes, nodes.length), Arrays.copyOf(sparseNodes, sparseNodes.length));
-    }
-
-    private BytecodeNode(MethodVersion method, FrameSlot primitivesSlot, FrameSlot refsSlot, FrameSlot bciSlot,
-                    Assumption noForeignObjects, boolean implicitExceptionProfile, LivenessAnalysis livenessAnalysis,
-                    int startBCI, InstrumentationSupport instrumentation, byte[] code, BaseQuickNode[] nodes,
-                    BaseQuickNode[] sparseNodes) {
-        super(method);
-        CompilerAsserts.neverPartOfCompilation();
-        this.bs = new BytecodeStream(code);
-        this.stackOverflowErrorInfo = getMethod().getSOEHandlerInfo();
-        this.primitivesSlot = primitivesSlot;
-        this.refsSlot = refsSlot;
-        this.bciSlot = bciSlot;
-        this.noForeignObjects = noForeignObjects;
-        this.implicitExceptionProfile = implicitExceptionProfile;
-        this.livenessAnalysis = livenessAnalysis;
-        this.osrTargets = new OptimizedCallTarget[bs.endBCI()];
-        this.startBCI = startBCI;
-        this.isOSRNode = true;
-
-        this.instrumentation = instrumentation;
-        this.nodes = nodes;
-        this.sparseNodes = sparseNodes;
     }
 
     public SourceSection getSourceSectionAtBCI(int bci) {
@@ -690,14 +651,21 @@ public final class BytecodeNode extends EspressoMethodNode {
     // endregion Local accessors
 
     @Override
-    @ExplodeLoop
     void initializeBody(VirtualFrame frame) {
+        initializeBody(frame, false, 0);
+    }
+
+    @ExplodeLoop
+    private void initializeBody(VirtualFrame frame, boolean isOSR, int startBCI) {
+        CompilerAsserts.partialEvaluationConstant(isOSR);
+        CompilerAsserts.partialEvaluationConstant(startBCI);
         int slotCount = getMethod().getMaxLocals() + getMethod().getMaxStackSize();
         CompilerAsserts.partialEvaluationConstant(slotCount);
-        Object[] arguments = frame.getArguments();
         long[] primitives = new long[slotCount];
         Object[] refs = new Object[slotCount];
-        if (isOSRNode) {
+
+        Object[] arguments = frame.getArguments();
+        if (isOSR) {
             assert arguments.length == 2;
             long[] callerPrimitives = (long[]) arguments[0];
             Object[] callerRefs = (Object[]) arguments[1];
@@ -719,8 +687,18 @@ public final class BytecodeNode extends EspressoMethodNode {
     }
 
     @Override
-    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
     Object executeBody(VirtualFrame frame) {
+        return executeBodyFromBCI(frame, 0);
+    }
+
+    Object executeOSR(VirtualFrame frame, int startBCI) {
+        initializeBody(frame, true, startBCI);
+        return executeBodyFromBCI(frame, startBCI);
+    }
+
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
+    Object executeBodyFromBCI(VirtualFrame frame, int startBCI) {
+        CompilerAsserts.partialEvaluationConstant(startBCI);
         int curBCI = startBCI;
         int top = 0;
         final InstrumentationSupport instrument = this.instrumentation;
@@ -1759,9 +1737,9 @@ public final class BytecodeNode extends EspressoMethodNode {
         synchronized (osrTargets) {
             assert osrTargets[bci] == null;
 
-            BytecodeNode toCompile = this.fromBCI(bci);
             GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
-            OptimizedCallTarget osrTarget = runtime.createOSRCallTarget(getRoot().splitWithMethod(toCompile));
+            Object existing = getMethod().getCallTarget();
+            OptimizedCallTarget osrTarget = runtime.createOSRCallTarget(getRoot().makeOSRRootNode(bci));
 
             runtime.addListener(new GraalTruffleRuntimeListener() {
                 @Override

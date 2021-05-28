@@ -60,15 +60,6 @@ public final class BytecodeStream {
     }
 
     /**
-     * Returns a clone of the bytecode array.
-     *
-     * @return a clone of the bytecode array
-     */
-    public byte[] cloneCode() {
-        return code.clone();
-    }
-
-    /**
      * Gets the next bytecode index (no side-effects).
      *
      * @return the next bytecode index

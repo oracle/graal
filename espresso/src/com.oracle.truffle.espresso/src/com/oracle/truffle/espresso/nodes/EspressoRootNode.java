@@ -24,6 +24,8 @@ package com.oracle.truffle.espresso.nodes;
 
 import java.util.Arrays;
 
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -61,18 +63,26 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
 
     private final BranchProfile unbalancedMonitorProfile = BranchProfile.create();
 
+    private final boolean isOSR;
+    private final int startBCI;
+
     EspressoRootNode(FrameDescriptor frameDescriptor, EspressoBaseMethodNode methodNode, boolean usesMonitors) {
         super(methodNode.getMethod().getEspressoLanguage(), frameDescriptor);
         this.methodNode = methodNode;
         this.monitorSlot = usesMonitors ? frameDescriptor.addFrameSlot("monitor", FrameSlotKind.Object) : null;
         this.cookieSlot = frameDescriptor.addFrameSlot("cookie", FrameSlotKind.Object);
+        this.isOSR = false;
+        this.startBCI = 0;
     }
 
-    private EspressoRootNode(EspressoRootNode split, FrameDescriptor frameDescriptor, EspressoBaseMethodNode methodNode) {
+    private EspressoRootNode(EspressoRootNode split, FrameDescriptor frameDescriptor, EspressoBaseMethodNode methodNode,
+                             boolean isOSR, int startBCI) {
         super(methodNode.getMethod().getEspressoLanguage(), frameDescriptor);
         this.methodNode = methodNode;
         this.monitorSlot = split.monitorSlot;
         this.cookieSlot = split.cookieSlot;
+        this.isOSR = isOSR;
+        this.startBCI = startBCI;
     }
 
     public final Method getMethod() {
@@ -85,8 +95,19 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
 
     public abstract EspressoRootNode split();
 
-    // Split this node, retaining the same frame layout but using a different method node.
-    public abstract EspressoRootNode splitWithMethod(EspressoBaseMethodNode methodNode);
+    // Create an OSR version of this node starting at the given bytecode index.
+    public abstract EspressoRootNode makeOSRRootNode(int startBCI);
+
+    // Helper to dispatch to the methodNode, handling the case of an OSR invocation.
+    protected final Object doExecute(VirtualFrame frame) {
+        if (isOSR) {
+            // TODO: what if the node is instrumented? do we need to follow the chain of delegate nodes?
+            BytecodeNode bytecodeNode = (BytecodeNode) methodNode;
+            return bytecodeNode.executeOSR(frame, startBCI);
+        } else {
+            return methodNode.execute(frame);
+        }
+    }
 
     @Override
     public boolean isCloningAllowed() {
@@ -234,7 +255,11 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
         }
 
         Synchronized(Synchronized split, EspressoBaseMethodNode methodNode) {
-            super(split, split.getFrameDescriptor(), methodNode);
+            this(split, methodNode, false, 0);
+        }
+
+        Synchronized(Synchronized split, EspressoBaseMethodNode methodNode, boolean isOSR, int startBCI) {
+            super(split, split.getFrameDescriptor(), methodNode, isOSR, startBCI);
         }
 
         @Override
@@ -243,8 +268,8 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
         }
 
         @Override
-        public EspressoRootNode splitWithMethod(EspressoBaseMethodNode methodNode) {
-            return new Synchronized(this, methodNode);
+        public EspressoRootNode makeOSRRootNode(int startBCI) {
+            return new Synchronized(this, this.getMethodNode(), true, startBCI);
         }
 
         @Override
@@ -257,7 +282,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
             enterSynchronized(frame, monitor);
             Object result;
             try {
-                result = methodNode.execute(frame);
+                result = doExecute(frame);
             } finally {
                 InterpreterToVM.monitorExit(monitor, getMeta());
             }
@@ -279,7 +304,11 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
         }
 
         Default(Default split, EspressoBaseMethodNode methodNode) {
-            super(split, split.getFrameDescriptor(), methodNode);
+            this(split, methodNode, false, 0);
+        }
+
+        Default(Default split, EspressoBaseMethodNode methodNode, boolean isOSR, int startBCI) {
+            super(split, split.getFrameDescriptor(), methodNode, isOSR, startBCI);
         }
 
         @Override
@@ -288,8 +317,8 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
         }
 
         @Override
-        public EspressoRootNode splitWithMethod(EspressoBaseMethodNode methodNode) {
-            return new Default(this, methodNode);
+        public EspressoRootNode makeOSRRootNode(int startBCI) {
+            return new Default(this, this.getMethodNode(), true, startBCI);
         }
 
 
@@ -298,7 +327,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
             if (usesMonitors()) {
                 initMonitorStack(frame, new MonitorStack());
             }
-            return methodNode.execute(frame);
+            return doExecute(frame);
         }
     }
 
