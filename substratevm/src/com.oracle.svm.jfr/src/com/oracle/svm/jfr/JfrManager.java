@@ -29,12 +29,11 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.option.RuntimeOptionKey;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.UserError.UserException;
 import com.oracle.svm.core.util.VMError;
@@ -67,15 +66,15 @@ public class JfrManager {
     }
 
     void setup() {
-        parseFlightRecorderLogging(Options.FlightRecorderLogging.getValue());
-        if (Options.FlightRecorder.getValue()) {
+        parseFlightRecorderLogging(SubstrateOptions.FlightRecorderLogging.getValue());
+        if (SubstrateOptions.FlightRecorder.getValue()) {
             periodicEventSetup();
             initRecording();
         }
     }
 
     void teardown() {
-        if (Options.FlightRecorder.getValue()) {
+        if (SubstrateOptions.FlightRecorder.getValue()) {
             // Everything should already have been torn down by JVM.destroyJFR(), which is called in
             // a shutdown hook.
             assert !SubstrateJVM.isInitialized();
@@ -121,7 +120,7 @@ public class JfrManager {
 
     private static Map<JfrStartArgument, String> parseStartFlightRecording() {
         Map<JfrStartArgument, String> optionsMap = new HashMap<>();
-        String text = Options.StartFlightRecording.getValue();
+        String text = SubstrateOptions.StartFlightRecording.getValue();
         if (!text.isEmpty()) {
             JfrStartArgument[] possibleArguments = JfrStartArgument.values();
             String[] options = text.split(",");
@@ -129,7 +128,7 @@ public class JfrManager {
                 String[] keyVal = option.split("=");
                 JfrStartArgument arg = findArgument(possibleArguments, keyVal[0]);
                 if (arg == null) {
-                    throw UserError.abort("Unknown argument '" + keyVal[0] + "' in " + Options.StartFlightRecording.getName());
+                    throw UserError.abort("Unknown argument '" + keyVal[0] + "' in " + SubstrateOptions.StartFlightRecording.getName());
                 }
                 optionsMap.put(arg, keyVal[1]);
             }
@@ -233,17 +232,6 @@ public class JfrManager {
             }
         }
         return null;
-    }
-
-    public static class Options {
-        @Option(help = "Enable Java Flight Recorder.")//
-        public static final RuntimeOptionKey<Boolean> FlightRecorder = new RuntimeOptionKey<>(false);
-
-        @Option(help = "Start flight recording with options.")//
-        public static final RuntimeOptionKey<String> StartFlightRecording = new RuntimeOptionKey<>("");
-
-        @Option(help = "file:doc-files/FlightRecorderLoggingHelp.txt")//
-        public static final RuntimeOptionKey<String> FlightRecorderLogging = new RuntimeOptionKey<>("all=warning");
     }
 
     private enum JfrStartArgument {

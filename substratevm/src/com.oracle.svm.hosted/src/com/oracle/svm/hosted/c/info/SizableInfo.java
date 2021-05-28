@@ -97,6 +97,7 @@ public abstract class SizableInfo extends ElementInfo {
     }
 
     public final PropertyInfo<SignednessValue> getSignednessInfo() {
+        assert signednessInfo != null;
         return signednessInfo;
     }
 

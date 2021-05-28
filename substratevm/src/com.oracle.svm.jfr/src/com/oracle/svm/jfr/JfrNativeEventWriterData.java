@@ -60,7 +60,8 @@ public interface JfrNativeEventWriterData extends PointerBase {
     void setStartPos(Pointer value);
 
     /**
-     * Gets the current position of the event write. This position is moved forward as data is written for an event
+     * Gets the current position of the event write. This position is moved forward as data is
+     * written for an event
      */
     @RawField
     Pointer getCurrentPos();
@@ -72,7 +73,8 @@ public interface JfrNativeEventWriterData extends PointerBase {
     void setCurrentPos(Pointer value);
 
     /**
-     * Returns the end position for the current event write. Writing of data cannot exceed this position.
+     * Returns the end position for the current event write. Writing of data cannot exceed this
+     * position.
      */
     @RawField
     Pointer getEndPos();
