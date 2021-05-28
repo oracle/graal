@@ -103,14 +103,14 @@ class HostedBytecodeParser extends SubstrateBytecodeParser {
 
     @Override
     protected BciBlockMapping generateBlockMap() {
-        if (isMethodDeoptTarget()) {
+        if (isDeoptimizationEnabled() && isMethodDeoptTarget()) {
             /*
              * Need to add blocks representing where deoptimization entrypoint nodes will be
              * inserted.
              */
-            return HostedBciBlockMapping.create(stream, code, options, graph.getDebug());
+            return HostedBciBlockMapping.create(stream, code, options, graph.getDebug(), false);
         } else {
-            return BciBlockMapping.create(stream, code, options, graph.getDebug());
+            return BciBlockMapping.create(stream, code, options, graph.getDebug(), asyncExceptionLiveness());
         }
     }
 
@@ -397,14 +397,14 @@ final class HostedBciBlockMapping extends BciBlockMapping {
      * Creates a BciBlockMapping with blocks explicitly representing where DeoptEntryNodes and
      * DeoptProxyAnchorNodes are to be inserted.
      */
-    public static BciBlockMapping create(BytecodeStream stream, Bytecode code, OptionValues options, DebugContext debug) {
+    public static BciBlockMapping create(BytecodeStream stream, Bytecode code, OptionValues options, DebugContext debug, boolean hasAsyncExceptions) {
         BciBlockMapping map = new HostedBciBlockMapping(code, debug);
-        buildMap(stream, code, options, debug, map);
+        buildMap(stream, code, options, debug, map, hasAsyncExceptions);
         return map;
     }
 
     @Override
-    protected BciBlock getInstructionBlock(BciBlock[] blockMap, int bci) {
+    protected BciBlock getInstructionBlock(int bci) {
         /*
          * DeoptBciBlocks are not instruction blocks; they only represent places where
          * DeoptEntryNodes and DeoptProxyAnchorNodes are to be inserted. For a given bci, if a
@@ -429,7 +429,7 @@ final class HostedBciBlockMapping extends BciBlockMapping {
 
     /* A new block must be created for all places where a DeoptEntryNode will be inserted. */
     @Override
-    protected boolean isStartOfNewBlock(BciBlock[] blockMap, BciBlock current, int bci) {
+    protected boolean isStartOfNewBlock(BciBlock current, int bci) {
         /*
          * Checking whether a DeoptEntryPoint will be created for this spot.
          */
@@ -437,7 +437,7 @@ final class HostedBciBlockMapping extends BciBlockMapping {
             return true;
         }
 
-        return super.isStartOfNewBlock(blockMap, current, bci);
+        return super.isStartOfNewBlock(current, bci);
     }
 
     private void recordInsertedBlock(DeoptEntryInsertionPoint block) {
@@ -450,7 +450,7 @@ final class HostedBciBlockMapping extends BciBlockMapping {
      * deoptimization entrypoint.
      */
     @Override
-    protected void addInvokeNormalSuccessor(BciBlock[] blockMap, int invokeBci, BciBlock sux) {
+    protected void addInvokeNormalSuccessor(int invokeBci, BciBlock sux) {
         if (sux.isExceptionEntry()) {
             throw new PermanentBailoutException("Exception handler can be reached by both normal and exceptional control flow");
         }
@@ -466,20 +466,20 @@ final class HostedBciBlockMapping extends BciBlockMapping {
             if (!(sux instanceof DeoptBciBlock)) {
                 DeoptBciBlock proxyBlock = DeoptBciBlock.createDeoptProxy(sux.getStartBci(), invokeBci);
                 recordInsertedBlock(proxyBlock);
-                getInstructionBlock(blockMap, invokeBci).addSuccessor(proxyBlock);
+                getInstructionBlock(invokeBci).addSuccessor(proxyBlock);
                 proxyBlock.addSuccessor(sux);
                 return;
             }
 
         }
-        super.addInvokeNormalSuccessor(blockMap, invokeBci, sux);
+        super.addInvokeNormalSuccessor(invokeBci, sux);
     }
 
     /**
      * Adding new {@link DeoptBciBlock} for a bci which needs an explicit DeoptEntryNode.
      */
     @Override
-    protected BciBlock processNewBciBlock(BciBlock[] blockMap, int bci, BciBlock newBlock) {
+    protected BciBlock processNewBciBlock(int bci, BciBlock newBlock) {
         if (needsDeoptEntryBlock(bci, false, false)) {
             DeoptBciBlock deoptBciBlock = DeoptBciBlock.createDeoptEntry(bci);
             recordInsertedBlock(deoptBciBlock);
