@@ -1738,8 +1738,13 @@ public final class BytecodeNode extends EspressoMethodNode {
             assert osrTargets[bci] == null;
 
             GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
-            Object existing = getMethod().getCallTarget();
-            OptimizedCallTarget osrTarget = runtime.createOSRCallTarget(getRoot().makeOSRRootNode(bci));
+            EspressoRootNode osrRootNode = getRoot().makeOSRRootNode(bci);
+            // TODO: this is a hack to prevent call target creation from adopting this BytecodeNode.
+            // Once we get to a Truffle OSR API we can get rid of this.
+            assert osrRootNode.methodNode == this;
+            osrRootNode.methodNode = null;
+            OptimizedCallTarget osrTarget = runtime.createOSRCallTarget(osrRootNode);
+            osrRootNode.methodNode = this;
 
             runtime.addListener(new GraalTruffleRuntimeListener() {
                 @Override
