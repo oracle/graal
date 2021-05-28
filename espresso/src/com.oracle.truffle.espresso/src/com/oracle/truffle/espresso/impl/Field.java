@@ -329,7 +329,8 @@ public final class Field extends Member<Type> implements FieldRef {
             if (staticObject == StaticObject.NULL || resolveTypeKlass().isAssignableFrom((((StaticObject) value).getKlass()))) {
                 setObjectHelper(obj, value, forceVolatile);
             } else {
-                // we don't allow to write a value that is incompatible with the current declared field type
+                // we don't allow to write a value that is incompatible
+                // with the current declared field type
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 Meta meta = resolveTypeKlass().getContext().getMeta();
                 throw meta.throwException(meta.java_lang_IncompatibleClassChangeError);
@@ -818,8 +819,8 @@ public final class Field extends Member<Type> implements FieldRef {
                     tk = typeKlassCache;
                     if (tk == null) {
                         tk = holder.getMeta().resolveSymbolOrFail(type,
-                                holder.getDefiningClassLoader(),
-                                holder.protectionDomain());
+                                        holder.getDefiningClassLoader(),
+                                        holder.protectionDomain());
                         typeKlassCache = tk;
                     }
                 }

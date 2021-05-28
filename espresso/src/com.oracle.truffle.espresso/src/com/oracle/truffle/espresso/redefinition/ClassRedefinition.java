@@ -290,10 +290,11 @@ public final class ClassRedefinition {
                 ParserField newField = newFields[j];
                 // first look for a perfect match
                 if (isUnchangedField(oldField, newField)) {
-                    // A nested anonymous inner class may contain a field reference to the outer class instance.
-                    // Since we match against the patched (inner class rename rules applied) if the current class
-                    // was patched (renamed) the resulting outer field pointer will have a changed type. Hence
-                    // we should mark it as a changed object type field.
+                    // A nested anonymous inner class may contain a field reference to the outer
+                    // class instance. Since we match against the patched (inner class rename rules
+                    // applied) if the current class was patched (renamed) the resulting outer
+                    // field pointer will have a changed type. Hence we should mark it as a changed
+                    // object type field.
                     Matcher matcher = InnerClassRedefiner.ANON_INNER_CLASS_PATTERN.matcher(oldField.getType().toString());
                     if (isPatched && matcher.matches()) {
                         collectedChanges.addObjectTypeFieldChange(oldField, finalParserKlass.getFields()[i]);
