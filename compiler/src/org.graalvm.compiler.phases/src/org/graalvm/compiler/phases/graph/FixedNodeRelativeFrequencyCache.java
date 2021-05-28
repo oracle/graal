@@ -42,6 +42,7 @@ import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.StartNode;
+import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 
 /**
  * Compute relative frequencies for fixed nodes on the fly and cache them at
@@ -101,10 +102,12 @@ public class FixedNodeRelativeFrequencyCache implements ToDoubleFunction<FixedNo
             return cachedValue;
         }
 
+        ControlFlowGraph cfg = ControlFlowGraph.compute(node.graph(), false, false, false, false);
+
         double relativeFrequency = 0.0;
         if (current.predecessor() == null) {
             if (current instanceof AbstractMergeNode) {
-                relativeFrequency = handleMerge(current, relativeFrequency);
+                relativeFrequency = handleMerge(current, relativeFrequency, cfg);
             } else {
                 assert current instanceof StartNode;
                 relativeFrequency = 1D;
@@ -118,7 +121,7 @@ public class FixedNodeRelativeFrequencyCache implements ToDoubleFunction<FixedNo
         return relativeFrequency;
     }
 
-    private double handleMerge(FixedNode current, double relativeFrequency) {
+    private double handleMerge(FixedNode current, double relativeFrequency, ControlFlowGraph cfg) {
         double result = relativeFrequency;
         AbstractMergeNode currentMerge = (AbstractMergeNode) current;
         NodeInputList<EndNode> currentForwardEnds = currentMerge.forwardEnds();
@@ -130,7 +133,7 @@ public class FixedNodeRelativeFrequencyCache implements ToDoubleFunction<FixedNo
             result += applyAsDouble(endNode);
         }
         if (current instanceof LoopBeginNode) {
-            result = multiplyRelativeFrequencies(result, ((LoopBeginNode) current).loopFrequency());
+            result = multiplyRelativeFrequencies(result, cfg.localLoopFrequency(((LoopBeginNode) current)));
         }
         return result;
     }

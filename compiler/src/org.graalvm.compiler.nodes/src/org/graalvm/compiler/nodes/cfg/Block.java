@@ -39,6 +39,7 @@ import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopEndNode;
 import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
+import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
@@ -51,7 +52,8 @@ public final class Block extends AbstractBlockBase<Block> {
 
     protected FixedNode endNode;
 
-    protected double relativeFrequency;
+    protected double relativeFrequency = -1D;
+    protected ProfileSource frequencySource;
     private Loop<Block> loop;
 
     protected Block postdominator;
@@ -192,7 +194,13 @@ public final class Block extends AbstractBlockBase<Block> {
     public String toString(Verbosity verbosity) {
         StringBuilder sb = new StringBuilder();
         sb.append('B').append(id);
-        if (verbosity != Verbosity.Id) {
+        if (verbosity == Verbosity.Name) {
+            sb.append("{");
+            sb.append(getBeginNode());
+            sb.append("->");
+            sb.append(getEndNode());
+            sb.append("}");
+        } else if (verbosity != Verbosity.Id) {
             if (isLoopHeader()) {
                 sb.append(" lh");
             }
@@ -299,8 +307,16 @@ public final class Block extends AbstractBlockBase<Block> {
     }
 
     public void setRelativeFrequency(double relativeFrequency) {
-        assert relativeFrequency >= 0 && Double.isFinite(relativeFrequency);
+        assert relativeFrequency >= 0 && Double.isFinite(relativeFrequency) : "Relative Frequency=" + relativeFrequency;
         this.relativeFrequency = relativeFrequency;
+    }
+
+    public void setFrequencySource(ProfileSource frequencySource) {
+        this.frequencySource = frequencySource;
+    }
+
+    public ProfileSource getFrequencySource() {
+        return frequencySource;
     }
 
     @Override

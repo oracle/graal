@@ -46,6 +46,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
+import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.IntegerBelowNode;
@@ -435,7 +436,8 @@ public class SpeculativeGuardMovementPhase extends BasePhase<MidTierContext> {
                         loopFreqThreshold++;
                     }
                 }
-                if (loopBeginNode.loopFrequency() < loopFreqThreshold) {
+                if (ProfileSource.isTrusted(loopEx.localFrequencySource()) &&
+                                loopEx.localLoopFrequency() < loopFreqThreshold) {
                     debug.log("shouldOptimizeCompare(%s):loop frequency too low.", guard);
                     // loop frequency is too low -- the complexity introduced by hoisting this guard
                     // will not pay off.

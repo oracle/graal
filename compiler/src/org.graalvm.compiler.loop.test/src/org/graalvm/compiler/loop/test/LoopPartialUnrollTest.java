@@ -35,7 +35,6 @@ import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
-import org.graalvm.compiler.java.ComputeLoopFrequenciesClosure;
 import org.graalvm.compiler.loop.phases.LoopPartialUnrollPhase;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -315,7 +314,6 @@ public class LoopPartialUnrollTest extends GraalCompilerTest {
             new FloatingReadPhase().apply(graph);
             new DeadCodeEliminationPhase().apply(graph);
             new ConditionalEliminationPhase(true).apply(graph, context);
-            ComputeLoopFrequenciesClosure.compute(graph);
             new GuardLoweringPhase().apply(graph, context);
             new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.MID_TIER).apply(graph, context);
             new FrameStateAssignmentPhase().apply(graph);

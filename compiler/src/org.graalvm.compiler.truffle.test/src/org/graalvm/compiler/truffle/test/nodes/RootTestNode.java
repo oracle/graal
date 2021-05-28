@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.truffle.test.nodes;
 
+import org.graalvm.compiler.api.directives.GraalDirectives;
+
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.NodeInfo;
@@ -35,6 +37,7 @@ public class RootTestNode extends RootNode {
     private final String name;
     private final boolean internal;
     private final boolean captureFramesForTrace;
+    private final boolean cfgAnchorBeforeReturn;
 
     @Child private AbstractTestNode node;
 
@@ -46,17 +49,30 @@ public class RootTestNode extends RootNode {
         this(descriptor, name, node, false, false);
     }
 
+    public RootTestNode(FrameDescriptor descriptor, String name, AbstractTestNode node, boolean cfgAnchorBeforeReturn) {
+        this(descriptor, name, node, false, false, cfgAnchorBeforeReturn);
+    }
+
     public RootTestNode(FrameDescriptor descriptor, String name, AbstractTestNode node, boolean internal, boolean captureFramesForTrace) {
+        this(descriptor, name, node, captureFramesForTrace, internal, false);
+    }
+
+    public RootTestNode(FrameDescriptor descriptor, String name, AbstractTestNode node, boolean internal, boolean captureFramesForTrace, boolean cfgAnchorBeforeReturn) {
         super(null, descriptor);
         this.name = name;
         this.node = node;
         this.internal = internal;
         this.captureFramesForTrace = captureFramesForTrace;
+        this.cfgAnchorBeforeReturn = cfgAnchorBeforeReturn;
     }
 
     @Override
     public Object execute(VirtualFrame frame) {
-        return node.execute(frame);
+        Object o = node.execute(frame);
+        if (cfgAnchorBeforeReturn) {
+            GraalDirectives.controlFlowAnchor();
+        }
+        return o;
     }
 
     @Override

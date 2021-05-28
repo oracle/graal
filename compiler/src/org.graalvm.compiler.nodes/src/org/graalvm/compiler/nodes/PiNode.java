@@ -231,6 +231,15 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
         if (value != null) {
             return value;
         }
+        if (tool.allUsagesAvailable()) {
+            for (Node usage : usages()) {
+                if (!(usage instanceof VirtualState)) {
+                    return this;
+                }
+            }
+            // Only state usages: for them a more precise stamp does not matter.
+            return object;
+        }
         return this;
     }
 
