@@ -51,10 +51,6 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import sun.misc.Unsafe;
 
-/**
- * I think that most of the code in this class is unnecessary and can be implemented in a different
- * way (i.e., without a SubstitutionProcessor).
- */
 @Platforms(Platform.HOSTED_ONLY.class)
 public class JfrEventSubstitution extends SubstitutionProcessor {
 

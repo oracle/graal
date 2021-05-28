@@ -441,7 +441,7 @@ def native_unittests_task():
         # GR-24075
         mx_unittest.add_global_ignore_glob('com.oracle.svm.test.ProcessPropertiesTest')
 
-    native_unittest(['--build-args', _native_unittest_features])
+    native_unittest(['--build-args', '-H:+AllowVMInspection', _native_unittest_features])
 
 
 def javac_image_command(javac_path):

@@ -29,9 +29,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 
 @TargetClass(value = jdk.jfr.internal.EventWriter.class, onlyWith = JfrEnabled.class)
 public final class Target_jdk_jfr_internal_EventWriter {
-    @Alias
-    @SuppressWarnings("unused")
-    boolean notified;
+    @Alias @SuppressWarnings("unused") boolean notified;
 
     @Alias
     @SuppressWarnings("unused")

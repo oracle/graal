@@ -50,7 +50,6 @@ public class JfrTraceId {
 
     private static final long JDK_JFR_EVENT_SUBCLASS = 16;
     private static final long JDK_JFR_EVENT_CLASS = 32;
-    private static final long EVENT_HOST_KLASS = 64;
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void tag(Class<?> clazz, long bits) {
