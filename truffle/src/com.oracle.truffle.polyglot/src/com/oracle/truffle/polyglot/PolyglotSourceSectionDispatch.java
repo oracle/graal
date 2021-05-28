@@ -41,13 +41,13 @@
 package com.oracle.truffle.polyglot;
 
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractSourceSectionImpl;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractSourceSectionDispatch;
 
 import com.oracle.truffle.api.source.SourceSection;
 
-class PolyglotSourceSection extends AbstractSourceSectionImpl {
+class PolyglotSourceSectionDispatch extends AbstractSourceSectionDispatch {
 
-    protected PolyglotSourceSection(AbstractPolyglotImpl engineImpl) {
+    protected PolyglotSourceSectionDispatch(AbstractPolyglotImpl engineImpl) {
         super(engineImpl);
     }
 

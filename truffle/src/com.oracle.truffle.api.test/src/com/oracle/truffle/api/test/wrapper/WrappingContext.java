@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,44 +38,14 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.polyglot.management;
+package com.oracle.truffle.api.test.wrapper;
 
-import java.lang.reflect.Method;
+public final class WrappingContext {
 
-import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractManagementDispatch;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.ManagementAccess;
+    final Object delegate;
 
-/*
- * Class to manage package access.
- */
-final class Management {
-
-    private Management() {
-    }
-
-    static final AbstractManagementDispatch IMPL = initImpl();
-
-    private static AbstractManagementDispatch initImpl() {
-        try {
-            Method method = Engine.class.getDeclaredMethod("getImpl");
-            method.setAccessible(true);
-            AbstractPolyglotImpl impl = (AbstractPolyglotImpl) method.invoke(null);
-            impl.setMonitoring(new ManagementAccessImpl());
-            return impl.getManagementDispatch();
-        } catch (Exception e) {
-            throw new IllegalStateException("Failed to initialize execution listener class.", e);
-        }
-    }
-
-    private static final class ManagementAccessImpl extends ManagementAccess {
-
-        @Override
-        public ExecutionEvent newExecutionEvent(Object event) {
-            return new ExecutionEvent(event);
-        }
-
+    WrappingContext(Object delegate) {
+        this.delegate = delegate;
     }
 
 }

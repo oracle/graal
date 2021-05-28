@@ -892,7 +892,7 @@ public class LanguageSPITest {
     }
 
     private static Source getTruffleSource(org.graalvm.polyglot.Source source) throws NoSuchFieldException, IllegalAccessException {
-        java.lang.reflect.Field impl = source.getClass().getDeclaredField("impl");
+        java.lang.reflect.Field impl = source.getClass().getDeclaredField("receiver");
         impl.setAccessible(true);
         return (Source) impl.get(source);
     }

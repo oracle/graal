@@ -188,7 +188,7 @@ final class PolyglotLimits {
                                 limit, actualCount);
                 boolean invalidated = context.invalidate(true, message);
                 if (invalidated) {
-                    context.close(context.creatorApi, true);
+                    context.close(true);
                     RuntimeException e = limits.notifyEvent(context);
                     if (e != null) {
                         throw e;
@@ -298,7 +298,7 @@ final class PolyglotLimits {
                 return null;
             }
             try {
-                onEvent.accept(engine.getImpl().getAPIAccess().newResourceLimitsEvent(context.creatorApi));
+                onEvent.accept(engine.getImpl().getAPIAccess().newResourceLimitsEvent(context.api));
             } catch (Throwable t) {
                 return PolyglotImpl.hostToGuestException(context, t);
             }

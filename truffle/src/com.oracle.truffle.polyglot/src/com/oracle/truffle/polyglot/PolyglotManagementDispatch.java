@@ -46,12 +46,11 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
-import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.SourceSection;
 import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractManagementImpl;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractManagementDispatch;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.ManagementAccess;
 import org.graalvm.polyglot.management.ExecutionEvent;
 
@@ -70,12 +69,12 @@ import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.RootNode;
 
-final class PolyglotManagement extends AbstractManagementImpl {
+final class PolyglotManagementDispatch extends AbstractManagementDispatch {
 
     static final Object[] EMPTY_ARRAY = new Object[0];
     private final PolyglotImpl engineImpl;
 
-    PolyglotManagement(PolyglotImpl engineImpl) {
+    PolyglotManagementDispatch(PolyglotImpl engineImpl) {
         super(engineImpl);
         this.engineImpl = engineImpl;
     }
@@ -83,10 +82,10 @@ final class PolyglotManagement extends AbstractManagementImpl {
     // implementation for org.graalvm.polyglot.management.ExecutionListener
 
     @Override
-    public Object attachExecutionListener(Engine engineAPI, Consumer<ExecutionEvent> onEnter, Consumer<ExecutionEvent> onReturn, boolean expressions, boolean statements,
+    public Object attachExecutionListener(Object engineReceiver, Consumer<ExecutionEvent> onEnter, Consumer<ExecutionEvent> onReturn, boolean expressions, boolean statements,
                     boolean roots,
                     Predicate<Source> sourceFilter, Predicate<String> rootFilter, boolean collectInputValues, boolean collectReturnValues, boolean collectExceptions) {
-        PolyglotEngineImpl engine = getEngine(engineAPI);
+        PolyglotEngineImpl engine = (PolyglotEngineImpl) engineReceiver;
         Instrumenter instrumenter = (Instrumenter) EngineAccessor.INSTRUMENT.getEngineInstrumenter(engine.instrumentationHandler);
 
         List<Class<? extends Tag>> tags = new ArrayList<>();
@@ -623,12 +622,6 @@ final class PolyglotManagement extends AbstractManagementImpl {
             return valueArray.length;
         }
 
-    }
-
-    // implementation for org.graalvm.polyglot.management.Limits
-
-    private PolyglotEngineImpl getEngine(Engine engineAPI) {
-        return (PolyglotEngineImpl) engineImpl.getAPIAccess().getImpl(engineAPI);
     }
 
 }

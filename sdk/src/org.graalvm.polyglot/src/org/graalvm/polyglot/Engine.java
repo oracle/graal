@@ -40,26 +40,6 @@
  */
 package org.graalvm.polyglot;
 
-import org.graalvm.collections.UnmodifiableEconomicSet;
-import org.graalvm.home.HomeFinder;
-import org.graalvm.nativeimage.ImageInfo;
-import org.graalvm.options.OptionDescriptor;
-import org.graalvm.options.OptionDescriptors;
-import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
-import org.graalvm.polyglot.PolyglotException.StackFrame;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextImpl;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractEngineImpl;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractExceptionImpl;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractInstrumentImpl;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractLanguageImpl;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractStackFrameImpl;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueImpl;
-import org.graalvm.polyglot.io.ByteSequence;
-import org.graalvm.polyglot.io.FileSystem;
-import org.graalvm.polyglot.io.MessageTransport;
-import org.graalvm.polyglot.management.ExecutionEvent;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -73,8 +53,11 @@ import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -87,6 +70,26 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.logging.Handler;
 import java.util.logging.Level;
+
+import org.graalvm.collections.UnmodifiableEconomicSet;
+import org.graalvm.home.HomeFinder;
+import org.graalvm.nativeimage.ImageInfo;
+import org.graalvm.options.OptionDescriptor;
+import org.graalvm.options.OptionDescriptors;
+import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
+import org.graalvm.polyglot.PolyglotException.StackFrame;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextDispatch;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractEngineDispatch;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractExceptionDispatch;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractInstrumentDispatch;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractLanguageDispatch;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractStackFrameImpl;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueDispatch;
+import org.graalvm.polyglot.io.ByteSequence;
+import org.graalvm.polyglot.io.FileSystem;
+import org.graalvm.polyglot.io.MessageTransport;
+import org.graalvm.polyglot.management.ExecutionEvent;
 
 /**
  * An execution engine for Graal {@linkplain Language guest languages} that allows to inspect the
@@ -105,10 +108,25 @@ import java.util.logging.Level;
  */
 public final class Engine implements AutoCloseable {
 
-    final AbstractEngineImpl impl;
+    final AbstractEngineDispatch dispatch;
+    final Object receiver;
+    final Engine currentAPI;
 
-    Engine(AbstractEngineImpl impl) {
-        this.impl = impl;
+    @SuppressWarnings("unchecked")
+    <T> Engine(AbstractEngineDispatch dispatch, T receiver) {
+        this.dispatch = dispatch;
+        this.receiver = receiver;
+        this.currentAPI = new Engine(this);
+        if (dispatch != null) {
+            dispatch.setAPI(receiver, this);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private <T> Engine(Engine engine) {
+        this.dispatch = engine.dispatch;
+        this.receiver = engine.receiver;
+        this.currentAPI = null;
     }
 
     private static final class ImplHolder {
@@ -157,7 +175,7 @@ public final class Engine implements AutoCloseable {
      * @since 19.0
      */
     public Map<String, Language> getLanguages() {
-        return impl.getLanguages();
+        return dispatch.getLanguages(receiver);
     }
 
     /**
@@ -170,7 +188,7 @@ public final class Engine implements AutoCloseable {
      * @since 19.0
      */
     public Map<String, Instrument> getInstruments() {
-        return impl.getInstruments();
+        return dispatch.getInstruments(receiver);
     }
 
     /**
@@ -190,7 +208,7 @@ public final class Engine implements AutoCloseable {
      * @since 19.0
      */
     public OptionDescriptors getOptions() {
-        return impl.getOptions();
+        return dispatch.getOptions(receiver);
     }
 
     /**
@@ -200,12 +218,7 @@ public final class Engine implements AutoCloseable {
      */
     @SuppressWarnings("static-method")
     public String getVersion() {
-        String version = HomeFinder.getInstance().getVersion();
-        if (version.equals("snapshot")) {
-            return "Development Build";
-        } else {
-            return version;
-        }
+        return dispatch.getVersion(receiver);
     }
 
     /**
@@ -221,7 +234,10 @@ public final class Engine implements AutoCloseable {
      * @since 19.0
      */
     public void close(boolean cancelIfExecuting) {
-        impl.close(this, cancelIfExecuting);
+        if (currentAPI == null) {
+            throw new IllegalStateException("Engine instances that were indirectly received using Context.getCurrent() cannot be closed.");
+        }
+        dispatch.close(receiver, this, cancelIfExecuting);
     }
 
     /**
@@ -248,7 +264,7 @@ public final class Engine implements AutoCloseable {
      * @since 19.0
      */
     public String getImplementationName() {
-        return impl.getImplementationName();
+        return dispatch.getImplementationName(receiver);
     }
 
     /**
@@ -297,7 +313,7 @@ public final class Engine implements AutoCloseable {
      * @since 20.3
      */
     public Set<Source> getCachedSources() {
-        return impl.getCachedSources();
+        return dispatch.getCachedSources(receiver);
     }
 
     static AbstractPolyglotImpl getImpl() {
@@ -315,11 +331,12 @@ public final class Engine implements AutoCloseable {
      * Used internally to find all active engines. Do not hold on to the returned collection
      * permanently as this may cause memory leaks.
      */
+    @SuppressWarnings("unchecked")
     static Collection<Engine> findActiveEngines() {
-        return getImpl().findActiveEngines();
+        return (Collection<Engine>) getImpl().findActiveEngines();
     }
 
-    private static final Engine EMPTY = new Engine(null);
+    private static final Engine EMPTY = new Engine(null, null);
 
     /**
      *
@@ -543,99 +560,102 @@ public final class Engine implements AutoCloseable {
             if (loadedImpl == null) {
                 throw new IllegalStateException("The Polyglot API implementation failed to load.");
             }
-            return loadedImpl.buildEngine(out, err, in, options, useSystemProperties, allowExperimentalOptions,
+            Engine engine = loadedImpl.buildEngine(out, err, in, options, useSystemProperties, allowExperimentalOptions,
                             boundEngine, messageTransport, customLogHandler, null);
+            return engine;
         }
 
     }
 
     static class APIAccessImpl extends AbstractPolyglotImpl.APIAccess {
 
+        private static final APIAccessImpl INSTANCE = new APIAccessImpl();
+
         APIAccessImpl() {
         }
 
         @Override
-        public AbstractContextImpl getImpl(Context context) {
-            return context.impl;
+        public Context newContext(AbstractContextDispatch dispatch, Object receiver, Engine engine) {
+            return new Context(dispatch, receiver, engine);
         }
 
         @Override
-        public Engine newEngine(AbstractEngineImpl impl) {
-            return new Engine(impl);
+        public Engine newEngine(AbstractEngineDispatch dispatch, Object receiver) {
+            return new Engine(dispatch, receiver);
         }
 
         @Override
-        public AbstractExceptionImpl getImpl(PolyglotException value) {
-            return value.impl;
+        public Language newLanguage(AbstractLanguageDispatch dispatch, Object receiver) {
+            return new Language(dispatch, receiver);
         }
 
         @Override
-        public Context newContext(AbstractContextImpl impl) {
-            return new Context(impl);
+        public Instrument newInstrument(AbstractInstrumentDispatch dispatch, Object receiver) {
+            return new Instrument(dispatch, receiver);
         }
 
         @Override
-        public PolyglotException newLanguageException(String message, AbstractExceptionImpl impl) {
-            return new PolyglotException(message, impl);
+        public Object getReceiver(Instrument instrument) {
+            return instrument.receiver;
         }
 
         @Override
-        public Language newLanguage(AbstractLanguageImpl impl) {
-            return new Language(impl);
+        public Value newValue(AbstractValueDispatch dispatch, Object receiver) {
+            return new Value(dispatch, receiver);
         }
 
         @Override
-        public Instrument newInstrument(AbstractInstrumentImpl impl) {
-            return new Instrument(impl);
+        public Source newSource(Object receiver) {
+            return new Source(receiver);
         }
 
         @Override
-        public Value newValue(Object value, AbstractValueImpl impl) {
-            return new Value(impl, value);
+        public SourceSection newSourceSection(Source source, Object receiver) {
+            return new SourceSection(source, receiver);
         }
 
         @Override
-        public Source newSource(Object impl) {
-            return new Source(impl);
+        public AbstractValueDispatch getDispatch(Value value) {
+            return value.dispatch;
         }
 
         @Override
-        public SourceSection newSourceSection(Source source, Object impl) {
-            return new SourceSection(source, impl);
+        public AbstractInstrumentDispatch getDispatch(Instrument value) {
+            return value.dispatch;
         }
 
         @Override
-        public AbstractEngineImpl getImpl(Engine value) {
-            return value.impl;
+        public AbstractContextDispatch getDispatch(Context context) {
+            return context.dispatch;
         }
 
         @Override
-        public AbstractValueImpl getImpl(Value value) {
-            return value.impl;
+        public AbstractEngineDispatch getDispatch(Engine engine) {
+            return engine.dispatch;
         }
 
         @Override
-        public AbstractInstrumentImpl getImpl(Instrument value) {
-            return value.impl;
+        public ResourceLimitEvent newResourceLimitsEvent(Context context) {
+            return new ResourceLimitEvent(context);
         }
 
         @Override
-        public ResourceLimitEvent newResourceLimitsEvent(Object impl) {
-            return new ResourceLimitEvent(impl);
+        public AbstractLanguageDispatch getDispatch(Language value) {
+            return value.dispatch;
         }
 
         @Override
-        public AbstractLanguageImpl getImpl(Language value) {
-            return value.impl;
+        public Object getReceiver(ResourceLimits value) {
+            return value.receiver;
         }
 
         @Override
-        public Object getImpl(ResourceLimits value) {
-            return value.impl;
+        public PolyglotException newLanguageException(String message, AbstractExceptionDispatch dispatch, Object receiver) {
+            return new PolyglotException(message, dispatch, receiver);
         }
 
         @Override
-        public AbstractStackFrameImpl getImpl(StackFrame value) {
+        public AbstractStackFrameImpl getDispatch(StackFrame value) {
             return value.impl;
         }
 
@@ -645,8 +665,23 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public StackFrame newPolyglotStackTraceElement(PolyglotException e, AbstractStackFrameImpl impl) {
-            return e.new StackFrame(impl);
+        public Object getReceiver(Context context) {
+            return context.receiver;
+        }
+
+        @Override
+        public Object getReceiver(Engine engine) {
+            return engine.receiver;
+        }
+
+        @Override
+        public Object getReceiver(PolyglotException polyglot) {
+            return polyglot.impl;
+        }
+
+        @Override
+        public StackFrame newPolyglotStackTraceElement(AbstractStackFrameImpl dispatch, Object receiver) {
+            return ((PolyglotException) receiver).new StackFrame(dispatch);
         }
 
         @Override
@@ -723,13 +758,14 @@ public final class Engine implements AutoCloseable {
 
     private static final boolean JDK8_OR_EARLIER = System.getProperty("java.specification.version").compareTo("1.9") < 0;
 
+    @SuppressWarnings("unchecked")
     private static AbstractPolyglotImpl initEngineImpl() {
         return AccessController.doPrivileged(new PrivilegedAction<AbstractPolyglotImpl>() {
             public AbstractPolyglotImpl run() {
-                AbstractPolyglotImpl engine = null;
+                AbstractPolyglotImpl polyglot = null;
                 Class<?> servicesClass = null;
                 if (Boolean.getBoolean("graalvm.ForcePolyglotInvalid")) {
-                    engine = createInvalidPolyglotImpl();
+                    polyglot = loadAndValidateProviders(createInvalidPolyglotImpl());
                 } else {
                     if (JDK8_OR_EARLIER) {
                         try {
@@ -738,8 +774,8 @@ public final class Engine implements AutoCloseable {
                         }
                         if (servicesClass != null) {
                             try {
-                                Method m = servicesClass.getDeclaredMethod("loadSingle", Class.class, boolean.class);
-                                engine = (AbstractPolyglotImpl) m.invoke(null, AbstractPolyglotImpl.class, false);
+                                Method m = servicesClass.getDeclaredMethod("load", Class.class);
+                                polyglot = loadAndValidateProviders(((Iterable<? extends AbstractPolyglotImpl>) m.invoke(null, AbstractPolyglotImpl.class)).iterator());
                             } catch (Throwable e) {
                                 // Fail fast for other errors
                                 throw new InternalError(e);
@@ -748,29 +784,39 @@ public final class Engine implements AutoCloseable {
                     }
                 }
 
-                if (engine == null) {
+                if (polyglot == null) {
                     // >= JDK 9.
-                    engine = searchServiceLoader();
+                    polyglot = loadAndValidateProviders(searchServiceLoader());
                 }
-                if (engine == null) {
-                    engine = createInvalidPolyglotImpl();
+                if (polyglot == null) {
+                    polyglot = loadAndValidateProviders(createInvalidPolyglotImpl());
                 }
-                if (engine != null) {
-                    engine.setConstructors(new APIAccessImpl());
-                }
-                return engine;
+                return polyglot;
             }
 
-            private AbstractPolyglotImpl searchServiceLoader() throws InternalError {
-                Iterator<AbstractPolyglotImpl> providers = ServiceLoader.load(AbstractPolyglotImpl.class).iterator();
-                if (providers.hasNext()) {
+            private Iterator<? extends AbstractPolyglotImpl> searchServiceLoader() throws InternalError {
+                return ServiceLoader.load(AbstractPolyglotImpl.class).iterator();
+            }
+
+            private AbstractPolyglotImpl loadAndValidateProviders(Iterator<? extends AbstractPolyglotImpl> providers) throws AssertionError {
+                List<AbstractPolyglotImpl> impls = new ArrayList<>();
+                while (providers.hasNext()) {
                     AbstractPolyglotImpl found = providers.next();
-                    if (providers.hasNext()) {
-                        throw new InternalError(String.format("Multiple %s providers found", AbstractPolyglotImpl.class.getName()));
+                    for (AbstractPolyglotImpl impl : impls) {
+                        if (impl.getClass().getName().equals(found.getClass().getName())) {
+                            throw new AssertionError("Same polyglot impl found twice on the classpath.");
+                        }
                     }
-                    return found;
+                    impls.add(found);
                 }
-                return null;
+                Collections.sort(impls, Comparator.comparing(AbstractPolyglotImpl::getPriority));
+                AbstractPolyglotImpl prev = null;
+                for (AbstractPolyglotImpl impl : impls) {
+                    impl.setNext(prev);
+                    impl.setConstructors(APIAccessImpl.INSTANCE);
+                    prev = impl;
+                }
+                return prev;
             }
         });
     }
@@ -779,8 +825,8 @@ public final class Engine implements AutoCloseable {
      * Use static factory method with AbstractPolyglotImpl to avoid class loading of the
      * PolyglotInvalid class by the Java verifier.
      */
-    static AbstractPolyglotImpl createInvalidPolyglotImpl() {
-        return new PolyglotInvalid();
+    static Iterator<? extends AbstractPolyglotImpl> createInvalidPolyglotImpl() {
+        return Arrays.asList(new PolyglotInvalid()).iterator();
     }
 
     private static class PolyglotInvalid extends AbstractPolyglotImpl {
@@ -804,6 +850,11 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
+        public int getPriority() {
+            return Integer.MIN_VALUE;
+        }
+
+        @Override
         public Context getCurrentContext() {
             throw noPolyglotImplementationFound();
         }
@@ -820,13 +871,8 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public Context getLimitEventContext(Object impl) {
-            throw noPolyglotImplementationFound();
-        }
-
-        @Override
-        public AbstractManagementImpl getManagementImpl() {
-            return new AbstractManagementImpl(this) {
+        public AbstractManagementDispatch getManagementDispatch() {
+            return new AbstractManagementDispatch(this) {
 
                 @Override
                 public boolean isExecutionEventStatement(Object impl) {
@@ -874,7 +920,7 @@ public final class Engine implements AutoCloseable {
                 }
 
                 @Override
-                public Object attachExecutionListener(Engine engine, Consumer<ExecutionEvent> onEnter, Consumer<ExecutionEvent> onReturn, boolean expressions, boolean statements,
+                public Object attachExecutionListener(Object engine, Consumer<ExecutionEvent> onEnter, Consumer<ExecutionEvent> onReturn, boolean expressions, boolean statements,
                                 boolean roots,
                                 Predicate<Source> sourceFilter, Predicate<String> rootFilter, boolean collectInputValues, boolean collectReturnValues, boolean collectErrors) {
                     throw noPolyglotImplementationFound();
@@ -894,12 +940,12 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public AbstractSourceImpl getSourceImpl() {
+        public AbstractSourceDispatch getSourceDispatch() {
             return source;
         }
 
         @Override
-        public AbstractSourceSectionImpl getSourceSectionImpl() {
+        public AbstractSourceSectionDispatch getSourceSectionDispatch() {
             throw new UnsupportedOperationException();
         }
 
@@ -931,7 +977,7 @@ public final class Engine implements AutoCloseable {
             throw noPolyglotImplementationFound();
         }
 
-        static class EmptySource extends AbstractSourceImpl {
+        static class EmptySource extends AbstractSourceDispatch {
 
             protected EmptySource(AbstractPolyglotImpl engineImpl) {
                 super(engineImpl);

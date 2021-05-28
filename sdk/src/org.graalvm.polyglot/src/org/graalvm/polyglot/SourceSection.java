@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,7 @@
  */
 package org.graalvm.polyglot;
 
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractSourceSectionImpl;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractSourceSectionDispatch;
 
 /**
  * Description of contiguous section of text within a {@link Source} of program code.; supports
@@ -54,14 +54,14 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractSourceSectionImpl;
  */
 public final class SourceSection {
 
-    static volatile AbstractSourceSectionImpl IMPL;
+    static volatile AbstractSourceSectionDispatch DISPATCH;
 
     final Source source;
-    final Object impl;
+    final Object receiver;
 
-    SourceSection(Source source, Object impl) {
+    SourceSection(Source source, Object receiver) {
         this.source = source;
-        this.impl = impl;
+        this.receiver = receiver;
     }
 
     /**
@@ -73,7 +73,7 @@ public final class SourceSection {
      * @since 19.0
      */
     public boolean isAvailable() {
-        return IMPL.isAvailable(impl);
+        return DISPATCH.isAvailable(receiver);
     }
 
     /**
@@ -85,7 +85,7 @@ public final class SourceSection {
      * @since 19.0
      */
     public boolean hasLines() {
-        return IMPL.hasLines(impl);
+        return DISPATCH.hasLines(receiver);
     }
 
     /**
@@ -98,7 +98,7 @@ public final class SourceSection {
      * @since 19.0
      */
     public boolean hasColumns() {
-        return IMPL.hasColumns(impl);
+        return DISPATCH.hasColumns(receiver);
     }
 
     /**
@@ -111,7 +111,7 @@ public final class SourceSection {
      * @since 19.0
      */
     public boolean hasCharIndex() {
-        return IMPL.hasCharIndex(impl);
+        return DISPATCH.hasCharIndex(receiver);
     }
 
     /**
@@ -134,7 +134,7 @@ public final class SourceSection {
      * @since 19.0
      */
     public int getStartLine() {
-        return IMPL.getStartLine(impl);
+        return DISPATCH.getStartLine(receiver);
     }
 
     /**
@@ -147,7 +147,7 @@ public final class SourceSection {
      * @since 19.0
      */
     public int getStartColumn() {
-        return IMPL.getStartColumn(impl);
+        return DISPATCH.getStartColumn(receiver);
     }
 
     /**
@@ -160,7 +160,7 @@ public final class SourceSection {
      * @since 19.0
      */
     public int getEndLine() {
-        return IMPL.getEndLine(impl);
+        return DISPATCH.getEndLine(receiver);
     }
 
     /**
@@ -173,7 +173,7 @@ public final class SourceSection {
      * @since 19.0
      */
     public int getEndColumn() {
-        return IMPL.getEndColumn(impl);
+        return DISPATCH.getEndColumn(receiver);
     }
 
     /**
@@ -187,7 +187,7 @@ public final class SourceSection {
      * @since 19.0
      */
     public int getCharIndex() {
-        return IMPL.getCharIndex(impl);
+        return DISPATCH.getCharIndex(receiver);
     }
 
     /**
@@ -201,7 +201,7 @@ public final class SourceSection {
      * @since 19.0
      */
     public int getCharLength() {
-        return IMPL.getCharLength(impl);
+        return DISPATCH.getCharLength(receiver);
     }
 
     /**
@@ -215,7 +215,7 @@ public final class SourceSection {
      * @since 19.0
      */
     public int getCharEndIndex() {
-        return IMPL.getCharEndIndex(impl);
+        return DISPATCH.getCharEndIndex(receiver);
     }
 
     /**
@@ -224,7 +224,7 @@ public final class SourceSection {
      */
     @Deprecated
     public CharSequence getCode() {
-        return IMPL.getCode(impl);
+        return DISPATCH.getCode(receiver);
     }
 
     /**
@@ -235,7 +235,7 @@ public final class SourceSection {
      * @since 19.0
      */
     public CharSequence getCharacters() {
-        return IMPL.getCode(impl);
+        return DISPATCH.getCode(receiver);
     }
 
     /**
@@ -247,13 +247,13 @@ public final class SourceSection {
      */
     @Override
     public String toString() {
-        return IMPL.toString(impl);
+        return DISPATCH.toString(receiver);
     }
 
     /** @since 19.0 or earlier */
     @Override
     public int hashCode() {
-        return IMPL.hashCode(impl);
+        return DISPATCH.hashCode(receiver);
     }
 
     /** @since 19.0 or earlier */
@@ -265,9 +265,9 @@ public final class SourceSection {
 
         Object otherImpl = obj;
         if (otherImpl instanceof SourceSection) {
-            otherImpl = ((SourceSection) obj).impl;
+            otherImpl = ((SourceSection) obj).receiver;
         }
-        return IMPL.equals(impl, otherImpl);
+        return DISPATCH.equals(receiver, otherImpl);
     }
 
 }
