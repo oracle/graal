@@ -58,7 +58,7 @@ import com.oracle.svm.core.util.UserError;
 public class SubstrateOptions {
 
     @Option(help = "When true, compiler graphs are parsed only once before static analysis. When false, compiler graphs are parsed for static analysis and again for AOT compilation.")//
-    static final HostedOptionKey<Boolean> ParseOnce = new HostedOptionKey<>(true);
+    public static final HostedOptionKey<Boolean> ParseOnce = new HostedOptionKey<>(true);
 
     public static boolean parseOnce() {
         /*
