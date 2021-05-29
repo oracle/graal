@@ -39,11 +39,13 @@ import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
+import org.graalvm.compiler.truffle.common.TruffleInliningData;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.BackgroundCompileQueue;
 import org.graalvm.compiler.truffle.runtime.CompilationTask;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
@@ -279,7 +281,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
         }
 
         try {
-            doCompile(optimizedCallTarget, lastTierCompilation ? SingleThreadedCompilationTask.lastTier : SingleThreadedCompilationTask.firstTier);
+            doCompile(optimizedCallTarget, new SingleThreadedCompilationTask(lastTierCompilation));
         } catch (com.oracle.truffle.api.OptimizationFailedException e) {
             if (optimizedCallTarget.getOptionValue(PolyglotCompilerOptions.CompilationExceptionsArePrinted)) {
                 Log.log().string(printStackTraceToString(e));
@@ -385,8 +387,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
      */
     private static class SingleThreadedCompilationTask implements TruffleCompilationTask {
         private final boolean lastTierCompilation;
-        static SingleThreadedCompilationTask firstTier = new SingleThreadedCompilationTask(false);
-        static SingleThreadedCompilationTask lastTier = new SingleThreadedCompilationTask(true);
+        TruffleInlining inlining = new TruffleInlining();
 
         SingleThreadedCompilationTask(boolean lastTierCompilation) {
             this.lastTierCompilation = lastTierCompilation;
@@ -402,5 +403,11 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
         public boolean isLastTier() {
             return lastTierCompilation;
         }
+
+        @Override
+        public TruffleInliningData inliningData() {
+            return inlining;
+        }
+
     }
 }

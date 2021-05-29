@@ -81,14 +81,13 @@ final class GraphManager {
                         rootRequest.debug,
                         truffleAST,
                         finalize ? partialEvaluator.getCallDirect() : partialEvaluator.inlineRootForCallTarget(truffleAST),
-                        rootRequest.inliningPlan,
                         rootRequest.compilationId,
                         rootRequest.log,
                         rootRequest.task);
     }
 
     private PEAgnosticInlineInvokePlugin newPlugin() {
-        return new PEAgnosticInlineInvokePlugin(rootRequest.inliningPlan, partialEvaluator);
+        return new PEAgnosticInlineInvokePlugin(rootRequest.task.inliningData(), partialEvaluator);
     }
 
     Entry peRoot(boolean truffleTierOnExpand) {
