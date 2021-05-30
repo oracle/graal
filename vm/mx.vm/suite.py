@@ -75,7 +75,7 @@ suite = {
             },
             {
                 "name": "graalpython",
-                "version": "9338e0373116e46820f2b0f8f212942d184ab364",
+                "version": "66c2d7b8217745e49cb575bcb100df67a11453e6",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/graalvm/graalpython.git", "kind": "git"},
