@@ -48,6 +48,8 @@ import java.util.LinkedList;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Predicate;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -100,8 +102,19 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
      */
     private static final Map<Character, CodePointSet> UNICODE_CHAR_CLASS_SETS;
 
-    private static final String UNICODE_WORD_BOUNDARY_SNIPPET;
-    private static final String UNICODE_WORD_NON_BOUNDARY_SNIPPET;
+    // The behavior of the word-boundary assertions depends on the notion of a word character.
+    // Python's notion differs from that of ECMAScript and so we cannot compile Python word-boundary
+    // assertions to ECMAScript word-boundary assertions. Furthermore, the notion of a word
+    // character is dependent on whether the Python regular expression is set to use the ASCII range
+    // only. These are helper constants that we use to implement word-boundary assertions.
+    // WORD_BOUNDARY and WORD_NON_BOUNDARY are templates for word-boundary and word-non-boundary
+    // assertions, respectively. These templates contain occurrences of \w and \W, which are
+    // substituted with the correct notion of a word character during regexp transpilation time.
+    public static final Pattern WORD_CHARS_PATTERN = Pattern.compile("\\\\[wW]");
+    public static final String WORD_BOUNDARY = "(?:(?:^|(?<=\\W))(?=\\w)|(?<=\\w)(?:(?=\\W)|$))";
+    // Note that in Python, \b and \B are not direct inverses. In an empty string, position 0
+    // doesn't match neither \b and \B (i.e. /\B/ does not match where /^$/ would match).
+    public static final String WORD_NON_BOUNDARY = "(?:^(?=\\W)|(?<=\\W)$|(?<=\\W)(?=\\W)|(?<=\\w)(?=\\w))";
 
     private static final String ASCII_WHITESPACE = "\\x09-\\x0d\\x20";
     private static final String ASCII_NON_WHITESPACE = "\\x00-\\x08\\x0e-\\x1f\\x21-\\u{10ffff}";
@@ -172,13 +185,6 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
         CodePointSet nonWordChars = wordChars.createInverse(Encodings.UTF_32);
         UNICODE_CHAR_CLASS_SETS.put('w', wordChars);
         UNICODE_CHAR_CLASS_SETS.put('W', nonWordChars);
-
-        // This is the snippet that we want to build, but with Python's definitions of \w and \W:
-        // "(?:^|(?<=\W))(?=\w)|(?<=\w)(?:(?=\W)|$)"
-        UNICODE_WORD_BOUNDARY_SNIPPET = "(?:(?:^|(?<=[^" + wordCharsStr + "]))(?=[" + wordCharsStr + "])|(?<=[" + wordCharsStr + "])(?:(?=[^" + wordCharsStr + "])|$))";
-
-        // "(?:^|(?<=\W))(?:(?=\W)|$)|(?<=\w)(?=\w)"
-        UNICODE_WORD_NON_BOUNDARY_SNIPPET = "(?:(?:^|(?<=[^" + wordCharsStr + "]))(?:(?=[^" + wordCharsStr + "])|$)|(?<=[" + wordCharsStr + "])(?=[" + wordCharsStr + "]))";
     }
 
     /**
@@ -847,26 +853,42 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
                 return true;
             case 'b':
                 if (getLocalFlags().isUnicode(mode)) {
-                    emitSnippet(UNICODE_WORD_BOUNDARY_SNIPPET);
+                    emitWordBoundaryAssertion(WORD_BOUNDARY, UNICODE_CHAR_CLASS_REPLACEMENTS.get('w'));
                 } else if (getLocalFlags().isLocale()) {
                     bailOut("locale-specific word boundary assertions not supported");
                 } else {
-                    emitSnippet("\\b");
+                    emitWordBoundaryAssertion(WORD_BOUNDARY, "\\w");
                 }
                 return true;
             case 'B':
                 if (getLocalFlags().isUnicode(mode)) {
-                    emitSnippet(UNICODE_WORD_NON_BOUNDARY_SNIPPET);
+                    emitWordBoundaryAssertion(WORD_NON_BOUNDARY, UNICODE_CHAR_CLASS_REPLACEMENTS.get('w'));
                 } else if (getLocalFlags().isLocale()) {
                     bailOut("locale-specific word boundary assertions not supported");
                 } else {
-                    emitSnippet("\\B");
+                    emitWordBoundaryAssertion(WORD_NON_BOUNDARY, "\\w");
                 }
                 return true;
             default:
                 retreat();
                 return false;
         }
+    }
+
+    private void emitWordBoundaryAssertion(String snippetTemplate, String wordCharsStr) {
+        Matcher matcher = WORD_CHARS_PATTERN.matcher(snippetTemplate);
+        int lastAppendPosition = 0;
+        while (matcher.find()) {
+            emitSnippet(snippetTemplate.substring(lastAppendPosition, matcher.start()));
+            if (matcher.group().equals("\\w")) {
+                emitSnippet("[" + wordCharsStr + "]");
+            } else {
+                assert matcher.group().equals("\\W");
+                emitSnippet("[^" + wordCharsStr + "]");
+            }
+            lastAppendPosition = matcher.end();
+        }
+        emitSnippet(snippetTemplate.substring(lastAppendPosition));
     }
 
     /**

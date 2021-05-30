@@ -90,6 +90,14 @@ public class PythonTests extends RegexTestBase {
     }
 
     @Test
+    public void gr28905() {
+        test("\\B", "y", "abc", 0, false);
+        test("\\B", "", "", 0, false);
+        test("\\B(b.)\\B", "", "abc bcd bc abxd", 0, true, 12, 14, 12, 14);
+        test("\\b(b.)\\b", "a", "abcd abc bcd bx", 0, true, 13, 15, 13, 15);
+    }
+
+    @Test
     public void gr28906() {
         test("^(\\|)?([^()]+)\\1$", "y", "a|", 0, false);
         test("^(\\|)?([^()]+)\\1$", "y", "|a", 0, false);
