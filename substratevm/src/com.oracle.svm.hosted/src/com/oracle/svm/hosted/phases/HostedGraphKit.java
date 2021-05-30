@@ -28,7 +28,6 @@ import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.java.GraphBuilderPhase.Instance;
-import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -37,7 +36,6 @@ import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
-import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.WithExceptionNode;
@@ -47,7 +45,6 @@ import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
-import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.type.StampTool;
@@ -115,28 +112,7 @@ public class HostedGraphKit extends SubstrateGraphKit {
      * {@link UnwindNode}, i.e., the exception is not handled in this method.
      */
     public <T extends WithExceptionNode> T appendWithUnwind(T withExceptionNode) {
-        WithExceptionNode appended = append(withExceptionNode);
-        assert appended == withExceptionNode;
-
-        int bci = bci();
-        if (withExceptionNode instanceof StateSplit) {
-            StateSplit stateSplit = (StateSplit) withExceptionNode;
-            stateSplit.setStateAfter(getFrameState().create(bci, stateSplit));
-        }
-
-        AbstractBeginNode noExceptionEdge = add(withExceptionNode.createNextBegin());
-        withExceptionNode.setNext(noExceptionEdge);
-        ExceptionObjectNode exceptionEdge = createExceptionObjectNode(getFrameState(), bci);
-        withExceptionNode.setExceptionEdge(exceptionEdge);
-
-        assert lastFixedNode == null;
-        lastFixedNode = exceptionEdge;
-        append(new UnwindNode(exceptionEdge));
-
-        assert lastFixedNode == null;
-        lastFixedNode = noExceptionEdge;
-
-        return withExceptionNode;
+        return appendWithUnwind(withExceptionNode, bci());
     }
 
     public void throwInvocationTargetException(ValueNode exception) {
