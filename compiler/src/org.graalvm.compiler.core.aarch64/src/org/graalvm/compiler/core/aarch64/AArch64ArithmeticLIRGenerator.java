@@ -215,19 +215,19 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
     @Override
     public Value emitShl(Value a, Value b) {
         assert isNumericInteger(a.getPlatformKind());
-        return emitBinary(LIRKind.combine(a, b), AArch64ArithmeticOp.SHL, false, a, b);
+        return emitBinary(LIRKind.combine(a, b), AArch64ArithmeticOp.LSL, false, a, b);
     }
 
     @Override
     public Value emitShr(Value a, Value b) {
         assert isNumericInteger(a.getPlatformKind());
-        return emitBinary(LIRKind.combine(a, b), AArch64ArithmeticOp.ASHR, false, a, b);
+        return emitBinary(LIRKind.combine(a, b), AArch64ArithmeticOp.ASR, false, a, b);
     }
 
     @Override
     public Value emitUShr(Value a, Value b) {
         assert isNumericInteger(a.getPlatformKind());
-        return emitBinary(LIRKind.combine(a, b), AArch64ArithmeticOp.LSHR, false, a, b);
+        return emitBinary(LIRKind.combine(a, b), AArch64ArithmeticOp.LSR, false, a, b);
     }
 
     @Override
