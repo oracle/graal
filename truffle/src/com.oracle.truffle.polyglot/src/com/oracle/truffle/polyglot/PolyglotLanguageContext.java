@@ -488,7 +488,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                                             envConfig.getLanguageOptionValues(language),
                                             envConfig.getApplicationArguments(language));
                             Lazy localLazy = new Lazy(lang, envConfig);
-                            PolyglotValue.createDefaultValues(getImpl(), this, localLazy.valueCache);
+                            PolyglotValue.createDefaultValues(getImpl(), localLazy.valueCache);
                             checkThreadAccess(localEnv);
 
                             // no more errors after this line
@@ -821,7 +821,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                 language.engine.leaveIfNeeded(prev, this.context);
             }
         }
-        return getAPIAccess().newValue(cache, receiver);
+        return getAPIAccess().newValue(cache, this, receiver);
     }
 
     synchronized PolyglotValue lookupValueCache(Object guestValue) {
@@ -829,7 +829,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         try {
             PolyglotValue cache = lazy.valueCache.computeIfAbsent(guestValue.getClass(), new Function<Class<?>, PolyglotValue>() {
                 public PolyglotValue apply(Class<?> t) {
-                    return PolyglotValue.createInteropValue(PolyglotLanguageContext.this, (TruffleObject) guestValue, guestValue.getClass());
+                    return PolyglotValue.createInteropValue(lazy.languageInstance, (TruffleObject) guestValue, guestValue.getClass());
                 }
             });
             return cache;
@@ -865,7 +865,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                         }
                         cachedContext = languageContext;
                         cachedValue = cache;
-                        return apiAccess.newValue(cache, receiver);
+                        return apiAccess.newValue(cache, languageContext, receiver);
                     } else {
                         // TODO this needs to be rewritten to cache that uses
                         // InteropCodeCache and does not store the context in a node directly
@@ -881,7 +881,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                         CompilerDirectives.transferToInterpreterAndInvalidate();
                         // invalid state retry next time for now do generic
                     } else {
-                        return apiAccess.newValue(cache, receiver);
+                        return apiAccess.newValue(cache, languageContext, receiver);
                     }
                 } else {
                     CompilerDirectives.transferToInterpreterAndInvalidate();

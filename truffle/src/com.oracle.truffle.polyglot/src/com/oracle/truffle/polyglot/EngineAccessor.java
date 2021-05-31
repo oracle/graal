@@ -660,8 +660,7 @@ final class EngineAccessor extends Accessor {
         public Object toGuestValue(Object obj, Object context) {
             PolyglotLanguageContext languageContext = (PolyglotLanguageContext) context;
             if (obj instanceof Value) {
-                PolyglotValue valueImpl = (PolyglotValue) languageContext.getImpl().getAPIAccess().getDispatch((Value) obj);
-                languageContext = valueImpl.languageContext;
+                languageContext = (PolyglotLanguageContext) languageContext.getImpl().getAPIAccess().getContext((Value) obj);
             }
             return languageContext.context.getHostContextImpl().toGuestValue(null, obj);
         }

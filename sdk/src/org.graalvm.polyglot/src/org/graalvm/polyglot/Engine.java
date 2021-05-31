@@ -600,8 +600,13 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public Value newValue(AbstractValueDispatch dispatch, Object receiver) {
-            return new Value(dispatch, receiver);
+        public Object getContext(Value value) {
+            return value.context;
+        }
+
+        @Override
+        public Value newValue(AbstractValueDispatch dispatch, Object context, Object receiver) {
+            return new Value(dispatch, context, receiver);
         }
 
         @Override

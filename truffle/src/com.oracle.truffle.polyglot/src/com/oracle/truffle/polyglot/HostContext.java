@@ -242,8 +242,8 @@ final class HostContext {
     Object toGuestValue(Node parentNode, Object hostValue) {
         if (hostValue instanceof Value) {
             Value receiverValue = (Value) hostValue;
-            PolyglotValue valueImpl = (PolyglotValue) getAPIAccess().getDispatch(receiverValue);
-            PolyglotContextImpl valueContext = valueImpl.languageContext != null ? valueImpl.languageContext.context : null;
+            PolyglotLanguageContext languageContext = (PolyglotLanguageContext) getAPIAccess().getContext(receiverValue);
+            PolyglotContextImpl valueContext = languageContext != null ? languageContext.context : null;
             Object valueReceiver = getAPIAccess().getReceiver(receiverValue);
             if (valueContext != this.internalContext) {
                 valueReceiver = internalContext.migrateValue(parentNode, valueReceiver, valueContext);

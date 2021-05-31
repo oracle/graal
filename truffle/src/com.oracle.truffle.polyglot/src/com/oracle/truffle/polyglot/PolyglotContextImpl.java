@@ -922,8 +922,9 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         synchronized (this) {
             if (this.polyglotBindings == null) {
                 this.polyglotBindings = new ConcurrentHashMap<>();
-                PolyglotBindings bindings = new PolyglotBindings(getHostContext());
-                this.polyglotHostBindings = getAPIAccess().newValue(new PolyglotBindingsValue(getHostContext(), bindings), bindings);
+                PolyglotLanguageContext hostContext = getHostContext();
+                PolyglotBindings bindings = new PolyglotBindings(hostContext);
+                this.polyglotHostBindings = getAPIAccess().newValue(new PolyglotBindingsValue(hostContext, bindings), hostContext, bindings);
             }
         }
     }
@@ -1333,8 +1334,8 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             PolyglotLanguageContext targetLanguageContext;
             if (hostValue instanceof Value) {
                 // fast path for when no context migration is necessary
-                PolyglotValue value = (PolyglotValue) getAPIAccess().getDispatch((Value) hostValue);
-                if (value.languageContext != null && value.languageContext.context == this) {
+                PolyglotLanguageContext valueContext = (PolyglotLanguageContext) getAPIAccess().getContext((Value) hostValue);
+                if (valueContext != null && valueContext.context == this) {
                     return (Value) hostValue;
                 }
                 targetLanguageContext = languageContext;

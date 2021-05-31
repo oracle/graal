@@ -145,8 +145,8 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
     @Override
     protected void initialize() {
-        this.hostNull = getAPIAccess().newValue(PolyglotValue.createHostNull(this), HostObject.NULL);
-        PolyglotValue.createDefaultValues(this, null, primitiveValues);
+        this.hostNull = getAPIAccess().newValue(PolyglotValue.createHostNull(this), null, HostObject.NULL);
+        PolyglotValue.createDefaultValues(this, primitiveValues);
         disconnectedHostValue = new PolyglotValue.HostValue(this);
     }
 
@@ -387,7 +387,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         if (hostValue == null) {
             return hostNull;
         } else if (isGuestPrimitive(hostValue)) {
-            return getAPIAccess().newValue(primitiveValues.get(hostValue.getClass()), hostValue);
+            return getAPIAccess().newValue(primitiveValues.get(hostValue.getClass()), null, hostValue);
         } else if (HostWrapper.isInstance(hostValue)) {
             HostWrapper hostWrapper = HostWrapper.asInstance(hostValue);
             // host wrappers can nicely reuse the associated context
@@ -410,7 +410,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             } else {
                 guestValue = HostObject.forObject(hostValue, null);
             }
-            return getAPIAccess().newValue(disconnectedHostValue, guestValue);
+            return getAPIAccess().newValue(disconnectedHostValue, null, guestValue);
         }
     }
 

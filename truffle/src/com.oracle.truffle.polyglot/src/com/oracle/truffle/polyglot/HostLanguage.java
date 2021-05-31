@@ -144,8 +144,8 @@ final class HostLanguage extends TruffleLanguage<Object> {
     Object toGuestValue(Node location, PolyglotContextImpl context, Object hostValue) {
         if (hostValue instanceof Value) {
             Value receiverValue = (Value) hostValue;
-            PolyglotValue valueImpl = (PolyglotValue) api.getDispatch(receiverValue);
-            PolyglotContextImpl valueContext = valueImpl.languageContext != null ? valueImpl.languageContext.context : null;
+            PolyglotLanguageContext languageContext = (PolyglotLanguageContext) api.getContext(receiverValue);
+            PolyglotContextImpl valueContext = languageContext != null ? languageContext.context : null;
             Object valueReceiver = api.getReceiver(receiverValue);
             if (valueContext != context) {
                 valueReceiver = context.migrateValue(location, valueReceiver, valueContext);

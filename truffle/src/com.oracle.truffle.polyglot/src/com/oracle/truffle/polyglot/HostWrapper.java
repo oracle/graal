@@ -97,12 +97,14 @@ interface HostWrapper {
     }
 
     @TruffleBoundary
-    static boolean equals(PolyglotLanguageContext languageContext, Object receiver, Object obj) {
+    static boolean equals(Object context, Object receiver, Object obj) {
         if (obj == null) {
             return false;
         } else if (receiver == obj) {
             return true;
         }
+        PolyglotLanguageContext languageContext = (PolyglotLanguageContext) context;
+
         if (languageContext != null && (languageContext.context.closed || languageContext.context.invalid)) {
             return false;
         }
@@ -132,7 +134,9 @@ interface HostWrapper {
     }
 
     @TruffleBoundary
-    static int hashCode(PolyglotLanguageContext languageContext, Object receiver) {
+    static int hashCode(Object context, Object receiver) {
+        PolyglotLanguageContext languageContext = (PolyglotLanguageContext) context;
+
         if (languageContext != null && (languageContext.context.closed || languageContext.context.invalid)) {
             return System.identityHashCode(receiver);
         }
