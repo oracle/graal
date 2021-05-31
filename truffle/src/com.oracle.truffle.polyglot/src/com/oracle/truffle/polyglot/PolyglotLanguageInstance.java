@@ -43,8 +43,8 @@ package com.oracle.truffle.polyglot;
 import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 import static com.oracle.truffle.polyglot.EngineAccessor.LANGUAGE;
 
-import java.util.List;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -60,7 +60,6 @@ import com.oracle.truffle.polyglot.PolyglotImpl.VMObject;
 import com.oracle.truffle.polyglot.PolyglotLocals.LanguageContextLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.LanguageContextThreadLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.LocalLocation;
-import com.oracle.truffle.polyglot.PolyglotValue.InteropCodeCache;
 
 final class PolyglotLanguageInstance implements VMObject {
 
@@ -68,7 +67,7 @@ final class PolyglotLanguageInstance implements VMObject {
     final TruffleLanguage<Object> spi;
 
     private final PolyglotSourceCache sourceCache;
-    final Map<Class<?>, InteropCodeCache> valueCodeCache;
+    final Map<Class<?>, PolyglotValue> valueCache;
 
     final Map<Object, Object> hostToGuestCodeCache = new ConcurrentHashMap<>();
     private volatile OptionValuesImpl firstOptionValues;
@@ -96,7 +95,7 @@ final class PolyglotLanguageInstance implements VMObject {
     PolyglotLanguageInstance(PolyglotLanguage language) {
         this.language = language;
         this.sourceCache = new PolyglotSourceCache();
-        this.valueCodeCache = new ConcurrentHashMap<>();
+        this.valueCache = new ConcurrentHashMap<>();
         try {
             this.spi = (TruffleLanguage<Object>) language.cache.loadLanguage();
             LANGUAGE.initializeLanguage(spi, language.info, language, this);

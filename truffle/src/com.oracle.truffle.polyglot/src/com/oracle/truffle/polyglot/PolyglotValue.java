@@ -1529,12 +1529,7 @@ abstract class PolyglotValue extends AbstractValueDispatch {
     }
 
     static PolyglotValue createInteropValue(PolyglotLanguageInstance languageInstance, TruffleObject receiver, Class<?> receiverType) {
-        InteropCodeCache cache = languageInstance.valueCodeCache.get(receiverType);
-        if (cache == null) {
-            cache = new InteropCodeCache(languageInstance, receiver, receiverType);
-            languageInstance.valueCodeCache.put(receiverType, cache);
-        }
-        return new InteropValue(languageInstance.getImpl(), cache);
+        return new InteropValue(languageInstance.getImpl(), new InteropCodeCache(languageInstance, receiver, receiverType));
     }
 
     static PolyglotValue createHostNull(PolyglotImpl polyglot) {
