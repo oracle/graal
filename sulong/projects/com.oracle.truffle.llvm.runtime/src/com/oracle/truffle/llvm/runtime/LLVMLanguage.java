@@ -280,6 +280,16 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     @Override
     protected LLVMContext createContext(Env env) {
+        ensureActiveConfiguration(env);
+
+        Toolchain toolchain = new ToolchainImpl(activeConfiguration.getCapability(ToolchainConfig.class), this);
+        env.registerService(toolchain);
+
+        LLVMContext context = new LLVMContext(this, env, toolchain);
+        return context;
+    }
+
+    private synchronized void ensureActiveConfiguration(Env env) {
         if (activeConfiguration == null) {
             final ArrayList<ContextExtension.Key<?>> ctxExts = new ArrayList<>();
             ContextExtension.Registry r = new ContextExtension.Registry() {
@@ -300,12 +310,6 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
             cachedLLVMMemory = activeConfiguration.getCapability(LLVMMemory.class);
             contextExtensions = ctxExts.toArray(ContextExtensionKey.EMPTY);
         }
-
-        Toolchain toolchain = new ToolchainImpl(activeConfiguration.getCapability(ToolchainConfig.class), this);
-        env.registerService(toolchain);
-
-        LLVMContext context = new LLVMContext(this, env, toolchain);
-        return context;
     }
 
     /**
