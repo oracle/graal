@@ -70,6 +70,8 @@ public abstract class BoxNode extends AbstractBoxingNode implements IterableNode
 
     public static final NodeClass<BoxNode> TYPE = NodeClass.create(BoxNode.class);
 
+    private boolean hasIdentity;
+
     private BoxNode(ValueNode value, ResolvedJavaType resultType, JavaKind boxingKind) {
         this(TYPE, value, resultType, boxingKind);
     }
@@ -89,6 +91,22 @@ public abstract class BoxNode extends AbstractBoxingNode implements IterableNode
             return new PureBoxNode(value, resultType, boxingKind);
         }
         return new AllocatingBoxNode(value, resultType, boxingKind);
+    }
+
+    /**
+     * @see #setHasIdentity()
+     */
+    public boolean hasIdentity() {
+        return hasIdentity;
+    }
+
+    /**
+     * Mark this boxing node as "identity preserving" such as it will not be escape analyzed or
+     * commoned with another boxing node that shares the same {@linkplain #getValue() input value}.
+     */
+    public void setHasIdentity() {
+        System.out.printf("%s: %s has identity%n", graph(), this);
+        this.hasIdentity = true;
     }
 
     @Override
@@ -123,6 +141,10 @@ public abstract class BoxNode extends AbstractBoxingNode implements IterableNode
 
     @Override
     public void virtualize(VirtualizerTool tool) {
+        if (hasIdentity) {
+            // Cannot virtualize a box node that preserves identity
+            return;
+        }
         ValueNode alias = tool.getAlias(getValue());
 
         VirtualBoxingNode newVirtual = createVirtualBoxingNode();
