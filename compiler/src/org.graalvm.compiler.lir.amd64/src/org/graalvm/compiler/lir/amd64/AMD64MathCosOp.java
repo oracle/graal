@@ -202,10 +202,10 @@ import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
  */
 // @formatter:off
 @StubPort(path      = "src/hotspot/cpu/x86/macroAssembler_x86_cos.cpp",
-      lineStart = 0,
-      lineEnd   = 630,
-      commit    = "12bac3a02d7b0f17da78d5ee810fd2742ec43ba6",
-      sha1      = "1961922e2fb08f172595d18e5fe9bd79d9e3cc7a")
+          lineStart = 0,
+          lineEnd   = 630,
+          commit    = "12bac3a02d7b0f17da78d5ee810fd2742ec43ba6",
+          sha1      = "1961922e2fb08f172595d18e5fe9bd79d9e3cc7a")
 // @formatter:on
 public final class AMD64MathCosOp extends AMD64MathIntrinsicUnaryOp {
 

@@ -82,10 +82,10 @@ import jdk.vm.ci.amd64.AMD64;
  */
 // @formatter:off
 @StubPort(path      = "src/hotspot/cpu/x86/macroAssembler_x86_log.cpp",
-      lineStart = 0,
-      lineEnd   = 362,
-      commit    = "51b218842f001f1c4fd5ca7a02a2ba21e9e8a82c",
-      sha1      = "7711be0c6b6e72c57b39578e00000205f1315cde")
+          lineStart = 0,
+          lineEnd   = 362,
+          commit    = "51b218842f001f1c4fd5ca7a02a2ba21e9e8a82c",
+          sha1      = "7711be0c6b6e72c57b39578e00000205f1315cde")
 // @formatter:on
 public final class AMD64MathLogOp extends AMD64MathIntrinsicUnaryOp {
 

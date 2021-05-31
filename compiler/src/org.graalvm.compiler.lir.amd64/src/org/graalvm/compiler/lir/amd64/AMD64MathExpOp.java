@@ -87,10 +87,10 @@ import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
  */
 // @formatter:off
 @StubPort(path      = "src/hotspot/cpu/x86/macroAssembler_x86_exp.cpp",
-      lineStart = 0,
-      lineEnd   = 406,
-      commit    = "51b218842f001f1c4fd5ca7a02a2ba21e9e8a82c",
-      sha1      = "d21d2a3439932fdbdcf20274798d8488ae1153a9")
+          lineStart = 0,
+          lineEnd   = 406,
+          commit    = "51b218842f001f1c4fd5ca7a02a2ba21e9e8a82c",
+          sha1      = "d21d2a3439932fdbdcf20274798d8488ae1153a9")
 // @formatter:on
 public final class AMD64MathExpOp extends AMD64MathIntrinsicUnaryOp {
 

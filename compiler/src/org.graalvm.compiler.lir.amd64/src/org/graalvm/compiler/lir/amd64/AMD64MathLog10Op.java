@@ -80,10 +80,10 @@ import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
  */
 // @formatter:off
 @StubPort(path      = "src/hotspot/cpu/x86/macroAssembler_x86_log10.cpp",
-      lineStart = 0,
-      lineEnd   = 382,
-      commit    = "12bac3a02d7b0f17da78d5ee810fd2742ec43ba6",
-      sha1      = "ce7879887e5360ad4c1ca8b776daca5497d6b349")
+          lineStart = 0,
+          lineEnd   = 382,
+          commit    = "12bac3a02d7b0f17da78d5ee810fd2742ec43ba6",
+          sha1      = "ce7879887e5360ad4c1ca8b776daca5497d6b349")
 // @formatter:on
 public final class AMD64MathLog10Op extends AMD64MathIntrinsicUnaryOp {
 

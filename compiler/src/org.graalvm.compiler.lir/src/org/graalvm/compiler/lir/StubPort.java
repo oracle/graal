@@ -27,17 +27,35 @@ package org.graalvm.compiler.lir;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Target;
 
+/**
+ * Denotes a port of the HotSpot stub. This information will be parsed by
+ * {@code org.graalvm.compiler.lir.processor.StubPortProcessor}.
+ */
 @Target(ElementType.TYPE)
 public @interface StubPort {
-
+    /**
+     * Relevant path of source code file containing the ported stub.
+     */
     String path();
 
+    /**
+     * Starting line of the ported stub.
+     */
     int lineStart();
 
+    /**
+     * Ending line of the ported stub.
+     */
     int lineEnd();
 
+    /**
+     * Commit hash of the source code file when porting.
+     */
     String commit();
 
+    /**
+     * sha1 digest of the ported stub.
+     */
     String sha1();
 
 }
