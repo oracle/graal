@@ -242,7 +242,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             }
 
             if (impl != null) {
-                ClassLoader contextClassLoader = TruffleOptions.AOT ? null : Thread.currentThread().getContextClassLoader();
                 impl.patch(dispatchOut,
                                 dispatchErr,
                                 resolvedIn,
@@ -251,12 +250,11 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                                 loggerProvider,
                                 options,
                                 useAllowExperimentalOptions,
-                                contextClassLoader,
                                 boundEngine,
                                 logHandler);
             }
             if (impl == null) {
-                HostLanguage host = new HostLanguage();
+                HostLanguage host = new HostLanguage(conf);
                 impl = new PolyglotEngineImpl(this,
                                 dispatchOut,
                                 dispatchErr,
@@ -321,7 +319,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         DispatchOutputStream err = INSTRUMENT.createDispatchOutput(System.err);
         Handler logHandler = PolyglotEngineImpl.createLogHandler(logConfig, err);
         EngineLoggerProvider loggerProvider = new PolyglotLoggers.EngineLoggerProvider(logHandler, logConfig.logLevels);
-        HostLanguage host = new HostLanguage();
+        HostLanguage host = new HostLanguage(createHostAccess());
         final PolyglotEngineImpl engine = new PolyglotEngineImpl(this, out, err, System.in, engineOptions, logConfig.logLevels, loggerProvider, options, true,
                         host, true, true, null, logHandler);
         return engine;
@@ -434,8 +432,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
     @Override
     public EngineHostAccess createHostAccess() {
-        // TODO
-        return null;
+        return new PolyglotHostAccess(this);
     }
 
     org.graalvm.polyglot.Source getOrCreatePolyglotSource(Source source) {

@@ -633,6 +633,16 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Throwable asHostException(Object value);
 
+        public abstract Object findClass(Object context, String classValue);
+
+        public abstract void disposeContext(Object receiver);
+
+        public abstract Object getLanguageView(Object receiver, Object value);
+
+        public abstract Object getTopScope(Object context);
+
+        public abstract void patchHostContext(Object receiver, HostAccess hostAccess, ClassLoader cl);
+
     }
 
     public abstract static class AbstractValueDispatch {

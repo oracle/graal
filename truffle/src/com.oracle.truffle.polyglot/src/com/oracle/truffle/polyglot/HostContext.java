@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.polyglot;
 
+import java.io.IOException;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -73,7 +74,8 @@ final class HostContext {
     final Map<String, Class<?>> classCache = new HashMap<>();
     final Object topScope = new TopScopeObject(this);
     volatile HostClassLoader classloader;
-    private final HostLanguage language;
+    private final PolyglotHostAccess language;
+    private ClassLoader contextClassLoader;
 
     @SuppressWarnings("serial") final HostException stackoverflowError = new HostException(new StackOverflowError() {
         @SuppressWarnings("sync-override")
@@ -90,8 +92,16 @@ final class HostContext {
         }
     };
 
-    HostContext(HostLanguage language) {
+    HostContext(PolyglotHostAccess language, ClassLoader contextClassLoader) {
         this.language = language;
+        this.contextClassLoader = contextClassLoader;
+    }
+
+    void patch(ClassLoader cl) {
+        assert classloader == null : "host class loader must not be in use after context preinitialzation.";
+        // if assertions are not enabled. dispose the previous class loader to be on the safe side
+        disposeClassLoader();
+        this.contextClassLoader = cl;
     }
 
     public HostClassCache getHostClassCache() {
@@ -123,8 +133,7 @@ final class HostContext {
 
     HostClassLoader getClassloader() {
         if (classloader == null) {
-            ClassLoader parentClassLoader = internalContext.config.hostClassLoader != null ? internalContext.config.hostClassLoader
-                            : language.contextClassLoader;
+            ClassLoader parentClassLoader = contextClassLoader;
             classloader = new HostClassLoader(this, parentClassLoader);
         }
         return classloader;
@@ -344,4 +353,17 @@ final class HostContext {
             return index >= 0 && index < getArraySize();
         }
     }
+
+    public void disposeClassLoader() {
+        HostClassLoader cl = classloader;
+        if (cl != null) {
+            try {
+                cl.close();
+            } catch (IOException e) {
+                // lets ignore that
+            }
+            classloader = null;
+        }
+    }
+
 }

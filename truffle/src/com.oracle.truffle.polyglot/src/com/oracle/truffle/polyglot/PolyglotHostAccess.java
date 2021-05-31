@@ -40,19 +40,86 @@
  */
 package com.oracle.truffle.polyglot;
 
+import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
+
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.EngineHostAccess;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+
 final class PolyglotHostAccess extends EngineHostAccess {
+
+    @CompilationFinal private GuestToHostCodeCache hostToGuestCodeCache;
+    @CompilationFinal HostClassCache hostClassCache; // effectively final
 
     protected PolyglotHostAccess(AbstractPolyglotImpl impl) {
         super(impl);
     }
 
     @Override
-    public Object createHostContext(HostAccess access, ClassLoader contextClassLoader) {
-        return null;
+    public void patchHostContext(Object receiver, HostAccess hostAccess, ClassLoader cl) {
+        ClassLoader useCl = resolveClassLoader(cl);
+        initializeHostAccess(hostAccess, useCl);
+        HostContext context = (HostContext) receiver;
+        context.patch(useCl);
+    }
+
+    @Override
+    public Object createHostContext(HostAccess access, ClassLoader cl) {
+        ClassLoader useCl = resolveClassLoader(cl);
+        initializeHostAccess(access, useCl);
+        return new HostContext(this, useCl);
+    }
+
+    private static ClassLoader resolveClassLoader(ClassLoader cl) {
+        ClassLoader useCl = cl;
+        if (useCl == null) {
+            useCl = TruffleOptions.AOT ? null : Thread.currentThread().getContextClassLoader();
+        }
+        return useCl;
+    }
+
+    GuestToHostCodeCache getGuestToHostCache() {
+        GuestToHostCodeCache cache = this.hostToGuestCodeCache;
+        if (cache == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            hostToGuestCodeCache = cache = new GuestToHostCodeCache();
+        }
+        return cache;
+    }
+
+    @Override
+    public Object getTopScope(Object context) {
+        return ((HostContext) context).topScope;
+    }
+
+    void initializeHostAccess(HostAccess policy, ClassLoader cl) {
+        if (policy == null) {
+            // should only happen during context preinitialization
+            return;
+        }
+
+        HostClassCache cache = HostClassCache.findOrInitialize(PolyglotImpl.getInstance().getAPIAccess(), policy, cl);
+        if (this.hostClassCache != null) {
+            if (this.hostClassCache.hostAccess.equals(cache.hostAccess)) {
+                /*
+                 * The cache can be effectively be reused if the same host access configuration
+                 * applies.
+                 */
+            } else {
+                throw PolyglotEngineException.illegalState("Found different host access configuration for a context with a shared engine. " +
+                                "The host access configuration must be the same for all contexts of an engine. " +
+                                "Provide the same host access configuration using the Context.Builder.allowHostAccess method when constructing the context.");
+            }
+        } else {
+            this.hostClassCache = cache;
+        }
     }
 
     @Override
@@ -61,12 +128,31 @@ final class PolyglotHostAccess extends EngineHostAccess {
     }
 
     @Override
-    public Object asHostDynamicClass(Object context, Class<?> value) {
+    public Object getLanguageView(Object receiver, Object value) {
+        HostContext context = (HostContext) receiver;
+
+        Object wrapped;
+        if (value instanceof TruffleObject) {
+            InteropLibrary lib = InteropLibrary.getFactory().getUncached(value);
+            try {
+                assert !lib.hasLanguage(value) || lib.getLanguage(value) != HostLanguage.class;
+            } catch (UnsupportedMessageException e) {
+                throw shouldNotReachHere(e);
+            }
+            wrapped = ToHostNode.convertToObject(value, context.internalContext.getHostContext(), lib);
+        } else {
+            wrapped = value;
+        }
+        return HostObject.forObject(wrapped, context);
+    }
+
+    @Override
+    public Object asHostDynamicClass(Object config, Class<?> value) {
         return null;
     }
 
     @Override
-    public Object asHostStaticClass(Object context, Class<?> value) {
+    public Object asHostStaticClass(Object config, Class<?> value) {
         return null;
     }
 
@@ -89,4 +175,17 @@ final class PolyglotHostAccess extends EngineHostAccess {
     public Throwable asHostException(Object value) {
         return null;
     }
+
+    @Override
+    public Object findClass(Object receiver, String classValue) {
+        HostContext context = (HostContext) receiver;
+        return HostObject.forClass(context.findClass(classValue), context);
+    }
+
+    @Override
+    public void disposeContext(Object receiver) {
+        HostContext context = (HostContext) receiver;
+        context.disposeClassLoader();
+    }
+
 }
