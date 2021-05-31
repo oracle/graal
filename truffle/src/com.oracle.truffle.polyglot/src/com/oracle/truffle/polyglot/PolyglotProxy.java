@@ -654,10 +654,9 @@ final class PolyglotProxy implements TruffleObject {
                     @CachedLibrary("this") InteropLibrary library,
                     @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) throws UnsupportedMessageException {
         if (proxy instanceof ProxyHashMap) {
-            PolyglotLanguageContext languageContext = context.internalContext.getHostContext();
-            Value keyValue = languageContext.asValue(key);
-            Value valueValue = languageContext.asValue(value);
-            guestToHostCall(library, cache.putHashEntry, languageContext, proxy, keyValue, valueValue);
+            Value keyValue = this.context.asValue(key);
+            Value valueValue = this.context.asValue(value);
+            guestToHostCall(library, cache.putHashEntry, this.context, proxy, keyValue, valueValue);
         } else {
             throw UnsupportedMessageException.create();
         }

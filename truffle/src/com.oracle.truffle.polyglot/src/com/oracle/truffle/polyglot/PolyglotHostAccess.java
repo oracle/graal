@@ -50,6 +50,7 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.EngineHostAccess;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -70,6 +71,12 @@ final class PolyglotHostAccess extends EngineHostAccess {
         initializeHostAccess(hostAccess, useCl);
         HostContext context = (HostContext) receiver;
         context.patch(useCl, clFilter, hostCLAllowed);
+    }
+
+    @Override
+    public void addToHostClassPath(Object receiver, Object truffleFile) {
+        HostContext context = (HostContext) receiver;
+        context.addToHostClasspath((TruffleFile) truffleFile);
     }
 
     @Override

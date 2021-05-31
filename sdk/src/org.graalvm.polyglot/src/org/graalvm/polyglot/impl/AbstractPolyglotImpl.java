@@ -643,6 +643,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract void patchHostContext(Object receiver, HostAccess hostAccess, ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed);
 
+        public abstract void addToHostClassPath(Object hostContextObject, Object truffleFile);
+
     }
 
     public abstract static class AbstractValueDispatch {

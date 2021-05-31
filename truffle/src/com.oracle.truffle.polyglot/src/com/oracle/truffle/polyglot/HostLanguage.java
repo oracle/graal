@@ -47,6 +47,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -124,6 +125,13 @@ final class HostLanguage extends TruffleLanguage<Object> {
     @Override
     protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
         return true;
+    }
+
+    void addToHostClassPath(PolyglotContextImpl context, TruffleFile entry) {
+        if (FileSystems.hasNoIOFileSystem(entry)) {
+            throw new HostLanguageException("Host class loading is disabled without IO permissions.");
+        }
+        access.addToHostClassPath(context.getHostContextObject(), entry);
     }
 
 }

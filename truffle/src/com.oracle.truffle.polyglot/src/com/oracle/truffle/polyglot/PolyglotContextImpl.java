@@ -990,6 +990,10 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         return (HostContext) contextImpls[PolyglotEngineImpl.HOST_LANGUAGE_INDEX];
     }
 
+    Object getHostContextObject() {
+        return contextImpls[PolyglotEngineImpl.HOST_LANGUAGE_INDEX];
+    }
+
     @Override
     public PolyglotEngineImpl getEngine() {
         return engine;

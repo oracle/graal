@@ -202,15 +202,13 @@ final class HostContext {
         }
     }
 
-    public void addToHostClasspath(TruffleFile classpathEntry) {
+    void addToHostClasspath(TruffleFile classpathEntry) {
         checkHostAccessAllowed();
         if (TruffleOptions.AOT) {
             throw new HostLanguageException(String.format("Cannot add classpath entry %s in native mode.", classpathEntry.getName()));
         }
         checkHostAccessAllowed();
-        if (FileSystems.hasNoIOFileSystem(classpathEntry)) {
-            throw new HostLanguageException("Host class loading is disabled without IO permissions.");
-        }
+
         getClassloader().addClasspathRoot(classpathEntry);
     }
 
