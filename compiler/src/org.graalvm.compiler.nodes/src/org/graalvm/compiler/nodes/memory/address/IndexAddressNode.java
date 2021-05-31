@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -50,7 +50,11 @@ public class IndexAddressNode extends AddressNode implements Lowerable {
     }
 
     public IndexAddressNode(ValueNode array, ValueNode index, JavaKind arrayKind, JavaKind elementKind) {
-        super(TYPE);
+        this(TYPE, array, index, arrayKind, elementKind);
+    }
+
+    protected IndexAddressNode(NodeClass<? extends IndexAddressNode> c, ValueNode array, ValueNode index, JavaKind arrayKind, JavaKind elementKind) {
+        super(c);
         this.array = array;
         this.index = index;
         this.arrayKind = arrayKind;

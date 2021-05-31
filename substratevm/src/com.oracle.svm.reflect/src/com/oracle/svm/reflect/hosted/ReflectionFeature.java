@@ -25,11 +25,13 @@
 package com.oracle.svm.reflect.hosted;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
+import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.ReflectionConfigurationParser;
@@ -37,11 +39,12 @@ import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
-import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.hosted.snippets.ReflectionPlugins;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
+import com.oracle.svm.reflect.helpers.ReflectionProxy;
+import com.oracle.svm.util.ModuleSupport;
 
 @AutomaticFeature
 public final class ReflectionFeature implements GraalFeature {
@@ -50,13 +53,19 @@ public final class ReflectionFeature implements GraalFeature {
 
     private ReflectionDataBuilder reflectionData;
     private ImageClassLoader loader;
-    private SVMHost hostVM;
+    private AnalysisUniverse aUniverse;
     private int loadedConfigurations;
+
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        ModuleSupport.exportAndOpenPackageToUnnamed("java.base", "jdk.internal.reflect", false);
+        ModuleSupport.openModuleByClass(ReflectionProxy.class, null);
+    }
 
     @Override
     public void duringSetup(DuringSetupAccess a) {
         DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
-        hostVM = access.getHostVM();
+        aUniverse = access.getUniverse();
 
         ReflectionSubstitution subst = new ReflectionSubstitution(access.getMetaAccess().getWrapped(), access.getHostVM().getClassInitializationSupport(), access.getImageClassLoader());
         access.registerSubstitutionProcessor(subst);
@@ -64,6 +73,12 @@ public final class ReflectionFeature implements GraalFeature {
 
         reflectionData = new ReflectionDataBuilder(access);
         ImageSingletons.add(RuntimeReflectionSupport.class, reflectionData);
+
+        access.registerObjectReplacer(new ReflectionObjectReplacer(access.getMetaAccess()));
+
+        if (!ImageSingletons.contains(ReflectionSubstitutionType.Factory.class)) {
+            ImageSingletons.add(ReflectionSubstitutionType.Factory.class, new ReflectionSubstitutionType.Factory());
+        }
 
         ReflectionConfigurationParser<Class<?>> parser = ConfigurationParserUtils.create(reflectionData, access.getImageClassLoader());
         loadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurations(parser, access.getImageClassLoader(), "reflection",
@@ -96,11 +111,8 @@ public final class ReflectionFeature implements GraalFeature {
     }
 
     @Override
-    public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, InvocationPlugins invocationPlugins, boolean analysis, boolean hosted) {
-        /*
-         * The reflection invocation plugins need to be registered only when reflection is enabled
-         * since it adds Field and Method objects to the image heap which otherwise are not allowed.
-         */
-        ReflectionPlugins.registerInvocationPlugins(loader, snippetReflection, annotationSubstitutions, invocationPlugins, hostVM, analysis, hosted);
+    public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, Plugins plugins, ParsingReason reason) {
+        ReflectionPlugins.registerInvocationPlugins(loader, snippetReflection, annotationSubstitutions,
+                        plugins.getClassInitializationPlugin(), plugins.getInvocationPlugins(), aUniverse, reason);
     }
 }

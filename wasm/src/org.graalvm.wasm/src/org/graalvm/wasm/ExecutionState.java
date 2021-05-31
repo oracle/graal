@@ -99,6 +99,9 @@ public class ExecutionState {
     }
 
     public void setReachable(boolean reachable) {
+        if (!reachable) {
+            unwindStack(getStackSize(0));
+        }
         this.reachable = reachable;
     }
 
@@ -117,21 +120,11 @@ public class ExecutionState {
     }
 
     public void popChecked(byte expectedType) {
-        if (isReachable()) {
-            assertTypesEqual(expectedType, pop());
-        }
-    }
-
-    private void topChecked(byte expectedType) {
-        if (isReachable()) {
-            final int blockStackSize = stack.size() - getStackSize(0);
-            Assert.assertIntGreater(blockStackSize, 0, "Cannot pop from the stack", Failure.TYPE_MISMATCH);
-            assertTypesEqual(expectedType, stack.top());
-        }
+        assertTypesEqual(expectedType, pop());
     }
 
     private static void assertTypesEqual(byte expectedType, byte actualType) {
-        if (expectedType != actualType) {
+        if (expectedType != -1 && actualType != -1 && expectedType != actualType) {
             throw WasmException.format(Failure.TYPE_MISMATCH, "Expected type %s but got %s.", WasmType.toString(expectedType), WasmType.toString(actualType));
         }
     }
@@ -156,6 +149,10 @@ public class ExecutionState {
         return ancestorsStackSizes.get(depth() - 1 - offset);
     }
 
+    public int getCurrentBlockStackSize() {
+        return stackSize() - getStackSize(0);
+    }
+
     public void startBlock(WasmBlockNode block, boolean isLoopBody) {
         ancestors.add(block);
         ancestorsIsLoop.add(isLoopBody);
@@ -163,6 +160,15 @@ public class ExecutionState {
     }
 
     public void endBlock() {
+        final WasmBlockNode currentBlock = ancestors.get(ancestors.size() - 1);
+        if (currentBlock.returnLength() == 1) {
+            popChecked(currentBlock.returnTypeId());
+        }
+        Assert.assertIntEqual(getCurrentBlockStackSize(), 0, Failure.TYPE_MISMATCH);
+        if (currentBlock.returnLength() == 1) {
+            push(currentBlock.returnTypeId());
+        }
+
         ancestorsStackSizes.popBack();
         ancestorsIsLoop.popBack();
         ancestors.remove(ancestors.size() - 1);
@@ -187,13 +193,9 @@ public class ExecutionState {
         final int index = depth() - 1 - unwindLevel;
         final boolean isLoop = ancestorsIsLoop.get(index);
         final WasmBlockNode block = ancestors.get(index);
-        if (isLoop) {
-            Assert.assertIntEqual(block.inputLength(), 0, "A loop should not have parameters", Failure.LOOP_INPUT);
-        } else {
-            Assert.assertIntLessOrEqual(block.returnLength(), 1, "A block cannot return more than one value", Failure.INVALID_RESULT_ARITY);
-            if (block.returnLength() == 1) {
-                topChecked(block.returnTypeId());
-            }
+        if (!isLoop && block.returnLength() == 1) {
+            popChecked(block.returnTypeId());
+            push(block.returnTypeId());
         }
     }
 

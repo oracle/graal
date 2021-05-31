@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,8 +30,10 @@
 package com.oracle.truffle.llvm.nativemode;
 
 import com.oracle.truffle.llvm.nativemode.NativeConfigurationFactory.Key;
+
 import java.util.List;
 
+import com.oracle.truffle.llvm.nativemode.runtime.SulongNativeOption;
 import org.graalvm.options.OptionDescriptor;
 
 import com.oracle.truffle.llvm.runtime.ContextExtension;
@@ -50,7 +52,7 @@ public class NativeConfigurationFactory implements ConfigurationFactory<Key> {
 
         public Key(OptionValues options) {
             this.loadCxxLibraries = options.get(SulongEngineOption.LOAD_CXX_LIBRARIES);
-            this.enableNFI = options.get(SulongEngineOption.ENABLE_NFI);
+            this.enableNFI = options.get(SulongNativeOption.ENABLE_NFI);
         }
 
         @Override
@@ -83,7 +85,17 @@ public class NativeConfigurationFactory implements ConfigurationFactory<Key> {
 
     @Override
     public List<OptionDescriptor> getOptionDescriptors() {
-        return SulongEngineOption.describeOptions();
+        return SulongNativeOption.describeOptions();
+    }
+
+    @Override
+    public String getName() {
+        return "native mode";
+    }
+
+    @Override
+    public String getHint() {
+        return "enabled by default";
     }
 
     @Override

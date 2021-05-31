@@ -87,6 +87,7 @@ public class UpgradeProcess implements AutoCloseable {
     private ComponentRegistry newGraalRegistry;
     private Version minVersion = Version.NO_VERSION;
     private String editionUpgrade;
+    private Set<String> acceptedLicenseIDs = new HashSet<>();
 
     public UpgradeProcess(CommandInput input, Feedback feedback, ComponentCollection catalog) {
         this.input = input;
@@ -269,6 +270,7 @@ public class UpgradeProcess implements AutoCloseable {
         MetadataLoader ldr = coreParam.createMetaLoader();
         cmd.addLicenseToAccept(ldr);
         cmd.acceptLicenses();
+        acceptedLicenseIDs = cmd.getProcessedLicenses();
 
         // force download
         ComponentParam param = input.existingFiles().createParam("core", info);
@@ -482,7 +484,7 @@ public class UpgradeProcess implements AutoCloseable {
         Set<String> toMigrate = existingComponents.stream().filter((id) -> {
             ComponentInfo ci = input.getLocalRegistry().loadSingleComponent(id, false);
             return ci.getDistributionType() != DistributionType.BUNDLED;
-        }).collect(Collectors.toSet());
+        }).map(this::lowerCaseId).collect(Collectors.toSet());
         toMigrate.removeAll(explicitIds);
 
         Map<ComponentInfo, Set<ComponentInfo>> missingParts = new HashMap<>();
@@ -500,7 +502,7 @@ public class UpgradeProcess implements AutoCloseable {
             } else {
                 Set<String> miss = new HashSet<>(toMigrate);
                 miss.removeAll(canMigrate);
-                missingParts.put(candidate, miss.stream().map((id) -> input.getRegistry().findComponent(id)).collect(Collectors.toSet()));
+                missingParts.put(candidate, miss.stream().map((id) -> input.getLocalRegistry().findComponent(id)).collect(Collectors.toSet()));
             }
         }
         if (installables == null) {
@@ -523,7 +525,11 @@ public class UpgradeProcess implements AutoCloseable {
 
                     feedback.error("UPGRADE_MissingComponents", null, core.getName(), core.getVersion().displayString(), msg);
                 }
-                throw feedback.failure("UPGRADE_ComponentsCannotMigrate", null);
+                if (editionUpgrade != null) {
+                    throw feedback.failure("UPGRADE_ComponentsMissingFromEdition", null, editionUpgrade);
+                } else {
+                    throw feedback.failure("UPGRADE_ComponentsCannotMigrate", null);
+                }
             }
             if (versions.isEmpty()) {
                 throw feedback.failure("UPGRADE_NoVersionSatisfiesComponents", null);
@@ -533,7 +539,8 @@ public class UpgradeProcess implements AutoCloseable {
         }
         migrated.clear();
         // if the result GraalVM is identical to current, do not migrate anything.
-        if (result != null && !input.getLocalRegistry().getGraalVersion().equals(result.getVersion())) {
+        if (result != null && (!input.getLocalRegistry().getGraalVersion().equals(result.getVersion()) ||
+                        input.hasOption(Commands.OPTION_USE_EDITION))) {
             migrated.addAll(installables);
             targetInfo = result;
         }
@@ -577,7 +584,7 @@ public class UpgradeProcess implements AutoCloseable {
                         CommonConstants.PATH_COMPONENT_STORAGE + "/gds");
         if (Files.isDirectory(gdsSettings)) {
             Path targetGdsSettings = SystemUtils.resolveRelative(
-                            newInstallPath,
+                            newInstallPath.resolve(SystemUtils.getGraalVMJDKRoot(newGraalRegistry)),
                             CommonConstants.PATH_COMPONENT_STORAGE + "/gds");
             try {
                 SystemUtils.copySubtree(gdsSettings, targetGdsSettings);
@@ -597,6 +604,7 @@ public class UpgradeProcess implements AutoCloseable {
         instCommand.init(new InputDelegate(params), feedback);
         instCommand.setAllowUpgrades(true);
         instCommand.setForce(true);
+        instCommand.markLicensesProcessed(acceptedLicenseIDs);
         return instCommand;
     }
 

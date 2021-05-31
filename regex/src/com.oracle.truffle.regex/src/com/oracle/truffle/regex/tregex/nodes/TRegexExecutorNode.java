@@ -51,9 +51,9 @@ import com.oracle.truffle.regex.tregex.string.Encodings.Encoding.UTF16;
 
 public abstract class TRegexExecutorNode extends Node {
 
-    @CompilationFinal protected TRegexExecRootNode root;
+    @CompilationFinal protected TRegexExecNode root;
 
-    public void setRoot(TRegexExecRootNode root) {
+    public void setRoot(TRegexExecNode root) {
         this.root = root;
     }
 
@@ -68,10 +68,10 @@ public abstract class TRegexExecutorNode extends Node {
 
     /**
      * The length of the {@code input} argument given to
-     * {@link TRegexExecRootNode#execute(Object, int)}.
+     * {@link TRegexExecNode#execute(Object, int)}.
      *
      * @return the length of the {@code input} argument given to
-     *         {@link TRegexExecRootNode#execute(Object, int)}.
+     *         {@link TRegexExecNode#execute(Object, int)}.
      */
     public int getInputLength(TRegexExecutorLocals locals) {
         assert root != null;

@@ -122,6 +122,9 @@ class AdrpLdrMacroInstructionHostedPatcher extends CompilationResult.CodeAnnotat
         siteOffset += 4;
         RelocationKind secondRelocation;
         switch (macroInstruction.srcSize) {
+            case 128:
+                secondRelocation = RelocationKind.AARCH64_R_AARCH64_LDST128_ABS_LO12_NC;
+                break;
             case 64:
                 secondRelocation = RelocationKind.AARCH64_R_AARCH64_LDST64_ABS_LO12_NC;
                 break;

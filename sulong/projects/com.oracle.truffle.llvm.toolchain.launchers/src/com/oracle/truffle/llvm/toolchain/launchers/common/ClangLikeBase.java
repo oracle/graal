@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -38,6 +38,7 @@ import java.util.Objects;
 
 import com.oracle.truffle.llvm.toolchain.launchers.darwin.DarwinLinker;
 import com.oracle.truffle.llvm.toolchain.launchers.linux.LinuxLinker;
+import com.oracle.truffle.llvm.toolchain.launchers.windows.WindowsLinker;
 
 public abstract class ClangLikeBase extends Driver {
 
@@ -175,6 +176,13 @@ public abstract class ClangLikeBase extends Driver {
     protected void getLinkerArgs(List<String> sulongArgs) {
         if (os == OS.LINUX) {
             sulongArgs.addAll(Arrays.asList("-fuse-ld=" + getLLVMExecutable(LinuxLinker.LLD), "-Wl," + String.join(",", LinuxLinker.getLinkerFlags())));
+        } else if (os == OS.WINDOWS) {
+            /*
+             * This should rather be `"-fuse-ld=" + getLLVMExecutable(WindowsLinker.LLD_LINK)` to be
+             * sure to pick up the right executable, but for some reason using absolute paths for
+             * `-fuse-ld` does not work on Windows.
+             */
+            sulongArgs.addAll(Arrays.asList("-fuse-ld=" + WindowsLinker.LLD_LINK, "-Wl," + String.join(",", WindowsLinker.getLinkerFlags())));
         } else if (os == OS.DARWIN) {
             sulongArgs.add("-fuse-ld=" + DarwinLinker.LD);
         }

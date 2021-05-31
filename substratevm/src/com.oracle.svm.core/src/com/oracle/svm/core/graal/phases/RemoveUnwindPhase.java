@@ -28,7 +28,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.EndNode;
+import org.graalvm.compiler.nodes.AbstractBeginNode;
+import org.graalvm.compiler.nodes.AbstractEndNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.MergeNode;
@@ -93,7 +94,7 @@ public class RemoveUnwindPhase extends Phase {
      * just forwards the exception to the {@link UnwindNode}. Such nodes are rewritten to a variant
      * without an exception edge, i.e., no exception handler entry is created for such invokes.
      */
-    private static void walkBack(Node n, Node successor, List<WithExceptionNode> withExceptionNodes, List<BytecodeExceptionNode> bytecodeExceptionNodes) {
+    protected static void walkBack(Node n, Node successor, List<WithExceptionNode> withExceptionNodes, List<BytecodeExceptionNode> bytecodeExceptionNodes) {
         if (n instanceof WithExceptionNode) {
             WithExceptionNode node = (WithExceptionNode) n;
             if (node.exceptionEdge() == successor) {
@@ -110,7 +111,7 @@ public class RemoveUnwindPhase extends Phase {
                 walkBack(predecessor, node, withExceptionNodes, bytecodeExceptionNodes);
             }
 
-        } else if (n instanceof EndNode || n instanceof LoopExitNode || n instanceof ExceptionObjectNode) {
+        } else if (n instanceof AbstractBeginNode || n instanceof AbstractEndNode || n instanceof LoopExitNode || n instanceof ExceptionObjectNode) {
             walkBack(n.predecessor(), n, withExceptionNodes, bytecodeExceptionNodes);
         }
     }

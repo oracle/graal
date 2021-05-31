@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -75,7 +75,15 @@ public abstract class MatchRuleTest extends GraalCompilerTest {
     }
 
     protected void checkLIRforAll(String methodName, Predicate<LIRInstruction> predicate, int expected) {
-        compile(getResolvedJavaMethod(methodName), null);
+        checkLIRforAll(null, methodName, predicate, expected);
+    }
+
+    protected void checkLIRforAll(OptionValues options, String methodName, Predicate<LIRInstruction> predicate, int expected) {
+        if (options != null) {
+            compile(getResolvedJavaMethod(methodName), null, options);
+        } else {
+            compile(getResolvedJavaMethod(methodName), null);
+        }
         int actualOpNum = 0;
         for (AbstractBlockBase<?> block : lir.codeEmittingOrder()) {
             if (block == null) {

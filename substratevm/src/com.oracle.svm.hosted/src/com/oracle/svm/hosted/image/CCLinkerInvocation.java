@@ -26,31 +26,35 @@ package com.oracle.svm.hosted.image;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 
 public abstract class CCLinkerInvocation implements LinkerInvocation {
 
     public static class Options {
         @Option(help = "Pass the provided raw option that will be appended to the linker command to produce the final binary. The possible options are platform specific and passed through without any validation.")//
-        public static final HostedOptionKey<String[]> NativeLinkerOption = new HostedOptionKey<>(new String[0]);
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> NativeLinkerOption = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
     }
 
     protected final List<String> additionalPreOptions = new ArrayList<>();
+    protected final List<String> nativeLinkerOptions = new ArrayList<>();
     protected final List<Path> inputFilenames = new ArrayList<>();
     protected final List<String> rpaths = new ArrayList<>();
     protected final List<String> libpaths = new ArrayList<>();
     protected final List<String> libs = new ArrayList<>();
     protected Path tempDirectory;
     protected Path outputFile;
-    protected AbstractBootImage.NativeImageKind outputKind;
 
     @Override
     public List<Path> getInputFiles() {
@@ -65,14 +69,6 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
     @Override
     public void addInputFile(int index, Path filename) {
         inputFilenames.add(index, filename);
-    }
-
-    public AbstractBootImage.NativeImageKind getOutputKind() {
-        return outputKind;
-    }
-
-    public void setOutputKind(AbstractBootImage.NativeImageKind k) {
-        outputKind = k;
     }
 
     @Override
@@ -170,7 +166,9 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
         }
 
         cmd.addAll(getLibrariesCommand());
-        Collections.addAll(cmd, Options.NativeLinkerOption.getValue());
+
+        cmd.addAll(getNativeLinkerOptions());
+
         return cmd;
     }
 
@@ -189,5 +187,15 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
     @Override
     public void addAdditionalPreOption(String option) {
         additionalPreOptions.add(option);
+    }
+
+    @Override
+    public void addNativeLinkerOption(String option) {
+        nativeLinkerOptions.add(option);
+    }
+
+    protected List<String> getNativeLinkerOptions() {
+        return Stream.of(nativeLinkerOptions, Options.NativeLinkerOption.getValue().values())
+                        .flatMap(Collection::stream).collect(Collectors.toList());
     }
 }

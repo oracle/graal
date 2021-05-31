@@ -159,6 +159,11 @@ public class InstallCommand implements InstallerCommand {
      */
     Map<ComponentParam, Installer> realInstallers = new LinkedHashMap<>();
 
+    /**
+     * Original (possibly catalog) ComponentInfos.
+     */
+    Map<ComponentParam, ComponentInfo> parameterInfos = new LinkedHashMap<>();
+
     private String current;
 
     private StringBuilder parameterList = new StringBuilder();
@@ -253,7 +258,9 @@ public class InstallCommand implements InstallerCommand {
         if (ldr.getLicenseType() != null) {
             String path = ldr.getLicensePath();
             if (inst != null && path != null) {
-                inst.setLicenseRelativePath(SystemUtils.fromCommonRelative(ldr.getLicensePath()));
+                if (!SystemUtils.isRemotePath(path)) {
+                    inst.setLicenseRelativePath(SystemUtils.fromCommonRelative(ldr.getLicensePath()));
+                }
             }
             addLicenseToAccept(ldr);
         }
@@ -634,6 +641,17 @@ public class InstallCommand implements InstallerCommand {
             Installer i = realInstallers.get(p);
             if (i == null) {
                 MetadataLoader floader = p.createFileLoader();
+                ComponentInfo initialInfo = parameterInfos.get(p);
+                ComponentInfo finfo = floader.getComponentInfo();
+                if (initialInfo != null && (!initialInfo.getId().equals(finfo.getId()) ||
+                                !initialInfo.getVersion().equals(finfo.getVersion()))) {
+                    String msg = String.format(
+                                    feedback.l10n("@INSTALL_Error_ComponentDiffers_Report"),
+                                    initialInfo.getId(), finfo.getId(),
+                                    initialInfo.getVersionString(), finfo.getVersionString());
+                    feedback.verbatimPart(msg, true, false);
+                    throw feedback.failure("INSTALL_Error_ComponentDiffers", null);
+                }
                 i = createInstaller(p, floader);
                 if (!verifyInstaller(i)) {
                     continue;
@@ -723,6 +741,7 @@ public class InstallCommand implements InstallerCommand {
     Installer createInstaller(ComponentParam p, MetadataLoader ldr) throws IOException {
         ComponentInfo partialInfo;
         partialInfo = ldr.getComponentInfo();
+        parameterInfos.putIfAbsent(p, partialInfo);
         feedback.verboseOutput("INSTALL_PrepareToInstall",
                         p.getDisplayName(),
                         partialInfo.getId(),
@@ -770,9 +789,19 @@ public class InstallCommand implements InstallerCommand {
         if (licensesToAccept.isEmpty()) {
             return;
         }
+        Set<String> processed = new HashSet<>(licensesToAccept.keySet());
         createLicensePresenter().run();
-        processedLicenses.addAll(licensesToAccept.keySet());
+        processed.removeAll(licensesToAccept.keySet());
+        markLicensesProcessed(processed);
         licensesToAccept.clear();
+    }
+
+    public Set<String> getProcessedLicenses() {
+        return new HashSet<>(processedLicenses);
+    }
+
+    public void markLicensesProcessed(Collection<String> licenseIDs) {
+        processedLicenses.addAll(licenseIDs);
     }
 
     public Set<String> getUnresolvedDependencies() {

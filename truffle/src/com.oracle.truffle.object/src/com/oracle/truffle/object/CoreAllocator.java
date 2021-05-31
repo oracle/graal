@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -188,8 +188,12 @@ class CoreAllocator extends ShapeImpl.BaseAllocator {
         return locationForValue(value, useFinal, nonNull, 0);
     }
 
-    @SuppressWarnings("unused")
     Location locationForValue(Object value, boolean useFinal, boolean nonNull, long putFlags) {
+        if (Flags.isConstant(putFlags)) {
+            return constantLocation(value);
+        } else if (Flags.isDeclaration(putFlags)) {
+            return declaredLocation(value);
+        }
         if (value instanceof Integer) {
             return newIntLocation(useFinal);
         } else if (value instanceof Double) {

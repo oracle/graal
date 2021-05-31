@@ -14,7 +14,7 @@ overlay = ${ci.overlay}
 # to another branch/commit in a Graal PR when mx changes are required for the PR.
 mx : {
   packages : {
-    mx: "HEAD"
+    mx: ${mx_version}
   }
 }
 
@@ -32,57 +32,27 @@ oraclejdk8OnlyDebug : { downloads : { JAVA_HOME : ${jdks.oraclejdk8Debug} }}
 openjdk8 :          { downloads : { JAVA_HOME : ${jdks.openjdk8} }}
 
 oraclejdk11 :       { downloads : { JAVA_HOME : ${jdks.oraclejdk11} }}
-oraclejdk15 :       { downloads : { JAVA_HOME : ${jdks.oraclejdk15} }}
+oraclejdk16 :       { downloads : { JAVA_HOME : ${jdks.oraclejdk16} }}
 openjdk11 :         { downloads : { JAVA_HOME : ${jdks.openjdk11} }}
 
 labsjdk-ce-11 :      { downloads : { JAVA_HOME : ${jdks.labsjdk-ce-11} }}
 labsjdk-ee-11 :      { downloads : { JAVA_HOME : ${jdks.labsjdk-ee-11} }}
-labsjdk-ce-15 :      { downloads : { JAVA_HOME : ${jdks.labsjdk-ce-15} }}
-labsjdk-ee-15 :      { downloads : { JAVA_HOME : ${jdks.labsjdk-ee-15} }}
-labsjdk-ce-15Debug : { downloads : { JAVA_HOME : ${jdks.labsjdk-ce-15Debug} }}
-labsjdk-ee-15Debug : { downloads : { JAVA_HOME : ${jdks.labsjdk-ee-15Debug} }}
+labsjdk-ce-16 :      { downloads : { JAVA_HOME : ${jdks.labsjdk-ce-16} }}
+labsjdk-ee-16 :      { downloads : { JAVA_HOME : ${jdks.labsjdk-ee-16} }}
+labsjdk-ce-16Debug : { downloads : { JAVA_HOME : ${jdks.labsjdk-ce-16Debug} }}
+labsjdk-ee-16Debug : { downloads : { JAVA_HOME : ${jdks.labsjdk-ee-16Debug} }}
 
-common : ${mx} {
-  timelimit : "30:00"
-  environment : {
-    MX_PYTHON: "python3"
-  }
+common : ${mx} ${deps.common} {
   catch_files : [
     "Graal diagnostic output saved in (?P<filename>.+\.zip)"
   ]
-  packages : {
-    "pip:logilab-common ": "==1.4.4"
-    "pip:pylint" : "==1.9.3"
-    "pip:ninja_syntax" : "==1.7.2"
-  }
 }
 
-linux : ${common} {
-  packages : {
-    git : ">=1.8.3"
-    mercurial : ">=2.2"
-    "apache/ant": ">=1.9.4"
-  }
-}
+linux : ${common} ${deps.linux}
 
-solaris : ${common} {
-  packages : {
-    git : ">=1.8.3"
-    mercurial : ">=2.2"
-    "apache/ant": ">=1.9.4"
-  }
-}
+darwin : ${common} ${deps.darwin}
 
-darwin : ${common} {
-  environment : {
-    # Required to keep pylint happy on Darwin
-    # https://coderwall.com/p/-k_93g/mac-os-x-valueerror-unknown-locale-utf-8-in-python
-    LC_ALL : "en_US.UTF-8"
-  }
-}
-
-windows : ${common} {
-}
+windows : ${common} ${deps.windows}
 
 linux-amd64 : ${linux} {
   capabilities : [linux, amd64]
@@ -96,14 +66,6 @@ windows-amd64 : ${windows} {
   capabilities : [windows, amd64]
 }
 
-solaris-sparcv9 : ${solaris} {
-  capabilities : [solaris, sparcv9]
-}
-
-linux-sparcv9 : ${linux} {
-  capabilities : [linux, sparcv9]
-}
-
 linux-aarch64 : ${linux} {
   capabilities : [linux, aarch64]
 }
@@ -112,20 +74,9 @@ DEFAULT_HEAP_SIZE : "8G"
 LARGE_HEAP_SIZE : "31G"
 LARGE_YOUNG_GEN_SIZE : "27G"
 
-eclipse : {
-  downloads : {
-    ECLIPSE : {name: eclipse, version: "4.14.0", platformspecific: true}
-  }
-  environment : {
-    ECLIPSE_EXE : "$ECLIPSE/eclipse"
-  }
-}
+eclipse : ${downloads.eclipse}
 
-jdt : {
-  downloads : {
-    JDT : {name: ecj, version: "4.14.0", platformspecific: false}
-  }
-}
+jdt : ${downloads.jdt}
 
 # for cases where a maven package is not easily accessible
 maven-download-unix : {
@@ -142,8 +93,6 @@ linux-deploy : ${linux} {
     maven : ">=3.3.9"
   }
 }
-
-solaris-deploy : ${solaris} ${maven-download-unix}
 
 darwin-deploy : ${darwin} ${maven-download-unix} {
   environment : {
@@ -171,21 +120,17 @@ svm-common: ${mx} {
 
 svm-common-linux-amd64: ${svm-common} ${linux-amd64} {
   packages: {
-    make: ">=3.83"
-    gcc-build-essentials: ">=4.9.1" # GCC 4.9.0 fails on cluster
-    binutils: ">=2.30"
+    devtoolset: "==7" # GCC 7.3.1, make 4.2.1, binutils 2.28, valgrind 3.13.0
+    binutils: ">=2.34"
     ruby: ">=2.1.0"
-    valgrind: ">=3.9.0"
   }
   timelimit: "55:00"
 }
 
 svm-common-linux-aarch64: ${svm-common} ${linux-aarch64} {
   packages: {
-    make: ">=3.83"
-    gcc-build-essentials: ">=4.9.1" # GCC 4.9.0 fails on cluster
+    devtoolset: "==7" # GCC 7.3.1, make 4.2.1, binutils 2.28, valgrind 3.13.0
     ruby: ">=2.1.0"
-    valgrind: ">=3.9.0"
   }
   timelimit: "55:00"
 }
@@ -208,26 +153,23 @@ svm-common-darwin: ${svm-common} ${darwin-amd64} {
   timelimit: "45:00"
 }
 
-svm-common-windows: ${svm-common} ${windows-amd64} {
+svm-common-windows-openjdk8: ${svm-common} ${windows-amd64} ${devkits.windows-openjdk8} {
   packages : {
-    msvc : "==10.0"
   }
   timelimit: "45:00"
 }
 
-windows-devkit-jdk11: {
+svm-common-windows-oraclejdk8: ${svm-common} ${windows-amd64} ${devkits.windows-oraclejdk8} {
   packages : {
-    "devkit:VS2017-15.9.16+1" : "==0"
   }
+  timelimit: "45:00"
 }
 
-windows-devkit-jdk15: {
-  packages : {
-    "devkit:VS2019-16.5.3+1" : "==0"
-  }
+svm-common-windows-jdk11: ${svm-common} ${windows-amd64} ${devkits.windows-jdk11} {
+  timelimit: "45:00"
 }
 
-svm-common-windows-jdk11: ${svm-common} ${windows-amd64} ${windows-devkit-jdk11} {
+svm-common-windows-jdk16: ${svm-common} ${windows-amd64} ${devkits.windows-jdk16} {
   timelimit: "45:00"
 }
 

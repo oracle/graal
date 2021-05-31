@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -52,6 +52,7 @@ import com.oracle.truffle.api.OptimizationFailedException;
 import com.oracle.truffle.api.ReplaceObserver;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.DefaultCompilerOptions;
@@ -134,19 +135,29 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     /**
      * The call threshold is counted up for each real call until it reaches a
      * {@link PolyglotCompilerOptions#FirstTierCompilationThreshold first tier} or
-     * {@link PolyglotCompilerOptions#CompilationThreshold second tier} compilation threshold, and
-     * triggers a {@link #compile(boolean) compilation}. It is incremented for each real call to the
-     * call target. Reset by TruffleFeature after boot image generation.
+     * {@link PolyglotCompilerOptions#LastTierCompilationThreshold second tier} compilation
+     * threshold, and triggers a {@link #compile(boolean) compilation}. It is incremented for each
+     * real call to the call target. Reset by TruffleFeature after image generation.
      */
     private int callCount;
+
     /**
      * The call and loop threshold is counted up for each real call until it reaches a
      * {@link PolyglotCompilerOptions#FirstTierCompilationThreshold first tier} or
-     * {@link PolyglotCompilerOptions#CompilationThreshold second tier} compilation threshold, and
-     * triggers a {@link #compile(boolean) compilation}. It is incremented for each real call to the
-     * call target. Reset by TruffleFeature after boot image generation.
+     * {@link PolyglotCompilerOptions#LastTierCompilationThreshold second tier} compilation
+     * threshold, and triggers a {@link #compile(boolean) compilation}. It is incremented for each
+     * real call to the call target. Reset by TruffleFeature after image generation.
      */
     private int callAndLoopCount;
+    private int highestCompiledTier = 0;
+
+    public void compiledTier(int tier) {
+        highestCompiledTier = Math.max(highestCompiledTier, tier);
+    }
+
+    public int highestCompiledTier() {
+        return highestCompiledTier;
+    }
 
     /*
      * Profiling information (types and Assumption) are kept in 2-final-fields objects to ensure to
@@ -163,9 +174,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      * the CallTarget, except that the newer profile can only be less precise (= more null) and so
      * will end up not casting at all the argument indices that did not match the profile.
      *
-     * These fields are reset by TruffleFeature after boot image generation. These fields are
-     * initially null, and once they become non-null they never become null again (except through
-     * the reset of TruffleFeature).
+     * These fields are reset by TruffleFeature after image generation. These fields are initially
+     * null, and once they become non-null they never become null again (except through the reset of
+     * TruffleFeature).
      */
     @CompilationFinal private volatile ArgumentsProfile argumentsProfile;
     @CompilationFinal private volatile ReturnProfile returnProfile;
@@ -176,7 +187,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      * continuously dequeuing the target for single caller when the single caller itself has
      * multiple callers.
      */
-    private volatile boolean dequeueInlined = false;
+    private volatile boolean dequeueInlined;
+    private volatile boolean aotInitialized;
 
     public static final class ArgumentsProfile {
         private static final String ARGUMENT_TYPES_ASSUMPTION_NAME = "Profiled Argument Types";
@@ -239,8 +251,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     /**
-     * Set if compilation failed or was ignored. Reset by TruffleFeature after boot image
-     * generation.
+     * Set if compilation failed or was ignored. Reset by TruffleFeature after image generation.
      */
     private volatile boolean compilationFailed;
     /**
@@ -252,7 +263,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     /**
      * Timestamp when the call target was initialized e.g. used the first time. Reset by
-     * TruffleFeature after boot image generation.
+     * TruffleFeature after image generation.
      */
     private volatile long initializedTimestamp;
 
@@ -430,7 +441,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         EncapsulatingNodeReference encapsulating = EncapsulatingNodeReference.getCurrent();
         Node prev = encapsulating.set(null);
         try {
-            profileArguments(args);
             return callIndirect(prev, args);
         } catch (Throwable t) {
             GraalRuntimeAccessor.LANGUAGE.onThrowable(prev, null, t, null);
@@ -442,6 +452,13 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     // Note: {@code PartialEvaluator} looks up this method by name and signature.
     public Object callIndirect(Node location, Object... args) {
+        /*
+         * Indirect calls should not invalidate existing compilations of the callee, and the callee
+         * should still be able to use profiled arguments until an incompatible argument is passed.
+         * So we profile arguments for indirect calls too, but behind a truffle boundary.
+         */
+        profileIndirectArguments(args);
+
         try {
             return doInvoke(args);
         } finally {
@@ -450,6 +467,11 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         }
     }
 
+    /**
+     * In compiled code, this is only used if the callee is <i>not</i> inlined. If the callee is
+     * inlined, {@link #callInlined(Node, Object...)} is used instead, which does not profile
+     * arguments, as it is estimated redundant. See the docs of {@link OptimizedCallTarget}.
+     */
     // Note: {@code PartialEvaluator} looks up this method by name and signature.
     public final Object callDirect(Node location, Object... args) {
         try {
@@ -470,14 +492,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         }
     }
 
-    private static boolean keepAlive(@SuppressWarnings("unused") Object o) {
-        return true;
-    }
-
-    public final Object callOSR(Object... args) {
-        return doInvoke(args);
-    }
-
     // Note: {@code PartialEvaluator} looks up this method by name and signature.
     public final Object callInlined(Node location, Object... arguments) {
         try {
@@ -487,6 +501,14 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             // this assertion is needed to keep the values from being cleared as non-live locals
             assert keepAlive(location);
         }
+    }
+
+    private static boolean keepAlive(@SuppressWarnings("unused") Object o) {
+        return true;
+    }
+
+    public final Object callOSR(Object... args) {
+        return doInvoke(args);
     }
 
     /**
@@ -503,7 +525,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
          * important that this method stays small. It is compiled as a special stub that calls into
          * the optimized code or if the call target is not yet optimized calls into profiledPERoot
          * directly. In order to avoid deoptimizations in this method it has optimizations disabled.
-         * Any additional code here will likely have significant impact on the intepreter call
+         * Any additional code here will likely have significant impact on the interpreter call
          * performance.
          */
         if (interpreterCall()) {
@@ -531,15 +553,19 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     private boolean shouldCompileImpl(int intCallCount, int intLoopCallCount) {
-        return intCallCount >= engine.callThresholdInInterpreter //
-                        && intLoopCallCount >= engine.callAndLoopThresholdInInterpreter //
-                        && !compilationFailed //
-                        && !isSubmittedForCompilation()
+        return !compilationFailed //
+                        && !isSubmittedForCompilation() //
                         /*
                          * Compilation of OSR loop call target is scheduled in
                          * OptimizedOSRLoopNode#compileImpl.
                          */
-                        && !(getRootNode() instanceof OSRRootNode);
+                        && !(getRootNode() instanceof OSRRootNode) //
+                        && intCallCount >= engine.callThresholdInInterpreter //
+                        && intLoopCallCount >= scaledThreshold(engine.callAndLoopThresholdInInterpreter); //
+    }
+
+    private static int scaledThreshold(int callAndLoopThresholdInInterpreter) {
+        return FixedPointMath.multiply(runtime().compilationThresholdScale(), callAndLoopThresholdInInterpreter);
     }
 
     public final boolean shouldCompile() {
@@ -571,10 +597,10 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         this.callCount = firstTierCallCount == Integer.MAX_VALUE ? firstTierCallCount : ++firstTierCallCount;
         int firstTierLoopCallCount = this.callAndLoopCount;
         this.callAndLoopCount = firstTierLoopCallCount == Integer.MAX_VALUE ? firstTierLoopCallCount : ++firstTierLoopCallCount;
-        if (firstTierCallCount >= engine.callThresholdInFirstTier //
-                        && firstTierLoopCallCount >= engine.callAndLoopThresholdInFirstTier //
-                        && !compilationFailed //
-                        && !isSubmittedForCompilation()) {
+        if (!compilationFailed //
+                        && !isSubmittedForCompilation()//
+                        && firstTierCallCount >= engine.callThresholdInFirstTier //
+                        && firstTierLoopCallCount >= scaledThreshold(engine.callAndLoopThresholdInFirstTier)) {
             return lastTierCompile();
         }
         return false;
@@ -596,11 +622,12 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             GraalRuntimeAccessor.LANGUAGE.onThrowable(null, this, profiledT, frame);
             throw rethrow(profiledT);
         } finally {
-            // this assertion is needed to keep the values from being cleared as non-live locals
-            assert frame != null && this != null;
             if (CompilerDirectives.inInterpreter() && inCompiled) {
                 notifyDeoptimized(frame);
             }
+            TruffleSafepoint.poll(rootNode);
+            // this assertion is needed to keep the values from being cleared as non-live locals
+            assert frame != null && this != null;
         }
     }
 
@@ -641,7 +668,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     public final OptionValues getOptionValues() {
-        return engine.engineOptions;
+        return engine.getEngineOptions();
     }
 
     public final <T> T getOptionValue(OptionKey<T> key) {
@@ -684,8 +711,13 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                 if (!needsCompile(lastTierCompilation)) {
                     return true;
                 }
+
                 ensureInitialized();
                 if (!isSubmittedForCompilation()) {
+                    if (!wasExecuted() && !engine.backgroundCompilation) {
+                        prepareForAOTImpl();
+                    }
+
                     try {
                         assert compilationTask == null;
                         this.compilationTask = task = runtime().submitForCompilation(this, lastTierCompilation);
@@ -695,7 +727,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                 }
             }
             if (task != null) {
-                runtime().getListener().onCompilationQueued(this);
+                runtime().getListener().onCompilationQueued(this, lastTierCompilation ? 2 : 1);
                 return maybeWaitForTask(task);
             }
         }
@@ -818,8 +850,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             /* no cancellation necessary if the call target was initialized */
             return false;
         }
+        CompilationTask task = this.compilationTask;
         if (cancelAndResetCompilationTask()) {
-            runtime().getListener().onCompilationDequeued(this, null, reason);
+            runtime().getListener().onCompilationDequeued(this, null, reason, task != null ? task.tier() : 0);
             return true;
         }
         return false;
@@ -850,6 +883,14 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             }
         }
         return false;
+    }
+
+    public final boolean onInvalidate(Object source, CharSequence reason, boolean wasActive) {
+        cachedNonTrivialNodeCount = -1;
+        if (wasActive) {
+            GraalTruffleRuntime.getRuntime().getListener().onCompilationInvalidated(this, source, reason);
+        }
+        return cancelCompilation(reason) || wasActive;
     }
 
     @Override
@@ -917,6 +958,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         String result = nameCache;
         if (result == null) {
             result = rootNode.toString();
+            if (sourceCallTarget != null) {
+                result += " <split-" + Integer.toHexString(hashCode()) + ">";
+            }
             nameCache = result;
         }
         return result;
@@ -1104,20 +1148,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
     // endregion
 
-    // This should be private but can't be. GR-19397
-    public final void stopProfilingArguments() {
-        assert !callProfiled;
-
-        ArgumentsProfile argumentsProfile = this.argumentsProfile;
-        if (argumentsProfile != ArgumentsProfile.INVALID) {
-            // Argument profiling is not possible for targets of indirect calls.
-            // The assumption will invalidate the callee but we shouldn't invalidate the caller.
-            CompilerDirectives.transferToInterpreter();
-
-            transitionToInvalidArgumentsProfile();
-        }
-    }
-
     private void transitionToInvalidArgumentsProfile() {
         while (true) {
             ArgumentsProfile oldProfile = argumentsProfile;
@@ -1141,6 +1171,11 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             oldProfile.assumption.invalidate();
         }
         return ARGUMENTS_PROFILE_UPDATER.compareAndSet(this, oldProfile, newProfile);
+    }
+
+    @TruffleBoundary
+    private void profileIndirectArguments(Object[] args) {
+        profileArguments(args);
     }
 
     // This should be private but can't be. GR-19397
@@ -1573,6 +1608,13 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
          * we do AOT compilation.
          */
         initialize(false);
+        return prepareForAOTImpl();
+    }
+
+    private boolean prepareForAOTImpl() {
+        if (aotInitialized) {
+            return false;
+        }
 
         ExecutionSignature profile = GraalRuntimeAccessor.NODES.prepareForAOT(rootNode);
         if (profile == null) {
@@ -1605,7 +1647,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
         this.returnProfile = returnProfile;
         this.argumentsProfile = newProfile;
-
+        this.aotInitialized = true;
         return true;
     }
 }

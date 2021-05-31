@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -72,14 +72,15 @@ public final class AArch64ArrayCompareToOp extends AArch64LIRInstruction {
     @Temp({REG}) protected Value temp5;
     @Temp({REG}) protected Value temp6;
 
-    public AArch64ArrayCompareToOp(LIRGeneratorTool tool, JavaKind kind1, JavaKind kind2, Value result, Value array1, Value array2, Value length1, Value length2) {
+    public AArch64ArrayCompareToOp(LIRGeneratorTool tool, JavaKind kind1, JavaKind kind2, int array1BaseOffset, int array2BaseOffset, Value result, Value array1, Value array2, Value length1,
+                    Value length2) {
         super(TYPE);
         this.kind1 = kind1;
         this.kind2 = kind2;
 
         // Both offsets should be the same but better be safe than sorry.
-        this.array1BaseOffset = tool.getProviders().getMetaAccess().getArrayBaseOffset(kind1);
-        this.array2BaseOffset = tool.getProviders().getMetaAccess().getArrayBaseOffset(kind2);
+        this.array1BaseOffset = array1BaseOffset;
+        this.array2BaseOffset = array2BaseOffset;
 
         this.resultValue = result;
 
@@ -167,7 +168,7 @@ public final class AArch64ArrayCompareToOp extends AArch64LIRInstruction {
         }
 
         masm.cmp(64, length1, length2);
-        masm.cmov(64, length, length1, length2, ConditionFlag.LT);
+        masm.csel(64, length, length1, length2, ConditionFlag.LT);
 
         // One of strings is empty
         masm.cbz(64, length, LENGTH_DIFFER_LABEL);

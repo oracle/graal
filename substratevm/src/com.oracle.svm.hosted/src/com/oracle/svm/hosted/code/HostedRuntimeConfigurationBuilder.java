@@ -30,6 +30,7 @@ import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecodeProvider;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
+import org.graalvm.compiler.nodes.spi.LoopsDataProvider;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
 import org.graalvm.compiler.nodes.spi.Replacements;
@@ -60,8 +61,8 @@ public class HostedRuntimeConfigurationBuilder extends SharedRuntimeConfiguratio
     private final HostedProviders analysisProviders;
 
     public HostedRuntimeConfigurationBuilder(OptionValues options, SVMHost hostVM, HostedUniverse universe, HostedMetaAccess metaAccess, HostedProviders analysisProviders,
-                    NativeLibraries nativeLibraries, ClassInitializationSupport classInitializationSupport) {
-        super(options, hostVM, metaAccess, SubstrateBackendFactory.get()::newBackend, nativeLibraries, classInitializationSupport);
+                    NativeLibraries nativeLibraries, ClassInitializationSupport classInitializationSupport, LoopsDataProvider originalLoopsDataProvider) {
+        super(options, hostVM, metaAccess, SubstrateBackendFactory.get()::newBackend, nativeLibraries, classInitializationSupport, originalLoopsDataProvider);
         this.universe = universe;
         this.analysisProviders = analysisProviders;
     }
@@ -69,9 +70,9 @@ public class HostedRuntimeConfigurationBuilder extends SharedRuntimeConfiguratio
     @Override
     protected Providers createProviders(CodeCacheProvider codeCache, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider, ForeignCallsProvider foreignCalls,
                     LoweringProvider lowerer, Replacements replacements, StampProvider stampProvider, SnippetReflectionProvider snippetReflection,
-                    PlatformConfigurationProvider platformConfigurationProvider, MetaAccessExtensionProvider metaAccessExtensionProvider) {
+                    PlatformConfigurationProvider platformConfigurationProvider, MetaAccessExtensionProvider metaAccessExtensionProvider, LoopsDataProvider loopsDataProvider) {
         return new HostedProviders(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider, snippetReflection,
-                        wordTypes, platformConfigurationProvider, metaAccessExtensionProvider);
+                        wordTypes, platformConfigurationProvider, metaAccessExtensionProvider, loopsDataProvider);
     }
 
     @Override
@@ -99,4 +100,5 @@ public class HostedRuntimeConfigurationBuilder extends SharedRuntimeConfiguratio
     protected ConstantFieldProvider createConstantFieldProvider(Providers p) {
         return new HostedConstantFieldProvider(p.getMetaAccess(), classInitializationSupport);
     }
+
 }

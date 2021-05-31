@@ -1,7 +1,7 @@
 #
 # ----------------------------------------------------------------------------------------------------
 #
-# Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -33,34 +33,11 @@ import itertools
 
 import mx
 import mx_benchmark
+import mx_sdk_benchmark
 import mx_compiler
 from mx_java_benchmarks import DaCapoBenchmarkSuite, ScalaDaCapoBenchmarkSuite
 
 _suite = mx.suite('compiler')
-
-
-_IMAGE_JMH_BENCHMARK_ARGS = [
-    # JMH does not support forks with native-image. In the distant future we can capture this case.
-    '-Dnative-image.benchmark.extra-run-arg=-f0',
-
-    # JMH does HotSpot-specific field offset checks in class initializers
-    '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.openjdk.jmh,joptsimple.internal',
-
-    # Don't waste time and energy collecting reflection config.
-    '-Dnative-image.benchmark.extra-agent-run-arg=-f0',
-    '-Dnative-image.benchmark.extra-agent-run-arg=-wi',
-    '-Dnative-image.benchmark.extra-agent-run-arg=1',
-    '-Dnative-image.benchmark.extra-agent-run-arg=-i1',
-
-    # Don't waste time profiling the same code but still wait for compilation on HotSpot.
-    '-Dnative-image.benchmark.extra-profile-run-arg=-f0',
-    '-Dnative-image.benchmark.extra-profile-run-arg=-wi',
-    '-Dnative-image.benchmark.extra-profile-run-arg=1',
-    '-Dnative-image.benchmark.extra-profile-run-arg=-i5',
-
-    '-Dnative-image.benchmark.benchmark-suite-name=jmh',
-]
-
 
 class JvmciJdkVm(mx_benchmark.OutputCapturingJavaVm):
     def __init__(self, raw_name, raw_config_name, extra_args):
@@ -84,7 +61,15 @@ class JvmciJdkVm(mx_benchmark.OutputCapturingJavaVm):
             mx.abort("The '{0}/{1}' VM requires '--jdk={2}'".format(
                 self.name(), self.config_name(), mx_compiler._JVMCI_JDK_TAG))
         return mx.get_jdk(tag=mx_compiler._JVMCI_JDK_TAG).run_java(
-            args, out=out, err=out, cwd=cwd, nonZeroIsFatal=False)
+            args, out=out, err=out, cwd=cwd, nonZeroIsFatal=False, command_mapper_hooks=self.command_mapper_hooks)
+
+    def generate_java_command(self, args):
+        tag = mx.get_jdk_option().tag
+        if tag and tag != mx_compiler._JVMCI_JDK_TAG:
+            mx.abort("The '{0}/{1}' VM requires '--jdk={2}'".format(
+                self.name(), self.config_name(), mx_compiler._JVMCI_JDK_TAG))
+        return mx.get_jdk(tag=mx_compiler._JVMCI_JDK_TAG).generate_java_command(self.post_process_command_line_args(args))
+
 
     def rules(self, output, benchmarks, bmSuiteArgs):
         rules = []
@@ -165,7 +150,11 @@ _graal_variants = [
     ('no-splitting', ['-Dpolyglot.engine.Splitting=false'], 0),
     ('limit-truffle-inlining', ['-Dpolyglot.engine.InliningRecursionDepth=2'], 0),
     ('no-splitting-limit-truffle-inlining', ['-Dpolyglot.engine.Splitting=false', '-Dpolyglot.engine.InliningRecursionDepth=2'], 0),
-    ('no-truffle-bg-comp', ['-Dpolyglot.engine.BackgroundCompilation=false'], 0)
+    ('no-truffle-bg-comp', ['-Dpolyglot.engine.BackgroundCompilation=false'], 0),
+    ('avx0', ['-XX:UseAVX=0'], 11),
+    ('avx1', ['-XX:UseAVX=1'], 11),
+    ('avx2', ['-XX:UseAVX=2'], 11),
+    ('avx3', ['-XX:UseAVX=3'], 11)
 ]
 build_jvmci_vm_variants('server', 'graal-core', ['-server', '-XX:+EnableJVMCI', '-Dgraal.CompilerConfiguration=community', '-Djvmci.Compiler=graal'], _graal_variants, suite=_suite, priority=15)
 
@@ -423,7 +412,29 @@ class ScalaDaCapoTimingBenchmarkSuite(DaCapoTimingBenchmarkMixin, ScalaDaCapoBen
 mx_benchmark.add_bm_suite(ScalaDaCapoTimingBenchmarkSuite())
 
 
-class JMHRunnerGraalCoreBenchmarkSuite(mx_benchmark.JMHRunnerBenchmarkSuite): # pylint: disable=too-many-ancestors
+class JMHNativeImageBenchmarkMixin(mx_sdk_benchmark.NativeImageBenchmarkMixin):
+
+    def extra_image_build_argument(self, benchmark, args):
+        # JMH does HotSpot-specific field offset checks in class initializers
+        return ['--initialize-at-build-time=org.openjdk.jmh,joptsimple.internal'] + super(JMHNativeImageBenchmarkMixin, self).extra_image_build_argument(benchmark, args)
+
+    def extra_run_arg(self, benchmark, args):
+        # JMH does not support forks with native-image. In the distant future we can capture this case.
+        return ['-f0'] + super(JMHNativeImageBenchmarkMixin, self).extra_run_arg(benchmark, args)
+
+    def extra_agent_run_arg(self, benchmark, args):
+        # Don't waste time and energy collecting reflection config.
+        return ['-f0', '-wi', '1', '-i1'] + super(JMHNativeImageBenchmarkMixin, self).extra_agent_run_arg(benchmark, args)
+
+    def extra_profile_run_arg(self, benchmark, args):
+        # Don't waste time profiling the same code but still wait for compilation on HotSpot.
+        return ['-f0', '-wi', '1', '-i5'] + super(JMHNativeImageBenchmarkMixin, self).extra_profile_run_arg(benchmark, args)
+
+    def benchmarkName(self):
+        return self.name()
+
+
+class JMHRunnerGraalCoreBenchmarkSuite(mx_benchmark.JMHRunnerBenchmarkSuite, JMHNativeImageBenchmarkMixin):
 
     def alternative_suite(self):
         return "jmh-whitebox"
@@ -441,16 +452,13 @@ class JMHRunnerGraalCoreBenchmarkSuite(mx_benchmark.JMHRunnerBenchmarkSuite): # 
         return "graal-compiler"
 
     def extraVmArgs(self):
-        return ['-XX:-UseJVMCIClassLoader'] + ['-Dnative-image.benchmark.benchmark-name=' + self.name()] + super(JMHRunnerGraalCoreBenchmarkSuite, self).extraVmArgs() + _IMAGE_JMH_BENCHMARK_ARGS
+        return ['-XX:-UseJVMCIClassLoader'] + super(JMHRunnerGraalCoreBenchmarkSuite, self).extraVmArgs()
 
 
 mx_benchmark.add_bm_suite(JMHRunnerGraalCoreBenchmarkSuite())
 
 
-class JMHJarGraalCoreBenchmarkSuite(mx_benchmark.JMHJarBenchmarkSuite):
-
-    def extraVmArgs(self):
-        return super(JMHJarGraalCoreBenchmarkSuite, self).extraVmArgs() + ['-Dnative-image.benchmark.benchmark-name=' + self.name()] + _IMAGE_JMH_BENCHMARK_ARGS
+class JMHJarGraalCoreBenchmarkSuite(mx_benchmark.JMHJarBenchmarkSuite, JMHNativeImageBenchmarkMixin):
 
     def name(self):
         return "jmh-jar"
@@ -465,10 +473,7 @@ class JMHJarGraalCoreBenchmarkSuite(mx_benchmark.JMHJarBenchmarkSuite):
 mx_benchmark.add_bm_suite(JMHJarGraalCoreBenchmarkSuite())
 
 
-class JMHDistGraalCoreBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite):
-
-    def extraVmArgs(self):
-        return super(JMHDistGraalCoreBenchmarkSuite, self).extraVmArgs() + ['-Dnative-image.benchmark.benchmark-name=' + self.name()] + _IMAGE_JMH_BENCHMARK_ARGS
+class JMHDistGraalCoreBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite, JMHNativeImageBenchmarkMixin):
 
     def name(self):
         return "jmh-dist"
@@ -487,7 +492,7 @@ class JMHDistGraalCoreBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite):
 mx_benchmark.add_bm_suite(JMHDistGraalCoreBenchmarkSuite())
 
 
-class JMHDistWhiteboxBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite):
+class JMHDistWhiteboxBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite, JMHNativeImageBenchmarkMixin):
 
     def name(self):
         return "jmh-whitebox"

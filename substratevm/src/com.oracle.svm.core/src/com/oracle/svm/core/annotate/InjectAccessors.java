@@ -30,7 +30,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Inject accessors methods for the field denoted using a {@link Alias} annotation. All loads and
+ * Inject accessor methods for the field denoted using an {@link Alias} annotation. All loads and
  * stores to the original field are redirected to accessor methods located in the class provided in
  * the {@link #value} property. The class must implement the marker interface
  * {@link InjectAccessors}. The accessor methods are static methods in that class, named either

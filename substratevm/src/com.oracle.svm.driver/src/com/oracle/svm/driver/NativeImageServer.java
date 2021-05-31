@@ -171,7 +171,7 @@ final class NativeImageServer extends NativeImage {
             return exitCode;
         }
 
-        int sendBuildRequest(LinkedHashSet<Path> imageCP, LinkedHashSet<String> imageArgs) {
+        int sendBuildRequest(LinkedHashSet<Path> imageCP, LinkedHashSet<Path> imagemp, ArrayList<String> imageArgs) {
             int[] requestStatus = {1};
             withLockDirFileChannel(serverDir, lockFileChannel -> {
                 boolean abortedOnce = false;
@@ -204,7 +204,7 @@ final class NativeImageServer extends NativeImage {
 
                         LinkedHashSet<Path> imagecp = new LinkedHashSet<>(serverClasspath);
                         imagecp.addAll(imageCP);
-                        command.addAll(createImageBuilderArgs(imageArgs, imagecp));
+                        command.addAll(createImageBuilderArgs(imageArgs, imagecp, imagemp));
 
                         showVerboseMessage(isVerbose(), "SendBuildRequest [");
                         showVerboseMessage(isVerbose(), String.join("\n", command));
@@ -400,15 +400,16 @@ final class NativeImageServer extends NativeImage {
 
                 /* Maximize reuse by using same VM mem-args for all server-based image builds */
                 String xmxValueStr = getXmxValue(maxServers);
-                replaceArg(javaArgs, oXmx, xmxValueStr);
-                String xmsValueStr = getXmsValue();
-                long xmxValue = SubstrateOptionsParser.parseLong(xmxValueStr);
-                long xmsValue = SubstrateOptionsParser.parseLong(xmsValueStr);
-                if (WordFactory.unsigned(xmsValue).aboveThan(WordFactory.unsigned(xmxValue))) {
-                    xmsValueStr = Long.toUnsignedString(xmxValue);
+                if (!"0".equals(xmxValueStr)) {
+                    replaceArg(javaArgs, oXmx, xmxValueStr);
+                    String xmsValueStr = getXmsValue();
+                    long xmxValue = SubstrateOptionsParser.parseLong(xmxValueStr);
+                    long xmsValue = SubstrateOptionsParser.parseLong(xmsValueStr);
+                    if (WordFactory.unsigned(xmsValue).aboveThan(WordFactory.unsigned(xmxValue))) {
+                        xmsValueStr = Long.toUnsignedString(xmxValue);
+                    }
+                    replaceArg(javaArgs, oXms, xmsValueStr);
                 }
-                replaceArg(javaArgs, oXms, xmsValueStr);
-
                 Path sessionDir = getSessionDir();
                 List<Collection<Path>> builderPaths = new ArrayList<>(Arrays.asList(classpath, bootClasspath));
                 if (config.useJavaModules()) {
@@ -738,7 +739,7 @@ final class NativeImageServer extends NativeImage {
     }
 
     @Override
-    protected int buildImage(List<String> javaArgs, LinkedHashSet<Path> bcp, LinkedHashSet<Path> cp, LinkedHashSet<String> imageArgs, LinkedHashSet<Path> imagecp) {
+    protected int buildImage(List<String> javaArgs, LinkedHashSet<Path> bcp, LinkedHashSet<Path> cp, ArrayList<String> imageArgs, LinkedHashSet<Path> imagecp, LinkedHashSet<Path> imagemp) {
         boolean printFlags = imageArgs.stream().anyMatch(arg -> arg.contains(enablePrintFlags) || arg.contains(enablePrintFlagsWithExtraHelp));
         if (useServer && !printFlags && !useDebugAttach()) {
             AbortBuildSignalHandler signalHandler = new AbortBuildSignalHandler();
@@ -751,7 +752,7 @@ final class NativeImageServer extends NativeImage {
                 /* Send image build job to server */
                 showMessage("Build on " + server);
                 building = server;
-                int status = server.sendBuildRequest(imagecp, imageArgs);
+                int status = server.sendBuildRequest(imagecp, imagemp, imageArgs);
                 if (!server.isAlive()) {
                     /* If server does not respond after image-build -> cleanup */
                     cleanupServers(false, false, true);
@@ -759,7 +760,7 @@ final class NativeImageServer extends NativeImage {
                 return status;
             }
         }
-        return super.buildImage(javaArgs, bcp, cp, imageArgs, imagecp);
+        return super.buildImage(javaArgs, bcp, cp, imageArgs, imagecp, imagemp);
     }
 
     private static String imageServerUID(Path javaExecutable, List<String> vmArgs, List<Collection<Path>> builderPaths) {

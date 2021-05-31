@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,11 +32,13 @@ package com.oracle.truffle.llvm.runtime.config;
 import com.oracle.truffle.llvm.runtime.ContextExtension;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.ServiceLoader;
 
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
+import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
@@ -84,7 +86,18 @@ public final class Configurations {
                 return ret;
             }
         }
-        throw new LLVMPolyglotException(null, "no viable configuration found");
+        throw new LLVMPolyglotException(null, "No viable configuration found. " + formatHint());
+    }
+
+    private static String formatHint() {
+        int maxNameSize = Arrays.stream(factories).mapToInt(c -> c.getName().length()).max().orElse(30);
+        String format = "  %" + maxNameSize + "s:   %s (priority %d)";
+        StringBuilder sb = new StringBuilder();
+        sb.append("Known configurations:").append(System.lineSeparator());
+        Arrays.stream(factories).//
+                        map(c -> String.format(format, c.getName(), c.getHint(), c.getPriority())).//
+                        forEach((String s) -> sb.append(s).append(System.lineSeparator()));
+        return sb.toString();
     }
 
     /**
@@ -107,6 +120,9 @@ public final class Configurations {
      */
     public static OptionDescriptors getOptionDescriptors() {
         List<OptionDescriptor> optionDescriptors = new ArrayList<>();
+        // add core options
+        optionDescriptors.addAll(SulongEngineOption.describeOptions());
+        // add configuration specific options
         for (ConfigurationFactory<?> f : factories) {
             optionDescriptors.addAll(f.getOptionDescriptors());
         }

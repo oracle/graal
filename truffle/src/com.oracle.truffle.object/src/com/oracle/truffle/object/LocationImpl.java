@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.object;
 
+import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.FinalLocationException;
@@ -90,12 +92,13 @@ public abstract class LocationImpl extends Location {
     @Override
     public void set(DynamicObject store, Object value, Shape oldShape, Shape newShape) throws IncompatibleLocationException {
         if (canStore(value)) {
-            LayoutImpl.ACCESS.growAndSetShape(store, oldShape, newShape);
+            LayoutImpl.ACCESS.grow(store, oldShape, newShape);
             try {
                 setInternal(store, value);
             } catch (IncompatibleLocationException ex) {
-                throw new IllegalStateException();
+                throw DynamicObjectLibraryImpl.shouldNotHappen(ex);
             }
+            LayoutImpl.ACCESS.setShapeWithStoreFence(store, newShape);
         } else {
             throw incompatibleLocation();
         }
@@ -311,6 +314,10 @@ public abstract class LocationImpl extends Location {
         return false;
     }
 
+    protected boolean isObjectLocation() {
+        return false;
+    }
+
     static boolean expectBoolean(Object value) throws UnexpectedResultException {
         if (value instanceof Boolean) {
             return (boolean) value;
@@ -337,5 +344,36 @@ public abstract class LocationImpl extends Location {
             return (long) value;
         }
         throw new UnexpectedResultException(value);
+    }
+
+    public Class<?> getType() {
+        return null;
+    }
+
+    protected void clear(@SuppressWarnings("unused") DynamicObject store) {
+    }
+
+    @Override
+    public Assumption getFinalAssumption() {
+        return neverValidAssumption();
+    }
+
+    /** Not using NeverValidAssumption.INSTANCE in order not to pollute profiles. */
+    protected static Assumption neverValidAssumption() {
+        return NEVER_VALID_ASSUMPTION;
+    }
+
+    /** Not using AlwaysValidAssumption.INSTANCE in order not to pollute profiles. */
+    protected static Assumption alwaysValidAssumption() {
+        return ALWAYS_VALID_ASSUMPTION;
+    }
+
+    private static final Assumption NEVER_VALID_ASSUMPTION;
+    private static final Assumption ALWAYS_VALID_ASSUMPTION;
+
+    static {
+        NEVER_VALID_ASSUMPTION = Truffle.getRuntime().createAssumption("never valid");
+        NEVER_VALID_ASSUMPTION.invalidate();
+        ALWAYS_VALID_ASSUMPTION = Truffle.getRuntime().createAssumption("always valid");
     }
 }

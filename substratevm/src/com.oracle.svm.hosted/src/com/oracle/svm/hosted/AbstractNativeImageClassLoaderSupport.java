@@ -79,7 +79,16 @@ public abstract class AbstractNativeImageClassLoaderSupport {
         classPathClassLoader = new URLClassLoader(Util.verifyClassPathAndConvertToURLs(classpath), defaultSystemClassLoader);
 
         imagecp = Collections.unmodifiableList(Arrays.stream(classPathClassLoader.getURLs()).map(Util::urlToPath).collect(Collectors.toList()));
-        buildcp = Collections.unmodifiableList(Arrays.stream(System.getProperty("java.class.path").split(File.pathSeparator)).map(Paths::get).collect(Collectors.toList()));
+        String builderClassPathString = System.getProperty("java.class.path");
+        String[] builderClassPathEntries = builderClassPathString.isEmpty() ? new String[0] : builderClassPathString.split(File.pathSeparator);
+        if (Arrays.asList(builderClassPathEntries).contains(".")) {
+            VMError.shouldNotReachHere("The classpath of " + NativeImageGeneratorRunner.class.getName() +
+                            " must not contain \".\". This can happen implicitly if the builder runs exclusively on the --module-path" +
+                            " but specifies the " + NativeImageGeneratorRunner.class.getName() + " main class without --module.");
+        }
+        buildcp = Collections.unmodifiableList(Arrays.stream(builderClassPathEntries)
+                        .map(Paths::get).map(Path::toAbsolutePath)
+                        .collect(Collectors.toList()));
     }
 
     List<Path> classpath() {
@@ -176,30 +185,28 @@ public abstract class AbstractNativeImageClassLoaderSupport {
         }
 
         private void loadClassesFromPath(Path path) {
-            if (Files.exists(path)) {
-                if (Files.isRegularFile(path)) {
+            if (ClasspathUtils.isJar(path)) {
+                try {
+                    URI jarURI = new URI("jar:" + path.toAbsolutePath().toUri());
+                    FileSystem probeJarFileSystem;
                     try {
-                        URI jarURI = new URI("jar:" + path.toAbsolutePath().toUri());
-                        FileSystem probeJarFileSystem;
-                        try {
-                            probeJarFileSystem = FileSystems.newFileSystem(jarURI, Collections.emptyMap());
-                        } catch (UnsupportedOperationException e) {
-                            /* Silently ignore invalid jar-files on image-classpath */
-                            probeJarFileSystem = null;
-                        }
-                        if (probeJarFileSystem != null) {
-                            try (FileSystem jarFileSystem = probeJarFileSystem) {
-                                loadClassesFromPath(jarFileSystem.getPath("/"), Collections.emptySet());
-                            }
-                        }
-                    } catch (ClosedByInterruptException ignored) {
-                        throw new InterruptImageBuilding();
-                    } catch (IOException | URISyntaxException e) {
-                        throw shouldNotReachHere(e);
+                        probeJarFileSystem = FileSystems.newFileSystem(jarURI, Collections.emptyMap());
+                    } catch (UnsupportedOperationException e) {
+                        /* Silently ignore invalid jar-files on image-classpath */
+                        probeJarFileSystem = null;
                     }
-                } else {
-                    loadClassesFromPath(path, excludeDirectories);
+                    if (probeJarFileSystem != null) {
+                        try (FileSystem jarFileSystem = probeJarFileSystem) {
+                            loadClassesFromPath(jarFileSystem.getPath("/"), Collections.emptySet());
+                        }
+                    }
+                } catch (ClosedByInterruptException ignored) {
+                    throw new InterruptImageBuilding();
+                } catch (IOException | URISyntaxException e) {
+                    throw shouldNotReachHere(e);
                 }
+            } else {
+                loadClassesFromPath(path, excludeDirectories);
             }
         }
 

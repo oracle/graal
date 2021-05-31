@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -64,6 +64,7 @@ public class TBitSet implements Iterable<Integer> {
 
     public static TBitSet valueOf(int... values) {
         assert values.length > 0;
+        assert Assertions.isSorted(values);
         TBitSet bs = new TBitSet(values[values.length - 1]);
         for (int v : values) {
             bs.set(v);

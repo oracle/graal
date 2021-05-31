@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,7 +59,6 @@ public enum Failure {
     MALFORMED_MUTABILITY(Type.MALFORMED, "malformed mutability"),
     LENGTH_OUT_OF_BOUNDS(Type.MALFORMED, "length out of bounds"),
     // GraalWasm-specific:
-    INITIALIZER_NO_END(Type.MALFORMED, "initialization expression must end with an END instruction"),
     DUPLICATED_SECTION(Type.MALFORMED, "duplicated section"),
     INVALID_SECTION_ORDER(Type.MALFORMED, "invalid section order"),
 
@@ -82,9 +81,10 @@ public enum Failure {
     LIMIT_MINIMUM_GREATER_THAN_MAXIMUM(Type.INVALID, "size minimum must not be greater than maximum"),
     DUPLICATE_EXPORT(Type.INVALID, "duplicate export name"),
     IMMUTABLE_GLOBAL_WRITE(Type.INVALID, "global is immutable"),
-    GLOBAL_INIT_NON_CONSTANT(Type.INVALID, "constant expression required"),
+    CONSTANT_EXPRESSION_REQUIRED(Type.INVALID, "constant expression required"),
     LIMIT_EXCEEDED(Type.INVALID, "limit exceeded"),
     MEMORY_SIZE_LIMIT_EXCEEDED(Type.INVALID, "memory size must be at most 65536 pages (4GiB)"),
+    ALIGNMENT_LARGER_THAN_NATURAL(Type.INVALID, "alignment must not be larger than natural"),
     // GraalWasm-specific:
     MODULE_SIZE_LIMIT_EXCEEDED(Type.INVALID, "module size exceeds limit"),
     TYPE_COUNT_LIMIT_EXCEEDED(Type.INVALID, "type count exceeds limit"),
@@ -102,11 +102,16 @@ public enum Failure {
     UNSPECIFIED_UNLINKABLE(Type.UNLINKABLE, "unspecified"),
     UNKNOWN_IMPORT(Type.UNLINKABLE, "unknown import"),
     INCOMPATIBLE_IMPORT_TYPE(Type.UNLINKABLE, "incompatible import type"),
+    ELEMENTS_SEGMENT_DOES_NOT_FIT(Type.UNLINKABLE, "elements segment does not fit"),
+    DATA_SEGMENT_DOES_NOT_FIT(Type.UNLINKABLE, "data segment does not fit"),
+    // GraalWasm-specific:
+    INVALID_WASI_DIRECTORIES_MAPPING(Type.UNLINKABLE, "invalid wasi directories mapping"),
 
     // TODO(mbovel): replace UNSPECIFIED_TRAP usages with appropriate errors.
     UNSPECIFIED_TRAP(Type.TRAP, "unspecified"),
     INT_DIVIDE_BY_ZERO(Type.TRAP, "integer divide by zero"),
     INT_OVERFLOW(Type.TRAP, "integer overflow"),
+    INVALID_CONVERSION_TO_INT(Type.TRAP, "invalid conversion to integer"),
     UNREACHABLE(Type.TRAP, "unreachable"),
     UNDEFINED_ELEMENT(Type.TRAP, "undefined element"),
     UNINITIALIZED_ELEMENT(Type.TRAP, "uninitialized element"),
@@ -115,6 +120,9 @@ public enum Failure {
     // GraalWasm-specific:
     TABLE_INSTANCE_SIZE_LIMIT_EXCEEDED(Type.TRAP, "table instance size exceeds limit"),
     MEMORY_INSTANCE_SIZE_LIMIT_EXCEEDED(Type.TRAP, "memory instance size exceeds limit"),
+
+    CALL_STACK_EXHAUSTED(Type.EXHAUSTION, "call stack exhausted"),
+    MEMORY_ALLOCATION_FAILED(Type.EXHAUSTION, "could not allocate memory"),
 
     // TODO(mbovel): replace UNSPECIFIED_INTERNAL usages with assertInternal/shouldNotReachHere.
     UNSPECIFIED_INTERNAL(Type.INTERNAL, "unspecified");
@@ -142,13 +150,4 @@ public enum Failure {
         this.name = name;
     }
 
-    public static Failure fromArithmeticException(ArithmeticException exception) {
-        switch (exception.getMessage()) {
-            case "/ by zero":
-            case "BigInteger divide by zero":
-                return Failure.INT_DIVIDE_BY_ZERO;
-            default:
-                throw exception;
-        }
-    }
 }

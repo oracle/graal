@@ -36,6 +36,7 @@ import org.graalvm.compiler.bytecode.BridgeMethodUtils;
 import org.graalvm.compiler.core.common.calc.CanonicalCondition;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.calc.Condition.CanonicalizedCondition;
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
@@ -279,12 +280,12 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
         }
         switch (operation.opcode()) {
             case NODE_CLASS:
-            case NODE_CLASS_WITH_GUARD:
+            case INTEGER_DIVISION_NODE_CLASS:
                 assert args.length == 2;
                 ValueNode left = args[0];
                 ValueNode right = operation.rightOperandIsInt() ? toUnsigned(b, args[1], JavaKind.Int) : fromSigned(b, args[1]);
 
-                b.addPush(returnKind, createBinaryNodeInstance(operation.node(), left, right, operation.opcode() == Opcode.NODE_CLASS_WITH_GUARD));
+                b.addPush(returnKind, createBinaryNodeInstance(b, operation.node(), left, right, operation.opcode() == Opcode.INTEGER_DIVISION_NODE_CLASS));
                 break;
 
             case COMPARISON:
@@ -413,11 +414,12 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
      * method is called for all {@link Word} operations which are annotated with @Operation(node =
      * ...) and encapsulates the reflective allocation of the node.
      */
-    private static ValueNode createBinaryNodeInstance(Class<? extends ValueNode> nodeClass, ValueNode left, ValueNode right, boolean withGuardingNode) {
+    private static ValueNode createBinaryNodeInstance(GraphBuilderContext b, Class<? extends ValueNode> nodeClass, ValueNode left, ValueNode right, boolean isIntegerDivision) {
         try {
-            Class<?>[] parameterTypes = withGuardingNode ? new Class<?>[]{ValueNode.class, ValueNode.class, GuardingNode.class} : new Class<?>[]{ValueNode.class, ValueNode.class};
+            GuardingNode zeroCheck = isIntegerDivision ? b.maybeEmitExplicitDivisionByZeroCheck(right) : null;
+            Class<?>[] parameterTypes = isIntegerDivision ? new Class<?>[]{ValueNode.class, ValueNode.class, GuardingNode.class} : new Class<?>[]{ValueNode.class, ValueNode.class};
             Constructor<?> cons = nodeClass.getDeclaredConstructor(parameterTypes);
-            Object[] initargs = withGuardingNode ? new Object[]{left, right, null} : new Object[]{left, right};
+            Object[] initargs = isIntegerDivision ? new Object[]{left, right, zeroCheck} : new Object[]{left, right};
             return (ValueNode) cons.newInstance(initargs);
         } catch (Throwable ex) {
             throw new GraalError(ex).addContext(nodeClass.getName());
@@ -485,9 +487,9 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
         assert isLogic || writeKind == returnKind : writeKind + " != " + returnKind;
         AbstractCompareAndSwapNode cas;
         if (isLogic) {
-            cas = new LogicCompareAndSwapNode(address, expectedValue, newValue, location);
+            cas = new LogicCompareAndSwapNode(address, expectedValue, newValue, location, BarrierType.NONE, MemoryOrderMode.VOLATILE);
         } else {
-            cas = new ValueCompareAndSwapNode(address, expectedValue, newValue, location);
+            cas = new ValueCompareAndSwapNode(address, expectedValue, newValue, location, BarrierType.NONE, MemoryOrderMode.VOLATILE);
         }
         return cas;
     }

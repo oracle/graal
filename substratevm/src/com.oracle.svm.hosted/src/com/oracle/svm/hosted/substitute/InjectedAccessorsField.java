@@ -36,6 +36,7 @@ import com.oracle.svm.hosted.c.GraalAccess;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -72,8 +73,8 @@ public class InjectedAccessorsField implements ReadableJavaField, OriginalFieldP
     }
 
     @Override
-    public JavaConstant readValue(JavaConstant receiver) {
-        return ReadableJavaField.readFieldValue(GraalAccess.getOriginalProviders().getConstantReflection(), original, receiver);
+    public JavaConstant readValue(MetaAccessProvider metaAccess, JavaConstant receiver) {
+        return ReadableJavaField.readFieldValue(metaAccess, GraalAccess.getOriginalProviders().getConstantReflection(), original, receiver);
     }
 
     @Override

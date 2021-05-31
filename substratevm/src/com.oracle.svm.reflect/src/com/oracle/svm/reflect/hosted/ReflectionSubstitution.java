@@ -29,17 +29,18 @@ package com.oracle.svm.reflect.hosted;
 /* Allow imports of java.lang.reflect and sun.misc.ProxyGenerator: Checkstyle: allow reflection. */
 
 import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
+import java.lang.reflect.Executable;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicInteger;
@@ -49,6 +50,7 @@ import com.oracle.svm.hosted.annotation.CustomSubstitution;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.reflect.helpers.InvokeSpecialReflectionProxy;
 import com.oracle.svm.reflect.helpers.ReflectionProxy;
+import com.oracle.svm.reflect.helpers.ReflectionProxyHelper;
 import com.oracle.svm.reflect.hosted.ReflectionSubstitutionType.ReflectionSubstitutionMethod;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -56,6 +58,23 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+/**
+ * Maintains a mapping between reflection-accessible {@link Executable}s and {@link Proxy} classes
+ * used to invoke the method/constructor reflectively. Also holds a mapping between {@link Proxy}
+ * classes and {@link ReflectionSubstitutionType}s that are used as substitutions for the proxy
+ * classes at image build time.
+ * <p>
+ * The proxy classes are generated dynamically at build time, in the hosted environment. There is
+ * one proxy class per reflection-accessible {@link Executable} (but there may be multiple instances
+ * of each proxy class). Instances of the proxy classes are used for the accessor fields of
+ * {@link Executable} instances in Native Image (see {@link ExecutableAccessorComputer}). The proxy
+ * instances dispatch calls to a placeholder invocation handler that only implements
+ * {@code toString()} (see {@link ReflectionProxyHelper#setDefaultInvocationHandler}).
+ * <p>
+ * At image build time, the proxy instances are substituted with {@link ReflectionSubstitutionType}s
+ * that either implement {@code FieldAccessor}, {@code ConstructorAccessor} or
+ * {@code MethodAccessor} (depending on the type of {@link Executable}).
+ */
 final class ReflectionSubstitution extends CustomSubstitution<ReflectionSubstitutionType> {
 
     private static final String PROXY_NAME_SEPARATOR = "_";
@@ -72,8 +91,17 @@ final class ReflectionSubstitution extends CustomSubstitution<ReflectionSubstitu
     private final ResolvedJavaType reflectionProxy;
     private final ResolvedJavaType javaLangReflectProxy;
 
-    private final HashMap<Member, Class<?>> proxyMap = new HashMap<>();
-    private final HashMap<ResolvedJavaType, Member> typeToMember = new HashMap<>();
+    /**
+     * Maps each {@link Executable} accessible by reflection to the dynamic proxy class that should
+     * be used to access it reflectively.
+     */
+    private final HashMap<Executable, Class<?>> proxyMap = new HashMap<>();
+
+    /**
+     * Maps the type of each generated dynamic proxy class to the {@link Executable} that it
+     * accesses reflectively.
+     */
+    private final HashMap<ResolvedJavaType, Executable> typeToMember = new HashMap<>();
 
     private static final AtomicInteger proxyNr = new AtomicInteger(0);
 
@@ -89,14 +117,16 @@ final class ReflectionSubstitution extends CustomSubstitution<ReflectionSubstitu
         imageClassLoader = classLoader;
     }
 
-    static String getStableProxyName(Member member) {
+    /**
+     * Gets a unique, stable, fully qualified name for the {@link Proxy} class used to access a
+     * given member.
+     */
+    static String getStableProxyName(Executable member) {
         return "com.oracle.svm.reflect." + SubstrateUtil.uniqueShortName(member);
     }
 
-    private static Class<?> getAccessorInterface(Member member) {
-        if (member instanceof Field) {
-            return packageJdkInternalReflectClassForName("FieldAccessor");
-        } else if (member instanceof Method) {
+    private static Class<?> getAccessorInterface(Executable member) {
+        if (member instanceof Method) {
             return packageJdkInternalReflectClassForName("MethodAccessor");
         } else if (member instanceof Constructor) {
             return packageJdkInternalReflectClassForName("ConstructorAccessor");
@@ -104,7 +134,9 @@ final class ReflectionSubstitution extends CustomSubstitution<ReflectionSubstitu
         throw VMError.shouldNotReachHere();
     }
 
-    /** Track classes in the `reflect` package across JDK versions. */
+    /**
+     * Track classes in the {@code reflect} package across JDK versions.
+     */
     private static Class<?> packageJdkInternalReflectClassForName(String className) {
         final String packageName = (JavaVersionUtil.JAVA_SPEC <= 8 ? "sun.reflect." : "jdk.internal.reflect.");
         try {
@@ -118,6 +150,17 @@ final class ReflectionSubstitution extends CustomSubstitution<ReflectionSubstitu
 
     private static Method generateProxyMethod;
 
+    /**
+     * Generates bytecode for a dynamic proxy class that implements the given interfaces, for JDK 13
+     * or earlier.
+     *
+     * @param name name of the proxy class to generate
+     * @param interfaces interfaces that the proxy class should implement
+     * @return bytecode of the generated class
+     * @see <a href=
+     *      "https://docs.oracle.com/javase/8/docs/technotes/guides/reflection/proxy.html">Dynamic
+     *      Proxy class documentation</a>
+     */
     private static byte[] generateProxyClass(final String name, Class<?>[] interfaces) {
         /* { Allow reflection in hosted code. Checkstyle: stop. */
         try {
@@ -131,12 +174,28 @@ final class ReflectionSubstitution extends CustomSubstitution<ReflectionSubstitu
         }
     }
 
+    /**
+     * Generates bytecode for a dynamic proxy class that implements the given interfaces, for JDK 14
+     * or later.
+     *
+     * @param name name of the proxy class to generate
+     * @param interfaces interfaces that the proxy class should implement
+     * @return bytecode of the generated class
+     * @see <a href=
+     *      "https://docs.oracle.com/javase/8/docs/technotes/guides/reflection/proxy.html">Dynamic
+     *      Proxy class documentation</a>
+     */
     private static byte[] generateProxyClass14(final String name, Class<?>[] interfaces, ClassLoader loader) {
-        /* { Allow reflection in hosted code. Checkstyle: stop. */
+        assert JavaVersionUtil.JAVA_SPEC >= 14;
+        /*
+         * We use reflection to invoke ProxyGenerator.generateProxyClass in a cross-compatible way
+         * across JDK versions.
+         *
+         * { Allow reflection in hosted code. Checkstyle: stop.
+         */
         try {
             if (generateProxyMethod == null) {
-                final String packageName = (JavaVersionUtil.JAVA_SPEC <= 8 ? "sun.misc." : "java.lang.reflect.");
-                generateProxyMethod = ReflectionUtil.lookupMethod(Class.forName(packageName + "ProxyGenerator"), "generateProxyClass", ClassLoader.class, String.class, List.class, int.class);
+                generateProxyMethod = ReflectionUtil.lookupMethod(Class.forName("java.lang.reflect.ProxyGenerator"), "generateProxyClass", ClassLoader.class, String.class, List.class, int.class);
             }
             List<Class<?>> ilist = new ArrayList<>(Arrays.asList(interfaces));
             return (byte[]) generateProxyMethod.invoke(null, loader, name, ilist, (ACC_PUBLIC | ACC_FINAL | ACC_SUPER));
@@ -146,9 +205,15 @@ final class ReflectionSubstitution extends CustomSubstitution<ReflectionSubstitu
         /* } Allow reflection in hosted code. Checkstyle: resume. */
     }
 
-    synchronized Class<?> getProxyClass(Member member) {
-        Class<?> ret = proxyMap.get(member);
-        if (ret == null) {
+    /**
+     * Gets or creates a proxy class for accessing a given {@link Executable} reflectively.
+     * <p>
+     * The proxy class extends {@link Proxy} and implements either {@code FieldAccessor},
+     * {@code MethodAccessor} or {@code ConstructorAccessor}.
+     */
+    synchronized Class<?> getProxyClass(Executable member) {
+        Class<?> proxyClass = proxyMap.get(member);
+        if (proxyClass == null) {
             /* the unique ID is added for unit tests that don't change the class loader */
             ClassLoader loader = imageClassLoader.getClassLoader();
             String name = getStableProxyName(member) + PROXY_NAME_SEPARATOR + proxyNr.incrementAndGet();
@@ -165,19 +230,19 @@ final class ReflectionSubstitution extends CustomSubstitution<ReflectionSubstitu
                 proxyBC = generateProxyClass14(name, ifaces, loader);
             }
             try {
-                ret = (Class<?>) defineClass.invoke(loader, name, proxyBC, 0, proxyBC.length);
-                resolveClass.invoke(loader, ret);
-                proxyMap.put(member, ret);
+                proxyClass = (Class<?>) defineClass.invoke(loader, name, proxyBC, 0, proxyBC.length);
+                resolveClass.invoke(loader, proxyClass);
+                proxyMap.put(member, proxyClass);
 
-                ResolvedJavaType type = metaAccess.lookupJavaType(ret);
+                ResolvedJavaType type = metaAccess.lookupJavaType(proxyClass);
                 typeToMember.put(type, member);
             } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
                 throw VMError.shouldNotReachHere(ex);
             }
         }
         /* Always initialize proxy classes. */
-        classInitializationSupport.forceInitializeHosted(ret, "all proxy classes are initialized", false);
-        return ret;
+        classInitializationSupport.forceInitializeHosted(proxyClass, "all proxy classes are initialized", false);
+        return proxyClass;
     }
 
     private boolean isReflectionProxy(ResolvedJavaType type) {
@@ -224,12 +289,12 @@ final class ReflectionSubstitution extends CustomSubstitution<ReflectionSubstitu
         }
     }
 
-    private synchronized ReflectionSubstitutionType getSubstitution(ResolvedJavaType original) {
-        ReflectionSubstitutionType subst = getSubstitutionType(original);
+    private synchronized ReflectionSubstitutionType getSubstitution(ResolvedJavaType proxyClass) {
+        ReflectionSubstitutionType subst = getSubstitutionType(proxyClass);
         if (subst == null) {
-            Member member = typeToMember.get(original);
-            subst = new ReflectionSubstitutionType(original, member);
-            addSubstitutionType(original, subst);
+            Executable member = typeToMember.get(proxyClass);
+            subst = ImageSingletons.lookup(ReflectionSubstitutionType.Factory.class).create(proxyClass, member);
+            addSubstitutionType(proxyClass, subst);
         }
         return subst;
     }

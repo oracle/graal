@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,14 +48,20 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
+import java.util.NoSuchElementException;
 
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.StopIterationException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyArray;
 import org.graalvm.polyglot.proxy.ProxyDate;
 import org.graalvm.polyglot.proxy.ProxyDuration;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
+import org.graalvm.polyglot.proxy.ProxyHashMap;
 import org.graalvm.polyglot.proxy.ProxyInstant;
 import org.graalvm.polyglot.proxy.ProxyInstantiable;
+import org.graalvm.polyglot.proxy.ProxyIterable;
+import org.graalvm.polyglot.proxy.ProxyIterator;
 import org.graalvm.polyglot.proxy.ProxyNativeObject;
 import org.graalvm.polyglot.proxy.ProxyObject;
 import org.graalvm.polyglot.proxy.ProxyTime;
@@ -345,4 +351,99 @@ final class HostToGuestCodeCache {
         }
     });
 
+    final CallTarget getIterator = createGuestToHost(new GuestToHostRootNode(ProxyIterable.class, "getIterator") {
+
+        @Override
+        @TruffleBoundary
+        protected Object executeImpl(Object proxy, Object[] arguments) {
+            return ((ProxyIterable) proxy).getIterator();
+        }
+    });
+
+    final CallTarget hasIteratorNextElement = createGuestToHost(new GuestToHostRootNode(ProxyIterator.class, "hasIteratorNextElement") {
+
+        @Override
+        @TruffleBoundary
+        protected Object executeImpl(Object proxy, Object[] arguments) {
+            return ((ProxyIterator) proxy).hasNext();
+        }
+    });
+
+    final CallTarget getIteratorNextElement = createGuestToHost(new GuestToHostRootNode(ProxyIterator.class, "getIteratorNextElement") {
+
+        @Override
+        @TruffleBoundary
+        protected Object executeImpl(Object proxy, Object[] arguments) throws StopIterationException, UnsupportedMessageException {
+            try {
+                return ((ProxyIterator) proxy).getNext();
+            } catch (NoSuchElementException e) {
+                throw StopIterationException.create();
+            } catch (UnsupportedOperationException e) {
+                throw UnsupportedMessageException.create();
+            }
+        }
+    });
+
+    final CallTarget hasHashEntry = createGuestToHost(new GuestToHostRootNode(ProxyHashMap.class, "hasEntry") {
+
+        @Override
+        @TruffleBoundary
+        protected Object executeImpl(Object receiver, Object[] arguments) throws InteropException {
+            return ((ProxyHashMap) receiver).hasHashEntry((Value) arguments[ARGUMENT_OFFSET]);
+        }
+    });
+
+    final CallTarget getHashSize = createGuestToHost(new GuestToHostRootNode(ProxyHashMap.class, "getSize") {
+
+        @Override
+        @TruffleBoundary
+        protected Object executeImpl(Object receiver, Object[] arguments) throws InteropException {
+            return ((ProxyHashMap) receiver).getHashSize();
+        }
+    });
+
+    final CallTarget getHashValue = createGuestToHost(new GuestToHostRootNode(ProxyHashMap.class, "getValue") {
+        @Override
+        @TruffleBoundary
+        protected Object executeImpl(Object receiver, Object[] arguments) throws InteropException {
+            try {
+                return ((ProxyHashMap) receiver).getHashValue((Value) arguments[ARGUMENT_OFFSET]);
+            } catch (UnsupportedOperationException e) {
+                throw UnsupportedMessageException.create();
+            }
+        }
+    });
+
+    final CallTarget putHashEntry = createGuestToHost(new GuestToHostRootNode(ProxyHashMap.class, "putEntry") {
+        @Override
+        @TruffleBoundary
+        protected Object executeImpl(Object receiver, Object[] arguments) throws InteropException {
+            try {
+                ((ProxyHashMap) receiver).putHashEntry((Value) arguments[ARGUMENT_OFFSET], (Value) arguments[ARGUMENT_OFFSET + 1]);
+                return null;
+            } catch (UnsupportedOperationException e) {
+                throw UnsupportedMessageException.create();
+            }
+        }
+    });
+
+    final CallTarget removeHashEntry = createGuestToHost(new GuestToHostRootNode(ProxyHashMap.class, "removeEntry") {
+        @Override
+        @TruffleBoundary
+        protected Object executeImpl(Object receiver, Object[] arguments) throws InteropException {
+            try {
+                return ((ProxyHashMap) receiver).removeHashEntry((Value) arguments[ARGUMENT_OFFSET]);
+            } catch (UnsupportedOperationException e) {
+                throw UnsupportedMessageException.create();
+            }
+        }
+    });
+
+    final CallTarget getHashEntriesIterator = createGuestToHost(new GuestToHostRootNode(ProxyHashMap.class, "getEntriesIterator") {
+        @Override
+        @TruffleBoundary
+        protected Object executeImpl(Object receiver, Object[] arguments) throws InteropException {
+            return ((ProxyHashMap) receiver).getHashEntriesIterator();
+        }
+    });
 }

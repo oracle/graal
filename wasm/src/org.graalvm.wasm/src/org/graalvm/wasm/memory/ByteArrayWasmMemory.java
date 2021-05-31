@@ -47,8 +47,6 @@ import org.graalvm.wasm.constants.Sizes;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 
-import java.util.Arrays;
-
 import static java.lang.Integer.compareUnsigned;
 import static java.lang.StrictMath.addExact;
 import static java.lang.StrictMath.multiplyExact;
@@ -91,7 +89,11 @@ public final class ByteArrayWasmMemory extends WasmMemory {
         this.declaredMinSize = declaredMinSize;
         this.declaredMaxSize = declaredMaxSize;
         this.maxAllowedSize = maxAllowedSize;
-        this.buffer = new byte[initialSize * MEMORY_PAGE_SIZE];
+        try {
+            this.buffer = new byte[initialSize * MEMORY_PAGE_SIZE];
+        } catch (OutOfMemoryError error) {
+            throw WasmException.create(Failure.MEMORY_ALLOCATION_FAILED);
+        }
     }
 
     public ByteArrayWasmMemory(int declaredMinSize, int declaredMaxSize, int maxAllowedSize) {
@@ -113,11 +115,6 @@ public final class ByteArrayWasmMemory extends WasmMemory {
             // TODO: out of bounds might be in (dest, dest+n).
             throw trapOutOfBounds(node, src, n);
         }
-    }
-
-    @Override
-    public void clear() {
-        Arrays.fill(buffer, (byte) 0);
     }
 
     @Override
@@ -145,17 +142,26 @@ public final class ByteArrayWasmMemory extends WasmMemory {
     public synchronized boolean grow(int extraPageSize) {
         if (extraPageSize == 0) {
             return true;
-        } else if (compareUnsigned(extraPageSize, maxAllowedSize) < 0 && compareUnsigned(size() + extraPageSize, maxAllowedSize) < 0) {
-            // Condition above and limit on maxPageSize (see ModuleLimits#MAX_MEMORY_SIZE) ensure
-            // computation of targetByteSize does not overflow.
-            final int targetByteSize = multiplyExact(addExact(size(), extraPageSize), MEMORY_PAGE_SIZE);
-            final byte[] newBuffer = new byte[targetByteSize];
-            System.arraycopy(buffer, 0, newBuffer, 0, buffer.length);
-            buffer = newBuffer;
-            return true;
+        } else if (compareUnsigned(extraPageSize, maxAllowedSize) <= 0 && compareUnsigned(size() + extraPageSize, maxAllowedSize) <= 0) {
+            try {
+                // Condition above and limit on maxPageSize (see ModuleLimits#MAX_MEMORY_SIZE)
+                // ensure computation of targetByteSize does not overflow.
+                final int targetByteSize = multiplyExact(addExact(size(), extraPageSize), MEMORY_PAGE_SIZE);
+                final byte[] newBuffer = new byte[targetByteSize];
+                System.arraycopy(buffer, 0, newBuffer, 0, buffer.length);
+                buffer = newBuffer;
+                return true;
+            } catch (OutOfMemoryError error) {
+                throw WasmException.create(Failure.MEMORY_ALLOCATION_FAILED);
+            }
         } else {
             return false;
         }
+    }
+
+    @Override
+    public void reset() {
+        buffer = new byte[declaredMinSize * MEMORY_PAGE_SIZE];
     }
 
     @Override

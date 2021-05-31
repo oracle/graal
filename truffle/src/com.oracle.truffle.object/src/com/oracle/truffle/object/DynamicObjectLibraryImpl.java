@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,9 +41,11 @@
 package com.oracle.truffle.object;
 
 import static com.oracle.truffle.object.LayoutImpl.ACCESS;
+import static com.oracle.truffle.object.LocationImpl.alwaysValidAssumption;
 import static com.oracle.truffle.object.LocationImpl.expectDouble;
 import static com.oracle.truffle.object.LocationImpl.expectInteger;
 import static com.oracle.truffle.object.LocationImpl.expectLong;
+import static com.oracle.truffle.object.LocationImpl.neverValidAssumption;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -75,15 +77,13 @@ import com.oracle.truffle.api.object.FinalLocationException;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.IncompatibleLocationException;
 import com.oracle.truffle.api.object.Location;
-import com.oracle.truffle.api.object.LocationFactory;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.utilities.AlwaysValidAssumption;
-import com.oracle.truffle.api.utilities.NeverValidAssumption;
 
 /**
  * The implementation of {@link DynamicObjectLibrary}.
  */
+@SuppressWarnings("deprecation")
 @ExportLibrary(value = DynamicObjectLibrary.class, receiverType = DynamicObject.class, priority = 10, transitionLimit = "5")
 abstract class DynamicObjectLibraryImpl {
 
@@ -221,30 +221,11 @@ abstract class DynamicObjectLibraryImpl {
         return shape.replaceProperty(cachedProperty, cachedProperty.copyWithFlags(propertyFlags));
     }
 
-    @TruffleBoundary
     @ExportMessage
-    public static boolean removeKey(DynamicObject obj, Object key) {
-        ShapeImpl oldShape = (ShapeImpl) ACCESS.getShape(obj);
-        Property property = oldShape.getProperty(key);
-        if (property == null) {
-            return false;
-        }
-
-        Map<Object, Object> archive = null;
-        assert (archive = ACCESS.archive(obj)) != null;
-
-        ShapeImpl newShape = oldShape.removeProperty(property);
-        assert oldShape != newShape;
-        assert ACCESS.getShape(obj) == oldShape;
-        ACCESS.setShape(obj, newShape);
-
-        if (!oldShape.isShared()) {
-            shiftPropertyValuesAfterRemove(obj, oldShape, newShape);
-            ACCESS.trimToSize(obj, newShape);
-        }
-
-        assert ACCESS.verifyValues(obj, archive);
-        return true;
+    public static boolean removeKey(DynamicObject object, Object key,
+                    @Shared("cachedShape") @Cached(value = "object.getShape()", allowUncached = true) Shape cachedShape,
+                    @Shared("keyCache") @Cached("create(object.getShape(), key)") KeyCacheNode keyCache) {
+        return keyCache.removeKey(object, cachedShape, key);
     }
 
     @ExportMessage
@@ -358,14 +339,12 @@ abstract class DynamicObjectLibraryImpl {
                     return false;
                 } else {
                     LayoutStrategy strategy = oldShape.getLayout().getStrategy();
-                    LocationFactory locationFactory = getLocationFactory(strategy, putFlags);
-                    newShape = strategy.defineProperty(oldShape, key, value, Flags.getPropertyFlags(putFlags), locationFactory, existingProperty, putFlags);
+                    newShape = strategy.defineProperty(oldShape, key, value, Flags.getPropertyFlags(putFlags), null, existingProperty, putFlags);
                     property = newShape.getProperty(key);
                 }
             } else if (Flags.isUpdateFlags(putFlags) && Flags.getPropertyFlags(putFlags) != existingProperty.getFlags()) {
                 LayoutStrategy strategy = oldShape.getLayout().getStrategy();
-                LocationFactory locationFactory = getLocationFactory(strategy, putFlags);
-                newShape = strategy.defineProperty(oldShape, key, value, Flags.getPropertyFlags(putFlags), locationFactory, existingProperty, putFlags);
+                newShape = strategy.defineProperty(oldShape, key, value, Flags.getPropertyFlags(putFlags), null, existingProperty, putFlags);
                 property = newShape.getProperty(key);
             } else {
                 if (existingProperty.getLocation().canSet(value)) {
@@ -373,8 +352,7 @@ abstract class DynamicObjectLibraryImpl {
                     property = existingProperty;
                 } else {
                     LayoutStrategy strategy = oldShape.getLayout().getStrategy();
-                    LocationFactory locationFactory = getLocationFactory(strategy, putFlags);
-                    newShape = strategy.defineProperty(oldShape, key, value, existingProperty.getFlags(), locationFactory, existingProperty, putFlags);
+                    newShape = strategy.defineProperty(oldShape, key, value, existingProperty.getFlags(), null, existingProperty, putFlags);
                     property = newShape.getProperty(key);
                 }
             }
@@ -382,12 +360,13 @@ abstract class DynamicObjectLibraryImpl {
 
         assert ACCESS.getShape(object) == oldShape;
         if (oldShape != newShape) {
-            ACCESS.growAndSetShape(object, oldShape, newShape);
+            ACCESS.grow(object, oldShape, newShape);
             try {
                 getLocation(property).setInternal(object, value, false);
             } catch (IncompatibleLocationException e) {
                 throw shouldNotHappen(e);
             }
+            ACCESS.setShapeWithStoreFence(object, newShape);
             updateShapeImpl(object);
         } else {
             try {
@@ -399,34 +378,12 @@ abstract class DynamicObjectLibraryImpl {
         return true;
     }
 
-    private static final LocationFactory CONSTANT_LOCATION_FACTORY = new LocationFactory() {
-        @Override
-        public Location createLocation(Shape s, Object v) {
-            return s.allocator().constantLocation(v);
-        }
-    };
-
-    private static final LocationFactory DECLARED_LOCATION_FACTORY = new LocationFactory() {
-        @Override
-        public Location createLocation(Shape s, Object v) {
-            return s.allocator().declaredLocation(v);
-        }
-    };
-
-    static LocationFactory getLocationFactory(LayoutStrategy strategy, long putFlags) {
-        if (Flags.isConstant(putFlags)) {
-            return CONSTANT_LOCATION_FACTORY;
-        } else if (Flags.isDeclaration(putFlags)) {
-            return DECLARED_LOCATION_FACTORY;
-        } else {
-            return strategy.getDefaultLocationFactory(putFlags);
-        }
-    }
-
-    private static void shiftPropertyValuesAfterRemove(DynamicObject object, ShapeImpl shapeBefore, ShapeImpl shapeAfter) {
+    static RemovePlan prepareRemove(ShapeImpl shapeBefore, ShapeImpl shapeAfter) {
+        assert !shapeBefore.isShared();
         LayoutStrategy strategy = shapeBefore.getLayout().getStrategy();
         List<Move> moves = new ArrayList<>();
-        boolean canMoveInPlace = true;
+        boolean canMoveInPlace = shapeAfter.getObjectArrayCapacity() <= shapeBefore.getObjectArrayCapacity() &&
+                        shapeAfter.getPrimitiveArrayCapacity() <= shapeBefore.getPrimitiveArrayCapacity();
         for (ListIterator<Property> iterator = shapeAfter.getPropertyListInternal(false).listIterator(); iterator.hasNext();) {
             Property to = iterator.next();
             Property from = shapeBefore.getProperty(to.getKey());
@@ -446,20 +403,8 @@ abstract class DynamicObjectLibraryImpl {
             if (!isSorted(moves)) {
                 Collections.sort(moves);
             }
-            // perform the moves in inverse order
-            for (int i = moves.size() - 1; i >= 0; i--) {
-                moves.get(i).perform(object, i == 0);
-            }
-        } else {
-            // we cannot perform the moves in place, so stash away the values
-            Object[] tempValues = new Object[moves.size()];
-            for (int i = moves.size() - 1; i >= 0; i--) {
-                tempValues[i] = moves.get(i).performGet(object);
-            }
-            for (int i = moves.size() - 1; i >= 0; i--) {
-                moves.get(i).performSet(object, tempValues[i], true);
-            }
         }
+        return new RemovePlan(moves.toArray(new Move[0]), canMoveInPlace, shapeBefore, shapeAfter);
     }
 
     private static boolean isSorted(List<Move> moves) {
@@ -486,34 +431,25 @@ abstract class DynamicObjectLibraryImpl {
             this.toOrd = toOrd;
         }
 
-        void perform(DynamicObject obj, boolean clear) {
-            performSet(obj, performGet(obj), clear);
+        void perform(DynamicObject obj) {
+            performSet(obj, performGet(obj));
         }
 
         Object performGet(DynamicObject obj) {
             return fromLoc.get(obj, false);
         }
 
-        void performSet(DynamicObject obj, Object value, boolean clear) {
+        void performSet(DynamicObject obj, Object value) {
             try {
                 toLoc.setInternal(obj, value, false);
             } catch (IncompatibleLocationException e) {
                 throw shouldNotHappen(e);
             }
-            if (clear) {
-                clear(obj);
-            }
         }
 
         void clear(DynamicObject obj) {
-            if (fromLoc instanceof CoreLocations.ObjectLocation) {
-                // clear location to avoid memory leak
-                try {
-                    fromLoc.setInternal(obj, null, false);
-                } catch (IncompatibleLocationException e) {
-                    throw shouldNotHappen(e);
-                }
-            }
+            // clear location to avoid memory leak
+            fromLoc.clear(obj);
         }
 
         @Override
@@ -527,6 +463,64 @@ abstract class DynamicObjectLibraryImpl {
             int order = Integer.compare(fromOrd, other.fromOrd);
             assert order == Integer.compare(toOrd, other.toOrd);
             return -order;
+        }
+    }
+
+    private static final class RemovePlan {
+        private static final int MAX_UNROLL = 32;
+
+        @CompilationFinal(dimensions = 1) private final Move[] moves;
+        private final boolean canMoveInPlace;
+        private final Shape shapeBefore;
+        private final Shape shapeAfter;
+
+        RemovePlan(Move[] moves, boolean canMoveInPlace, Shape shapeBefore, Shape shapeAfter) {
+            this.moves = moves;
+            this.canMoveInPlace = canMoveInPlace;
+            this.shapeBefore = shapeBefore;
+            this.shapeAfter = shapeAfter;
+        }
+
+        void execute(DynamicObject object) {
+            CompilerAsserts.partialEvaluationConstant(moves.length);
+            if (CompilerDirectives.inCompiledCode() && moves.length <= MAX_UNROLL) {
+                perform(object);
+            } else {
+                performBoundary(object);
+            }
+        }
+
+        @ExplodeLoop
+        void perform(DynamicObject object) {
+            CompilerAsserts.partialEvaluationConstant(moves.length);
+            if (canMoveInPlace) {
+                // perform the moves in inverse order
+                for (int i = moves.length - 1; i >= 0; i--) {
+                    moves[i].perform(object);
+                    if (i == 0) {
+                        moves[i].clear(object);
+                    }
+                }
+                ACCESS.trimToSize(object, shapeBefore, shapeAfter);
+                ACCESS.setShape(object, shapeAfter);
+            } else {
+                // we cannot perform the moves in place, so stash away the values
+                Object[] tempValues = new Object[moves.length];
+                for (int i = moves.length - 1; i >= 0; i--) {
+                    tempValues[i] = moves[i].performGet(object);
+                    moves[i].clear(object);
+                }
+                ACCESS.resize(object, shapeBefore, shapeAfter);
+                for (int i = moves.length - 1; i >= 0; i--) {
+                    moves[i].performSet(object, tempValues[i]);
+                }
+                ACCESS.setShape(object, shapeAfter);
+            }
+        }
+
+        @TruffleBoundary
+        void performBoundary(DynamicObject object) {
+            perform(object);
         }
     }
 
@@ -546,6 +540,8 @@ abstract class DynamicObjectLibraryImpl {
         public abstract Property getProperty(DynamicObject object, Shape cachedShape, Object key);
 
         public abstract boolean setPropertyFlags(DynamicObject object, Shape cachedShape, Object key, int propertyFlags);
+
+        public abstract boolean removeKey(DynamicObject object, Shape cachedShape, Object key);
 
         public boolean putInt(DynamicObject object, Shape cachedShape, Object key, int value, long putFlags) {
             return put(object, cachedShape, key, value, putFlags);
@@ -681,6 +677,34 @@ abstract class DynamicObjectLibraryImpl {
             }
             return true;
         }
+
+        @TruffleBoundary
+        @Override
+        public boolean removeKey(DynamicObject obj, Shape cachedShape, Object key) {
+            ShapeImpl oldShape = (ShapeImpl) cachedShape;
+            Property property = oldShape.getProperty(key);
+            if (property == null) {
+                return false;
+            }
+
+            Map<Object, Object> archive = null;
+            assert (archive = ACCESS.archive(obj)) != null;
+
+            ShapeImpl newShape = oldShape.removeProperty(property);
+            assert oldShape != newShape;
+            assert ACCESS.getShape(obj) == oldShape;
+
+            if (!oldShape.isShared()) {
+                RemovePlan plan = prepareRemove(oldShape, newShape);
+                plan.execute(obj);
+            } else {
+                ACCESS.setShape(obj, newShape);
+            }
+
+            assert ACCESS.verifyValues(obj, archive);
+            return true;
+        }
+
     }
 
     /**
@@ -855,6 +879,25 @@ abstract class DynamicObjectLibraryImpl {
                 }
             }
             return Generic.instance().setPropertyFlags(object, cachedShape, key, propertyFlags);
+        }
+
+        @ExplodeLoop
+        @Override
+        public boolean removeKey(DynamicObject object, Shape cachedShape, Object key) {
+            KeyCacheEntry start = keyCache;
+            if (start != KeyCacheNode.getUncached()) {
+                for (KeyCacheEntry c = start; c != null; c = c.next) {
+                    if (c.acceptsKey(key)) {
+                        return c.removeKey(object, cachedShape, key);
+                    }
+                }
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                KeyCacheNode impl = insertIntoKeyCache(key, cachedShape);
+                if (impl != null) {
+                    return impl.removeKey(object, cachedShape, key);
+                }
+            }
+            return Generic.instance().removeKey(object, cachedShape, key);
         }
 
         private KeyCacheNode insertIntoKeyCache(Object key, Shape cachedShape) {
@@ -1050,6 +1093,13 @@ abstract class DynamicObjectLibraryImpl {
                 assert assertCachedKeyAndShapeForWrite(object, cachedShape, key);
                 return setPropertyFlagsImpl(object, cachedShape, key, propertyFlags, cachedProperty);
             }
+
+            @Override
+            public boolean removeKey(DynamicObject object, Shape cachedShape, Object key) {
+                CompilerAsserts.partialEvaluationConstant(cachedShape);
+                assert assertCachedKeyAndShapeForWrite(object, cachedShape, key);
+                return removeKeyImpl(object, cachedShape, key, cachedProperty);
+            }
         }
 
         static class MissingKey extends SpecificKey {
@@ -1127,6 +1177,13 @@ abstract class DynamicObjectLibraryImpl {
                 assert assertCachedKeyAndShapeForWrite(object, cachedShape, key);
                 return false;
             }
+
+            @Override
+            public boolean removeKey(DynamicObject object, Shape cachedShape, Object key) {
+                CompilerAsserts.partialEvaluationConstant(cachedShape);
+                assert assertCachedKeyAndShapeForWrite(object, cachedShape, key);
+                return false;
+            }
         }
 
         static class ExistingKeyIdentity extends ExistingKey {
@@ -1182,7 +1239,7 @@ abstract class DynamicObjectLibraryImpl {
                         if (location.canStore(value)) {
                             Shape newShape = c.newShape;
                             if (newShape != oldShape) {
-                                ACCESS.growAndSetShape(object, oldShape, newShape);
+                                ACCESS.grow(object, oldShape, newShape);
                             } else if (location.isFinal()) {
                                 continue;
                             }
@@ -1190,6 +1247,9 @@ abstract class DynamicObjectLibraryImpl {
                                 location.set(object, value, guardCondition);
                             } catch (IncompatibleLocationException | FinalLocationException e) {
                                 throw shouldNotHappen(e);
+                            }
+                            if (newShape != oldShape) {
+                                ACCESS.setShapeWithStoreFence(object, newShape);
                             }
                             c.maybeUpdateShape(object);
                             return true;
@@ -1223,7 +1283,7 @@ abstract class DynamicObjectLibraryImpl {
                         boolean guardCondition = object.getShape() == oldShape;
                         if (location.isIntLocation()) {
                             if (newShape != oldShape) {
-                                ACCESS.growAndSetShape(object, oldShape, newShape);
+                                ACCESS.grow(object, oldShape, newShape);
                             } else if (location.isFinal()) {
                                 continue;
                             }
@@ -1232,11 +1292,14 @@ abstract class DynamicObjectLibraryImpl {
                             } catch (IncompatibleLocationException | FinalLocationException e) {
                                 throw shouldNotHappen(e);
                             }
+                            if (newShape != oldShape) {
+                                ACCESS.setShapeWithStoreFence(object, newShape);
+                            }
                             c.maybeUpdateShape(object);
                             return true;
                         } else if (location.isImplicitCastIntToLong()) {
                             if (newShape != oldShape) {
-                                ACCESS.growAndSetShape(object, oldShape, newShape);
+                                ACCESS.grow(object, oldShape, newShape);
                             } else if (location.isFinal()) {
                                 continue;
                             }
@@ -1245,11 +1308,14 @@ abstract class DynamicObjectLibraryImpl {
                             } catch (IncompatibleLocationException | FinalLocationException e) {
                                 throw shouldNotHappen(e);
                             }
+                            if (newShape != oldShape) {
+                                ACCESS.setShapeWithStoreFence(object, newShape);
+                            }
                             c.maybeUpdateShape(object);
                             return true;
                         } else if (location.isImplicitCastIntToDouble()) {
                             if (newShape != oldShape) {
-                                ACCESS.growAndSetShape(object, oldShape, newShape);
+                                ACCESS.grow(object, oldShape, newShape);
                             } else if (location.isFinal()) {
                                 continue;
                             }
@@ -1258,11 +1324,14 @@ abstract class DynamicObjectLibraryImpl {
                             } catch (IncompatibleLocationException | FinalLocationException e) {
                                 throw shouldNotHappen(e);
                             }
+                            if (newShape != oldShape) {
+                                ACCESS.setShapeWithStoreFence(object, newShape);
+                            }
                             c.maybeUpdateShape(object);
                             return true;
                         } else if (location.canStore(value)) {
                             if (newShape != oldShape) {
-                                ACCESS.growAndSetShape(object, oldShape, newShape);
+                                ACCESS.grow(object, oldShape, newShape);
                             } else if (location.isFinal()) {
                                 continue;
                             }
@@ -1270,6 +1339,9 @@ abstract class DynamicObjectLibraryImpl {
                                 location.set(object, value, guardCondition);
                             } catch (IncompatibleLocationException | FinalLocationException e) {
                                 throw shouldNotHappen(e);
+                            }
+                            if (newShape != oldShape) {
+                                ACCESS.setShapeWithStoreFence(object, newShape);
                             }
                             c.maybeUpdateShape(object);
                             return true;
@@ -1301,7 +1373,7 @@ abstract class DynamicObjectLibraryImpl {
                         if (location.isLongLocation()) {
                             Shape newShape = c.newShape;
                             if (newShape != oldShape) {
-                                ACCESS.growAndSetShape(object, oldShape, newShape);
+                                ACCESS.grow(object, oldShape, newShape);
                             } else if (location.isFinal()) {
                                 continue;
                             }
@@ -1310,12 +1382,15 @@ abstract class DynamicObjectLibraryImpl {
                             } catch (IncompatibleLocationException | FinalLocationException e) {
                                 throw shouldNotHappen(e);
                             }
+                            if (newShape != oldShape) {
+                                ACCESS.setShapeWithStoreFence(object, newShape);
+                            }
                             c.maybeUpdateShape(object);
                             return true;
                         } else if (location.canStore(value)) {
                             Shape newShape = c.newShape;
                             if (newShape != oldShape) {
-                                ACCESS.growAndSetShape(object, oldShape, newShape);
+                                ACCESS.grow(object, oldShape, newShape);
                             } else if (location.isFinal()) {
                                 continue;
                             }
@@ -1323,6 +1398,9 @@ abstract class DynamicObjectLibraryImpl {
                                 location.set(object, value, guardCondition);
                             } catch (IncompatibleLocationException | FinalLocationException e) {
                                 throw shouldNotHappen(e);
+                            }
+                            if (newShape != oldShape) {
+                                ACCESS.setShapeWithStoreFence(object, newShape);
                             }
                             c.maybeUpdateShape(object);
                             return true;
@@ -1354,7 +1432,7 @@ abstract class DynamicObjectLibraryImpl {
                         if (location.isDoubleLocation()) {
                             Shape newShape = c.newShape;
                             if (newShape != oldShape) {
-                                ACCESS.growAndSetShape(object, oldShape, newShape);
+                                ACCESS.grow(object, oldShape, newShape);
                             } else if (location.isFinal()) {
                                 continue;
                             }
@@ -1363,12 +1441,15 @@ abstract class DynamicObjectLibraryImpl {
                             } catch (IncompatibleLocationException | FinalLocationException e) {
                                 throw shouldNotHappen(e);
                             }
+                            if (newShape != oldShape) {
+                                ACCESS.setShapeWithStoreFence(object, newShape);
+                            }
                             c.maybeUpdateShape(object);
                             return true;
                         } else if (newProperty.getLocation().canStore(value)) {
                             Shape newShape = c.newShape;
                             if (newShape != oldShape) {
-                                ACCESS.growAndSetShape(object, oldShape, newShape);
+                                ACCESS.grow(object, oldShape, newShape);
                             } else if (location.isFinal()) {
                                 continue;
                             }
@@ -1376,6 +1457,9 @@ abstract class DynamicObjectLibraryImpl {
                                 location.set(object, value, guardCondition);
                             } catch (IncompatibleLocationException | FinalLocationException e) {
                                 throw shouldNotHappen(e);
+                            }
+                            if (newShape != oldShape) {
+                                ACCESS.setShapeWithStoreFence(object, newShape);
                             }
                             c.maybeUpdateShape(object);
                             return true;
@@ -1431,7 +1515,7 @@ abstract class DynamicObjectLibraryImpl {
                 } else {
                     int propertyFlags = Flags.getPropertyFlags(putFlags);
                     LayoutStrategy strategy = oldShape.getLayout().getStrategy();
-                    return oldShape.defineProperty(cachedKey, value, propertyFlags, getLocationFactory(strategy, putFlags));
+                    return strategy.defineProperty(oldShape, cachedKey, value, propertyFlags, null, putFlags);
                 }
             }
 
@@ -1439,7 +1523,7 @@ abstract class DynamicObjectLibraryImpl {
                 if (Flags.getPropertyFlags(putFlags) != property.getFlags()) {
                     int propertyFlags = Flags.getPropertyFlags(putFlags);
                     LayoutStrategy strategy = oldShape.getLayout().getStrategy();
-                    return oldShape.defineProperty(cachedKey, value, propertyFlags, getLocationFactory(strategy, putFlags));
+                    return strategy.defineProperty(oldShape, cachedKey, value, propertyFlags, null, putFlags);
                 }
             }
 
@@ -1448,12 +1532,13 @@ abstract class DynamicObjectLibraryImpl {
                 // generalize
                 assert oldShape == ACCESS.getShape(object);
                 LayoutStrategy strategy = oldShape.getLayout().getStrategy();
-                ShapeImpl newShape = strategy.definePropertyGeneralize(oldShape, property, value, getLocationFactory(strategy, putFlags), putFlags);
+                ShapeImpl newShape = strategy.definePropertyGeneralize(oldShape, property, value, null, putFlags);
                 assert newShape != oldShape;
                 return newShape;
             } else if (location.isDeclared()) {
                 // redefine declared
-                return oldShape.defineProperty(cachedKey, value, property.getFlags());
+                LayoutStrategy strategy = oldShape.layout.getStrategy();
+                return strategy.defineProperty(oldShape, cachedKey, value, property.getFlags(), null, putFlags);
             } else {
                 // set existing
                 assert location.canSet(value);
@@ -1525,11 +1610,80 @@ abstract class DynamicObjectLibraryImpl {
             }
         }
 
+        @ExplodeLoop
+        protected boolean removeKeyImpl(DynamicObject object, Shape cachedShape, Object key, Property cachedProperty) {
+            Shape oldShape = cachedShape;
+            MutateCacheData start = cache;
+            if (start == MutateCacheData.GENERIC || !cachedShape.isValid()) {
+                return Generic.instance().removeKey(object, cachedShape, key);
+            }
+            for (MutateCacheData c = start; c != null; c = c.next) {
+                if (!c.isValid()) {
+                    break;
+                } else if (c instanceof RemovePropertyCacheData) {
+                    if (cachedProperty == null) {
+                        return false;
+                    }
+                    Shape newShape = c.newShape;
+                    assert newShape != oldShape;
+                    Map<Object, Object> archive = null;
+                    assert (archive = ACCESS.archive(object)) != null;
+
+                    if (!oldShape.isShared()) {
+                        ((RemovePropertyCacheData) c).removePlan.execute(object);
+                    } else {
+                        ACCESS.setShape(object, newShape);
+                    }
+
+                    assert ACCESS.verifyValues(object, archive);
+
+                    c.maybeUpdateShape(object);
+                    return true;
+                }
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            KeyCacheNode impl = insertIntoRemoveKeyCache(cachedShape, cachedProperty);
+            return impl.removeKey(object, cachedShape, key);
+        }
+
+        protected KeyCacheNode insertIntoRemoveKeyCache(Shape cachedShape, Property cachedProperty) {
+            CompilerAsserts.neverPartOfCompilation();
+            if (!cachedShape.isValid()) {
+                return Generic.instance();
+            }
+            Lock lock = getLock();
+            lock.lock();
+            try {
+                MutateCacheData tail = filterValid(this.cache);
+
+                ShapeImpl oldShape = (ShapeImpl) cachedShape;
+                ShapeImpl newShape = oldShape.removeProperty(cachedProperty);
+
+                if (!oldShape.isValid()) {
+                    // If shape was invalidated, other locations may have changed, too,
+                    // so we need to update the object's shape first.
+                    // Cache entries with an invalid cache entry directly go to the slow path.
+                    return Generic.instance();
+                }
+
+                RemovePlan removePlan = null;
+                if (!oldShape.isShared()) {
+                    removePlan = prepareRemove(oldShape, newShape);
+                }
+
+                Assumption newShapeValid = getShapeValidAssumption(oldShape, newShape);
+                this.cache = new RemovePropertyCacheData(newShape, newShapeValid, removePlan, tail);
+                return this;
+            } finally {
+                lock.unlock();
+            }
+        }
+
         private static Assumption getShapeValidAssumption(Shape oldShape, Shape newShape) {
             if (oldShape == newShape) {
-                return AlwaysValidAssumption.INSTANCE;
+                return alwaysValidAssumption();
             }
-            return newShape.isValid() ? newShape.getValidAssumption() : NeverValidAssumption.INSTANCE;
+            return newShape.isValid() ? newShape.getValidAssumption() : neverValidAssumption();
         }
     }
 
@@ -1582,11 +1736,11 @@ abstract class DynamicObjectLibraryImpl {
 
         @Override
         protected boolean isValid() {
-            return newShapeValidAssumption == NeverValidAssumption.INSTANCE || newShapeValidAssumption.isValid();
+            return newShapeValidAssumption == neverValidAssumption() || newShapeValidAssumption == alwaysValidAssumption() || newShapeValidAssumption.isValid();
         }
 
         protected void maybeUpdateShape(DynamicObject store) {
-            if (newShapeValidAssumption == NeverValidAssumption.INSTANCE) {
+            if (newShapeValidAssumption == neverValidAssumption()) {
                 updateShapeImpl(store);
             }
         }
@@ -1626,6 +1780,21 @@ abstract class DynamicObjectLibraryImpl {
         @Override
         protected MutateCacheData withNext(MutateCacheData newNext) {
             return new SetPropertyFlagsCacheData(newShape, newShapeValidAssumption, property, newNext);
+        }
+    }
+
+    static class RemovePropertyCacheData extends MutateCacheData {
+
+        final RemovePlan removePlan;
+
+        RemovePropertyCacheData(Shape newShape, Assumption newShapeValidAssumption, RemovePlan removePlan, MutateCacheData next) {
+            super(next, newShape, newShapeValidAssumption);
+            this.removePlan = removePlan;
+        }
+
+        @Override
+        protected MutateCacheData withNext(MutateCacheData newNext) {
+            return new RemovePropertyCacheData(newShape, newShapeValidAssumption, removePlan, newNext);
         }
     }
 
@@ -1700,8 +1869,10 @@ abstract class DynamicObjectLibraryImpl {
         @Specialization
         static void doCached(DynamicObject object, Shape cachedShape,
                         @Cached(value = "cachedShape.makeSharedShape()", allowUncached = true) Shape newShape) {
-            assert newShape != cachedShape;
-            ACCESS.growAndSetShape(object, cachedShape, newShape);
+            assert newShape != cachedShape &&
+                            ((ShapeImpl) cachedShape).getObjectArrayCapacity() == ((ShapeImpl) newShape).getObjectArrayCapacity() &&
+                            ((ShapeImpl) cachedShape).getPrimitiveArrayCapacity() == ((ShapeImpl) newShape).getPrimitiveArrayCapacity();
+            ACCESS.setShape(object, newShape);
         }
     }
 
@@ -1715,7 +1886,8 @@ abstract class DynamicObjectLibraryImpl {
             if (cachedShape == cachedOtherShape) {
                 return false;
             }
-            ACCESS.resizeAndSetShape(object, cachedShape, cachedOtherShape);
+            ACCESS.resize(object, cachedShape, cachedOtherShape);
+            ACCESS.setShape(object, cachedOtherShape);
             return true;
         }
 

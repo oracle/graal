@@ -43,12 +43,13 @@ package org.graalvm.wasm.utils;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 
 public class WasmResource {
     public static String getResourceAsString(String resourceName, boolean fail) throws IOException {
         byte[] contents = getResourceAsBytes(resourceName, fail);
         if (contents != null) {
-            return new String(contents);
+            return new String(contents, StandardCharsets.UTF_8);
         } else {
             assert !fail;
             return null;

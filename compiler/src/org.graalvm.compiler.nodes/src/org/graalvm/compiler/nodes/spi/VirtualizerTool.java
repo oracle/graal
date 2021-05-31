@@ -26,7 +26,6 @@ package org.graalvm.compiler.nodes.spi;
 
 import java.util.List;
 
-import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
@@ -36,10 +35,7 @@ import org.graalvm.compiler.nodes.java.MonitorIdNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.options.OptionValues;
 
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
  * This tool can be used to query the current state (normal/virtualized/re-materialized) of values
@@ -47,25 +43,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  *
  * See also {@link Virtualizable}.
  */
-public interface VirtualizerTool {
-
-    /**
-     * Returns all available providers.
-     */
-    CoreProviders getProviders();
-
-    /**
-     * @return the {@link MetaAccessProvider} associated with the current compilation.
-     */
-    MetaAccessProvider getMetaAccess();
-
-    /**
-     * @return the {@link ConstantReflectionProvider} associated with the current compilation, which
-     *         can be used to access {@link JavaConstant}s.
-     */
-    ConstantReflectionProvider getConstantReflection();
-
-    MetaAccessExtensionProvider getMetaAccessExtensionProvider();
+public interface VirtualizerTool extends CoreProviders {
 
     /**
      * This method should be used to query the maximum size of virtualized objects before attempting

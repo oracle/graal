@@ -40,6 +40,7 @@ import java.util.List;
 import java.util.Vector;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Stream;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
@@ -221,6 +222,10 @@ final class Target_java_lang_ClassLoader {
         return scl;
     }
 
+    @Alias
+    @TargetElement(onlyWith = JDK11OrLater.class)
+    native Stream<Package> packages();
+
     @Delete
     private static native void initSystemClassLoader();
 
@@ -278,11 +283,26 @@ final class Target_java_lang_ClassLoader {
 
     @Substitute
     private Class<?> loadClass(String name) throws ClassNotFoundException {
+        if (!checkName(name)) {
+            /*
+             * Names that contain `/` or start with '[' are invalid. Calling `ClassLoader.loadClass`
+             * to create a `Class` object of an array class is invalid and a
+             * `ClassNotFoundException` will be thrown. Instead, `Class.forName` should be used
+             * directly to load array classes.
+             */
+            throw new ClassNotFoundException(name);
+        }
         return ClassForNameSupport.forName(name, false);
     }
 
-    @Delete
-    native Class<?> loadClass(String name, boolean resolve);
+    @Alias
+    private native boolean checkName(String name);
+
+    @Substitute
+    @SuppressWarnings("unused")
+    Class<?> loadClass(String name, boolean resolve) {
+        throw VMError.unsupportedFeature("Target_java_lang_ClassLoader.loadClass(String, boolean)");
+    }
 
     @Delete
     native Class<?> findBootstrapClassOrNull(String name);
@@ -331,22 +351,10 @@ final class Target_java_lang_ClassLoader {
     @Substitute //
     @SuppressWarnings({"unused"}) //
     private Class<?> findLoadedClass0(String name) {
-        /* See open/src/hotspot/share/prims/jvm.cpp#958. */
-        throw VMError.unsupportedFeature("Target_java_lang_ClassLoader.findLoadedClass0(String)");
-    }
-
-    @Substitute //
-    @TargetElement(onlyWith = JDK11OrLater.class) //
-    @SuppressWarnings({"unused"})
-    protected Class<?> findClass(String moduleName, String name) {
-        throw VMError.unsupportedFeature("JDK11OrLater: Target_java_lang_ClassLoader.findClass(String moduleName, String name)");
-    }
-
-    @Substitute //
-    @TargetElement(onlyWith = JDK11OrLater.class) //
-    @SuppressWarnings({"unused"})
-    public Package getDefinedPackage(String name) {
-        throw VMError.unsupportedFeature("JDK11OrLater: Target_java_lang_ClassLoader.getDefinedPackage(String name)");
+        if (name == null) {
+            return null;
+        }
+        return ClassForNameSupport.forNameOrNull(name, false);
     }
 
     @Substitute
@@ -398,14 +406,23 @@ final class Target_java_lang_ClassLoader {
     @Delete
     private static native void registerNatives();
 
-    @Delete
-    private native Class<?> defineClass(String name, byte[] b, int off, int len);
+    @Substitute
+    @SuppressWarnings({"unused", "static-method"})
+    private Class<?> defineClass(String name, byte[] b, int off, int len) {
+        throw VMError.unsupportedFeature("Defining classes from new bytecodes run time.");
+    }
 
-    @Delete
-    private native Class<?> defineClass(String name, byte[] b, int off, int len, ProtectionDomain protectionDomain);
+    @Substitute
+    @SuppressWarnings({"unused", "static-method"})
+    private Class<?> defineClass(String name, byte[] b, int off, int len, ProtectionDomain protectionDomain) {
+        throw VMError.unsupportedFeature("Defining classes from new bytecodes run time.");
+    }
 
-    @Delete
-    private native Class<?> defineClass(String name, java.nio.ByteBuffer b, ProtectionDomain protectionDomain);
+    @Substitute
+    @SuppressWarnings({"unused", "static-method"})
+    private Class<?> defineClass(String name, java.nio.ByteBuffer b, ProtectionDomain protectionDomain) {
+        throw VMError.unsupportedFeature("Defining classes from new bytecodes run time.");
+    }
 
     @Delete
     @TargetElement(onlyWith = JDK8OrEarlier.class)

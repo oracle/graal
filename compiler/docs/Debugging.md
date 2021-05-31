@@ -220,7 +220,7 @@ visualizations of certain compiler data structures. Currently, there is support 
   [C1Visualizer](https://java.net/projects/c1visualizer/)
 
 Dumping is enabled via the `-Dgraal.Dump` option. The dump handler for generating C1Visualizer
-output will also generate output for HIR graphs if the `-Dgraal.PrintCFG=true` option is specified
+output will also generate output for LIR graphs if the `-Dgraal.PrintCFG=true` option is specified
 (in addition to the `-Dgraal.Dump` option).
 
 By default, `-Dgraal.Dump` output is written to the local file system in a directory determined

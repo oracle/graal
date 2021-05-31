@@ -5,10 +5,12 @@ on:
     paths-ignore:
       - '.travis.yml'
       - '.github/workflows/quarkus.yml'
+      - '**.md'
   pull_request:
     paths-ignore:
       - '.travis.yml'
       - '.github/workflows/quarkus.yml'
+      - '**.md'
   workflow_dispatch: []
 
 env:
@@ -99,13 +101,16 @@ jobs:
       run: |
         mkdir jdk-dl
         ${MX_PATH}/mx fetch-jdk --java-distribution ${JDK} --to jdk-dl --alias ${JAVA_HOME}
+    - name: Update dependency cache
+      if: ${{ contains(matrix.env.GATE, 'debug') || contains(matrix.env.GATE, 'style') }}
+      run: sudo apt update
     - name: Debug dependencies
       if: ${{ contains(matrix.env.GATE, 'debug') }}
       run: sudo apt install gdb
     - name: Style dependencies
       if: ${{ contains(matrix.env.GATE, 'style') }}
       run: |
-        sudo apt install python-pip
+        sudo apt install python-pip python-setuptools 
         sudo pip install astroid==1.1.0
         sudo pip install pylint==1.1.0
     - name: Build GraalVM and run gate

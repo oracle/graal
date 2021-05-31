@@ -233,15 +233,39 @@ final class InstrumentAccessor extends Accessor {
         }
 
         @Override
+        public void notifyLanguageContextCreate(Object engine, TruffleContext context, LanguageInfo info) {
+            InstrumentationHandler instrumentationHandler = (InstrumentationHandler) engineAccess().getInstrumentationHandler(engine);
+            instrumentationHandler.notifyLanguageContextCreate(context, info);
+        }
+
+        @Override
         public void notifyLanguageContextCreated(Object engine, TruffleContext context, LanguageInfo info) {
             InstrumentationHandler instrumentationHandler = (InstrumentationHandler) engineAccess().getInstrumentationHandler(engine);
             instrumentationHandler.notifyLanguageContextCreated(context, info);
         }
 
         @Override
+        public void notifyLanguageContextCreateFailed(Object engine, TruffleContext context, LanguageInfo info) {
+            InstrumentationHandler instrumentationHandler = (InstrumentationHandler) engineAccess().getInstrumentationHandler(engine);
+            instrumentationHandler.notifyLanguageContextCreateFailed(context, info);
+        }
+
+        @Override
+        public void notifyLanguageContextInitialize(Object engine, TruffleContext context, LanguageInfo info) {
+            InstrumentationHandler instrumentationHandler = (InstrumentationHandler) engineAccess().getInstrumentationHandler(engine);
+            instrumentationHandler.notifyLanguageContextInitialize(context, info);
+        }
+
+        @Override
         public void notifyLanguageContextInitialized(Object engine, TruffleContext context, LanguageInfo info) {
             InstrumentationHandler instrumentationHandler = (InstrumentationHandler) engineAccess().getInstrumentationHandler(engine);
             instrumentationHandler.notifyLanguageContextInitialized(context, info);
+        }
+
+        @Override
+        public void notifyLanguageContextInitializeFailed(Object engine, TruffleContext context, LanguageInfo info) {
+            InstrumentationHandler instrumentationHandler = (InstrumentationHandler) engineAccess().getInstrumentationHandler(engine);
+            instrumentationHandler.notifyLanguageContextInitializeFailed(context, info);
         }
 
         @Override

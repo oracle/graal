@@ -48,7 +48,7 @@ import org.graalvm.wasm.memory.ByteArrayWasmMemory;
 import org.graalvm.wasm.memory.WasmMemory;
 
 import static java.lang.Integer.compareUnsigned;
-import static org.graalvm.wasm.WasmUtil.minUnsigned;
+import static org.graalvm.wasm.WasmMath.minUnsigned;
 import static org.graalvm.wasm.api.JsConstants.JS_LIMITS;
 
 public class Memory extends Dictionary {

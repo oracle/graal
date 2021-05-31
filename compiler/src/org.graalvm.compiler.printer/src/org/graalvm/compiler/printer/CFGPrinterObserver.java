@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.printer;
 
+import static org.graalvm.compiler.debug.DebugOptions.PrintBackendCFG;
 import static org.graalvm.compiler.debug.DebugOptions.PrintCFG;
 
 import java.io.BufferedOutputStream;
@@ -79,10 +80,10 @@ public class CFGPrinterObserver implements DebugDumpHandler {
     private List<String> curDecorators = Collections.emptyList();
 
     @Override
-    public void dump(DebugContext debug, Object object, String format, Object... arguments) {
+    public void dump(Object object, DebugContext debug, boolean forced, String format, Object... arguments) {
         String message = String.format(format, arguments);
         try {
-            dumpSandboxed(debug, object, message);
+            dumpSandboxed(debug, object, forced, message);
         } catch (Throwable ex) {
             TTY.println("CFGPrinter: Exception during output of " + message + ": " + ex);
             ex.printStackTrace();
@@ -146,13 +147,22 @@ public class CFGPrinterObserver implements DebugDumpHandler {
     private LIR lastLIR = null;
     private IntervalDumper delayedIntervals = null;
 
+    public void dumpSandboxed(DebugContext debug, Object object, boolean forced, String message) {
+        OptionValues options = debug.getOptions();
+        if (isFrontendObject(object)) {
+            if (!PrintCFG.getValue(options) && !forced) {
+                return;
+            }
+        } else {
+            if (!PrintBackendCFG.getValue(options) && !forced) {
+                return;
+            }
+        }
+        dumpSandboxed(debug, object, message);
+    }
+
     public void dumpSandboxed(DebugContext debug, Object object, String message) {
         OptionValues options = debug.getOptions();
-        boolean dumpFrontend = PrintCFG.getValue(options);
-        if (!dumpFrontend && isFrontendObject(object)) {
-            return;
-        }
-
         if (cfgPrinter == null) {
             try {
                 Path dumpFile = debug.getDumpPath(".cfg", false);
@@ -193,11 +203,12 @@ public class CFGPrinterObserver implements DebugDumpHandler {
 
             if (object instanceof BciBlockMapping) {
                 BciBlockMapping blockMap = (BciBlockMapping) object;
-                cfgPrinter.printCFG(message, blockMap);
-                if (blockMap.code.getCode() != null) {
-                    cfgPrinter.printBytecodes(new BytecodeDisassembler(false).disassemble(blockMap.code));
+                if (blockMap.getBlocks() != null) {
+                    cfgPrinter.printCFG(message, blockMap);
+                    if (blockMap.code.getCode() != null) {
+                        cfgPrinter.printBytecodes(new BytecodeDisassembler(false).disassemble(blockMap.code));
+                    }
                 }
-
             } else if (object instanceof LIR) {
                 // Currently no node printing for lir
                 cfgPrinter.printCFG(message, cfgPrinter.lir.codeEmittingOrder(), false);

@@ -161,6 +161,11 @@ public final class NativeImageBuildServer {
         if (JavaVersionUtil.JAVA_SPEC >= 14) {
             ModuleSupport.exportAndOpenPackageToUnnamed("java.base", "jdk.internal.loader", false);
         }
+        if (JavaVersionUtil.JAVA_SPEC >= 16) {
+            ModuleSupport.exportAndOpenPackageToUnnamed("java.base", "sun.reflect.annotation", false);
+            ModuleSupport.exportAndOpenPackageToUnnamed("java.base", "sun.security.jca", false);
+            ModuleSupport.exportAndOpenPackageToUnnamed("jdk.jdeps", "com.sun.tools.classfile", false);
+        }
 
         if (!verifyValidJavaVersionAndPlatform()) {
             System.exit(FAILED_EXIT_STATUS);

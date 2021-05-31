@@ -294,11 +294,11 @@ public class GraalChannel implements SoftwareChannel, DownloadInterceptor {
     String receiveEmailAddress() {
         String mail = input.optValue(GdsCommands.OPTION_EMAIL_ADDRESS);
         if (mail == null) {
-            fb.output("MSG_EmailAddressEntry");
-            fb.outputPart("PROMPT_EmailAddressEntry");
             if (prompted || fb.isNonInteractive()) {
                 return null;
             }
+            fb.output("MSG_EmailAddressEntry");
+            fb.outputPart("PROMPT_EmailAddressEntry");
             mail = fb.acceptLine(true);
             if (mail == Feedback.AUTO_YES) {
                 mail = null;
@@ -523,7 +523,7 @@ public class GraalChannel implements SoftwareChannel, DownloadInterceptor {
         String editionString = jo.getString(KEY_RELEASE_EDITION);
         String licenseLabel = jo.has(KEY_RELEASE_LICENSE_LABEL) ? jo.getString(KEY_RELEASE_LICENSE_LABEL) : null;
 
-        Version v = Version.fromUserString(versionString).onlyVersion();
+        Version v = Version.fromString(versionString);
         String jv;
         if (javaString.startsWith("jdk")) { // NOI18N
             jv = "" + SystemUtils.interpretJavaMajorVersion(javaString.substring(3)); // NOI18N

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -65,8 +65,9 @@ import java.util.Map;
 
 import static java.lang.Integer.compareUnsigned;
 import static org.graalvm.wasm.Assert.assertTrue;
-import static org.graalvm.wasm.WasmUtil.minUnsigned;
-import static org.graalvm.wasm.WasmUtil.unsignedInt32ToLong;
+import static org.graalvm.wasm.Assert.assertUnsignedIntLess;
+import static org.graalvm.wasm.WasmMath.maxUnsigned;
+import static org.graalvm.wasm.WasmMath.minUnsigned;
 
 /**
  * Contains the symbol information of a module.
@@ -78,7 +79,7 @@ public abstract class SymbolTable {
     private static final int INITIAL_FUNCTION_TYPES_SIZE = 128;
     private static final int GLOBAL_MUTABLE_BIT = 0x0100;
     private static final int GLOBAL_EXPORT_BIT = 0x0200;
-    private static final int UNINITIALIZED_GLOBAL_ADDRESS = -1;
+    static final int UNINITIALIZED_GLOBAL_ADDRESS = Integer.MIN_VALUE;
     private static final int NO_EQUIVALENCE_CLASS = 0;
     static final int FIRST_EQUIVALENCE_CLASS = NO_EQUIVALENCE_CLASS + 1;
 
@@ -115,12 +116,24 @@ public abstract class SymbolTable {
             if (this.returnType != that.returnType) {
                 return false;
             }
-            for (int i = 0; i < paramTypes.length; i++) {
+            if (this.paramTypes.length != that.paramTypes.length) {
+                return false;
+            }
+            for (int i = 0; i < this.paramTypes.length; i++) {
                 if (this.paramTypes[i] != that.paramTypes[i]) {
                     return false;
                 }
             }
             return true;
+        }
+
+        @Override
+        public String toString() {
+            String[] paramNames = new String[paramTypes.length];
+            for (int i = 0; i < paramTypes.length; i++) {
+                paramNames[i] = WasmType.toString(paramTypes[i]);
+            }
+            return Arrays.toString(paramNames) + " -> " + WasmType.toString(returnType);
         }
     }
 
@@ -267,9 +280,9 @@ public abstract class SymbolTable {
     @CompilationFinal private final LinkedHashMap<String, Integer> exportedGlobals;
 
     /**
-     * The greatest index of a global in the module.
+     * Number of globals in the module.
      */
-    @CompilationFinal private int maxGlobalIndex;
+    @CompilationFinal private int numGlobals;
 
     /**
      * The descriptor of the table of this module.
@@ -330,7 +343,7 @@ public abstract class SymbolTable {
         this.globalTypes = new short[INITIAL_GLOBALS_SIZE];
         this.importedGlobals = new LinkedHashMap<>();
         this.exportedGlobals = new LinkedHashMap<>();
-        this.maxGlobalIndex = -1;
+        this.numGlobals = 0;
         this.table = null;
         this.importedTableDescriptor = null;
         this.exportedTableNames = new ArrayList<>();
@@ -354,10 +367,7 @@ public abstract class SymbolTable {
     }
 
     public void checkFunctionIndex(int funcIndex) {
-        if (funcIndex < 0 || funcIndex >= numFunctions) {
-            throw WasmException.create(Failure.UNKNOWN_FUNCTION, String.format("Function index out of bounds: %d should be < %d.", unsignedInt32ToLong(funcIndex), numFunctions));
-        }
-
+        assertUnsignedIntLess(funcIndex, numFunctions, Failure.UNKNOWN_FUNCTION);
     }
 
     private static int[] reallocate(int[] array, int currentSize, int newLength) {
@@ -466,9 +476,7 @@ public abstract class SymbolTable {
     private WasmFunction allocateFunction(int typeIndex, ImportDescriptor importDescriptor) {
         checkNotParsed();
         ensureFunctionsCapacity(numFunctions);
-        if (typeIndex < 0 || typeIndex >= typeCount) {
-            throw WasmException.create(Failure.UNKNOWN_TYPE, String.format("Function type out of bounds: %d should be < %d.", unsignedInt32ToLong(typeIndex), typeCount));
-        }
+        assertUnsignedIntLess(typeIndex, typeCount(), Failure.UNKNOWN_TYPE);
         final WasmFunction function = new WasmFunction(this, numFunctions, typeIndex, importDescriptor);
         functions[numFunctions] = function;
         numFunctions++;
@@ -569,7 +577,7 @@ public abstract class SymbolTable {
         return typeCount;
     }
 
-    FunctionType typeAt(int index) {
+    public FunctionType typeAt(int index) {
         return new FunctionType(functionTypeArgumentTypes(index).toArray(), functionTypeReturnType(index));
     }
 
@@ -652,7 +660,7 @@ public abstract class SymbolTable {
         assert (valueType & 0xff) == valueType;
         checkNotParsed();
         ensureGlobalsCapacity(index);
-        maxGlobalIndex = Math.max(maxGlobalIndex, index);
+        numGlobals = maxUnsigned(index + 1, numGlobals);
         final int mutabilityBit;
         if (mutability == GlobalModifier.CONSTANT) {
             mutabilityBit = 0;
@@ -712,8 +720,8 @@ public abstract class SymbolTable {
         return reverseMap;
     }
 
-    public int maxGlobalIndex() {
-        return maxGlobalIndex;
+    public int numGlobals() {
+        return numGlobals;
     }
 
     @SuppressWarnings("unused")
@@ -758,7 +766,7 @@ public abstract class SymbolTable {
         exportSymbol(name);
         globalTypes[index] |= GLOBAL_EXPORT_BIT;
         exportedGlobals.put(name, index);
-        module().addLinkAction((context, instance) -> context.linker().resolveGlobalExport(module(), name, index));
+        module().addLinkAction((context, instance) -> context.linker().resolveGlobalExport(instance.module(), name, index));
     }
 
     public void declareExportedExternalGlobal(String name, int index, Object global) {

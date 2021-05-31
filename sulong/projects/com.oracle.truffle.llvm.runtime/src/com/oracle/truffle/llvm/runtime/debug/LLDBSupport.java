@@ -34,7 +34,6 @@ import org.graalvm.collections.Equivalence;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
@@ -75,7 +74,7 @@ public final class LLDBSupport {
     public CallTarget getLoadFunction(Type loadType) {
         CallTarget ret = loadFunctionCache.get(loadType);
         if (ret == null) {
-            ret = Truffle.getRuntime().createCallTarget(new LoadRootNode(this, loadType));
+            ret = LLVMLanguage.createCallTarget(new LoadRootNode(this, loadType));
             loadFunctionCache.put(loadType, ret);
         }
         return ret;

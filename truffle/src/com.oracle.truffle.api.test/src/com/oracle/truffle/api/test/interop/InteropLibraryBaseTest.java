@@ -40,21 +40,21 @@
  */
 package com.oracle.truffle.api.test.interop;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
-import java.util.Arrays;
-import java.util.List;
-
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
-
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.test.AbstractParametrizedLibraryTest;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
+
+import java.util.Arrays;
+import java.util.List;
+
+import static java.nio.ByteOrder.LITTLE_ENDIAN;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 @RunWith(Parameterized.class)
 public abstract class InteropLibraryBaseTest extends AbstractParametrizedLibraryTest {
@@ -80,6 +80,25 @@ public abstract class InteropLibraryBaseTest extends AbstractParametrizedLibrary
         assertUnsupported(() -> lib.getArraySize(value));
         assertUnsupported(() -> lib.removeArrayElement(value, 0));
         assertUnsupported(() -> lib.writeArrayElement(value, 0, ""));
+    }
+
+    protected final void assertNoBuffer(Object value) {
+        InteropLibrary lib = createLibrary(InteropLibrary.class, value);
+        assertFalse(lib.hasBufferElements(value));
+        assertUnsupported(() -> lib.isBufferWritable(value));
+        assertUnsupported(() -> lib.getBufferSize(value));
+        assertUnsupported(() -> lib.readBufferByte(value, 0));
+        assertUnsupported(() -> lib.writeBufferByte(value, 0, (byte) 0));
+        assertUnsupported(() -> lib.readBufferShort(value, LITTLE_ENDIAN, 0));
+        assertUnsupported(() -> lib.writeBufferShort(value, LITTLE_ENDIAN, 0, (short) 0));
+        assertUnsupported(() -> lib.readBufferInt(value, LITTLE_ENDIAN, 0));
+        assertUnsupported(() -> lib.writeBufferInt(value, LITTLE_ENDIAN, 0, 0));
+        assertUnsupported(() -> lib.readBufferLong(value, LITTLE_ENDIAN, 0));
+        assertUnsupported(() -> lib.writeBufferLong(value, LITTLE_ENDIAN, 0, 0));
+        assertUnsupported(() -> lib.readBufferFloat(value, LITTLE_ENDIAN, 0));
+        assertUnsupported(() -> lib.writeBufferFloat(value, LITTLE_ENDIAN, 0, 0));
+        assertUnsupported(() -> lib.readBufferDouble(value, LITTLE_ENDIAN, 0));
+        assertUnsupported(() -> lib.writeBufferDouble(value, LITTLE_ENDIAN, 0, 0));
     }
 
     protected final void assertNoNative(Object value) {

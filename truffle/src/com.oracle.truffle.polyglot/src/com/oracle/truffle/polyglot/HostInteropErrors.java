@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -109,6 +109,36 @@ final class HostInteropErrors {
     }
 
     @TruffleBoundary
+    static RuntimeException iterableUnsupported(PolyglotLanguageContext context, Object receiver, Type componentType, String operation) {
+        String message = String.format("Unsupported operation %s for Iterable<%s> %s.", operation, formatComponentType(componentType), getValueInfo(context, receiver));
+        throw PolyglotEngineException.unsupported(message);
+    }
+
+    @TruffleBoundary
+    static RuntimeException iteratorUnsupported(PolyglotLanguageContext context, Object receiver, Type componentType, String operation) {
+        String message = String.format("Unsupported operation %s for Iterator<%s> %s.", operation, formatComponentType(componentType), getValueInfo(context, receiver));
+        throw PolyglotEngineException.unsupported(message);
+    }
+
+    @TruffleBoundary
+    static RuntimeException stopIteration(PolyglotLanguageContext context, Object receiver, Type componentType) {
+        String message = String.format("Iteration was stopped for Iterator<%s> %s.", formatComponentType(componentType), getValueInfo(context, receiver));
+        throw PolyglotEngineException.noSuchElement(message);
+    }
+
+    @TruffleBoundary
+    static RuntimeException iteratorConcurrentlyModified(PolyglotLanguageContext context, Object receiver, Type componentType) {
+        String message = String.format("Content was modified during iteration of Iterator<%s> %s.", formatComponentType(componentType), getValueInfo(context, receiver));
+        throw PolyglotEngineException.concurrentModificationException(message);
+    }
+
+    @TruffleBoundary
+    static RuntimeException iteratorElementUnreadable(PolyglotLanguageContext context, Object receiver, Type componentType) {
+        String message = String.format("Element is not readable for Iterator<%s> %s.", formatComponentType(componentType), getValueInfo(context, receiver));
+        throw PolyglotEngineException.unsupported(message);
+    }
+
+    @TruffleBoundary
     static RuntimeException mapUnsupported(PolyglotLanguageContext context, Object receiver, Type keyType, Type valueType, String operation) {
         String message = String.format("Unsupported operation %s for Map<%s, %s> %s.", operation, formatComponentType(keyType), formatComponentType(valueType), getValueInfo(context, receiver));
         throw PolyglotEngineException.unsupported(message);
@@ -135,6 +165,19 @@ final class HostInteropErrors {
     }
 
     @TruffleBoundary
+    static RuntimeException mapEntryUnsupported(PolyglotLanguageContext context, Object receiver, Type keyType, Type valueType, String operation) {
+        String message = String.format("Unsupported operation %s for Map.Entry<%s, %s> %s.", operation, formatComponentType(keyType), formatComponentType(valueType), getValueInfo(context, receiver));
+        throw PolyglotEngineException.unsupported(message);
+    }
+
+    @TruffleBoundary
+    static RuntimeException invalidMapEntryArrayIndex(PolyglotLanguageContext context, Object receiver, Type keyType, Type valueType, long index) {
+        throw PolyglotEngineException.classCast(
+                        String.format("Invalid index %d for Map.Entry<%s, %s> %s.",
+                                        index, formatComponentType(keyType), formatComponentType(valueType), getValueInfo(context, receiver)));
+    }
+
+    @TruffleBoundary
     static RuntimeException invalidListValue(PolyglotLanguageContext context, Object receiver, Type componentType, int identifier, Object value) {
         throw PolyglotEngineException.classCast(
                         String.format("Invalid value %s for List<%s> %s and index %s.",
@@ -156,18 +199,18 @@ final class HostInteropErrors {
     }
 
     @TruffleBoundary
-    static RuntimeException invalidInstantiateArity(PolyglotLanguageContext context, Object receiver, Object[] arguments, int expected, int actual) {
+    static RuntimeException invalidInstantiateArity(PolyglotLanguageContext context, Object receiver, Object[] arguments, int minArity, int maxArity, int actual) {
         String[] formattedArgs = formatArgs(context, arguments);
-        String message = String.format("Invalid argument count when instantiating %s with arguments %s. Expected %s argument(s) but got %s.",
-                        getValueInfo(context, receiver), Arrays.asList(formattedArgs), expected, actual);
+        String message = String.format("Invalid argument count when instantiating %s with arguments %s. %s",
+                        getValueInfo(context, receiver), Arrays.asList(formattedArgs), PolyglotValue.formatExpectedArguments(minArity, maxArity, actual));
         throw PolyglotEngineException.illegalArgument(message);
     }
 
     @TruffleBoundary
-    static RuntimeException invalidExecuteArity(PolyglotLanguageContext context, Object receiver, Object[] arguments, int expected, int actual) {
+    static RuntimeException invalidExecuteArity(PolyglotLanguageContext context, Object receiver, Object[] arguments, int minArity, int maxArity, int actual) {
         String[] formattedArgs = formatArgs(context, arguments);
-        String message = String.format("Invalid argument count when executing %s with arguments %s. Expected %s argument(s) but got %s.",
-                        getValueInfo(context, receiver), Arrays.asList(formattedArgs), expected, actual);
+        String message = String.format("Invalid argument count when executing %s with arguments %s. %s",
+                        getValueInfo(context, receiver), Arrays.asList(formattedArgs), PolyglotValue.formatExpectedArguments(minArity, maxArity, actual));
         throw PolyglotEngineException.illegalArgument(message);
     }
 

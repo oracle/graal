@@ -27,7 +27,7 @@
 ; OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ; ModuleID = 'vstore.bc'
-target triple = "x86_64-pc-linux-gnu"
+target triple = "x86_64-unknown-linux-gnu"
 
 ; This test is intentionally disabled since the output differs between
 ; the native execution and Sulong's execution. We think that Sulong's

@@ -38,7 +38,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * intercepted and recomputed.
  * <p>
  * This annotation must be used on a field also annotated with {@link Alias} to specify the field
- * whose value need to be changed.
+ * whose value needs to be changed.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.FIELD)
@@ -64,8 +64,9 @@ public @interface RecomputeFieldValue {
          */
         FromAlias,
         /**
-         * The int or long field is set to the offset of the field named {@link #name} of the class
-         * {@link #declClass}, as it would be computed by {@link sun.misc.Unsafe#objectFieldOffset}.
+         * The int or long field is set to the offset of the field named {@link #name()} of the
+         * class {@link #declClass}, as it would be computed by
+         * {@link sun.misc.Unsafe#objectFieldOffset}.
          */
         FieldOffset,
         /**
@@ -112,8 +113,11 @@ public @interface RecomputeFieldValue {
      */
     interface CustomFieldValueComputer {
         /**
-         * Computes the new field value.
+         * Computes the new field value. This method can already be invoked during the analysis,
+         * especially when it computes the value of an object field that needs to be visited.
          *
+         * @param metaAccess The {@code AnalysisMetaAccess} instance during the analysis or
+         *            {@code HostedMetaAccess} instance after the analysis.
          * @param original The original field (if {@link RecomputeFieldValue} is used for an
          *            {@link Alias} field).
          * @param annotated The field annotated with {@link RecomputeFieldValue}.
@@ -135,8 +139,11 @@ public @interface RecomputeFieldValue {
      */
     interface CustomFieldValueTransformer {
         /**
-         * Computes the new field value.
+         * Computes the new field value. This method can already be invoked during the analysis,
+         * especially when it computes the value of an object field that needs to be visited.
          *
+         * @param metaAccess The {@code AnalysisMetaAccess} instance during the analysis or
+         *            {@code HostedMetaAccess} instance after the analysis.
          * @param original The original field.
          * @param annotated The field annotated with {@link RecomputeFieldValue}.
          * @param receiver The original object for instance fields, or {@code null} for static

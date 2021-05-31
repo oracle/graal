@@ -152,8 +152,6 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
     }
 
     private void testLoadExecuteSourceImpl(boolean load, int runTimes) throws IOException {
-        int initialQueryCount = InstrumentationTestLanguage.getRootSourceSectionQueryCount();
-
         Instrument instrument = context.getEngine().getInstruments().get("testLoadExecuteSource");
         TestLoadExecuteSource impl = instrument.lookup(TestLoadExecuteSource.class);
         assertTrue("Lookup of registered service enables the instrument", isCreated(instrument));
@@ -165,7 +163,6 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
         }
 
         impl.assertAllEvents();
-        Assert.assertEquals("unexpected getSourceSection calls without source listeners", initialQueryCount, InstrumentationTestLanguage.getRootSourceSectionQueryCount());
 
         if (load) {
             impl.attachLoad();
@@ -178,8 +175,6 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
         for (int i = 0; i < runTimes; i++) {
             run(source2);
         }
-
-        Assert.assertNotEquals("expecting getSourceSection calls because of source listeners", initialQueryCount, InstrumentationTestLanguage.getRootSourceSectionQueryCount());
 
         impl.assertOnlyNewEvents(source2);
         impl.assertAllEvents(source1, source2);

@@ -110,9 +110,9 @@ abstract class PolyglotExecuteNode extends Node {
         } catch (ArityException e) {
             arityError.enter();
             if (executable) {
-                throw HostInteropErrors.invalidExecuteArity(languageContext, function, functionArgs, e.getExpectedArity(), e.getActualArity());
+                throw HostInteropErrors.invalidExecuteArity(languageContext, function, functionArgs, e.getExpectedMinArity(), e.getExpectedMaxArity(), e.getActualArity());
             } else {
-                throw HostInteropErrors.invalidInstantiateArity(languageContext, function, functionArgs, e.getExpectedArity(), e.getActualArity());
+                throw HostInteropErrors.invalidInstantiateArity(languageContext, function, functionArgs, e.getExpectedMinArity(), e.getExpectedMaxArity(), e.getActualArity());
             }
         } catch (UnsupportedMessageException e) {
             unsupportedError.enter();

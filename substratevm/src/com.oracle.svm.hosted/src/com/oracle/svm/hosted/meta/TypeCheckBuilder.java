@@ -37,6 +37,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.core.SubstrateOptions;
 import org.graalvm.compiler.core.common.calc.UnsignedMath;
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -1723,22 +1724,24 @@ public class TypeCheckBuilder {
     private static final class TypeCheckValidator {
 
         static boolean compareTypeIDResults(List<HostedType> types) {
-            int numTypes = types.size();
-            for (int i = 0; i < numTypes; i++) {
-                HostedType superType = types.get(i);
-                for (int j = 0; j < numTypes; j++) {
-                    HostedType checkedType = types.get(j);
-                    boolean hostedCheck = superType.isAssignableFrom(checkedType);
-                    boolean runtimeCheck = runtimeIsAssignableFrom(superType, checkedType);
-                    boolean checksMatch = hostedCheck == runtimeCheck;
-                    if (!checksMatch) {
-                        StringBuilder message = new StringBuilder();
-                        message.append("\n********Type checks do not match:********\n");
-                        message.append(String.format("super type: %s\n", superType.toString()));
-                        message.append(String.format("checked type: %s\n", checkedType.toString()));
-                        message.append(String.format("hosted check: %b\n", hostedCheck));
-                        message.append(String.format("runtime check: %b\n", runtimeCheck));
-                        VMError.shouldNotReachHere(message.toString());
+            if (!SubstrateOptions.DisableTypeIdResultVerification.getValue()) {
+                int numTypes = types.size();
+                for (int i = 0; i < numTypes; i++) {
+                    HostedType superType = types.get(i);
+                    for (int j = 0; j < numTypes; j++) {
+                        HostedType checkedType = types.get(j);
+                        boolean hostedCheck = superType.isAssignableFrom(checkedType);
+                        boolean runtimeCheck = runtimeIsAssignableFrom(superType, checkedType);
+                        boolean checksMatch = hostedCheck == runtimeCheck;
+                        if (!checksMatch) {
+                            StringBuilder message = new StringBuilder();
+                            message.append("\n********Type checks do not match:********\n");
+                            message.append(String.format("super type: %s\n", superType.toString()));
+                            message.append(String.format("checked type: %s\n", checkedType.toString()));
+                            message.append(String.format("hosted check: %b\n", hostedCheck));
+                            message.append(String.format("runtime check: %b\n", runtimeCheck));
+                            VMError.shouldNotReachHere(message.toString());
+                        }
                     }
                 }
             }

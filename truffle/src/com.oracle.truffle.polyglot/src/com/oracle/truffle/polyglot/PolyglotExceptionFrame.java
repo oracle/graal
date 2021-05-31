@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -98,7 +98,12 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
     @Override
     public StackTraceElement toHostFrame() {
         if (stackTrace == null) {
-            String declaringClass = "<" + language.getId() + ">";
+            String declaringClass;
+            if (language != null) {
+                declaringClass = "<" + language.getId() + ">";
+            } else {
+                declaringClass = "";
+            }
             String methodName = rootName == null ? "" : rootName;
             String fileName = sourceLocation != null ? sourceLocation.getSource().getName() : "Unknown";
             int startLine = sourceLocation != null ? sourceLocation.getStartLine() : -1;

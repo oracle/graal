@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,8 +42,14 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import jdk.vm.ci.code.ReferenceMap;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.Value;
+import org.graalvm.nativeimage.ImageInfo;
 
 public class SubstrateReferenceMap extends ReferenceMap implements ReferenceMapEncoder.Input {
+
+    /**
+     * Special reference map for {@link StoredContinuation}.
+     */
+    public static final SubstrateReferenceMap STORED_CONTINUATION_REFERENCE_MAP = new SubstrateReferenceMap();
 
     /**
      * Stores the reference map data. 3 bits are currently required per entry: the first bit at
@@ -65,7 +71,7 @@ public class SubstrateReferenceMap extends ReferenceMap implements ReferenceMapE
     private Map<Integer, Object> debugAllUsedStackSlots;
 
     public SubstrateReferenceMap() {
-        assert ConfigurationValues.getObjectLayout().getReferenceSize() > 2 : "needs to be three bits or more for encoding and validation";
+        assert !ImageInfo.inImageCode() || ConfigurationValues.getObjectLayout().getReferenceSize() > 2 : "needs to be three bits or more for encoding and validation";
     }
 
     public boolean isOffsetMarked(int offset) {

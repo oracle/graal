@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,15 +41,15 @@
 package com.oracle.truffle.object;
 
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.Layout;
 import com.oracle.truffle.api.object.Shape;
 
+@SuppressWarnings("deprecation")
 public class BasicLayout extends DefaultLayout {
     BasicLayout(LayoutStrategy strategy, int allowedImplicitCasts) {
         super(DynamicObjectBasic.class, strategy, allowedImplicitCasts, DynamicObjectBasic.OBJECT_FIELD_LOCATIONS, DynamicObjectBasic.PRIMITIVE_FIELD_LOCATIONS);
     }
 
-    public static LayoutImpl createLayoutImpl(Layout.Builder builder) {
+    public static LayoutImpl createLayoutImpl(com.oracle.truffle.api.object.Layout.Builder builder) {
         Class<? extends DynamicObject> dynamicObjectClass = getType(builder);
         if (dynamicObjectClass != null) {
             return DefaultLayout.createCoreLayout(builder);

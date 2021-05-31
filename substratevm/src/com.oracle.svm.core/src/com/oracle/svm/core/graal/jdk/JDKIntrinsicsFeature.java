@@ -30,6 +30,7 @@ import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
@@ -37,6 +38,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registratio
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
 
+import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
@@ -66,8 +68,8 @@ final class JDKIntrinsicsFeature implements GraalFeature {
     }
 
     @Override
-    public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, InvocationPlugins plugins, boolean analysis, boolean hosted) {
-        registerSystemPlugins(plugins);
+    public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, Plugins plugins, ParsingReason reason) {
+        registerSystemPlugins(plugins.getInvocationPlugins());
     }
 
     private static void registerSystemPlugins(InvocationPlugins plugins) {
@@ -75,7 +77,14 @@ final class JDKIntrinsicsFeature implements GraalFeature {
         r.register5("arraycopy", Object.class, int.class, Object.class, int.class, int.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode src, ValueNode srcPos, ValueNode dst, ValueNode dstPos, ValueNode length) {
-                b.add(new ArrayCopyWithExceptionNode(src, srcPos, dst, dstPos, length, null, b.bci()));
+                /*
+                 * GR-30242: ArrayCopyWithExceptionNode can be replaced with non-throwing node that
+                 * lowers with deopting guards instead of explicit checks. The null checks here
+                 * avoid deopts due to null objects, but not out-of-bounds or store check deopts.
+                 */
+                ValueNode nonNullSrc = b.nullCheckedValue(src);
+                ValueNode nonNullDst = b.nullCheckedValue(dst);
+                b.add(new ArrayCopyWithExceptionNode(nonNullSrc, srcPos, nonNullDst, dstPos, length, null, b.bci()));
                 return true;
             }
         });

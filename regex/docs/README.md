@@ -95,9 +95,8 @@ These options define how TRegex should interpret a given regular expression:
 #### User options
 * `Flavor`: specifies the regex dialect to use. Possible values:
   * `ECMAScript`: ECMAScript/JavaScript syntax (default).
-  * `PythonStr`: regular Python 3 syntax.
-  * `PythonBytes` Python 3 syntax, but for `bytes`-objects.
-  * `Ruby`: ruby syntax.
+  * `Python`: Python 3 syntax.
+  * `Ruby`: Ruby syntax.
 * `Encoding`: specifies the string encoding to match against. Possible values:
   * `UTF-8`
   * `UTF-16` (default)

@@ -67,6 +67,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -86,7 +87,7 @@ public class DeclarativeSubstitutionProcessor extends AnnotationSubstitutionProc
     public static class Options {
 
         @Option(help = "Comma-separated list of resource file names with declarative substitutions", type = OptionType.User)//
-        public static final HostedOptionKey<String[]> SubstitutionResources = new HostedOptionKey<>(null);
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> SubstitutionResources = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
     }
 
     private final Map<Class<?>, ClassDescriptor> classDescriptors;

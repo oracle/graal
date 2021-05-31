@@ -36,7 +36,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.OS;
 import com.oracle.svm.core.VM;
 import com.oracle.svm.core.config.ConfigurationValues;
 
@@ -75,7 +74,13 @@ public abstract class SystemPropertiesSupport {
     private final Map<String, Supplier<String>> lazyRuntimeValues;
 
     private Properties properties;
-    private final Map<String, String> savedProperties;
+
+    /**
+     * Initial value of the system properties after parsing command line options at run time.
+     * Changes by the application using {@link System#setProperties} do not affect this map.
+     */
+    final Map<String, String> savedProperties;
+
     private final Map<String, String> readOnlySavedProperties;
     private final String hostOS = System.getProperty("os.name");
     // needed as fallback for platforms that don't implement osNameValue
@@ -96,18 +101,18 @@ public abstract class SystemPropertiesSupport {
 
         initializeProperty("java.vm.name", "Substrate VM");
         initializeProperty("java.vm.vendor", "Oracle Corporation");
+        initializeProperty("java.vm.version", ImageSingletons.lookup(VM.class).version);
         initializeProperty("java.vendor", "Oracle Corporation");
         initializeProperty("java.vendor.url", "https://www.graalvm.org/");
 
         initializeProperty("java.class.path", "");
         initializeProperty("java.endorsed.dirs", "");
         initializeProperty("java.ext.dirs", "");
-        initializeProperty("java.library.path", "");
         initializeProperty("sun.arch.data.model", Integer.toString(ConfigurationValues.getTarget().wordJavaKind.getBitCount()));
 
         initializeProperty(ImageInfo.PROPERTY_IMAGE_CODE_KEY, ImageInfo.PROPERTY_IMAGE_CODE_VALUE_RUNTIME);
 
-        if (OS.getCurrent() == OS.LINUX && JavaVersionUtil.JAVA_SPEC == 11) {
+        if (JavaVersionUtil.JAVA_SPEC <= 11) {
             /* AWT system properties are no longer used after JDK 11. */
             initializeProperty("awt.toolkit", System.getProperty("awt.toolkit"));
             initializeProperty("java.awt.graphicsenv", System.getProperty("java.awt.graphicsenv"));
@@ -118,9 +123,9 @@ public abstract class SystemPropertiesSupport {
         lazyRuntimeValues.put("user.name", this::userName);
         lazyRuntimeValues.put("user.home", this::userHome);
         lazyRuntimeValues.put("user.dir", this::userDir);
-        lazyRuntimeValues.put("java.io.tmpdir", this::tmpdirValue);
+        lazyRuntimeValues.put("java.io.tmpdir", this::tmpDir);
+        lazyRuntimeValues.put("java.library.path", this::javaLibraryPath);
         lazyRuntimeValues.put("os.version", this::osVersionValue);
-        lazyRuntimeValues.put("java.vm.version", VM::getVersion);
 
         String targetName = System.getProperty("svm.targetName");
         if (targetName != null) {
@@ -221,7 +226,7 @@ public abstract class SystemPropertiesSupport {
 
     private String cachedUserName;
 
-    public String userName() {
+    String userName() {
         if (cachedUserName == null) {
             cachedUserName = userNameValue();
         }
@@ -230,7 +235,7 @@ public abstract class SystemPropertiesSupport {
 
     private String cachedUserHome;
 
-    public String userHome() {
+    String userHome() {
         if (cachedUserHome == null) {
             cachedUserHome = userHomeValue();
         }
@@ -239,11 +244,29 @@ public abstract class SystemPropertiesSupport {
 
     private String cachedUserDir;
 
-    public String userDir() {
+    String userDir() {
         if (cachedUserDir == null) {
             cachedUserDir = userDirValue();
         }
         return cachedUserDir;
+    }
+
+    private String cachedtmpDir;
+
+    String tmpDir() {
+        if (cachedtmpDir == null) {
+            cachedtmpDir = tmpdirValue();
+        }
+        return cachedtmpDir;
+    }
+
+    private String cachedJavaLibraryPath;
+
+    String javaLibraryPath() {
+        if (cachedJavaLibraryPath == null) {
+            cachedJavaLibraryPath = javaLibraryPathValue();
+        }
+        return cachedJavaLibraryPath;
     }
 
     // Platform-specific subclasses compute the actual system property values lazily at run time.
@@ -255,6 +278,11 @@ public abstract class SystemPropertiesSupport {
     protected abstract String userDirValue();
 
     protected abstract String tmpdirValue();
+
+    protected String javaLibraryPathValue() {
+        /* Default implementation. */
+        return "";
+    }
 
     protected String osNameValue() {
         /*

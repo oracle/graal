@@ -179,6 +179,14 @@ public final class DeoptHostedSnippets extends SubstrateTemplates implements Sni
                 case ClassCastException:
                 case ArrayStoreException:
                 case ArithmeticException:
+                    /*
+                     * GR-30089: proper checks with bytecode exceptions should already be emitted
+                     * early in BytecodeParser or in intrinsics. In some cases, they are not emitted
+                     * because stamps indicate that they are unnecessary, but later cycles with loop
+                     * phis are introduced (through inlining, for example) which make the stamps
+                     * lose precision and cause guards to be inserted later. These guards and their
+                     * deopts typically never trigger and should disappear once the issue is fixed.
+                     */
                     message = null;
                     break;
                 case UnreachedCode:

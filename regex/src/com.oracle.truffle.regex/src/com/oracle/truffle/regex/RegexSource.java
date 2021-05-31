@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,7 +53,7 @@ public final class RegexSource implements JsonConvertible {
     private final String pattern;
     private final String flags;
     private final RegexOptions options;
-    private Source source;
+    private final Source source;
     private boolean hashComputed = false;
     private int cachedHash;
 
@@ -62,10 +62,6 @@ public final class RegexSource implements JsonConvertible {
         this.flags = flags;
         this.options = options;
         this.source = source;
-    }
-
-    public RegexSource(String pattern, String flags, RegexOptions options) {
-        this(pattern, flags, options, null);
     }
 
     public String getPattern() {
@@ -85,16 +81,7 @@ public final class RegexSource implements JsonConvertible {
     }
 
     public Source getSource() {
-        if (source == null) {
-            source = generateSource();
-        }
         return source;
-    }
-
-    @TruffleBoundary
-    private Source generateSource() {
-        String text = toString();
-        return Source.newBuilder(RegexLanguage.ID, text, text).internal(true).name(text).mimeType(RegexLanguage.MIME_TYPE).build();
     }
 
     @Override

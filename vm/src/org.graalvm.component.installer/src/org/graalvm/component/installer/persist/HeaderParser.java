@@ -36,6 +36,7 @@ import java.util.function.Predicate;
 import org.graalvm.component.installer.BundleConstants;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.Version;
+import org.graalvm.component.installer.model.StabilityLevel;
 
 /**
  * Parses OSGI-like metadata in JAR component bundles.
@@ -558,6 +559,13 @@ public class HeaderParser {
             parseCapability();
         }
         return capabilities;
+    }
+
+    public StabilityLevel parseStability() {
+        if (isEmpty()) {
+            return StabilityLevel.Undefined;
+        }
+        return StabilityLevel.valueOfMixedCase(getContents(""));
     }
 
     public Set<String> parseDependencies() {

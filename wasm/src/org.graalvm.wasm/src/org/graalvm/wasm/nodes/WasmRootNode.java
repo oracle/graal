@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,11 +48,11 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.RootNode;
-import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.WasmCodeEntry;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.WasmVoidResult;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
@@ -126,7 +126,11 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
         // https://webassembly.github.io/spec/core/exec/instructions.html#function-calls
         initializeLocals(stacklocals);
 
-        body.execute(context, frame, stacklocals);
+        try {
+            body.execute(context, frame, stacklocals);
+        } catch (StackOverflowError e) {
+            throw WasmException.create(Failure.CALL_STACK_EXHAUSTED);
+        }
 
         switch (body.returnTypeId()) {
             case 0x00:
@@ -152,7 +156,7 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
                 return Double.longBitsToDouble(returnValue);
             }
             default:
-                throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, this, "Unknown return type id: " + body.returnTypeId());
+                throw WasmException.format(Failure.UNSPECIFIED_INTERNAL, this, "Unknown return type id: %d", body.returnTypeId());
         }
     }
 
@@ -166,16 +170,16 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
             byte type = body.codeEntry().localType(i);
             switch (type) {
                 case WasmType.I32_TYPE:
-                    stacklocals[i] = (int) arg;
+                    pushInt(stacklocals, i, (int) arg);
                     break;
                 case WasmType.I64_TYPE:
-                    stacklocals[i] = (long) arg;
+                    push(stacklocals, i, (long) arg);
                     break;
                 case WasmType.F32_TYPE:
-                    stacklocals[i] = Float.floatToRawIntBits((float) arg);
+                    pushFloat(stacklocals, i, (float) arg);
                     break;
                 case WasmType.F64_TYPE:
-                    stacklocals[i] = Double.doubleToRawLongBits((double) arg);
+                    pushDouble(stacklocals, i, (double) arg);
                     break;
             }
         }

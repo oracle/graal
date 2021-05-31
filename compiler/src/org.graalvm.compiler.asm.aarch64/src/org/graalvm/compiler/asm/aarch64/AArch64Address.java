@@ -35,12 +35,17 @@ import jdk.vm.ci.code.Register;
 
 /**
  * Represents an address in target machine memory, specified using one of the different addressing
- * modes of the AArch64 ISA. - Base register only - Base register + immediate or register with
- * shifted offset - Pre-indexed: base + immediate offset are written back to base register, value
- * used in instruction is base + offset - Post-indexed: base + offset (immediate or register) are
- * written back to base register, value used in instruction is base only - Literal: PC + 19-bit
- * signed word aligned offset
- * <p>
+ * modes of the AArch64 ISA.
+ *
+ * <pre>
+ *
+ *  - Base register only
+ *  - Base register + immediate or register with shifted offset
+ *  - Pre-indexed: base + immediate offset are written back to base register, value used in instruction is base + offset
+ *  - Post-indexed: base + offset (immediate or register) are written back to base register, value used in instruction is base only
+ *  - Literal: PC + 19-bit signed word aligned offset
+ * </pre>
+ *
  * Not all addressing modes are supported for all instructions.
  */
 public final class AArch64Address extends AbstractAddress {

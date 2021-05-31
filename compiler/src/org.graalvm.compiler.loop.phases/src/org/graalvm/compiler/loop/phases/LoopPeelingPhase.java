@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,10 +26,10 @@ package org.graalvm.compiler.loop.phases;
 
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.loop.LoopEx;
-import org.graalvm.compiler.loop.LoopPolicies;
-import org.graalvm.compiler.loop.LoopsData;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.loop.LoopEx;
+import org.graalvm.compiler.nodes.loop.LoopPolicies;
+import org.graalvm.compiler.nodes.loop.LoopsData;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 
 public class LoopPeelingPhase extends LoopPhase<LoopPolicies> {
@@ -45,7 +45,7 @@ public class LoopPeelingPhase extends LoopPhase<LoopPolicies> {
     protected void run(StructuredGraph graph, CoreProviders context) {
         DebugContext debug = graph.getDebug();
         if (graph.hasLoops()) {
-            LoopsData data = new LoopsData(graph);
+            LoopsData data = context.getLoopsDataProvider().getLoopsData(graph);
             try (DebugContext.Scope s = debug.scope("peeling", data.getCFG())) {
                 for (LoopEx loop : data.outerFirst()) {
                     if (loop.canDuplicateLoop() && loop.loopBegin().getLoopEndCount() > 0) {

@@ -37,6 +37,7 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
@@ -69,6 +70,18 @@ public interface HostVM {
 
     boolean isInitialized(AnalysisType type);
 
+    /**
+     * Hook to change the {@link GraphBuilderConfiguration} used for parsing a method during
+     * analysis.
+     * 
+     * @param config The default configuration used by the static analysis.
+     * @param method The method that is going to be parsed with the returned configuration.
+     * @return The updated configuration for the method.
+     */
+    default GraphBuilderConfiguration updateGraphBuilderConfiguration(GraphBuilderConfiguration config, AnalysisMethod method) {
+        return config;
+    }
+
     Optional<AnalysisMethod> handleForeignCall(ForeignCallDescriptor foreignCallDescriptor, ForeignCallsProvider foreignCallsProvider);
 
     GraphBuilderPhase.Instance createGraphBuilderPhase(HostedProviders providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,
@@ -89,5 +102,16 @@ public interface HostVM {
 
     void checkType(ResolvedJavaType type, AnalysisUniverse universe);
 
-    void checkMethod(BigBang bb, AnalysisMethod method, StructuredGraph graph);
+    void methodAfterParsingHook(BigBang bb, AnalysisMethod method, StructuredGraph graph);
+
+    void methodBeforeTypeFlowCreationHook(BigBang bb, AnalysisMethod method, StructuredGraph graph);
+
+    default AnalysisParsedGraph parseBytecode(BigBang bb, AnalysisMethod analysisMethod) {
+        return AnalysisParsedGraph.parseBytecode(bb, analysisMethod);
+    }
+
+    @SuppressWarnings("unused")
+    default boolean skipInterface(AnalysisUniverse universe, ResolvedJavaType interfaceType, ResolvedJavaType implementingType) {
+        return false;
+    }
 }

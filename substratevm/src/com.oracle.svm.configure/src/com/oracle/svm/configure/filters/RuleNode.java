@@ -59,6 +59,10 @@ public final class RuleNode {
         public String toString() {
             return s;
         }
+
+        public Inclusion invert() {
+            return (this == Include) ? Exclude : Include;
+        }
     }
 
     /** The non-qualified name. The qualified name is derived from the names of all parents. */

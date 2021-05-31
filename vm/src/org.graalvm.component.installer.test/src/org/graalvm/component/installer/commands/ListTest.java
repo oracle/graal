@@ -84,7 +84,7 @@ public class ListTest extends CommandTestBase {
         delegateFeedback(new FeedbackAdapter() {
             @Override
             public String l10n(String key, Object... params) {
-                if ("LIST_ComponentShortList".equals(key)) {
+                if ("LIST_ComponentShortList".equals(key) || (key != null && key.startsWith("ComponentStability"))) {
                     return reallyl10n(key, params);
                 }
                 return null;

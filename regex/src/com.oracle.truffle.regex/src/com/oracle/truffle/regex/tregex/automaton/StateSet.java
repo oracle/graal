@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,6 +50,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
+import com.oracle.truffle.regex.util.Assertions;
 
 /**
  * A specialized set for sequentially indexed objects. Uses an {@link StateIndex index} for mapping
@@ -96,7 +97,7 @@ public interface StateSet<SI extends StateIndex<? super S>, S> extends Set<S>, I
         for (S s : this) {
             array[i++] = getStateIndex().getId(s);
         }
-        assert isSorted(array);
+        assert Assertions.isSorted(array);
         return array;
     }
 
@@ -136,16 +137,5 @@ public interface StateSet<SI extends StateIndex<? super S>, S> extends Set<S>, I
     @Override
     default JsonValue toJson() {
         return Json.array(this);
-    }
-
-    static boolean isSorted(int[] array) {
-        int prev = Integer.MIN_VALUE;
-        for (int i : array) {
-            if (prev > i) {
-                return false;
-            }
-            prev = i;
-        }
-        return true;
     }
 }

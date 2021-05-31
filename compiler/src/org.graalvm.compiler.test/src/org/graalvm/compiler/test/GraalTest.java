@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -61,7 +61,6 @@ import org.junit.rules.DisableOnDebug;
 import org.junit.rules.TestRule;
 import org.junit.rules.Timeout;
 
-import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import sun.misc.Unsafe;
 
@@ -263,19 +262,6 @@ public class GraalTest {
         } catch (UnsatisfiedLinkError | NoClassDefFoundError | UnsupportedOperationException e) {
             throw new AssumptionViolatedException("Management interface is unavailable: " + e);
         }
-    }
-
-    /**
-     * Check for SPARC architecture by name. The instance of JVMCI's SPARC class can't be used with
-     * JDK 15 because SPARC port was removed:
-     *
-     * @see "https://bugs.openjdk.java.net/browse/JDK-8241787"
-     *
-     * @param arch is current CPU architecture {@link Architecture}
-     * @return true if current CPU architecture is SPARC
-     */
-    public static boolean isSPARC(Architecture arch) {
-        return arch.getName().equals("SPARC");
     }
 
     /**
@@ -481,7 +467,15 @@ public class GraalTest {
         Runtime.getRuntime().addShutdownHook(new Thread("GlobalMetricsPrinter") {
             @Override
             public void run() {
-                globalMetrics.print(new OptionValues(OptionValues.newOptionMap()));
+                try {
+                    Path path = globalMetrics.print(new OptionValues(OptionValues.newOptionMap()), GraalTest.class.getSimpleName() + "Metrics.log");
+                    if (path != null) {
+                        System.out.println("Printed global metrics to " + path.toAbsolutePath());
+                    }
+                } catch (Exception e) {
+                    System.err.println("Error printing global metrics:");
+                    e.printStackTrace(System.err);
+                }
             }
         });
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,8 +45,8 @@ import java.util.function.Function;
 
 class PolyglotMapAndFunction<K, V> extends PolyglotMap<K, V> implements Function<Object[], Object> {
 
-    PolyglotMapAndFunction(PolyglotLanguageContext languageContext, Object obj, Class<K> keyClass, Class<V> valueClass, Type valueType) {
-        super(languageContext, obj, keyClass, valueClass, valueType);
+    PolyglotMapAndFunction(PolyglotLanguageContext languageContext, Object obj, Class<K> keyClass, Type keyType, Class<V> valueClass, Type valueType) {
+        super(languageContext, obj, keyClass, keyType, valueClass, valueType);
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,12 +35,12 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMUnreachableNode;
+import com.oracle.truffle.llvm.tests.CommonTestUtils;
 import com.oracle.truffle.llvm.tests.interop.values.NativeValue;
-import com.oracle.truffle.tck.TruffleRunner;
 
 import sun.misc.Unsafe;
 
-@RunWith(TruffleRunner.class)
+@RunWith(CommonTestUtils.ExcludingTruffleRunner.class)
 public class HostAllocatedNativePointer extends InteropTestBase {
     @SuppressWarnings("try")
     @Test

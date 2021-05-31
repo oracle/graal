@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
+import static com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest.assertFails;
+import static com.oracle.truffle.tck.tests.ValueAssert.assertValue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -48,9 +50,6 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-
-import static com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest.assertFails;
-import static com.oracle.truffle.tck.tests.ValueAssert.assertValue;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -101,12 +100,12 @@ import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -364,8 +363,14 @@ public class LanguageSPITest {
                 if (!(cause instanceof PolyglotException)) {
                     throw new AssertionError(cause);
                 }
+                /*
+                 * If interrupt is caused by polyglot context cancel, then the polyglot exception
+                 * should have isCancelled() == true even though an exception of type interrupt was
+                 * thrown. Moreover isInterrupted() == false as the cancellation fully overrides the
+                 * interrupt in this case.
+                 */
                 PolyglotException polyglotException = (PolyglotException) cause;
-                assertTrue(polyglotException.isInterrupted());
+                assertTrue(polyglotException.isCancelled());
             }
             engine.close();
         } finally {
@@ -572,6 +577,41 @@ public class LanguageSPITest {
                 }
                 if (!leaveFailed) {
                     fail("no assertion error for leaving without enter");
+                }
+                return null;
+            }
+        };
+        eval(context, f);
+        context.close();
+    }
+
+    @Test
+    public void testEnterInNewThread() {
+        Context context = Context.create();
+        Function<Env, Object> f = new Function<Env, Object>() {
+            @Override
+            public Object apply(Env env) {
+                Throwable[] error = new Throwable[1];
+                Thread thread = new Thread(() -> {
+                    try {
+                        try {
+                            Object prev = env.getContext().enter(null);
+                            assertNull("already entered in new thread", prev);
+                        } finally {
+                            env.getContext().leave(null, null);
+                        }
+                    } catch (Throwable t) {
+                        error[0] = t;
+                    }
+                });
+                thread.start();
+                try {
+                    thread.join();
+                } catch (InterruptedException ex) {
+                    throw new RuntimeException(ex);
+                }
+                if (error[0] != null) {
+                    throw new AssertionError(error[0]);
                 }
                 return null;
             }
@@ -852,7 +892,7 @@ public class LanguageSPITest {
     }
 
     private static Source getTruffleSource(org.graalvm.polyglot.Source source) throws NoSuchFieldException, IllegalAccessException {
-        java.lang.reflect.Field impl = source.getClass().getDeclaredField("impl");
+        java.lang.reflect.Field impl = source.getClass().getDeclaredField("receiver");
         impl.setAccessible(true);
         return (Source) impl.get(source);
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -120,6 +120,14 @@ static bool is_handle(void *nativeHandle);
  * be used to distinguish between valid and invalid/released handles. Use {@link is_handle} for that.
  */
 static bool points_to_handle_space(void *nativeHandle);
+
+/**
+ * Resolve a function back to the function descriptor.
+ *
+ * This function will return the managedObject pointer of the function that the nativePointer is 
+ * pointing to.
+ */
+static void *resolve_function(void *nativePointer);
 
 #include <graalvm/llvm/internal/handles-impl.h>
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -57,7 +57,9 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -348,7 +350,7 @@ public class HostAccessTest {
         } catch (UnsupportedOperationException e) {
         }
         assertEquals(0, value.getMemberKeys().size());
-        ValueAssert.assertValue(value, false, Trait.ARRAY_ELEMENTS, Trait.MEMBERS, Trait.HOST_OBJECT);
+        ValueAssert.assertValue(value, false, Trait.ARRAY_ELEMENTS, Trait.ITERABLE, Trait.MEMBERS, Trait.HOST_OBJECT);
     }
 
     @Test
@@ -393,26 +395,140 @@ public class HostAccessTest {
 
         assertEquals(0, value.getMemberKeys().size());
 
-        ValueAssert.assertValue(value, false, Trait.ARRAY_ELEMENTS, Trait.MEMBERS, Trait.HOST_OBJECT);
+        ValueAssert.assertValue(value, false, Trait.ARRAY_ELEMENTS, Trait.ITERABLE, Trait.MEMBERS, Trait.HOST_OBJECT);
         assertArrayAccessDisabled(context);
     }
 
     @Test
     public void testListAccessDisabled() {
         setupEnv(HostAccess.newBuilder().allowListAccess(false));
-        assertListAccessDisabled(context);
+        assertListAccessDisabled(context, false);
+    }
+
+    @Test
+    public void testIterableAccessEnabled() {
+        setupEnv(HostAccess.newBuilder().allowIterableAccess(true));
+        Iterable<Integer> iterable = new IterableImpl<>(1, 2, 3);
+        Value value = context.asValue(iterable);
+        assertTrue(value.hasIterator());
+        Value iterator = value.getIterator();
+        assertTrue(iterator.hasIteratorNextElement());
+        assertEquals(1, iterator.getIteratorNextElement().asInt());
+        assertTrue(iterator.hasIteratorNextElement());
+        assertEquals(2, iterator.getIteratorNextElement().asInt());
+        assertTrue(iterator.hasIteratorNextElement());
+        assertEquals(3, iterator.getIteratorNextElement().asInt());
+        assertFalse(iterator.hasIteratorNextElement());
+        assertSame(iterable, value.asHostObject());
+        assertEquals(0, value.getMemberKeys().size());
+        ValueAssert.assertValue(value, false, Trait.ITERABLE, Trait.MEMBERS, Trait.HOST_OBJECT);
+        assertListAccessDisabled(context, true);
+        assertArrayAccessDisabled(context);
+    }
+
+    @Test
+    public void testIterableAccessDisabled() {
+        setupEnv(HostAccess.newBuilder().allowIterableAccess(false));
+        assertIterableAccessDisabled(context);
+    }
+
+    @Test
+    public void testIteratorAccessEnabled() {
+        setupEnv(HostAccess.newBuilder().allowIteratorAccess(true));
+        Iterator<Integer> iterator = new IteratorImpl<>(1, 2, 3);
+        Value value = context.asValue(iterator);
+        assertTrue(value.hasIteratorNextElement());
+        assertEquals(1, value.getIteratorNextElement().asInt());
+        assertTrue(value.hasIteratorNextElement());
+        assertEquals(2, value.getIteratorNextElement().asInt());
+        assertTrue(value.hasIteratorNextElement());
+        assertEquals(3, value.getIteratorNextElement().asInt());
+        assertFalse(value.hasIteratorNextElement());
+        assertSame(iterator, value.asHostObject());
+        assertEquals(0, value.getMemberKeys().size());
+        ValueAssert.assertValue(value, false, Trait.ITERATOR, Trait.MEMBERS, Trait.HOST_OBJECT);
+        assertIterableAccessDisabled(context);
+        assertListAccessDisabled(context, false);
+        assertArrayAccessDisabled(context);
+    }
+
+    @Test
+    public void testMapAccessEnabled() {
+        setupEnv(HostAccess.newBuilder().allowMapAccess(true));
+        Map<Integer, String> map = new HashMap<>();
+        map.put(1, Integer.toBinaryString(1));
+        map.put(2, Integer.toBinaryString(2));
+        Value value = context.asValue(map);
+        assertTrue(value.hasHashEntries());
+        assertTrue(value.hasHashEntries());
+        assertEquals(2, value.getHashSize());
+        assertEquals(Integer.toBinaryString(1), value.getHashValue(1).asString());
+        assertEquals(Integer.toBinaryString(2), value.getHashValue(2).asString());
+        value.putHashEntry(2, "");
+        assertEquals("", value.getHashValue(2).asString());
+        assertEquals("", map.get(2));
+        value.removeHashEntry(2);
+        assertEquals(1, value.getHashSize());
+        assertSame(map, value.asHostObject());
+        Value entriesIteratorIterator = value.getHashEntriesIterator();
+        assertTrue(entriesIteratorIterator.isIterator());
+        assertTrue(entriesIteratorIterator.hasIteratorNextElement());
+        Value entry = entriesIteratorIterator.getIteratorNextElement();
+        assertTrue(entry.hasArrayElements());
+        assertEquals(1, entry.getArrayElement(0).asInt());
+        assertEquals(Integer.toBinaryString(1), entry.getArrayElement(1).asString());
+        assertEquals(0, value.getMemberKeys().size());
+        ValueAssert.assertValue(value, false, Trait.HASH, Trait.MEMBERS, Trait.HOST_OBJECT);
+        assertArrayAccessDisabled(context);
+    }
+
+    @Test
+    public void testMapAccessDisabled() {
+        setupEnv(HostAccess.newBuilder().allowIterableAccess(false));
+        assertMapAccessDisabled(context);
+    }
+
+    @Test
+    public void testIteratorAccessDisabled() {
+        setupEnv(HostAccess.newBuilder().allowIteratorAccess(false));
+        assertIteratorAccessDisabled(context);
     }
 
     @Test
     public void testPublicAccessNoListAccess() {
         setupEnv(HostAccess.newBuilder().allowPublicAccess(true).allowListAccess(false));
-        assertListAccessDisabled(context);
+        assertListAccessDisabled(context, false);
     }
 
-    private static void assertListAccessDisabled(Context context) {
+    private static void assertListAccessDisabled(Context context, boolean iterableAccess) {
         List<Integer> array = new ArrayList<>(Arrays.asList(1, 2, 3));
         Value value = context.asValue(array);
         assertSame(array, value.asHostObject());
+        List<Trait> expectedTypes = new ArrayList<>(Arrays.asList(Trait.MEMBERS, Trait.HOST_OBJECT));
+        if (iterableAccess) {
+            expectedTypes.add(Trait.ITERABLE);
+        }
+        ValueAssert.assertValue(value, false, expectedTypes.toArray(new Trait[expectedTypes.size()]));
+    }
+
+    private static void assertIterableAccessDisabled(Context context) {
+        Iterable<Integer> iterable = new IterableImpl<>(1, 2, 3);
+        Value value = context.asValue(iterable);
+        assertSame(iterable, value.asHostObject());
+        ValueAssert.assertValue(value, false, Trait.MEMBERS, Trait.HOST_OBJECT);
+    }
+
+    private static void assertIteratorAccessDisabled(Context context) {
+        Iterator<Integer> iterator = new IteratorImpl<>(1, 2, 3);
+        Value value = context.asValue(iterator);
+        assertSame(iterator, value.asHostObject());
+        ValueAssert.assertValue(value, false, Trait.MEMBERS, Trait.HOST_OBJECT);
+    }
+
+    private static void assertMapAccessDisabled(Context context) {
+        Map<Integer, String> map = Collections.singletonMap(1, "string");
+        Value value = context.asValue(map);
+        assertSame(map, value.asHostObject());
         ValueAssert.assertValue(value, false, Trait.MEMBERS, Trait.HOST_OBJECT);
     }
 
@@ -1563,6 +1679,42 @@ public class HostAccessTest {
         @Override
         protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
             return super.loadClass(name, resolve);
+        }
+    }
+
+    private static final class IteratorImpl<T> implements Iterator<T> {
+
+        private final T[] values;
+        private int index;
+
+        @SuppressWarnings("unchecked")
+        IteratorImpl(T... values) {
+            this.values = values;
+        }
+
+        @Override
+        public boolean hasNext() {
+            return index < values.length;
+        }
+
+        @Override
+        public T next() {
+            return values[index++];
+        }
+    }
+
+    private static final class IterableImpl<T> implements Iterable<T> {
+
+        private final T[] values;
+
+        @SuppressWarnings("unchecked")
+        IterableImpl(T... values) {
+            this.values = values;
+        }
+
+        @Override
+        public Iterator<T> iterator() {
+            return new IteratorImpl<>(values);
         }
     }
 }

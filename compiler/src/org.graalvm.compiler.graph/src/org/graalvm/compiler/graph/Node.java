@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -52,8 +52,6 @@ import org.graalvm.compiler.graph.Graph.NodeEventListener;
 import org.graalvm.compiler.graph.Graph.Options;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.graph.iterators.NodePredicate;
-import org.graalvm.compiler.graph.spi.Simplifiable;
-import org.graalvm.compiler.graph.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -876,6 +874,11 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
         }
     }
 
+    public Node singleUsage() {
+        assert hasExactlyOneUsage();
+        return this.usage0;
+    }
+
     public void replaceAtMatchingUsages(Node other, NodePredicate usagePredicate) {
         checkReplaceWith(other);
         replaceAtMatchingUsages(other, usagePredicate, null);
@@ -1057,17 +1060,6 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
             }
         }
         return newNode;
-    }
-
-    /**
-     * Must be overridden by subclasses that implement {@link Simplifiable}. The implementation in
-     * {@link Node} exists to obviate the need to cast a node before invoking
-     * {@link Simplifiable#simplify(SimplifierTool)}.
-     *
-     * @param tool
-     */
-    public void simplify(SimplifierTool tool) {
-        throw new UnsupportedOperationException();
     }
 
     /**

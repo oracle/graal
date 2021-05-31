@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,6 +56,7 @@ import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.nfi.ConvertTypeNode.ConvertFromNativeNode;
 import com.oracle.truffle.nfi.ConvertTypeNode.ConvertToNativeNode;
+import com.oracle.truffle.nfi.NFISignature.SignatureCachedState;
 
 @ExportLibrary(InteropLibrary.class)
 final class NFIClosure implements TruffleObject {
@@ -82,19 +83,21 @@ final class NFIClosure implements TruffleObject {
             return ret;
         }
 
-        @Specialization(guards = {"receiver.signature.optimizedClosureCall != null", "receiver.signature.optimizedClosureCall == call.getCallTarget()"})
+        @Specialization(guards = {"receiver.signature.cachedState != null", "receiver.signature.cachedState == cachedState"})
         static Object doOptimizedDirect(NFIClosure receiver, Object[] args,
-                        @Cached("createDirectCall(receiver.signature.optimizedClosureCall)") DirectCallNode call) {
-            return call.call(receiver.signature, receiver.executable, args);
+                        @Cached("receiver.signature.cachedState") SignatureCachedState cachedState,
+                        @Cached("cachedState.createOptimizedClosureCall()") CallSignatureNode call) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
+            assert receiver.signature.cachedState == cachedState;
+            return call.execute(receiver.signature, receiver.executable, args);
         }
 
-        @Specialization(replaces = "doOptimizedDirect", guards = "receiver.signature.optimizedClosureCall != null")
+        @Specialization(replaces = "doOptimizedDirect", guards = "receiver.signature.cachedState != null")
         static Object doOptimizedIndirect(NFIClosure receiver, Object[] args,
                         @Cached IndirectCallNode call) {
-            return call.call(receiver.signature.optimizedClosureCall, receiver.signature, receiver.executable, args);
+            return call.call(receiver.signature.cachedState.getPolymorphicClosureCall(), receiver.signature, receiver.executable, args);
         }
 
-        @Specialization(guards = "receiver.signature.optimizedClosureCall == null")
+        @Specialization(guards = "receiver.signature.cachedState == null")
         static Object doSlowPath(NFIClosure receiver, Object[] args,
                         @Cached BranchProfile exception,
                         @Cached ConvertFromNativeNode convertArg,
@@ -103,7 +106,7 @@ final class NFIClosure implements TruffleObject {
             NFISignature signature = receiver.signature;
             if (args.length != signature.nativeArgCount) {
                 exception.enter();
-                throw ArityException.create(signature.nativeArgCount, args.length);
+                throw ArityException.create(signature.nativeArgCount, signature.nativeArgCount, args.length);
             }
 
             Object[] preparedArgs = new Object[signature.managedArgCount];

@@ -47,15 +47,15 @@ import com.oracle.svm.core.hub.DynamicHub;
  *    +--------------------------------+
  *    | pointer to DynamicHub          |
  *    +--------------------------------+
- *    | Array length                   |
+ *    | identity hashcode              |
  *    +--------------------------------+
- *    | type id slots (optional)|
+ *    | array length                   |
+ *    +--------------------------------+
+ *    | type id slots (optional)       |
  *    |     ...                        |
  *    +--------------------------------+
  *    | instance fields                |
  *    |     ...                        |
- *    +--------------------------------+
- *    | identity hashcode (optional)   |
  *    +--------------------------------+
  *    | array elements                 |
  *    :     ...                        :
@@ -66,6 +66,17 @@ import com.oracle.svm.core.hub.DynamicHub;
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
 public @interface Hybrid {
+
+    /**
+     * If {@code true}, we expect that the data in the hybrid fields can be duplicated between the
+     * hybrid object and a separate object for the array or bitset. For most objects, a duplication
+     * could occur if inlining and constant folding result in the internal reference to a hybrid
+     * field being constant folded to a constant value, which must be written into the image heap
+     * separately from the hybrid object.
+     * 
+     * If {@code false}, we expect that this duplication of the hybrid fields can never happen.
+     */
+    boolean canHybridFieldsBeDuplicated();
 
     /**
      * Specifies a single member array as the hybrid array.

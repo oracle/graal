@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@
 package com.oracle.truffle.regex.tregex.nodes.nfa;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.regex.RegexRootNode;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.nfa.NFA;
@@ -54,13 +55,14 @@ import com.oracle.truffle.regex.tregex.nodes.dfa.TRegexDFAExecutorNode;
 /**
  * This regex executor matches a given expression by calculating DFA states from the NFA on the fly,
  * without any caching. It is used as a placeholder for {@link TRegexDFAExecutorNode} until the
- * expression is executed {@link TRegexOptions#TRegexGenerateDFAThreshold} times, in order to avoid
- * the costly DFA generation on all expressions that are not on any hot code paths.
+ * expression is executed {@link TRegexOptions#TRegexGenerateDFAThresholdCalls} times, in order to
+ * avoid the costly DFA generation on all expressions that are not on any hot code paths.
  */
 public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
 
     private final NFA nfa;
     private final boolean searching;
+    private boolean dfaGeneratorBailedOut;
 
     public TRegexNFAExecutorNode(NFA nfa) {
         this.nfa = nfa;
@@ -75,6 +77,10 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
 
     public NFA getNFA() {
         return nfa;
+    }
+
+    public void notifyDfaGeneratorBailedOut() {
+        dfaGeneratorBailedOut = true;
     }
 
     @Override
@@ -110,6 +116,9 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
             return null;
         }
         while (true) {
+            if (dfaGeneratorBailedOut) {
+                LoopNode.reportLoopCount(this, 1);
+            }
             if (CompilerDirectives.inInterpreter()) {
                 RegexRootNode.checkThreadInterrupted();
             }

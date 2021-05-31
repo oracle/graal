@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -69,7 +69,7 @@ public abstract class SerialWriteBarrierSnippets extends WriteBarrierSnippets im
     }
 
     @Snippet
-    public void serialArrayRangeWriteBarrier(Address address, int length, @ConstantParameter int elementStride) {
+    public void serialArrayRangeWriteBarrier(Address address, long length, @ConstantParameter int elementStride) {
         if (probability(NOT_FREQUENT_PROBABILITY, length == 0)) {
             return;
         }
@@ -134,7 +134,7 @@ public abstract class SerialWriteBarrierSnippets extends WriteBarrierSnippets im
         public void lower(AbstractTemplates templates, SnippetInfo snippet, SerialArrayRangeWriteBarrier barrier, LoweringTool tool) {
             Arguments args = new Arguments(snippet, barrier.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("address", barrier.getAddress());
-            args.add("length", barrier.getLength());
+            args.add("length", barrier.getLengthAsLong());
             args.addConst("elementStride", barrier.getElementStride());
 
             templates.template(barrier, args).instantiate(templates.getMetaAccess(), barrier, DEFAULT_REPLACER, args);

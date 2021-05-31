@@ -165,7 +165,7 @@ public abstract class BuiltinObject implements TruffleObject {
                 assert member != null;
                 if (member.expectedArgumentCount != arguments.length) {
                     CompilerDirectives.transferToInterpreter();
-                    throw ArityException.create(member.expectedArgumentCount, arguments.length);
+                    throw ArityException.create(member.expectedArgumentCount, member.expectedArgumentCount, arguments.length);
                 }
                 return execute(receiver, arguments);
             } catch (UnsupportedSpecializationException e) {

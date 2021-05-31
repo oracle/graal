@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -116,7 +116,7 @@ public abstract class DoubleValueProfile extends Profile {
 
         @CompilationFinal private double cachedValue;
         @CompilationFinal private long cachedRawValue;
-        @CompilationFinal private byte state = 0;
+        @CompilationFinal private byte state = UNINITIALIZED;
 
         @Override
         public double profile(double value) {
@@ -137,6 +137,16 @@ public abstract class DoubleValueProfile extends Profile {
                 }
             }
             return value;
+        }
+
+        @Override
+        public void disable() {
+            this.state = GENERIC;
+        }
+
+        @Override
+        public void reset() {
+            this.state = UNINITIALIZED;
         }
 
         boolean isGeneric() {

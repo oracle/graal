@@ -28,7 +28,7 @@ It simplifies language implementation by automatically deriving high-performance
 
 ### Getting Started
 
-Information on how to get starting building your language can be found in the [Language Lmplementation Tutorial](./LanguageTutorial.md).
+Information on how to get starting building your language can be found in the [Language Implementation Tutorial](./LanguageTutorial.md).
 The reference API documentation is available as part of the [Truffle Javadoc](http://graalvm.org/truffle/javadoc/).
 Start with looking at the [TruffleLanguage](http://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html) class, which one should subclass to start developing a language.
 Truffle comes prebuilt with the GraalVM compiler and several language implementations as part of GraalVM.

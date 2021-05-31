@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -100,7 +100,7 @@ public abstract class ByteValueProfile extends Profile {
         private static final byte GENERIC = 2;
 
         @CompilationFinal private byte cachedValue;
-        @CompilationFinal private byte state = 0;
+        @CompilationFinal private byte state = UNINITIALIZED;
 
         @Override
         public byte profile(byte value) {
@@ -133,6 +133,16 @@ public abstract class ByteValueProfile extends Profile {
 
         byte getCachedValue() {
             return cachedValue;
+        }
+
+        @Override
+        public void disable() {
+            this.state = GENERIC;
+        }
+
+        @Override
+        public void reset() {
+            this.state = UNINITIALIZED;
         }
 
         @Override

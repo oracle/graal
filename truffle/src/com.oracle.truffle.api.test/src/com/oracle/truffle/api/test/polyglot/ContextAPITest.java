@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,10 +42,10 @@ package com.oracle.truffle.api.test.polyglot;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -68,6 +68,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -88,13 +89,14 @@ import org.junit.Test;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.ContextLocal;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -1237,6 +1239,94 @@ public class ContextAPITest extends AbstractPolyglotTest {
             }
         });
         context.eval(Source.newBuilder(ProxyLanguage.ID, "", "test").cached(false).buildLiteral());
+    }
+
+    @Test
+    public void testGetCurrentContextNotEnteredRaceCondition() throws ExecutionException, InterruptedException {
+        for (int i = 0; i < 10000; i++) {
+            Object prev = EngineAPITest.resetSingleContextState(false);
+            try {
+                AtomicBoolean checkCompleted = new AtomicBoolean();
+                ExecutorService executorService = Executors.newFixedThreadPool(1);
+                try (Context ctx = Context.create()) {
+                    ctx.enter();
+                    try {
+                        Future<?> future = executorService.submit(() -> {
+                            Context.create().close();
+                            checkCompleted.set(true);
+                        });
+                        while (!checkCompleted.get()) {
+                            Context.getCurrent();
+                        }
+                        future.get();
+                    } finally {
+                        ctx.leave();
+                    }
+                } finally {
+                    executorService.shutdownNow();
+                    executorService.awaitTermination(100, TimeUnit.SECONDS);
+                }
+            } finally {
+                EngineAPITest.restoreSingleContextState(prev);
+            }
+        }
+    }
+
+    @Test
+    public void testGetCurrentContextEnteredRaceCondition() throws ExecutionException, InterruptedException {
+        for (int i = 0; i < 10000; i++) {
+            Object prev = EngineAPITest.resetSingleContextState(false);
+            try {
+                AtomicBoolean checkCompleted = new AtomicBoolean();
+                ExecutorService executorService = Executors.newFixedThreadPool(1);
+
+                try (Context ctx = Context.create()) {
+                    ctx.initialize(VALID_EXCLUSIVE_LANGUAGE);
+                    ctx.enter();
+                    try {
+                        ValidExclusiveLanguage lang = ValidExclusiveLanguage.getCurrentLanguage();
+                        Future<?> future = executorService.submit(() -> {
+                            Context.create().close();
+                            checkCompleted.set(true);
+                        });
+                        while (!checkCompleted.get()) {
+                            lang.contextLocal.get();
+                        }
+                        future.get();
+                    } finally {
+                        ctx.leave();
+                    }
+                } finally {
+                    executorService.shutdownNow();
+                    executorService.awaitTermination(100, TimeUnit.SECONDS);
+                }
+            } finally {
+                EngineAPITest.restoreSingleContextState(prev);
+            }
+        }
+    }
+
+    static final String VALID_EXCLUSIVE_LANGUAGE = "ContextAPITest_ValidExclusiveLanguage";
+
+    @TruffleLanguage.Registration(id = VALID_EXCLUSIVE_LANGUAGE, name = VALID_EXCLUSIVE_LANGUAGE)
+    public static class ValidExclusiveLanguage extends TruffleLanguage<TruffleLanguage.Env> {
+
+        final ContextLocal<Env> contextLocal = createContextLocal((e) -> e);
+
+        @Override
+        protected TruffleLanguage.Env createContext(TruffleLanguage.Env env) {
+            return env;
+        }
+
+        @Override
+        protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
+            return true;
+        }
+
+        static ValidExclusiveLanguage getCurrentLanguage() {
+            return getCurrentLanguage(ValidExclusiveLanguage.class);
+        }
+
     }
 
 }

@@ -32,7 +32,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
 import java.util.ServiceLoader;
 import java.util.SortedMap;
 import java.util.TreeMap;
@@ -40,11 +39,10 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.options.OptionDescriptor;
 import org.graalvm.compiler.options.OptionDescriptors;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.SubstrateUtil;
@@ -52,8 +50,10 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.APIOption.APIOptionKind;
 import com.oracle.svm.core.option.APIOptionGroup;
+import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.driver.NativeImage.ArgumentQueue;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.option.HostedOptionParser;
 import com.oracle.svm.util.ReflectionUtil;
@@ -98,7 +98,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     APIOptionHandler(NativeImage nativeImage) {
         super(nativeImage);
         if (NativeImage.IS_AOT) {
-            apiOptions = ImageSingletons.lookup(APIOptionCollector.class).options;
+            apiOptions = ImageSingletons.lookup(APIOptionSupport.class).options;
         } else {
             List<Class<? extends OptionDescriptors>> optionDescriptorsList = new ArrayList<>();
             ServiceLoader<OptionDescriptors> serviceLoader = ServiceLoader.load(OptionDescriptors.class, nativeImage.getClass().getClassLoader());
@@ -110,13 +110,13 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     }
 
     static SortedMap<String, OptionInfo> extractOptions(List<Class<? extends OptionDescriptors>> optionsClasses) {
-        SortedMap<String, OptionDescriptor> hostedOptions = new TreeMap<>();
-        SortedMap<String, OptionDescriptor> runtimeOptions = new TreeMap<>();
+        EconomicMap<String, OptionDescriptor> hostedOptions = EconomicMap.create();
+        EconomicMap<String, OptionDescriptor> runtimeOptions = EconomicMap.create();
         HostedOptionParser.collectOptions(optionsClasses, hostedOptions, runtimeOptions);
         SortedMap<String, OptionInfo> apiOptions = new TreeMap<>();
         Map<String, List<String>> groupDefaults = new HashMap<>();
-        hostedOptions.values().forEach(o -> extractOption(NativeImage.oH, o, apiOptions, groupDefaults));
-        runtimeOptions.values().forEach(o -> extractOption(NativeImage.oR, o, apiOptions, groupDefaults));
+        hostedOptions.getValues().forEach(o -> extractOption(NativeImage.oH, o, apiOptions, groupDefaults));
+        runtimeOptions.getValues().forEach(o -> extractOption(NativeImage.oR, o, apiOptions, groupDefaults));
         groupDefaults.forEach((groupName, defaults) -> {
             if (defaults.size() > 1) {
                 VMError.shouldNotReachHere(String.format("APIOptionGroup %s must only have a single default (but has: %s)",
@@ -143,7 +143,12 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 String defaultValue = null;
 
                 boolean booleanOption = false;
-                if (optionDescriptor.getOptionValueType().equals(Boolean.class)) {
+                Class<?> optionValueType = optionDescriptor.getOptionValueType();
+                if (optionValueType.isArray()) {
+                    VMError.guarantee(optionDescriptor.getOptionKey() instanceof HostedOptionKey, "Only HostedOptionKeys are allowed to have array type key values.");
+                    optionValueType = optionValueType.getComponentType();
+                }
+                if (optionValueType.equals(Boolean.class)) {
                     if (!apiAnnotation.group().equals(APIOption.NullGroup.class)) {
                         try {
                             Class<? extends APIOptionGroup> groupClass = apiAnnotation.group();
@@ -240,12 +245,12 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     }
 
     @Override
-    boolean consume(Queue<String> args) {
+    boolean consume(ArgumentQueue args) {
         String headArg = args.peek();
         String translatedOption = translateOption(headArg);
         if (translatedOption != null) {
             args.poll();
-            nativeImage.addPlainImageBuilderArg(translatedOption);
+            nativeImage.addPlainImageBuilderArg(NativeImage.injectHostedOptionOrigin(translatedOption, args.argumentOrigin));
             return true;
         }
         return false;
@@ -394,19 +399,22 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     }
 }
 
-@AutomaticFeature
-final class APIOptionCollector implements Feature {
+final class APIOptionSupport {
 
-    SortedMap<String, APIOptionHandler.OptionInfo> options;
+    final SortedMap<String, APIOptionHandler.OptionInfo> options;
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    APIOptionCollector() {
+    APIOptionSupport(SortedMap<String, APIOptionHandler.OptionInfo> options) {
+        this.options = options;
     }
+}
+
+@AutomaticFeature
+final class APIOptionFeature implements Feature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
         FeatureImpl.DuringSetupAccessImpl accessImpl = (FeatureImpl.DuringSetupAccessImpl) access;
         List<Class<? extends OptionDescriptors>> optionClasses = accessImpl.getImageClassLoader().findSubclasses(OptionDescriptors.class, true);
-        options = APIOptionHandler.extractOptions(optionClasses);
+        ImageSingletons.add(APIOptionSupport.class, new APIOptionSupport(APIOptionHandler.extractOptions(optionClasses)));
     }
 }

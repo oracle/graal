@@ -174,8 +174,6 @@ meth public static com.oracle.truffle.api.library.LibraryFactory<com.oracle.truf
 supr com.oracle.truffle.api.library.Library
 hfds FACTORY
 
-CLSS abstract interface com.oracle.truffle.api.library.package-info
-
 CLSS public abstract com.oracle.truffle.api.nodes.Node
 cons protected init()
 innr public abstract interface static !annotation Child

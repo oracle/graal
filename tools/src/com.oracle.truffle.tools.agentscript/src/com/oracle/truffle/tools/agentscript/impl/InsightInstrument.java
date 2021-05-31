@@ -43,9 +43,14 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
 import java.io.IOException;
 import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 import java.util.Map;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import org.graalvm.options.OptionCategory;
@@ -53,6 +58,7 @@ import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionStability;
 import org.graalvm.tools.insight.Insight;
+import org.graalvm.tools.insight.Insight.SymbolProvider;
 
 // @formatter:off
 @TruffleInstrument.Registration(
@@ -79,8 +85,8 @@ public class InsightInstrument extends TruffleInstrument {
     @Override
     protected void onCreate(Env tmp) {
         this.env = tmp;
-        final Function<?, ?> api = functionApi(this);
-        env.registerService(api);
+        final Function<?, ?> registerScripts = registerScriptsAPI(this);
+        env.registerService(registerScripts);
         final String path = env.getOptions().get(option());
         if (path != null && path.length() > 0) {
             registerAgentScript(() -> {
@@ -141,22 +147,34 @@ public class InsightInstrument extends TruffleInstrument {
                 if (initializeAgentObject()) {
                     Source script = src.get();
                     ignoreSources.ignoreSource(script);
-                    CallTarget target;
-                    if (agent == null) {
-                        try {
-                            target = env.parse(script, "insight");
-                        } catch (Exception ex) {
-                            throw InsightException.raise(ex);
-                        }
-                        target.call(insight);
+                    List<String> argNames = new ArrayList<>();
+                    List<Object> args = new ArrayList<>();
+                    argNames.add("insight");
+                    args.add(insight);
+                    if (agent != null) {
+                        argNames.add("agent");
+                        args.add(agent);
                     } else {
-                        try {
-                            target = env.parse(script, "insight", "agent");
-                        } catch (Exception ex) {
-                            throw InsightException.raise(ex);
-                        }
-                        target.call(insight, agent);
+                        collectGlobalSymbols(
+                                        env.getInstruments().values(),
+                                        (instrument, type) -> NAME.equals(instrument.getName()) ? null : env.lookup(instrument, type),
+                                        argNames,
+                                        args);
+
+                        // collectGlobalSymbols(
+                        // env.getLanguages().values(),
+                        // env::lookup,
+                        // argNames,
+                        // args);
                     }
+
+                    CallTarget target;
+                    try {
+                        target = env.parse(script, argNames.toArray(new String[0]));
+                    } catch (Exception ex) {
+                        throw InsightException.raise(ex);
+                    }
+                    target.call(args.toArray());
                 }
             }
 
@@ -228,6 +246,30 @@ public class InsightInstrument extends TruffleInstrument {
                     agentBinding.dispose();
                 }
             }
+
+            private <T> void collectGlobalSymbols(Collection<T> values, BiFunction<T, Class<SymbolProvider>, SymbolProvider> check, List<String> argNames, List<Object> args) {
+                for (T item : values) {
+                    SymbolProvider provider = check.apply(item, SymbolProvider.class);
+                    if (provider == null) {
+                        continue;
+                    }
+                    try {
+                        for (Map.Entry<String, ?> e : provider.symbolsWithValues().entrySet()) {
+                            if (e.getValue() == null) {
+                                continue;
+                            }
+                            if (argNames.contains(e.getKey())) {
+                                throw InsightException.unknownAttribute(e.getKey());
+                            }
+                            argNames.add(e.getKey());
+                            args.add(e.getValue());
+
+                        }
+                    } catch (Exception ex) {
+                        throw InsightException.raise(ex);
+                    }
+                }
+            }
         }
         final InitializeAgent initializeAgent = new InitializeAgent();
         instrumenter.attachContextsListener(initializeAgent, true);
@@ -238,7 +280,7 @@ public class InsightInstrument extends TruffleInstrument {
     protected void onDispose(Env tmp) {
     }
 
-    private static Function<?, ?> functionApi(InsightInstrument agentScript) {
+    private static Function<?, ?> registerScriptsAPI(InsightInstrument insight) {
         Function<org.graalvm.polyglot.Source, AutoCloseable> f = (text) -> {
             final Source.LiteralBuilder b = Source.newBuilder(text.getLanguage(), text.getCharacters(), text.getName());
             b.uri(text.getURI());
@@ -246,7 +288,7 @@ public class InsightInstrument extends TruffleInstrument {
             b.internal(text.isInternal());
             b.interactive(text.isInteractive());
             Source src = b.build();
-            return agentScript.registerAgentScript(() -> src);
+            return insight.registerAgentScript(() -> src);
         };
         return maybeProxy(Function.class, f);
     }
@@ -261,7 +303,11 @@ public class InsightInstrument extends TruffleInstrument {
 
     private static <Interface> Interface proxy(Class<Interface> type, Interface delegate) {
         InvocationHandler handler = (Object proxy, Method method, Object[] args) -> {
-            return method.invoke(delegate, args);
+            try {
+                return method.invoke(delegate, args);
+            } catch (InvocationTargetException ex) {
+                throw ex.getCause();
+            }
         };
         return type.cast(Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[]{type}, handler));
     }

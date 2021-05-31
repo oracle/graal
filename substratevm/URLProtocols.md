@@ -22,8 +22,7 @@ They can be enabled using the `--enable-http` and `--enable-https` options.
 
 ### HTTPS Support
 Support for the `https` URL protocol relies on the Java Cryptography Architecture (JCA) framework.
-Thus when `https` is enabled, `--enable-all-security-services` is set by default.
-This adds to the generated image the code required by the JCA, including statically linking native libraries that the JCA may depend on.
+Thus enabling `https` will add to the generated image the code required by the JCA, including statically linking native libraries that the JCA may depend on.
 See the [documentation on security services](JCASecurityServices.md) for more details.
 
 ## Not Tested

@@ -43,9 +43,20 @@ public class SubstitutionType implements ResolvedJavaType, OriginalClassProvider
     private final ResolvedJavaType original;
     private final ResolvedJavaType annotated;
 
-    public SubstitutionType(ResolvedJavaType original, ResolvedJavaType annotated) {
+    /**
+     * This field is used in the {@link com.oracle.svm.hosted.SubstitutionReportFeature} class to
+     * determine {@link SubstitutionType} objects which correspond to type.
+     */
+    private final boolean isUserSubstitution;
+
+    public SubstitutionType(ResolvedJavaType original, ResolvedJavaType annotated, boolean isUserSubstitution) {
         this.annotated = annotated;
         this.original = original;
+        this.isUserSubstitution = isUserSubstitution;
+    }
+
+    public boolean isUserSubstitution() {
+        return isUserSubstitution;
     }
 
     public ResolvedJavaType getOriginal() {

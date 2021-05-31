@@ -59,7 +59,7 @@ import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.exception.WasmJsApiException;
 
 import static java.lang.Integer.compareUnsigned;
-import static org.graalvm.wasm.WasmUtil.minUnsigned;
+import static org.graalvm.wasm.WasmMath.minUnsigned;
 import static org.graalvm.wasm.api.JsConstants.JS_LIMITS;
 
 @ExportLibrary(InteropLibrary.class)
@@ -155,7 +155,7 @@ public class Table extends Dictionary {
     }
 
     public Object set(int index, Object element) {
-        final WasmFunctionInstance functionInstance = new WasmFunctionInstance(null, Truffle.getRuntime().createCallTarget(new RootNode(WasmContext.getCurrent().language()) {
+        final WasmFunctionInstance functionInstance = new WasmFunctionInstance(null, null, Truffle.getRuntime().createCallTarget(new RootNode(WasmContext.getCurrent().language()) {
             @Override
             public Object execute(VirtualFrame frame) {
                 if (InteropLibrary.getUncached().isExecutable(element)) {

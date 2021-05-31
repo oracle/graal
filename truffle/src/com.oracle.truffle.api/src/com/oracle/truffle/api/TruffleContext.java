@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 import org.graalvm.polyglot.PolyglotException;
 
@@ -164,9 +165,12 @@ public final class TruffleContext implements AutoCloseable {
      * times from the same thread. If the context is currently not entered by any thread then it is
      * allowed be entered by an arbitrary thread. Entering the context from two or more different
      * threads at the same time is possible, unless one of the loaded languages denies access to the
-     * thread, in which case an {@link IllegalStateException} is thrown. The result of the enter
-     * function is unspecified and must only be passed to {@link #leave(Node, Object)}. The result
-     * value must not be stored permanently.
+     * thread, in which case an {@link IllegalStateException} is thrown.
+     * <p>
+     * If the current thread was not previously entered in any context, the enter function returns
+     * {@code null}. If the return value is not {@code null}, the result of the enter function is
+     * unspecified and must only be passed to {@link #leave(Node, Object)}. The result value must
+     * not be stored permanently.
      * <p>
      * An adopted node may be passed to allow perform optimizations on the fast-path. If a
      * <code>null</code> node is passed then entering a context will result in a
@@ -246,6 +250,22 @@ public final class TruffleContext implements AutoCloseable {
     }
 
     /**
+     * Returns <code>true</code> if the context is being cancelled else <code>false</code>. A
+     * context may be in the process of cancelling if {@link #closeCancelled(Node, String)} was
+     * called previously.
+     *
+     * @since 21.1
+     */
+    @TruffleBoundary
+    public boolean isCancelling() {
+        try {
+            return LanguageAccessor.engineAccess().isContextCancelling(polyglotContext);
+        } catch (Throwable t) {
+            throw Env.engineToLanguageException(t);
+        }
+    }
+
+    /**
      * @since 0.27
      * @deprecated use {@link #leave(Node, Object)} instead and pass in the node context if
      *             possible.
@@ -279,6 +299,48 @@ public final class TruffleContext implements AutoCloseable {
         } catch (Throwable t) {
             throw Env.engineToLanguageException(t);
         }
+    }
+
+    /**
+     * Leaves this context, runs the passed supplier and reenters the context. This is useful when
+     * the current thread must wait for another thread (and does not need to access the context to
+     * do so) and triggering multithreading is not desired, for instance when implementing
+     * coroutines with threads. The supplier cannot access the context and must not run any guest
+     * language code or invoke interoperability messages.
+     * <p>
+     * The supplier will typically notify another thread that it can now enter the context without
+     * triggering multithreading and then wait for some thread to leave the context before exiting
+     * the supplier and reentering the context (again to avoid triggering multithreading).
+     * <p>
+     * An adopted node may be passed to allow perform optimizations on the fast-path. If a
+     * <code>null</code> node is passed then entering a context will result in a
+     * {@link TruffleBoundary boundary} call in compiled code. If the provided node is not adopted
+     * an {@link IllegalArgumentException} is thrown.
+     * <p>
+     * Entering a language context is designed for compilation and is most efficient if the
+     * {@link TruffleContext context} instance is compilation final.
+     *
+     * @param node an adopted node or {@code null}
+     * @param runWhileOutsideContext the supplier to run while having left this context
+     * @since 21.1
+     */
+    public <T> T leaveAndEnter(Node node, Supplier<T> runWhileOutsideContext) {
+        CompilerAsserts.partialEvaluationConstant(node);
+        try {
+            LanguageAccessor.engineAccess().leaveInternalContext(node, polyglotContext, null);
+            try {
+                return callSupplier(runWhileOutsideContext);
+            } finally {
+                LanguageAccessor.engineAccess().enterInternalContext(node, polyglotContext);
+            }
+        } catch (Throwable t) {
+            throw Env.engineToLanguageException(t);
+        }
+    }
+
+    @TruffleBoundary
+    private static <T> T callSupplier(Supplier<T> supplier) {
+        return supplier.get();
     }
 
     @TruffleBoundary

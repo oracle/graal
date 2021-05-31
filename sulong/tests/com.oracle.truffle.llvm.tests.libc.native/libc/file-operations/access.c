@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -57,11 +57,14 @@ int main() {
     }
     fclose(test_file);
 
+#ifndef __APPLE__
+    /* macOS would accept the following and thus stop here */
     if ((ret = access(test_filename, (R_OK | W_OK | X_OK) + 1)) != -1) {
         assert(ret == 0);
         return 4;
     }
     assert(errno == EINVAL);
+#endif
 
     if (chmod(test_filename, S_IRUSR) == -1) {
         /* Cannot continue test */

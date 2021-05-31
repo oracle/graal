@@ -44,9 +44,9 @@ public abstract class StringIndexOfTestBase extends GraalCompilerTest {
         addTargets(tests, utf16targets);
 
         // Check long targets
-        // Checkstyle: stop
+        // @formatter:off
         String lipsum = "Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata ";
-        // Checkstyle: resume
+        // @formatter:on
         String lipsumUTF16 = lipsum + ((char) 0x10D);
         int[] subStringLengths = {7, 8, 15, 16, 31, 32, 63, 64};
         for (int len : subStringLengths) {

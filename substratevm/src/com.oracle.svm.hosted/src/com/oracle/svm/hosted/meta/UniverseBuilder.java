@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -59,7 +59,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
-import com.oracle.graal.pointsto.results.StaticAnalysisResultsBuilder;
+import com.oracle.graal.pointsto.results.AbstractAnalysisResultsBuilder;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
@@ -73,6 +73,8 @@ import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.heap.FillerObject;
 import com.oracle.svm.core.heap.InstanceReferenceMapEncoder;
 import com.oracle.svm.core.heap.ReferenceMapEncoder;
+import com.oracle.svm.core.heap.ReferenceMapIndex;
+import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubSupport;
@@ -99,12 +101,12 @@ public class UniverseBuilder {
     private final AnalysisMetaAccess aMetaAccess;
     private final HostedUniverse hUniverse;
     private final HostedMetaAccess hMetaAccess;
-    private StaticAnalysisResultsBuilder staticAnalysisResultsBuilder;
+    private AbstractAnalysisResultsBuilder staticAnalysisResultsBuilder;
     private final UnsupportedFeatures unsupportedFeatures;
     private TypeCheckBuilder typeCheckBuilder;
 
     public UniverseBuilder(AnalysisUniverse aUniverse, AnalysisMetaAccess aMetaAccess, HostedUniverse hUniverse, HostedMetaAccess hMetaAccess,
-                    StaticAnalysisResultsBuilder staticAnalysisResultsBuilder, UnsupportedFeatures unsupportedFeatures) {
+                    AbstractAnalysisResultsBuilder staticAnalysisResultsBuilder, UnsupportedFeatures unsupportedFeatures) {
         this.aUniverse = aUniverse;
         this.aMetaAccess = aMetaAccess;
         this.hUniverse = hUniverse;
@@ -147,9 +149,6 @@ public class UniverseBuilder {
                 makeMethod(aMethod);
             }
 
-            BigBang bb = staticAnalysisResultsBuilder.getBigBang();
-            ForkJoinTask<?> profilingInformationBuildTask = ForkJoinTask.adapt(this::buildProfilingInformation).fork();
-
             Collection<HostedType> allTypes = hUniverse.types.values();
             HostedType objectType = hUniverse.objectType();
             HostedType cloneableType = hUniverse.types.get(aMetaAccess.lookupJavaType(Cloneable.class));
@@ -159,7 +158,9 @@ public class UniverseBuilder {
             typeCheckBuilder.calculateIDs();
 
             collectDeclaredMethods();
-            collectMonitorFieldInfo(bb);
+            collectMonitorFieldInfo(staticAnalysisResultsBuilder.getBigBang());
+
+            ForkJoinTask<?> profilingInformationBuildTask = ForkJoinTask.adapt(this::buildProfilingInformation).fork();
 
             layoutInstanceFields();
             layoutStaticFields();
@@ -345,7 +346,7 @@ public class UniverseBuilder {
     private void buildProfilingInformation() {
         /* Convert profiling information after all types and methods have been created. */
         hUniverse.methods.entrySet().parallelStream()
-                        .forEach(entry -> entry.getValue().staticAnalysisResults = staticAnalysisResultsBuilder.makeResults(entry.getKey()));
+                        .forEach(entry -> entry.getValue().staticAnalysisResults = staticAnalysisResultsBuilder.makeOrApplyResults(entry.getKey()));
 
         staticAnalysisResultsBuilder = null;
     }
@@ -393,19 +394,20 @@ public class UniverseBuilder {
     private void layoutInstanceFields(HostedInstanceClass clazz, int superSize) {
         ArrayList<HostedField> rawFields = new ArrayList<>();
         ArrayList<HostedField> orderedFields = new ArrayList<>();
+        ObjectLayout layout = ConfigurationValues.getObjectLayout();
 
         HostedConfiguration.instance().findAllFieldsForLayout(hUniverse, hMetaAccess, hUniverse.fields, rawFields, orderedFields, clazz);
 
         int startSize = superSize;
         if (clazz.getAnnotation(DeoptimizedFrame.ReserveDeoptScratchSpace.class) != null) {
             assert startSize <= DeoptimizedFrame.getScratchSpaceOffset();
-            startSize = DeoptimizedFrame.getScratchSpaceOffset() + ConfigurationValues.getObjectLayout().getDeoptScratchSpace();
+            startSize = DeoptimizedFrame.getScratchSpaceOffset() + layout.getDeoptScratchSpace();
         }
 
         if (HybridLayout.isHybrid(clazz)) {
             /* Set start after array length field */
-            assert startSize == ConfigurationValues.getObjectLayout().getArrayLengthOffset();
-            int fieldSize = ConfigurationValues.getObjectLayout().sizeInBytes(JavaKind.Int);
+            assert startSize == layout.getArrayLengthOffset();
+            int fieldSize = layout.sizeInBytes(JavaKind.Int);
             startSize += fieldSize;
 
             /*
@@ -426,7 +428,7 @@ public class UniverseBuilder {
             boolean progress = false;
             for (int i = 0; i < rawFields.size(); i++) {
                 HostedField field = rawFields.get(i);
-                int fieldSize = ConfigurationValues.getObjectLayout().sizeInBytes(field.getStorageKind());
+                int fieldSize = layout.sizeInBytes(field.getStorageKind());
 
                 if (nextOffset % fieldSize == 0) {
                     field.setLocation(nextOffset);
@@ -457,14 +459,15 @@ public class UniverseBuilder {
         // A reference to a {@link java.util.concurrent.locks.ReentrantLock for "synchronized" or
         // Object.wait() and Object.notify() and friends.
         if (clazz.needMonitorField()) {
-            final int referenceFieldAlignmentAndSize = ConfigurationValues.getObjectLayout().getReferenceSize();
+            final int referenceFieldAlignmentAndSize = layout.getReferenceSize();
             nextOffset = NumUtil.roundUp(nextOffset, referenceFieldAlignmentAndSize);
             clazz.setMonitorFieldOffset(nextOffset);
             nextOffset += referenceFieldAlignmentAndSize;
         }
 
         clazz.instanceFields = orderedFields.toArray(new HostedField[orderedFields.size()]);
-        clazz.instanceSize = ConfigurationValues.getObjectLayout().alignUp(nextOffset);
+        clazz.instanceSize = layout.alignUp(nextOffset);
+        clazz.afterFieldsOffset = nextOffset;
 
         for (HostedType subClass : clazz.subTypes) {
             if (subClass.isInstanceClass()) {
@@ -691,7 +694,7 @@ public class UniverseBuilder {
 
     private void assignImplementations(HostedType type, Map<HostedType, ArrayList<HostedMethod>> vtablesMap, Map<HostedType, BitSet> usedSlotsMap, Map<HostedMethod, Set<Integer>> vtablesSlots) {
         for (HostedMethod method : type.getAllDeclaredMethods()) {
-            /* We only need to look at methods that the static analysis registred as invoked. */
+            /* We only need to look at methods that the static analysis registered as invoked. */
             if (method.wrapped.isInvoked() || method.wrapped.isImplementationInvoked()) {
                 /*
                  * Methods with 1 implementations do not need a vtable because invokes can be done
@@ -839,6 +842,8 @@ public class UniverseBuilder {
 
         ObjectLayout ol = ConfigurationValues.getObjectLayout();
         for (HostedType type : hUniverse.getTypes()) {
+            hUniverse.bb.getHeartbeatCallback().run();
+
             int layoutHelper;
             int monitorOffset = 0;
             if (type.isInstanceClass()) {
@@ -850,6 +855,8 @@ public class UniverseBuilder {
                     JavaKind storageKind = hybridLayout.getArrayElementStorageKind();
                     boolean isObject = (storageKind == JavaKind.Object);
                     layoutHelper = LayoutEncoding.forArray(type, isObject, hybridLayout.getArrayBaseOffset(), ol.getArrayIndexShift(storageKind));
+                } else if (instanceClass.getJavaClass().equals(StoredContinuation.class)) {
+                    layoutHelper = LayoutEncoding.forStoredContinuation();
                 } else {
                     layoutHelper = LayoutEncoding.forInstance(type, ConfigurationValues.getObjectLayout().alignUp(instanceClass.getInstanceSize()));
                 }
@@ -883,7 +890,12 @@ public class UniverseBuilder {
             ReferenceMapEncoder.Input referenceMap = referenceMaps.get(type);
             assert referenceMap != null;
             assert ((SubstrateReferenceMap) referenceMap).hasNoDerivedOffsets();
-            long referenceMapIndex = referenceMapEncoder.lookupEncoding(referenceMap);
+            long referenceMapIndex;
+            if (referenceMap == SubstrateReferenceMap.STORED_CONTINUATION_REFERENCE_MAP) {
+                referenceMapIndex = ReferenceMapIndex.STORED_CONTINUATION;
+            } else {
+                referenceMapIndex = referenceMapEncoder.lookupEncoding(referenceMap);
+            }
 
             DynamicHub hub = type.getHub();
             hub.setData(layoutHelper, type.getTypeID(), monitorOffset, type.getTypeCheckStart(), type.getTypeCheckRange(), type.getTypeCheckSlot(), type.getTypeCheckSlots(),
@@ -892,6 +904,10 @@ public class UniverseBuilder {
     }
 
     private static ReferenceMapEncoder.Input createReferenceMap(HostedType type) {
+        if (type.getJavaClass().equals(StoredContinuation.class)) {
+            return SubstrateReferenceMap.STORED_CONTINUATION_REFERENCE_MAP;
+        }
+
         HostedField[] fields = type.getInstanceFields(true);
 
         SubstrateReferenceMap referenceMap = new SubstrateReferenceMap();

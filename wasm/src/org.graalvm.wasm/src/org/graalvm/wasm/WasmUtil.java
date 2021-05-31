@@ -41,24 +41,8 @@
 
 package org.graalvm.wasm;
 
-import static java.lang.Integer.compareUnsigned;
-
 public final class WasmUtil {
-    public static long unsignedInt32ToLong(int n) {
-        // See https://stackoverflow.com/a/22938125.
-        return n & 0xFFFFFFFFL;
-    }
-
-    public static int addExactUnsigned(int a, int b) {
-        final int result = a + b;
-        if (compareUnsigned(result, a) < 0) {
-            throw new ArithmeticException("unsigned int overflow");
-        }
-        return result;
-    }
-
-    public static int minUnsigned(int a, int b) {
-        return compareUnsigned(a, b) < 0 ? a : b;
+    private WasmUtil() {
     }
 
     public static String[] prepend(String[] xs, String x) {

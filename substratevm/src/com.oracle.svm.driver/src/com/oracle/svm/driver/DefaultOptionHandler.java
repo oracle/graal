@@ -29,12 +29,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
-import java.util.Queue;
+import java.util.regex.Pattern;
 
 import org.graalvm.compiler.options.OptionType;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.driver.MacroOption.MacroOptionKind;
+import com.oracle.svm.driver.NativeImage.ArgumentQueue;
 
 class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
@@ -54,16 +55,16 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
     boolean useDebugAttach = false;
 
-    private static void singleArgumentCheck(Queue<String> args, String arg) {
+    private static void singleArgumentCheck(ArgumentQueue args, String arg) {
         if (!args.isEmpty()) {
             NativeImage.showError("Option " + arg + " cannot be combined with other options.");
         }
     }
 
-    private static String javaRuntimeVersion = System.getProperty("java.runtime.version");
+    private static final String javaRuntimeVersion = System.getProperty("java.runtime.version");
 
     @Override
-    public boolean consume(Queue<String> args) {
+    public boolean consume(ArgumentQueue args) {
         String headArg = args.peek();
         switch (headArg) {
             case "--help":
@@ -80,9 +81,11 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             case "--version":
                 args.poll();
                 singleArgumentCheck(args, headArg);
-                String message = "GraalVM Version " + NativeImage.graalvmVersion;
-                if (!NativeImage.graalvmConfig.isEmpty()) {
-                    message += " " + NativeImage.graalvmConfig;
+                String message;
+                if (NativeImage.IS_AOT) {
+                    message = System.getProperty("java.vm.version");
+                } else {
+                    message = "native-image " + NativeImage.graalvmVersion + " " + NativeImage.graalvmConfig;
                 }
                 message += " (Java Version " + javaRuntimeVersion + ")";
                 nativeImage.showMessage(message);
@@ -105,6 +108,28 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                     NativeImage.showError(headArg + " requires class path specification");
                 }
                 processClasspathArgs(cpArgs);
+                return true;
+            case "-p":
+            case "--module-path":
+                args.poll();
+                String mpArgs = args.poll();
+                if (mpArgs == null) {
+                    NativeImage.showError(headArg + " requires module path specification");
+                }
+                processModulePathArgs(mpArgs);
+                return true;
+            case "-m":
+            case "--module":
+                args.poll();
+                String mainClassModuleArg = args.poll();
+                if (mainClassModuleArg == null) {
+                    NativeImage.showError(headArg + " requires module name");
+                }
+                String[] mainClassModuleArgParts = mainClassModuleArg.split("/", 2);
+                if (mainClassModuleArgParts.length > 1) {
+                    nativeImage.addPlainImageBuilderArg(nativeImage.oHClass + mainClassModuleArgParts[1]);
+                }
+                nativeImage.addPlainImageBuilderArg(nativeImage.oHModule + mainClassModuleArgParts[0]);
                 return true;
             case "--configurations-path":
                 args.poll();
@@ -151,6 +176,18 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 args.poll();
                 NativeImage.showWarning("Ignoring server-mode native-image argument " + headArg + ".");
                 return true;
+            case "--exclude-config":
+                args.poll();
+                String excludeJar = args.poll();
+                if (excludeJar == null) {
+                    NativeImage.showError(headArg + " requires two arguments: a jar regular expression and a resource regular expression");
+                }
+                String excludeConfig = args.poll();
+                if (excludeConfig == null) {
+                    NativeImage.showError(headArg + " requires resource regular expression");
+                }
+                nativeImage.addExcludeConfig(Pattern.compile(excludeJar), Pattern.compile(excludeConfig));
+                return true;
         }
 
         String debugAttach = "--debug-attach";
@@ -178,7 +215,12 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             processClasspathArgs(cpArgs);
             return true;
         }
-        if (headArg.startsWith(NativeImage.oH) || headArg.startsWith(NativeImage.oR)) {
+        if (headArg.startsWith(NativeImage.oH)) {
+            args.poll();
+            nativeImage.addCustomImageBuilderArgs(NativeImage.injectHostedOptionOrigin(headArg, args.argumentOrigin));
+            return true;
+        }
+        if (headArg.startsWith(NativeImage.oR)) {
             args.poll();
             nativeImage.addCustomImageBuilderArgs(headArg);
             return true;
@@ -232,6 +274,12 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             /* Conform to `java` command empty cp entry handling. */
             String cpEntry = cp.isEmpty() ? "." : cp;
             nativeImage.addCustomImageClasspath(cpEntry);
+        }
+    }
+
+    private void processModulePathArgs(String mpArgs) {
+        for (String mpEntry : mpArgs.split(File.pathSeparator, Integer.MAX_VALUE)) {
+            nativeImage.addImageModulePath(Paths.get(mpEntry));
         }
     }
 

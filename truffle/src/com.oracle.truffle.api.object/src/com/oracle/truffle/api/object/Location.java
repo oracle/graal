@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -66,13 +66,13 @@ public abstract class Location {
     /** @since 0.8 or earlier */
     protected static IncompatibleLocationException incompatibleLocation() throws IncompatibleLocationException {
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        throw new IncompatibleLocationException();
+        throw IncompatibleLocationException.instance();
     }
 
     /** @since 0.8 or earlier */
     protected static FinalLocationException finalLocation() throws FinalLocationException {
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        throw new FinalLocationException();
+        throw FinalLocationException.instance();
     }
 
     /**

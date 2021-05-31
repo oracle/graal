@@ -29,6 +29,7 @@ import java.security.Security;
 
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
+import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.hamcrest.CoreMatchers;
 import org.junit.Assert;
 import org.junit.Test;
@@ -47,6 +48,10 @@ public class SecurityServiceTest {
 
             // register the provider
             Security.addProvider(new NoOpProvider());
+            // register the service implementation for reflection explicitly,
+            // non-standard services are not processed automatically
+            RuntimeReflection.register(NoOpImpl.class);
+            RuntimeReflection.register(NoOpImpl.class.getConstructors());
         }
     }
 
@@ -60,9 +65,7 @@ public class SecurityServiceTest {
     @Test
     public void testUnKnownSecurityServices() throws Exception {
         final Provider registered = Security.getProvider("no-op-provider");
-        Assert.assertNotNull("Service is not registered", registered);
-        // make Provider.Service#newInstance(...) "reachable" for native-image to trigger
-        // certain (auto) reflection registrations through the SecurityServicesFeature
+        Assert.assertNotNull("Provider is not registered", registered);
         final Object impl = registered.getService("NoOp", "no-op-algo").newInstance(null);
         Assert.assertNotNull("No service instance was created", impl);
         Assert.assertThat("Unexpected service implementation class", impl, CoreMatchers.instanceOf(NoOpImpl.class));

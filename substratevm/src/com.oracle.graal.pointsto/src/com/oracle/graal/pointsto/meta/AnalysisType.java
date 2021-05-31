@@ -50,7 +50,6 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.BigBang.ConstantObjectsProfiler;
 import com.oracle.graal.pointsto.api.DefaultUnsafePartition;
 import com.oracle.graal.pointsto.api.PointstoOptions;
-import com.oracle.graal.pointsto.api.UnsafePartitionKind;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.flow.AllInstantiatedTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
@@ -60,6 +59,7 @@ import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
+import com.oracle.svm.util.UnsafePartitionKind;
 
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
@@ -70,6 +70,7 @@ import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.Signature;
 
 public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Comparable<AnalysisType> {
 
@@ -230,8 +231,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     private AnalysisType[] convertTypes(ResolvedJavaType[] originalTypes) {
         List<AnalysisType> result = new ArrayList<>(originalTypes.length);
         for (ResolvedJavaType originalType : originalTypes) {
-            if (!universe.platformSupported(originalType)) {
-                /* Ignore types that are not in our platform (including hosted-only types). */
+            if (universe.hostVM.skipInterface(universe, originalType, wrapped)) {
                 continue;
             }
             result.add(universe.lookup(originalType));
@@ -582,11 +582,22 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
                 registerAsAllocated(null);
 
                 componentType.registerAsReachable();
-                if (elementalType.isInterface()) {
-                    universe.objectType().getArrayClass(dimension).registerAsReachable();
-                }
-                if (dimension >= 2) {
-                    universe.objectType().getArrayClass(dimension - 1).registerAsReachable();
+
+                /*
+                 * For a class B extends A, the array type A[] is not a superclass of the array type
+                 * B[]. So there is no strict need to make A[] reachable when B[] is reachable. But
+                 * it turns out that this is puzzling for users, and there are frameworks that
+                 * instantiate such arrays programmatically using Array.newInstance(). To reduce the
+                 * amount of manual configuration that is necessary, we mark all array types of the
+                 * elemental supertypes and superinterfaces also as reachable.
+                 */
+                for (int i = 1; i <= dimension; i++) {
+                    if (elementalType.superClass != null) {
+                        elementalType.superClass.getArrayClass(i).registerAsReachable();
+                    }
+                    for (AnalysisType iface : elementalType.interfaces) {
+                        iface.getArrayClass(i).registerAsReachable();
+                    }
                 }
             }
 
@@ -938,16 +949,42 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
         return universe.lookup(wrapped.findInstanceFieldWithOffset(offset, expectedKind));
     }
 
-    private final AnalysisField[][] instanceFieldsCache = new AnalysisField[2][];
+    /**
+     * Cache to ensure that the final contents of AnalysisField[] are visible after the array gets
+     * visible.
+     */
+    private static class InstanceFieldsCache {
+        private volatile AnalysisField[] withSuper;
+        private volatile AnalysisField[] local;
+
+        public AnalysisField[] get(boolean includeSuperclasses) {
+            if (includeSuperclasses) {
+                return withSuper;
+            } else {
+                return local;
+            }
+        }
+
+        public AnalysisField[] put(boolean includeSuperclasses, AnalysisField[] value) {
+            if (includeSuperclasses) {
+                withSuper = value;
+            } else {
+                local = value;
+            }
+            return value;
+        }
+    }
+
+    private final InstanceFieldsCache instanceFieldsCache = new InstanceFieldsCache();
 
     @Override
     public AnalysisField[] getInstanceFields(boolean includeSuperclasses) {
-        int cacheIdx = includeSuperclasses ? 1 : 0;
-        AnalysisField[] result = instanceFieldsCache[cacheIdx];
+        InstanceFieldsCache cache = instanceFieldsCache;
+        AnalysisField[] result = cache.get(includeSuperclasses);
         if (result != null) {
             return result;
         } else {
-            return instanceFieldsCache[cacheIdx] = convertInstanceFields(includeSuperclasses);
+            return cache.put(includeSuperclasses, convertInstanceFields(includeSuperclasses));
         }
     }
 
@@ -1053,6 +1090,16 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     @Override
     public AnalysisMethod[] getDeclaredMethods() {
         return universe.lookup(wrapped.getDeclaredMethods());
+    }
+
+    @Override
+    public AnalysisMethod findMethod(String name, Signature signature) {
+        for (AnalysisMethod method : getDeclaredMethods()) {
+            if (method.getName().equals(name) && method.getSignature().equals(signature)) {
+                return method;
+            }
+        }
+        return null;
     }
 
     @Override

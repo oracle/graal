@@ -6,6 +6,7 @@ The following language implementations exist already:
 * [FastR](https://github.com/graalvm/fastr), an implementation of GNU R. *
 * [Graal.js](https://github.com/graalvm/graaljs), an ECMAScript 2020 compliant JavaScript implementation. *
 * [Graal.Python](https://github.com/graalvm/graalpython), an early-stage implementation of Python. *
+* [grCUDA](https://github.com/NVIDIA/grcuda), a polyglot CUDA integration.
 * [SimpleLanguage](https://github.com/graalvm/simplelanguage), a toy language implementation to demonstrate Truffle features.
 * [SOMns](https://github.com/smarr/SOMns), a Newspeak implementation for Concurrency Research.
 * [Sulong](https://github.com/oracle/graal/tree/master/sulong), an LLVM bitcode interpreter. *
@@ -14,6 +15,7 @@ The following language implementations exist already:
 * [TruffleSOM](https://github.com/SOM-st/TruffleSOM), a SOM Smalltalk implementation.
 * [TruffleSqueak](https://github.com/hpi-swa/trufflesqueak/), a Squeak/Smalltalk VM implementation and polyglot programming environment.
 * [Yona](https://yona-lang.org/), the reference implementation of a minimalistic, strongly and dynamically-typed, parallel and non-blocking, polyglot, strict, functional programming language.
+* [Enso](https://github.com/enso-org/enso), an open source, visual language for data science that lets you design, prototype and develop any application by connecting visual elements together.
 
 \* Shipped as part of [GraalVM](https://www.oracle.com/technetwork/graalvm/downloads/index.html).
 

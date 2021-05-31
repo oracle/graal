@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import com.oracle.svm.hosted.c.info.RawPointerToInfo;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.CContext;
 
@@ -309,6 +310,11 @@ public class QueryCodeWriter extends InfoTreeVisitor {
             writer.outdent();
             writer.indents().appendln("}");
         }
+    }
+
+    @Override
+    protected void visitRawPointerToInfo(RawPointerToInfo pointerToInfo) {
+        /* Nothing to do, do not visit children. */
     }
 
     @Override

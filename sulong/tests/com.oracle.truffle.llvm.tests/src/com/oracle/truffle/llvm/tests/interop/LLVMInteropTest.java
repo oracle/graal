@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,7 +34,6 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.oracle.truffle.llvm.tests.BaseSuiteHarness;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
@@ -44,9 +43,13 @@ import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
 import org.junit.Assert;
 import org.junit.Assume;
+import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
@@ -61,15 +64,23 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.NativeContextExtension;
 import com.oracle.truffle.llvm.runtime.except.LLVMNativePointerException;
+import com.oracle.truffle.llvm.tests.CommonTestUtils;
+import com.oracle.truffle.llvm.tests.Platform;
 import com.oracle.truffle.llvm.tests.interop.values.ArrayObject;
 import com.oracle.truffle.llvm.tests.interop.values.BoxedIntValue;
 import com.oracle.truffle.llvm.tests.interop.values.NullValue;
 import com.oracle.truffle.llvm.tests.options.TestOptions;
-import com.oracle.truffle.llvm.tests.Platform;
+import com.oracle.truffle.llvm.tests.services.TestEngineConfig;
 
+@RunWith(CommonTestUtils.ExcludingTruffleRunner.class)
 public class LLVMInteropTest {
+
+    @Before
+    public void bundledOnly() {
+        TestOptions.assumeBundledLLVM();
+    }
+
     @Test
     public void test001() {
         try (Runner runner = new Runner("interop001.c")) {
@@ -1170,7 +1181,7 @@ public class LLVMInteropTest {
 
         @ExportMessage
         int readMember(String member) {
-            Assert.assertEquals("foo", member);
+            assertEquals("foo", member);
             return foo;
         }
 
@@ -1187,7 +1198,7 @@ public class LLVMInteropTest {
         @ExportMessage(limit = "3")
         void writeMember(String member, Object value,
                         @CachedLibrary("value") InteropLibrary numbers) throws UnsupportedTypeException {
-            Assert.assertEquals("foo", member);
+            assertEquals("foo", member);
             try {
                 foo = numbers.asInt(value) * 2;
             } catch (InteropException ex) {
@@ -1211,8 +1222,13 @@ public class LLVMInteropTest {
             try {
                 interop.execute(testToNative, this);
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-                Assert.fail("TO_NATIVE should have created a handle");
+                CompilerDirectives.shouldNotReachHere("TO_NATIVE should have created a handle");
             }
+        }
+
+        @TruffleBoundary
+        void assertEquals(Object expected, Object value) {
+            Assert.assertEquals(expected, value);
         }
     }
 
@@ -1666,11 +1682,11 @@ public class LLVMInteropTest {
         }
     }
 
-    private static final Path TEST_DIR = new File(TestOptions.TEST_SUITE_PATH, "interop").toPath();
-    public static final String FILENAME = "O1." + NativeContextExtension.getNativeLibrarySuffix();
+    private static final Path TEST_DIR = new File(TestOptions.getTestDistribution("SULONG_EMBEDDED_TEST_SUITES"), "interop").toPath();
+    public static final String FILENAME = "toolchain-plain.so";
 
     protected static Map<String, String> getSulongTestLibContextOptions() {
-        Map<String, String> map = new HashMap<>();
+        Map<String, String> map = TestEngineConfig.getInstance().getContextOptions();
         String lib = System.getProperty("test.sulongtest.lib.path");
         map.put("llvm.libraryPath", lib);
         return map;
@@ -1687,7 +1703,7 @@ public class LLVMInteropTest {
         }
 
         Runner(String testName, Map<String, String> options) {
-            this.testName = testName + BaseSuiteHarness.TEST_DIR_EXT;
+            this.testName = testName + CommonTestUtils.TEST_DIR_EXT;
             this.context = Context.newBuilder().options(options).allowAllAccess(true).build();
             this.library = null;
         }

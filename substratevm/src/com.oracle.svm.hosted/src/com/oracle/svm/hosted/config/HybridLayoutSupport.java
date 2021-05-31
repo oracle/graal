@@ -31,17 +31,20 @@ import org.graalvm.collections.Pair;
 import com.oracle.svm.core.annotate.Hybrid;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedInstanceClass;
-
-import jdk.vm.ci.meta.ResolvedJavaField;
-import jdk.vm.ci.meta.ResolvedJavaType;
+import com.oracle.svm.hosted.meta.HostedType;
 
 public class HybridLayoutSupport {
-    public boolean isHybrid(ResolvedJavaType clazz) {
+    public boolean isHybrid(HostedType clazz) {
         return clazz.isAnnotationPresent(Hybrid.class);
     }
 
-    public boolean isHybridField(ResolvedJavaField field) {
+    public boolean isHybridField(HostedField field) {
         return field.getAnnotation(Hybrid.Array.class) != null || field.getAnnotation(Hybrid.TypeIDSlots.class) != null;
+    }
+
+    public boolean canHybridFieldsBeDuplicated(HostedType clazz) {
+        assert isHybrid(clazz) : "Can only be called on hybrid types";
+        return clazz.getAnnotation(Hybrid.class).canHybridFieldsBeDuplicated();
     }
 
     /**

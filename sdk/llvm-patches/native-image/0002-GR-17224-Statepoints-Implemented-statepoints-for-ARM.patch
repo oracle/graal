@@ -1,7 +1,7 @@
 From 7ca960f1229f544c6de3c6263a41d63736cf01e5 Mon Sep 17 00:00:00 2001
 From: Loic Ottet <loic.ottet@oracle.com>
 Date: Mon, 1 Jul 2019 16:23:12 +0200
-Subject: [PATCH 2/4] [GR-17224][Statepoints] Implemented statepoints for ARM
+Subject: [PATCH 2/6] [GR-17224][Statepoints] Implemented statepoints for ARM
 
 ---
  llvm/lib/Target/AArch64/AArch64AsmPrinter.cpp |  46 ++
@@ -2010,5 +2010,5 @@ index 000000000000..c9b402893210
 +declare i8 addrspace(1)* @llvm.experimental.gc.relocate.p1i8(token, i32, i32)
 +declare <2 x i8 addrspace(1)*> @llvm.experimental.gc.relocate.v2p1i8(token, i32, i32)
 -- 
-2.28.0
+2.31.1
 

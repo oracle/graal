@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -89,7 +89,6 @@ import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.runtime.RuntimeProvider;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.compiler.test.AddExports;
 import org.graalvm.word.LocationIdentity;
 import org.junit.Assert;
 import org.junit.Assume;
@@ -108,11 +107,9 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Value;
 
 /**
- * Checks that all classes in *graal*.jar and *jvmci*.jar entries on the boot class path comply with
- * global invariants such as using {@link Object#equals(Object)} to compare certain types instead of
- * identity comparisons.
+ * Checks that all Graal classes comply with global invariants such as using
+ * {@link Object#equals(Object)} to compare certain types instead of identity comparisons.
  */
-@AddExports("jdk.internal.vm.ci/*=jdk.aot")
 public class CheckGraalInvariants extends GraalCompilerTest {
 
     /**
@@ -145,7 +142,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
             }
             if (classpathEntry.endsWith(".jar")) {
                 String name = new File(classpathEntry).getName();
-                return name.contains("jvmci") || name.contains("graal") || name.contains("jdk.internal.vm.compiler");
+                return name.contains("graal") || name.contains("jdk.internal.vm.compiler");
             }
             return false;
         }
@@ -345,7 +342,6 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         verifiers.add(new VerifyUsageWithEquals(ArithmeticOpTable.Op.class));
 
         verifiers.add(new VerifyDebugUsage());
-        verifiers.add(new VerifyCallerSensitiveMethods());
         verifiers.add(new VerifyVirtualizableUsage());
         verifiers.add(new VerifyUpdateUsages());
         verifiers.add(new VerifyBailoutUsage());

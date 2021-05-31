@@ -55,7 +55,7 @@ public class ThreadLocalRandomAccessors extends RandomAccessors {
         return SINGLETON.getOrInitializeSeeder();
     }
 
-    /** The setter is necessary if ThreadLocalRandom is initilized at run time. */
+    /** The setter is necessary if ThreadLocalRandom is initialized at run time. */
     public static void setSeeder(AtomicLong value) {
         SINGLETON.seeder = value;
     }

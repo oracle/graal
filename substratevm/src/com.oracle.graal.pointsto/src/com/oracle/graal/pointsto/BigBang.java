@@ -128,8 +128,10 @@ public abstract class BigBang {
     public final Timer processFeaturesTimer;
     public final Timer analysisTimer;
 
+    private final boolean strengthenGraalGraphs;
+
     public BigBang(OptionValues options, AnalysisUniverse universe, HostedProviders providers, HostVM hostVM, ForkJoinPool executorService, Runnable heartbeatCallback,
-                    UnsupportedFeatures unsupportedFeatures) {
+                    UnsupportedFeatures unsupportedFeatures, boolean strengthenGraalGraphs) {
         this.options = options;
         this.debugHandlerFactories = Collections.singletonList(new GraalDebugHandlersFactory(providers.getSnippetReflection()));
         this.debug = new Builder(options, debugHandlerFactories).build();
@@ -145,6 +147,7 @@ public abstract class BigBang {
         this.replacements = providers.getReplacements();
         this.unsupportedFeatures = unsupportedFeatures;
         this.providers = providers;
+        this.strengthenGraalGraphs = strengthenGraalGraphs;
 
         this.objectType = metaAccess.lookupJavaType(Object.class);
         /*
@@ -172,6 +175,10 @@ public abstract class BigBang {
         heapScanningPolicy = PointstoOptions.ExhaustiveHeapScan.getValue(options)
                         ? HeapScanningPolicy.scanAll()
                         : HeapScanningPolicy.skipTypes(skippedHeapTypes());
+    }
+
+    public boolean strengthenGraalGraphs() {
+        return strengthenGraalGraphs;
     }
 
     public AnalysisType[] skippedHeapTypes() {
@@ -622,16 +629,17 @@ public abstract class BigBang {
     private void checkObjectGraph() throws InterruptedException {
         scannedObjects.reset();
         // scan constants
-        ObjectScanner objectScanner = new AnalysisObjectScanner(this, scannedObjects);
+        boolean isParallel = PointstoOptions.ScanObjectsParallel.getValue(options);
+        ObjectScanner objectScanner = new AnalysisObjectScanner(this, isParallel ? executor : null, scannedObjects);
         checkObjectGraph(objectScanner);
-        if (PointstoOptions.ScanObjectsParallel.getValue(options)) {
+        if (isParallel) {
             executor.start();
-            objectScanner.scanBootImageHeapRoots(executor);
+            objectScanner.scanBootImageHeapRoots(null, null);
             executor.complete();
             executor.shutdown();
             executor.init(timing);
         } else {
-            objectScanner.scanBootImageHeapRoots(null);
+            objectScanner.scanBootImageHeapRoots(null, null);
         }
         AnalysisType.updateAssignableTypes(this);
     }

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ import mx
 import mx_gate
 import mx_sdk_vm
 import mx_sdk_vm_impl
+import mx_sdk_benchmark # pylint: disable=unused-import
 import datetime
 from mx_bisect import define_bisect_default_build_steps
 from mx_bisect_strategy import BuildStepsGraalVMStrategy
@@ -103,7 +104,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     third_party_license_files=[],
     dependencies=[],
     jar_distributions=['sdk:LAUNCHER_COMMON'],
-    boot_jars=['sdk:GRAAL_SDK']
+    boot_jars=['sdk:GRAAL_SDK'],
+    stability="supported",
 ))
 
 
@@ -117,7 +119,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     license_files=[],
     third_party_license_files=['3rd_party_license_llvm-toolchain.txt'],
     dependencies=[],
-    support_distributions=['LLVM_TOOLCHAIN']
+    support_distributions=['LLVM_TOOLCHAIN'],
+    stability="supported",
 ))
 
 
@@ -170,8 +173,8 @@ def jdk_enables_jvmci_by_default(jdk):
     return mx_sdk_vm.jdk_enables_jvmci_by_default(jdk)
 
 
-def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names=None, missing_export_target_action='create', with_source=lambda x: True, vendor_info=None):
-    return mx_sdk_vm.jlink_new_jdk(jdk, dst_jdk_dir, module_dists,
+def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists, root_module_names=None, missing_export_target_action='create', with_source=lambda x: True, vendor_info=None):
+    return mx_sdk_vm.jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
                                    root_module_names=root_module_names,
                                    missing_export_target_action=missing_export_target_action,
                                    with_source=with_source,

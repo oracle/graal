@@ -792,11 +792,13 @@ public final class Deoptimizer {
         int newEndOfParams = endOfParams;
         for (int idx = 0; idx < numValues; idx++) {
             ValueInfo targetValue = targetFrame.getValueInfos()[idx];
-            if (targetValue.getKind() == JavaKind.Illegal) {
+            if (targetValue.getKind() == JavaKind.Illegal || targetValue.getType() == FrameInfoQueryResult.ValueType.ReservedRegister) {
                 /*
-                 * The target value is optimized out, e.g. at a position after the lifetime of a
-                 * local variable. Actually we don't care what's the source value in this case, but
-                 * most likely it's also "illegal".
+                 * The target value is either optimized out, e.g. at a position after the lifetime
+                 * of a local variable, or is a reserved register. In either situation, we don't
+                 * care what the source value is. Optimized out values will not be restored, and for
+                 * reserved registers the value will be automatically correct when execution resumes
+                 * in the target frame.
                  */
             } else {
                 ValueInfo sourceValue = sourceFrame.getValueInfos()[idx];
@@ -860,13 +862,6 @@ public final class Deoptimizer {
                          */
                         assert verifyConstant(targetFrame, targetValue, con);
                         DeoptimizationCounters.counters().constantValueCount.inc();
-                        break;
-
-                    case ReservedRegister:
-                        /*
-                         * Nothing to do, the register will automatically be correct when execution
-                         * resumes in the target frame.
-                         */
                         break;
 
                     default:
