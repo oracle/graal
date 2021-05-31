@@ -63,6 +63,7 @@ final class Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContext {
     @Alias @RecomputeFieldValue(kind = Kind.Reset) private long nativeContext;
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = TypeMapResetter.class) Target_com_oracle_truffle_nfi_backend_libffi_LibFFIType[] simpleTypeMap;
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = TypeMapResetter.class) Target_com_oracle_truffle_nfi_backend_libffi_LibFFIType[] arrayTypeMap;
+    @Alias @RecomputeFieldValue(kind = Kind.Reset) Target_com_oracle_truffle_nfi_backend_libffi_LibFFIType cachedEnvType;
 
     private static class TypeMapResetter implements RecomputeFieldValue.CustomFieldValueComputer {
 
