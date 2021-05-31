@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.polyglot;
 
+import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.EngineHostAccess;
 
 import com.oracle.truffle.api.CallTarget;
@@ -51,6 +53,7 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
 /*
@@ -59,9 +62,13 @@ import com.oracle.truffle.api.nodes.RootNode;
 final class HostLanguage extends TruffleLanguage<Object> {
 
     final EngineHostAccess access;
+    final PolyglotImpl polyglot;
+    final APIAccess api;
 
-    HostLanguage(EngineHostAccess hostAccess) {
+    HostLanguage(PolyglotImpl polyglot, EngineHostAccess hostAccess) {
+        this.polyglot = polyglot;
         this.access = hostAccess;
+        this.api = polyglot.getAPIAccess();
     }
 
     @SuppressWarnings("serial")
@@ -92,7 +99,7 @@ final class HostLanguage extends TruffleLanguage<Object> {
                     contextRef = lookupContextReference(HostLanguage.class);
                 }
                 Object context = contextRef.get();
-                return access.findClass(context, sourceString);
+                return access.findDynamicClass(context, sourceString);
             }
         });
     }
@@ -132,6 +139,23 @@ final class HostLanguage extends TruffleLanguage<Object> {
             throw new HostLanguageException("Host class loading is disabled without IO permissions.");
         }
         access.addToHostClassPath(context.getHostContextObject(), entry);
+    }
+
+    Object toGuestValue(Node location, PolyglotContextImpl context, Object hostValue) {
+        if (hostValue instanceof Value) {
+            Value receiverValue = (Value) hostValue;
+            PolyglotValue valueImpl = (PolyglotValue) api.getDispatch(receiverValue);
+            PolyglotContextImpl valueContext = valueImpl.languageContext != null ? valueImpl.languageContext.context : null;
+            Object valueReceiver = api.getReceiver(receiverValue);
+            if (valueContext != context) {
+                valueReceiver = context.migrateValue(location, valueReceiver, valueContext);
+            }
+            return valueReceiver;
+        } else if (HostWrapper.isInstance(hostValue)) {
+            return context.migrateHostWrapper(location, HostWrapper.asInstance(hostValue));
+        } else {
+            return access.toGuestValue(context.getHostContextObject(), hostValue);
+        }
     }
 
 }

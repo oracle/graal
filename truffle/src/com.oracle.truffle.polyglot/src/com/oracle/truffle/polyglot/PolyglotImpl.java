@@ -254,7 +254,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                                 logHandler);
             }
             if (impl == null) {
-                HostLanguage host = new HostLanguage(conf);
+                HostLanguage host = new HostLanguage(this, conf);
                 impl = new PolyglotEngineImpl(this,
                                 dispatchOut,
                                 dispatchErr,
@@ -319,7 +319,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         DispatchOutputStream err = INSTRUMENT.createDispatchOutput(System.err);
         Handler logHandler = PolyglotEngineImpl.createLogHandler(logConfig, err);
         EngineLoggerProvider loggerProvider = new PolyglotLoggers.EngineLoggerProvider(logHandler, logConfig.logLevels);
-        HostLanguage host = new HostLanguage(createHostAccess());
+        HostLanguage host = new HostLanguage(this, createHostAccess());
         final PolyglotEngineImpl engine = new PolyglotEngineImpl(this, out, err, System.in, engineOptions, logConfig.logLevels, loggerProvider, options, true,
                         host, true, true, null, logHandler);
         return engine;

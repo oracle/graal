@@ -592,12 +592,8 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public Object lookupHostSymbol(Object polyglotLanguageContext, TruffleLanguage.Env env, String symbolName) {
-            HostContext hostContext = ((PolyglotLanguageContext) polyglotLanguageContext).context.getHostContextImpl();
-            Class<?> clazz = hostContext.findClass(symbolName);
-            if (clazz == null) {
-                return null;
-            }
-            return HostObject.forStaticClass(clazz, hostContext);
+            PolyglotContextImpl context = ((PolyglotLanguageContext) polyglotLanguageContext).context;
+            return context.engine.host.access.findStaticClass(context.getHostContextObject(), symbolName);
         }
 
         @Override

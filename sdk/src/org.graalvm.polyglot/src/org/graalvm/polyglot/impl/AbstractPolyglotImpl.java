@@ -633,7 +633,9 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Throwable asHostException(Object value);
 
-        public abstract Object findClass(Object context, String classValue);
+        public abstract Object findDynamicClass(Object context, String classValue);
+
+        public abstract Object findStaticClass(Object context, String classValue);
 
         public abstract void disposeContext(Object receiver);
 
@@ -643,7 +645,9 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract void patchHostContext(Object receiver, HostAccess hostAccess, ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed, boolean hostLookupAllowed);
 
-        public abstract void addToHostClassPath(Object hostContextObject, Object truffleFile);
+        public abstract void addToHostClassPath(Object receiver, Object truffleFile);
+
+        public abstract Object toGuestValue(Object receiver, Object hostValue);
 
     }
 

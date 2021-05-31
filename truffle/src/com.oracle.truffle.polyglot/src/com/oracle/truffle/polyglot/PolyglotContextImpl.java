@@ -1327,7 +1327,6 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
 
     public Value asValue(Object hostValue) {
         PolyglotLanguageContext languageContext = this.getHostContext();
-        assert languageContext != null;
         Object prev = hostEnter(languageContext);
         try {
             checkClosed();
@@ -1338,19 +1337,19 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                 if (value.languageContext != null && value.languageContext.context == this) {
                     return (Value) hostValue;
                 }
-                targetLanguageContext = getHostContext();
+                targetLanguageContext = languageContext;
             } else if (HostWrapper.isInstance(hostValue)) {
                 // host wrappers can nicely reuse the associated context
                 targetLanguageContext = HostWrapper.asInstance(hostValue).getLanguageContext();
                 if (this != targetLanguageContext.context) {
                     // this will fail later in toGuestValue when migrating
                     // or succeed in case of host languages.
-                    targetLanguageContext = getHostContext();
+                    targetLanguageContext = languageContext;
                 }
             } else {
-                targetLanguageContext = getHostContext();
+                targetLanguageContext = languageContext;
             }
-            return targetLanguageContext.asValue(getHostContextImpl().toGuestValue(null, hostValue));
+            return targetLanguageContext.asValue(engine.host.toGuestValue(null, this, hostValue));
         } catch (Throwable e) {
             throw PolyglotImpl.guestToHostException(this.getHostContext(), e, true);
         } finally {

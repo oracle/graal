@@ -45,8 +45,10 @@ import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 import java.util.function.Predicate;
 
 import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.EngineHostAccess;
+import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -60,9 +62,11 @@ final class PolyglotHostAccess extends EngineHostAccess {
 
     @CompilationFinal private GuestToHostCodeCache hostToGuestCodeCache;
     @CompilationFinal HostClassCache hostClassCache; // effectively final
+    final AbstractPolyglotImpl polyglot;
 
-    protected PolyglotHostAccess(AbstractPolyglotImpl impl) {
-        super(impl);
+    protected PolyglotHostAccess(AbstractPolyglotImpl polyglot) {
+        super(polyglot);
+        this.polyglot = polyglot;
     }
 
     @Override
@@ -77,6 +81,29 @@ final class PolyglotHostAccess extends EngineHostAccess {
     public void addToHostClassPath(Object receiver, Object truffleFile) {
         HostContext context = (HostContext) receiver;
         context.addToHostClasspath((TruffleFile) truffleFile);
+    }
+
+    @Override
+    public Object toGuestValue(Object receiver, Object hostValue) {
+        HostContext context = (HostContext) receiver;
+        assert !(hostValue instanceof Value);
+        assert !HostWrapper.isInstance(hostValue);
+
+        if (PolyglotImpl.isGuestPrimitive(hostValue)) {
+            return hostValue;
+        } else if (hostValue instanceof Proxy) {
+            return PolyglotProxy.toProxyGuestObject(context, (Proxy) hostValue);
+        } else if (hostValue instanceof TruffleObject) {
+            return hostValue;
+        } else if (hostValue instanceof Class) {
+            return HostObject.forClass((Class<?>) hostValue, context);
+        } else if (hostValue == null) {
+            return HostObject.NULL;
+        } else if (hostValue.getClass().isArray()) {
+            return HostObject.forObject(hostValue, context);
+        } else {
+            return HostInteropReflect.asTruffleViaReflection(hostValue, context);
+        }
     }
 
     @Override
@@ -186,9 +213,23 @@ final class PolyglotHostAccess extends EngineHostAccess {
     }
 
     @Override
-    public Object findClass(Object receiver, String classValue) {
+    public Object findDynamicClass(Object receiver, String classValue) {
         HostContext context = (HostContext) receiver;
-        return HostObject.forClass(context.findClass(classValue), context);
+        Class<?> found = context.findClass(classValue);
+        if (found == null) {
+            return null;
+        }
+        return HostObject.forClass(found, context);
+    }
+
+    @Override
+    public Object findStaticClass(Object receiver, String classValue) {
+        HostContext context = (HostContext) receiver;
+        Class<?> found = context.findClass(classValue);
+        if (found == null) {
+            return null;
+        }
+        return HostObject.forStaticClass(found, context);
     }
 
     @Override

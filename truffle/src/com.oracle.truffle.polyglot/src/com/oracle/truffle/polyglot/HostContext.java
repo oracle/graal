@@ -236,7 +236,7 @@ final class HostContext {
     }
 
     private APIAccess getAPIAccess() {
-        return internalContext.getAPIAccess();
+        return language.polyglot.getAPIAccess();
     }
 
     Object toGuestValue(Node parentNode, Object hostValue) {
