@@ -3150,7 +3150,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             if (delegate.equals(Double.POSITIVE_INFINITY)) {
                 return "Infinity";
             }
-            return null;
+            return "Object";
         }
 
         @ExportMessage

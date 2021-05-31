@@ -998,7 +998,7 @@ public abstract class InteropLibrary extends Library {
     }
 
     /**
-     * Associates the specified value with the specified key in the receiver. Writing a member is
+     * Associates the specified value with the specified key in the receiver. Writing the entry is
      * allowed if is existing and {@link #isHashEntryModifiable(Object, Object) modifiable}, or not
      * existing and {@link #isHashEntryInsertable(Object, Object) insertable}.
      *
