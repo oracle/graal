@@ -1205,7 +1205,6 @@ public class NativeImage {
                 }
             }
         }
-        addImageBuilderJavaArgs(customJavaArgs.toArray(new String[0]));
         /* Perform JavaArgs consolidation - take the maximum of -Xmx, minimum of -Xms */
         Long xmxValue = consolidateArgs(imageBuilderJavaArgs, oXmx, SubstrateOptionsParser::parseLong, String::valueOf, () -> 0L, Math::max);
         Long xmsValue = consolidateArgs(imageBuilderJavaArgs, oXms, SubstrateOptionsParser::parseLong, String::valueOf, () -> SubstrateOptionsParser.parseLong(getXmsValue()), Math::max);
@@ -1214,6 +1213,7 @@ public class NativeImage {
                 replaceArg(imageBuilderJavaArgs, oXms, Long.toUnsignedString(xmxValue));
             }
         }
+        addImageBuilderJavaArgs(customJavaArgs.toArray(new String[0]));
 
         /* Perform option consolidation of imageBuilderArgs */
 
