@@ -617,7 +617,7 @@ public abstract class AbstractPolyglotImpl {
             Objects.requireNonNull(impl);
         }
 
-        public abstract Object createHostContext(HostAccess access, ClassLoader contextClassLoader);
+        public abstract Object createHostContext(HostAccess access, ClassLoader contextClassLoader, Predicate<String> clFilter, boolean hostCLAllowed);
 
         public abstract Object asHostValue(Object context, Object value);
 
@@ -641,7 +641,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Object getTopScope(Object context);
 
-        public abstract void patchHostContext(Object receiver, HostAccess hostAccess, ClassLoader cl);
+        public abstract void patchHostContext(Object receiver, HostAccess hostAccess, ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed);
 
     }
 

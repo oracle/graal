@@ -76,6 +76,8 @@ final class HostContext {
     volatile HostClassLoader classloader;
     private final PolyglotHostAccess language;
     private ClassLoader contextClassLoader;
+    private Predicate<String> classFilter;
+    private boolean hostClassLoadingAllowed;
 
     @SuppressWarnings("serial") final HostException stackoverflowError = new HostException(new StackOverflowError() {
         @SuppressWarnings("sync-override")
@@ -92,16 +94,24 @@ final class HostContext {
         }
     };
 
-    HostContext(PolyglotHostAccess language, ClassLoader contextClassLoader) {
+    HostContext(PolyglotHostAccess language, ClassLoader contextClassLoader, Predicate<String> classFilter, boolean hostClassLoadingAllowed) {
         this.language = language;
         this.contextClassLoader = contextClassLoader;
+        this.classFilter = classFilter;
+        this.hostClassLoadingAllowed = hostClassLoadingAllowed;
     }
 
-    void patch(ClassLoader cl) {
-        assert classloader == null : "host class loader must not be in use after context preinitialzation.";
+    void patch(ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed) {
+        assert classloader == null : "must not be used during context preinitialization";
         // if assertions are not enabled. dispose the previous class loader to be on the safe side
         disposeClassLoader();
         this.contextClassLoader = cl;
+
+        assert this.classFilter == null : "must not be used during context preinitialization";
+        this.classFilter = clFilter;
+
+        assert !this.hostClassLoadingAllowed : "must not be used during context preinitialization";
+        this.hostClassLoadingAllowed = hostCLAllowed;
     }
 
     public HostClassCache getHostClassCache() {
@@ -126,7 +136,7 @@ final class HostContext {
     }
 
     private void checkHostAccessAllowed() {
-        if (!internalContext.config.hostLookupAllowed) {
+        if (!hostClassLoadingAllowed) {
             throw new HostLanguageException(String.format("Host class access is not allowed."));
         }
     }
@@ -164,7 +174,6 @@ final class HostContext {
     }
 
     void validateClass(String className) {
-        Predicate<String> classFilter = internalContext.config.classFilter;
         if (classFilter != null && !classFilter.test(className)) {
             throw new HostLanguageException(String.format("Access to host class %s is not allowed.", className));
         }
@@ -198,9 +207,7 @@ final class HostContext {
         if (TruffleOptions.AOT) {
             throw new HostLanguageException(String.format("Cannot add classpath entry %s in native mode.", classpathEntry.getName()));
         }
-        if (!internalContext.config.hostClassLoadingAllowed) {
-            throw new HostLanguageException(String.format("Host class loading is not allowed."));
-        }
+        checkHostAccessAllowed();
         if (FileSystems.hasNoIOFileSystem(classpathEntry)) {
             throw new HostLanguageException("Host class loading is disabled without IO permissions.");
         }

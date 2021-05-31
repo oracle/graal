@@ -42,6 +42,8 @@ package com.oracle.truffle.polyglot;
 
 import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 
+import java.util.function.Predicate;
+
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.EngineHostAccess;
@@ -63,18 +65,18 @@ final class PolyglotHostAccess extends EngineHostAccess {
     }
 
     @Override
-    public void patchHostContext(Object receiver, HostAccess hostAccess, ClassLoader cl) {
+    public void patchHostContext(Object receiver, HostAccess hostAccess, ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed) {
         ClassLoader useCl = resolveClassLoader(cl);
         initializeHostAccess(hostAccess, useCl);
         HostContext context = (HostContext) receiver;
-        context.patch(useCl);
+        context.patch(useCl, clFilter, hostCLAllowed);
     }
 
     @Override
-    public Object createHostContext(HostAccess access, ClassLoader cl) {
+    public Object createHostContext(HostAccess access, ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed) {
         ClassLoader useCl = resolveClassLoader(cl);
         initializeHostAccess(access, useCl);
-        return new HostContext(this, useCl);
+        return new HostContext(this, useCl, clFilter, hostCLAllowed);
     }
 
     private static ClassLoader resolveClassLoader(ClassLoader cl) {
