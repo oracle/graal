@@ -66,11 +66,11 @@ final class PolyglotHostAccess extends EngineHostAccess {
     }
 
     @Override
-    public void patchHostContext(Object receiver, HostAccess hostAccess, ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed) {
+    public void patchHostContext(Object receiver, HostAccess hostAccess, ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed, boolean hostLookupAllowed) {
         ClassLoader useCl = resolveClassLoader(cl);
         initializeHostAccess(hostAccess, useCl);
         HostContext context = (HostContext) receiver;
-        context.patch(useCl, clFilter, hostCLAllowed);
+        context.patch(useCl, clFilter, hostCLAllowed, hostLookupAllowed);
     }
 
     @Override
@@ -80,10 +80,10 @@ final class PolyglotHostAccess extends EngineHostAccess {
     }
 
     @Override
-    public Object createHostContext(HostAccess access, ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed) {
+    public Object createHostContext(HostAccess access, ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed, boolean hostLookupAllowed) {
         ClassLoader useCl = resolveClassLoader(cl);
         initializeHostAccess(access, useCl);
-        return new HostContext(this, useCl, clFilter, hostCLAllowed);
+        return new HostContext(this, useCl, clFilter, hostCLAllowed, hostLookupAllowed);
     }
 
     private static ClassLoader resolveClassLoader(ClassLoader cl) {

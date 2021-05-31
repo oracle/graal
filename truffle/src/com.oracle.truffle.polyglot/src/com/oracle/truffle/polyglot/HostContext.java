@@ -78,6 +78,7 @@ final class HostContext {
     private ClassLoader contextClassLoader;
     private Predicate<String> classFilter;
     private boolean hostClassLoadingAllowed;
+    private boolean hostLookupAllowed;
 
     @SuppressWarnings("serial") final HostException stackoverflowError = new HostException(new StackOverflowError() {
         @SuppressWarnings("sync-override")
@@ -94,14 +95,16 @@ final class HostContext {
         }
     };
 
-    HostContext(PolyglotHostAccess language, ClassLoader contextClassLoader, Predicate<String> classFilter, boolean hostClassLoadingAllowed) {
+    HostContext(PolyglotHostAccess language, ClassLoader contextClassLoader, Predicate<String> classFilter, boolean hostClassLoadingAllowed, boolean hostLookupAllowed) {
         this.language = language;
         this.contextClassLoader = contextClassLoader;
         this.classFilter = classFilter;
         this.hostClassLoadingAllowed = hostClassLoadingAllowed;
+        this.hostLookupAllowed = hostLookupAllowed;
     }
 
-    void patch(ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed) {
+    @SuppressWarnings("hiding")
+    void patch(ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed, boolean hostLookupAllowed) {
         assert classloader == null : "must not be used during context preinitialization";
         // if assertions are not enabled. dispose the previous class loader to be on the safe side
         disposeClassLoader();
@@ -112,6 +115,9 @@ final class HostContext {
 
         assert !this.hostClassLoadingAllowed : "must not be used during context preinitialization";
         this.hostClassLoadingAllowed = hostCLAllowed;
+
+        assert !this.hostLookupAllowed : "must not be used during context preinitialization";
+        this.hostLookupAllowed = hostLookupAllowed;
     }
 
     public HostClassCache getHostClassCache() {
@@ -136,7 +142,7 @@ final class HostContext {
     }
 
     private void checkHostAccessAllowed() {
-        if (!hostClassLoadingAllowed) {
+        if (!hostLookupAllowed) {
             throw new HostLanguageException(String.format("Host class access is not allowed."));
         }
     }
@@ -207,8 +213,9 @@ final class HostContext {
         if (TruffleOptions.AOT) {
             throw new HostLanguageException(String.format("Cannot add classpath entry %s in native mode.", classpathEntry.getName()));
         }
-        checkHostAccessAllowed();
-
+        if (!hostClassLoadingAllowed) {
+            throw new HostLanguageException(String.format("Host class loading is not allowed."));
+        }
         getClassloader().addClasspathRoot(classpathEntry);
     }
 

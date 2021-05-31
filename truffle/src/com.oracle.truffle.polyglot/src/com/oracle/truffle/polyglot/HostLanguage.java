@@ -106,7 +106,7 @@ final class HostLanguage extends TruffleLanguage<Object> {
     protected boolean patchContext(Object context, Env newEnv) {
         PolyglotLanguageContext languageContext = (PolyglotLanguageContext) EngineAccessor.LANGUAGE.getPolyglotLanguageContext(newEnv);
         PolyglotContextConfig config = languageContext.context.config;
-        access.patchHostContext(context, config.hostAccess, config.hostClassLoader, config.classFilter, config.hostClassLoadingAllowed);
+        access.patchHostContext(context, config.hostAccess, config.hostClassLoader, config.classFilter, config.hostClassLoadingAllowed, config.hostLookupAllowed);
         return true;
     }
 
@@ -114,7 +114,7 @@ final class HostLanguage extends TruffleLanguage<Object> {
     protected Object createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
         PolyglotLanguageContext languageContext = (PolyglotLanguageContext) EngineAccessor.LANGUAGE.getPolyglotLanguageContext(env);
         PolyglotContextConfig config = languageContext.context.config;
-        return access.createHostContext(config.hostAccess, config.hostClassLoader, config.classFilter, config.hostClassLoadingAllowed);
+        return access.createHostContext(config.hostAccess, config.hostClassLoader, config.classFilter, config.hostClassLoadingAllowed, config.hostLookupAllowed);
     }
 
     @Override
