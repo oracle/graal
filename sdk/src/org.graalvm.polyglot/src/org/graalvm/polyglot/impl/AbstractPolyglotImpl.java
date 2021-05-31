@@ -266,7 +266,7 @@ public abstract class AbstractPolyglotImpl {
 
     public abstract Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> options, boolean useSystemProperties, boolean allowExperimentalOptions,
                     boolean boundEngine,
-                    MessageTransport messageInterceptor, Object logHandlerOrStream, HostAccess conf);
+                    MessageTransport messageInterceptor, Object logHandlerOrStream, EngineHostAccess conf);
 
     public abstract int getPriority();
 
@@ -279,6 +279,11 @@ public abstract class AbstractPolyglotImpl {
     public abstract AbstractSourceSectionDispatch getSourceSectionDispatch();
 
     public abstract AbstractManagementDispatch getManagementDispatch();
+
+    /**
+     * Returns the default host dispatch of this polyglot abstraction.
+     */
+    public abstract EngineHostAccess createHostAccess(HostAccess engine);
 
     public abstract static class AbstractManagementDispatch {
 
@@ -604,6 +609,30 @@ public abstract class AbstractPolyglotImpl {
         public abstract Set<String> getMimeTypes(Object receiver);
 
         public abstract String getDefaultMimeType(Object receiver);
+    }
+
+    public abstract static class EngineHostAccess {
+
+        protected EngineHostAccess(AbstractPolyglotImpl impl) {
+            Objects.requireNonNull(impl);
+        }
+
+        public abstract Object createHostContext(HostAccess access, ClassLoader contextClassLoader);
+
+        public abstract Object asHostValue(Object context, Object value);
+
+        public abstract Object asHostDynamicClass(Object context, Class<?> value);
+
+        public abstract Object asHostStaticClass(Object context, Class<?> value);
+
+        public abstract boolean isHostValue(Object value);
+
+        public abstract Object asHostValue(Object value);
+
+        public abstract boolean isHostException(Object value);
+
+        public abstract Throwable asHostException(Object value);
+
     }
 
     public abstract static class AbstractValueDispatch {
