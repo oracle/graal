@@ -283,7 +283,7 @@ public abstract class AbstractPolyglotImpl {
     /**
      * Returns the default host dispatch of this polyglot abstraction.
      */
-    public abstract EngineHostAccess createHostAccess(HostAccess engine);
+    public abstract EngineHostAccess createHostAccess();
 
     public abstract static class AbstractManagementDispatch {
 

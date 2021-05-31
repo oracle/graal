@@ -81,7 +81,6 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
@@ -907,44 +906,6 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             super(message, location);
         }
 
-    }
-
-    Object migrateValue(Node parentNode, Object value, PolyglotContextImpl valueContext) {
-        // migration of guest primitives is already handled.
-        if (PolyglotImpl.isGuestPrimitive(value)) {
-            // allowed to be passed freely
-            return value;
-        } else if (HostObject.isInstance(value)) {
-            return HostObject.withContext(value, context.getHostContextImpl());
-        } else if (PolyglotProxy.isProxyGuestObject(value)) {
-            return value;
-        } else if (valueContext == null) {
-            /*
-             * The only way this can happen is with Value.asValue(TruffleObject). If it happens
-             * otherwise, its wrong.
-             */
-            assert value instanceof TruffleObject;
-            return value;
-        } else {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            Node nodeContext = parentNode;
-            if (nodeContext == null || nodeContext.getRootNode() == null) {
-                nodeContext = EncapsulatingNodeReference.getCurrent().get();
-            }
-            throw new ValueMigrationException(String.format("The value '%s' cannot be passed from one context to another. " +
-                            "The current context is 0x%x and the argument value originates from context 0x%x.",
-                            PolyglotValue.getValueInfo((PolyglotContextImpl) null, value), context.hashCode(), valueContext.hashCode()), nodeContext);
-        }
-    }
-
-    Object migrateHostWrapper(Node parentNode, HostWrapper wrapper) {
-        Object wrapped = wrapper.getGuestObject();
-        PolyglotContextImpl valueContext = wrapper.getContext();
-        if (valueContext != this.context) {
-            // migrate wrapped value to the context
-            wrapped = migrateValue(parentNode, wrapped, valueContext);
-        }
-        return wrapped;
     }
 
     @TruffleBoundary

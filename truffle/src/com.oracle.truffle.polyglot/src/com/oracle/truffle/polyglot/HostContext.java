@@ -69,11 +69,12 @@ import com.oracle.truffle.polyglot.HostLanguage.HostLanguageException;
 
 final class HostContext {
 
-    @CompilationFinal volatile PolyglotLanguageContext internalContext;
+    @CompilationFinal volatile PolyglotContextImpl internalContext;
     final Map<String, Class<?>> classCache = new HashMap<>();
     final Object topScope = new TopScopeObject(this);
     volatile HostClassLoader classloader;
     private final HostLanguage language;
+
     @SuppressWarnings("serial") final HostException stackoverflowError = new HostException(new StackOverflowError() {
         @SuppressWarnings("sync-override")
         @Override
@@ -115,14 +116,14 @@ final class HostContext {
     }
 
     private void checkHostAccessAllowed() {
-        if (!internalContext.context.config.hostLookupAllowed) {
+        if (!internalContext.config.hostLookupAllowed) {
             throw new HostLanguageException(String.format("Host class access is not allowed."));
         }
     }
 
     HostClassLoader getClassloader() {
         if (classloader == null) {
-            ClassLoader parentClassLoader = internalContext.context.config.hostClassLoader != null ? internalContext.context.config.hostClassLoader
+            ClassLoader parentClassLoader = internalContext.config.hostClassLoader != null ? internalContext.config.hostClassLoader
                             : language.contextClassLoader;
             classloader = new HostClassLoader(this, parentClassLoader);
         }
@@ -154,7 +155,7 @@ final class HostContext {
     }
 
     void validateClass(String className) {
-        Predicate<String> classFilter = internalContext.context.config.classFilter;
+        Predicate<String> classFilter = internalContext.config.classFilter;
         if (classFilter != null && !classFilter.test(className)) {
             throw new HostLanguageException(String.format("Access to host class %s is not allowed.", className));
         }
@@ -188,7 +189,7 @@ final class HostContext {
         if (TruffleOptions.AOT) {
             throw new HostLanguageException(String.format("Cannot add classpath entry %s in native mode.", classpathEntry.getName()));
         }
-        if (!internalContext.context.config.hostClassLoadingAllowed) {
+        if (!internalContext.config.hostClassLoadingAllowed) {
             throw new HostLanguageException(String.format("Host class loading is not allowed."));
         }
         if (FileSystems.hasNoIOFileSystem(classpathEntry)) {
@@ -197,8 +198,8 @@ final class HostContext {
         getClassloader().addClasspathRoot(classpathEntry);
     }
 
-    void initializeInternal(PolyglotLanguageContext hostContext) {
-        this.internalContext = hostContext;
+    void initializeInternal(PolyglotContextImpl context) {
+        this.internalContext = context;
     }
 
     <T extends Throwable> RuntimeException hostToGuestException(T e) {
@@ -223,7 +224,7 @@ final class HostContext {
             PolyglotValue valueImpl = (PolyglotValue) getAPIAccess().getDispatch(receiverValue);
             PolyglotContextImpl valueContext = valueImpl.languageContext != null ? valueImpl.languageContext.context : null;
             Object valueReceiver = getAPIAccess().getReceiver(receiverValue);
-            if (valueContext != this.internalContext.context) {
+            if (valueContext != this.internalContext) {
                 valueReceiver = internalContext.migrateValue(parentNode, valueReceiver, valueContext);
             }
             return valueReceiver;

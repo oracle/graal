@@ -58,7 +58,6 @@ import java.util.logging.Handler;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.ResourceLimitEvent;
@@ -434,7 +433,8 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     }
 
     @Override
-    public EngineHostAccess createHostAccess(HostAccess engine) {
+    public EngineHostAccess createHostAccess() {
+        // TODO
         return null;
     }
 
@@ -466,10 +466,10 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         } else if (e instanceof PolyglotException) {
             PolyglotException polyglot = (PolyglotException) e;
             if (hostContext != null) {
-                PolyglotContextImpl context = hostContext.internalContext.context;
+                PolyglotContextImpl context = hostContext.internalContext;
                 APIAccess api = context.getAPIAccess();
                 PolyglotExceptionImpl exceptionImpl = ((PolyglotExceptionImpl) api.getReceiver(polyglot));
-                if (exceptionImpl.context == hostContext.internalContext.context || exceptionImpl.context == null || exceptionImpl.isHostException()) {
+                if (exceptionImpl.context == hostContext.internalContext || exceptionImpl.context == null || exceptionImpl.isHostException()) {
                     // for values of the same context the TruffleException is allowed to be unboxed
                     // for host exceptions no guest values are bound therefore it can also be
                     // unboxed

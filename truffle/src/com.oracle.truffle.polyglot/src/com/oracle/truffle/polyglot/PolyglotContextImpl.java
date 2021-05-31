@@ -93,12 +93,15 @@ import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.polyglot.PolyglotEngineImpl.CancelExecution;
 import com.oracle.truffle.polyglot.PolyglotEngineImpl.StableLocalLocations;
+import com.oracle.truffle.polyglot.PolyglotLanguageContext.ValueMigrationException;
 import com.oracle.truffle.polyglot.PolyglotLocals.LocalLocation;
 
 final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
@@ -375,7 +378,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             newContexts[i] = new PolyglotLanguageContext(this, language);
         }
         hostContext.ensureInitialized(null);
-        ((HostContext) hostContext.getContextImpl()).initializeInternal(hostContext);
+        ((HostContext) hostContext.getContextImpl()).initializeInternal(this);
         return newContexts;
     }
 
@@ -939,6 +942,44 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         if (closed) {
             throw PolyglotEngineException.illegalState("The Context is already closed.");
         }
+    }
+
+    Object migrateValue(Node parentNode, Object value, PolyglotContextImpl valueContext) {
+        // migration of guest primitives is already handled.
+        if (PolyglotImpl.isGuestPrimitive(value)) {
+            // allowed to be passed freely
+            return value;
+        } else if (HostObject.isInstance(value)) {
+            return HostObject.withContext(value, getHostContextImpl());
+        } else if (PolyglotProxy.isProxyGuestObject(value)) {
+            return value;
+        } else if (valueContext == null) {
+            /*
+             * The only way this can happen is with Value.asValue(TruffleObject). If it happens
+             * otherwise, its wrong.
+             */
+            assert value instanceof TruffleObject;
+            return value;
+        } else {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            Node nodeContext = parentNode;
+            if (nodeContext == null || nodeContext.getRootNode() == null) {
+                nodeContext = EncapsulatingNodeReference.getCurrent().get();
+            }
+            throw new ValueMigrationException(String.format("The value '%s' cannot be passed from one context to another. " +
+                            "The current context is 0x%x and the argument value originates from context 0x%x.",
+                            PolyglotValue.getValueInfo((PolyglotContextImpl) null, value), hashCode(), valueContext.hashCode()), nodeContext);
+        }
+    }
+
+    Object migrateHostWrapper(Node parentNode, HostWrapper wrapper) {
+        Object wrapped = wrapper.getGuestObject();
+        PolyglotContextImpl valueContext = wrapper.getContext();
+        if (valueContext != this) {
+            // migrate wrapped value to the context
+            wrapped = migrateValue(parentNode, wrapped, valueContext);
+        }
+        return wrapped;
     }
 
     PolyglotLanguageContext getHostContext() {

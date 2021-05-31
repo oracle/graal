@@ -138,7 +138,7 @@ final class PolyglotProxy implements TruffleObject {
                     @CachedLibrary("this") InteropLibrary library,
                     @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) throws UnsupportedMessageException {
         if (proxy instanceof ProxyInstantiable) {
-            Value[] convertedArguments = context.internalContext.toHostValues(arguments, 0);
+            Value[] convertedArguments = context.internalContext.getHostContext().toHostValues(arguments, 0);
             Object result = guestToHostCall(library, cache.instantiate, context, proxy, convertedArguments);
             return context.toGuestValue(library, result);
         }
@@ -156,7 +156,7 @@ final class PolyglotProxy implements TruffleObject {
                     @CachedLibrary("this") InteropLibrary library,
                     @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) throws UnsupportedMessageException {
         if (proxy instanceof ProxyExecutable) {
-            Value[] convertedArguments = context.internalContext.toHostValues(arguments, 0);
+            Value[] convertedArguments = context.internalContext.getHostContext().toHostValues(arguments, 0);
             Object result = guestToHostCall(library, cache.execute, context, proxy, convertedArguments);
             return context.toGuestValue(library, result);
         }
@@ -654,7 +654,7 @@ final class PolyglotProxy implements TruffleObject {
                     @CachedLibrary("this") InteropLibrary library,
                     @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) throws UnsupportedMessageException {
         if (proxy instanceof ProxyHashMap) {
-            PolyglotLanguageContext languageContext = context.internalContext;
+            PolyglotLanguageContext languageContext = context.internalContext.getHostContext();
             Value keyValue = languageContext.asValue(key);
             Value valueValue = languageContext.asValue(value);
             guestToHostCall(library, cache.putHashEntry, languageContext, proxy, keyValue, valueValue);

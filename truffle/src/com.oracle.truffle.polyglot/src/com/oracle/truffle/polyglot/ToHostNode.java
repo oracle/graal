@@ -228,7 +228,7 @@ abstract class ToHostNode extends Node {
             }
             return null;
         } else if (value instanceof TruffleObject) {
-            convertedValue = asJavaObject((TruffleObject) value, targetType, genericType, allowsImplementation, context.internalContext);
+            convertedValue = asJavaObject((TruffleObject) value, targetType, genericType, allowsImplementation, context.internalContext.getHostContext());
             if (convertedValue != null) {
                 return convertedValue;
             }
