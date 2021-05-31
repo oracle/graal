@@ -1298,7 +1298,7 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
                     _write_ln(u'ImageModule=' + java_properties_escape(image_config.main_module))
             if location_classpath:
                 image_path_arg = u'ImageModulePath=' if build_with_module_path else u'ImageClasspath='
-                _write_ln(image_path_arg + java_properties_escape(':'.join(("${.}/" + e.replace(os.sep, '/') for e in location_classpath)), ':', len('ImageClasspath')))
+                _write_ln(image_path_arg + java_properties_escape(':'.join(("${.}/" + e.replace(os.sep, '/') for e in location_classpath)), ':', len(image_path_arg)))
             _write_ln(u'Args=' + java_properties_escape(' '.join(build_args), ' ', len('Args')))
         return self._contents
 
