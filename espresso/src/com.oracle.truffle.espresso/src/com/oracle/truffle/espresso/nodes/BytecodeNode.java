@@ -1724,24 +1724,33 @@ public final class BytecodeNode extends EspressoMethodNode {
                                 ". Result = " + result);
                 throw new EspressoOSRReturnException(result);
             } else {
-                // TODO: do we need synchronization here?
-                System.err.println("~~~~ OSR for bci " + targetBCI + " on method " + getMethod().getDeclaringKlass().getNameAsString() + "." + getMethod().getNameAsString() + " failed!");
-                osrTarget.invalidate("OSR compilation failed or cancelled");
-                osrTargets[targetBCI] = null;
+                // Atomically invalidate and remove the target, as done in OptimizedOSRLoopNode.
+                atomic(new Runnable() {
+                    @Override
+                    public void run() {
+                        OptimizedCallTarget target = osrTargets[targetBCI];
+                        if (target != null) {
+                            System.err.println("~~~~ OSR for bci " + targetBCI + " on method " + getMethod().getDeclaringKlass().getNameAsString() + "." + getMethod().getNameAsString() + " failed!");
+                            if (target.isCompilationFailed()) {
+                                canCompile = false;
+                            }
+                            osrTargets[targetBCI] = null;
+                            target.invalidate("OSR compilation failed or cancelled");
+                        }
+                    }
+                });
             }
         }
 
     }
 
-    private OptimizedCallTarget requestOSR(int bci) {
+    private OptimizedCallTarget requestOSR(int targetBCI) {
         synchronized (osrTargets) {
-            assert osrTargets[bci] == null;
-
+            assert osrTargets[targetBCI] == null;
             GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
-            EspressoRootNode osrRootNode = getRoot().makeOSRRootNode(bci);
             // TODO: this is a hack to prevent call target creation from adopting this BytecodeNode.
             // Once we get to a Truffle OSR API we can get rid of this.
-            assert osrRootNode.methodNode == this;
+            EspressoRootNode osrRootNode = new EspressoRootNode.OSR(getRoot(), this, targetBCI);
             osrRootNode.methodNode = null;
             OptimizedCallTarget osrTarget = runtime.createOSRCallTarget(osrRootNode);
             osrRootNode.methodNode = this;
@@ -1750,7 +1759,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                 @Override
                 public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout, int tier) {
                     if (permanentBailout && target == osrTarget) {
-                        System.err.println("~~~~ OSR for bci " + bci + " failed: " + reason);
+                        System.err.println("~~~~ OSR for bci " + targetBCI + " failed: " + reason);
                         canCompile = false;
                     }
                 }
@@ -1760,7 +1769,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                 canCompile = false;
             }
             osrTarget.compile(true);
-            this.osrTargets[bci] = osrTarget;
+            this.osrTargets[targetBCI] = osrTarget;
             return osrTarget;
         }
     }

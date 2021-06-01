@@ -456,7 +456,10 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
 
         protected final Class<? extends VirtualFrame> clazz;
 
-        /** Not adopted by the OSRRootNode; belongs to another RootNode. */
+        /**
+         * Not adopted by the OSRRootNode; belongs to another RootNode. OptimizedCallTarget treats
+         * OSRRootNodes specially, skipping adoption of child nodes.
+         */
         @Child protected OptimizedOSRLoopNode loopNode;
 
         OSRRootNode(OptimizedOSRLoopNode loop, FrameDescriptor frameDescriptor, Class<? extends VirtualFrame> clazz) {

@@ -699,7 +699,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return engine.acceptForCompilation(getRootNode());
     }
 
-    final boolean isCompilationFailed() {
+    public final boolean isCompilationFailed() {
         return compilationFailed;
     }
 
