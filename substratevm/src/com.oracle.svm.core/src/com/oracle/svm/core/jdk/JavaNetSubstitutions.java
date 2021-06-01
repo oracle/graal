@@ -44,6 +44,10 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.Pointer;
+import org.graalvm.word.SignedWord;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Alias;
@@ -52,9 +56,10 @@ import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.c.CGlobalData;
+import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
-import com.oracle.svm.core.util.LazyFinalReference;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -94,17 +99,37 @@ final class Target_sun_net_spi_DefaultProxySelector {
     static native boolean init();
 }
 
-class DefaultProxySelectorSystemProxiesAccessor {
-    static final LazyFinalReference<Boolean> hasSystemProxies = new LazyFinalReference<>(() -> {
-        Boolean b = NetProperties.getBoolean("java.net.useSystemProxies");
-        if (b != null && b) {
-            return Target_sun_net_spi_DefaultProxySelector.init();
-        }
-        return false;
-    });
+final class DefaultProxySelectorSystemProxiesAccessor {
+    static Boolean hasSystemProxies = null;
 
     static boolean get() {
-        return hasSystemProxies.get();
+        if (hasSystemProxies == null) {
+            hasSystemProxies = ensureInitialized();
+        }
+        return hasSystemProxies;
+    }
+
+    static final SignedWord UNINITIALIZED = WordFactory.signed(-2);
+    static final SignedWord INITIALIZING = WordFactory.signed(-1);
+
+    static final CGlobalData<Pointer> initState = CGlobalDataFactory.createWord(UNINITIALIZED);
+
+    /** Avoids calling init() more than once per process, which can leak resources with isolates. */
+    static boolean ensureInitialized() {
+        Boolean b = NetProperties.getBoolean("java.net.useSystemProxies");
+        if (b != null && b) {
+            while (true) {
+                SignedWord value = initState.get().readWord(0);
+                if (value.greaterOrEqual(0)) {
+                    return value.notEqual(0);
+                }
+                if (initState.get().logicCompareAndSwapWord(0, UNINITIALIZED, INITIALIZING, LocationIdentity.ANY_LOCATION)) {
+                    boolean result = Target_sun_net_spi_DefaultProxySelector.init();
+                    initState.get().writeWord(0, WordFactory.signed(result ? 1 : 0));
+                }
+            }
+        }
+        return false;
     }
 }
 
