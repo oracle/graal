@@ -695,8 +695,8 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         int retTypeIdx = getTypeIndex(returnTypeName);
         log(context, "  [0x%08x]     type 0x%x (%s)", pos, retTypeIdx, returnTypeName);
         pos = writeAttrRefAddr(retTypeIdx, buffer, pos);
-        log(context, "  [0x%08x]     artificial %s", pos, method.isDeoptTarget() ? "true" : "false");
-        pos = writeFlag((method.isDeoptTarget() ? (byte) 1 : (byte) 0), buffer, pos);
+        log(context, "  [0x%08x]     artificial %s", pos, method.isDeoptTarget ? "true" : "false");
+        pos = writeFlag((method.isDeoptTarget ? (byte) 1 : (byte) 0), buffer, pos);
         log(context, "  [0x%08x]     accessibility %s", pos, "public");
         pos = writeAttrAccessibility(modifiers, buffer, pos);
         log(context, "  [0x%08x]     declaration true", pos);
