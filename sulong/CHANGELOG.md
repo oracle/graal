@@ -6,6 +6,9 @@ Fixes:
 
 * Fix exceptions being swallowed and not printed out on Sulong context disposal.
 
+* Thread return values are now correctly removed from the context when joining the
+  respective thread.
+
 New features:
 
 * Support implicitly typed XADD instructions in inline assembly.

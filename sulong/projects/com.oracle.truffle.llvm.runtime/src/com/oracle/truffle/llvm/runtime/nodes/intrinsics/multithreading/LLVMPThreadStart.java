@@ -94,7 +94,7 @@ public final class LLVMPThreadStart {
                         }
                     }
                 }
-                pThreadContext.clearThreadId();
+                pThreadContext.clearThreadID();
             }
         }
     }

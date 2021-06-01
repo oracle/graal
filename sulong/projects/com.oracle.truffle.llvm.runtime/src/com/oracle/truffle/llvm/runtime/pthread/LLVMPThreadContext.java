@@ -51,8 +51,7 @@ public final class LLVMPThreadContext {
     private final Object threadLock;
 
     /**
-     * TODO GR-30833: At pthread_join, return values need to be cleared from the map of thread
-     * return values.
+     * At pthread_join, return values shall be cleared from this map of return values.
      */
     private final ConcurrentMap<Long, Object> threadReturnValueStorage;
 
@@ -209,18 +208,23 @@ public final class LLVMPThreadContext {
     }
 
     @TruffleBoundary
-    public void clearThreadId() {
+    public void clearThreadID() {
         threadStorage.remove(Thread.currentThread().getId());
     }
 
     @TruffleBoundary
-    public void setThreadReturnValue(long threadId, Object value) {
-        threadReturnValueStorage.put(threadId, value);
+    public void setThreadReturnValue(long threadID, Object value) {
+        threadReturnValueStorage.put(threadID, value);
     }
 
     @TruffleBoundary
-    public Object getThreadReturnValue(long threadId) {
-        return threadReturnValueStorage.get(threadId);
+    public Object getThreadReturnValue(long threadID) {
+        return threadReturnValueStorage.get(threadID);
+    }
+
+    @TruffleBoundary
+    public void clearThreadReturnValue(long threadID) {
+        threadReturnValueStorage.remove(threadID);
     }
 
     public CallTarget getPthreadCallTarget() {
