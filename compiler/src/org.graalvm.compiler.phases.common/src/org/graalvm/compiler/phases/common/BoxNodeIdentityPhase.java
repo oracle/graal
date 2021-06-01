@@ -26,9 +26,11 @@ package org.graalvm.compiler.phases.common;
 
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.ObjectEqualsNode;
 import org.graalvm.compiler.nodes.extended.BoxNode;
+import org.graalvm.compiler.nodes.extended.BoxNode.TrustedBoxedValue;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.BasePhase;
 
@@ -55,8 +57,9 @@ public class BoxNodeIdentityPhase extends BasePhase<CoreProviders> {
 
     @Override
     protected void run(StructuredGraph graph, CoreProviders context) {
+        assert !graph.isAfterStage(StageFlag.PARTIAL_ESCAPE) : this + " must be run before PEA";
         for (BoxNode box : graph.getNodes(BoxNode.TYPE)) {
-            if (box.isAlive() && !box.hasIdentity()) {
+            if (box.isAlive() && !box.hasIdentity() && !(box.getValue() instanceof TrustedBoxedValue)) {
                 for (Node usage : box.usages()) {
                     if (usage instanceof ObjectEqualsNode) {
                         ObjectEqualsNode eq = (ObjectEqualsNode) usage;

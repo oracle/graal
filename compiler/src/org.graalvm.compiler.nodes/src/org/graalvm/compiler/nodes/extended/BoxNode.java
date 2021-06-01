@@ -101,11 +101,12 @@ public abstract class BoxNode extends AbstractBoxingNode implements IterableNode
     }
 
     /**
-     * Mark this boxing node as "identity preserving" such as it will not be escape analyzed or
+     * Mark this boxing node as "identity preserving" such that it will not be escape analyzed or
      * commoned with another boxing node that shares the same {@linkplain #getValue() input value}.
      */
     public void setHasIdentity() {
-        System.out.printf("%s: %s has identity%n", graph(), this);
+        // A trusted box should never have identity
+        assert !(getValue() instanceof TrustedBoxedValue) : this + ": " + getValue();
         this.hasIdentity = true;
     }
 
