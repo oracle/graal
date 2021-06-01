@@ -50,6 +50,9 @@ public class ReferenceTest extends GraalCompilerTest {
     public void testReference() {
         Object referent = new Object();
         test("snippet1", new Entry(referent), referent);
+        test("snippet1", new Entry(referent), null);
+        test("snippet1", new Entry(null), referent);
+        test("snippet1", new Entry(null), null);
     }
 
     static boolean snippet2(PhantomReference<Object> ref, Object o) {
@@ -60,6 +63,9 @@ public class ReferenceTest extends GraalCompilerTest {
     public void testPhantomReference() {
         Object referent = new Object();
         test("snippet2", new PhantomReference<Object>(referent, new ReferenceQueue<>()), referent);
+        test("snippet2", new PhantomReference<Object>(referent, new ReferenceQueue<>()), null);
+        test("snippet2", new PhantomReference<Object>(null, new ReferenceQueue<>()), referent);
+        test("snippet2", new PhantomReference<Object>(null, new ReferenceQueue<>()), null);
     }
 
     @Override

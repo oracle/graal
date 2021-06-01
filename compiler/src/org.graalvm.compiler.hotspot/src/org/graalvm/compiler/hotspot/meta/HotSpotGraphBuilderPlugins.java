@@ -1056,10 +1056,6 @@ public class HotSpotGraphBuilderPlugins {
                 }
             });
 
-            // Note that the invocation plugin for PhantomReference.refersTo0 is identical to the
-            // one for Reference.
-            // TODO introduce new barrier type to differentiate accesses from PhantomReference
-            // receivers and other Reference receivers.
             r = new Registration(plugins, PhantomReference.class, replacements);
             r.register2("refersTo0", Receiver.class, Object.class, new InvocationPlugin() {
                 @Override
@@ -1067,7 +1063,7 @@ public class HotSpotGraphBuilderPlugins {
                     ValueNode offset = b.add(ConstantNode.forLong(HotSpotReplacementsUtil.referentOffset(b.getMetaAccess())));
                     AddressNode address = b.add(new OffsetAddressNode(receiver.get(), offset));
                     FieldLocationIdentity locationIdentity = new FieldLocationIdentity(HotSpotReplacementsUtil.referentField(b.getMetaAccess()));
-                    JavaReadNode read = b.add(new JavaReadNode(StampFactory.object(), JavaKind.Object, address, locationIdentity, BarrierType.WEAK_FIELD, true));
+                    JavaReadNode read = b.add(new JavaReadNode(StampFactory.object(), JavaKind.Object, address, locationIdentity, BarrierType.PHANTOM_FIELD, true));
                     LogicNode objectEquals = b.add(ObjectEqualsNode.create(b.getConstantReflection(), b.getMetaAccess(), b.getOptions(), read, o, NodeView.DEFAULT));
                     b.addPush(JavaKind.Boolean, ConditionalNode.create(objectEquals, b.add(forBoolean(true)), b.add(forBoolean(false)), NodeView.DEFAULT));
                     return true;
