@@ -52,6 +52,7 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 
 import java.lang.reflect.Type;
 import java.util.Map;
+import java.util.Objects;
 
 class PolyglotMapEntry<K, V> implements Map.Entry<K, V>, HostWrapper {
 
@@ -178,13 +179,10 @@ class PolyglotMapEntry<K, V> implements Map.Entry<K, V>, HostWrapper {
 
             Key(Class<?> receiverClass, Class<?> keyClass, Type keyType,
                             Class<?> valueClass, Type valueType) {
-                assert receiverClass != null;
-                assert keyClass != null;
-                assert valueClass != null;
-                this.receiverClass = receiverClass;
-                this.keyClass = keyClass;
+                this.receiverClass = Objects.requireNonNull(receiverClass);
+                this.keyClass = Objects.requireNonNull(keyClass);
                 this.keyType = keyType;
-                this.valueClass = valueClass;
+                this.valueClass = Objects.requireNonNull(valueClass);
                 this.valueType = valueType;
             }
 
@@ -208,8 +206,8 @@ class PolyglotMapEntry<K, V> implements Map.Entry<K, V>, HostWrapper {
                 }
                 PolyglotMapEntry.Cache.Key other = (PolyglotMapEntry.Cache.Key) obj;
                 return receiverClass == other.receiverClass &&
-                                keyClass == other.keyClass && keyType == other.keyType &&
-                                valueClass == other.valueClass && valueType == other.valueType;
+                                keyClass == other.keyClass && Objects.equals(keyType, other.keyType) &&
+                                valueClass == other.valueClass && Objects.equals(valueType, other.valueType);
             }
         }
 
@@ -313,7 +311,7 @@ class PolyglotMapEntry<K, V> implements Map.Entry<K, V>, HostWrapper {
 
             @Override
             protected Object executeImpl(PolyglotLanguageContext languageContext, Object receiver, Object[] args) {
-                return apply.execute(languageContext, receiver, args[ARGUMENT_OFFSET], Object.class, Object.class);
+                return apply.execute(languageContext, receiver, args[ARGUMENT_OFFSET]);
             }
         }
     }

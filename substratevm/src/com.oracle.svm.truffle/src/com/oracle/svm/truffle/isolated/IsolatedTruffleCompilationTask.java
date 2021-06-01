@@ -25,6 +25,7 @@
 package com.oracle.svm.truffle.isolated;
 
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
+import org.graalvm.compiler.truffle.common.TruffleInliningData;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 
 import com.oracle.svm.core.c.function.CEntryPointOptions;
@@ -55,6 +56,12 @@ final class IsolatedTruffleCompilationTask extends IsolatedObjectProxy<TruffleCo
         return isFirstTier0(IsolatedCompileContext.get().getClient(), handle);
     }
 
+    @Override
+    public TruffleInliningData inliningData() {
+        ClientHandle<TruffleInliningData> inliningDataHandle = inliningData0(IsolatedCompileContext.get().getClient(), handle);
+        return new IsolatedTruffleInlining<>(inliningDataHandle);
+    }
+
     @CEntryPoint
     @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
     private static boolean isCancelled0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<TruffleCompilationTask> taskHandle) {
@@ -71,5 +78,12 @@ final class IsolatedTruffleCompilationTask extends IsolatedObjectProxy<TruffleCo
     @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
     private static boolean isFirstTier0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<TruffleCompilationTask> taskHandle) {
         return IsolatedCompileClient.get().unhand(taskHandle).isFirstTier();
+    }
+
+    @CEntryPoint
+    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    private static ClientHandle<TruffleInliningData> inliningData0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<TruffleCompilationTask> taskHandle) {
+        TruffleInliningData inliningData = IsolatedCompileClient.get().unhand(taskHandle).inliningData();
+        return IsolatedCompileClient.get().hand(inliningData);
     }
 }

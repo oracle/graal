@@ -28,7 +28,6 @@ import java.lang.ref.PhantomReference;
 import java.lang.ref.Reference;
 import java.lang.ref.SoftReference;
 import java.lang.ref.WeakReference;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
@@ -57,6 +56,7 @@ import org.graalvm.compiler.nodes.extended.UnsafeAccessNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.nodes.java.AccessFieldNode;
+import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -76,6 +76,7 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.UnknownClass;
 import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.annotate.UnknownPrimitiveField;
@@ -90,6 +91,7 @@ import com.oracle.svm.core.hub.HubType;
 import com.oracle.svm.core.hub.ReferenceType;
 import com.oracle.svm.core.jdk.ClassLoaderSupport;
 import com.oracle.svm.core.jdk.RecordSupport;
+import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.VMError;
@@ -108,7 +110,7 @@ import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public final class SVMHost implements HostVM {
+public class SVMHost implements HostVM {
     private final ConcurrentHashMap<AnalysisType, DynamicHub> typeToHub = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<DynamicHub, AnalysisType> hubToType = new ConcurrentHashMap<>();
 
@@ -137,7 +139,6 @@ public final class SVMHost implements HostVM {
     private final ConcurrentMap<AnalysisMethod, Set<AnalysisType>> initializedClasses = new ConcurrentHashMap<>();
     private final ConcurrentMap<AnalysisMethod, Boolean> analysisTrivialMethods = new ConcurrentHashMap<>();
 
-    private static final Method isHiddenMethod = JavaVersionUtil.JAVA_SPEC >= 15 ? ReflectionUtil.lookupMethod(Class.class, "isHidden") : null;
     private static final Method getNestHostMethod = JavaVersionUtil.JAVA_SPEC >= 11 ? ReflectionUtil.lookupMethod(Class.class, "getNestHost") : null;
 
     public SVMHost(OptionValues options, ForkJoinPool executor, ClassLoader classLoader, ClassInitializationSupport classInitializationSupport,
@@ -277,7 +278,11 @@ public final class SVMHost implements HostVM {
          * Due to using {@link NativeImageSystemClassLoader}, a class's ClassLoader during runtime
          * may be different than the class used to load it during native-image generation.
          */
-        ClassLoader runtimeClassLoader = ClassLoaderFeature.getRuntimeClassLoader(javaClass.getClassLoader());
+        ClassLoader classloader = javaClass.getClassLoader();
+        if (classloader == null) {
+            classloader = BootLoaderSupport.getBootLoader();
+        }
+        ClassLoader runtimeClassLoader = ClassLoaderFeature.getRuntimeClassLoader(classloader);
         if (runtimeClassLoader != null) {
             Package packageValue = javaClass.getPackage();
             if (packageValue != null) {
@@ -297,6 +302,37 @@ public final class SVMHost implements HostVM {
         assert shouldInitializeAtRuntime || type.getWrapped().isInitialized() : "Types that are not marked for runtime initializations must have been initialized: " + type;
 
         return !shouldInitializeAtRuntime;
+    }
+
+    private final boolean parseOnce = SubstrateOptions.parseOnce();
+
+    @Override
+    public GraphBuilderConfiguration updateGraphBuilderConfiguration(GraphBuilderConfiguration config, AnalysisMethod method) {
+        return config.withRetainLocalVariables(retainLocalVariables());
+    }
+
+    private boolean retainLocalVariables() {
+        if (parseOnce) {
+            /*
+             * Disabling liveness analysis preserves the values of local variables beyond the
+             * bytecode-liveness. This greatly helps debugging. When local variable numbers are
+             * reused by javac, local variables can still get illegal values. Since we cannot
+             * "restore" such illegal values during deoptimization, we cannot disable liveness
+             * analysis for deoptimization target methods.
+             * 
+             * TODO: ParseOnce does not support deoptimization targets yet, this needs to be added
+             * later.
+             */
+            return SubstrateOptions.Optimize.getValue() <= 0;
+
+        } else {
+            /*
+             * We want to always disable the liveness analysis, since we want the points-to analysis
+             * to be as conservative as possible. The analysis results can then be used with the
+             * liveness analysis enabled or disabled.
+             */
+            return true;
+        }
     }
 
     @Override
@@ -356,17 +392,8 @@ public final class SVMHost implements HostVM {
          */
         String sourceFileName = stringTable.deduplicate(type.getSourceFileName(), true);
 
-        /*
-         * JDK 15 added support for Hidden Classes. Record if this javaClass is hidden.
-         */
-        boolean isHidden = false;
-        if (JavaVersionUtil.JAVA_SPEC >= 15) {
-            try {
-                isHidden = (boolean) isHiddenMethod.invoke(javaClass);
-            } catch (IllegalAccessException | InvocationTargetException e) {
-                throw VMError.shouldNotReachHere(e);
-            }
-        }
+        /* JDK 15 added support for Hidden Classes. Record if this javaClass is hidden. */
+        boolean isHidden = SubstrateUtil.isHiddenClass(javaClass);
 
         Class<?> nestHost = null;
         if (JavaVersionUtil.JAVA_SPEC >= 11) {
@@ -380,12 +407,27 @@ public final class SVMHost implements HostVM {
         boolean isRecord = RecordSupport.singleton().isRecord(javaClass);
         boolean assertionStatus = RuntimeAssertionsSupport.singleton().desiredAssertionStatus(javaClass);
 
-        final DynamicHub dynamicHub = new DynamicHub(javaClass, className, computeHubType(type), computeReferenceType(type), type.isLocal(), isAnonymousClass(javaClass), superHub, componentHub,
-                        sourceFileName, modifiers, hubClassLoader, isHidden, isRecord, nestHost, assertionStatus);
+        final DynamicHub dynamicHub = new DynamicHub(javaClass, className, computeHubType(type), computeReferenceType(type),
+                        isLocalClass(javaClass), isAnonymousClass(javaClass), superHub, componentHub, sourceFileName,
+                        modifiers, hubClassLoader, isHidden, isRecord, nestHost, assertionStatus);
         if (JavaVersionUtil.JAVA_SPEC > 8) {
             ModuleAccess.extractAndSetModule(dynamicHub, javaClass);
         }
         return dynamicHub;
+    }
+
+    private static Object isLocalClass(Class<?> javaClass) {
+        try {
+            return javaClass.isLocalClass();
+        } catch (InternalError e) {
+            return e;
+        } catch (LinkageError e) {
+            if (NativeImageOptions.AllowIncompleteClasspath.getValue()) {
+                return e;
+            } else {
+                return unsupportedMethod(javaClass, "isLocalClass");
+            }
+        }
     }
 
     /**
@@ -401,13 +443,17 @@ public final class SVMHost implements HostVM {
             if (NativeImageOptions.AllowIncompleteClasspath.getValue()) {
                 return e;
             } else {
-                String message = "Discovered a type for which isAnonymousClass can't be called: " + javaClass.getTypeName() +
-                                ". To avoid this issue at build time use the " +
-                                SubstrateOptionsParser.commandArgument(NativeImageOptions.AllowIncompleteClasspath, "+") +
-                                " option. The LinkageError will then be reported at run time when this method is called for the first time.";
-                throw new UnsupportedFeatureException(message);
+                return unsupportedMethod(javaClass, "isAnonymousClass");
             }
         }
+    }
+
+    private static Object unsupportedMethod(Class<?> javaClass, String methodName) {
+        String message = "Discovered a type for which " + methodName + " can't be called: " + javaClass.getTypeName() +
+                        ". To avoid this issue at build time use the " +
+                        SubstrateOptionsParser.commandArgument(NativeImageOptions.AllowIncompleteClasspath, "+") +
+                        " option. The LinkageError will then be reported at run time when this method is called for the first time.";
+        throw new UnsupportedFeatureException(message);
     }
 
     public static boolean isUnknownClass(ResolvedJavaType resolvedJavaType) {
@@ -503,8 +549,12 @@ public final class SVMHost implements HostVM {
 
     @Override
     public void methodAfterParsingHook(BigBang bb, AnalysisMethod method, StructuredGraph graph) {
-        for (BiConsumer<AnalysisMethod, StructuredGraph> methodAfterParsingHook : methodAfterParsingHooks) {
-            methodAfterParsingHook.accept(method, graph);
+        if (graph != null) {
+            graph.setGuardsStage(StructuredGraph.GuardsStage.FIXED_DEOPTS);
+
+            for (BiConsumer<AnalysisMethod, StructuredGraph> methodAfterParsingHook : methodAfterParsingHooks) {
+                methodAfterParsingHook.accept(method, graph);
+            }
         }
     }
 
@@ -648,5 +698,29 @@ public final class SVMHost implements HostVM {
         } catch (Throwable e) {
             throw bb.getDebug().handle(e);
         }
+    }
+
+    public static class Options {
+        @Option(help = "Enable the behavior of old GraalVM versions. When enabled, interfaces not available for the current platform are filtered.")//
+        public static final HostedOptionKey<Boolean> PlatformInterfaceCompatibilityMode = new HostedOptionKey<>(false);
+    }
+
+    @Override
+    public boolean skipInterface(AnalysisUniverse universe, ResolvedJavaType interfaceType, ResolvedJavaType implementingType) {
+        if (!universe.platformSupported(interfaceType)) {
+            String message = "The interface " + interfaceType.toJavaName(true) + " is not available in the current platform, but used by " + implementingType.toJavaName(true) + ". " +
+                            "GraalVM before version 21.2 ignored such interfaces, but this was an oversight.";
+
+            String commandArgument = SubstrateOptionsParser.commandArgument(Options.PlatformInterfaceCompatibilityMode, "+");
+            if (Options.PlatformInterfaceCompatibilityMode.getValue()) {
+                System.out.println("Warning: " + message + " The interface is filtered because the compatibility option " + commandArgument +
+                                " is used. This option will be removed in a future GraalVM version.");
+                return true;
+            } else {
+                throw new UnsupportedFeatureException(
+                                message + " The old behavior can be temporarily restored using the option " + commandArgument + ". This option will be removed in a future GraalVM version.");
+            }
+        }
+        return false;
     }
 }

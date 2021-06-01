@@ -233,7 +233,7 @@ class NFINativeAccess implements NativeAccess {
             CompilerAsserts.partialEvaluationConstant(paramCount);
             if (arguments.length != paramCount) {
                 CompilerDirectives.transferToInterpreter();
-                throw ArityException.create(paramCount, arguments.length);
+                throw ArityException.create(paramCount, paramCount, arguments.length);
             }
             try {
                 Object[] convertedArgs = new Object[arguments.length];
@@ -340,7 +340,7 @@ class NFINativeAccess implements NativeAccess {
             CompilerAsserts.partialEvaluationConstant(paramCount);
             if (arguments.length != paramCount) {
                 CompilerDirectives.transferToInterpreter();
-                throw ArityException.create(paramCount, arguments.length);
+                throw ArityException.create(paramCount, paramCount, arguments.length);
             }
             try {
                 Object[] convertedArgs = new Object[arguments.length];

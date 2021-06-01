@@ -59,8 +59,11 @@ public abstract class AbstractLookupNode extends Node {
                 minOverallArity = min(minOverallArity, matchArity);
                 maxOverallArity = max(maxOverallArity, matchArity);
                 if (matchArity == arity) {
-                    /* Multiple methods with the same name and arity, cannot disambiguate */
                     if (result != null) {
+                        /*
+                         * Multiple methods with the same name and arity (if specified), cannot
+                         * disambiguate
+                         */
                         return null;
                     }
                     result = m;
@@ -68,14 +71,18 @@ public abstract class AbstractLookupNode extends Node {
             }
         }
         if (result == null && maxOverallArity >= 0) {
-            throw ArityException.create(arity > maxOverallArity ? maxOverallArity : minOverallArity, arity);
+            throw ArityException.create(minOverallArity, maxOverallArity, arity);
         }
         return result;
     }
 
     private static boolean matchMethod(Method m, String methodName, String signature, boolean isStatic, boolean publicOnly) {
-        return (!publicOnly || m.isPublic()) && m.isStatic() == isStatic && !m.isSignaturePolymorphicDeclared() &&
-                        m.getName().toString().equals(methodName) && (signature == null || m.getSignatureAsString().equals(signature));
+        return (!publicOnly || m.isPublic()) &&
+                        m.isStatic() == isStatic &&
+                        !m.isSignaturePolymorphicDeclared() &&
+                        m.getName().toString().equals(methodName) &&
+                        // If signature is specified, do the check.
+                        (signature == null || m.getSignatureAsString().equals(signature));
     }
 
     @TruffleBoundary

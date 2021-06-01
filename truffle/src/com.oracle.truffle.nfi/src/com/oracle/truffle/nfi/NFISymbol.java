@@ -134,7 +134,7 @@ final class NFISymbol implements TruffleObject {
         }
         if (args.length != 1) {
             exception.enter();
-            throw ArityException.create(1, args.length);
+            throw ArityException.create(1, 1, args.length);
         }
 
         return bind.execute(this, args[0]);

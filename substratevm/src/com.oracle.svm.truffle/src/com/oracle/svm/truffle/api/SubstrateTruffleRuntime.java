@@ -37,12 +37,15 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
+import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
+import org.graalvm.compiler.truffle.common.TruffleInliningData;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.BackgroundCompileQueue;
 import org.graalvm.compiler.truffle.runtime.CompilationTask;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
@@ -140,7 +143,10 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
 
     private void teardown() {
         long timeout = SubstrateUtil.assertionsEnabled() ? DEBUG_TEAR_DOWN_TIMEOUT : PRODUCTION_TEAR_DOWN_TIMEOUT;
-        getCompileQueue().shutdownAndAwaitTermination(timeout);
+        BackgroundCompileQueue queue = getCompileQueue();
+        if (queue != null) {
+            queue.shutdownAndAwaitTermination(timeout);
+        }
 
         TruffleCompiler tcp = truffleCompiler;
         if (tcp != null) {
@@ -275,8 +281,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
         }
 
         try {
-            // Single threaded compilation does not require cancellation.
-            doCompile(optimizedCallTarget, null);
+            doCompile(optimizedCallTarget, new SingleThreadedCompilationTask(lastTierCompilation));
         } catch (com.oracle.truffle.api.OptimizationFailedException e) {
             if (optimizedCallTarget.getOptionValue(PolyglotCompilerOptions.CompilationExceptionsArePrinted)) {
                 Log.log().string(printStackTraceToString(e));
@@ -375,5 +380,34 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
             default:
                 throw new IllegalStateException("Unsupported value " + res);
         }
+    }
+
+    /**
+     * Compilation task used when truffle runtime is run in single threaded mode.
+     */
+    private static class SingleThreadedCompilationTask implements TruffleCompilationTask {
+        private final boolean lastTierCompilation;
+        TruffleInlining inlining = new TruffleInlining();
+
+        SingleThreadedCompilationTask(boolean lastTierCompilation) {
+            this.lastTierCompilation = lastTierCompilation;
+        }
+
+        @Override
+        public boolean isCancelled() {
+            // Single threaded compilation does not require cancellation.
+            return false;
+        }
+
+        @Override
+        public boolean isLastTier() {
+            return lastTierCompilation;
+        }
+
+        @Override
+        public TruffleInliningData inliningData() {
+            return inlining;
+        }
+
     }
 }

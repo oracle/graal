@@ -24,29 +24,27 @@
  */
 package com.oracle.svm.hosted.phases;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.java.BytecodeParser;
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GeneratedInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
-import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.word.WordTypes;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.core.SubstrateOptions;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
 
-    public AnalysisGraphBuilderPhase(Providers providers,
+    public AnalysisGraphBuilderPhase(CoreProviders providers,
                     GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext, WordTypes wordTypes) {
         super(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext, wordTypes);
     }
@@ -71,9 +69,11 @@ public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
             return result;
         }
 
+        private final boolean parseOnce = SubstrateOptions.parseOnce();
+
         @Override
         protected BytecodeParser.ExceptionEdgeAction getActionForInvokeExceptionEdge(InlineInfo lastInlineInfo) {
-            if (!insideTryBlock()) {
+            if (!parseOnce && !insideTryBlock()) {
                 /*
                  * The static analysis does not track the flow of exceptions across method
                  * boundaries. Therefore, it is not necessary to have exception edges that go
@@ -82,11 +82,6 @@ public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
                 return ExceptionEdgeAction.OMIT;
             }
             return super.getActionForInvokeExceptionEdge(lastInlineInfo);
-        }
-
-        @Override
-        public boolean canDeferPlugin(GeneratedInvocationPlugin plugin) {
-            return plugin.getSource().equals(Fold.class) || plugin.getSource().equals(Node.NodeIntrinsic.class);
         }
     }
 }

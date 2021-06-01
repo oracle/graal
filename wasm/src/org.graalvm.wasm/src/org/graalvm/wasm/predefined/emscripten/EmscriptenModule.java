@@ -56,7 +56,7 @@ import org.graalvm.wasm.predefined.wasi.WasiFdWriteNode;
 public class EmscriptenModule extends BuiltinModule {
     @Override
     protected WasmInstance createInstance(WasmLanguage language, WasmContext context, String name) {
-        WasmInstance instance = new WasmInstance(new WasmModule(name, null));
+        WasmInstance instance = new WasmInstance(context, new WasmModule(name, null));
 
         final WasmInstance testutil = context.moduleInstances().get("testutil");
         if (testutil != null) {

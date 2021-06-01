@@ -134,3 +134,26 @@ standard libraries:
 lli --lib $(rustc --print sysroot)/lib/libstd-* hello-rust.bc
 Hello Rust!
 ```
+
+Since the Rust compiler is not using the LLVM toolchain shipped with GraalVM, depending on the
+local Rust installation, an error similar to one of the following might happen:
+```
+Mismatching target triple (expected x86_64-unknown-linux-gnu, got x86_64-pc-linux-gnu)
+Mismatching target triple (expected x86_64-apple-macosx10.11.0, got x86_64-apple-darwin)
+```
+
+This indicates that the Rust compiler used a different target triple than the LLVM toolchain
+shipped with GraalVM. In this particular case, the differences are just different naming
+conventions across Linux distributions or MacOS versions, there is no real difference.
+In that case, the error can be safely ignored:
+
+```shell
+lli --experimental-options --llvm.verifyBitcode=false --lib $(rustc --print sysroot)/lib/libstd-* hello-rust.bc
+```
+
+This option should only be used after manually verifying that the target triples are
+really compatible, i.e., the architecture, operating system, and C library all match.
+For example, `x86_64-unknown-linux-musl` and `x86_64-unknown-linux-gnu` are really different,
+the bitcode is compiled for a different C library. The `--llvm.verifyBitcode=false` option
+disables all checks, GraalVM will then try to run the bitcode regardless, which might randomly
+fail in unexpected ways.

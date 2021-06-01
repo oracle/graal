@@ -58,7 +58,7 @@ public interface ReflectionConfigurationParserDelegate<T> {
 
     void registerDeclaredConstructors(T type);
 
-    void registerField(T type, String fieldName, boolean allowWrite, boolean allowUnsafeAccess) throws NoSuchFieldException;
+    void registerField(T type, String fieldName, boolean allowWrite) throws NoSuchFieldException;
 
     boolean registerAllMethodsWithName(T type, String methodName);
 

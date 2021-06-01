@@ -43,7 +43,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
@@ -59,8 +58,10 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 @ExportLibrary(LLVMManagedReadLibrary.class)
 @ExportLibrary(LLVMManagedWriteLibrary.class)
 public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
-
-    private static final int MAX_CACHED_WRITES = 3;
+    /**
+     * The number of writes that will invalidate the assumption.
+     */
+    private static final int MAX_INVALIDATING_WRITES = 3;
 
     private static final class State {
         final Object value;
@@ -68,28 +69,22 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
         final int writeCount;
 
         State(Object value, int writeCount) {
-            assert writeCount <= MAX_CACHED_WRITES;
+            assert writeCount <= MAX_INVALIDATING_WRITES;
             this.value = value;
             this.writeCount = writeCount;
-            this.assumption = Truffle.getRuntime().createAssumption();
+            this.assumption = Truffle.getRuntime().createAssumption("LLVM global variable is constant");
         }
     }
 
     private long address;
 
-    // Only constant-propagate a globals' state when reading. See {@link get()} and {@link set()}
-    // below. This essentially means we need two copies of {@link contents}, one for reading from
-    // (which is effectively final, i.e. @CompilationFinal) and one for using when updating ({@link
-    // contentsNotFinal}).
     @CompilationFinal private State contents;
-    private State contentsNotFinal;
 
     private Object fallbackContents;
 
     public LLVMGlobalContainer() {
         State state = new State(0L, 0);
         contents = state;
-        contentsNotFinal = state;
     }
 
     public Object get() {
@@ -98,7 +93,7 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
             if (c.assumption.isValid()) {
                 return c.value;
             }
-            if (c.writeCount == MAX_CACHED_WRITES) {
+            if (c.writeCount == MAX_INVALIDATING_WRITES) {
                 return fallbackContents;
             }
             // invalidation in progress, re-read
@@ -110,19 +105,33 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
         return fallbackContents;
     }
 
-    public void set(Object value, BranchProfile needsInitialize, BranchProfile needsInvalidation) {
-        State c = contentsNotFinal;
-        if (c.writeCount < MAX_CACHED_WRITES) {
-            needsInitialize.enter();
-            State state = new State(value, c.writeCount + 1);
-            contents = state;
-            contentsNotFinal = state;
-            c.assumption.invalidate();
-        } else {
+    public void set(Object value) {
+        while (true) {
+            State c = contents;
+
             if (c.assumption.isValid()) {
-                needsInvalidation.enter();
-                c.assumption.invalidate();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+
+                if (c.writeCount < MAX_INVALIDATING_WRITES) {
+                    State state = new State(value, c.writeCount + 1);
+                    contents = state;
+                    c.assumption.invalidate();
+                } else {
+                    c.assumption.invalidate();
+                }
+
+                break;
             }
+
+            /*
+             * If the threshold of writes is crossed then fallback, otherwise jump back and re-check
+             * the assumption.
+             */
+            if (c.writeCount == MAX_INVALIDATING_WRITES) {
+                break;
+            }
+
+            CompilerDirectives.transferToInterpreterAndInvalidate();
         }
         /*
          * Note: we always set the 'fallbackContents' because in theory, it could happen that
@@ -463,11 +472,18 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
         }
 
         @Specialization(guards = {"!self.isPointer()", "offset == 0"}, assumptions = "singleContextAssumption()")
-        static void writeManagedSingleContext(LLVMGlobalContainer self, long offset, long value,
-                        @Shared("p1") @Cached BranchProfile needsInitialize,
-                        @Shared("p2") @Cached BranchProfile needsInvalidation) {
+        static void writeManagedSingleContext(LLVMGlobalContainer self, long offset, long value) {
             assert offset == 0;
-            self.set(value, needsInitialize, needsInvalidation);
+            if (CompilerDirectives.isPartialEvaluationConstant(self)) {
+                self.set(value);
+            } else {
+                writeManagedSingleContextBoundary(self, value);
+            }
+        }
+
+        @TruffleBoundary
+        private static void writeManagedSingleContextBoundary(LLVMGlobalContainer self, long value) {
+            self.set(value);
         }
 
         @Specialization(guards = {"!self.isPointer()", "offset == 0"}, replaces = "writeManagedSingleContext")
@@ -501,11 +517,18 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
         }
 
         @Specialization(guards = {"!self.isPointer()", "offset == 0"}, assumptions = "singleContextAssumption()")
-        static void writeI64ManagedSingleContext(LLVMGlobalContainer self, long offset, Object value,
-                        @Shared("p1") @Cached BranchProfile needsInitialize,
-                        @Shared("p2") @Cached BranchProfile needsInvalidation) {
+        static void writeI64ManagedSingleContext(LLVMGlobalContainer self, long offset, Object value) {
             assert offset == 0;
-            self.set(value, needsInitialize, needsInvalidation);
+            if (CompilerDirectives.isPartialEvaluationConstant(self)) {
+                self.set(value);
+            } else {
+                writeI64ManagedSingleContextBoundary(self, value);
+            }
+        }
+
+        @TruffleBoundary
+        private static void writeI64ManagedSingleContextBoundary(LLVMGlobalContainer self, Object value) {
+            self.set(value);
         }
 
         @Specialization(guards = {"!self.isPointer()", "offset == 0"}, replaces = "writeI64ManagedSingleContext")

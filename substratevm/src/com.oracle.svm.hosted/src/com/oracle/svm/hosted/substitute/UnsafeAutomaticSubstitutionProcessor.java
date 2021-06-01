@@ -75,9 +75,11 @@ import org.graalvm.nativeimage.hosted.Feature;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.ParsingReason;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
+import com.oracle.svm.core.jdk.RecordSupport;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
@@ -129,8 +131,10 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
     private final List<ResolvedJavaType> suppressWarnings;
 
     private static ResolvedJavaType resolvedUnsafeClass;
+    private static ResolvedJavaType resolvedSunMiscUnsafeClass;
 
     private ResolvedJavaMethod unsafeObjectFieldOffsetFieldMethod;
+    private ResolvedJavaMethod sunMiscUnsafeObjectFieldOffsetMethod;
     private ResolvedJavaMethod unsafeObjectFieldOffsetClassStringMethod;
     private ResolvedJavaMethod unsafeArrayBaseOffsetMethod;
     private ResolvedJavaMethod unsafeArrayIndexScaleMethod;
@@ -181,10 +185,12 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
             }
 
             Class<?> unsafeClass;
+            Class<?> sunMiscUnsafeClass;
 
             try {
+                sunMiscUnsafeClass = Class.forName("sun.misc.Unsafe");
                 if (JavaVersionUtil.JAVA_SPEC <= 8) {
-                    unsafeClass = Class.forName("sun.misc.Unsafe");
+                    unsafeClass = sunMiscUnsafeClass;
                 } else {
                     unsafeClass = Class.forName("jdk.internal.misc.Unsafe");
                 }
@@ -193,6 +199,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
             }
 
             resolvedUnsafeClass = originalMetaAccess.lookupJavaType(unsafeClass);
+            resolvedSunMiscUnsafeClass = originalMetaAccess.lookupJavaType(sunMiscUnsafeClass);
 
             Method unsafeObjectFieldOffset = unsafeClass.getMethod("objectFieldOffset", java.lang.reflect.Field.class);
             unsafeObjectFieldOffsetFieldMethod = originalMetaAccess.lookupJavaMethod(unsafeObjectFieldOffset);
@@ -205,6 +212,18 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
                 unsafeObjectFieldOffsetClassStringMethod = originalMetaAccess.lookupJavaMethod(unsafeObjectClassStringOffset);
                 noCheckedExceptionsSet.add(unsafeObjectFieldOffsetClassStringMethod);
                 neverInlineSet.add(unsafeObjectFieldOffsetClassStringMethod);
+            }
+
+            if (JavaVersionUtil.JAVA_SPEC >= 15) {
+                /*
+                 * JDK 15 and later add checks for hidden classes and record classes in
+                 * sun.misc.Unsafe before delegating to jdk.internal.misc.Unsafe. When inlined, the
+                 * checks make control flow too complex to detect offset field assignments.
+                 */
+                Method sunMiscUnsafeObjectFieldOffset = sunMiscUnsafeClass.getMethod("objectFieldOffset", java.lang.reflect.Field.class);
+                sunMiscUnsafeObjectFieldOffsetMethod = originalMetaAccess.lookupJavaMethod(sunMiscUnsafeObjectFieldOffset);
+                noCheckedExceptionsSet.add(sunMiscUnsafeObjectFieldOffsetMethod);
+                neverInlineSet.add(sunMiscUnsafeObjectFieldOffsetMethod);
             }
 
             Method unsafeArrayBaseOffset = unsafeClass.getMethod("arrayBaseOffset", java.lang.Class.class);
@@ -356,7 +375,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
 
                 for (Invoke invoke : clinitGraph.getInvokes()) {
                     if (invoke.callTarget() instanceof MethodCallTargetNode) {
-                        if (isInvokeTo(invoke, unsafeObjectFieldOffsetFieldMethod)) {
+                        if (isInvokeTo(invoke, unsafeObjectFieldOffsetFieldMethod) || isInvokeTo(invoke, sunMiscUnsafeObjectFieldOffsetMethod)) {
                             processUnsafeObjectFieldOffsetFieldInvoke(hostType, invoke);
                         } else if (isInvokeTo(invoke, unsafeObjectFieldOffsetClassStringMethod)) {
                             processUnsafeObjectFieldOffsetClassStringInvoke(hostType, invoke);
@@ -390,9 +409,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
         ValueNode fieldArgument = unsafeObjectFieldOffsetInvoke.callTarget().arguments().get(1);
         if (fieldArgument.isConstant()) {
             Field field = snippetReflection.asObject(Field.class, fieldArgument.asJavaConstant());
-            if (field == null) {
-                unsuccessfulReasons.add("The argument of Unsafe.objectFieldOffset() is a null constant.");
-            } else {
+            if (isValidField(unsafeObjectFieldOffsetInvoke, field, unsuccessfulReasons)) {
                 targetFieldHolder = field.getDeclaringClass();
                 targetFieldName = field.getName();
             }
@@ -400,6 +417,27 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
             unsuccessfulReasons.add("The argument of Unsafe.objectFieldOffset(Field) is not a constant field.");
         }
         processUnsafeObjectFieldOffsetInvoke(type, unsafeObjectFieldOffsetInvoke, unsuccessfulReasons, targetFieldHolder, targetFieldName);
+    }
+
+    private boolean isValidField(Invoke invoke, Field field, List<String> unsuccessfulReasons) {
+        if (field == null) {
+            unsuccessfulReasons.add("The argument of Unsafe.objectFieldOffset() is a null constant.");
+            return false;
+        }
+
+        boolean valid = true;
+        if (JavaVersionUtil.JAVA_SPEC >= 15 && isInvokeTo(invoke, sunMiscUnsafeObjectFieldOffsetMethod)) {
+            Class<?> declaringClass = field.getDeclaringClass();
+            if (RecordSupport.singleton().isRecord(declaringClass)) {
+                unsuccessfulReasons.add("The argument to sun.misc.Unsafe.objectFieldOffset(Field) is a field of a record.");
+                valid = false;
+            }
+            if (SubstrateUtil.isHiddenClass(declaringClass)) {
+                unsuccessfulReasons.add("The argument to sun.misc.Unsafe.objectFieldOffset(Field) is a field of a hidden class.");
+                valid = false;
+            }
+        }
+        return valid;
     }
 
     /**
@@ -840,8 +878,8 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
              * e.g., like a store to a field that we would then miss.
              */
             MethodCallTargetNode methodCallTarget = (MethodCallTargetNode) valueNodeUsage;
-            ResolvedJavaMethod targetMethod = methodCallTarget.targetMethod();
-            if (targetMethod.getDeclaringClass().equals(resolvedUnsafeClass)) {
+            ResolvedJavaType declaringClass = methodCallTarget.targetMethod().getDeclaringClass();
+            if (declaringClass.equals(resolvedUnsafeClass) || declaringClass.equals(resolvedSunMiscUnsafeClass)) {
                 return true;
             }
         }

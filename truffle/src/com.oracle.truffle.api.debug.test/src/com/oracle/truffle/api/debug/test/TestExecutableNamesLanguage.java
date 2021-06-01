@@ -335,7 +335,7 @@ public class TestExecutableNamesLanguage extends ProxyLanguage {
         @ExportMessage
         final Object execute(Object[] arguments) throws ArityException {
             if (arguments.length > 0) {
-                throw ArityException.create(0, arguments.length);
+                throw ArityException.create(0, 0, arguments.length);
             }
             return target.call(name);
         }

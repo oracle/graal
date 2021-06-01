@@ -71,6 +71,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.ParsingReason;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.DeoptTest;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.NeverInlineTrivial;
@@ -199,7 +200,10 @@ public class ExperimentalNativeImageInlineDuringParsingPlugin implements InlineI
 
             if (reason == ParsingReason.PointsToAnalysis) {
                 AnalysisMethod aMethod = (AnalysisMethod) callee;
-                aMethod.registerAsImplementationInvoked(null);
+
+                if (!SubstrateOptions.parseOnce()) {
+                    aMethod.registerAsImplementationInvoked(null);
+                }
 
                 if (!aMethod.isStatic() && args[0].isConstant()) {
                     AnalysisType receiverType = (AnalysisType) StampTool.typeOrNull(args[0]);
@@ -219,6 +223,11 @@ public class ExperimentalNativeImageInlineDuringParsingPlugin implements InlineI
                         GuardedAnnotationAccess.isAnnotationPresent(callee, NeverInline.class) || GuardedAnnotationAccess.isAnnotationPresent(callee, NeverInlineTrivial.class) ||
                         GuardedAnnotationAccess.isAnnotationPresent(callee, Uninterruptible.class) || GuardedAnnotationAccess.isAnnotationPresent(caller, Uninterruptible.class) ||
                         GuardedAnnotationAccess.isAnnotationPresent(callee, RestrictHeapAccess.class) || GuardedAnnotationAccess.isAnnotationPresent(caller, RestrictHeapAccess.class) ||
+                        /*
+                         * Inlining during parsing into a class initializer can lead to recursive
+                         * parsing of that class initializer.
+                         */
+                        caller.isClassInitializer() ||
                         /*
                          * Canonicalization during inlining folds to a constant in analysis, but not
                          * for

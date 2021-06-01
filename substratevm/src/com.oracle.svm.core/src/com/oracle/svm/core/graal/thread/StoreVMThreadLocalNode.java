@@ -59,6 +59,10 @@ public class StoreVMThreadLocalNode extends AbstractStateSplit implements Lowera
         this.value = value;
     }
 
+    public ValueNode getValue() {
+        return value;
+    }
+
     @Override
     public void lower(LoweringTool tool) {
         assert threadLocalInfo.offset >= 0;

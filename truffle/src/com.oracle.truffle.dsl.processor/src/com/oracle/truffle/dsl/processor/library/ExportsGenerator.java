@@ -278,13 +278,6 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         }
     }
 
-    private static boolean hasFinalDynamicDispatch(ExportsLibrary libraryExport) {
-        if (libraryExport.isDynamicDispatchTarget()) {
-            return libraryExport.getTemplateType().getModifiers().contains(Modifier.FINAL);
-        }
-        return true;
-    }
-
     private static Modifier resolveSubclassVisibility(ExportsLibrary libraryExport) {
         if (libraryExport.isBuiltinDefaultExport()) {
             // lets open this can of worms at a later date
@@ -1005,11 +998,9 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
             }
             acceptsBuilder.string("dynamicDispatch_.accepts(" + receiverName + ") && ");
 
-            boolean finalClass = hasFinalDynamicDispatch(libraryExports);
-            if (finalClass) {
-                acceptsBuilder.string("dynamicDispatch_.dispatch(" + receiverName + ")");
-                acceptsBuilder.string(" == ");
-            }
+            acceptsBuilder.string("dynamicDispatch_.dispatch(" + receiverName + ")");
+            acceptsBuilder.string(" == ");
+
             if (libraryExports.isDynamicDispatchTarget()) {
                 acceptsBuilder.typeLiteral(libraryExports.getTemplateType().asType());
             } else {
@@ -1028,14 +1019,6 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                     }
                 }
                 acceptsBuilder.string(name);
-            }
-
-            if (finalClass) {
-                // nothing to close
-            } else {
-                acceptsBuilder.string(".isAssignableFrom(");
-                acceptsBuilder.string("dynamicDispatch_.dispatch(" + receiverName + ")");
-                acceptsBuilder.string(")");
             }
 
         } else {

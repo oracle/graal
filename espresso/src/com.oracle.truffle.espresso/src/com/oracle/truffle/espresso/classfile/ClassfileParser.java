@@ -44,18 +44,8 @@ import static com.oracle.truffle.espresso.classfile.Constants.ACC_SYNCHRONIZED;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_SYNTHETIC;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_VARARGS;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_VOLATILE;
-import static com.oracle.truffle.espresso.classfile.Constants.APPEND_FRAME_BOUND;
-import static com.oracle.truffle.espresso.classfile.Constants.CHOP_BOUND;
-import static com.oracle.truffle.espresso.classfile.Constants.FULL_FRAME;
-import static com.oracle.truffle.espresso.classfile.Constants.ITEM_InitObject;
-import static com.oracle.truffle.espresso.classfile.Constants.ITEM_NewObject;
-import static com.oracle.truffle.espresso.classfile.Constants.ITEM_Object;
 import static com.oracle.truffle.espresso.classfile.Constants.JVM_RECOGNIZED_CLASS_MODIFIERS;
 import static com.oracle.truffle.espresso.classfile.Constants.JVM_RECOGNIZED_METHOD_MODIFIERS;
-import static com.oracle.truffle.espresso.classfile.Constants.SAME_FRAME_BOUND;
-import static com.oracle.truffle.espresso.classfile.Constants.SAME_FRAME_EXTENDED;
-import static com.oracle.truffle.espresso.classfile.Constants.SAME_LOCALS_1_STACK_ITEM_BOUND;
-import static com.oracle.truffle.espresso.classfile.Constants.SAME_LOCALS_1_STACK_ITEM_EXTENDED;
 
 import java.io.IOException;
 import java.lang.reflect.Modifier;
@@ -88,7 +78,6 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
-import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ParserField;
 import com.oracle.truffle.espresso.impl.ParserKlass;
 import com.oracle.truffle.espresso.impl.ParserMethod;
@@ -178,30 +167,22 @@ public final class ClassfileParser {
     private int maxBootstrapMethodAttrIndex = -1;
     private Tag badConstantSeen;
 
+    StaticObject loader;
+
     private ConstantPool pool;
 
-    @SuppressWarnings("unused")
-    public Klass getHostClass() {
-        return hostClass;
-    }
-
-    /**
-     * The host class for an anonymous class.
-     */
-    private final Klass hostClass;
-
-    private ClassfileParser(ClassfileStream stream, String requestedClassType, Klass hostClass, EspressoContext context, StaticObject[] constantPoolPatches) {
+    private ClassfileParser(ClassfileStream stream, StaticObject loader, String requestedClassType, EspressoContext context, StaticObject[] constantPoolPatches) {
         this.requestedClassType = requestedClassType;
-        this.hostClass = hostClass;
         this.context = context;
         this.classfile = null;
         this.stream = Objects.requireNonNull(stream);
         this.constantPoolPatches = constantPoolPatches;
+        this.loader = loader;
     }
 
     // Note: only used for reading the class name from class bytes
     private ClassfileParser(ClassfileStream stream, EspressoContext context) {
-        this(stream, "", null, context, null);
+        this(stream, null, "", context, null);
     }
 
     void handleBadConstant(Tag tag, ClassfileStream s) {
@@ -233,12 +214,12 @@ public final class ClassfileParser {
         }
     }
 
-    public static ParserKlass parse(ClassfileStream stream, String requestedClassName, Klass hostClass, EspressoContext context) {
-        return parse(stream, requestedClassName, hostClass, context, null);
+    public static ParserKlass parse(ClassfileStream stream, StaticObject loader, String requestedClassName, EspressoContext context) {
+        return parse(stream, loader, requestedClassName, context, null);
     }
 
-    public static ParserKlass parse(ClassfileStream stream, String requestedClassName, Klass hostClass, EspressoContext context, @Host(Object[].class) StaticObject[] constantPoolPatches) {
-        return new ClassfileParser(stream, requestedClassName, hostClass, context, constantPoolPatches).parseClass();
+    public static ParserKlass parse(ClassfileStream stream, StaticObject loader, String requestedClassName, EspressoContext context, @Host(Object[].class) StaticObject[] constantPoolPatches) {
+        return new ClassfileParser(stream, loader, requestedClassName, context, constantPoolPatches).parseClass();
     }
 
     private ParserKlass parseClass() {
@@ -747,7 +728,7 @@ public final class ClassfileParser {
                 }
             }
             attributeCount = stream.readU2();
-            methodAttributes = new Attribute[attributeCount];
+            methodAttributes = spawnAttributesArray(attributeCount);
         }
 
         CodeAttribute codeAttribute = null;
@@ -838,6 +819,10 @@ public final class ClassfileParser {
         return ParserMethod.create(methodFlags, name, signature, methodAttributes);
     }
 
+    private static Attribute[] spawnAttributesArray(int attributeCount) {
+        return attributeCount == 0 ? Attribute.EMPTY_ARRAY : new Attribute[attributeCount];
+    }
+
     private static int parseAnnotation(ClassfileStream subStream) {
         int typeIndex = subStream.readU2();
         int numElementValuePairs = subStream.readU2();
@@ -903,7 +888,7 @@ public final class ClassfileParser {
 
         CommonAttributeParser commonAttributeParser = new CommonAttributeParser(InfoType.Class);
 
-        final Attribute[] classAttributes = new Attribute[attributeCount];
+        final Attribute[] classAttributes = spawnAttributesArray(attributeCount);
         for (int i = 0; i < attributeCount; i++) {
             final int attributeNameIndex = stream.readU2();
             final Symbol<Name> attributeName = pool.symbolAt(attributeNameIndex, "attribute name");
@@ -1005,11 +990,13 @@ public final class ClassfileParser {
         if (entryCount == 0) {
             return LineNumberTableAttribute.EMPTY;
         }
-        LineNumberTableAttribute.Entry[] entries = new LineNumberTableAttribute.Entry[entryCount];
+        char[] entries = new char[entryCount << 1];
         for (int i = 0; i < entryCount; i++) {
-            int bci = stream.readU2();
-            int lineNumber = stream.readU2();
-            entries[i] = new LineNumberTableAttribute.Entry(bci, lineNumber);
+            int idx = i << 1;
+            char bci = (char) stream.readU2();
+            char lineNumber = (char) stream.readU2();
+            entries[idx] = bci;
+            entries[idx + 1] = lineNumber;
         }
         return new LineNumberTableAttribute(name, entries);
     }
@@ -1226,6 +1213,14 @@ public final class ClassfileParser {
         return false;
     }
 
+    private StackMapTableAttribute parseStackMapTableAttribute(Symbol<Name> attributeName, int attributeSize) {
+        if (context.needsVerify(loader)) {
+            return new StackMapTableAttribute(attributeName, stream.readByteArray(attributeSize));
+        }
+        stream.skip(attributeSize);
+        return StackMapTableAttribute.EMPTY;
+    }
+
     private NestHostAttribute parseNestHostAttribute(Symbol<Name> attributeName) {
         int hostClassIndex = stream.readU2();
         pool.classAt(hostClassIndex).validate(pool);
@@ -1275,84 +1270,6 @@ public final class ClassfileParser {
         return new EnclosingMethodAttribute(name, classIndex, methodIndex);
     }
 
-    private StackMapFrame parseStackMapFrame() {
-        int frameType = stream.readU1();
-        if (frameType < SAME_FRAME_BOUND) {
-            return new SameFrame(frameType);
-        }
-        if (frameType < SAME_LOCALS_1_STACK_ITEM_BOUND) {
-            VerificationTypeInfo stackItem = parseVerificationTypeInfo();
-            return new SameLocals1StackItemFrame(frameType, stackItem);
-        }
-        if (frameType < SAME_LOCALS_1_STACK_ITEM_EXTENDED) {
-            // [128, 246] is reserved and still unused
-            throw ConstantPool.classFormatError("Encountered reserved StackMapFrame tag: " + frameType);
-        }
-        if (frameType == SAME_LOCALS_1_STACK_ITEM_EXTENDED) {
-            int offsetDelta = stream.readU2();
-            VerificationTypeInfo stackItem = parseVerificationTypeInfo();
-            return new SameLocals1StackItemFrameExtended(frameType, offsetDelta, stackItem);
-        }
-        if (frameType < CHOP_BOUND) {
-            int offsetDelta = stream.readU2();
-            return new ChopFrame(frameType, offsetDelta);
-        }
-        if (frameType == SAME_FRAME_EXTENDED) {
-            int offsetDelta = stream.readU2();
-            return new SameFrameExtended(frameType, offsetDelta);
-        }
-        if (frameType < APPEND_FRAME_BOUND) {
-            int offsetDelta = stream.readU2();
-            int appendLength = frameType - SAME_FRAME_EXTENDED;
-            VerificationTypeInfo[] locals = new VerificationTypeInfo[appendLength];
-            for (int i = 0; i < appendLength; i++) {
-                locals[i] = parseVerificationTypeInfo();
-            }
-            return new AppendFrame(frameType, offsetDelta, locals);
-        }
-        if (frameType == FULL_FRAME) {
-            int offsetDelta = stream.readU2();
-            int localsLength = stream.readU2();
-            VerificationTypeInfo[] locals = new VerificationTypeInfo[localsLength];
-            for (int i = 0; i < localsLength; i++) {
-                locals[i] = parseVerificationTypeInfo();
-            }
-            int stackLength = stream.readU2();
-            VerificationTypeInfo[] stack = new VerificationTypeInfo[stackLength];
-            for (int i = 0; i < stackLength; i++) {
-                stack[i] = parseVerificationTypeInfo();
-            }
-            return new FullFrame(frameType, offsetDelta, locals, stack);
-        }
-        throw ConstantPool.classFormatError("Unrecognized StackMapFrame tag: " + frameType);
-    }
-
-    private VerificationTypeInfo parseVerificationTypeInfo() {
-        int tag = stream.readU1();
-        if (tag < ITEM_InitObject) {
-            return PrimitiveTypeInfo.get(tag);
-        }
-        switch (tag) {
-            case ITEM_InitObject:
-                return UninitializedThis.get();
-            case ITEM_Object:
-                return new ReferenceVariable(stream.readU2());
-            case ITEM_NewObject:
-                return new UninitializedVariable(stream.readU2());
-            default:
-                throw ConstantPool.classFormatError("Unrecognized verification type info tag: " + tag);
-        }
-    }
-
-    private StackMapTableAttribute parseStackMapTableAttribute(Symbol<Name> name) {
-        int entryCount = stream.readU2();
-        StackMapFrame[] entries = new StackMapFrame[entryCount];
-        for (int i = 0; i < entryCount; i++) {
-            entries[i] = parseStackMapFrame();
-        }
-        return new StackMapTableAttribute(name, entries);
-    }
-
     private CodeAttribute parseCodeAttribute(Symbol<Name> name) {
         int maxStack = stream.readU2();
         int maxLocals = stream.readU2();
@@ -1374,7 +1291,7 @@ public final class ClassfileParser {
         }
 
         int attributeCount = stream.readU2();
-        final Attribute[] codeAttributes = new Attribute[attributeCount];
+        final Attribute[] codeAttributes = spawnAttributesArray(attributeCount);
 
         CommonAttributeParser commonAttributeParser = new CommonAttributeParser(InfoType.Code);
 
@@ -1397,15 +1314,7 @@ public final class ClassfileParser {
                 if (stackMapTable != null) {
                     throw ConstantPool.classFormatError("Duplicate StackMapTable attribute");
                 }
-                codeAttributes[i] = stackMapTable = parseStackMapTableAttribute(attributeName);
-                // GR-19627 HotSpot's ad-hoc behavior: Truncated StackMapTable attributes throws
-                // either VerifyError or ClassFormatError only if verified. Here the
-                // attribute is marked for the verifier.
-                int remaining = attributeSize - (stream.getPosition() - startPosition);
-                if (remaining > 0) {
-                    stream.skip(remaining);
-                    stackMapTable.setTruncated();
-                }
+                codeAttributes[i] = stackMapTable = parseStackMapTableAttribute(attributeName, attributeSize);
             } else {
                 Attribute attr = commonAttributeParser.parseCommonAttribute(attributeName, attributeSize);
                 // stream.skip(attributeSize);
@@ -1422,6 +1331,9 @@ public final class ClassfileParser {
 
     private ExceptionHandler[] parseExceptionHandlerEntries() {
         int count = stream.readU2();
+        if (count == 0) {
+            return ExceptionHandler.EMPTY_ARRAY;
+        }
         ExceptionHandler[] entries = new ExceptionHandler[count];
         for (int i = 0; i < count; i++) {
             int startPc = stream.readU2();
@@ -1489,7 +1401,7 @@ public final class ClassfileParser {
         }
 
         final int attributeCount = stream.readU2();
-        final Attribute[] fieldAttributes = new Attribute[attributeCount];
+        final Attribute[] fieldAttributes = spawnAttributesArray(attributeCount);
 
         ConstantValueAttribute constantValue = null;
         CommonAttributeParser commonAttributeParser = new CommonAttributeParser(InfoType.Field);

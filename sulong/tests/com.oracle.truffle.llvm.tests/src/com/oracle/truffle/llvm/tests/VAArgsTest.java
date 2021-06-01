@@ -48,7 +48,7 @@ public final class VAArgsTest extends BaseSulongOnlyHarness {
 
     private static final String TEST_DIST_ROOT = TestOptions.getTestDistribution("SULONG_EMBEDDED_TEST_SUITES");
     private static final String TEST_DIR = Paths.get(TEST_DIST_ROOT, "vaargs").toString();
-    private static final String testSuffix = "O1.bc";
+    private static final String testSuffix = "bitcode-O1.bc";
 
     @Parameter(value = 0) public Path path;
     @Parameter(value = 1) public RunConfiguration configuration;

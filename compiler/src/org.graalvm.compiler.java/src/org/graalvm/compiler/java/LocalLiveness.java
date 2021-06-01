@@ -77,6 +77,11 @@ import static org.graalvm.compiler.bytecode.Bytecodes.LSTORE_2;
 import static org.graalvm.compiler.bytecode.Bytecodes.LSTORE_3;
 import static org.graalvm.compiler.bytecode.Bytecodes.RET;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.BitSet;
+
+import org.graalvm.collections.Pair;
 import org.graalvm.compiler.bytecode.BytecodeStream;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.java.BciBlockMapping.BciBlock;
@@ -87,15 +92,93 @@ import org.graalvm.compiler.java.BciBlockMapping.BciBlock;
  */
 public abstract class LocalLiveness {
     protected final BciBlock[] blocks;
+    private final ArrayList<ArrayList<Integer>> asyncSuccessors;
 
-    public static LocalLiveness compute(DebugContext debug, BytecodeStream stream, BciBlock[] blocks, int maxLocals, int loopCount) {
-        LocalLiveness liveness = maxLocals <= 64 ? new SmallLocalLiveness(blocks, maxLocals, loopCount) : new LargeLocalLiveness(blocks, maxLocals, loopCount);
+    public static LocalLiveness compute(DebugContext debug, BytecodeStream stream, BciBlockMapping mapping, int maxLocals, int loopCount, boolean asyncLiveness) {
+        LocalLiveness liveness = maxLocals <= 64 ? new SmallLocalLiveness(mapping, maxLocals, loopCount, asyncLiveness) : new LargeLocalLiveness(mapping, maxLocals, loopCount, asyncLiveness);
         liveness.computeLiveness(debug, stream);
         return liveness;
     }
 
-    protected LocalLiveness(BciBlock[] blocks) {
-        this.blocks = blocks;
+    protected LocalLiveness(BciBlockMapping mapping, boolean asyncLiveness) {
+        if (asyncLiveness && mapping.exceptionHandlers.length > 0) {
+            Pair<ArrayList<BciBlock>, ArrayList<ArrayList<Integer>>> info = generateAsyncLivenessInfo(mapping);
+            this.blocks = info.getLeft().toArray(new BciBlock[0]);
+            this.asyncSuccessors = info.getRight();
+        } else {
+            this.blocks = mapping.getBlocks();
+            this.asyncSuccessors = null;
+        }
+    }
+
+    /**
+     * Asynchronous exceptions can occur from any bci within the block. Accordingly, all exception
+     * handlers reachable from a block must be considered live for the entire block. In our
+     * implementation, this is done by recording the {@link #asyncSuccessors} and always propagating
+     * their liveness information into a block's liveIn.
+     *
+     * Asynchronous exceptions may also make blocks reachable that are not otherwise reached. If so,
+     * then these newly reachable blocks must also be included as part of the liveness analysis.
+     */
+    private static Pair<ArrayList<BciBlock>, ArrayList<ArrayList<Integer>>> generateAsyncLivenessInfo(BciBlockMapping mapping) {
+        ArrayList<BciBlock> blocks = new ArrayList<>(Arrays.asList(mapping.getBlocks()));
+        ArrayList<ArrayList<Integer>> asyncSuccessors = new ArrayList<>();
+
+        for (int id = 0; id < blocks.size(); id++) {
+            BciBlock block = blocks.get(id);
+            assert block.getId() == id;
+            assert asyncSuccessors.size() == id;
+
+            if (block.isInstructionBlock()) {
+                /*
+                 * Finding exceptions handlers which are reachable from an instruction block.
+                 */
+                BitSet handlerIDs = new BitSet();
+                for (int bci = block.getStartBci(); bci <= block.getEndBci(); bci++) {
+                    BitSet bciHandlerIDs = mapping.getBciExceptionHandlerIDs(bci);
+                    if (bciHandlerIDs != null) {
+                        handlerIDs.or(bciHandlerIDs);
+                    }
+                }
+
+                /*
+                 * Collecting handler blocks reachable from this block.
+                 */
+                ArrayList<Integer> handlerBlockIDs = new ArrayList<>();
+                for (int handlerID = handlerIDs.nextSetBit(0); handlerID >= 0; handlerID = handlerIDs.nextSetBit(handlerID + 1)) {
+                    BciBlock handlerBlock = mapping.getHandlerBlock(handlerID);
+
+                    /* If handler isn't already reachable, then add to the end of list. */
+                    if (handlerBlock.getId() == BciBlockMapping.UNASSIGNED_ID) {
+                        int newID = blocks.size();
+                        handlerBlock.setId(newID);
+                        blocks.add(handlerBlock);
+                    }
+
+                    handlerBlockIDs.add(handlerBlock.getId());
+
+                    if (handlerID == Integer.MAX_VALUE) {
+                        break; // or (i+1) would overflow
+                    }
+                }
+
+                asyncSuccessors.add(handlerBlockIDs.isEmpty() ? null : handlerBlockIDs);
+            } else {
+                /* Only consider async successors from instruction blocks. */
+                asyncSuccessors.add(null);
+            }
+
+            /* Making sure all successors are reachable. If not, then add to the end of list. */
+            for (BciBlock sux : block.getSuccessors()) {
+                if (sux.getId() == BciBlockMapping.UNASSIGNED_ID) {
+                    int newID = blocks.size();
+                    sux.setId(newID);
+                    blocks.add(sux);
+                }
+            }
+        }
+
+        return Pair.create(blocks, asyncSuccessors);
     }
 
     void computeLiveness(DebugContext debug, BytecodeStream stream) {
@@ -123,6 +206,14 @@ public abstract class LocalLiveness {
                     blockChanged |= (oldCardinality != liveOutCardinality(blockID));
                 }
 
+                if (asyncSuccessors != null && asyncSuccessors.get(i) != null) {
+                    int oldCardinality = liveAsyncCardinality(blockID);
+                    for (Integer suxId : asyncSuccessors.get(i)) {
+                        propagateAsyncLiveness(blockID, suxId);
+                    }
+                    blockChanged |= (oldCardinality != liveAsyncCardinality(blockID));
+                }
+
                 if (blockChanged) {
                     updateLiveness(blockID);
                     assert traceEnd(debug, block, blockID);
@@ -140,7 +231,8 @@ public abstract class LocalLiveness {
 
     private boolean traceEnd(DebugContext debug, BciBlock block, int blockID) {
         if (debug.isLogEnabled()) {
-            debug.logv("  end   B%d  [%d, %d]  in: %s  out: %s  gen: %s  kill: %s", block.getId(), block.startBci, block.endBci, debugLiveIn(blockID), debugLiveOut(blockID), debugLiveGen(blockID),
+            debug.logv("  end   B%d  [%d, %d]  in: %s  out: %s  gen: %s  kill: %s", block.getId(), block.startBci, block.getEndBci(), debugLiveIn(blockID), debugLiveOut(blockID),
+                            debugLiveGen(blockID),
                             debugLiveKill(blockID));
         }
         return true;
@@ -155,7 +247,8 @@ public abstract class LocalLiveness {
 
     private boolean traceStart(DebugContext debug, BciBlock block, int blockID) {
         if (debug.isLogEnabled()) {
-            debug.logv("  start B%d  [%d, %d]  in: %s  out: %s  gen: %s  kill: %s", block.getId(), block.startBci, block.endBci, debugLiveIn(blockID), debugLiveOut(blockID), debugLiveGen(blockID),
+            debug.logv("  start B%d  [%d, %d]  in: %s  out: %s  gen: %s  kill: %s", block.getId(), block.startBci, block.getEndBci(), debugLiveIn(blockID), debugLiveOut(blockID),
+                            debugLiveGen(blockID),
                             debugLiveKill(blockID));
         }
         return true;
@@ -202,12 +295,22 @@ public abstract class LocalLiveness {
     protected abstract int liveOutCardinality(int blockID);
 
     /**
-     * Adds all locals the are in the liveIn of the successor to the liveOut of the block.
+     * Returns the number of live async locals for the given block.
+     */
+    protected abstract int liveAsyncCardinality(int blockID);
+
+    /**
+     * Adds all locals that are in the liveIn of the successor to the liveOut of the block.
      */
     protected abstract void propagateLiveness(int blockID, int successorID);
 
     /**
-     * Calculates a new liveIn for the given block from liveOut, liveKill and liveGen.
+     * Adds all locals that are in the liveIn of the successor to the liveAsync of the block.
+     */
+    protected abstract void propagateAsyncLiveness(int blockID, int successorID);
+
+    /**
+     * Calculates a new liveIn for the given block from liveOut, liveKill, liveGen and liveAsync.
      */
     protected abstract void updateLiveness(int blockID);
 
@@ -222,13 +325,13 @@ public abstract class LocalLiveness {
     protected abstract void storeOne(int blockID, int local);
 
     private void computeLocalLiveness(BytecodeStream stream, BciBlock block) {
-        if (block.isExceptionDispatch()) {
+        if (!block.isInstructionBlock()) {
             return;
         }
         int blockID = block.getId();
         int localIndex;
         stream.setBCI(block.startBci);
-        while (stream.currentBCI() <= block.endBci) {
+        while (stream.currentBCI() <= block.getEndBci()) {
             switch (stream.currentBC()) {
                 case LLOAD:
                 case DLOAD:

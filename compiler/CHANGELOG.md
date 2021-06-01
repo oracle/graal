@@ -5,6 +5,14 @@ This changelog summarizes newly introduced optimizations that may be relevant to
 ## Version 21.2.0
 * (GR-29770) Loop safepoint elimination: Not only consider 32bit loops for safepoint removal but also 64bit ones
 that iterate in 32bit ranges.
+* (GR-29341) AVX-512 support: Fix EVEX encoding and feature checks for existing instructions and add AVX-512 
+alternatives.
+* (GR-31162) Do not de-duplicate ValueAnchorNode. As part of this change, there is a new marker interface
+NodeWithIdentity to mark nodes that have identity.
+* (GR-8974) Speculative guard movement: An optimization that tries to move a loop invariant guard
+  (e.g., an array bounds check) inside a loop to outside of the loop. Disable with `-Dgraal.SpeculativeGuardMovement=false`.
+  Included in this change is enhanced output for `-Dgraal.ShowConfiguration=verbose` in terms of
+  showing the compilation phases of a compiler configuration.
 
 ## Version 21.1.0
 * (GR-29126) Unify box optimizations in the compiler. Remove `-Dgraal.ReuseOutOfCacheBoxedValues=false`.

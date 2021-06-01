@@ -156,8 +156,7 @@ public abstract class ToEspressoNode extends Node {
 
     @SuppressWarnings("unused")
     @Specialization(guards = {"!isStaticObject(value)", "interop.isNull(value)", "!klass.isPrimitive()"})
-    Object doForeignNull(Object value, Klass klass,
-                    @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
+    Object doForeignNull(Object value, Klass klass, @CachedLibrary(limit = "LIMIT") InteropLibrary interop, @CachedContext(EspressoLanguage.class) EspressoContext context) {
         return StaticObject.createForeignNull(value);
     }
 

@@ -32,28 +32,7 @@
 #include <stdio.h>
 #include <pthread.h>
 
-void *set_named_thread(void *data) {
-
-    pthread_t *thread_info = (pthread_t *) data;
-
-#ifdef __linux__
-    const int setname_rv = pthread_setname_np(*thread_info, "sulong pthread");
-#else
-    const int setname_rv = pthread_setname_np("sulong pthread");
-#endif
-
-    if (setname_rv) {
-        printf("Could not set pthread name\n");
-    }
-
-    char thread_name[16];
-    const int getname_rv = pthread_getname_np(*thread_info, thread_name, 16);
-
-    if (getname_rv) {
-        printf("Could not get pthread name\n");
-    }
-
-    fprintf(stdout, "My name is '%s'\n", thread_name);
+void *set_named_thread() {
 
     const pthread_t self = pthread_self();
 
@@ -82,7 +61,8 @@ void *set_named_thread(void *data) {
 int main() {
 
     pthread_t thread;
-    const int create_rv = pthread_create(&(thread), NULL, &set_named_thread, (void *) &thread);
+
+    const int create_rv = pthread_create(&(thread), NULL, &set_named_thread, NULL);
 
     if (create_rv) {
         printf("Could not create thread\n");

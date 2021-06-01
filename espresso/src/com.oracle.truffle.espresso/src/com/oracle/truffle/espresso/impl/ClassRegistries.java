@@ -39,6 +39,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.redefinition.DefineKlassListener;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
@@ -60,6 +61,8 @@ public final class ClassRegistries {
     // Used as a volatile field. All accesses are done in synchronized blocks, so we do not need to
     // specify it as volatile.
     private int totalClassLoadersSet = 0;
+
+    private DefineKlassListener defineKlassListener;
 
     public ClassRegistries(EspressoContext context) {
         this.context = context;
@@ -296,6 +299,17 @@ public final class ClassRegistries {
             loaders[i++] = INVALID_LOADER_ID;
         }
         return loaders;
+    }
+
+    public void registerListener(DefineKlassListener listener) {
+        this.defineKlassListener = listener;
+    }
+
+    @TruffleBoundary
+    public void onKlassDefined(ObjectKlass klass) {
+        if (defineKlassListener != null) {
+            defineKlassListener.onKlassDefined(klass);
+        }
     }
 
     static class RegistryEntry {

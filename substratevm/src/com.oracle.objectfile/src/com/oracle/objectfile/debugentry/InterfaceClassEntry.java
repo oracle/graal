@@ -31,7 +31,7 @@ import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind;
 import org.graalvm.compiler.debug.DebugContext;
 
-import java.util.LinkedList;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -40,7 +40,7 @@ public class InterfaceClassEntry extends ClassEntry {
 
     public InterfaceClassEntry(String className, FileEntry fileEntry, int size) {
         super(className, fileEntry, size);
-        implementors = new LinkedList<>();
+        implementors = new ArrayList<>();
     }
 
     @Override

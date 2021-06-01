@@ -66,11 +66,6 @@ public abstract class ReferenceArrayStoreNode extends QuickNode {
 
     @Specialization(guards = "array.isEspressoObject()")
     void doEspresso(StaticObject array, int index, StaticObject value) {
-        getBytecodesNode().getInterpreterToVM().setArrayObject(value, index, array);
-    }
-
-    @Override
-    public boolean producedForeignObject(Object[] refs) {
-        return false;
+        getBytecodeNode().getInterpreterToVM().setArrayObject(value, index, array);
     }
 }

@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.core;
 
+import jdk.vm.ci.services.Services;
+
 /**
  * This is a utility class for Threads started by the compiler itself. In certain execution
  * environments extra work must be done for these threads to execute correctly and this class
@@ -39,11 +41,32 @@ public class GraalServiceThread extends Thread {
 
     @Override
     public final void run() {
-        beforeRun();
+        try {
+            beforeRun();
+        } catch (InternalError t) {
+            // There was a problem attaching this thread to the libgraal peer runtime.
+            // Not much that can be done apart from terminating the thread.
+            onAttachError(t);
+            return;
+        }
         try {
             runnable.run();
         } finally {
             afterRun();
+        }
+    }
+
+    /**
+     * Notifies of an error on attaching this thread to the libgraal peer runtime.
+     *
+     * The default implementation of this method is to print the stack trace for {@code error} if
+     * the {@code GraalServiceThread.verbose} system property is {@code "true"}.
+     *
+     * @param error the error
+     */
+    protected void onAttachError(InternalError error) {
+        if (Boolean.parseBoolean(Services.getSavedProperties().getOrDefault("GraalServiceThread.verbose", "false"))) {
+            error.printStackTrace();
         }
     }
 

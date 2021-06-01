@@ -171,7 +171,7 @@ public abstract class SubstrateObjectConstant implements JavaConstant, Compressi
 
     @Override
     public String toString() {
-        return getJavaKind().getJavaName(); // + "[" + toValueString() + "]" + object;
+        return getClass().getSimpleName() + '[' + getJavaKind().getJavaName() + ']';
     }
 
     public abstract ResolvedJavaType getType(MetaAccessProvider provider);

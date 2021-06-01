@@ -54,6 +54,14 @@
     },
   },
 
+  labsjdk_ce_16: common["labsjdk-ce-16"] {
+    jdk:: "jdk16",
+    downloads+: {
+      # FIXME: do we really need to set EXTRA_JAVA_HOMES to an empty list?
+      EXTRA_JAVA_HOMES: { pathlist: [] },
+    },
+  },
+
   labsjdk_ee_11: common["labsjdk-ee-11"] {
     jdk:: "jdk11",
   },
@@ -149,6 +157,7 @@
       CLANG_CC: "clang-3.8",
       CLANG_CXX: "clang-3.8 --driver-mode=g++",
       CLANG_LLVM_OBJCOPY: "objcopy",
+      CLANG_LLVM_CONFIG: "llvm-config",
       CLANG_NO_OPTNONE: "1",
       CFLAGS: "-Wno-error",
     },

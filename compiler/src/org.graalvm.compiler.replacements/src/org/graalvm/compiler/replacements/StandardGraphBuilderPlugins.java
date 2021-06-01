@@ -42,6 +42,7 @@ import org.graalvm.compiler.core.common.calc.Condition.CanonicalizedCondition;
 import org.graalvm.compiler.core.common.calc.UnsignedMath;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
+import org.graalvm.compiler.core.common.type.FloatStamp;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -92,12 +93,15 @@ import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.debug.BindToRegisterNode;
 import org.graalvm.compiler.nodes.debug.BlackholeNode;
 import org.graalvm.compiler.nodes.debug.ControlFlowAnchorNode;
+import org.graalvm.compiler.nodes.debug.NeverStripMineNode;
 import org.graalvm.compiler.nodes.debug.SideEffectNode;
 import org.graalvm.compiler.nodes.debug.SpillRegistersNode;
 import org.graalvm.compiler.nodes.extended.BoxNode;
 import org.graalvm.compiler.nodes.extended.BoxNode.TrustedBoxedValue;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
+import org.graalvm.compiler.nodes.extended.CacheWritebackNode;
+import org.graalvm.compiler.nodes.extended.CacheWritebackSyncNode;
 import org.graalvm.compiler.nodes.extended.ClassIsArrayNode;
 import org.graalvm.compiler.nodes.extended.GetClassNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
@@ -172,8 +176,14 @@ import sun.misc.Unsafe;
  */
 public class StandardGraphBuilderPlugins {
 
-    public static void registerInvocationPlugins(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, InvocationPlugins plugins, Replacements replacements,
-                    boolean allowDeoptimization, boolean explicitUnsafeNullChecks, boolean arrayEqualsSubstitution, LoweringProvider lowerer) {
+    public static void registerInvocationPlugins(MetaAccessProvider metaAccess,
+                    SnippetReflectionProvider snippetReflection,
+                    InvocationPlugins plugins,
+                    Replacements replacements,
+                    boolean allowDeoptimization,
+                    boolean explicitUnsafeNullChecks,
+                    boolean arrayEqualsSubstitution,
+                    LoweringProvider lowerer) {
         registerObjectPlugins(plugins);
         registerClassPlugins(plugins);
         registerMathPlugins(plugins, allowDeoptimization, replacements, lowerer);
@@ -182,8 +192,8 @@ public class StandardGraphBuilderPlugins {
         registerStringPlugins(plugins, replacements, snippetReflection, arrayEqualsSubstitution);
         registerCharacterPlugins(plugins);
         registerShortPlugins(plugins);
-        registerIntegerLongPlugins(plugins, JavaKind.Int, allowDeoptimization);
-        registerIntegerLongPlugins(plugins, JavaKind.Long, allowDeoptimization);
+        registerIntegerLongPlugins(plugins, JavaKind.Int);
+        registerIntegerLongPlugins(plugins, JavaKind.Long);
         registerFloatPlugins(plugins);
         registerDoublePlugins(plugins);
         if (arrayEqualsSubstitution) {
@@ -509,9 +519,21 @@ public class StandardGraphBuilderPlugins {
         r.register1("loadFence", Receiver.class, new UnsafeFencePlugin(LOAD_LOAD | LOAD_STORE));
         r.register1("storeFence", Receiver.class, new UnsafeFencePlugin(STORE_STORE | LOAD_STORE));
         r.register1("fullFence", Receiver.class, new UnsafeFencePlugin(LOAD_LOAD | STORE_STORE | LOAD_STORE | STORE_LOAD));
+
+        if (!sunMiscUnsafe) {
+            r.register2("getUncompressedObject", Receiver.class, long.class, new UnsafeGetPlugin(JavaKind.Object, explicitUnsafeNullChecks));
+
+            if (JavaVersionUtil.JAVA_SPEC >= 14) {
+                // These methods are only called if UnsafeConstants.DATA_CACHE_LINE_FLUSH_SIZE != 0
+                // which implies that the current processor and OS supports writeback to memory.
+                r.register2("writeback0", Receiver.class, long.class, new CacheWritebackPlugin(false));
+                r.register1("writebackPreSync0", Receiver.class, new CacheWritebackPlugin(true));
+                r.register1("writebackPostSync0", Receiver.class, new CacheWritebackPlugin(false));
+            }
+        }
     }
 
-    private static void registerIntegerLongPlugins(InvocationPlugins plugins, JavaKind kind, boolean allowDeoptimization) {
+    private static void registerIntegerLongPlugins(InvocationPlugins plugins, JavaKind kind) {
         Class<?> declaringClass = kind.toBoxedJavaClass();
         Class<?> type = kind.toJavaClass();
         Registration r = new Registration(plugins, declaringClass);
@@ -525,7 +547,7 @@ public class StandardGraphBuilderPlugins {
         r.register2("divideUnsigned", type, type, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode dividend, ValueNode divisor) {
-                GuardingNode zeroCheck = maybeEmitDivisionByZeroCheck(b, divisor, allowDeoptimization);
+                GuardingNode zeroCheck = b.maybeEmitExplicitDivisionByZeroCheck(divisor);
                 b.push(kind, b.append(UnsignedDivNode.create(dividend, divisor, zeroCheck, NodeView.DEFAULT)));
                 return true;
             }
@@ -533,20 +555,11 @@ public class StandardGraphBuilderPlugins {
         r.register2("remainderUnsigned", type, type, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode dividend, ValueNode divisor) {
-                GuardingNode zeroCheck = maybeEmitDivisionByZeroCheck(b, divisor, allowDeoptimization);
+                GuardingNode zeroCheck = b.maybeEmitExplicitDivisionByZeroCheck(divisor);
                 b.push(kind, b.append(UnsignedRemNode.create(dividend, divisor, zeroCheck, NodeView.DEFAULT)));
                 return true;
             }
         });
-    }
-
-    private static GuardingNode maybeEmitDivisionByZeroCheck(GraphBuilderContext b, ValueNode divisor, boolean allowDeoptimization) {
-        if (allowDeoptimization || !((IntegerStamp) divisor.stamp(NodeView.DEFAULT)).contains(0)) {
-            return null;
-        }
-        ConstantNode zero = b.add(ConstantNode.defaultForKind(divisor.getStackKind()));
-        LogicNode condition = b.add(IntegerEqualsNode.create(b.getConstantReflection(), b.getMetaAccess(), b.getOptions(), null, divisor, zero, NodeView.DEFAULT));
-        return b.emitBytecodeExceptionCheck(condition, false, BytecodeExceptionKind.DIVISION_BY_ZERO);
     }
 
     private static void registerCharacterPlugins(InvocationPlugins plugins) {
@@ -1086,7 +1099,6 @@ public class StandardGraphBuilderPlugins {
             } else {
                 b.add(node);
             }
-            b.processInstruction(node);
         }
 
         protected final void createUnsafeAccess(ValueNode value, GraphBuilderContext b, UnsafeNodeConstructor nodeConstructor) {
@@ -1146,7 +1158,6 @@ public class StandardGraphBuilderPlugins {
                     b.push(unsafeAccessKind, graph.addOrUnique(phi));
                 }
                 b.setStateAfter(merge);
-                b.processInstruction(merge);
             }
         }
     }
@@ -1295,6 +1306,30 @@ public class StandardGraphBuilderPlugins {
         }
     }
 
+    public static final class CacheWritebackPlugin implements InvocationPlugin {
+        final boolean isPreSync;
+
+        public CacheWritebackPlugin(boolean isPreSync) {
+            this.isPreSync = isPreSync;
+        }
+
+        @Override
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode address) {
+            // Emits a null-check for the otherwise unused receiver
+            unsafe.get();
+            b.add(new CacheWritebackNode(address));
+            return true;
+        }
+
+        @Override
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe) {
+            // Emits a null-check for the otherwise unused receiver
+            unsafe.get();
+            b.add(new CacheWritebackSyncNode(isPreSync));
+            return true;
+        }
+    }
+
     private static final SpeculationReasonGroup DIRECTIVE_SPECULATIONS = new SpeculationReasonGroup("GraalDirective", BytecodePosition.class);
 
     private static void registerGraalDirectivesPlugins(InvocationPlugins plugins) {
@@ -1386,6 +1421,18 @@ public class StandardGraphBuilderPlugins {
                 return true;
             }
         });
+        r.register0("neverStripMine", new InvocationPlugin() {
+            @Override
+            public boolean inlineOnly() {
+                return true;
+            }
+
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                b.add(new NeverStripMineNode());
+                return true;
+            }
+        });
         r.register0("sideEffect", new InvocationPlugin() {
             @Override
             public boolean inlineOnly() {
@@ -1454,6 +1501,34 @@ public class StandardGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode probability, ValueNode condition) {
                 b.addPush(JavaKind.Boolean, new BranchProbabilityNode(probability, condition));
                 return true;
+            }
+        });
+        r.register2("injectIterationCount", double.class, boolean.class, new InvocationPlugin() {
+            @Override
+            public boolean inlineOnly() {
+                return true;
+            }
+
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode iterations, ValueNode condition) {
+                // This directive has an actual definition that only works well if the bytecode
+                // parser inlines it, so also provide this plugin equivalent to its definition:
+                // injectBranchProbability(1. - 1. / iterations, condition)
+                if (iterations.isJavaConstant()) {
+                    double iterationsConstant;
+                    if (iterations.stamp(NodeView.DEFAULT) instanceof IntegerStamp) {
+                        iterationsConstant = iterations.asJavaConstant().asLong();
+                    } else if (iterations.stamp(NodeView.DEFAULT) instanceof FloatStamp) {
+                        iterationsConstant = iterations.asJavaConstant().asDouble();
+                    } else {
+                        return false;
+                    }
+                    double probability = 1. - 1. / iterationsConstant;
+                    ValueNode probabilityNode = b.add(ConstantNode.forDouble(probability));
+                    b.addPush(JavaKind.Boolean, new BranchProbabilityNode(probabilityNode, condition));
+                    return true;
+                }
+                return false;
             }
         });
 
@@ -1553,6 +1628,18 @@ public class StandardGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.add(new BreakpointNode());
+                return true;
+            }
+        });
+        r.register1("isCompilationConstant", Object.class, new InvocationPlugin() {
+            @Override
+            public boolean inlineOnly() {
+                return true;
+            }
+
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(value.isJavaConstant()));
                 return true;
             }
         });

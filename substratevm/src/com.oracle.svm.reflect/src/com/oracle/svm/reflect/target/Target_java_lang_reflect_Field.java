@@ -31,7 +31,11 @@ import java.lang.reflect.AnnotatedType;
 import java.lang.reflect.Field;
 import java.util.Map;
 
+import org.graalvm.util.GuardedAnnotationAccess;
+
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueComputer;
@@ -39,8 +43,8 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.reflect.hosted.AccessorComputer;
 import com.oracle.svm.reflect.hosted.FieldOffsetComputer;
+import com.oracle.svm.reflect.hosted.ReflectionObjectReplacer;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -51,16 +55,19 @@ public final class Target_java_lang_reflect_Field {
 
     @Alias FieldRepository genericInfo;
 
-    @Alias //
-    @RecomputeFieldValue(kind = Kind.Custom, declClass = AccessorComputer.class) //
+    /** Field accessor objects are created on demand at image runtime. */
+    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
     Target_jdk_internal_reflect_FieldAccessor fieldAccessor;
-    @Alias //
-    @RecomputeFieldValue(kind = Kind.Custom, declClass = AccessorComputer.class) //
+
+    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
     Target_jdk_internal_reflect_FieldAccessor overrideFieldAccessor;
+
+    @Alias //
+    boolean override;
 
     /**
      * The declaredAnnotations field doesn't need a value recomputation. Its value is pre-loaded in
-     * the {@link com.oracle.svm.reflect.hosted.ReflectionMetadataFeature}.
+     * the {@link ReflectionObjectReplacer}.
      */
     @Alias //
     Map<Class<? extends Annotation>, Annotation> declaredAnnotations;
@@ -74,15 +81,30 @@ public final class Target_java_lang_reflect_Field {
     @Inject @RecomputeFieldValue(kind = Kind.Custom, declClass = AnnotatedTypeComputer.class) //
     AnnotatedType annotatedType;
 
+    /** If non-null, the field was deleted via substitution and this string provides the reason. */
+    @Inject @RecomputeFieldValue(kind = Kind.Custom, declClass = FieldDeletionReasonComputer.class) //
+    String deletedReason;
+
     @Alias
     native Target_java_lang_reflect_Field copy();
 
+    @Alias
+    native Target_jdk_internal_reflect_FieldAccessor acquireFieldAccessor(boolean overrideFinalCheck);
+
+    /** @see com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor#deleteErrorMessage */
     @Substitute
-    public Target_jdk_internal_reflect_FieldAccessor acquireFieldAccessor(@SuppressWarnings("unused") boolean overrideFinalCheck) {
-        if (fieldAccessor == null) {
-            throw VMError.unsupportedFeature("Runtime reflection is not supported.");
+    Target_jdk_internal_reflect_FieldAccessor getFieldAccessor(@SuppressWarnings("unused") Object obj) {
+        boolean ov = override;
+        Target_jdk_internal_reflect_FieldAccessor accessor = (ov) ? overrideFieldAccessor : fieldAccessor;
+        if (accessor != null) {
+            return accessor;
         }
-        return fieldAccessor;
+        if (deletedReason != null) {
+            Field field = SubstrateUtil.cast(this, Field.class);
+            throw VMError.unsupportedFeature("Unsupported field " + field.getDeclaringClass().getTypeName() +
+                            "." + field.getName() + " is reachable: " + deletedReason);
+        }
+        return acquireFieldAccessor(ov);
     }
 
     @Substitute
@@ -105,4 +127,12 @@ public final class Target_java_lang_reflect_Field {
         }
     }
 
+    public static final class FieldDeletionReasonComputer implements CustomFieldValueComputer {
+        @Override
+        public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+            ResolvedJavaField field = metaAccess.lookupJavaField((Field) receiver);
+            Delete annotation = GuardedAnnotationAccess.getAnnotation(field, Delete.class);
+            return (annotation != null) ? annotation.value() : null;
+        }
+    }
 }

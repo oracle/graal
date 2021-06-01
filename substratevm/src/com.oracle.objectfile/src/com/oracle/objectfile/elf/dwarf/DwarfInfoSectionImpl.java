@@ -27,7 +27,7 @@
 package com.oracle.objectfile.elf.dwarf;
 
 import java.lang.reflect.Modifier;
-import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -439,7 +439,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         String compilationDirectory = classEntry.getCachePath();
         log(context, "  [0x%08x]     comp_dir  0x%x (%s)", pos, debugStringIndex(compilationDirectory), compilationDirectory);
         pos = writeAttrStrp(compilationDirectory, buffer, pos);
-        LinkedList<PrimaryEntry> classPrimaryEntries = classEntry.getPrimaryEntries();
+        List<PrimaryEntry> classPrimaryEntries = classEntry.getPrimaryEntries();
         /*
          * Specify hi and lo for the compile unit which means we also need to ensure methods within
          * it are listed in ascending address order.
@@ -654,7 +654,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
 
     private int writeMethodDeclarations(DebugContext context, ClassEntry classEntry, byte[] buffer, int p) {
         int pos = p;
-        LinkedList<PrimaryEntry> classPrimaryEntries = classEntry.getPrimaryEntries();
+        List<PrimaryEntry> classPrimaryEntries = classEntry.getPrimaryEntries();
         for (PrimaryEntry primaryEntry : classPrimaryEntries) {
             Range range = primaryEntry.getPrimary();
             /*
@@ -682,7 +682,8 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         String name = uniqueDebugString(range.getMethodName());
         log(context, "  [0x%08x]     name 0x%x (%s)", pos, debugStringIndex(name), name);
         pos = writeAttrStrp(name, buffer, pos);
-        int fileIdx = classEntry.localFilesIdx();
+        FileEntry fileEntry = range.getFileEntry();
+        int fileIdx = (fileEntry != null ? classEntry.localFilesIdx(fileEntry) : classEntry.localFilesIdx());
         log(context, "  [0x%08x]     file 0x%x (%s)", pos, fileIdx, range.getFileEntry().getFullName());
         pos = writeAttrData2((short) fileIdx, buffer, pos);
         String returnTypeName = range.getMethodReturnTypeName();
@@ -724,18 +725,14 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         if (!Modifier.isStatic(range.getModifiers())) {
             pos = writeMethodParameterDeclaration(context, "this", classEntry.getTypeName(), true, isSpecification, buffer, pos);
         }
-        String paramsString = range.getParamSignature();
-        if (!paramsString.isEmpty()) {
-            String[] paramTypes = paramsString.split(",");
-            for (int i = 0; i < paramTypes.length; i++) {
-                String paramName = uniqueDebugString("");
-                String paramTypeName = paramTypes[i].trim();
-                FileEntry fileEntry = range.getFileEntry();
-                if (fileEntry != null) {
-                    pos = writeMethodParameterDeclaration(context, paramName, paramTypeName, false, isSpecification, buffer, pos);
-                } else {
-                    pos = writeMethodParameterDeclaration(context, paramTypeName, paramTypeName, false, isSpecification, buffer, pos);
-                }
+        for (TypeEntry paramType : range.getParamTypes()) {
+            String paramTypeName = paramType.getTypeName();
+            String paramName = uniqueDebugString("");
+            FileEntry fileEntry = range.getFileEntry();
+            if (fileEntry != null) {
+                pos = writeMethodParameterDeclaration(context, paramName, paramTypeName, false, isSpecification, buffer, pos);
+            } else {
+                pos = writeMethodParameterDeclaration(context, paramTypeName, paramTypeName, false, isSpecification, buffer, pos);
             }
         }
         return pos;
@@ -917,7 +914,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
 
     private int writeMethodLocations(DebugContext context, ClassEntry classEntry, byte[] buffer, int p) {
         int pos = p;
-        LinkedList<PrimaryEntry> classPrimaryEntries = classEntry.getPrimaryEntries();
+        List<PrimaryEntry> classPrimaryEntries = classEntry.getPrimaryEntries();
         for (PrimaryEntry primaryEntry : classPrimaryEntries) {
             Range range = primaryEntry.getPrimary();
             if (!range.isDeoptTarget()) {
@@ -1185,7 +1182,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
     private int writeDeoptMethodsCU(DebugContext context, ClassEntry classEntry, byte[] buffer, int p) {
         int pos = p;
         assert classEntry.includesDeoptTarget();
-        LinkedList<PrimaryEntry> classPrimaryEntries = classEntry.getPrimaryEntries();
+        List<PrimaryEntry> classPrimaryEntries = classEntry.getPrimaryEntries();
         String fileName = classEntry.getFileName();
         int lineIndex = getLineIndex(classEntry);
         int abbrevCode = (fileName.length() > 0 ? DwarfDebugInfo.DW_ABBREV_CODE_class_unit1 : DwarfDebugInfo.DW_ABBREV_CODE_class_unit2);
@@ -1270,10 +1267,10 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         }
     }
 
-    private static int findLo(LinkedList<PrimaryEntry> classPrimaryEntries, boolean isDeoptTargetCU) {
+    private static int findLo(List<PrimaryEntry> classPrimaryEntries, boolean isDeoptTargetCU) {
         if (!isDeoptTargetCU) {
             /* First entry is the one we want. */
-            return classPrimaryEntries.getFirst().getPrimary().getLo();
+            return classPrimaryEntries.get(0).getPrimary().getLo();
         } else {
             /* Need the first entry which is a deopt target. */
             for (PrimaryEntry primaryEntry : classPrimaryEntries) {
@@ -1288,10 +1285,10 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         return 0;
     }
 
-    private static int findHi(LinkedList<PrimaryEntry> classPrimaryEntries, boolean includesDeoptTarget, boolean isDeoptTargetCU) {
+    private static int findHi(List<PrimaryEntry> classPrimaryEntries, boolean includesDeoptTarget, boolean isDeoptTargetCU) {
         if (isDeoptTargetCU || !includesDeoptTarget) {
             /* Either way the last entry is the one we want. */
-            return classPrimaryEntries.getLast().getPrimary().getHi();
+            return classPrimaryEntries.get(classPrimaryEntries.size() - 1).getPrimary().getHi();
         } else {
             /* Need the last entry which is not a deopt target. */
             int hi = 0;

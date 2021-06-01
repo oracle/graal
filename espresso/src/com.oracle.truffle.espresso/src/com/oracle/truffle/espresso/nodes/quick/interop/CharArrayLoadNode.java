@@ -76,11 +76,6 @@ public abstract class CharArrayLoadNode extends QuickNode {
 
     @Specialization(guards = "array.isEspressoObject()")
     char doEspresso(StaticObject array, int index) {
-        return getBytecodesNode().getInterpreterToVM().getArrayChar(index, array);
-    }
-
-    @Override
-    public boolean producedForeignObject(Object[] refs) {
-        return false;
+        return getBytecodeNode().getInterpreterToVM().getArrayChar(index, array);
     }
 }

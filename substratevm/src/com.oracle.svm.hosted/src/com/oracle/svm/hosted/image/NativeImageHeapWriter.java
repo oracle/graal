@@ -107,7 +107,7 @@ public final class NativeImageHeapWriter {
         ObjectInfo primitiveFields = heap.getObjectInfo(StaticFieldsSupport.getStaticPrimitiveFields());
         ObjectInfo objectFields = heap.getObjectInfo(StaticFieldsSupport.getStaticObjectFields());
         for (HostedField field : heap.getUniverse().getFields()) {
-            if (Modifier.isStatic(field.getModifiers()) && field.hasLocation() && field.isInImageHeap()) {
+            if (Modifier.isStatic(field.getModifiers()) && field.hasLocation() && field.isRead()) {
                 assert field.isWritten() || MaterializedConstantFields.singleton().contains(field.wrapped);
                 ObjectInfo fields = (field.getStorageKind() == JavaKind.Object) ? objectFields : primitiveFields;
                 writeField(buffer, fields, field, null, null);
@@ -336,7 +336,7 @@ public final class NativeImageHeapWriter {
             for (HostedField field : clazz.getInstanceFields(true)) {
                 if (!field.equals(hybridArrayField) &&
                                 !field.equals(hybridTypeIDSlotsField) &&
-                                field.isInImageHeap()) {
+                                field.isRead()) {
                     assert field.getLocation() >= 0;
                     assert info.getIndexInBuffer(field.getLocation()) > maxBitIndex;
                     assert info.getIndexInBuffer(field.getLocation()) > maxTypeIDSlotIndex;

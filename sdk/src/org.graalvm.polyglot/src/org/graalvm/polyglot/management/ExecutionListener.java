@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -423,7 +423,7 @@ public final class ExecutionListener implements AutoCloseable {
          */
         public ExecutionListener attach(Engine engine) {
             return new ExecutionListener(
-                            Management.IMPL.attachExecutionListener(engine, onEnter, onReturn, expressions, statements, roots,
+                            Management.IMPL.attachExecutionListener(Management.IMPL.getPolyglotImpl().getAPIAccess().getReceiver(engine), onEnter, onReturn, expressions, statements, roots,
                                             sourceFilter, rootNameFilter, collectInputValues, collectReturnValues, collectExceptions));
         }
     }

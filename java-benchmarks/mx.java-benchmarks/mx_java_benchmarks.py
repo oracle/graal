@@ -180,7 +180,7 @@ class BasePetClinicBenchmarkSuite(object):
         return "graal-compiler"
 
     def version(self):
-        return "0.0.1"
+        return "0.1.5"
 
     def validateReturnCode(self, retcode):
         return retcode == 143
@@ -251,48 +251,19 @@ class PetClinicJMeterBenchmarkSuite(BasePetClinicBenchmarkSuite, mx_sdk_benchmar
 mx_benchmark.add_bm_suite(PetClinicJMeterBenchmarkSuite())
 
 
-class PetClinicWrkBenchmarkSuite(BasePetClinicBenchmarkSuite, mx_sdk_benchmark.BaseWrk1BenchmarkSuite):
+class PetClinicWrkBenchmarkSuite(BasePetClinicBenchmarkSuite, mx_sdk_benchmark.BaseWrkBenchmarkSuite):
     """PetClinic benchmark suite that measures throughput using Wrk."""
 
     def name(self):
         return "petclinic-wrk"
 
     def benchmarkList(self, bmSuiteArgs):
-        return ["tiny"]
-
-    def defaultWorkloadPath(self, benchmark):
-        return os.path.join(self.applicationDist(), "workloads", benchmark + ".wrk")
+        return ["mixed-tiny", "mixed-small", "mixed-medium", "mixed-large", "mixed-huge"]
 
     def rules(self, out, benchmarks, bmSuiteArgs):
         return self.applicationStartupRule(self.benchSuiteName(), benchmarks[0]) + super(PetClinicWrkBenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
 
-    def getScriptPath(self, config):
-        return os.path.join(self.applicationDist(), "workloads", config["script"])
-
-
 mx_benchmark.add_bm_suite(PetClinicWrkBenchmarkSuite())
-
-
-class PetClinicWrk2BenchmarkSuite(BasePetClinicBenchmarkSuite, mx_sdk_benchmark.BaseWrk2BenchmarkSuite):
-    """PetClinic benchmark suite that measures latency using Wrk2."""
-
-    def name(self):
-        return "petclinic-wrk2"
-
-    def benchmarkList(self, bmSuiteArgs):
-        return ["read", "write"]
-
-    def defaultWorkloadPath(self, benchmark):
-        return os.path.join(self.applicationDist(), "workloads", benchmark + ".wrk2")
-
-    def rules(self, out, benchmarks, bmSuiteArgs):
-        return self.applicationStartupRule(self.benchSuiteName(), benchmarks[0]) + super(PetClinicWrk2BenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
-
-    def getScriptPath(self, config):
-        return os.path.join(self.applicationDist(), "workloads", config["script"])
-
-
-mx_benchmark.add_bm_suite(PetClinicWrk2BenchmarkSuite())
 
 
 class BaseTikaBenchmarkSuite(object):
@@ -303,7 +274,7 @@ class BaseTikaBenchmarkSuite(object):
         return "graal-compiler"
 
     def version(self):
-        return "1.0.1"
+        return "1.0.5"
 
     def validateReturnCode(self, retcode):
         return retcode == 143
@@ -355,9 +326,9 @@ class BaseTikaBenchmarkSuite(object):
                 '-J-Dio.netty.leakDetection.level=DISABLED',
                 '-J-Dio.netty.allocator.maxOrder=1',
                 '-J-Duser.language=en',
-                '-J-Duser.country=US -J-Dfile.encoding=UTF-8',
+                '-J-Duser.country=US',
+                '-J-Dfile.encoding=UTF-8',
                 '--initialize-at-build-time=',
-                '-H:InitialCollectionPolicy=com.oracle.svm.core.genscavenge.CollectionPolicy$BySpaceAndTime',
                 '-H:+JNI',
                 '-H:+AllowFoldMethods',
                 '-H:FallbackThreshold=0',
@@ -369,48 +340,19 @@ class BaseTikaBenchmarkSuite(object):
                 '-H:+StackTrace'] + super(BaseTikaBenchmarkSuite, self).extra_image_build_argument(benchmark, args)
 
 
-class TikaWrkBenchmarkSuite(BaseTikaBenchmarkSuite, mx_sdk_benchmark.BaseWrk1BenchmarkSuite):
+class TikaWrkBenchmarkSuite(BaseTikaBenchmarkSuite, mx_sdk_benchmark.BaseWrkBenchmarkSuite):
     """Tika benchmark suite that measures throughput using Wrk."""
 
     def name(self):
         return "tika-wrk"
 
     def benchmarkList(self, bmSuiteArgs):
-        return ["odt", "pdf"]
-
-    def defaultWorkloadPath(self, benchmark):
-        return os.path.join(self.applicationDist(), "workloads", benchmark + ".wrk")
+        return ["odt-tiny", "odt-small", "odt-medium", "odt-large", "odt-huge", "pdf-tiny", "pdf-small", "pdf-medium", "pdf-large", "pdf-huge"]
 
     def rules(self, out, benchmarks, bmSuiteArgs):
         return self.applicationStartupRule(self.benchSuiteName(), benchmarks[0]) + super(TikaWrkBenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
 
-    def getScriptPath(self, config):
-        return os.path.join(self.applicationDist(), "workloads", config["script"])
-
-
 mx_benchmark.add_bm_suite(TikaWrkBenchmarkSuite())
-
-
-class TikaWrk2BenchmarkSuite(BaseTikaBenchmarkSuite, mx_sdk_benchmark.BaseWrk2BenchmarkSuite):
-    """Tika benchmark suite that measures latency using Wrk2."""
-
-    def name(self):
-        return "tika-wrk2"
-
-    def benchmarkList(self, bmSuiteArgs):
-        return ["odt", "pdf"]
-
-    def defaultWorkloadPath(self, benchmark):
-        return os.path.join(self.applicationDist(), "workloads", benchmark + ".wrk2")
-
-    def rules(self, out, benchmarks, bmSuiteArgs):
-        return self.applicationStartupRule(self.benchSuiteName(), benchmarks[0]) + super(TikaWrk2BenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
-
-    def getScriptPath(self, config):
-        return os.path.join(self.applicationDist(), "workloads", config["script"])
-
-
-mx_benchmark.add_bm_suite(TikaWrk2BenchmarkSuite())
 
 
 class BaseShopCartBenchmarkSuite(object):
@@ -421,7 +363,7 @@ class BaseShopCartBenchmarkSuite(object):
         return "graal-compiler"
 
     def version(self):
-        return "0.3.1"
+        return "0.3.4"
 
     def validateReturnCode(self, retcode):
         return retcode == 143
@@ -461,6 +403,10 @@ class BaseShopCartBenchmarkSuite(object):
         else:
             return []
 
+    def skip_build_assertions(self, benchmark):
+        # This method overrides NativeImageMixin.skip_build_assertions
+        return True  # We are skipping build assertions due to some failed asserts while building Micronaut apps.
+
     def stages(self, args):
         # This method overrides NativeImageMixin.stages
         parsed_arg = mx_sdk_benchmark.parse_prefixed_arg('-Dnative-image.benchmark.stages=', args, 'Native Image benchmark stages should only be specified once.')
@@ -486,58 +432,19 @@ class ShopCartJMeterBenchmarkSuite(BaseShopCartBenchmarkSuite, mx_sdk_benchmark.
 mx_benchmark.add_bm_suite(ShopCartJMeterBenchmarkSuite())
 
 
-class ShopCartWrkBenchmarkSuite(BaseShopCartBenchmarkSuite, mx_sdk_benchmark.BaseWrk1BenchmarkSuite):
+class ShopCartWrkBenchmarkSuite(BaseShopCartBenchmarkSuite, mx_sdk_benchmark.BaseWrkBenchmarkSuite):
     """ShopCart benchmark suite that measures throughput using Wrk."""
 
     def name(self):
         return "shopcart-wrk"
 
     def benchmarkList(self, bmSuiteArgs):
-        return ["tiny"]
-
-    def defaultWorkloadPath(self, benchmark):
-        return os.path.join(self.applicationDist(), "workloads", benchmark + ".wrk")
+        return ["mixed-tiny", "mixed-small", "mixed-medium", "mixed-large", "mixed-huge"]
 
     def rules(self, out, benchmarks, bmSuiteArgs):
         return self.applicationStartupRule(self.benchSuiteName(), benchmarks[0]) + super(ShopCartWrkBenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
 
-    def getScriptPath(self, config):
-        return os.path.join(self.applicationDist(), "workloads", config["script"])
-
-
 mx_benchmark.add_bm_suite(ShopCartWrkBenchmarkSuite())
-
-
-class ShopCartWrk2BenchmarkSuite(BaseShopCartBenchmarkSuite, mx_sdk_benchmark.BaseWrk2BenchmarkSuite):
-    """ShopCart benchmark suite that measures latency using Wrk2."""
-
-    def name(self):
-        return "shopcart-wrk2"
-
-    def benchmarkList(self, bmSuiteArgs):
-        return ["read", "write"]
-
-    def defaultWorkloadPath(self, benchmark):
-        return os.path.join(self.applicationDist(), "workloads", benchmark + ".wrk2")
-
-    def rules(self, out, benchmarks, bmSuiteArgs):
-        return self.applicationStartupRule(self.benchSuiteName(), benchmarks[0]) + super(ShopCartWrk2BenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
-
-    def getScriptPath(self, config):
-        return os.path.join(self.applicationDist(), "workloads", config["script"])
-
-    def loadConfiguration(self, benchmarkName):
-        def postRequest(url, data):
-            req = mx_sdk_benchmark.urllib().Request(url)
-            req.add_header('Content-Type', 'application/json')
-            mx.log(mx_sdk_benchmark.urllib().urlopen(req, str.encode(json.dumps(data))).read())
-        config = super(ShopCartWrk2BenchmarkSuite, self).loadConfiguration(benchmarkName)
-        for request in config["setup"]:
-            postRequest(config["target-url"] + request["path"], request["msg"])
-        return config
-
-
-mx_benchmark.add_bm_suite(ShopCartWrk2BenchmarkSuite())
 
 
 class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin, mx_benchmark.TemporaryWorkdirMixin):

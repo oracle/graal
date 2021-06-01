@@ -40,6 +40,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.function.Predicate;
@@ -104,10 +105,14 @@ public final class TestCaseCollector {
             // collect excludes
             ExcludeMap excludedTests = getExcludedTests(testSuiteClass);
             // walk test cases
-            return Files.walk(suitesPath).filter(predicate).map(Path::getParent).map(testPath -> {
+            List<Object[]> list = Files.walk(suitesPath).filter(predicate).map(Path::getParent).map(testPath -> {
                 String testCaseName = getTestCaseName(suitesPath, testPath);
                 return new Object[]{testPath, testCaseName, excludedTests.get(testCaseName)};
             }).collect(Collectors.toList());
+            if (!list.isEmpty()) {
+                return list;
+            }
+            throw new AssertionError("No test cases not found in: " + suitesPath);
         } catch (IOException e) {
             throw new AssertionError("Test cases not found", e);
         }

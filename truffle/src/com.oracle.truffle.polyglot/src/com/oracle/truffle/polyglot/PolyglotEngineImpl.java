@@ -76,11 +76,10 @@ import java.util.function.Supplier;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 
-import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
+import org.graalvm.home.HomeFinder;
 import org.graalvm.options.OptionDescriptors;
-import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.HostAccess;
@@ -88,7 +87,6 @@ import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
 import org.graalvm.polyglot.io.ProcessHandler;
@@ -108,6 +106,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.SpecializationStatistics;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.instrumentation.EventBinding;
@@ -130,7 +129,7 @@ import com.oracle.truffle.polyglot.PolyglotLocals.AbstractContextThreadLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.LocalLocation;
 import com.oracle.truffle.polyglot.PolyglotLoggers.EngineLoggerProvider;
 
-final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
+final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
 
     /**
      * Context index for the host language.
@@ -155,13 +154,12 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
     static final LocalLocation[] EMPTY_LOCATIONS = new LocalLocation[0];
 
     final Object lock = new Object();
-    Engine creatorApi; // effectively final
-    Engine currentApi;
     final Object instrumentationHandler;
     final PolyglotImpl impl;
     DispatchOutputStream out;       // effectively final
     DispatchOutputStream err;       // effectively final
     InputStream in;                 // effectively final
+    Engine api;
 
     final Map<String, PolyglotLanguage> idToLanguage;
     final Map<String, PolyglotLanguage> classToLanguage;
@@ -232,7 +230,6 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                     EngineLoggerProvider engineLogger, Map<String, String> options,
                     boolean allowExperimentalOptions, ClassLoader contextClassLoader, boolean boundEngine, boolean preInitialization,
                     MessageTransport messageInterceptor, Handler logHandler) {
-        super(impl);
         this.messageInterceptor = messageInterceptor;
         this.impl = impl;
         this.out = out;
@@ -343,7 +340,6 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
     }
 
     PolyglotEngineImpl(PolyglotEngineImpl prototype) {
-        super(prototype.impl);
         this.messageInterceptor = prototype.messageInterceptor;
         this.instrumentationHandler = INSTRUMENT.createInstrumentationHandler(
                         this,
@@ -432,6 +428,8 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                 instrumentsToCreate.add(instrument);
             }
         }
+        this.api = getAPIAccess().newEngine(impl.engineDispatch, this);
+
         ensureInstrumentsCreated(instrumentsToCreate);
         registerShutDownHook();
         notifyCreated();
@@ -456,11 +454,11 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         return OptionDescriptors.createUnion(engineOptionDescriptors, compilerOptionDescriptors);
     }
 
-    static Collection<Engine> findActiveEngines() {
+    static Collection<Object> findActiveEngines() {
         synchronized (ENGINES) {
-            List<Engine> engines = new ArrayList<>(ENGINES.size());
+            List<Object> engines = new ArrayList<>(ENGINES.size());
             for (PolyglotEngineImpl engine : ENGINES.keySet()) {
-                engines.add(engine.creatorApi);
+                engines.add(engine.api);
             }
             return engines;
         }
@@ -743,7 +741,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         for (InstrumentCache instrumentCache : cachedInstruments) {
             PolyglotInstrument instrumentImpl = new PolyglotInstrument(this, instrumentCache);
             instrumentImpl.info = LANGUAGE.createInstrument(instrumentImpl, instrumentCache.getId(), instrumentCache.getName(), instrumentCache.getVersion());
-            Instrument instrument = impl.getAPIAccess().newInstrument(instrumentImpl);
+            Instrument instrument = impl.getAPIAccess().newInstrument(impl.instrumentDispatch, instrumentImpl);
             instrumentImpl.api = instrument;
 
             String id = instrumentImpl.cache.getId();
@@ -838,7 +836,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
 
     private PolyglotLanguage createLanguage(LanguageCache cache, int index, RuntimeException initError) {
         PolyglotLanguage languageImpl = new PolyglotLanguage(this, cache, index, index == HOST_LANGUAGE_INDEX, initError);
-        Language language = impl.getAPIAccess().newLanguage(languageImpl);
+        Language language = impl.getAPIAccess().newLanguage(impl.languageDispatch, languageImpl);
         languageImpl.api = language;
         return languageImpl;
     }
@@ -871,10 +869,6 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
 
     void addContext(PolyglotContextImpl context) {
         assert Thread.holdsLock(this.lock);
-
-        Context api = impl.getAPIAccess().newContext(context);
-        context.creatorApi = api;
-        context.currentApi = impl.getAPIAccess().newContext(context);
 
         if (limits != null) {
             limits.validate(context.config.limits);
@@ -976,23 +970,18 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         }
     }
 
-    @Override
     public Language requirePublicLanguage(String id) {
-        try {
-            checkState();
-            Language language = idToPublicLanguage.get(id);
-            if (language == null) {
-                String misspelledGuess = matchSpellingError(idToPublicLanguage.keySet(), id);
-                String didYouMean = "";
-                if (misspelledGuess != null) {
-                    didYouMean = String.format("Did you mean '%s'? ", misspelledGuess);
-                }
-                throw PolyglotEngineException.illegalArgument(String.format("A language with id '%s' is not installed. %sInstalled languages are: %s.", id, didYouMean, getLanguages().keySet()));
+        checkState();
+        Language language = idToPublicLanguage.get(id);
+        if (language == null) {
+            String misspelledGuess = matchSpellingError(idToPublicLanguage.keySet(), id);
+            String didYouMean = "";
+            if (misspelledGuess != null) {
+                didYouMean = String.format("Did you mean '%s'? ", misspelledGuess);
             }
-            return language;
-        } catch (Throwable t) {
-            throw PolyglotImpl.guestToHostException(this, t);
+            throw PolyglotEngineException.illegalArgument(String.format("A language with id '%s' is not installed. %sInstalled languages are: %s.", id, didYouMean, getLanguages().keySet()));
         }
+        return language;
     }
 
     private static String matchSpellingError(Set<String> allIds, String enteredId) {
@@ -1005,35 +994,18 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         return null;
     }
 
-    @Override
     public Instrument requirePublicInstrument(String id) {
-        try {
-            checkState();
-            Instrument instrument = idToPublicInstrument.get(id);
-            if (instrument == null) {
-                String misspelledGuess = matchSpellingError(idToPublicInstrument.keySet(), id);
-                String didYouMean = "";
-                if (misspelledGuess != null) {
-                    didYouMean = String.format("Did you mean '%s'? ", misspelledGuess);
-                }
-                throw PolyglotEngineException.illegalState(String.format("An instrument with id '%s' is not installed. %sInstalled instruments are: %s.", id, didYouMean, getInstruments().keySet()));
+        checkState();
+        Instrument instrument = idToPublicInstrument.get(id);
+        if (instrument == null) {
+            String misspelledGuess = matchSpellingError(idToPublicInstrument.keySet(), id);
+            String didYouMean = "";
+            if (misspelledGuess != null) {
+                didYouMean = String.format("Did you mean '%s'? ", misspelledGuess);
             }
-            return instrument;
-        } catch (Throwable t) {
-            throw PolyglotImpl.guestToHostException(this, t);
+            throw PolyglotEngineException.illegalState(String.format("An instrument with id '%s' is not installed. %sInstalled instruments are: %s.", id, didYouMean, getInstruments().keySet()));
         }
-    }
-
-    @Override
-    public void close(Engine sourceEngine, boolean cancelIfExecuting) {
-        try {
-            if (sourceEngine != creatorApi) {
-                throw PolyglotEngineException.illegalState("Engine instances that were indirectly received using Context.get() cannot be closed.");
-            }
-            ensureClosed(cancelIfExecuting, false);
-        } catch (Throwable t) {
-            throw PolyglotImpl.guestToHostException(this, t);
-        }
+        return instrument;
     }
 
     @TruffleBoundary
@@ -1186,37 +1158,21 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         return localContexts;
     }
 
-    @Override
     public Map<String, Instrument> getInstruments() {
-        try {
-            checkState();
-            return idToPublicInstrument;
-        } catch (Throwable t) {
-            throw PolyglotImpl.guestToHostException(this, t);
-        }
+        checkState();
+        return idToPublicInstrument;
     }
 
-    @Override
     public Map<String, Language> getLanguages() {
-        try {
-            checkState();
-            return idToPublicLanguage;
-        } catch (Throwable t) {
-            throw PolyglotImpl.guestToHostException(this, t);
-        }
+        checkState();
+        return idToPublicLanguage;
     }
 
-    @Override
     public OptionDescriptors getOptions() {
-        try {
-            checkState();
-            return engineOptionValues.getDescriptors();
-        } catch (Throwable t) {
-            throw PolyglotImpl.guestToHostException(this, t);
-        }
+        checkState();
+        return engineOptionValues.getDescriptors();
     }
 
-    @Override
     public Set<Source> getCachedSources() {
         checkState();
         Set<Source> sources = new HashSet<>();
@@ -1559,15 +1515,6 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         }
     }
 
-    @Override
-    public String getImplementationName() {
-        try {
-            return Truffle.getRuntime().getName();
-        } catch (Throwable t) {
-            throw PolyglotImpl.guestToHostException(this, t);
-        }
-    }
-
     private static final String DISABLE_PRIVILEGES_VALUE = ImageBuildTimeOptions.get(ImageBuildTimeOptions.DISABLE_PRIVILEGES_NAME);
     private static final String[] DISABLED_PRIVILEGES = DISABLE_PRIVILEGES_VALUE.isEmpty() ? new String[0] : DISABLE_PRIVILEGES_VALUE.split(",");
 
@@ -1601,9 +1548,8 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         ALLOW_IO = io;
     }
 
-    @Override
     @SuppressWarnings({"all"})
-    public Context createContext(OutputStream configOut, OutputStream configErr, InputStream configIn, boolean allowHostLookup,
+    public PolyglotContextImpl createContext(OutputStream configOut, OutputStream configErr, InputStream configIn, boolean allowHostLookup,
                     HostAccess hostAccess,
                     PolyglotAccess polyglotAccess, boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostIO,
                     boolean allowHostClassLoading, boolean allowExperimentalOptions, Predicate<String> classFilter, Map<String, String> options,
@@ -1752,11 +1698,14 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             }
         }
         checkTruffleRuntime();
-        return context.creatorApi;
+        return context;
     }
 
     private PolyglotContextImpl loadPreinitializedContext(PolyglotContextConfig config, HostAccess hostAccess) {
         PolyglotContextImpl context = preInitializedContext.getAndSet(null);
+        if (!getEngineOptionValues().get(PolyglotEngineOptions.UsePreInitializedContext)) {
+            context = null;
+        }
         if (context != null) {
             FileSystems.PreInitializeContextFileSystem preInitFs = (FileSystems.PreInitializeContextFileSystem) context.config.fileSystem;
             preInitFs.onLoadPreinitializedContext(config.fileSystem);
@@ -1802,8 +1751,6 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                     PolyglotEngineImpl engine = new PolyglotEngineImpl(this);
                     ensureClosed(true, false);
                     synchronized (engine.lock) {
-                        engine.creatorApi = getAPIAccess().newEngine(engine);
-                        engine.currentApi = getAPIAccess().newEngine(engine);
                         engine.initializeHostAccess(hostAccess);
                         context = new PolyglotContextImpl(engine, config);
                         engine.addContext(context);
@@ -2090,6 +2037,16 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             return true;
         }
 
+    }
+
+    @SuppressWarnings("static-method")
+    String getVersion() {
+        String version = HomeFinder.getInstance().getVersion();
+        if (version.equals("snapshot")) {
+            return "Development Build";
+        } else {
+            return version;
+        }
     }
 
 }

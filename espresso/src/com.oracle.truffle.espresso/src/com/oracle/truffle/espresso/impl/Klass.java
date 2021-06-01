@@ -79,6 +79,8 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.dispatch.BaseInterop;
+import com.oracle.truffle.espresso.runtime.dispatch.EspressoInterop;
 import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
@@ -298,7 +300,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
 
         private static int getLength(Object[] arguments, ToEspressoNode toEspressoNode, Meta meta) throws UnsupportedTypeException, ArityException {
             if (arguments.length != 1) {
-                throw ArityException.create(1, arguments.length);
+                throw ArityException.create(1, 1, arguments.length);
             }
             return convertLength(arguments[0], toEspressoNode, meta);
         }
@@ -342,7 +344,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
             ArrayKlass arrayKlass = (ArrayKlass) receiver;
             assert arrayKlass.getElementalType().getJavaKind() != JavaKind.Void;
             if (arrayKlass.getDimension() != arguments.length) {
-                throw ArityException.create(arrayKlass.getDimension(), arguments.length);
+                throw ArityException.create(arrayKlass.getDimension(), arrayKlass.getDimension(), arguments.length);
             }
             int[] dimensions = new int[arguments.length];
             for (int i = 0; i < dimensions.length; ++i) {
@@ -423,6 +425,28 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
 
     // endregion ### Identity/hashCode
 
+    public Class<?> getDispatch() {
+        Class<?> result = dispatch;
+        if (result == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            if (getMeta().getContext().metaInitialized()) {
+                result = getMeta().resolveDispatch(this);
+                dispatch = result;
+            } else {
+                /*
+                 * Meta is not fully initialized: return the generic interop, without updating the
+                 * dispatch cache. This is fine, as we are not expecting any meaningful interop
+                 * until context is fully initialized.
+                 */
+                if (isPrimitive()) {
+                    return BaseInterop.class;
+                }
+                return EspressoInterop.class;
+            }
+        }
+        return result;
+    }
+
     // endregion Interop
 
     // Threshold for using binary search instead of linear search for interface lookup.
@@ -457,6 +481,9 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
 
     @CompilationFinal //
     private volatile StaticObject mirrorCache;
+
+    @CompilationFinal //
+    private Class<?> dispatch;
 
     @CompilationFinal private int hierarchyDepth = -1;
 
@@ -783,7 +810,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
 
     /**
      * Performs type checking for non-interface, non-array classes.
-     * 
+     *
      * @param other the class whose type is to be checked against {@code this}
      * @return true if {@code other} is a subclass of {@code this}
      */
@@ -794,7 +821,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
 
     /**
      * Performs type checking for interface classes.
-     * 
+     *
      * @param other the class whose type is to be checked against {@code this}
      * @return true if {@code this} is a super interface of {@code other}
      */

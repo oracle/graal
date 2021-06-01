@@ -1,3 +1,17 @@
+# Version 21.2.0
+
+Fixes:
+
+* Fix LLVM toolchain not working correctly for C++ on MacOS 11.3.
+
+New features:
+
+* Support implicitly typed XADD instructions in inline assembly.
+
+* Support some atomic variants of certain inline assembly instructions. Currently
+  supported instructions are: xchg, cmpxchg and xadd along with their explicitly typed
+  variants, and various unary instructions including incb/w/l/q and decb/w/l/q.
+
 # Version 21.1.0
 
 New features:

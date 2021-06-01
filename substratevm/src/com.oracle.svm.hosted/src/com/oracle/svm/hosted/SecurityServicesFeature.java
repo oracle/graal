@@ -26,6 +26,14 @@ package com.oracle.svm.hosted;
 
 // Checkstyle: allow reflection
 
+import static com.oracle.svm.hosted.SecurityServicesFeature.SecurityServicesPrinter.dedent;
+import static com.oracle.svm.hosted.SecurityServicesFeature.SecurityServicesPrinter.indent;
+
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -51,8 +59,10 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
-import java.util.function.Consumer;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 import javax.crypto.Cipher;
@@ -78,6 +88,9 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.reports.ReportUtils;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.TypeResult;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
@@ -86,6 +99,7 @@ import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jni.JNIRuntimeAccess;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
@@ -99,10 +113,10 @@ import sun.security.x509.OIDMap;
 public class SecurityServicesFeature extends JNIRegistrationUtil implements Feature {
 
     static class Options {
-        @Option(help = "Enable the feature that provides support for security services.")//
+        @Option(help = "Enable automatic registration of security services.")//
         public static final HostedOptionKey<Boolean> EnableSecurityServicesFeature = new HostedOptionKey<>(true);
 
-        @Option(help = "Enable trace logging for the security services feature.")//
+        @Option(help = "Enable tracing of security services automatic registration.")//
         static final HostedOptionKey<Boolean> TraceSecurityServices = new HostedOptionKey<>(false);
     }
 
@@ -145,24 +159,31 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
     private Map<String, Set<Service>> availableServices;
 
     @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return Options.EnableSecurityServicesFeature.getValue();
-    }
-
-    @Override
     public void afterRegistration(AfterRegistrationAccess a) {
         ModuleSupport.exportAndOpenPackageToClass("java.base", "sun.security.x509", false, getClass());
         ModuleSupport.openModuleByClass(Security.class, getClass());
+        disableExperimentalFipsMode(a);
+    }
+
+    /**
+     * The SunJSSE provider had a experimental feature that bound to a FIPS crypto provider. This
+     * has been removed in JDK-8217835. We disabled explicitly here by calling SunJSSE.isFIPS(). If
+     * it was already enabled that's an error.
+     */
+    private static void disableExperimentalFipsMode(AfterRegistrationAccess a) {
+        if (JavaVersionUtil.JAVA_SPEC <= 11) {
+            try {
+                Boolean isFIPS = (Boolean) method(a, "sun.security.ssl.SunJSSE", "isFIPS").invoke(null);
+                VMError.guarantee(!isFIPS, "SunJSSE is already initialized in experimental FIPS mode.");
+            } catch (IllegalAccessException | InvocationTargetException e) {
+                VMError.shouldNotReachHere(e);
+            }
+        }
     }
 
     @Override
     public void duringSetup(DuringSetupAccess a) {
         DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
-
-        loader = access.imageClassLoader;
-        ctrParamClassAccessor = getConstructorParameterClassAccessor(loader);
-        getSpiClassMethod = getSpiClassMethod();
-        availableServices = computeAvailableServices();
 
         RuntimeClassInitializationSupport rci = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
         /*
@@ -227,18 +248,23 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-
-        registerServiceReachabilityHandlers(access);
+        if (Options.EnableSecurityServicesFeature.getValue()) {
+            registerServiceReachabilityHandlers(access);
+        }
 
         if (JavaVersionUtil.JAVA_SPEC < 16) {
             // https://bugs.openjdk.java.net/browse/JDK-8235710
             access.registerReachabilityHandler(SecurityServicesFeature::linkSunEC,
                             method(access, "sun.security.ec.ECDSASignature", "signDigest", byte[].class, byte[].class, byte[].class, byte[].class, int.class),
                             method(access, "sun.security.ec.ECDSASignature", "verifySignedDigest", byte[].class, byte[].class, byte[].class, byte[].class));
+            /* Ensure native calls to sun_security_ec* will be resolved as builtIn. */
+            PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_security_ec");
         }
 
         if (isPosix()) {
             access.registerReachabilityHandler(SecurityServicesFeature::linkJaas, method(access, "com.sun.security.auth.module.UnixSystem", "getUnixInfo"));
+            /* Resolve calls to com_sun_security_auth_module_UnixSystem* as builtIn. */
+            PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("com_sun_security_auth_module_UnixSystem");
         }
     }
 
@@ -247,8 +273,6 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
         /* We statically link sunec thus we classify it as builtIn library */
         PlatformNativeLibrarySupport.singleton();
         NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("sunec");
-        /* and ensure native calls to sun_security_ec* will be resolved as builtIn. */
-        PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_security_ec");
 
         nativeLibraries.addStaticJniLibrary("sunec");
         if (isPosix()) {
@@ -263,12 +287,14 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
         NativeLibraries nativeLibraries = ((DuringAnalysisAccessImpl) a).getNativeLibraries();
         /* We can statically link jaas, thus we classify it as builtIn library */
         NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary(JavaVersionUtil.JAVA_SPEC >= 11 ? "jaas" : "jaas_unix");
-        /* Resolve calls to com_sun_security_auth_module_UnixSystem* as builtIn. */
-        PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("com_sun_security_auth_module_UnixSystem");
         nativeLibraries.addStaticJniLibrary("jaas");
     }
 
     private void registerServiceReachabilityHandlers(BeforeAnalysisAccess access) {
+        loader = ((BeforeAnalysisAccessImpl) access).getImageClassLoader();
+        ctrParamClassAccessor = getConstructorParameterClassAccessor(loader);
+        getSpiClassMethod = getSpiClassMethod();
+        availableServices = computeAvailableServices();
 
         /*
          * The JCA defines the list of standard service classes available in the JDK. Each service
@@ -287,12 +313,12 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
          */
 
         for (Class<?> serviceClass : knownServices) {
-            Consumer<DuringAnalysisAccess> handler = a -> registerServices(serviceClass);
+            BiConsumer<DuringAnalysisAccess, Executable> handler = (a, t) -> registerServices(a, t, serviceClass);
             for (Method method : serviceClass.getMethods()) {
                 if (method.getName().equals("getInstance")) {
                     checkGetInstanceMethod(method);
                     /* The handler will be executed only once if any of the methods is triggered. */
-                    access.registerReachabilityHandler(handler, method);
+                    access.registerMethodOverrideReachabilityHandler(handler, method);
                 }
             }
         }
@@ -304,11 +330,11 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
          * java.security.Provider.Service.newInstance() directly. On Open JDK
          * SecureRandom.getInstance() is used instead.
          */
-        access.registerReachabilityHandler(a -> registerServices(SECURE_RANDOM_SERVICE),
-                        method(access, "java.security.Provider$Service", "newInstance", Object.class));
+        Optional<Method> defaultSecureRandomService = optionalMethod(access, "java.security.Provider", "getDefaultSecureRandomService");
+        defaultSecureRandomService.ifPresent(m -> access.registerMethodOverrideReachabilityHandler((a, t) -> registerServices(a, t, SECURE_RANDOM_SERVICE), m));
     }
 
-    private void registerServices(Class<?> serviceClass) {
+    private void registerServices(DuringAnalysisAccess access, Object trigger, Class<?> serviceClass) {
         /*
          * SPI classes, i.e., base classes for concrete service implementations, such as
          * java.security.MessageDigestSpi, can be dynamically loaded to double-check the base type
@@ -318,15 +344,31 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
         if (serviceClass.getPackage().getName().equals("java.security")) {
             registerSpiClass(serviceClass, getSpiClassMethod);
         }
-        registerServices(serviceClass.getSimpleName());
+        registerServices(access, trigger, serviceClass.getSimpleName());
     }
 
-    private void registerServices(String serviceType) {
-        Set<Service> services = availableServices.get(serviceType);
-        for (Service service : services) {
-            registerService(loader, service, ctrParamClassAccessor);
-            Provider provider = service.getProvider();
-            registerProvider(provider);
+    ConcurrentHashMap<String, Boolean> processedServiceClasses = new ConcurrentHashMap<>();
+
+    private void registerServices(DuringAnalysisAccess access, Object trigger, String serviceType) {
+        /*
+         * registerMethodOverrideReachabilityHandler() invokes the callback "once during analysis
+         * for each time a method that overrides the specified param baseMethod is determined to be
+         * reachable at run time", therefore we need to make sure that each serviceClass is
+         * processed only once.
+         */
+        processedServiceClasses.computeIfAbsent(serviceType, k -> {
+            doRegisterServices(access, trigger, serviceType);
+            return true;
+        });
+    }
+
+    @SuppressWarnings("try")
+    private void doRegisterServices(DuringAnalysisAccess access, Object trigger, String serviceType) {
+        try (TracingAutoCloseable ignored = trace(access, trigger, serviceType)) {
+            Set<Service> services = availableServices.get(serviceType);
+            for (Service service : services) {
+                registerService(loader, service, ctrParamClassAccessor);
+            }
         }
     }
 
@@ -421,7 +463,6 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
 
     private static void registerProvider(Provider provider) {
         registerForReflection(provider.getClass());
-
         try {
             Method getVerificationResult = ReflectionUtil.lookupMethod(Class.forName("javax.crypto.JceSecurity"), "getVerificationResult", Provider.class);
             /*
@@ -431,37 +472,39 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
              * support. See also Target_javax_crypto_JceSecurity.
              */
             getVerificationResult.invoke(null, provider);
-            trace("Provider registered: %s", provider.getName());
         } catch (ReflectiveOperationException ex) {
             throw VMError.shouldNotReachHere(ex);
         }
     }
 
+    @SuppressWarnings("try")
     private static void registerService(ImageClassLoader loader, Service service, Function<String, Class<?>> ctrParamClassAccessor) {
         TypeResult<Class<?>> serviceClassResult = loader.findClass(service.getClassName());
         if (serviceClassResult.isPresent()) {
-            registerForReflection(serviceClassResult.get());
+            try (TracingAutoCloseable ignored = trace(service)) {
+                registerForReflection(serviceClassResult.get());
 
-            Class<?> ctrParamClass = ctrParamClassAccessor.apply(service.getType());
-            if (ctrParamClass != null) {
-                registerForReflection(ctrParamClass);
-                trace("Parameter class registered: %s", ctrParamClass);
-            }
-
-            if (isSignature(service) || isCipher(service) || isKeyAgreement(service)) {
-                for (String keyClassName : getSupportedKeyClasses(service)) {
-                    loader.findClass(keyClassName).ifPresent(SecurityServicesFeature::registerForReflection);
+                Class<?> ctrParamClass = ctrParamClassAccessor.apply(service.getType());
+                if (ctrParamClass != null) {
+                    registerForReflection(ctrParamClass);
+                    trace("Registered service constructor parameter class: %s", ctrParamClass.getName());
                 }
+
+                if (isSignature(service) || isCipher(service) || isKeyAgreement(service)) {
+                    for (String keyClassName : getSupportedKeyClasses(service)) {
+                        loader.findClass(keyClassName).ifPresent(SecurityServicesFeature::registerForReflection);
+                    }
+                }
+                if (isKeyStore(service) && service.getAlgorithm().equals(JKS)) {
+                    registerJks(loader);
+                }
+                if (isCertificateFactory(service) && service.getAlgorithm().equals(X509)) {
+                    registerX509Extensions();
+                }
+                registerProvider(service.getProvider());
             }
-            if (isKeyStore(service) && service.getAlgorithm().equals(JKS)) {
-                registerJks(loader);
-            }
-            if (isCertificateFactory(service) && service.getAlgorithm().equals(X509)) {
-                registerX509Extensions();
-            }
-            trace("Service registered: %s", service);
         } else {
-            trace("Service registration failed: %s. Cause: class not found %s", service, service.getClassName());
+            trace("Cannot register service %s. Reason: %s.", asString(service), serviceClassResult.getException());
         }
     }
 
@@ -474,7 +517,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
     private static void registerJks(ImageClassLoader loader) {
         Class<?> javaKeyStoreJks = loader.findClass("sun.security.provider.JavaKeyStore$JKS").getOrFail();
         registerForReflection(javaKeyStoreJks);
-        trace("Class registered for reflection: %s", javaKeyStoreJks);
+        trace("Registered KeyStore.JKS implementation class: %s", javaKeyStoreJks.getName());
     }
 
     /**
@@ -492,11 +535,16 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
                 Class<?> extensionClass = OIDMap.getClass(name);
                 assert sun.security.x509.Extension.class.isAssignableFrom(extensionClass);
                 registerForReflection(extensionClass);
-                trace("Class registered for reflection: %s", extensionClass);
+                trace("Registered X.509 extension class: %s", extensionClass.getName());
             } catch (CertificateException e) {
                 throw VMError.shouldNotReachHere(e);
             }
         }
+    }
+
+    @Override
+    public void afterAnalysis(AfterAnalysisAccess access) {
+        SecurityServicesPrinter.endTracing();
     }
 
     private static void registerForReflection(Class<?> clazz) {
@@ -533,33 +581,118 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
         return emptyStringArray;
     }
 
-    private static final String SEP = ", ";
+    private static void trace(String format, Object... args) {
+        SecurityServicesPrinter.trace((indent) -> indent + String.format(format + "%n", args));
+    }
+
+    abstract static class TracingAutoCloseable implements AutoCloseable {
+        /** Without declaring close() javac complains that the try-with-resource needs a catch. */
+        @Override
+        public abstract void close();
+    }
+
+    private static TracingAutoCloseable trace(Service service) {
+        return new TracingAutoCloseable() {
+            {
+                SecurityServicesPrinter.trace((indent) -> String.format("%s%s%n", indent, asString(service)));
+                indent();
+            }
+
+            @Override
+            public void close() {
+                dedent();
+            }
+        };
+    }
+
+    private static TracingAutoCloseable trace(DuringAnalysisAccess a, Object trigger, String serviceType) {
+        return new TracingAutoCloseable() {
+            {
+                indent();
+                SecurityServicesPrinter.trace((indent) -> {
+                    Method method = (Method) trigger;
+                    DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
+                    AnalysisMethod analysisMethod = access.getMetaAccess().lookupJavaMethod(method);
+                    String msg = String.format("Service factory method %s is reachable.%n", analysisMethod.format("%H.%n(%P)"));
+                    msg += String.format("%sAnalysis parsing context: %s", indent, ReportUtils.parsingContext(analysisMethod, indent + "    "));
+                    msg += String.format("%sReachability of %s service type API triggers registration of following services:%n", indent, serviceType);
+                    return msg;
+                });
+                indent();
+            }
+
+            @Override
+            public void close() {
+                dedent();
+                dedent();
+                trace("");
+            }
+        };
+    }
 
     private static String asString(Service s) {
-        String str = "Provider = " + s.getProvider().getName() + SEP;
-        str += "Type = " + s.getType() + SEP;
-        str += "Algorithm = " + s.getAlgorithm() + SEP;
-        str += "Class = " + s.getClassName();
+        String str = "";
+        str += "Type: " + s.getType() + ", ";
+        str += "Provider: " + s.getProvider().getName() + ", ";
+        str += "Algorithm: " + s.getAlgorithm() + ", ";
+        str += "Class: " + s.getClassName();
         if (isSignature(s) || isCipher(s) || isKeyAgreement(s)) {
-            str += SEP + "SupportedKeyClasses = " + Arrays.toString(getSupportedKeyClasses(s));
+            str += ", " + "SupportedKeyClasses: " + Arrays.toString(getSupportedKeyClasses(s));
         }
         return str;
     }
 
-    private static void trace(String msg, Object... args) {
-        if (Options.TraceSecurityServices.getValue()) {
-            if (args != null) {
-                // expand Service parameters into a custom format
-                for (int i = 0; i < args.length; i++) {
-                    if (args[i] instanceof Service) {
-                        args[i] = asString((Service) args[i]);
-                    }
-                }
-            }
+    static class SecurityServicesPrinter {
+        private static final int INDENT = 4;
+        private static final boolean enabled = Options.TraceSecurityServices.getValue();
+        private static final SecurityServicesPrinter instance = enabled ? new SecurityServicesPrinter() : null;
+
+        private final PrintWriter writer;
+        private int indent = 0;
+
+        SecurityServicesPrinter() {
+            File reportFile = reportFile();
             // Checkstyle: stop
-            System.out.format(msg + "%n", args);
+            System.out.println("# Printing security services automatic registration to: " + reportFile);
             // Checkstyle: resume
+            try {
+                writer = new PrintWriter(new FileWriter(reportFile));
+            } catch (IOException e) {
+                throw VMError.shouldNotReachHere(e);
+            }
+        }
+
+        static void trace(Function<String, String> strFunction) {
+            if (enabled) {
+                String indent = "";
+                if (instance.indent > 0) {
+                    indent = String.format("%" + instance.indent + "s", " ");
+                }
+                instance.writer.print(strFunction.apply(indent));
+            }
+        }
+
+        static void indent() {
+            if (enabled) {
+                instance.indent += INDENT;
+            }
+        }
+
+        static void dedent() {
+            if (enabled) {
+                instance.indent -= INDENT;
+            }
+        }
+
+        static void endTracing() {
+            if (enabled) {
+                instance.writer.close();
+            }
+        }
+
+        private static File reportFile() {
+            String reportsPath = SubstrateOptions.Path.getValue() + File.separatorChar + "reports";
+            return ReportUtils.reportFile(reportsPath, "security_services", "txt");
         }
     }
-
 }

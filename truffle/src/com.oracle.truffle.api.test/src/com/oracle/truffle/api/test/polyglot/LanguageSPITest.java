@@ -586,6 +586,41 @@ public class LanguageSPITest {
     }
 
     @Test
+    public void testEnterInNewThread() {
+        Context context = Context.create();
+        Function<Env, Object> f = new Function<Env, Object>() {
+            @Override
+            public Object apply(Env env) {
+                Throwable[] error = new Throwable[1];
+                Thread thread = new Thread(() -> {
+                    try {
+                        try {
+                            Object prev = env.getContext().enter(null);
+                            assertNull("already entered in new thread", prev);
+                        } finally {
+                            env.getContext().leave(null, null);
+                        }
+                    } catch (Throwable t) {
+                        error[0] = t;
+                    }
+                });
+                thread.start();
+                try {
+                    thread.join();
+                } catch (InterruptedException ex) {
+                    throw new RuntimeException(ex);
+                }
+                if (error[0] != null) {
+                    throw new AssertionError(error[0]);
+                }
+                return null;
+            }
+        };
+        eval(context, f);
+        context.close();
+    }
+
+    @Test
     public void testCloseInnerContextWithParent() {
         Context context = Context.create();
         LanguageContext returnedInnerContext = eval(context, new Function<Env, Object>() {
@@ -857,7 +892,7 @@ public class LanguageSPITest {
     }
 
     private static Source getTruffleSource(org.graalvm.polyglot.Source source) throws NoSuchFieldException, IllegalAccessException {
-        java.lang.reflect.Field impl = source.getClass().getDeclaredField("impl");
+        java.lang.reflect.Field impl = source.getClass().getDeclaredField("receiver");
         impl.setAccessible(true);
         return (Source) impl.get(source);
     }

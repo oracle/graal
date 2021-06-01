@@ -40,6 +40,7 @@ import java.util.function.Consumer;
 
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.common.JVMCIError;
@@ -70,11 +71,27 @@ public class ReportUtils {
      * @param reporter a consumer that writes to a PrintWriter
      */
     public static void report(String description, String path, String name, String extension, Consumer<PrintWriter> reporter) {
+        String fileName = timeStampedFileName(name, extension);
+        Path reportDir = Paths.get(path);
+        reportImpl(description, reportDir, fileName, reporter);
+    }
+
+    public static String timeStampedFileName(String name, String extension) {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss");
         String timeStamp = LocalDateTime.now().format(formatter);
-        Path reportDir = Paths.get(path);
-        String fileName = name + "_" + timeStamp + "." + extension;
-        reportImpl(description, reportDir, fileName, reporter);
+        return name + "_" + timeStamp + "." + extension;
+    }
+
+    public static File reportFile(String path, String name, String extension) {
+        try {
+            String fileName = ReportUtils.timeStampedFileName(name, extension);
+            Path reportDir = Files.createDirectories(Paths.get(path));
+            Path filePath = reportDir.resolve(fileName);
+            Files.deleteIfExists(filePath);
+            return Files.createFile(filePath).toFile();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     /**
@@ -103,7 +120,7 @@ public class ReportUtils {
 
             try (FileWriter fw = new FileWriter(Files.createFile(file).toFile())) {
                 try (PrintWriter writer = new PrintWriter(fw)) {
-                    System.out.println("# Printing " + description + " to: " + getCWDRelativePath(file));
+                    System.out.println("# Printing " + description + " to: " + file);
                     reporter.accept(writer);
                 }
             }
@@ -157,12 +174,29 @@ public class ReportUtils {
             Path file = reportDir.resolve(fileName);
             try (OutputStream fos = Files.newOutputStream(file, StandardOpenOption.CREATE, StandardOpenOption.WRITE,
                             append ? StandardOpenOption.APPEND : StandardOpenOption.TRUNCATE_EXISTING)) {
-                System.out.println("# Printing " + description + " to: " + getCWDRelativePath(file));
+                System.out.println("# Printing " + description + " to: " + file);
                 reporter.accept(fos);
                 fos.flush();
             }
         } catch (IOException e) {
             throw JVMCIError.shouldNotReachHere(e);
         }
+    }
+
+    public static String parsingContext(AnalysisMethod method) {
+        return parsingContext(method, "   ");
+    }
+
+    public static String parsingContext(AnalysisMethod method, String indent) {
+        StringBuilder msg = new StringBuilder();
+        if (method.getTypeFlow().getParsingContext().length > 0) {
+            for (StackTraceElement e : method.getTypeFlow().getParsingContext()) {
+                msg.append(String.format("%n%sat %s", indent, e));
+            }
+            msg.append(String.format("%n"));
+        } else {
+            msg.append(String.format(" <no parsing context available> %n"));
+        }
+        return msg.toString();
     }
 }

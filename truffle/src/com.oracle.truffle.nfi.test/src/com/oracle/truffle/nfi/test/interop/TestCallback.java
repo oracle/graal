@@ -79,7 +79,7 @@ public class TestCallback implements TruffleObject {
                 return ret;
             }
         } else {
-            throw ArityException.create(arity, args.length);
+            throw ArityException.create(arity, arity, args.length);
         }
     }
 }

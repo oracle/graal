@@ -367,7 +367,7 @@ public class LLVMVaListStorage implements TruffleObject {
                 return pointerEscapeNode.executeWithType(ptrArg, type);
 
             } else {
-                throw ArityException.create(2, arguments.length);
+                throw ArityException.create(2, 2, arguments.length);
             }
         }
         throw UnknownIdentifierException.create(member);

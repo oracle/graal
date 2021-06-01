@@ -65,11 +65,6 @@ public abstract class FloatArrayStoreNode extends QuickNode {
 
     @Specialization(guards = "array.isEspressoObject()")
     void doEspresso(StaticObject array, int index, float value) {
-        getBytecodesNode().getInterpreterToVM().setArrayFloat(value, index, array);
-    }
-
-    @Override
-    public boolean producedForeignObject(Object[] refs) {
-        return false;
+        getBytecodeNode().getInterpreterToVM().setArrayFloat(value, index, array);
     }
 }

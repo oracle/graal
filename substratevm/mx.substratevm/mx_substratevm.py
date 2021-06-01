@@ -41,6 +41,7 @@ import pipes
 from xml.dom.minidom import parse
 from argparse import ArgumentParser
 import fnmatch
+import collections
 
 import mx
 import mx_compiler
@@ -58,12 +59,8 @@ import sys
 
 if sys.version_info[0] < 3:
     from StringIO import StringIO
-    def _decode(x):
-        return x
 else:
     from io import StringIO
-    def _decode(x):
-        return x.decode()
 
 USE_NI_JPMS = os.environ.get('USE_NATIVE_IMAGE_JAVA_PLATFORM_MODULE_SYSTEM', 'false').lower() == 'true'
 
@@ -104,15 +101,8 @@ def classpath(args):
         return [] # safeguard against mx.classpath(None) behaviour
     return mx.classpath(args, jdk=mx_compiler.jdk)
 
-clibraryDists = ['SVM_HOSTED_NATIVE']
-def clibrary_paths():
-    return (mx._get_dependency_path(d) for d in clibraryDists)
-
 def platform_name():
     return mx.get_os() + "-" + mx.get_arch()
-
-def clibrary_libpath():
-    return ','.join(join(path, platform_name()) for path in clibrary_paths())
 
 def svm_suite():
     return svmSuites[-1]
@@ -141,21 +131,19 @@ def is_musl_supported():
     return False
 
 
-class GraalVMConfig(object):
-    def __init__(self, primary_suite_dir, dynamicimports=None, disable_libpolyglot=False, force_bash_launchers=None, skip_libraries=None,
-            exclude_components=None, native_images=None):
-        self._primary_suite_dir = primary_suite_dir
-        self.dynamicimports = dynamicimports or []
-        self.disable_libpolyglot = disable_libpolyglot
-        self.force_bash_launchers = force_bash_launchers or []
-        self.skip_libraries = skip_libraries or []
-        self.exclude_components = exclude_components or []
-        self.native_images = native_images or []
+class GraalVMConfig(collections.namedtuple('GraalVMConfig', 'primary_suite_dir, dynamicimports, disable_libpolyglot, force_bash_launchers, skip_libraries, exclude_components, native_images')):
+    @classmethod
+    def build(cls, primary_suite_dir=None, dynamicimports=None, disable_libpolyglot=True, force_bash_launchers=True, skip_libraries=True,
+              exclude_components=None, native_images=None):
+        dynamicimports = list(dynamicimports or [])
         for x, _ in mx.get_dynamic_imports():
-            self.dynamicimports.append(x)
-
-    def primary_suite_dir(self):
-        return self._primary_suite_dir
+            if x not in dynamicimports:
+                dynamicimports.append(x)
+        new_config = cls(primary_suite_dir, tuple(dynamicimports), disable_libpolyglot,
+                         force_bash_launchers if isinstance(force_bash_launchers, bool) else tuple(force_bash_launchers),
+                         skip_libraries if isinstance(skip_libraries, bool) else tuple(skip_libraries),
+                         tuple(exclude_components or ()), tuple(native_images or ()))
+        return new_config
 
     def mx_args(self):
         args = ['--disable-installables=true']
@@ -179,25 +167,18 @@ class GraalVMConfig(object):
             args += ['--native-images=' + ','.join(self.native_images)]
         return args
 
-    def _tuple(self):
-        _force_bash_launchers = tuple(self.force_bash_launchers) if isinstance(self.force_bash_launchers, list) else self.force_bash_launchers
-        _skip_libraries = tuple(self.skip_libraries) if isinstance(self.skip_libraries, list) else self.skip_libraries
-        return tuple(self.dynamicimports), self.disable_libpolyglot, _force_bash_launchers, _skip_libraries, tuple(self.exclude_components), tuple(self.native_images)
 
-    def __hash__(self):
-        return hash(self._tuple())
+def _run_graalvm_cmd(cmd_args, config, nonZeroIsFatal=True, out=None, err=None, timeout=None, env=None, quiet=False):
+    if config:
+        config_args = config.mx_args()
+        primary_suite_dir = config.primary_suite_dir
+    else:
+        config_args = []
+        primary_suite_dir = None
 
-    def __eq__(self, other):
-        if not isinstance(other, GraalVMConfig):
-            return False
-        return self._tuple() == self._tuple()
-
-    def __repr__(self):
-        return "GraalVMConfig[{}]".format(self._tuple())
-
-
-def _run_graalvm_cmd(args, config, nonZeroIsFatal=True, out=None, err=None, timeout=None, env=None, quiet=False):
-    return mx.run_mx(config.mx_args() + args, suite=config.primary_suite_dir(), nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, timeout=timeout, env=env, quiet=quiet)
+    args = config_args + cmd_args
+    suite = primary_suite_dir or svm_suite().dir
+    return mx.run_mx(args, suite=suite, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, timeout=timeout, env=env, quiet=quiet)
 
 
 _vm_homes = {}
@@ -211,47 +192,6 @@ def _vm_home(config):
         _run_graalvm_cmd(['graalvm-home'], config, out=capture, quiet=True)
         _vm_homes[config] = capture.data.strip()
     return _vm_homes[config]
-
-
-_graalvm_force_bash_launchers = ['polyglot', 'native-image-configure', 'gu']
-_graalvm_skip_libraries = ['native-image-agent']
-_graalvm_exclude_components = ['gu'] if mx.is_windows() else []  # gu does not work on Windows atm
-
-def _graalvm_config():
-    return GraalVMConfig(primary_suite_dir=svm_suite().dir)
-
-def _graalvm_jvm_config():
-    return GraalVMConfig(primary_suite_dir=svm_suite().dir,
-                         disable_libpolyglot=True,
-                         force_bash_launchers=True,
-                         skip_libraries=True,
-                         exclude_components=_graalvm_exclude_components)
-
-def _graalvm_js_config():
-    return GraalVMConfig(primary_suite_dir=join(suite.vc_dir, 'vm'),  # Run from `vm` to clone the right revision of `graal-js` if needed
-                         dynamicimports=['/' + svm_suite().name, '/graal-js'],
-                         disable_libpolyglot=True,
-                         force_bash_launchers=_graalvm_force_bash_launchers + ['js'],
-                         skip_libraries=_graalvm_skip_libraries,
-                         exclude_components=_graalvm_exclude_components)
-
-
-graalvm_config = _graalvm_config
-graalvm_jvm_config = _graalvm_jvm_config
-
-
-def build_native_image_image(config=None, args=None):
-    config = config or graalvm_config()
-    mx.log('Building GraalVM with native-image in ' + _vm_home(config))
-    env = os.environ.copy()
-    if mx.version < mx.VersionSpec("5.219"):
-        mx.warn("mx version is older than 5.219, SVM's GraalVM build will not be built with links.\nConsider updating mx to improve IDE compile-on-save workflow.")
-    if not mx.is_windows():
-        if 'LINKY_LAYOUT' not in env:
-            env['LINKY_LAYOUT'] = '*.jar'
-        elif '*.jar' not in env['LINKY_LAYOUT']:
-            mx.warn("LINKY_LAYOUT already set")
-    _run_graalvm_cmd(['build'] + (args or []), config, env=env)
 
 
 def locale_US_args():
@@ -278,11 +218,11 @@ GraalTags = Tags([
 ])
 
 
-def vm_native_image_path(config):
+def vm_native_image_path(config=None):
     return vm_executable_path('native-image', config)
 
 
-def vm_executable_path(executable, config):
+def vm_executable_path(executable, config=None):
     if mx.get_os() == 'windows':
         executable += '.cmd'  # links are `.cmd` on windows
     return join(_vm_home(config), 'bin', executable)
@@ -298,7 +238,6 @@ def run_musl_basic_tests():
 
 @contextmanager
 def native_image_context(common_args=None, hosted_assertions=True, native_image_cmd='', config=None, build_if_missing=False):
-    config = config or graalvm_config()
     common_args = [] if common_args is None else common_args
     base_args = ['--no-fallback', '-H:+EnforceMaxRuntimeCompileMethods']
     base_args += ['-H:Path=' + svmbuild_dir()]
@@ -318,14 +257,27 @@ def native_image_context(common_args=None, hosted_assertions=True, native_image_
     else:
         native_image_cmd = vm_native_image_path(config)
 
-    if build_if_missing and not exists(native_image_cmd):
-        build_native_image_image(config)
-    if exists(native_image_cmd):
-        mx.log('Use ' + native_image_cmd + ' for remaining image builds')
-        def _native_image(args, **kwargs):
-            mx.run([native_image_cmd, '-H:CLibraryPath=' + clibrary_libpath()] + args, **kwargs)
-    else:
-        raise mx.abort("GraalVM not built? could not find " + native_image_cmd)
+    if not exists(native_image_cmd):
+        mx.log('Building GraalVM for config ' + str(config) + ' ...')
+        _run_graalvm_cmd(['build'], config)
+        native_image_cmd = vm_native_image_path(config)
+        if not exists(native_image_cmd):
+            raise mx.abort('The built GraalVM for config ' + str(config) + ' does not contain a native-image command')
+
+    def _native_image(args, **kwargs):
+        mx.run([native_image_cmd] + args, **kwargs)
+
+    def is_launcher(launcher_path):
+        with open(launcher_path, 'rb') as fp:
+            first_two_bytes = fp.read(2)
+            first_two_bytes_launcher = b'::' if mx.is_windows() else b'#!'
+            return first_two_bytes == first_two_bytes_launcher
+        return False
+
+    if build_if_missing and is_launcher(native_image_cmd):
+        mx.log('Building image from launcher ' + native_image_cmd + ' ...')
+        verbose_image_build_option = ['--verbose'] if mx.get_opts().verbose else []
+        _native_image(verbose_image_build_option + ['--macro:native-image-launcher'])
 
     def query_native_image(all_args, option):
 
@@ -380,17 +332,10 @@ _native_unittest_features = '--features=com.oracle.svm.test.ImageInfoTest$TestFe
 IMAGE_ASSERTION_FLAGS = ['-H:+VerifyGraalGraphs', '-H:+VerifyPhases']
 
 
-_gate_needs_build = True
 def svm_gate_body(args, tasks):
-    def build():
-        global _gate_needs_build
-        if _gate_needs_build:
-            build_native_image_image()
-            _gate_needs_build = False
 
     with Task('image demos', tasks, tags=[GraalTags.helloworld]) as t:
         if t:
-            build()
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
                 if svm_java8():
                     javac_image(['--output-path', svmbuild_dir()])
@@ -405,7 +350,6 @@ def svm_gate_body(args, tasks):
 
     with Task('image demos debuginfo', tasks, tags=[GraalTags.helloworld_debug]) as t:
         if t:
-            build()
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
                 if svm_java8():
                     javac_image(['--output-path', svmbuild_dir(), '-H:GenerateDebugInfo=1'])
@@ -420,20 +364,16 @@ def svm_gate_body(args, tasks):
 
     with Task('image debuginfotest', tasks, tags=[GraalTags.debuginfotest]) as t:
         if t:
-            build()
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
                 debuginfotest(['--output-path', svmbuild_dir()])
 
     with Task('native unittests', tasks, tags=[GraalTags.test]) as t:
         if t:
-            build()
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
                 native_unittests_task()
 
     with Task('Run Truffle unittests with SVM image', tasks, tags=["svmjunit"]) as t:
         if t:
-            build()
-
             truffle_args = ['--build-args', '--macro:truffle',
                                         '-H:MaxRuntimeCompileMethods=5000',
                                         '-H:+TruffleCheckBlackListedMethods',
@@ -447,24 +387,22 @@ def svm_gate_body(args, tasks):
 
     with Task('Run Truffle NFI unittests with SVM image', tasks, tags=["svmjunit"]) as t:
         if t:
-            build()
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
                 testlib = mx_subst.path_substitutions.substitute('-Dnative.test.lib=<path:truffle:TRUFFLE_TEST_NATIVE>/<lib:nativetest>')
+                isolation_testlib = mx_subst.path_substitutions.substitute('-Dnative.isolation.test.lib=<path:truffle:TRUFFLE_TEST_NATIVE>/<lib:isolationtest>')
                 native_unittest_args = ['com.oracle.truffle.nfi.test', '--build-args', '--language:nfi',
                                         '-H:MaxRuntimeCompileMethods=2000',
                                         '-H:+TruffleCheckBlackListedMethods',
-                                        '--run-args', testlib, '--very-verbose', '--enable-timing']
+                                        '--run-args', testlib, isolation_testlib, '--very-verbose', '--enable-timing']
                 native_unittest(native_unittest_args)
 
     with Task('Musl static hello world and JVMCI version check', tasks, tags=[GraalTags.muslcbuild]) as t:
         if t:
-            build()
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
                 run_musl_basic_tests()
 
     with Task('Check mx native-image --help', tasks, tags=[GraalTags.nativeimagehelp]) as t:
         if t:
-            build()
             mx.log('Running mx native-image --help output check.')
             # This check works by scanning stdout for the 'Usage' keyword. If that keyword does not appear, it means something broke mx native-image --help.
             def help_stdout_check(output):
@@ -481,15 +419,15 @@ def svm_gate_body(args, tasks):
 
     with Task('JavaScript', tasks, tags=[GraalTags.js]) as t:
         if t:
-            build_native_image_image(config=_graalvm_js_config())
-            with native_image_context(IMAGE_ASSERTION_FLAGS, config=_graalvm_js_config()) as native_image:
+            config = GraalVMConfig.build(primary_suite_dir=join(suite.vc_dir, 'vm'), # Run from `vm` to clone the right revision of `graal-js` if needed
+                                         dynamicimports=['/' + svm_suite().name, '/graal-js'])
+            with native_image_context(IMAGE_ASSERTION_FLAGS, config=config) as native_image:
                 js = build_js(native_image)
                 test_run([js, '-e', 'print("hello:" + Array.from(new Array(10), (x,i) => i*i ).join("|"))'], 'hello:0|1|4|9|16|25|36|49|64|81\n')
                 test_js(js, [('octane-richards', 1000, 100, 300)])
 
     with Task('maven plugin checks', tasks, tags=[GraalTags.maven]) as t:
         if t:
-            build()
             maven_plugin_install([])
             maven_plugin_test([])
 
@@ -712,12 +650,8 @@ def _helloworld(native_image, javac_command, path, build_only, args):
     native_image(["--native-image-info", "-H:Path=" + path, '-H:+VerifyNamingConventions', '-cp', path, 'HelloWorld'] + args)
 
     if not build_only:
-        expected_output = [output + os.linesep]
+        expected_output = [(output + os.linesep).encode()]
         actual_output = []
-        def _collector(x):
-            actual_output.append(x)
-            mx.log(x)
-
         if '--shared' in args:
             # If helloword got built into a shared library we use python to load the shared library
             # and call its `run_main`. We are capturing the stdout during the call into an unnamed
@@ -736,7 +670,6 @@ def _helloworld(native_image, javac_command, path, build_only, args):
                 os.dup2(stdout, 1)  # restore original stdout
                 mx.log('Stdout from calling run_main in shared object {}:'.format(so_name))
                 mx.log(call_stdout)
-                actual_output = list(map(_decode, actual_output))
             finally:
                 del os.environ[envkey]
                 os.close(pin)
@@ -744,6 +677,9 @@ def _helloworld(native_image, javac_command, path, build_only, args):
         else:
             env = os.environ.copy()
             env[envkey] = output
+            def _collector(x):
+                actual_output.append(x.encode())
+                mx.log(x)
             mx.run([join(path, 'helloworld')], out=_collector, env=env)
 
         if actual_output != expected_output:
@@ -883,6 +819,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     truffle_jars=[],
     builder_jar_distributions=['substratevm:SVM_LIBFFI'],
     support_distributions=['substratevm:SVM_NFI_GRAALVM_SUPPORT'],
+    installable=False,
 ))
 
 def _native_image_launcher_main_class():
@@ -1122,7 +1059,6 @@ def run_helloworld_command(args, config, command_name):
         lambda native_image, a:
         _helloworld(native_image, javac_command, output_path, build_only, a), unmask(image_args),
         config=config,
-        build_if_missing=True
     )
 
 
@@ -1143,8 +1079,7 @@ def debuginfotest(args, config=None):
     native_image_context_run(
         lambda native_image, a:
             _debuginfotest(native_image, output_path, build_only, a), unmask(parsed.image_args),
-        config=config,
-        build_if_missing=True
+        config=config
     )
 
 
@@ -1174,12 +1109,12 @@ def hellomodule(args):
     proj_dir = join(suite.dir, 'src', 'native-image-module-tests', 'hello.app')
     mx.run_maven(['-e', 'install'], cwd=proj_dir)
     module_path.append(join(proj_dir, 'target', 'hello-app-1.0-SNAPSHOT.jar'))
-    with native_image_context(hosted_assertions=False) as native_image:
+    with native_image_context(hosted_assertions=False, build_if_missing=False) as native_image:
         build_dir = join(svmbuild_dir(), 'hellomodule')
         # Build module into native image
         mx.log('Building image from java modules: ' + str(module_path))
         module_path_sep = ';' if mx.is_windows() else ':'
-        built_image = native_image(['--verbose', '-H:Path=' + build_dir, '-p', module_path_sep.join(module_path), '-m', 'moduletests.hello.app'])
+        built_image = native_image(['--verbose', '-ea', '-H:Path=' + build_dir, '-p', module_path_sep.join(module_path), '-m', 'moduletests.hello.app'])
         mx.log('Running image ' + built_image + ' built from module:')
         mx.run([built_image])
 
@@ -1189,7 +1124,7 @@ def cinterfacetutorial(args):
     """
     runs all tutorials for the C interface.
     """
-    native_image_context_run(_cinterfacetutorial, args, build_if_missing=True)
+    native_image_context_run(_cinterfacetutorial, args)
 
 
 @mx.command(suite.name, 'clinittest', 'Runs the ')
@@ -1227,7 +1162,7 @@ def clinittest(args):
         check_class_initialization(delayed_classes, 'MustBeDelayed', prefix='com.oracle.svm.test')
         check_class_initialization(safe_classes, 'MustBeSafe')
 
-    native_image_context_run(build_and_test_clinittest_image, args, build_if_missing=True)
+    native_image_context_run(build_and_test_clinittest_image, args)
 
 
 class SubstrateJvmFuncsFallbacksBuilder(mx.Project):
@@ -1560,44 +1495,9 @@ class SubstrateCompilerFlagsBuildTask(mx.ArchivableBuildTask):
             os.remove(f)
 
 
-def _ensure_vm_built(config):
-    # build "jvm" config used by native-image and native-image-configure commands
-    rebuild_vm = False
-    mx.ensure_dir_exists(svmbuild_dir())
-    if not mx.is_windows():
-        vm_link = join(svmbuild_dir(), 'vm')
-        if not os.path.exists(vm_link):
-            rebuild_vm = True
-            if os.path.lexists(vm_link):
-                os.unlink(vm_link)
-            vm_linkname = os.path.relpath(_vm_home(config), dirname(vm_link))
-            os.symlink(vm_linkname, vm_link)
-    rev_file_name = join(svmbuild_dir(), 'vm-rev')
-    if svm_suite().vc:
-        rev_value = svm_suite().vc.parent(svm_suite().vc_dir)
-    else:
-        rev_value = None
-    if not os.path.exists(rev_file_name):
-        rebuild_vm = True
-    else:
-        with open(rev_file_name, 'r') as f:
-            if not rev_value or f.read() != rev_value:
-                rebuild_vm = True
-    if rebuild_vm:
-        if rev_value:
-            with open(rev_file_name, 'w') as f:
-                f.write(rev_value)
-        build_native_image_image(config)
-
 @mx.command(suite.name, 'native-image')
 def native_image_on_jvm(args, **kwargs):
-    config = graalvm_jvm_config()
-    _ensure_vm_built(config)
-    if mx.is_windows():
-        executable = vm_native_image_path(config)
-    else:
-        vm_link = join(svmbuild_dir(), 'vm')
-        executable = join(vm_link, 'bin', 'native-image')
+    executable = vm_native_image_path()
     if not exists(executable):
         mx.abort("Can not find " + executable + "\nDid you forget to build? Try `mx build`")
 
@@ -1608,21 +1508,16 @@ def native_image_on_jvm(args, **kwargs):
                 if hasattr(cpEntry, "getJavaProperties"):
                     for key, value in cpEntry.getJavaProperties().items():
                         javaProperties[key] = value
-    if not any(arg.startswith('--help') for arg in args):
+    if not any(arg.startswith('--help') or arg == '--version' for arg in args):
         for key, value in javaProperties.items():
             args.append("-D" + key + "=" + value)
 
-    mx.run([executable, '-H:CLibraryPath=' + clibrary_libpath()] + args, **kwargs)
+    mx.run([executable] + args, **kwargs)
+
 
 @mx.command(suite.name, 'native-image-configure')
 def native_image_configure_on_jvm(args, **kwargs):
-    config = graalvm_jvm_config()
-    _ensure_vm_built(config)
-    if mx.is_windows():
-        executable = vm_executable_path('native-image-configure', config)
-    else:
-        vm_link = join(svmbuild_dir(), 'vm')
-        executable = join(vm_link, 'bin', 'native-image-configure')
+    executable = vm_executable_path('native-image-configure')
     if not exists(executable):
         mx.abort("Can not find " + executable + "\nDid you forget to build? Try `mx build`")
     mx.run([executable] + args, **kwargs)
@@ -1631,7 +1526,7 @@ def native_image_configure_on_jvm(args, **kwargs):
 @mx.command(suite.name, 'native-unittest')
 def native_unittest(args):
     """builds a native image of JUnit tests and runs them."""
-    native_image_context_run(_native_unittest, args, build_if_missing=True)
+    native_image_context_run(_native_unittest, args)
 
 
 @mx.command(suite.name, 'maven-plugin-install')
@@ -1720,8 +1615,8 @@ def maven_plugin_test(args):
         maven_opts.append('-XX:+EnableJVMCI')
         maven_opts.append('--add-exports=java.base/jdk.internal.module=ALL-UNNAMED')
     env['MAVEN_OPTS'] = ' '.join(maven_opts)
-    config = GraalVMConfig(primary_suite_dir=svm_suite().dir, native_images=['native-image'])
-    with native_image_context(IMAGE_ASSERTION_FLAGS, config=config, build_if_missing=True):
+    config = GraalVMConfig.build(native_images=['native-image'])
+    with native_image_context(IMAGE_ASSERTION_FLAGS, config=config):
         env['JAVA_HOME'] = _vm_home(config)
         mx.run_maven(['-e', 'package'], cwd=proj_dir, env=env)
     mx.run([join(proj_dir, 'target', 'com.oracle.substratevm.nativeimagemojotest')])
@@ -1739,8 +1634,7 @@ def javac_image(args):
     output_path = unmask(parsed.output_path)[0]
     native_image_context_run(
         lambda native_image, command_args:
-            _javac_image(native_image, output_path, command_args), unmask(parsed.image_args),
-        build_if_missing=True
+            _javac_image(native_image, output_path, command_args), unmask(parsed.image_args)
     )
 
 if is_musl_supported():

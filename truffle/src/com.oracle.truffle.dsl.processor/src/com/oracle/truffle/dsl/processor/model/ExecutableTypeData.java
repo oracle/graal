@@ -171,6 +171,13 @@ public class ExecutableTypeData extends MessageContainer implements Comparable<E
         return signaturetypes;
     }
 
+    public TypeMirror getParameterTypeOrDie(NodeExecutionData execution) {
+        if (execution.getIndex() >= getEvaluatedCount()) {
+            throw new AssertionError("Parameter type not evaluated.");
+        }
+        return getEvaluatedParameters().get(execution.getIndex());
+    }
+
     public int getVarArgsIndex(int parameterIndex) {
         if (method.isVarArgs()) {
             int index = parameterIndex - (method.getParameters().size() - 1);

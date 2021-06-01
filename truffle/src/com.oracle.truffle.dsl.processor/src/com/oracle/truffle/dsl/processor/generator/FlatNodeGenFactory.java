@@ -496,11 +496,6 @@ public class FlatNodeGenFactory {
     }
 
     private static boolean mayBeExcluded(SpecializationData specialization) {
-        if (specialization.isPolymorphic()) {
-            return false;
-        } else if (specialization.isUninitialized()) {
-            return false;
-        }
         return !specialization.getExceptions().isEmpty() || !specialization.getExcludedBy().isEmpty();
     }
 
@@ -552,7 +547,7 @@ public class FlatNodeGenFactory {
 
         createFields(clazz);
 
-        TypeMirror genericReturnType = node.getPolymorphicSpecialization().getReturnType().getType();
+        TypeMirror genericReturnType = node.getPolymorphicExecutable().getReturnType();
 
         List<ExecutableTypeData> executableTypes = filterExecutableTypes(node.getExecutableTypes(),
                         reachableSpecializations);
@@ -590,7 +585,7 @@ public class FlatNodeGenFactory {
             }
         }
 
-        SpecializationData fallback = node.getGenericSpecialization();
+        SpecializationData fallback = node.getFallbackSpecialization();
         if (fallback.getMethod() != null && fallback.isReachable()) {
             clazz.add(createFallbackGuard());
         }
@@ -1747,7 +1742,7 @@ public class FlatNodeGenFactory {
     }
 
     public CodeExecutableElement createUncached() {
-        SpecializationData fallback = node.getGenericSpecialization();
+        SpecializationData fallback = node.getFallbackSpecialization();
         TypeMirror returnType = fallback.getReturnType().getType();
         List<TypeMirror> parameterTypes = new ArrayList<>();
         for (Parameter parameter : fallback.getSignatureParameters()) {
@@ -2483,7 +2478,7 @@ public class FlatNodeGenFactory {
             List<TypeMirror> sourceTypes = resolveOptimizedImplicitSourceTypes(execution, targetType);
             if (sourceTypes.size() > 1) {
                 TypeGuard typeGuard = new TypeGuard(targetType, execution.getIndex());
-                TypeMirror generic = node.getPolymorphicSpecialization().findParameterOrDie(execution).getType();
+                TypeMirror generic = node.getPolymorphicExecutable().getParameterTypeOrDie(execution);
                 fallbackVar = originalFrameState.createValue(execution, generic);
 
                 // we want to create the check tree in reverse order
@@ -4109,6 +4104,14 @@ public class FlatNodeGenFactory {
 
         CodeTree ref = var.createReference();
         CodeTreeBuilder builder = new CodeTreeBuilder(null);
+        // We need to insert memory fence if there are cached values and those are stored in a
+        // linked list. Another thread may be traversing the linked list while we are updating it
+        // here: we must ensure that the item that is being appended to the list is fully
+        // initialized.
+        builder.startStatement();
+        builder.startStaticCall(context.getTypes().MemoryFence, "storeStore");
+        builder.end();
+        builder.end();
         builder.startStatement();
         builder.string("this.", createSpecializationFieldName(specialization));
         builder.string(" = ");
@@ -4183,7 +4186,7 @@ public class FlatNodeGenFactory {
         int signatureIndex = 0;
         for (Parameter p : specialization.getSignatureParameters()) {
             TypeMirror targetType = p.getType();
-            TypeMirror polymorphicType = node.getPolymorphicSpecialization().findParameterOrDie(p.getSpecification().getExecution()).getType();
+            TypeMirror polymorphicType = node.getPolymorphicExecutable().getParameterTypeOrDie(p.getSpecification().getExecution());
             if (typeSystem.hasImplicitSourceTypes(targetType) && needsCastTo(polymorphicType, targetType)) {
                 String implicitFieldName = createImplicitTypeStateLocalName(p);
                 if (builder == null) {
@@ -4481,7 +4484,7 @@ public class FlatNodeGenFactory {
     }
 
     private CodeTree createCallExecuteAndSpecialize(ExecutableTypeData forType, FrameState frameState) {
-        TypeMirror returnType = node.getPolymorphicSpecialization().getReturnType().getType();
+        TypeMirror returnType = node.getPolymorphicExecutable().getReturnType();
         String frame = null;
         if (needsFrameToExecute(reachableSpecializations)) {
             frame = FRAME_VALUE;
@@ -5066,7 +5069,7 @@ public class FlatNodeGenFactory {
         TypeMirror targetType = typeGuard.getType();
 
         if (!needsCastTo(value.getTypeMirror(), targetType)) {
-            TypeMirror genericTargetType = node.getGenericSpecialization().findParameterOrDie(node.getChildExecutions().get(signatureIndex)).getType();
+            TypeMirror genericTargetType = node.getFallbackSpecialization().findParameterOrDie(node.getChildExecutions().get(signatureIndex)).getType();
             if (typeEquals(value.getTypeMirror(), genericTargetType)) {
                 // no implicit casts needed if it matches the generic type
                 return null;
@@ -5164,11 +5167,10 @@ public class FlatNodeGenFactory {
     }
 
     private ExecutableTypeData createExecuteAndSpecializeType() {
-        SpecializationData polymorphicSpecialization = node.getPolymorphicSpecialization();
-        TypeMirror polymorphicType = polymorphicSpecialization.getReturnType().getType();
+        TypeMirror polymorphicType = node.getPolymorphicExecutable().getReturnType();
         List<TypeMirror> parameters = new ArrayList<>();
-        for (Parameter param : polymorphicSpecialization.getSignatureParameters()) {
-            parameters.add(param.getType());
+        for (TypeMirror param : node.getPolymorphicExecutable().getSignatureParameters()) {
+            parameters.add(param);
         }
         return new ExecutableTypeData(node, polymorphicType, createExecuteAndSpecializeName(), node.getFrameType(), parameters);
     }
@@ -5279,12 +5281,7 @@ public class FlatNodeGenFactory {
 
     static int getRequiredStateBits(TypeSystemData types, Object object) {
         if (object instanceof SpecializationData) {
-            SpecializationData specialization = (SpecializationData) object;
-            if (specialization.isPolymorphic()) {
-                return 0;
-            } else {
-                return 1;
-            }
+            return 1;
         } else if (object instanceof TypeGuard) {
             TypeGuard guard = (TypeGuard) object;
 
@@ -5479,13 +5476,7 @@ public class FlatNodeGenFactory {
             if (object instanceof SpecializationData) {
 
                 mayBeExcluded((SpecializationData) object);
-
                 SpecializationData specialization = (SpecializationData) object;
-                if (specialization.isPolymorphic()) {
-                    return 0;
-                } else if (specialization.isUninitialized()) {
-                    return 0;
-                }
                 if (!specialization.getExceptions().isEmpty() || !specialization.getExcludedBy().isEmpty()) {
                     return 1;
                 }

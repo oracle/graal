@@ -120,9 +120,27 @@ public abstract class NativeContextExtension implements ContextExtension {
         return LLVMContext.InternalLibraryLocator.INSTANCE.locateLibrary(context, lib, reason);
     }
 
+    public static String getNativeLibrary(String libname) {
+        return getNativeLibraryPrefix() + libname + '.' + getNativeLibrarySuffix();
+    }
+
+    public static String getNativeLibraryVersioned(String libname, int version) {
+        return getNativeLibraryPrefix() + libname + '.' + getNativeLibrarySuffixVersioned(version);
+    }
+
+    public static String getNativeLibraryPrefix() {
+        if (System.getProperty("os.name").toLowerCase().contains("windows")) {
+            return "";
+        } else {
+            return "lib";
+        }
+    }
+
     public static String getNativeLibrarySuffix() {
         if (System.getProperty("os.name").toLowerCase().contains("mac")) {
             return "dylib";
+        } else if (System.getProperty("os.name").toLowerCase().contains("windows")) {
+            return "dll";
         } else {
             return "so";
         }
@@ -131,6 +149,9 @@ public abstract class NativeContextExtension implements ContextExtension {
     public static String getNativeLibrarySuffixVersioned(int version) {
         if (System.getProperty("os.name").toLowerCase().contains("mac")) {
             return version + ".dylib";
+        } else if (System.getProperty("os.name").toLowerCase().contains("windows")) {
+            // no version ATM
+            return "dll";
         } else {
             return "so." + version;
         }

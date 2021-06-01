@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,11 +29,12 @@ import java.util.Collections;
 import java.util.List;
 import java.util.ListIterator;
 
+import org.graalvm.compiler.core.common.util.PhasePlan;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 
 import jdk.vm.ci.code.TargetDescription;
 
-public class LIRPhaseSuite<C> extends LIRPhase<C> {
+public class LIRPhaseSuite<C> extends LIRPhase<C> implements PhasePlan<LIRPhase<C>> {
     private List<LIRPhase<C>> phases;
     private boolean immutable;
 
@@ -44,6 +45,7 @@ public class LIRPhaseSuite<C> extends LIRPhase<C> {
     /**
      * Gets an unmodifiable view on the phases in this suite.
      */
+    @Override
     public List<LIRPhase<C>> getPhases() {
         return Collections.unmodifiableList(phases);
     }
@@ -114,5 +116,10 @@ public class LIRPhaseSuite<C> extends LIRPhase<C> {
             phases = Collections.unmodifiableList(phases);
             immutable = true;
         }
+    }
+
+    @Override
+    public String toString() {
+        return String.format("%s:%n%s", getClass().getSimpleName(), new PhasePlan.Printer().toString(this));
     }
 }

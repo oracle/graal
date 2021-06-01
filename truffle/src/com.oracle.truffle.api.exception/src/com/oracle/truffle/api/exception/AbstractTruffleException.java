@@ -273,9 +273,8 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
      * Returns the number of guest language frames that should be collected for this exception.
      * Returns a negative integer by default for unlimited guest language frames. This is intended
      * to be used by guest languages to limit the number of guest language stack frames. Languages
-     * might want to limit the number of frames for performance reasons. Frames that point to
-     * {@link RootNode#isInternal() internal} internal root nodes are not counted when the stack
-     * trace limit is computed.
+     * might want to limit the number of frames for performance reasons. Only frames whose
+     * {@link RootNode#countsTowardsStackTraceLimit()} method return true count towards the limit.
      *
      * @since 20.3
      */

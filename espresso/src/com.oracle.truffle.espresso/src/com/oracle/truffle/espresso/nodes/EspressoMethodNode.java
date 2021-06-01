@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
+import java.util.List;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -36,7 +38,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 /**
  * Base node for all implementations of Java methods.
  */
-public abstract class EspressoMethodNode extends EspressoPreludeNode {
+public abstract class EspressoMethodNode extends EspressoBaseMethodNode {
 
     private final MethodVersion method;
     private SourceSection sourceSection;
@@ -45,6 +47,7 @@ public abstract class EspressoMethodNode extends EspressoPreludeNode {
         this.method = method;
     }
 
+    @Override
     public MethodVersion getMethodVersion() {
         return method;
     }
@@ -72,12 +75,12 @@ public abstract class EspressoMethodNode extends EspressoPreludeNode {
             LineNumberTableAttribute lineNumberTable = method.getLineNumberTableAttribute();
 
             if (lineNumberTable != LineNumberTableAttribute.EMPTY) {
-                LineNumberTableAttribute.Entry[] entries = lineNumberTable.getEntries();
+                List<LineNumberTableAttribute.Entry> entries = lineNumberTable.getEntries();
                 int startLine = Integer.MAX_VALUE;
                 int endLine = 0;
 
-                for (int i = 0; i < entries.length; i++) {
-                    int line = entries[i].getLineNumber();
+                for (int i = 0; i < entries.size(); i++) {
+                    int line = entries.get(i).getLineNumber();
                     if (line > endLine) {
                         endLine = line;
                     }
@@ -111,6 +114,7 @@ public abstract class EspressoMethodNode extends EspressoPreludeNode {
         return getMethod().getContext();
     }
 
+    @Override
     public boolean shouldSplit() {
         return false;
     }

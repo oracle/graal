@@ -103,9 +103,6 @@ public final class CatalogContents implements ComponentCatalog {
     public boolean compatibleVersion(ComponentInfo info) {
         // excludes components that depend on obsolete versions
         // excludes components that depend on
-        if (verifier.validateRequirements(info).hasErrors()) {
-            return false;
-        }
         Version v = info.getVersion();
         Version gv = graalVersion;
         if (allowDistUpdate) {
@@ -140,6 +137,9 @@ public final class CatalogContents implements ComponentCatalog {
             }
             Version v = ci.getVersion();
             if (!vm.test(v)) {
+                continue;
+            }
+            if (verifier.validateRequirements(ci).hasErrors()) {
                 continue;
             }
             if (explicit || compatibleVersion(ci)) {
@@ -342,7 +342,7 @@ public final class CatalogContents implements ComponentCatalog {
     public ComponentInfo findComponentMatch(String id, Version.Match vmatch, boolean localOnly, boolean exact) {
         ComponentInfo ci = installed.loadSingleComponent(id, false);
         if (ci != null) {
-            if (vmatch.test(ci.getVersion())) {
+            if (vmatch != null && vmatch.test(ci.getVersion())) {
                 return ci;
             }
         }
