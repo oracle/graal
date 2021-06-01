@@ -56,7 +56,7 @@ final class PolyglotBindingsValue extends PolyglotValue {
     final Map<String, Value> values;
 
     PolyglotBindingsValue(PolyglotLanguageContext context, PolyglotBindings bindings) {
-        super(context.getImpl());
+        super(context.getImpl(), context.getLanguageInstance());
         this.values = context.context.polyglotBindings;
         this.delegateBindings = context.asValue(bindings);
     }

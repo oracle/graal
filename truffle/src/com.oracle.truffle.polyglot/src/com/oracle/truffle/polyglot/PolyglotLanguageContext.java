@@ -481,7 +481,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                                             envConfig.getApplicationArguments(language));
                             Lazy localLazy = new Lazy(lang, envConfig);
                             checkThreadAccess(localEnv);
-                            PolyglotValue.createDefaultValues(getImpl(), localLazy.languageInstance.valueCache);
+                            PolyglotValue.createDefaultValues(getImpl(), lang, lang.valueCache);
 
                             // no more errors after this line
                             creatingThread = Thread.currentThread();

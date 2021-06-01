@@ -146,7 +146,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     @Override
     protected void initialize() {
         this.hostNull = getAPIAccess().newValue(PolyglotValue.createHostNull(this), null, HostObject.NULL);
-        PolyglotValue.createDefaultValues(this, primitiveValues);
+        PolyglotValue.createDefaultValues(this, null, primitiveValues);
         disconnectedHostValue = new PolyglotValue.HostValue(this);
     }
 

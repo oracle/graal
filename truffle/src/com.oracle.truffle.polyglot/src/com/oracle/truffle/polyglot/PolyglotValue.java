@@ -157,10 +157,12 @@ abstract class PolyglotValue extends AbstractValueDispatch {
     static final InteropLibrary UNCACHED_INTEROP = InteropLibrary.getFactory().getUncached();
 
     private final PolyglotImpl polyglot;
+    final PolyglotLanguage language;
 
-    PolyglotValue(PolyglotImpl polyglot) {
+    PolyglotValue(PolyglotImpl polyglot, PolyglotLanguageInstance languageInstance) {
         super(polyglot);
         this.polyglot = polyglot;
+        this.language = languageInstance != null ? languageInstance.language : null;
     }
 
     @Override
@@ -1539,28 +1541,28 @@ abstract class PolyglotValue extends AbstractValueDispatch {
         return new HostNull(polyglot);
     }
 
-    static void createDefaultValues(PolyglotImpl polyglot, Map<Class<?>, PolyglotValue> valueCache) {
-        addDefaultValue(polyglot, valueCache, false);
-        addDefaultValue(polyglot, valueCache, "");
-        addDefaultValue(polyglot, valueCache, 'a');
-        addDefaultValue(polyglot, valueCache, (byte) 0);
-        addDefaultValue(polyglot, valueCache, (short) 0);
-        addDefaultValue(polyglot, valueCache, 0);
-        addDefaultValue(polyglot, valueCache, 0L);
-        addDefaultValue(polyglot, valueCache, 0F);
-        addDefaultValue(polyglot, valueCache, 0D);
+    static void createDefaultValues(PolyglotImpl polyglot, PolyglotLanguageInstance languageInsance, Map<Class<?>, PolyglotValue> valueCache) {
+        addDefaultValue(polyglot, languageInsance, valueCache, false);
+        addDefaultValue(polyglot, languageInsance, valueCache, "");
+        addDefaultValue(polyglot, languageInsance, valueCache, 'a');
+        addDefaultValue(polyglot, languageInsance, valueCache, (byte) 0);
+        addDefaultValue(polyglot, languageInsance, valueCache, (short) 0);
+        addDefaultValue(polyglot, languageInsance, valueCache, 0);
+        addDefaultValue(polyglot, languageInsance, valueCache, 0L);
+        addDefaultValue(polyglot, languageInsance, valueCache, 0F);
+        addDefaultValue(polyglot, languageInsance, valueCache, 0D);
     }
 
-    static void addDefaultValue(PolyglotImpl polyglot, Map<Class<?>, PolyglotValue> valueCache, Object primitive) {
-        valueCache.put(primitive.getClass(), new PrimitiveValue(polyglot, primitive));
+    static void addDefaultValue(PolyglotImpl polyglot, PolyglotLanguageInstance languageInstance, Map<Class<?>, PolyglotValue> valueCache, Object primitive) {
+        valueCache.put(primitive.getClass(), new PrimitiveValue(polyglot, languageInstance, primitive));
     }
 
     static final class PrimitiveValue extends PolyglotValue {
 
         private final InteropLibrary interop;
 
-        PrimitiveValue(PolyglotImpl polyglot, Object primitiveValue) {
-            super(polyglot);
+        PrimitiveValue(PolyglotImpl polyglot, PolyglotLanguageInstance instance, Object primitiveValue) {
+            super(polyglot, instance);
             /*
              * No caching needed for primitives. We do that to avoid the overhead of crossing a
              * Truffle call boundary.
@@ -1718,11 +1720,12 @@ abstract class PolyglotValue extends AbstractValueDispatch {
             return super.toStringImpl(context, getLanguageView(context, receiver));
         }
 
-        private static Object getLanguageView(Object context, Object receiver) {
-            if (context == null) {
+        private Object getLanguageView(Object context, Object receiver) {
+            if (context == null || language == null) {
                 return receiver;
             }
-            return ((PolyglotLanguageContext) context).getLanguageViewNoCheck(receiver);
+            PolyglotContextImpl c = ((PolyglotLanguageContext) context).context;
+            return c.getContext(language).getLanguageViewNoCheck(receiver);
         }
 
     }
@@ -1732,7 +1735,7 @@ abstract class PolyglotValue extends AbstractValueDispatch {
         private final PolyglotImpl polyglot;
 
         HostNull(PolyglotImpl polyglot) {
-            super(polyglot);
+            super(polyglot, null);
             this.polyglot = polyglot;
         }
 
@@ -1767,6 +1770,7 @@ abstract class PolyglotValue extends AbstractValueDispatch {
         protected abstract String getOperationName();
 
         protected InteropNode(InteropValue polyglot) {
+            super(polyglot.language.getEngine());
             this.polyglot = polyglot;
         }
 
@@ -1787,7 +1791,7 @@ abstract class PolyglotValue extends AbstractValueDispatch {
         }
 
         protected final PolyglotImpl getImpl() {
-            return polyglot.languageInstance.language.getImpl();
+            return polyglot.language.getImpl();
         }
 
         @Override
@@ -1804,7 +1808,7 @@ abstract class PolyglotValue extends AbstractValueDispatch {
     static final class HostValue extends PolyglotValue {
 
         HostValue(PolyglotImpl polyglot) {
-            super(polyglot);
+            super(polyglot, null);
         }
 
         @Override
@@ -1931,13 +1935,11 @@ abstract class PolyglotValue extends AbstractValueDispatch {
         final CallTarget asClassLiteral;
         final CallTarget asTypeLiteral;
         final Class<?> receiverType;
-        final PolyglotLanguageInstance languageInstance;
 
         InteropValue(PolyglotLanguageInstance languageInstance, Object receiverObject, Class<?> receiverType) {
-            super(languageInstance.getImpl());
+            super(languageInstance.getImpl(), languageInstance);
             this.isProxy = PolyglotProxy.isProxyGuestObject(receiverObject);
             this.isHost = HostObject.isInstance(receiverObject);
-            this.languageInstance = languageInstance;
             this.receiverType = receiverType;
             this.asClassLiteral = createTarget(new AsClassLiteralNode(this));
             this.asTypeLiteral = createTarget(new AsTypeLiteralNode(this));
@@ -4185,7 +4187,7 @@ abstract class PolyglotValue extends AbstractValueDispatch {
 
             protected ExecuteNode(InteropValue interop) {
                 super(interop);
-                this.toHostValue = ToHostValueNode.create(interop.languageInstance.language.getImpl());
+                this.toHostValue = ToHostValueNode.create(interop.language.getImpl());
             }
 
             @Override
@@ -4211,7 +4213,7 @@ abstract class PolyglotValue extends AbstractValueDispatch {
 
             protected ExecuteNoArgsNode(InteropValue interop) {
                 super(interop);
-                this.toHostValue = ToHostValueNode.create(interop.languageInstance.language.getImpl());
+                this.toHostValue = ToHostValueNode.create(interop.language.getImpl());
             }
 
             @Override
@@ -4238,7 +4240,7 @@ abstract class PolyglotValue extends AbstractValueDispatch {
 
             protected NewInstanceNode(InteropValue interop) {
                 super(interop);
-                this.toHostValue = ToHostValueNode.create(interop.languageInstance.language.getImpl());
+                this.toHostValue = ToHostValueNode.create(interop.language.getImpl());
             }
 
             @Override
@@ -4287,7 +4289,7 @@ abstract class PolyglotValue extends AbstractValueDispatch {
 
             protected AbstractInvokeNode(InteropValue interop) {
                 super(interop);
-                this.toHostValue = ToHostValueNode.create(interop.languageInstance.language.getImpl());
+                this.toHostValue = ToHostValueNode.create(interop.language.getImpl());
             }
 
             protected final Object executeShared(PolyglotLanguageContext context, Object receiver, String key, Object[] guestArguments) {

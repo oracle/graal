@@ -48,6 +48,7 @@ import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.Reader;
 import java.lang.reflect.AnnotatedElement;
+import java.lang.reflect.Type;
 import java.net.URI;
 import java.net.URL;
 import java.nio.ByteOrder;
@@ -922,6 +923,7 @@ public abstract class AbstractPolyglotImpl {
         public abstract Value getHashKeysIterator(Object context, Object receiver);
 
         public abstract Value getHashValuesIterator(Object context, Object receiver);
+
     }
 
     public abstract Class<?> loadLanguageClass(String className);
