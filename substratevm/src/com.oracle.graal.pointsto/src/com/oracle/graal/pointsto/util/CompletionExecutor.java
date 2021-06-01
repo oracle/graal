@@ -27,6 +27,7 @@ package com.oracle.graal.pointsto.util;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -49,7 +50,7 @@ import jdk.vm.ci.common.JVMCIError;
  * An extended version of a {@link ThreadPoolExecutor} that can block until all posted operations
  * are completed.
  */
-public final class CompletionExecutor {
+public class CompletionExecutor {
 
     private enum State {
         BEFORE_START,
@@ -63,7 +64,7 @@ public final class CompletionExecutor {
     private final List<DebugContextRunnable> postedBeforeStart;
     private volatile CopyOnWriteArrayList<Throwable> exceptions = new CopyOnWriteArrayList<>();
 
-    private final ForkJoinPool executorService;
+    public ExecutorService executorService;
     private final Runnable heartbeatCallback;
 
     private BigBang bb;
@@ -97,7 +98,7 @@ public final class CompletionExecutor {
     }
 
     public void init(Timing newTiming) {
-        assert isSequential() || !executorService.hasQueuedSubmissions();
+        assert isSequential() || !(executorService instanceof ForkJoinPool) || !((ForkJoinPool) executorService).hasQueuedSubmissions();
 
         timing = newTiming;
         setState(State.BEFORE_START);
@@ -159,38 +160,47 @@ public final class CompletionExecutor {
                     }
                     completedOperations.increment();
                 } else {
-                    executorService.execute(() -> {
-                        bb.getHostVM().installInThread(vmConfig);
-                        long startTime = 0L;
-                        if (timing != null) {
-                            startTime = System.nanoTime();
-                        }
-                        heartbeatCallback.run();
-                        Throwable thrown = null;
-                        try (DebugContext debug = command.getDebug(bb.getOptions(), bb.getDebugHandlerFactories());
-                                        Scope s = debug.scope("Operation");
-                                        Activation a = debug.activate()) {
-                            command.run(debug);
-                        } catch (Throwable x) {
-                            thrown = x;
-                        } finally {
-                            bb.getHostVM().clearInThread();
-                            if (timing != null) {
-                                long taskTime = System.nanoTime() - startTime;
-                                timing.addCompleted(command, taskTime);
-                            }
-
-                            if (thrown != null) {
-                                exceptions.add(thrown);
-                            }
-                            completedOperations.increment();
-                        }
-                    });
+                    executeService(command);
                 }
 
                 break;
             default:
                 throw JVMCIError.shouldNotReachHere();
+        }
+    }
+
+    public void executeService(DebugContextRunnable command) {
+        executorService.execute(() -> {
+            executeCommand(command);
+        });
+    }
+
+    @SuppressWarnings("try")
+    public void executeCommand(DebugContextRunnable command) {
+        bb.getHostVM().installInThread(vmConfig);
+        long startTime = 0L;
+        if (timing != null) {
+            startTime = System.nanoTime();
+        }
+        heartbeatCallback.run();
+        Throwable thrown = null;
+        try (DebugContext debug = command.getDebug(bb.getOptions(), bb.getDebugHandlerFactories());
+                        Scope s = debug.scope("Operation");
+                        Activation a = debug.activate()) {
+            command.run(debug);
+        } catch (Throwable x) {
+            thrown = x;
+        } finally {
+            bb.getHostVM().clearInThread();
+            if (timing != null) {
+                long taskTime = System.nanoTime() - startTime;
+                timing.addCompleted(command, taskTime);
+            }
+
+            if (thrown != null) {
+                exceptions.add(thrown);
+            }
+            completedOperations.increment();
         }
     }
 
@@ -260,7 +270,7 @@ public final class CompletionExecutor {
     }
 
     public void shutdown() {
-        assert isSequential() || !executorService.hasQueuedSubmissions() : "There should be no queued submissions on shutdown.";
+        assert isSequential() || !(executorService instanceof ForkJoinPool) || !((ForkJoinPool) executorService).hasQueuedSubmissions() : "There should be no queued submissions on shutdown.";
         assert completedOperations.sum() == postedOperations.sum() : "Posted operations (" + postedOperations.sum() + ") must match completed (" + completedOperations.sum() + ") operations";
         setState(State.UNUSED);
     }
@@ -269,7 +279,25 @@ public final class CompletionExecutor {
         return state.get() == State.STARTED;
     }
 
-    public ForkJoinPool getExecutorService() {
+    public ExecutorService getExecutorService() {
         return executorService;
+    }
+
+    public int parallelism() {
+        if (executorService instanceof ForkJoinPool) {
+            return ((ForkJoinPool) executorService).getParallelism();
+        }
+        return 1;
+    }
+
+    public int poolSize() {
+        if (executorService instanceof ForkJoinPool) {
+            return ((ForkJoinPool) executorService).getPoolSize();
+        }
+        return 1;
+    }
+
+    public void setExecutorService(ExecutorService executorService) {
+        this.executorService = executorService;
     }
 }
