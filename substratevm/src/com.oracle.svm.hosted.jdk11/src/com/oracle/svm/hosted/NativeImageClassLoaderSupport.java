@@ -25,15 +25,23 @@
 package com.oracle.svm.hosted;
 
 import java.io.File;
+import java.io.IOException;
 import java.lang.module.Configuration;
 import java.lang.module.ModuleDescriptor;
 import java.lang.module.ModuleFinder;
+import java.lang.module.ModuleReader;
+import java.lang.module.ModuleReference;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Deque;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -48,7 +56,6 @@ import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.util.ModuleSupport;
 
 import jdk.internal.module.Modules;
 
@@ -59,22 +66,28 @@ public class NativeImageClassLoaderSupport extends AbstractNativeImageClassLoade
 
     private final ClassLoader classLoader;
     private final ModuleLayer moduleLayerForImageBuild;
+    private final Map<String, Set<Module>> packageToModuleNames;
 
     NativeImageClassLoaderSupport(ClassLoader defaultSystemClassLoader, String[] classpath, String[] modulePath) {
         super(defaultSystemClassLoader, classpath);
+
+        packageToModuleNames = new HashMap<>();
 
         imagemp = Arrays.stream(modulePath).map(Paths::get).collect(Collectors.toUnmodifiableList());
         buildmp = Arrays.stream(System.getProperty("jdk.module.path", "").split(File.pathSeparator)).map(Paths::get).collect(Collectors.toUnmodifiableList());
 
         ModuleLayer moduleLayer = createModuleLayer(imagemp.toArray(Path[]::new), classPathClassLoader);
-        if (moduleLayer.modules().isEmpty()) {
-            this.moduleLayerForImageBuild = null;
-            classLoader = classPathClassLoader;
-        } else {
-            adjustBootLayerQualifiedExports(moduleLayer);
-            this.moduleLayerForImageBuild = moduleLayer;
-            classLoader = getSingleClassloader(moduleLayer);
+        adjustBootLayerQualifiedExports(moduleLayer);
+        for (ModuleLayer layer : allLayers(moduleLayer)) {
+            for (Module module : layer.modules()) {
+                for (String packageName : module.getDescriptor().packages()) {
+                    addToPackageNameModules(module, packageName);
+                }
+            }
         }
+        // dumpPackageNameModulesMapping();
+        moduleLayerForImageBuild = moduleLayer;
+        classLoader = getSingleClassloader(moduleLayer);
     }
 
     private static ModuleLayer createModuleLayer(Path[] modulePaths, ClassLoader parent) {
@@ -87,6 +100,56 @@ public class NativeImageClassLoaderSupport extends AbstractNativeImageClassLoade
          * accessed with a single classloader so we can use it for {@link ImageClassLoader}.
          */
         return ModuleLayer.defineModulesWithOneLoader(configuration, List.of(ModuleLayer.boot()), parent).layer();
+    }
+
+    private List<ModuleLayer> allLayers(ModuleLayer moduleLayer) {
+        /** Implementation taken from {@link ModuleLayer#layers()} */
+        List<ModuleLayer> allLayers = new ArrayList<>();
+        Set<ModuleLayer> visited = new HashSet<>();
+        Deque<ModuleLayer> stack = new ArrayDeque<>();
+        visited.add(moduleLayer);
+        stack.push(moduleLayer);
+
+        while (!stack.isEmpty()) {
+            ModuleLayer layer = stack.pop();
+            allLayers.add(layer);
+
+            // push in reverse order
+            for (int i = layer.parents().size() - 1; i >= 0; i--) {
+                ModuleLayer parent = layer.parents().get(i);
+                if (!visited.contains(parent)) {
+                    visited.add(parent);
+                    stack.push(parent);
+                }
+            }
+        }
+        return allLayers;
+    }
+
+    private void addToPackageNameModules(Module moduleName, String packageName) {
+        Set<Module> prevValue = packageToModuleNames.get(packageName);
+        if (prevValue == null) {
+            /* Mostly packageName is only used in a single module */
+            packageToModuleNames.put(packageName, Collections.singleton(moduleName));
+        } else if (prevValue.size() == 1) {
+            /* Transition to HashSet - happens rarely */
+            HashSet<Module> newValue = new HashSet<>();
+            newValue.add(prevValue.iterator().next());
+            newValue.add(moduleName);
+            packageToModuleNames.put(packageName, newValue);
+        } else if (prevValue.size() > 1) {
+            /* Add to exiting HashSet - happens rarely */
+            prevValue.add(moduleName);
+        }
+    }
+
+    public void dumpPackageNameModulesMapping() {
+        packageToModuleNames.entrySet().stream()
+                        .sorted(Map.Entry.comparingByKey())
+                        .map(e -> e.getKey() + " -> " + e.getValue().stream()
+                                        .map(Module::getName)
+                                        .collect(Collectors.joining(", ")))
+                        .forEach(System.out::println);
     }
 
     private void adjustBootLayerQualifiedExports(ModuleLayer layer) {
@@ -137,9 +200,6 @@ public class NativeImageClassLoaderSupport extends AbstractNativeImageClassLoade
 
     @Override
     public Optional<Module> findModule(String moduleName) {
-        if (moduleLayerForImageBuild == null) {
-            return Optional.empty();
-        }
         return moduleLayerForImageBuild.findModule(moduleName);
     }
 
@@ -227,26 +287,16 @@ public class NativeImageClassLoaderSupport extends AbstractNativeImageClassLoade
 
     @Override
     Class<?> loadClassFromModule(Object module, String className) throws ClassNotFoundException {
-        if (module == null) {
-            return Class.forName(className, false, classPathClassLoader);
-        }
-        if (!(module instanceof Module)) {
-            throw new IllegalArgumentException("Argument `module` is not an instance of java.lang.Module");
-        }
+        assert module instanceof Module : "Argument `module` is not an instance of java.lang.Module";
         Module m = (Module) module;
-        if (m.getClassLoader() != classLoader) {
-            throw new IllegalArgumentException("Argument `module` is java.lang.Module from different ClassLoader");
-        }
-        String moduleClassName = className;
-        if (moduleClassName.isEmpty()) {
-            moduleClassName = m.getDescriptor().mainClass().orElseThrow(
-                            () -> UserError.abort("module %s does not have a ModuleMainClass attribute, use -m <module>/<main-class>", m.getName()));
-        }
-        Class<?> clazz = Class.forName(m, moduleClassName);
-        if (clazz == null) {
-            throw new ClassNotFoundException(moduleClassName);
-        }
-        return clazz;
+        assert m.getClassLoader() == classLoader : "Argument `module` is java.lang.Module from different ClassLoader";
+        return Class.forName(m, className);
+    }
+
+    @Override
+    Optional<String> getMainClassFromModule(Object module) {
+        assert module instanceof Module : "Argument `module` is not an instance of java.lang.Module";
+        return ((Module) module).getDescriptor().mainClass();
     }
 
     @Override
@@ -254,52 +304,50 @@ public class NativeImageClassLoaderSupport extends AbstractNativeImageClassLoade
         return classLoader;
     }
 
-    private static class ClassInitWithModules extends ClassInit {
+    private class ClassInitWithModules extends ClassInit {
 
-        ClassInitWithModules(ForkJoinPool executor, ImageClassLoader imageClassLoader, AbstractNativeImageClassLoaderSupport nativeImageClassLoader) {
-            super(executor, imageClassLoader, nativeImageClassLoader);
+        ClassInitWithModules(ForkJoinPool executor, ImageClassLoader imageClassLoader) {
+            super(executor, imageClassLoader);
         }
 
         @Override
         protected void init() {
-            Set<String> modules = new HashSet<>();
-            modules.add("jdk.internal.vm.ci");
+            List<String> requiresInit = Arrays.asList(
+                            "jdk.internal.vm.ci", "jdk.internal.vm.compiler", "com.oracle.graal.graal_enterprise",
+                            "org.graalvm.sdk", "org.graalvm.truffle");
 
-            addOptionalModule(modules, "org.graalvm.sdk");
-            addOptionalModule(modules, "jdk.internal.vm.compiler");
-            addOptionalModule(modules, "com.oracle.graal.graal_enterprise");
-
-            String includeModulesStr = System.getProperty(PROPERTY_IMAGEINCLUDEBUILTINMODULES);
-            if (includeModulesStr != null) {
-                modules.addAll(Arrays.asList(includeModulesStr.split(",")));
+            for (ModuleReference moduleReference : ModuleFinder.ofSystem().findAll()) {
+                if (requiresInit.contains(moduleReference.descriptor().name())) {
+                    initModule(moduleReference);
+                }
             }
-
-            for (String moduleResource : ModuleSupport.getSystemModuleResources(modules)) {
-                handleClassInModuleResource(moduleResource);
-            }
-
-            for (String moduleResource : ModuleSupport.getModuleResources(nativeImageClassLoader.modulepath())) {
-                handleClassInModuleResource(moduleResource);
+            for (ModuleReference moduleReference : ModuleFinder.of(modulepath().toArray(Path[]::new)).findAll()) {
+                initModule(moduleReference);
             }
 
             super.init();
         }
 
-        private void handleClassInModuleResource(String moduleResource) {
-            if (moduleResource.endsWith(CLASS_EXTENSION)) {
-                executor.execute(() -> handleClassFileName(classFileWithoutSuffix(moduleResource), '/'));
+        private void initModule(ModuleReference moduleReference) {
+            Optional<Module> optionalModule = findModule(moduleReference.descriptor().name());
+            if (optionalModule.isEmpty()) {
+                return;
             }
-        }
-
-        private static void addOptionalModule(Set<String> modules, String name) {
-            if (ModuleSupport.hasSystemModule(name)) {
-                modules.add(name);
+            try (ModuleReader moduleReader = moduleReference.open()) {
+                Module module = optionalModule.get();
+                moduleReader.list().forEach(moduleResource -> {
+                    if (moduleResource.endsWith(CLASS_EXTENSION)) {
+                        executor.execute(() -> handleClassFileName(module, moduleResource, '/'));
+                    }
+                });
+            } catch (IOException e) {
+                throw new RuntimeException("Unable get list of resources in module" + moduleReference.descriptor().name(), e);
             }
         }
     }
 
     @Override
     public void initAllClasses(ForkJoinPool executor, ImageClassLoader imageClassLoader) {
-        new ClassInitWithModules(executor, imageClassLoader, this).init();
+        new ClassInitWithModules(executor, imageClassLoader).init();
     }
 }

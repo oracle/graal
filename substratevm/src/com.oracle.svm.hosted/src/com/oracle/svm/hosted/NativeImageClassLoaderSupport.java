@@ -60,15 +60,16 @@ public class NativeImageClassLoaderSupport extends AbstractNativeImageClassLoade
 
     @Override
     Class<?> loadClassFromModule(Object module, String className) throws ClassNotFoundException {
-        if (module != null) {
-            throw new ClassNotFoundException(className,
-                            new UnsupportedOperationException("NativeImageClassLoader for Java 8 does not support modules"));
-        }
-        return Class.forName(className, false, classPathClassLoader);
+        throw new UnsupportedOperationException("NativeImageClassLoader for Java 8 does not support modules");
+    }
+
+    @Override
+    Optional<String> getMainClassFromModule(Object module) {
+        return Optional.empty();
     }
 
     @Override
     public void initAllClasses(ForkJoinPool executor, ImageClassLoader imageClassLoader) {
-        new ClassInit(executor, imageClassLoader, this).init();
+        new ClassInit(executor, imageClassLoader).init();
     }
 }

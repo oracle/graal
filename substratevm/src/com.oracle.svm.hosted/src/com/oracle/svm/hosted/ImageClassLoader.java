@@ -287,6 +287,13 @@ public final class ImageClassLoader {
         return Class.forName(name, false, classLoaderSupport.getClassLoader());
     }
 
+    public Class<?> forName(String className, Object module) throws ClassNotFoundException {
+        if (module == null) {
+            return forName(className);
+        }
+        return classLoaderSupport.loadClassFromModule(module, className);
+    }
+
     /**
      * Deprecated. Use {@link ImageClassLoader#classpath()} instead.
      *
@@ -414,11 +421,11 @@ public final class ImageClassLoader {
         return classLoaderSupport.getClassLoader();
     }
 
-    public Class<?> loadClassFromModule(Object module, String className) throws ClassNotFoundException {
-        return classLoaderSupport.loadClassFromModule(module, className);
+    public Optional<String> getMainClassFromModule(Object module) {
+        return classLoaderSupport.getMainClassFromModule(module);
     }
 
-    public Optional<Object> findModule(String moduleName) {
+    public Optional<? extends Object> findModule(String moduleName) {
         return classLoaderSupport.findModule(moduleName);
     }
 
