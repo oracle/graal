@@ -4,6 +4,7 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 
 ## Version 21.2.0
 * `AllowVMInspection` is enabled in the native launchers, `SIGQUIT` can be used to generate thread dumps. Performance counters are disabled by default, they can be enabled in the graalvm enterprise by the `--vm.XX:+UsePerfData` option.
+* Changed behavior of `Value.as(TypeLiteral<Function<Object, Object>>).apply()`: When the function is called with an `Object[]` argument, it is passed through as a single argument rather than an array of arguments.
 
 ## Version 21.1.0
 * Added new methods  in `Value` for interacting with buffer-like objects:

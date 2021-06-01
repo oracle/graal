@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,10 +55,10 @@ final class PolyglotFunction<T, R> implements Function<T, R>, HostWrapper {
     final PolyglotLanguageContext languageContext;
     final CallTarget apply;
 
-    PolyglotFunction(PolyglotLanguageContext languageContext, Object function, Class<?> returnClass, Type returnType) {
+    PolyglotFunction(PolyglotLanguageContext languageContext, Object function, Class<?> returnClass, Type returnType, Class<?> paramClass, Type paramType) {
         this.guestObject = function;
         this.languageContext = languageContext;
-        this.apply = Apply.lookup(languageContext, function.getClass(), returnClass, returnType);
+        this.apply = Apply.lookup(languageContext, function.getClass(), returnClass, returnType, paramClass, paramType);
     }
 
     @SuppressWarnings("unchecked")
@@ -101,8 +101,8 @@ final class PolyglotFunction<T, R> implements Function<T, R>, HostWrapper {
     }
 
     @TruffleBoundary
-    public static <T> PolyglotFunction<?, ?> create(PolyglotLanguageContext languageContext, Object function, Class<?> returnClass, Type returnType) {
-        return new PolyglotFunction<>(languageContext, function, returnClass, returnType);
+    public static <T> PolyglotFunction<?, ?> create(PolyglotLanguageContext languageContext, Object function, Class<?> returnClass, Type returnType, Class<?> paramClass, Type paramType) {
+        return new PolyglotFunction<>(languageContext, function, returnClass, returnType, paramClass, paramType);
     }
 
     static final class Apply extends HostToGuestRootNode {
@@ -110,13 +110,17 @@ final class PolyglotFunction<T, R> implements Function<T, R>, HostWrapper {
         final Class<?> receiverClass;
         final Class<?> returnClass;
         final Type returnType;
+        final Class<?> paramClass;
+        final Type paramType;
 
         @Child private PolyglotExecuteNode apply;
 
-        Apply(Class<?> receiverType, Class<?> returnClass, Type returnType) {
-            this.receiverClass = receiverType;
-            this.returnClass = returnClass;
+        Apply(Class<?> receiverType, Class<?> returnClass, Type returnType, Class<?> paramClass, Type paramType) {
+            this.receiverClass = Objects.requireNonNull(receiverType);
+            this.returnClass = Objects.requireNonNull(returnClass);
             this.returnType = returnType;
+            this.paramClass = Objects.requireNonNull(paramClass);
+            this.paramType = paramType;
         }
 
         @SuppressWarnings("unchecked")
@@ -137,7 +141,7 @@ final class PolyglotFunction<T, R> implements Function<T, R>, HostWrapper {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 apply = localApply = insert(PolyglotExecuteNodeGen.create());
             }
-            return localApply.execute(languageContext, function, args[ARGUMENT_OFFSET], returnClass, returnType);
+            return localApply.execute(languageContext, function, args[ARGUMENT_OFFSET], returnClass, returnType, paramClass, paramType);
         }
 
         @Override
@@ -146,6 +150,8 @@ final class PolyglotFunction<T, R> implements Function<T, R>, HostWrapper {
             result = 31 * result + Objects.hashCode(receiverClass);
             result = 31 * result + Objects.hashCode(returnClass);
             result = 31 * result + Objects.hashCode(returnType);
+            result = 31 * result + Objects.hashCode(paramClass);
+            result = 31 * result + Objects.hashCode(paramType);
             return result;
         }
 
@@ -155,12 +161,13 @@ final class PolyglotFunction<T, R> implements Function<T, R>, HostWrapper {
                 return false;
             }
             Apply other = (Apply) obj;
-            return receiverClass == other.receiverClass && returnType == other.returnType &&
-                            returnClass == other.returnClass;
+            return receiverClass == other.receiverClass &&
+                            returnClass == other.returnClass && Objects.equals(returnType, other.returnType) &&
+                            paramClass == other.paramClass && Objects.equals(paramType, other.paramType);
         }
 
-        private static CallTarget lookup(PolyglotLanguageContext languageContext, Class<?> receiverClass, Class<?> returnClass, Type returnType) {
-            Apply apply = new Apply(receiverClass, returnClass, returnType);
+        private static CallTarget lookup(PolyglotLanguageContext languageContext, Class<?> receiverClass, Class<?> returnClass, Type returnType, Class<?> paramClass, Type paramType) {
+            Apply apply = new Apply(receiverClass, returnClass, returnType, paramClass, paramType);
             CallTarget target = lookupHostCodeCache(languageContext, apply, CallTarget.class);
             if (target == null) {
                 target = installHostCodeCache(languageContext, apply, createTarget(apply), CallTarget.class);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,8 +40,10 @@
  */
 package com.oracle.truffle.polyglot;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.Type;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
@@ -60,20 +62,44 @@ abstract class PolyglotExecuteNode extends Node {
 
     private final ToGuestValuesNode toGuests = ToGuestValuesNode.create();
 
+    public final Object execute(PolyglotLanguageContext languageContext, Object function, Object functionArgsObject) {
+        return execute(languageContext, function, functionArgsObject, Object.class, Object.class, Object.class, null);
+    }
+
     public final Object execute(PolyglotLanguageContext languageContext, Object function, Object functionArgsObject,
-                    Class<?> resultClass, Type resultType) {
+                    Class<?> resultClass, Type resultType, Class<?> paramClass, Type paramType) {
+        // paramType == null => Default conversion of executable value or conversion to
+        // unparameterized Function. We allow varargs-like invocation in this case.
         Object[] argsArray;
-        if (functionArgsObject instanceof Object[]) {
-            argsArray = (Object[]) functionArgsObject;
-        } else {
-            if (functionArgsObject == null) {
-                argsArray = EMPTY;
+        if (functionArgsObject == null) {
+            argsArray = EMPTY;
+        } else if (paramType != null && paramClass.isArray()) {
+            if (paramClass.getComponentType().isPrimitive() && !(functionArgsObject instanceof Object[])) {
+                argsArray = copyToObjectArray(paramClass.cast(functionArgsObject));
             } else {
+                argsArray = (Object[]) functionArgsObject;
+            }
+        } else {
+            if (!(paramType == null && functionArgsObject instanceof Object[])) {
                 argsArray = new Object[]{functionArgsObject};
+            } else {
+                argsArray = (Object[]) functionArgsObject;
             }
         }
+
         Object[] functionArgs = toGuests.apply(languageContext, argsArray);
         return executeImpl(languageContext, function, functionArgs, resultClass, resultType);
+    }
+
+    @TruffleBoundary
+    private static Object[] copyToObjectArray(Object functionArgs) {
+        assert functionArgs.getClass().isArray();
+        int length = Array.getLength(functionArgs);
+        Object[] copy = new Object[length];
+        for (int i = 0; i < length; i++) {
+            copy[i] = Array.get(functionArgs, 0);
+        }
+        return copy;
     }
 
     protected abstract Object executeImpl(PolyglotLanguageContext languageContext, Object function, Object[] functionArgsObject,
