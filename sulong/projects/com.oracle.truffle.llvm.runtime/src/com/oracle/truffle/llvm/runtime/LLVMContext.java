@@ -76,6 +76,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.pthread.LLVMPThreadContext;
 import com.oracle.truffle.llvm.runtime.IDGenerater.BitcodeID;
+import org.graalvm.collections.MapCursor;
 
 public final class LLVMContext {
 
@@ -610,7 +611,6 @@ public final class LLVMContext {
                 }
             }
         }
-
         // TODO (chaeubl): we should throw an exception in this case but this will cause gate
         // failures at the moment, because the library path is not always set correctly
     }
@@ -676,8 +676,13 @@ public final class LLVMContext {
                 return symbolDynamicStorage[id][index];
             } catch (ArrayIndexOutOfBoundsException e) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                int idLength = symbolDynamicStorage[id].length;
-                throw new IllegalStateException("id: " + id + " index: " + index + " id length: " + idLength +
+                MapCursor<BitcodeID, Source> entry = sourceCache.getEntries();
+                while (entry.advance()) {
+                    BitcodeID sourceID = entry.getKey();
+                    Source sourceSource = entry.getValue();
+                    System.out.println("id: " + sourceID.getId() + " matches the source: " + sourceSource.toString());
+                }
+                throw new IllegalStateException("id: " + id + " index: " + index + " id length: " + symbolDynamicStorage.length +
                                 " symbol name: " + symbol.getName() + " symbol kind: " + symbol.getKind() +
                                 " symbol class: " + symbol.getClass(), e);
             }
