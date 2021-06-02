@@ -46,6 +46,7 @@ import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
+import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.APIOptionGroup;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -55,6 +56,17 @@ import com.oracle.svm.core.option.XOptions;
 import com.oracle.svm.core.util.UserError;
 
 public class SubstrateOptions {
+
+    @Option(help = "When true, compiler graphs are parsed only once before static analysis. When false, compiler graphs are parsed for static analysis and again for AOT compilation.")//
+    public static final HostedOptionKey<Boolean> ParseOnce = new HostedOptionKey<>(true);
+
+    public static boolean parseOnce() {
+        /*
+         * Parsing all graphs before static analysis is work-in-progress, and not yet working for
+         * graphs parsed for deoptimization entry points and JIT compilation.
+         */
+        return ParseOnce.getValue() && !DeoptimizationSupport.enabled();
+    }
 
     @Option(help = "Module containing the class that contains the main entry point. Optional if --shared is used.", type = OptionType.User)//
     public static final HostedOptionKey<String> Module = new HostedOptionKey<>("");
@@ -474,9 +486,6 @@ public class SubstrateOptions {
 
     @Option(help = "Omit generation of DebugLineInfo originating from inlined methods") //
     public static final HostedOptionKey<Boolean> OmitInlinedMethodDebugLineInfo = new HostedOptionKey<>(true);
-
-    /** Command line option to disable image build server. */
-    public static final String NO_SERVER = "--no-server";
 
     @Fold
     public static boolean supportCompileInIsolates() {

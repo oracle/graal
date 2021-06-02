@@ -57,9 +57,9 @@ class HotSpotTruffleRuntimeServices {
      */
     public static SpeculationLog getCompilationSpeculationLog(OptimizedCallTarget callTarget) {
         if (sharedHotSpotSpeculationLogConstructor != null) {
-            HotSpotSpeculationLog masterLog = (HotSpotSpeculationLog) callTarget.getSpeculationLog();
+            HotSpotSpeculationLog log = (HotSpotSpeculationLog) callTarget.getSpeculationLog();
             try {
-                SpeculationLog compilationSpeculationLog = sharedHotSpotSpeculationLogConstructor.newInstance(masterLog);
+                SpeculationLog compilationSpeculationLog = sharedHotSpotSpeculationLogConstructor.newInstance(log);
                 compilationSpeculationLog.collectFailedSpeculations();
                 return compilationSpeculationLog;
             } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {

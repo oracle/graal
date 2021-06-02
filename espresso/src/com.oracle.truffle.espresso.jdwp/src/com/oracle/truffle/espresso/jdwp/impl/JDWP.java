@@ -389,8 +389,10 @@ public final class JDWP {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
                 int classes = input.readInt();
+
                 LOGGER.fine(() -> "Request to redefine %d classes received " + classes);
-                RedefineInfo[] redefineInfos = new RedefineInfo[classes];
+                List<RedefineInfo> redefineInfos = new ArrayList<>(classes);
+
                 for (int i = 0; i < classes; i++) {
                     KlassRef klass = null;
                     long refTypeId = input.readLong();
@@ -411,7 +413,7 @@ public final class JDWP {
 
                     int byteLength = input.readInt();
                     byte[] classBytes = input.readByteArray(byteLength);
-                    redefineInfos[i] = new RedefineInfo(klass, classBytes);
+                    redefineInfos.add(new RedefineInfo(klass, classBytes));
                 }
 
                 int errorCode = context.redefineClasses(redefineInfos);

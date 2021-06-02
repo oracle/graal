@@ -243,6 +243,20 @@ public class FrameInfoQueryResult {
     }
 
     /**
+     * Returns whether the duringCall is set.
+     */
+    public boolean duringCall() {
+        return FrameInfoDecoder.decodeDuringCall(encodedBci);
+    }
+
+    /**
+     * Returns whether the rethrowException is set.
+     */
+    public boolean rethrowException() {
+        return FrameInfoDecoder.decodeRethrowException(encodedBci);
+    }
+
+    /**
      * Returns true if this frame has been marked as a valid deoptimization entry point.
      */
     public boolean isDeoptEntry() {

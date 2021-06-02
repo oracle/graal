@@ -38,29 +38,36 @@ import org.graalvm.compiler.java.BciBlockMapping;
 import org.graalvm.compiler.java.BytecodeParser;
 import org.graalvm.compiler.java.FrameStateBuilder;
 import org.graalvm.compiler.java.GraphBuilderPhase;
+import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
+import org.graalvm.compiler.nodes.UnreachableBeginNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
+import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.word.WordTypes;
 
+import com.oracle.graal.pointsto.results.StaticAnalysisResults;
 import com.oracle.svm.core.code.FrameInfoEncoder;
+import com.oracle.svm.core.graal.nodes.DeadEndNode;
 import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
+import com.oracle.svm.core.graal.nodes.DeoptEntrySupport;
 import com.oracle.svm.core.graal.nodes.DeoptProxyAnchorNode;
+import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.nodes.DeoptProxyNode;
-import com.oracle.svm.hosted.nodes.SubstrateMethodCallTargetNode;
 import com.oracle.svm.hosted.phases.SubstrateGraphBuilderPhase.SubstrateBytecodeParser;
 
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaTypeProfile;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -101,15 +108,24 @@ class HostedBytecodeParser extends SubstrateBytecodeParser {
     }
 
     @Override
+    protected boolean asyncExceptionLiveness() {
+        /*
+         * Only methods which can deoptimize need to consider live locals from asynchronous
+         * exception handlers.
+         */
+        return isDeoptimizationEnabled() && getMethod().canDeoptimize();
+    }
+
+    @Override
     protected BciBlockMapping generateBlockMap() {
-        if (isMethodDeoptTarget()) {
+        if (isDeoptimizationEnabled() && isMethodDeoptTarget()) {
             /*
              * Need to add blocks representing where deoptimization entrypoint nodes will be
              * inserted.
              */
-            return HostedBciBlockMapping.create(stream, code, options, graph.getDebug());
+            return HostedBciBlockMapping.create(stream, code, options, graph.getDebug(), false);
         } else {
-            return BciBlockMapping.create(stream, code, options, graph.getDebug());
+            return BciBlockMapping.create(stream, code, options, graph.getDebug(), asyncExceptionLiveness());
         }
     }
 
@@ -134,7 +150,8 @@ class HostedBytecodeParser extends SubstrateBytecodeParser {
 
     @Override
     public MethodCallTargetNode createMethodCallTarget(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, StampPair returnStamp, JavaTypeProfile profile) {
-        return new SubstrateMethodCallTargetNode(invokeKind, targetMethod, args, returnStamp, getMethod().getProfilingInfo(), bci());
+        StaticAnalysisResults staticAnalysisResults = getMethod().getProfilingInfo();
+        return new SubstrateMethodCallTargetNode(invokeKind, targetMethod, args, returnStamp, staticAnalysisResults.getTypeProfile(bci()), staticAnalysisResults.getMethodProfile(bci()));
     }
 
     @Override
@@ -164,8 +181,10 @@ class HostedBytecodeParser extends SubstrateBytecodeParser {
              * Afterwards, this block should jump to the original BciBlock.
              */
             assert block instanceof HostedBciBlockMapping.DeoptBciBlock;
+            assert block.getSuccessors().size() == 1 || block.getSuccessors().size() == 2;
+            assert block.getSuccessor(0).isInstructionBlock();
+            stream.setBCI(block.getStartBci());
             insertDeoptNode((HostedBciBlockMapping.DeoptEntryInsertionPoint) block);
-            assert block.getSuccessors().size() == 1;
             appendGoto(block.getSuccessor(0));
         } else {
             super.iterateBytecodesForBlock(block);
@@ -184,14 +203,60 @@ class HostedBytecodeParser extends SubstrateBytecodeParser {
             assert frameState.rethrowException();
         }
 
-        DeoptProxyAnchorNode deoptNode = graph.add(deopt.isProxy() ? new DeoptProxyAnchorNode() : new DeoptEntryNode());
-        if (lastInstr != null) {
-            lastInstr.setNext(deoptNode);
-        }
-        lastInstr = deoptNode;
+        DeoptEntrySupport deoptNode = graph.add(deopt.isProxy() ? new DeoptProxyAnchorNode() : new DeoptEntryNode());
         FrameState stateAfter = frameState.create(deopt.frameStateBci(), deoptNode);
         deoptNode.setStateAfter(stateAfter);
-        insertProxies(deoptNode, frameState);
+        if (lastInstr != null) {
+            lastInstr.setNext(deoptNode.asNode());
+        }
+
+        if (deopt.isProxy()) {
+            lastInstr = (DeoptProxyAnchorNode) deoptNode;
+        } else {
+            assert !deopt.duringCall() : "Implicit deopt entries from invokes cannot have explicit deopt entries.";
+            DeoptEntryNode deoptEntryNode = (DeoptEntryNode) deoptNode;
+            deoptEntryNode.setNext(graph.add(deoptEntryNode.createNextBegin()));
+
+            /*
+             * DeoptEntries for positions not during an exception dispatch (rethrowException) also
+             * must be linked to their exception target.
+             */
+            if (!deopt.rethrowException()) {
+                /*
+                 * Saving frameState so that different modifications can be made for next() and
+                 * exceptionEdge().
+                 */
+                FrameStateBuilder originalFrameState = frameState.copy();
+
+                /* Creating exception object and its state after. */
+                ExceptionObjectNode newExceptionObject = graph.add(new ExceptionObjectNode(getMetaAccess()));
+                frameState.clearStack();
+                frameState.push(JavaKind.Object, newExceptionObject);
+                frameState.setRethrowException(true);
+                int bci = ((HostedBciBlockMapping.DeoptBciBlock) deopt).getStartBci();
+                newExceptionObject.setStateAfter(frameState.create(bci, newExceptionObject));
+                deoptEntryNode.setExceptionEdge(newExceptionObject);
+
+                /* Inserting proxies for the exception edge. */
+                insertProxies(newExceptionObject, frameState);
+
+                /* Linking exception object to exception target. */
+                newExceptionObject.setNext(handleException(newExceptionObject, bci, false));
+
+                /* Now restoring FrameState so proxies can be inserted for the next() edge. */
+                frameState = originalFrameState;
+            } else {
+                /* Otherwise, indicate that the exception edge is not reachable. */
+                AbstractBeginNode newExceptionEdge = graph.add(new UnreachableBeginNode());
+                newExceptionEdge.setNext(graph.add(new DeadEndNode()));
+                deoptEntryNode.setExceptionEdge(newExceptionEdge);
+            }
+
+            /* Correctly setting last instruction. */
+            lastInstr = deoptEntryNode.next();
+        }
+
+        insertProxies(deoptNode.asNode(), frameState);
     }
 
     private void insertProxies(FixedNode deoptTarget, FrameStateBuilder state) {
@@ -395,14 +460,14 @@ final class HostedBciBlockMapping extends BciBlockMapping {
      * Creates a BciBlockMapping with blocks explicitly representing where DeoptEntryNodes and
      * DeoptProxyAnchorNodes are to be inserted.
      */
-    public static BciBlockMapping create(BytecodeStream stream, Bytecode code, OptionValues options, DebugContext debug) {
+    public static BciBlockMapping create(BytecodeStream stream, Bytecode code, OptionValues options, DebugContext debug, boolean hasAsyncExceptions) {
         BciBlockMapping map = new HostedBciBlockMapping(code, debug);
-        buildMap(stream, code, options, debug, map);
+        buildMap(stream, code, options, debug, map, hasAsyncExceptions);
         return map;
     }
 
     @Override
-    protected BciBlock getInstructionBlock(BciBlock[] blockMap, int bci) {
+    protected BciBlock getInstructionBlock(int bci) {
         /*
          * DeoptBciBlocks are not instruction blocks; they only represent places where
          * DeoptEntryNodes and DeoptProxyAnchorNodes are to be inserted. For a given bci, if a
@@ -427,7 +492,7 @@ final class HostedBciBlockMapping extends BciBlockMapping {
 
     /* A new block must be created for all places where a DeoptEntryNode will be inserted. */
     @Override
-    protected boolean isStartOfNewBlock(BciBlock[] blockMap, BciBlock current, int bci) {
+    protected boolean isStartOfNewBlock(BciBlock current, int bci) {
         /*
          * Checking whether a DeoptEntryPoint will be created for this spot.
          */
@@ -435,7 +500,7 @@ final class HostedBciBlockMapping extends BciBlockMapping {
             return true;
         }
 
-        return super.isStartOfNewBlock(blockMap, current, bci);
+        return super.isStartOfNewBlock(current, bci);
     }
 
     private void recordInsertedBlock(DeoptEntryInsertionPoint block) {
@@ -448,7 +513,7 @@ final class HostedBciBlockMapping extends BciBlockMapping {
      * deoptimization entrypoint.
      */
     @Override
-    protected void addInvokeNormalSuccessor(BciBlock[] blockMap, int invokeBci, BciBlock sux) {
+    protected void addInvokeNormalSuccessor(int invokeBci, BciBlock sux) {
         if (sux.isExceptionEntry()) {
             throw new PermanentBailoutException("Exception handler can be reached by both normal and exceptional control flow");
         }
@@ -464,24 +529,84 @@ final class HostedBciBlockMapping extends BciBlockMapping {
             if (!(sux instanceof DeoptBciBlock)) {
                 DeoptBciBlock proxyBlock = DeoptBciBlock.createDeoptProxy(sux.getStartBci(), invokeBci);
                 recordInsertedBlock(proxyBlock);
-                getInstructionBlock(blockMap, invokeBci).addSuccessor(proxyBlock);
+                getInstructionBlock(invokeBci).addSuccessor(proxyBlock);
                 proxyBlock.addSuccessor(sux);
                 return;
             }
 
         }
-        super.addInvokeNormalSuccessor(blockMap, invokeBci, sux);
+        super.addInvokeNormalSuccessor(invokeBci, sux);
+    }
+
+    /**
+     * If passed DeoptBciBlock is covered by an exception handler, then the proper
+     * ExceptionDispatchBlock is added as an successor to the block.
+     */
+    private void addExceptionHandlerEdge(DeoptBciBlock block) {
+        /* Checking whether this deopt is covered by an exception handler. */
+        ExceptionDispatchBlock deoptExceptionHandler = handleExceptions(block.getStartBci(), false, false);
+        if (deoptExceptionHandler != null) {
+            block.addSuccessor(deoptExceptionHandler);
+        }
+    }
+
+    /**
+     * Like makeBlock, creates a new block start at the provided bci. This is needed by
+     * makeExceptionEntries because from there one can't call makeBlock because it could lead to an
+     * endless recursion.
+     */
+    @Override
+    protected BciBlock startNewBlock(int bci) {
+        BciBlock currentBlock = blockMap[bci];
+        if (currentBlock != null) {
+            /* Already is a block start - nothing to do. */
+            assert currentBlock.getStartBci() == bci;
+            return currentBlock;
+        }
+        BciBlock newBlock = new BciBlock(bci);
+        blocksNotYetAssignedId++;
+        if (needsDeoptEntryBlock(bci, false, false)) {
+            DeoptBciBlock deoptEntry = DeoptBciBlock.createDeoptEntry(bci);
+            recordInsertedBlock(deoptEntry);
+            deoptEntry.addSuccessor(newBlock);
+            newBlock = deoptEntry;
+        }
+        blockMap[bci] = newBlock;
+        return newBlock;
+    }
+
+    /**
+     * Because exception entries may also be DeoptEntryInsertionPoints and have an exception edge to
+     * another exception entry (or itself), two passes are necessary: first to create all exception
+     * entries and DeoptBciBlocks, and second to create the ExceptionDispatchBlocks for the
+     * DeoptBciBlocks.
+     */
+    @Override
+    protected Set<BciBlock> makeExceptionEntries(boolean splitRanges) {
+        /* First creating BciBlocks, and, if necessary, DeoptBciBlocks for all exception entries. */
+        Set<BciBlock> requestedBlockStarts = super.makeExceptionEntries(splitRanges);
+
+        /* Adding exception edges for all added DeoptBciBlocks covered by exception handlers. */
+        for (BciBlock block : requestedBlockStarts) {
+            if (block instanceof DeoptBciBlock) {
+                addExceptionHandlerEdge((DeoptBciBlock) block);
+            }
+        }
+
+        return requestedBlockStarts;
     }
 
     /**
      * Adding new {@link DeoptBciBlock} for a bci which needs an explicit DeoptEntryNode.
      */
     @Override
-    protected BciBlock processNewBciBlock(BciBlock[] blockMap, int bci, BciBlock newBlock) {
+    protected BciBlock processNewBciBlock(int bci, BciBlock newBlock) {
         if (needsDeoptEntryBlock(bci, false, false)) {
             DeoptBciBlock deoptBciBlock = DeoptBciBlock.createDeoptEntry(bci);
             recordInsertedBlock(deoptBciBlock);
             deoptBciBlock.addSuccessor(newBlock);
+
+            addExceptionHandlerEdge(deoptBciBlock);
 
             // overwriting with new DeoptEntryBlock
             blockMap[bci] = deoptBciBlock;
@@ -528,7 +653,8 @@ final class HostedBciBlockMapping extends BciBlockMapping {
      * <li>Correspond to a deoptimization entrypoint recorded within method.compilationInfo.</li>
      * <li>DeoptProxies can only represent implicit deoptimizations.</li>
      * <li>Have only one non-proxy DeoptEntryInsertionPoint for each encoded BCI.</li>
-     * <li>Have at most 1 successor.</li>
+     * <li>Have at most 2 successors.</li>
+     * <li>The successors should not be DeoptEntryInsertionPoints.</li>
      * <li>Not be duplicated.</li>
      * </ul>
      */
@@ -549,14 +675,16 @@ final class HostedBciBlockMapping extends BciBlockMapping {
 
                 /* Other information about this block is irrelevant as it is unreachable. */
                 continue;
-            } else {
-                assert needsDeoptEntryBlock(bci, duringCall, rethrowException);
             }
+            assert needsDeoptEntryBlock(bci, duringCall, rethrowException);
             assert deopt.isProxy() == duringCall : "deopt proxy nodes always represent implicit deopt entries from invokes.";
             if (!deopt.isProxy()) {
                 assert coveredEncodedBcis.add(FrameInfoEncoder.encodeBci(bci, duringCall, rethrowException)) : "Deoptimization entry points must be unique.";
             }
-            assert block.getSuccessorCount() <= 1 : "DeoptEntryInsertionPoint must have at most 1 successor";
+            assert block.getSuccessorCount() <= 2 : "DeoptEntryInsertionPoint must have at most 2 successors";
+            for (BciBlock sux : block.getSuccessors()) {
+                assert !(sux instanceof DeoptEntryInsertionPoint) : "Successor of DeoptEntryInsertionPoint should not be a DeoptEntryInsertionPoint.";
+            }
             assert !block.isDuplicate() : "DeoptEntryInsertionPoint must be unique";
         }
         return super.verify();

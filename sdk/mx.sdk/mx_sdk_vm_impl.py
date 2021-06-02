@@ -1075,7 +1075,6 @@ class SvmSupport(object):
         native_image_project_name = GraalVmLauncher.launcher_project_name(mx_sdk.LauncherConfig(mx.exe_suffix('native-image'), [], "", []), stage1=True)
         native_image_bin = join(stage1.output, stage1.find_single_source_location('dependency:' + native_image_project_name))
         native_image_command = [native_image_bin] + build_args
-        # currently, when building with the bash version of native-image, --no-server is implied (and can not be passed)
         output_directory = dirname(output_file)
         native_image_command += [
             '-H:Path=' + output_directory or ".",
@@ -1292,10 +1291,14 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
             _write_ln(u'ImagePath=' + java_properties_escape("${.}/" + relpath(dirname(graalvm_image_destination), graalvm_location).replace(os.sep, '/')))
             if requires:
                 _write_ln(u'Requires=' + java_properties_escape(' '.join(requires), ' ', len('Requires')))
+            build_with_module_path = image_config.use_modules == 'image'
             if isinstance(image_config, mx_sdk.LauncherConfig):
                 _write_ln(u'ImageClass=' + java_properties_escape(image_config.main_class))
+                if build_with_module_path:
+                    _write_ln(u'ImageModule=' + java_properties_escape(image_config.main_module))
             if location_classpath:
-                _write_ln(u'ImageClasspath=' + java_properties_escape(':'.join(("${.}/" + e.replace(os.sep, '/') for e in location_classpath)), ':', len('ImageClasspath')))
+                image_path_arg = u'ImageModulePath=' if build_with_module_path else u'ImageClasspath='
+                _write_ln(image_path_arg + java_properties_escape(':'.join(("${.}/" + e.replace(os.sep, '/') for e in location_classpath)), ':', len(image_path_arg)))
             _write_ln(u'Args=' + java_properties_escape(' '.join(build_args), ' ', len('Args')))
         return self._contents
 
@@ -1848,12 +1851,15 @@ class GraalVmBashLauncherBuildTask(GraalVmNativeImageBuildTask):
             return self.subject.native_image_config.main_class
 
         def _is_module_launcher():
-            return str(self.subject.native_image_config.module_launcher)
+            return str(self.subject.native_image_config.use_modules is not None)
+
+        def _get_main_module():
+            return str(self.subject.native_image_config.main_module)
 
         def _get_extra_jvm_args():
             image_config = self.subject.native_image_config
             extra_jvm_args = mx.list_to_cmd_line(image_config.extra_jvm_args)
-            if not _jlink_libraries():
+            if not _jlink_libraries() and _src_jdk_version >= 9:
                 if mx.is_windows():
                     extra_jvm_args = ' '.join([extra_jvm_args, r"--upgrade-module-path %location%\..\..\jvmci\graal.jar",
                                                r"--add-modules org.graalvm.truffle,org.graalvm.sdk",
@@ -1869,7 +1875,7 @@ class GraalVmBashLauncherBuildTask(GraalVmNativeImageBuildTask):
             return ' '.join(image_config.option_vars)
 
         def _get_launcher_args():
-            if not _jlink_libraries():
+            if not _jlink_libraries() and _src_jdk_version >= 9:
                 return '-J--add-exports=jdk.internal.vm.ci/jdk.vm.ci.code=jdk.internal.vm.compiler'
             return ''
 
@@ -1885,6 +1891,7 @@ class GraalVmBashLauncherBuildTask(GraalVmNativeImageBuildTask):
         _template_subst.register_no_arg('classpath', _get_classpath)
         _template_subst.register_no_arg('jre_bin', _get_jre_bin)
         _template_subst.register_no_arg('main_class', _get_main_class)
+        _template_subst.register_no_arg('main_module', _get_main_module)
         _template_subst.register_no_arg('extra_jvm_args', _get_extra_jvm_args)
         _template_subst.register_no_arg('macro_name', GraalVmNativeProperties.macro_name(self.subject.native_image_config))
         _template_subst.register_no_arg('option_vars', _get_option_vars)

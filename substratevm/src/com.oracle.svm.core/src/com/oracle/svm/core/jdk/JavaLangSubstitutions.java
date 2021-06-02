@@ -39,6 +39,7 @@ import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.BooleanSupplier;
+import java.util.stream.Stream;
 
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation;
@@ -678,6 +679,12 @@ final class Target_java_lang_NullPointerException {
     }
 }
 
+@TargetClass(className = "jdk.internal.loader.ClassLoaders", onlyWith = JDK11OrLater.class)
+final class Target_jdk_internal_loader_ClassLoaders {
+    @Alias
+    static native Target_jdk_internal_loader_BuiltinClassLoader bootLoader();
+}
+
 @TargetClass(className = "jdk.internal.loader.BootLoader", onlyWith = JDK11OrLater.class)
 final class Target_jdk_internal_loader_BootLoader {
 
@@ -691,6 +698,16 @@ final class Target_jdk_internal_loader_BootLoader {
             return null;
         }
     }
+
+    @Substitute
+    public static Stream<Package> packages() {
+        Target_jdk_internal_loader_BuiltinClassLoader bootClassLoader = Target_jdk_internal_loader_ClassLoaders.bootLoader();
+        Target_java_lang_ClassLoader systemClassLoader = SubstrateUtil.cast(bootClassLoader, Target_java_lang_ClassLoader.class);
+        return systemClassLoader.packages();
+    }
+
+    @Delete("only used by #packages()")
+    private static native String[] getSystemPackageNames();
 
     @Substitute
     private static Class<?> loadClassOrNull(String name) {

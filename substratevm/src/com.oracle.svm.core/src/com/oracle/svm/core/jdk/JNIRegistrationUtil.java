@@ -85,6 +85,10 @@ public class JNIRegistrationUtil {
         return Optional.ofNullable(classByName);
     }
 
+    protected static Optional<Method> optionalMethod(FeatureAccess access, String className, String methodName, Class<?>... parameterTypes) {
+        return Optional.ofNullable(ReflectionUtil.lookupMethod(true, clazz(access, className), methodName, parameterTypes));
+    }
+
     protected static Method method(FeatureAccess access, String className, String methodName, Class<?>... parameterTypes) {
         return ReflectionUtil.lookupMethod(clazz(access, className), methodName, parameterTypes);
     }

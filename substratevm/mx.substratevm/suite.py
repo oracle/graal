@@ -399,6 +399,7 @@ suite = {
             "requires" : ["java.instrument"],
             "requiresConcealed" : {
                 "jdk.internal.vm.ci": ["jdk.vm.ci.meta"],
+                "java.base" : ["jdk.internal.module"],
             },
             "javaCompliance": "11+",
             "checkstyle" : "com.oracle.svm.hosted",
@@ -449,7 +450,7 @@ suite = {
                 },
                 "<others>": {
                     "<others>": {
-                        "cflags": ["-g", "-fPIC", "-O2", "-D_LITTLE_ENDIAN", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden", "-D_FORTIFY_SOURCE=0"],
+                        "cflags": ["-g", "-gdwarf-4", "-fPIC", "-O2", "-D_LITTLE_ENDIAN", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden", "-D_FORTIFY_SOURCE=0"],
                     },
                 },
             },
@@ -485,7 +486,7 @@ suite = {
                 },
                 "linux": {
                     "<others>" : {
-                        "cflags": ["-g", "-fPIC", "-O2", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden", "-D_FORTIFY_SOURCE=0"],
+                        "cflags": ["-g", "-gdwarf-4", "-fPIC", "-O2", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden", "-D_FORTIFY_SOURCE=0"],
                     },
                 },
                 "<others>": {
@@ -559,6 +560,25 @@ suite = {
             "spotbugs": "false",
         },
 
+        "com.oracle.svm.driver.jdk11": {
+            "subDir": "src",
+            "sourceDirs": [
+                "src",
+            ],
+            "dependencies": [
+                "com.oracle.svm.driver",
+            ],
+            "checkstyle": "com.oracle.svm.driver",
+            "workingSets": "SVM",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+            ],
+            "javaCompliance" : "11+",
+            "multiReleaseJarVersion": "11",
+            "overlayTarget" : "com.oracle.svm.driver",
+            "spotbugs": "false",
+        },
+
         "svm-compiler-flags-builder": {
             "class" : "SubstrateCompilerFlagsBuilder",
             "dependencies" : [
@@ -588,6 +608,7 @@ suite = {
             "dependencies": [
                 "mx:JUNIT_TOOL",
                 "sdk:GRAAL_SDK",
+                "SVM",
             ],
             "checkstyle": "com.oracle.svm.core",
             "workingSets": "SVM",
@@ -994,8 +1015,8 @@ suite = {
             "subDir": "src",
             "description" : "SubstrateVM image builder components",
             "dependencies": [
-                "com.oracle.svm.graal",  # necessary until Truffle is fully supported on Windows (GR-7941)
-                "com.oracle.svm.truffle",  # necessary until Truffle is fully supported on Windows (GR-7941)
+                "com.oracle.svm.graal",
+                "com.oracle.svm.truffle",
                 "com.oracle.svm.hosted",
                 "com.oracle.svm.core",
                 "com.oracle.svm.core.graal.amd64",
@@ -1020,7 +1041,6 @@ suite = {
                 "name" : "org.graalvm.nativeimage.builder",
                 "exports" : [
                     "com.oracle.svm.hosted                        to java.base",
-                    "com.oracle.svm.hosted.server                 to java.base",
                     "com.oracle.svm.hosted.agent                  to java.instrument",
                     "com.oracle.svm.core.graal.thread             to jdk.internal.vm.compiler",
                     "com.oracle.svm.core.classinitialization      to jdk.internal.vm.compiler",
@@ -1144,6 +1164,8 @@ suite = {
               "name" : "org.graalvm.nativeimage.objectfile",
               "exports" : [
                 "com.oracle.objectfile",
+                "com.oracle.objectfile.io",
+                "com.oracle.objectfile.debuginfo",
               ],
               "requiresConcealed" : {
                 "java.base" : [
@@ -1215,9 +1237,9 @@ suite = {
                 "org.graalvm.compiler.options.OptionDescriptors",
               ],
               "requires" : [
+                "org.graalvm.nativeimage.builder",
                 "java.management",
                 "jdk.management",
-                # Already defined static/optional in LIBRARY_SUPPORT. Apparently that is not enough.
                 "static com.oracle.mxtool.junit",
                 "static junit",
                 "static hamcrest",
@@ -1322,6 +1344,7 @@ suite = {
           "distDependencies": [
             "mx:JUNIT_TOOL",
             "sdk:GRAAL_SDK",
+            "SVM",
             "SVM_CONFIGURE",
           ],
           "testDistribution" : True,

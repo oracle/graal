@@ -30,6 +30,7 @@ import org.graalvm.compiler.truffle.common.TruffleCompilation;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.common.TruffleDebugContext;
+import org.graalvm.compiler.truffle.common.TruffleInliningData;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
@@ -60,7 +61,7 @@ public class TransferToInterpreterTest extends TestWithPolyglotOptions {
         Map<String, Object> options = GraalTruffleRuntime.getOptionsForCompiler(target);
         try (TruffleCompilation compilation = compiler.openCompilation(compilable)) {
             TruffleDebugContext debug = compiler.openDebugContext(options, compilation);
-            compiler.doCompile(debug, compilation, options, new TruffleInlining(), new TestTruffleCompilationTask(), null);
+            compiler.doCompile(debug, compilation, options, new TestTruffleCompilationTask(), null);
         }
         Assert.assertTrue(target.isValid());
         target.call(0);
@@ -70,6 +71,8 @@ public class TransferToInterpreterTest extends TestWithPolyglotOptions {
     }
 
     private static class TestTruffleCompilationTask implements TruffleCompilationTask {
+        TruffleInlining inlining = new TruffleInlining();
+
         @Override
         public boolean isCancelled() {
             return false;
@@ -78,6 +81,11 @@ public class TransferToInterpreterTest extends TestWithPolyglotOptions {
         @Override
         public boolean isLastTier() {
             return true;
+        }
+
+        @Override
+        public TruffleInliningData inliningData() {
+            return inlining;
         }
     }
 

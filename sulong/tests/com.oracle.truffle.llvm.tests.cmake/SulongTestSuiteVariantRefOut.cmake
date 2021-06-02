@@ -49,15 +49,16 @@ macro(targetPostProcess SOURCE TARGET OUTPUT_DIR OUTPUT)
     get_source_file_property(TARGET_LANG ${SOURCE} LANGUAGE)
     if(${TARGET_LANG} STREQUAL "LL")
         # support for adding dependencies
-        set(CMAKE_C_FLAGS "-emit-llvm")
+        target_compile_options(${TARGET} PRIVATE "$<$<COMPILE_LANGUAGE:C>:-emit-llvm>")
         set_target_properties(${TARGET} PROPERTIES LINKER_LANGUAGE LL)
         # llvm-link should produce ll files
-        set(LLVM_LINK_OPTIONS -S)
+        target_link_options(${TARGET} PRIVATE "-S")
+        separate_arguments(LL_LINKER_OPTIONS NATIVE_COMMAND "${CMAKE_C_LINK_FLAGS} ${CMAKE_EXE_LINKER_FLAGS}")
         add_custom_command(
           TARGET ${TARGET} POST_BUILD
           # <TARGET> is actually an ll file - create a copy with the .ll extension so that clang will switch into the right mode
           COMMAND cp "$<TARGET_FILE:${TARGET}>" "$<TARGET_FILE:${TARGET}>.ll"
-          COMMAND ${CMAKE_C_COMPILER} ${CMAKE_C_LINK_FLAGS} ${CMAKE_EXE_LINKER_FLAGS} "$<TARGET_FILE:${TARGET}>.ll" "-o" "$<TARGET_FILE:${TARGET}>"
+          COMMAND ${CMAKE_C_COMPILER} ${LL_LINKER_OPTIONS} "$<TARGET_FILE:${TARGET}>.ll" "-o" "$<TARGET_FILE:${TARGET}>"
           VERBATIM
         )
     endif()

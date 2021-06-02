@@ -35,6 +35,7 @@ import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.extended.ForeignCall;
 import org.graalvm.compiler.nodes.loop.LoopEx;
 import org.graalvm.compiler.nodes.loop.LoopsData;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
 
@@ -114,14 +115,7 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
                 blocks: while (b != loop.loop().getHeader()) {
                     assert b != null;
                     for (FixedNode node : b.getNodes()) {
-                        boolean canDisableSafepoint = false;
-                        if (node instanceof Invoke) {
-                            Invoke invoke = (Invoke) node;
-                            ResolvedJavaMethod method = invoke.getTargetMethod();
-                            canDisableSafepoint = context.getMetaAccessExtensionProvider().isGuaranteedSafepoint(method, invoke.getInvokeKind().isDirect());
-                        } else if (node instanceof ForeignCall) {
-                            canDisableSafepoint = ((ForeignCall) node).isGuaranteedSafepoint();
-                        }
+                        boolean canDisableSafepoint = canDisableSafepoint(node, context);
                         boolean disabledInSubclass = onCallInLoop(loopEnd, node);
                         if (canDisableSafepoint) {
                             loopEnd.disableSafepoint();
@@ -137,6 +131,17 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
             }
         }
         loops.deleteUnusedNodes();
+    }
+
+    public static boolean canDisableSafepoint(FixedNode node, CoreProviders context) {
+        if (node instanceof Invoke) {
+            Invoke invoke = (Invoke) node;
+            ResolvedJavaMethod method = invoke.getTargetMethod();
+            return context.getMetaAccessExtensionProvider().isGuaranteedSafepoint(method, invoke.getInvokeKind().isDirect());
+        } else if (node instanceof ForeignCall) {
+            return ((ForeignCall) node).isGuaranteedSafepoint();
+        }
+        return false;
     }
 
 }

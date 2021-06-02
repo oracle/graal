@@ -27,6 +27,7 @@ package org.graalvm.compiler.truffle.test;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
+import org.graalvm.compiler.truffle.common.TruffleInliningData;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.compiler.phases.inlining.AgnosticInliningPhase;
@@ -61,9 +62,10 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
             }
         };
         final PartialEvaluator.Request request = partialEvaluator.new Request(callTarget.getOptionValues(), getDebugContext(), callTarget, partialEvaluator.rootForCallTarget(callTarget),
-                        new TruffleInlining(),
                         compilationIdentifier, getSpeculationLog(),
                         new TruffleCompilerImpl.CancellableTruffleCompilationTask(new TruffleCompilationTask() {
+                            private TruffleInliningData inlining = new TruffleInlining();
+
                             @Override
                             public boolean isCancelled() {
                                 return false;
@@ -72,6 +74,11 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
                             @Override
                             public boolean isLastTier() {
                                 return true;
+                            }
+
+                            @Override
+                            public TruffleInliningData inliningData() {
+                                return inlining;
                             }
                         }));
         final AgnosticInliningPhase agnosticInliningPhase = new AgnosticInliningPhase(partialEvaluator, request);

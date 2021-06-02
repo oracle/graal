@@ -26,6 +26,7 @@ import com.oracle.truffle.api.debug.DebugScope;
 import com.oracle.truffle.api.debug.DebugStackFrame;
 import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.NodeLibrary;
@@ -114,7 +115,7 @@ public final class CallFrame {
         try {
             return theScope != null ? INTEROP.readMember(theScope, "this") : null;
         } catch (UnsupportedMessageException | UnknownIdentifierException e) {
-            JDWP.LOGGER.warning(() -> "Unable to read 'this' value from method: " + getMethod());
+            JDWP.LOGGER.warning(() -> "Unable to read 'this' value from method: " + getMethod() + " with currentNode: " + currentNode.getClass());
             return INVALID_VALUE;
         }
     }
@@ -144,10 +145,11 @@ public final class CallFrame {
         if (scope != null) {
             return scope;
         }
-        // check if current node has scope
-        if (NodeLibrary.getUncached().hasScope(currentNode, frame)) {
+        // look for instrumentable node that should have scope
+        Node node = InstrumentableNode.findInstrumentableParent(currentNode);
+        if (NodeLibrary.getUncached().hasScope(node, frame)) {
             try {
-                scope = NodeLibrary.getUncached().getScope(currentNode, frame, true);
+                scope = NodeLibrary.getUncached().getScope(node, frame, true);
             } catch (UnsupportedMessageException e) {
                 JDWP.LOGGER.warning(() -> "Unable to get scope for " + currentNode.getClass());
             }

@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion" : "5.292.5",
+  "mxversion" : "5.297.0",
   "name" : "sdk",
   "version" : "21.2.0",
   "release" : False,
@@ -79,10 +79,10 @@ suite = {
   "imports": {},
   "libraries" : {
     "WRK": {
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/wrk.tar.gz"],
-      "sha1": "04b97d4d90b3d73dc3cd37b225d8aa3d6bca42da",
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/wrk-a211dd5.tar.gz"],
+      "sha1": "6052d4452e190e707309c575fa2852a0035c5f34",
       "packedResource": True,
-      "license": "Apache-2.0",
+      "license": "Apache-2.0-wrk-a211dd5",
     },
     "WRK2": {
       "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/wrk2.tar.gz"],
@@ -111,31 +111,29 @@ suite = {
       "license" : "BSD-new"
     },
     "LLVM_ORG" : {
-      "version" : "10.0.0-5-g67b19b2aed-bgb23ce12f48",
+      "version" : "10.0.0-6-gad4288df64-bg263fb7a415",
       "host" : "https://lafo.ssw.uni-linz.ac.at/pub/llvm-org",
       "os_arch" : {
         "linux" : {
           "amd64" : {
             "urls" : ["{host}/llvm-llvmorg-{version}-linux-amd64.tar.gz"],
-            "sha1" : "a342aa46f6a45d91c5dbda8cd42d4a493166babe",
+            "sha1" : "89521da049c9275f63cc11c9f60a40050deec61c",
           },
           "aarch64" : {
             "urls" : ["{host}/llvm-llvmorg-{version}-linux-aarch64.tar.gz"],
-            "sha1" : "772d729ae66105ceeb647e8e69b3b6204dc9ff7b",
+            "sha1" : "f0bdf96d621e0de31fb0e2036d77ff18d2fe87e2",
           }
         },
         "darwin" : {
           "amd64" : {
             "urls" : ["{host}/llvm-llvmorg-{version}-darwin-amd64.tar.gz"],
-            "sha1" : "3f0c7311c5bf3371ebf34cdd6a73f51c997ab9c2",
+            "sha1" : "e25ea07786bcb55c186b9bf9a20d5fcefd5587b1",
           }
         },
         "windows" : {
           "amd64" : {
-            # version difference due to rebuilding to statically link the standard library on windows
-            # "urls" : ["{host}/llvm-llvmorg-{version}-windows-amd64.tar.gz"],
-            "urls" : ["{host}/llvm-llvmorg-10.0.0-5-g67b19b2aed-bgfbfba28a74-windows-amd64.tar.gz"],
-            "sha1" : "7973931f1dcef6b3259d39c53efd5f7891c956c6",
+            "urls" : ["{host}/llvm-llvmorg-{version}-windows-amd64.tar.gz"],
+            "sha1" : "cbff9162b4a67dbaaa31efdb1002fd01912de5e5",
           }
         },
         "<others>": {
@@ -147,20 +145,19 @@ suite = {
       "license" : "Apache-2.0-LLVM",
     },
     "LLVM_ORG_COMPILER_RT_LINUX" : {
-      "version" : "10.0.0-5-g67b19b2aed-bgb23ce12f48",
+      "version" : "10.0.0-6-gad4288df64-bg263fb7a415",
       "host" : "https://lafo.ssw.uni-linz.ac.at/pub/llvm-org",
       # we really want linux-amd64, also on non-linux and non-amd64 platforms for cross-compilation
       "urls" : ["{host}/compiler-rt-llvmorg-{version}-linux-amd64.tar.gz"],
-      "sha1" : "8ebce7c8e9937246572e066f533f910778b7c870",
+      "sha1" : "687e1a131efb2b43b57c9b22849e642151845bfe",
       "license" : "Apache-2.0-LLVM",
     },
     "LLVM_ORG_SRC" : {
-      # version difference as the sources did not change
-      "version" : "10.0.0-5-g67b19b2aed-bg83994d0b4b",
+      "version" : "10.0.0-6-gad4288df64-bg263fb7a415",
       "host" : "https://lafo.ssw.uni-linz.ac.at/pub/llvm-org",
       "packedResource" : True,
       "urls" : ["{host}/llvm-src-llvmorg-{version}.tar.gz"],
-      "sha1" : "9c06839edd6983107753bc74bdd17452e98d9b7d",
+      "sha1" : "c5340ed83c3ff6040ed2dc49ab070a4cd0ccceea",
       "license" : "Apache-2.0-LLVM",
       },
   },
@@ -302,6 +299,10 @@ suite = {
     "Apache-2.0-LLVM" : {
       "name" : "Apache License 2.0 with LLVM Exceptions",
       "url" : "http://releases.llvm.org/9.0.0/LICENSE.TXT"
+    },
+    "Apache-2.0-wrk-a211dd5" : {
+      "name" : "Modified Apache 2.0 License",
+      "url" : "https://raw.githubusercontent.com/wg/wrk/a211dd5a7050b1f9e8a9870b95513060e72ac4a0/LICENSE"
     },
 },
 

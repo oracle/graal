@@ -29,6 +29,8 @@ package org.graalvm.compiler.api.directives;
 /**
  * Directives that influence the compilation of methods by Graal. They don't influence the semantics
  * of the code, but they are useful for unit testing and benchmarking.
+ *
+ * Any methods defined in this class should be intrinsified via invocation plugins.
  */
 public final class GraalDirectives {
 
@@ -76,6 +78,12 @@ public final class GraalDirectives {
      * A call to this method will never be duplicated by control flow optimizations in the compiler.
      */
     public static void controlFlowAnchor() {
+    }
+
+    /**
+     * A call to this method will disable strip mining of the enclosing loop in the compiler.
+     */
+    public static void neverStripMine() {
     }
 
     /**

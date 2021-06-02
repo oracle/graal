@@ -111,7 +111,7 @@ public final class RequestedJDWPEvents {
                 eventListener.addBreakpointRequest(filter.getRequestId(), methodInfo);
                 for (KlassRef klass : filter.getKlassRefPatterns()) {
                     for (MethodRef method : klass.getDeclaredMethodRefs()) {
-                        method.addMethodBreakpointInfo(methodInfo);
+                        method.addMethodHook(methodInfo);
                         methodInfo.addMethod(method);
                     }
                 }
@@ -334,7 +334,7 @@ public final class RequestedJDWPEvents {
                     case METHOD_EXIT:
                         MethodBreakpointInfo methodInfo = (MethodBreakpointInfo) requestFilter.getBreakpointInfo();
                         for (MethodRef method : methodInfo.getMethods()) {
-                            method.removeMethodBreakpointInfo(requestFilter.getRequestId());
+                            method.removedMethodHook(requestFilter.getRequestId());
                         }
                         break;
                     case BREAKPOINT:

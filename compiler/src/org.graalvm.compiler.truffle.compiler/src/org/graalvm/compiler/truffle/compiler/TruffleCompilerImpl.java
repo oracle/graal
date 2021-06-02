@@ -95,7 +95,7 @@ import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleDebugContext;
 import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
-import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
+import org.graalvm.compiler.truffle.common.TruffleInliningData;
 import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
 import org.graalvm.compiler.truffle.compiler.phases.InstrumentPhase;
 import org.graalvm.compiler.truffle.options.OptionValuesImpl;
@@ -273,11 +273,9 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
     public final void doCompile(TruffleDebugContext truffleDebug,
                     TruffleCompilation compilation,
                     Map<String, Object> optionsMap,
-                    TruffleMetaAccessProvider inliningPlan,
                     TruffleCompilationTask task,
                     TruffleCompilerListener inListener) {
         Objects.requireNonNull(compilation, "Compilation must be non null.");
-        Objects.requireNonNull(task, "Compilation task must be non null.");
         org.graalvm.options.OptionValues options = getOptionsForCompiler(optionsMap);
         TruffleCompilationIdentifier compilationId = asTruffleCompilationIdentifier(compilation);
         CompilableTruffleAST compilable = compilationId.getCompilable();
@@ -285,7 +283,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
         if (usingCallersDebug) {
             final DebugContext callerDebug = ((TruffleDebugContextImpl) truffleDebug).debugContext;
             try (DebugContext.Scope s = maybeOpenTruffleScope(compilable, callerDebug)) {
-                actuallyCompile(options, inliningPlan, task, inListener, compilationId, compilable, callerDebug);
+                actuallyCompile(options, task, inListener, compilationId, compilable, callerDebug);
             } catch (Throwable e) {
                 notifyCompilableOfFailure(compilable, e, isSuppressedFailure(compilable, e));
             }
@@ -293,7 +291,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
             OptionValues debugContextOptionValues = TruffleCompilerRuntime.getRuntime().getGraalOptions(OptionValues.class);
             try (DebugContext graalDebug = createDebugContext(debugContextOptionValues, compilationId, compilable, DebugContext.getDefaultLogStream());
                             DebugContext.Scope s = maybeOpenTruffleScope(compilable, graalDebug)) {
-                actuallyCompile(options, inliningPlan, task, inListener, compilationId, compilable, graalDebug);
+                actuallyCompile(options, task, inListener, compilationId, compilable, graalDebug);
             } catch (Throwable e) {
                 notifyCompilableOfFailure(compilable, e, isSuppressedFailure(compilable, e));
             }
@@ -320,7 +318,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
         }
     }
 
-    private void actuallyCompile(org.graalvm.options.OptionValues options, TruffleMetaAccessProvider inliningPlan, TruffleCompilationTask task, TruffleCompilerListener listener,
+    private void actuallyCompile(org.graalvm.options.OptionValues options, TruffleCompilationTask task, TruffleCompilerListener listener,
                     TruffleCompilationIdentifier compilationId,
                     CompilableTruffleAST compilable, DebugContext graalDebug) {
         final TruffleCompilationWrapper truffleCompilationWrapper = new TruffleCompilationWrapper(
@@ -329,7 +327,6 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
                         getCompilationProblemsPerAction(),
                         compilable,
                         new CancellableTruffleCompilationTask(task),
-                        inliningPlan,
                         compilationId,
                         listener);
         truffleCompilationWrapper.run(graalDebug);
@@ -481,7 +478,6 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
      *
      * @param options the values of {@link PolyglotCompilerOptions}.
      * @param compilable representation of the AST to be compiled
-     * @param inliningPlan
      * @param compilationId identifier to be used for the compilation
      * @param task an object that holds information about the compilation process itself (e.g. which
      *            tier, was the compilation canceled)
@@ -491,7 +487,6 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
     public void compileAST(org.graalvm.options.OptionValues options,
                     DebugContext debug,
                     final CompilableTruffleAST compilable,
-                    TruffleMetaAccessProvider inliningPlan,
                     CompilationIdentifier compilationId,
                     CancellableTruffleCompilationTask task,
                     TruffleCompilerListener listener) {
@@ -508,7 +503,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
             }
 
             try (DebugCloseable a = PartialEvaluationTime.start(debug); DebugCloseable c = PartialEvaluationMemUse.start(debug)) {
-                PartialEvaluator.Request request = partialEvaluator.new Request(options, debug, compilable, partialEvaluator.rootForCallTarget(compilable), inliningPlan,
+                PartialEvaluator.Request request = partialEvaluator.new Request(options, debug, compilable, partialEvaluator.rootForCallTarget(compilable),
                                 compilationId, speculationLog, task);
                 graph = partialEvaluator.evaluate(request);
                 if (statistics != null) {
@@ -524,7 +519,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
                 statistics.afterTruffleTier(compilable, graph);
             }
             if (listener != null) {
-                listener.onTruffleTierFinished(compilable, inliningPlan, new GraphInfoImpl(graph));
+                listener.onTruffleTierFinished(compilable, task.inliningData(), new GraphInfoImpl(graph));
             }
             // The Truffle compiler owns the last 2 characters of the compilation name, and uses
             // them to encode the compilation tier, so escaping the target name is not necessary.
@@ -534,7 +529,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
                 statistics.afterLowTier(compilable, graph);
             }
             if (listener != null) {
-                listener.onSuccess(compilable, inliningPlan, new GraphInfoImpl(graph), new CompilationResultInfoImpl(compilationResult), task.tier());
+                listener.onSuccess(compilable, task.inliningData(), new GraphInfoImpl(graph), new CompilationResultInfoImpl(compilationResult), task.tier());
             }
 
             // Partial evaluation and installation are included in
@@ -661,7 +656,6 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
      */
     private final class TruffleCompilationWrapper extends CompilationWrapper<Void> {
         private final CompilableTruffleAST compilable;
-        private final TruffleMetaAccessProvider inliningPlan;
         private final CancellableTruffleCompilationTask task;
         private final TruffleCompilerListener listener;
         private final CompilationIdentifier compilationId;
@@ -674,13 +668,11 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
                         Map<ExceptionAction, Integer> problemsHandledPerAction,
                         CompilableTruffleAST optimizedCallTarget,
                         CancellableTruffleCompilationTask task,
-                        TruffleMetaAccessProvider inliningPlan,
                         CompilationIdentifier compilationId,
                         TruffleCompilerListener listener) {
             super(outputDirectory, problemsHandledPerAction);
             this.options = options;
             this.compilable = optimizedCallTarget;
-            this.inliningPlan = inliningPlan;
             this.task = task;
             this.listener = listener;
             this.compilationId = compilationId;
@@ -724,7 +716,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
 
         @Override
         protected Void performCompilation(DebugContext debug) {
-            compileAST(options, debug, compilable, inliningPlan, compilationId, task, listener);
+            compileAST(options, debug, compilable, compilationId, task, listener);
             return null;
         }
 
@@ -940,6 +932,11 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
         @Override
         public boolean isLastTier() {
             return delegate.isLastTier();
+        }
+
+        @Override
+        public TruffleInliningData inliningData() {
+            return delegate.inliningData();
         }
 
         @Override

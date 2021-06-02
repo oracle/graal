@@ -78,6 +78,7 @@ set "module_launcher=<module_launcher>"
 :: The list of --add-exports can easily exceed the 8191 command
 :: line character limit so pass them in a command line arguments file.
 if "%module_launcher%"=="True" (
+  set "main_class=--module <main_module>/<main_class>"
   set "app_path_arg=--module-path"
   set exports_file="%location%.!basename!.exports"
   if not exist "!exports_file!" (
@@ -87,12 +88,13 @@ if "%module_launcher%"=="True" (
   )
   set "jvm_args=!jvm_args! @!exports_file!"
 ) else (
+  set "main_class=<main_class>"
   set "app_path_arg=-cp"
 )
 
 if "%VERBOSE_GRAALVM_LAUNCHERS%"=="true" echo on
 
-"%location%<jre_bin>\java" <extra_jvm_args> %jvm_args% %app_path_arg% "%absolute_cp%" <main_class> %launcher_args%
+"%location%<jre_bin>\java" <extra_jvm_args> %jvm_args% %app_path_arg% "%absolute_cp%" %main_class% %launcher_args%
 
 exit /b %errorlevel%
 :: Function are defined via labels, so have to be defined at the end of the file and skipped

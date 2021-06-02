@@ -50,6 +50,11 @@ questions.
                 <configuration>
                     <source>11</source>
                     <target>11</target>
+                    <compilerArgs>
+                        <arg>--add-exports=moduletests.hello.lib/hello.privateLib=moduletests.hello.app</arg>
+                        <arg>--add-exports=moduletests.hello.lib/hello.privateLib2=moduletests.hello.app</arg>
+                        <arg>--add-opens=moduletests.hello.lib/hello.privateLib2=moduletests.hello.app</arg>
+                    </compilerArgs>
                 </configuration>
             </plugin>
             <plugin>

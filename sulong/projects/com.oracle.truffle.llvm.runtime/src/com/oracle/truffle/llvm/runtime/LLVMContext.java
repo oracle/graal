@@ -100,6 +100,7 @@ public final class LLVMContext {
     protected final ArrayList<LLVMPointer> globalsNonPointerStore = new ArrayList<>();
     protected final EconomicMap<Integer, LLVMPointer> globalsReadOnlyStore = EconomicMap.create();
     private final Object globalsStoreLock = new Object();
+    public final Object atomicInstructionsLock = new Object();
 
     private final List<LLVMThread> runningThreads = new ArrayList<>();
     @CompilationFinal private LLVMThreadingStack threadingStack;
@@ -665,7 +666,7 @@ public final class LLVMContext {
         BitcodeID bitcodeID = symbol.getBitcodeID(false);
         int id = bitcodeID.getId();
         int index = symbol.getSymbolIndex(false);
-        if (CompilerDirectives.inCompiledCode() && CompilerDirectives.isPartialEvaluationConstant(this)) {
+        if (CompilerDirectives.inCompiledCode() && CompilerDirectives.isPartialEvaluationConstant(this) && CompilerDirectives.isPartialEvaluationConstant(symbol)) {
             if (!symbolAssumptions[id][index].isValid()) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
             }

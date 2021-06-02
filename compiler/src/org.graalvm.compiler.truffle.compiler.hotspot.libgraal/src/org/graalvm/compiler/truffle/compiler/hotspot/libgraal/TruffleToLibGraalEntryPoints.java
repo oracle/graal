@@ -87,6 +87,7 @@ import org.graalvm.compiler.hotspot.HotSpotGraalOptionValues;
 import org.graalvm.compiler.hotspot.HotSpotGraalServices;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.BufferUtil;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompilation;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
@@ -97,7 +98,6 @@ import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntimeInstance;
 import org.graalvm.compiler.truffle.common.TruffleDebugContext;
 import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
-import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
 import org.graalvm.compiler.truffle.common.VoidGraphStructure;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilationIdentifier;
@@ -128,7 +128,6 @@ import org.graalvm.word.WordFactory;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import org.graalvm.compiler.serviceprovider.GraalServices;
 
 /**
  * Entry points in libgraal for {@link TruffleToLibGraal calls} from HotSpot.
@@ -247,7 +246,6 @@ final class TruffleToLibGraalEntryPoints {
                     long debugContextHandle,
                     long compilationHandle,
                     JByteArray hsOptions,
-                    JObject hsInlining,
                     JObject hsTask,
                     JObject hsListener) {
         try (JNIMethodScope scope = LibGraalUtil.openScope(TruffleToLibGraalEntryPoints.class, DoCompile, env)) {
@@ -256,10 +254,9 @@ final class TruffleToLibGraalEntryPoints {
                 HotSpotTruffleCompilerImpl compiler = LibGraalObjectHandles.resolve(compilerHandle, HotSpotTruffleCompilerImpl.class);
                 TruffleDebugContext debugContext = LibGraalObjectHandles.resolve(debugContextHandle, TruffleDebugContext.class);
                 Map<String, Object> options = decodeOptions(env, hsOptions);
-                TruffleMetaAccessProvider inlining = new HSTruffleInliningPlan(scope, hsInlining);
-                TruffleCompilationTask task = hsTask.isNull() ? null : new HSTruffleCompilationTask(scope, hsTask);
+                TruffleCompilationTask task = hsTask.isNull() ? null : new HSTruffleCompilationTask(hsTask);
                 TruffleCompilerListener listener = hsListener.isNull() ? null : new HSTruffleCompilerListener(scope, hsListener);
-                compiler.doCompile(debugContext, compilation, options, inlining, task, listener);
+                compiler.doCompile(debugContext, compilation, options, task, listener);
             }
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);

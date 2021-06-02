@@ -67,6 +67,9 @@ import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.jdwp.impl.JDWP;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.redefinition.ChangePacket;
+import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
+import com.oracle.truffle.espresso.redefinition.DetectedChange;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
@@ -160,11 +163,11 @@ public final class ObjectKlass extends Klass {
         System.arraycopy(skFieldTable, 0, fieldTable, 0, skFieldTable.length);
         localFieldTableIndex = skFieldTable.length;
         for (int i = 0; i < lkInstanceFields.length; i++) {
-            Field instanceField = new Field(this, lkInstanceFields[i], lkInstanceFields[i].isHidden());
+            Field instanceField = new Field(this, lkInstanceFields[i]);
             fieldTable[localFieldTableIndex + i] = instanceField;
         }
         for (int i = 0; i < lkStaticFields.length; i++) {
-            Field staticField = new Field(this, lkStaticFields[i], false);
+            Field staticField = new Field(this, lkStaticFields[i]);
             staticFieldTable[i] = staticField;
         }
 
@@ -1114,7 +1117,7 @@ public final class ObjectKlass extends Klass {
                         for (LinkedField instanceField : instanceFields) {
                             if (instanceField.getName().equals(outerField.getName())) {
                                 // replace with new field
-                                fieldTable[i] = new Field(this, instanceField, false);
+                                fieldTable[i] = new Field(this, instanceField);
                             }
                         }
                     }
@@ -1191,12 +1194,13 @@ public final class ObjectKlass extends Klass {
 
         klassVersion = new KlassVersion(pool, linkedKlass, newDeclaredMethods, mirandaMethods, vtable, itable, iKlassTable);
 
-        // flush caches before invalidating to avoid races
-        // a potential thread fetching new reflection data
-        // will be blocked at entry until the redefinition
-        // transaction is ended
-        flushReflectionCaches();
+        incrementKlassRedefinitionCount();
         oldVersion.assumption.invalidate();
+    }
+
+    // used by some plugins during klass redefitnion
+    public void reRunClinit() {
+        getClassInitializer().getCallTarget().call();
     }
 
     private static void checkCopyMethods(Method method, Method[][] table, Method.SharedRedefinitionContent content, Ids<Object> ids) {
@@ -1213,7 +1217,7 @@ public final class ObjectKlass extends Klass {
         }
     }
 
-    private void flushReflectionCaches() {
+    private void incrementKlassRedefinitionCount() {
         // increment the redefine count on the class instance to flush reflection caches
         int value = InterpreterToVM.getFieldInt(mirror(), getMeta().java_lang_Class_classRedefinedCount);
         InterpreterToVM.setFieldInt(++value, mirror(), getMeta().java_lang_Class_classRedefinedCount);
@@ -1264,7 +1268,7 @@ public final class ObjectKlass extends Klass {
         // a potential thread fetching new reflection data
         // will be blocked at entry until the redefinition
         // transaction is ended
-        flushReflectionCaches();
+        incrementKlassRedefinitionCount();
         oldVersion.assumption.invalidate();
     }
 
@@ -1289,9 +1293,9 @@ public final class ObjectKlass extends Klass {
         return !Modifier.isStatic(m.getFlags()) && !Modifier.isPrivate(m.getFlags()) && !Name._init_.equals(m.getName());
     }
 
-    public void patchClassName(Symbol<Symbol.Name> newName) {
+    public void patchClassName(Symbol<Symbol.Name> newName, Symbol<Symbol.Type> newType) {
         name = newName;
-        type = getContext().getTypes().fromName(newName);
+        type = newType;
     }
 
     public void removeByRedefinition() {

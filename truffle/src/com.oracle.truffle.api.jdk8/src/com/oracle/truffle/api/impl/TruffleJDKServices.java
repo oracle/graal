@@ -67,6 +67,11 @@ final class TruffleJDKServices {
     }
 
     @SuppressWarnings("unused")
+    static void addReads(Class<?> client) {
+        // No need to do anything on JDK 8
+    }
+
+    @SuppressWarnings("unused")
     static <S> void addUses(Class<S> service) {
         // No need to do anything on JDK 8
     }

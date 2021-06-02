@@ -831,7 +831,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         }
     }
 
-    private static class Target {
+    private static final class Target {
         final FixedNode entry;
         final FixedNode originalEntry;
         final FrameStateBuilder state;
@@ -1012,7 +1012,15 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
     }
 
     protected BciBlockMapping generateBlockMap() {
-        return BciBlockMapping.create(stream, code, options, graph.getDebug());
+        return BciBlockMapping.create(stream, code, options, graph.getDebug(), asyncExceptionLiveness());
+    }
+
+    /**
+     * Return true if the {@link LocalLiveness local liveness} calculation should consider async
+     * exceptions that might occur at any bci covered by an exception handler.
+     */
+    protected boolean asyncExceptionLiveness() {
+        return true;
     }
 
     @SuppressWarnings("try")
@@ -1045,7 +1053,8 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
 
             try (DebugContext.Scope s = debug.scope("LivenessAnalysis")) {
                 int maxLocals = method.getMaxLocals();
-                liveness = LocalLiveness.compute(debug, stream, blockMap.getBlocks(), maxLocals, blockMap.getLoopCount());
+                liveness = LocalLiveness.compute(debug, stream, blockMap, maxLocals, blockMap.getLoopCount(), asyncExceptionLiveness());
+                blockMap.clearLivenessMetadata();
             } catch (Throwable e) {
                 throw debug.handle(e);
             }
@@ -1301,7 +1310,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
     /**
      * @return the entry point to exception dispatch
      */
-    private AbstractBeginNode handleException(ValueNode exceptionObject, int bci, boolean deoptimizeOnly) {
+    protected AbstractBeginNode handleException(ValueNode exceptionObject, int bci, boolean deoptimizeOnly) {
         FixedWithNextNode currentLastInstr = lastInstr;
         assert bci == BytecodeFrame.BEFORE_BCI || bci == bci() : "invalid bci";
         debug.log("Creating exception dispatch edges at %d, exception object=%s, exception seen=%s", bci, exceptionObject, (profilingInfo == null ? "" : profilingInfo.getExceptionSeen(bci)));
@@ -2940,27 +2949,21 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
 
     private Target checkLoopExit(Target target, BciBlock targetBlock) {
         if (currentBlock != null) {
-            long exits = currentBlock.loops & ~targetBlock.loops;
-            if (exits != 0) {
+            BitSet exits = difference(currentBlock.loops, targetBlock.loops);
+            if (!exits.isEmpty()) {
                 LoopExitNode firstLoopExit = null;
                 LoopExitNode lastLoopExit = null;
 
-                int pos = 0;
-                ArrayList<BciBlock> exitLoops = new ArrayList<>(Long.bitCount(exits));
-                do {
-                    long lMask = 1L << pos;
-                    if ((exits & lMask) != 0) {
-                        exitLoops.add(blockMap.getLoopHeader(pos));
-                        exits &= ~lMask;
-                    }
-                    pos++;
-                } while (exits != 0);
+                ArrayList<BciBlock> exitLoops = new ArrayList<>(exits.cardinality());
+                for (int pos = -1; (pos = exits.nextSetBit(pos + 1)) >= 0;) {
+                    exitLoops.add(blockMap.getLoopHeader(pos));
+                }
 
                 Collections.sort(exitLoops, new Comparator<BciBlock>() {
 
                     @Override
                     public int compare(BciBlock o1, BciBlock o2) {
-                        return Long.bitCount(o2.loops) - Long.bitCount(o1.loops);
+                        return o2.loops.cardinality() - o1.loops.cardinality();
                     }
                 });
 
@@ -3085,7 +3088,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                  * placeholder that later can be replaced with a MergeNode when we see this block
                  * again.
                  */
-                if (canReuseInstruction && (block.getPredecessorCount() == 1 || !controlFlowSplit) && !block.isLoopHeader() && (currentBlock.loops & ~block.loops) == 0 &&
+                if (canReuseInstruction && (block.getPredecessorCount() == 1 || !controlFlowSplit) && !block.isLoopHeader() && difference(currentBlock.loops, block.loops).isEmpty() &&
                                 currentBlock.getJsrScope() == block.getJsrScope()) {
                     /*
                      * If we know that no BeginNode is necessary, then we can avoid allocating and
@@ -3120,8 +3123,16 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                  */
                 LoopBeginNode loopBegin = (LoopBeginNode) getFirstInstruction(block);
                 LoopEndNode loopEnd = graph.add(new LoopEndNode(loopBegin));
-                Target target = checkLoopExit(new Target(loopEnd, state), block);
+                Target target = checkLoopExit(new Target(loopEnd, state.copy()), block);
                 FixedNode result = target.entry;
+                /*
+                 * It is guaranteed that a loop header cannot be an ExceptionDispatchBlock. By the
+                 * time the backward loop edge is reached, the block will already be processed, and
+                 * its rethrow exception will be set to false.
+                 */
+                assert !(block instanceof ExceptionDispatchBlock);
+                assert !getEntryState(block).rethrowException();
+                target.state.setRethrowException(false);
                 getEntryState(block).merge(loopBegin, target.state);
 
                 debug.log("createTarget %s: merging backward branch to loop header %s, result: %s", block, loopBegin, result);
@@ -3722,8 +3733,8 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
 
     public boolean isPotentialCountedLoopExit(LogicNode condition, BciBlock target) {
         if (currentBlock != null) {
-            long exits = currentBlock.loops & ~target.loops;
-            if (exits != 0) {
+            BitSet exits = difference(currentBlock.loops, target.loops);
+            if (!exits.isEmpty()) {
                 return condition instanceof CompareNode;
             }
         }
@@ -3735,6 +3746,12 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
      */
     @SuppressWarnings("unused")
     protected void postProcessIfNode(ValueNode node) {
+    }
+
+    private static BitSet difference(BitSet left, BitSet right) {
+        BitSet result = (BitSet) left.clone();
+        result.andNot(right);
+        return result;
     }
 
     private boolean tryGenConditionalForIf(BciBlock trueBlock, BciBlock falseBlock, LogicNode condition, int oldBci, int trueBlockInt, int falseBlockInt) {

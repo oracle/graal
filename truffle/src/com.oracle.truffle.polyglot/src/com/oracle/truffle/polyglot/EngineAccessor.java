@@ -114,7 +114,7 @@ import com.oracle.truffle.polyglot.PolyglotLocals.InstrumentContextLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.InstrumentContextThreadLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.LanguageContextLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.LanguageContextThreadLocal;
-import com.oracle.truffle.polyglot.PolyglotSource.EmbedderFileSystemContext;
+import com.oracle.truffle.polyglot.PolyglotSourceDispatch.EmbedderFileSystemContext;
 
 final class EngineAccessor extends Accessor {
 
@@ -666,7 +666,7 @@ final class EngineAccessor extends Accessor {
         public Object toGuestValue(Object obj, Object context) {
             PolyglotLanguageContext languageContext = (PolyglotLanguageContext) context;
             if (obj instanceof Value) {
-                PolyglotValue valueImpl = (PolyglotValue) languageContext.getImpl().getAPIAccess().getImpl((Value) obj);
+                PolyglotValue valueImpl = (PolyglotValue) languageContext.getImpl().getAPIAccess().getDispatch((Value) obj);
                 languageContext = valueImpl.languageContext;
             }
             return languageContext.toGuestValue(null, obj);
@@ -793,8 +793,7 @@ final class EngineAccessor extends Accessor {
             PolyglotContextImpl impl;
             synchronized (creator.context) {
                 impl = new PolyglotContextImpl(creator, config);
-                impl.creatorApi = impl.getAPIAccess().newContext(impl);
-                impl.currentApi = impl.getAPIAccess().newContext(impl);
+                impl.api = creator.getImpl().getAPIAccess().newContext(creator.getImpl().contextDispatch, impl, creator.context.engine.api);
             }
             synchronized (impl) {
                 impl.initializeContextLocals();

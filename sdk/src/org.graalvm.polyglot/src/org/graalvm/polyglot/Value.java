@@ -41,7 +41,7 @@
 package org.graalvm.polyglot;
 
 import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueImpl;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueDispatch;
 import org.graalvm.polyglot.proxy.Proxy;
 
 import java.math.BigDecimal;
@@ -154,10 +154,10 @@ import java.util.function.Function;
 public final class Value {
 
     final Object receiver;
-    final AbstractValueImpl impl;
+    final AbstractValueDispatch dispatch;
 
-    Value(AbstractValueImpl impl, Object value) {
-        this.impl = impl;
+    Value(AbstractValueDispatch dispatch, Object value) {
+        this.dispatch = dispatch;
         this.receiver = value;
     }
 
@@ -179,7 +179,7 @@ public final class Value {
      * @since 19.0 revised in 20.1
      */
     public Value getMetaObject() {
-        return impl.getMetaObject(receiver);
+        return dispatch.getMetaObject(receiver);
     }
 
     /**
@@ -206,7 +206,7 @@ public final class Value {
      * @since 20.1
      */
     public boolean isMetaObject() {
-        return impl.isMetaObject(receiver);
+        return dispatch.isMetaObject(receiver);
     }
 
     /**
@@ -222,7 +222,7 @@ public final class Value {
      * @since 20.1
      */
     public String getMetaQualifiedName() {
-        return impl.getMetaQualifiedName(receiver);
+        return dispatch.getMetaQualifiedName(receiver);
     }
 
     /**
@@ -236,7 +236,7 @@ public final class Value {
      * @since 20.1
      */
     public String getMetaSimpleName() {
-        return impl.getMetaSimpleName(receiver);
+        return dispatch.getMetaSimpleName(receiver);
     }
 
     /**
@@ -255,7 +255,7 @@ public final class Value {
      * @since 20.1
      */
     public boolean isMetaInstance(Object instance) {
-        return impl.isMetaInstance(receiver, instance);
+        return dispatch.isMetaInstance(receiver, instance);
     }
 
     /**
@@ -269,7 +269,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean hasArrayElements() {
-        return impl.hasArrayElements(receiver);
+        return dispatch.hasArrayElements(receiver);
     }
 
     /**
@@ -285,7 +285,7 @@ public final class Value {
      * @since 19.0
      */
     public Value getArrayElement(long index) {
-        return impl.getArrayElement(receiver, index);
+        return dispatch.getArrayElement(receiver, index);
     }
 
     /**
@@ -303,7 +303,7 @@ public final class Value {
      * @since 19.0
      */
     public void setArrayElement(long index, Object value) {
-        impl.setArrayElement(receiver, index, value);
+        dispatch.setArrayElement(receiver, index, value);
     }
 
     /**
@@ -319,7 +319,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean removeArrayElement(long index) {
-        return impl.removeArrayElement(receiver, index);
+        return dispatch.removeArrayElement(receiver, index);
     }
 
     /**
@@ -332,7 +332,7 @@ public final class Value {
      * @since 19.0
      */
     public long getArraySize() {
-        return impl.getArraySize(receiver);
+        return dispatch.getArraySize(receiver);
     }
 
     // region Buffer Methods
@@ -359,7 +359,7 @@ public final class Value {
      * @since 21.1
      */
     public boolean hasBufferElements() {
-        return impl.hasBufferElements(receiver);
+        return dispatch.hasBufferElements(receiver);
     }
 
     /**
@@ -378,7 +378,7 @@ public final class Value {
      * @since 21.1
      */
     public boolean isBufferWritable() throws UnsupportedOperationException {
-        return impl.isBufferWritable(receiver);
+        return dispatch.isBufferWritable(receiver);
     }
 
     /**
@@ -391,7 +391,7 @@ public final class Value {
      * @since 21.1
      */
     public long getBufferSize() throws UnsupportedOperationException {
-        return impl.getBufferSize(receiver);
+        return dispatch.getBufferSize(receiver);
     }
 
     /**
@@ -414,7 +414,7 @@ public final class Value {
      * @since 21.1
      */
     public byte readBufferByte(long byteOffset) throws UnsupportedOperationException, IndexOutOfBoundsException {
-        return impl.readBufferByte(receiver, byteOffset);
+        return dispatch.readBufferByte(receiver, byteOffset);
     }
 
     /**
@@ -435,7 +435,7 @@ public final class Value {
      * @since 21.1
      */
     public void writeBufferByte(long byteOffset, byte value) throws UnsupportedOperationException, IndexOutOfBoundsException {
-        impl.writeBufferByte(receiver, byteOffset, value);
+        dispatch.writeBufferByte(receiver, byteOffset, value);
     }
 
     /**
@@ -462,7 +462,7 @@ public final class Value {
      * @since 21.1
      */
     public short readBufferShort(ByteOrder order, long byteOffset) throws UnsupportedOperationException, IndexOutOfBoundsException {
-        return impl.readBufferShort(receiver, order, byteOffset);
+        return dispatch.readBufferShort(receiver, order, byteOffset);
     }
 
     /**
@@ -487,7 +487,7 @@ public final class Value {
      * @since 21.1
      */
     public void writeBufferShort(ByteOrder order, long byteOffset, short value) throws UnsupportedOperationException, IndexOutOfBoundsException {
-        impl.writeBufferShort(receiver, order, byteOffset, value);
+        dispatch.writeBufferShort(receiver, order, byteOffset, value);
     }
 
     /**
@@ -513,7 +513,7 @@ public final class Value {
      * @since 21.1
      */
     public int readBufferInt(ByteOrder order, long byteOffset) throws UnsupportedOperationException, IndexOutOfBoundsException {
-        return impl.readBufferInt(receiver, order, byteOffset);
+        return dispatch.readBufferInt(receiver, order, byteOffset);
     }
 
     /**
@@ -538,7 +538,7 @@ public final class Value {
      * @since 21.1
      */
     public void writeBufferInt(ByteOrder order, long byteOffset, int value) throws UnsupportedOperationException, IndexOutOfBoundsException {
-        impl.writeBufferInt(receiver, order, byteOffset, value);
+        dispatch.writeBufferInt(receiver, order, byteOffset, value);
     }
 
     /**
@@ -564,7 +564,7 @@ public final class Value {
      * @since 21.1
      */
     public long readBufferLong(ByteOrder order, long byteOffset) throws UnsupportedOperationException, IndexOutOfBoundsException {
-        return impl.readBufferLong(receiver, order, byteOffset);
+        return dispatch.readBufferLong(receiver, order, byteOffset);
     }
 
     /**
@@ -589,7 +589,7 @@ public final class Value {
      * @since 21.1
      */
     public void writeBufferLong(ByteOrder order, long byteOffset, long value) throws UnsupportedOperationException, IndexOutOfBoundsException {
-        impl.writeBufferLong(receiver, order, byteOffset, value);
+        dispatch.writeBufferLong(receiver, order, byteOffset, value);
     }
 
     /**
@@ -616,7 +616,7 @@ public final class Value {
      * @since 21.1
      */
     public float readBufferFloat(ByteOrder order, long byteOffset) throws UnsupportedOperationException, IndexOutOfBoundsException {
-        return impl.readBufferFloat(receiver, order, byteOffset);
+        return dispatch.readBufferFloat(receiver, order, byteOffset);
     }
 
     /**
@@ -641,7 +641,7 @@ public final class Value {
      * @since 21.1
      */
     public void writeBufferFloat(ByteOrder order, long byteOffset, float value) throws UnsupportedOperationException, IndexOutOfBoundsException {
-        impl.writeBufferFloat(receiver, order, byteOffset, value);
+        dispatch.writeBufferFloat(receiver, order, byteOffset, value);
     }
 
     /**
@@ -668,7 +668,7 @@ public final class Value {
      * @since 21.1
      */
     public double readBufferDouble(ByteOrder order, long byteOffset) throws UnsupportedOperationException, IndexOutOfBoundsException {
-        return impl.readBufferDouble(receiver, order, byteOffset);
+        return dispatch.readBufferDouble(receiver, order, byteOffset);
     }
 
     /**
@@ -693,7 +693,7 @@ public final class Value {
      * @since 21.1
      */
     public void writeBufferDouble(ByteOrder order, long byteOffset, double value) throws UnsupportedOperationException, IndexOutOfBoundsException {
-        impl.writeBufferDouble(receiver, order, byteOffset, value);
+        dispatch.writeBufferDouble(receiver, order, byteOffset, value);
     }
 
     // endregion
@@ -715,7 +715,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean hasMembers() {
-        return impl.hasMembers(receiver);
+        return dispatch.hasMembers(receiver);
     }
 
     /**
@@ -729,7 +729,7 @@ public final class Value {
      */
     public boolean hasMember(String identifier) {
         Objects.requireNonNull(identifier, "identifier");
-        return impl.hasMember(receiver, identifier);
+        return dispatch.hasMember(receiver, identifier);
     }
 
     /**
@@ -744,7 +744,7 @@ public final class Value {
      */
     public Value getMember(String identifier) {
         Objects.requireNonNull(identifier, "identifier");
-        return impl.getMember(receiver, identifier);
+        return dispatch.getMember(receiver, identifier);
     }
 
     /**
@@ -761,7 +761,7 @@ public final class Value {
      * @since 19.0
      */
     public Set<String> getMemberKeys() {
-        return impl.getMemberKeys(receiver);
+        return dispatch.getMemberKeys(receiver);
     }
 
     /**
@@ -779,7 +779,7 @@ public final class Value {
      */
     public void putMember(String identifier, Object value) {
         Objects.requireNonNull(identifier, "identifier");
-        impl.putMember(receiver, identifier, value);
+        dispatch.putMember(receiver, identifier, value);
     }
 
     /**
@@ -795,7 +795,7 @@ public final class Value {
      */
     public boolean removeMember(String identifier) {
         Objects.requireNonNull(identifier, "identifier");
-        return impl.removeMember(receiver, identifier);
+        return dispatch.removeMember(receiver, identifier);
     }
 
     // executable
@@ -808,7 +808,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean canExecute() {
-        return impl.canExecute(receiver);
+        return dispatch.canExecute(receiver);
     }
 
     /**
@@ -829,9 +829,9 @@ public final class Value {
     public Value execute(Object... arguments) {
         if (arguments.length == 0) {
             // specialized entry point for zero argument execute calls
-            return impl.execute(receiver);
+            return dispatch.execute(receiver);
         } else {
-            return impl.execute(receiver, arguments);
+            return dispatch.execute(receiver, arguments);
         }
     }
 
@@ -851,9 +851,9 @@ public final class Value {
     public void executeVoid(Object... arguments) {
         if (arguments.length == 0) {
             // specialized entry point for zero argument execute calls
-            impl.executeVoid(receiver);
+            dispatch.executeVoid(receiver);
         } else {
-            impl.executeVoid(receiver, arguments);
+            dispatch.executeVoid(receiver, arguments);
         }
     }
 
@@ -866,7 +866,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean canInstantiate() {
-        return impl.canInstantiate(receiver);
+        return dispatch.canInstantiate(receiver);
     }
 
     /**
@@ -883,7 +883,7 @@ public final class Value {
      */
     public Value newInstance(Object... arguments) {
         Objects.requireNonNull(arguments, "arguments");
-        return impl.newInstance(receiver, arguments);
+        return dispatch.newInstance(receiver, arguments);
     }
 
     /**
@@ -900,7 +900,7 @@ public final class Value {
      */
     public boolean canInvokeMember(String identifier) {
         Objects.requireNonNull(identifier, "identifier");
-        return impl.canInvoke(identifier, receiver);
+        return dispatch.canInvoke(identifier, receiver);
     }
 
     /**
@@ -922,9 +922,9 @@ public final class Value {
         Objects.requireNonNull(identifier, "identifier");
         if (arguments.length == 0) {
             // specialized entry point for zero argument invoke calls
-            return impl.invoke(receiver, identifier);
+            return dispatch.invoke(receiver, identifier);
         } else {
-            return impl.invoke(receiver, identifier, arguments);
+            return dispatch.invoke(receiver, identifier, arguments);
         }
     }
 
@@ -936,7 +936,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean isString() {
-        return impl.isString(receiver);
+        return dispatch.isString(receiver);
     }
 
     /**
@@ -949,7 +949,7 @@ public final class Value {
      * @since 19.0
      */
     public String asString() {
-        return impl.asString(receiver);
+        return dispatch.asString(receiver);
     }
 
     /**
@@ -962,7 +962,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean fitsInInt() {
-        return impl.fitsInInt(receiver);
+        return dispatch.fitsInInt(receiver);
     }
 
     /**
@@ -976,7 +976,7 @@ public final class Value {
      * @since 19.0
      */
     public int asInt() {
-        return impl.asInt(receiver);
+        return dispatch.asInt(receiver);
     }
 
     /**
@@ -988,7 +988,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean isBoolean() {
-        return impl.isBoolean(receiver);
+        return dispatch.isBoolean(receiver);
     }
 
     /**
@@ -1002,7 +1002,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean asBoolean() {
-        return impl.asBoolean(receiver);
+        return dispatch.asBoolean(receiver);
     }
 
     /**
@@ -1016,7 +1016,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean isNumber() {
-        return impl.isNumber(receiver);
+        return dispatch.isNumber(receiver);
     }
 
     /**
@@ -1029,7 +1029,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean fitsInLong() {
-        return impl.fitsInLong(receiver);
+        return dispatch.fitsInLong(receiver);
     }
 
     /**
@@ -1043,7 +1043,7 @@ public final class Value {
      * @since 19.0
      */
     public long asLong() {
-        return impl.asLong(receiver);
+        return dispatch.asLong(receiver);
     }
 
     /**
@@ -1056,7 +1056,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean fitsInDouble() {
-        return impl.fitsInDouble(receiver);
+        return dispatch.fitsInDouble(receiver);
     }
 
     /**
@@ -1070,7 +1070,7 @@ public final class Value {
      * @since 19.0
      */
     public double asDouble() {
-        return impl.asDouble(receiver);
+        return dispatch.asDouble(receiver);
     }
 
     /**
@@ -1083,7 +1083,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean fitsInFloat() {
-        return impl.fitsInFloat(receiver);
+        return dispatch.fitsInFloat(receiver);
     }
 
     /**
@@ -1097,7 +1097,7 @@ public final class Value {
      * @since 19.0
      */
     public float asFloat() {
-        return impl.asFloat(receiver);
+        return dispatch.asFloat(receiver);
     }
 
     /**
@@ -1110,7 +1110,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean fitsInByte() {
-        return impl.fitsInByte(receiver);
+        return dispatch.fitsInByte(receiver);
     }
 
     /**
@@ -1124,7 +1124,7 @@ public final class Value {
      * @since 19.0
      */
     public byte asByte() {
-        return impl.asByte(receiver);
+        return dispatch.asByte(receiver);
     }
 
     /**
@@ -1137,7 +1137,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean fitsInShort() {
-        return impl.fitsInShort(receiver);
+        return dispatch.fitsInShort(receiver);
     }
 
     /**
@@ -1151,7 +1151,7 @@ public final class Value {
      * @since 19.0
      */
     public short asShort() {
-        return impl.asShort(receiver);
+        return dispatch.asShort(receiver);
     }
 
     /**
@@ -1162,7 +1162,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean isNull() {
-        return impl.isNull(receiver);
+        return dispatch.isNull(receiver);
     }
 
     /**
@@ -1174,7 +1174,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean isNativePointer() {
-        return impl.isNativePointer(receiver);
+        return dispatch.isNativePointer(receiver);
     }
 
     /**
@@ -1186,7 +1186,7 @@ public final class Value {
      * @since 19.0
      */
     public long asNativePointer() {
-        return impl.asNativePointer(receiver);
+        return dispatch.asNativePointer(receiver);
     }
 
     /**
@@ -1198,7 +1198,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean isHostObject() {
-        return impl.isHostObject(receiver);
+        return dispatch.isHostObject(receiver);
     }
 
     /**
@@ -1211,7 +1211,7 @@ public final class Value {
      */
     @SuppressWarnings("unchecked")
     public <T> T asHostObject() {
-        return (T) impl.asHostObject(receiver);
+        return (T) dispatch.asHostObject(receiver);
     }
 
     /**
@@ -1223,7 +1223,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean isProxyObject() {
-        return impl.isProxyObject(receiver);
+        return dispatch.isProxyObject(receiver);
     }
 
     /**
@@ -1237,7 +1237,7 @@ public final class Value {
      */
     @SuppressWarnings("unchecked")
     public <T extends Proxy> T asProxyObject() {
-        return (T) impl.asProxyObject(receiver);
+        return (T) dispatch.asProxyObject(receiver);
     }
 
     /**
@@ -1369,18 +1369,27 @@ public final class Value {
      * assert context.eval("js", "42").as(Integer.class) == 42;
      * assert context.eval("js", "({foo:'bar'})").as(Map.class).get("foo").equals("bar");
      * assert context.eval("js", "[42]").as(List.class).get(0).equals(42);
-     * assert ((Map&lt;String, Object>)context.eval("js", "[{foo:'bar'}]").as(List.class).get(0)).get("foo").equals("bar");
+     * assert ((Map&lt;String, Object>) context.eval("js", "[{foo:'bar'}]").as(List.class).get(0)).get("foo").equals("bar");
      *
-     * &#64;FunctionalInterface interface IntFunction { int foo(int value); }
+     * &#64;FunctionalInterface
+     * interface IntFunction {
+     *     int foo(int value);
+     * }
      * assert context.eval("js", "(function(a){return a})").as(IntFunction.class).foo(42).asInt() == 42;
      *
-     * &#64;FunctionalInterface interface StringListFunction { int foo(List&lt;String&gt; value); }
-     * assert context.eval("js", "(function(a){return a.length})")
-     *               .as(StringListFunction.class).foo(new String[]{"42"}).asInt() == 1;
+     * &#64;FunctionalInterface
+     * interface StringListFunction {
+     *     int foo(List&lt;String&gt; value);
+     * }
+     * assert context.eval("js", "(function(a){return a.length})").as(StringListFunction.class).foo(new String[]{"42"}).asInt() == 1;
      *
-     * public abstract class AbstractClass { public AbstractClass() {} int foo(int value); }
-     * assert context.eval("js", "({foo: function(a){return a}})")
-     *               .as(AbstractClass.class).foo(42).asInt() == 42;
+     * public abstract class AbstractClass {
+     *     public AbstractClass() {
+     *     }
+     *
+     *     int foo(int value);
+     * }
+     * assert context.eval("js", "({foo: function(a){return a}})").as(AbstractClass.class).foo(42).asInt() == 42;
      * </pre>
      *
      * <h3>Object target type mapping</h3>
@@ -1486,7 +1495,7 @@ public final class Value {
         if (targetType == Value.class) {
             return (T) this;
         }
-        return impl.as(receiver, targetType);
+        return dispatch.as(receiver, targetType);
     }
 
     /**
@@ -1512,7 +1521,7 @@ public final class Value {
      */
     public <T> T as(TypeLiteral<T> targetType) {
         Objects.requireNonNull(targetType, "targetType");
-        return impl.as(receiver, targetType);
+        return dispatch.as(receiver, targetType);
     }
 
     /**
@@ -1526,7 +1535,7 @@ public final class Value {
      */
     @Override
     public String toString() {
-        return impl.toString(receiver);
+        return dispatch.toString(receiver);
     }
 
     /**
@@ -1536,7 +1545,7 @@ public final class Value {
      * @since 19.0
      */
     public SourceSection getSourceLocation() {
-        return impl.getSourceLocation(receiver);
+        return dispatch.getSourceLocation(receiver);
     }
 
     /**
@@ -1551,7 +1560,7 @@ public final class Value {
      * @since 19.2.0
      */
     public boolean isDate() {
-        return impl.isDate(receiver);
+        return dispatch.isDate(receiver);
     }
 
     /**
@@ -1566,7 +1575,7 @@ public final class Value {
      * @since 19.2.0
      */
     public LocalDate asDate() {
-        return impl.asDate(receiver);
+        return dispatch.asDate(receiver);
     }
 
     /**
@@ -1578,7 +1587,7 @@ public final class Value {
      * @since 19.2.0
      */
     public boolean isTime() {
-        return impl.isTime(receiver);
+        return dispatch.isTime(receiver);
     }
 
     /**
@@ -1593,7 +1602,7 @@ public final class Value {
      * @since 19.2.0
      */
     public LocalTime asTime() {
-        return impl.asTime(receiver);
+        return dispatch.asTime(receiver);
     }
 
     /**
@@ -1643,7 +1652,7 @@ public final class Value {
      * @since 19.2.0
      */
     public Instant asInstant() {
-        return impl.asInstant(receiver);
+        return dispatch.asInstant(receiver);
     }
 
     /**
@@ -1668,7 +1677,7 @@ public final class Value {
      * @since 19.2.0
      */
     public boolean isTimeZone() {
-        return impl.isTimeZone(receiver);
+        return dispatch.isTimeZone(receiver);
     }
 
     /**
@@ -1682,7 +1691,7 @@ public final class Value {
      * @since 19.2.0
      */
     public ZoneId asTimeZone() {
-        return impl.asTimeZone(receiver);
+        return dispatch.asTimeZone(receiver);
     }
 
     /**
@@ -1694,7 +1703,7 @@ public final class Value {
      * @since 19.2.0
      */
     public boolean isDuration() {
-        return impl.isDuration(receiver);
+        return dispatch.isDuration(receiver);
     }
 
     /**
@@ -1708,7 +1717,7 @@ public final class Value {
      * @since 19.2.0
      */
     public Duration asDuration() {
-        return impl.asDuration(receiver);
+        return dispatch.asDuration(receiver);
     }
 
     /**
@@ -1719,7 +1728,7 @@ public final class Value {
      * @since 19.3
      */
     public boolean isException() {
-        return impl.isException(receiver);
+        return dispatch.isException(receiver);
     }
 
     /**
@@ -1731,7 +1740,7 @@ public final class Value {
      * @since 19.3
      */
     public RuntimeException throwException() {
-        return impl.throwException(receiver);
+        return dispatch.throwException(receiver);
     }
 
     /**
@@ -1749,7 +1758,12 @@ public final class Value {
      * @since 19.3.0
      */
     public Context getContext() {
-        return impl.getContext();
+        Context context = dispatch.getContext();
+        if (context != null && context.currentAPI != null) {
+            return context.currentAPI;
+        } else {
+            return context;
+        }
     }
 
     /**
@@ -1765,7 +1779,7 @@ public final class Value {
         if (!(obj instanceof Value)) {
             return false;
         }
-        return impl.equalsImpl(receiver, ((Value) obj).receiver);
+        return dispatch.equalsImpl(receiver, ((Value) obj).receiver);
     }
 
     /**
@@ -1778,7 +1792,7 @@ public final class Value {
      */
     @Override
     public int hashCode() {
-        return impl.hashCodeImpl(receiver);
+        return dispatch.hashCodeImpl(receiver);
     }
 
     /**
@@ -1792,7 +1806,7 @@ public final class Value {
      * @since 21.1
      */
     public boolean hasIterator() {
-        return impl.hasIterator(receiver);
+        return dispatch.hasIterator(receiver);
     }
 
     /**
@@ -1807,7 +1821,7 @@ public final class Value {
      * @since 21.1
      */
     public Value getIterator() {
-        return impl.getIterator(receiver);
+        return dispatch.getIterator(receiver);
     }
 
     /**
@@ -1822,7 +1836,7 @@ public final class Value {
      * @since 21.1
      */
     public boolean isIterator() {
-        return impl.isIterator(receiver);
+        return dispatch.isIterator(receiver);
     }
 
     /**
@@ -1839,7 +1853,7 @@ public final class Value {
      * @since 21.1
      */
     public boolean hasIteratorNextElement() {
-        return impl.hasIteratorNextElement(receiver);
+        return dispatch.hasIteratorNextElement(receiver);
     }
 
     /**
@@ -1861,7 +1875,7 @@ public final class Value {
      * @since 21.1
      */
     public Value getIteratorNextElement() {
-        return impl.getIteratorNextElement(receiver);
+        return dispatch.getIteratorNextElement(receiver);
     }
 
     /**
@@ -1876,7 +1890,7 @@ public final class Value {
      * @since 21.1
      */
     public boolean hasHashEntries() {
-        return impl.hasHashEntries(receiver);
+        return dispatch.hasHashEntries(receiver);
     }
 
     /**
@@ -1889,7 +1903,7 @@ public final class Value {
      * @since 21.1
      */
     public long getHashSize() throws UnsupportedOperationException {
-        return impl.getHashSize(receiver);
+        return dispatch.getHashSize(receiver);
     }
 
     /**
@@ -1903,7 +1917,7 @@ public final class Value {
      * @since 21.1
      */
     public boolean hasHashEntry(Object key) {
-        return impl.hasHashEntry(receiver, key);
+        return dispatch.hasHashEntry(receiver, key);
     }
 
     /**
@@ -1918,7 +1932,7 @@ public final class Value {
      * @since 21.1
      */
     public Value getHashValue(Object key) throws UnsupportedOperationException {
-        return impl.getHashValue(receiver, key);
+        return dispatch.getHashValue(receiver, key);
     }
 
     /**
@@ -1933,7 +1947,7 @@ public final class Value {
      * @since 21.1
      */
     public Value getHashValueOrDefault(Object key, Object defaultValue) throws UnsupportedOperationException {
-        return impl.getHashValueOrDefault(receiver, key, defaultValue);
+        return dispatch.getHashValueOrDefault(receiver, key, defaultValue);
     }
 
     /**
@@ -1950,7 +1964,7 @@ public final class Value {
      * @since 21.1
      */
     public void putHashEntry(Object key, Object value) throws IllegalArgumentException, UnsupportedOperationException {
-        impl.putHashEntry(receiver, key, value);
+        dispatch.putHashEntry(receiver, key, value);
     }
 
     /**
@@ -1966,7 +1980,7 @@ public final class Value {
      * @since 21.1
      */
     public boolean removeHashEntry(Object key) throws UnsupportedOperationException {
-        return impl.removeHashEntry(receiver, key);
+        return dispatch.removeHashEntry(receiver, key);
     }
 
     /**
@@ -1985,7 +1999,7 @@ public final class Value {
      * @since 21.1
      */
     public Value getHashEntriesIterator() throws UnsupportedOperationException {
-        return impl.getHashEntriesIterator(receiver);
+        return dispatch.getHashEntriesIterator(receiver);
     }
 
     /**
@@ -2000,7 +2014,7 @@ public final class Value {
      * @since 21.1
      */
     public Value getHashKeysIterator() throws UnsupportedOperationException {
-        return impl.getHashKeysIterator(receiver);
+        return dispatch.getHashKeysIterator(receiver);
     }
 
     /**
@@ -2015,7 +2029,7 @@ public final class Value {
      * @since 21.1
      */
     public Value getHashValuesIterator() throws UnsupportedOperationException {
-        return impl.getHashValuesIterator(receiver);
+        return dispatch.getHashValuesIterator(receiver);
     }
 
     /**

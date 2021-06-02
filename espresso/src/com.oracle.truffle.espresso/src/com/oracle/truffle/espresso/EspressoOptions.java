@@ -231,31 +231,10 @@ public final class EspressoOptions {
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<Boolean> StringSharing = new OptionKey<>(true);
 
-    public enum LivenessAnalysisMode {
-        DISABLED,
-        ENABLED, // Also apply liveness analysis in interpreter
-        COMPILED // Only apply liveness analysis in compiled code.
-    }
-
-    private static final OptionType<LivenessAnalysisMode> LIVENESS_ANALYSIS_MODE_OPTION_TYPE = new OptionType<>("LivenessAnalysisMode",
-                    new Function<String, LivenessAnalysisMode>() {
-                        @Override
-                        public LivenessAnalysisMode apply(String s) {
-                            try {
-                                return LivenessAnalysisMode.valueOf(s.toUpperCase());
-                            } catch (IllegalArgumentException e) {
-                                throw new IllegalArgumentException("--java.LivenessAnalysis: Mode can be 'DISABLED', 'ENABLED' or 'COMPILED'.");
-                            }
-                        }
-                    });
-
-    @Option(help = "Controls the static liveness analysis of bytecodes. Liveness analysis nulls out local variables during bytecode execution if it is detected they are stale." +
-                    "Options values are:" +
-                    "\t- Disabled: disables liveness analysis." +
-                    "\t- Enabled: performs full liveness analysis, nulling out non-live local variables even in interpreter." +
-                    "\t- Compiled: performs liveness analysis, and nulls out local variables only in compiled code.", //
+    @Option(help = "Controls static liveness analysis of bytecodes, allowing to clear local variables during execution if they become stale.\\n" + //
+                    "Liveness analysis, if enabled, only affects compiled code.", //
                     category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
-    public static final OptionKey<LivenessAnalysisMode> LivenessAnalysis = new OptionKey<>(LivenessAnalysisMode.DISABLED, LIVENESS_ANALYSIS_MODE_OPTION_TYPE);
+    public static final OptionKey<Boolean> LivenessAnalysis = new OptionKey<>(false);
 
     private static final OptionType<com.oracle.truffle.espresso.jdwp.api.JDWPOptions> JDWP_OPTIONS_OPTION_TYPE = new OptionType<>("JDWPOptions",
                     new Function<String, JDWPOptions>() {

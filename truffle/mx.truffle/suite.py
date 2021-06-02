@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion" : "5.292.5",
+  "mxversion" : "5.300.4",
   "name" : "truffle",
   "version" : "21.2.0",
   "release" : False,
@@ -604,6 +604,7 @@ suite = {
       "subDir" : "src",
       "native" : "shared_lib",
       "deliverable" : "trufflenfi",
+      "use_jdk_headers" : True,
       "buildDependencies" : [
         "libffi",
         "com.oracle.truffle.nfi.backend.libffi",
@@ -651,7 +652,8 @@ suite = {
       "workingSets" : "Truffle",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "javaProperties" : {
-        "native.test.lib" : "<path:TRUFFLE_TEST_NATIVE>/<lib:nativetest>"
+        "native.test.lib" : "<path:TRUFFLE_TEST_NATIVE>/<lib:nativetest>",
+        "native.isolation.test.lib" : "<path:TRUFFLE_TEST_NATIVE>/<lib:isolationtest>"
       },
       "testProject" : True,
       "jacoco" : "exclude",
@@ -682,6 +684,31 @@ suite = {
             "cflags" : ["-g", "-Wall", "-Werror"],
             "ldflags" : ["-pthread"],
             "ldlibs" : ["-lm"],
+          },
+        },
+      },
+      "testProject" : True,
+      "jacoco" : "exclude",
+    },
+
+    "com.oracle.truffle.nfi.test.native.isolation" : {
+      "subDir" : "src",
+      "native" : "shared_lib",
+      "deliverable" : "isolationtest",
+      "os_arch" : {
+        "windows" : {
+          "<others>" : {
+            "cflags" : []
+          }
+        },
+        "solaris" : {
+          "<others>" : {
+            "cflags" : ["-g", "-Wall", "-Werror", "-m64"],
+          },
+        },
+        "<others>" : {
+          "<others>" : {
+            "cflags" : ["-g", "-Wall", "-Werror"],
           },
         },
       },
@@ -1151,6 +1178,7 @@ suite = {
        "output" : "<mxbuild>/truffle-test-native",
        "dependencies" : [
          "com.oracle.truffle.nfi.test.native",
+         "com.oracle.truffle.nfi.test.native.isolation",
        ],
        "testDistribution" : True,
       "maven" : False,

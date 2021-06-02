@@ -40,6 +40,7 @@ import java.util.List;
 import java.util.Vector;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Stream;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
@@ -222,6 +223,10 @@ final class Target_java_lang_ClassLoader {
         VMError.guarantee(scl != null);
         return scl;
     }
+
+    @Alias
+    @TargetElement(onlyWith = JDK11OrLater.class)
+    native Stream<Package> packages();
 
     @Delete
     private static native void initSystemClassLoader();

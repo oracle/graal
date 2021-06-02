@@ -110,7 +110,7 @@ import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public final class SVMHost implements HostVM {
+public class SVMHost implements HostVM {
     private final ConcurrentHashMap<AnalysisType, DynamicHub> typeToHub = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<DynamicHub, AnalysisType> hubToType = new ConcurrentHashMap<>();
 
@@ -278,7 +278,11 @@ public final class SVMHost implements HostVM {
          * Due to using {@link NativeImageSystemClassLoader}, a class's ClassLoader during runtime
          * may be different than the class used to load it during native-image generation.
          */
-        ClassLoader runtimeClassLoader = ClassLoaderFeature.getRuntimeClassLoader(javaClass.getClassLoader());
+        ClassLoader classloader = javaClass.getClassLoader();
+        if (classloader == null) {
+            classloader = BootLoaderSupport.getBootLoader();
+        }
+        ClassLoader runtimeClassLoader = ClassLoaderFeature.getRuntimeClassLoader(classloader);
         if (runtimeClassLoader != null) {
             Package packageValue = javaClass.getPackage();
             if (packageValue != null) {
@@ -298,6 +302,37 @@ public final class SVMHost implements HostVM {
         assert shouldInitializeAtRuntime || type.getWrapped().isInitialized() : "Types that are not marked for runtime initializations must have been initialized: " + type;
 
         return !shouldInitializeAtRuntime;
+    }
+
+    private final boolean parseOnce = SubstrateOptions.parseOnce();
+
+    @Override
+    public GraphBuilderConfiguration updateGraphBuilderConfiguration(GraphBuilderConfiguration config, AnalysisMethod method) {
+        return config.withRetainLocalVariables(retainLocalVariables());
+    }
+
+    private boolean retainLocalVariables() {
+        if (parseOnce) {
+            /*
+             * Disabling liveness analysis preserves the values of local variables beyond the
+             * bytecode-liveness. This greatly helps debugging. When local variable numbers are
+             * reused by javac, local variables can still get illegal values. Since we cannot
+             * "restore" such illegal values during deoptimization, we cannot disable liveness
+             * analysis for deoptimization target methods.
+             * 
+             * TODO: ParseOnce does not support deoptimization targets yet, this needs to be added
+             * later.
+             */
+            return SubstrateOptions.Optimize.getValue() <= 0;
+
+        } else {
+            /*
+             * We want to always disable the liveness analysis, since we want the points-to analysis
+             * to be as conservative as possible. The analysis results can then be used with the
+             * liveness analysis enabled or disabled.
+             */
+            return true;
+        }
     }
 
     @Override
@@ -501,7 +536,6 @@ public final class SVMHost implements HostVM {
             message += "This can happen when using the image build server. ";
             message += "To fix the issue you must reset all static state from the bootclasspath and application classpath that points to the application objects. ";
             message += "If the offending code is in JDK code please file a bug with GraalVM. ";
-            message += "As an workaround you can disable the image build server by adding " + SubstrateOptions.NO_SERVER + " to the command line. ";
             throw new UnsupportedFeatureException(message);
         }
     }
@@ -514,8 +548,12 @@ public final class SVMHost implements HostVM {
 
     @Override
     public void methodAfterParsingHook(BigBang bb, AnalysisMethod method, StructuredGraph graph) {
-        for (BiConsumer<AnalysisMethod, StructuredGraph> methodAfterParsingHook : methodAfterParsingHooks) {
-            methodAfterParsingHook.accept(method, graph);
+        if (graph != null) {
+            graph.setGuardsStage(StructuredGraph.GuardsStage.FIXED_DEOPTS);
+
+            for (BiConsumer<AnalysisMethod, StructuredGraph> methodAfterParsingHook : methodAfterParsingHooks) {
+                methodAfterParsingHook.accept(method, graph);
+            }
         }
     }
 

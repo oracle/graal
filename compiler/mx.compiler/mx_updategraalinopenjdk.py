@@ -149,7 +149,7 @@ def updategraalinopenjdk(args):
     }
 
     # Strings that must not exist in OpenJDK source files. This is applied after replacements are made.
-    blacklist = ['"Classpath" exception']
+    denylist = ['"Classpath" exception']
 
     jdkrepo = args.jdkrepo
     git_repo = _is_git_repo(jdkrepo)
@@ -284,9 +284,9 @@ def updategraalinopenjdk(args):
                         new_line_count = len(contents.split('\n'))
                         if new_line_count != old_line_count:
                             mx.abort('Unable to correct line count for {}'.format(src_file))
-                        for forbidden in blacklist:
+                        for forbidden in denylist:
                             if forbidden in contents:
-                                mx.abort('Found blacklisted pattern \'{}\' in {}'.format(forbidden, src_file))
+                                mx.abort('Found deny-listed pattern \'{}\' in {}'.format(forbidden, src_file))
                     dst_dir = os.path.dirname(dst_file)
                     if not exists(dst_dir):
                         os.makedirs(dst_dir)

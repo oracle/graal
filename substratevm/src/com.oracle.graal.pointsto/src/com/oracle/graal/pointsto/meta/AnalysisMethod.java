@@ -644,4 +644,17 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
             }
         }
     }
+
+    /**
+     * Returns the {@link StructuredGraph Graal IR} for the method if it has already been parsed
+     * using {@link #ensureGraphParsed}, or null if no graph is available.
+     */
+    public StructuredGraph parsedGraph() {
+        Object curState = parsedGraphCacheState.get();
+        if (curState instanceof AnalysisParsedGraph) {
+            return ((AnalysisParsedGraph) curState).getGraph();
+        } else {
+            return null;
+        }
+    }
 }

@@ -59,6 +59,11 @@ public class BasicInductionVariable extends InductionVariable {
     }
 
     @Override
+    public InductionVariable duplicate() {
+        return new BasicInductionVariable(loop, phi, init, rawStride, (BinaryArithmeticNode<?>) op.copyWithInputs(true));
+    }
+
+    @Override
     public StructuredGraph graph() {
         return phi.graph();
     }

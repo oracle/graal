@@ -123,7 +123,7 @@ public class PolyglotCachingTest {
         c.eval(source);
 
         assertNotNull(innerSource.get());
-        Field f = Source.class.getDeclaredField("impl");
+        Field f = Source.class.getDeclaredField("receiver");
         f.setAccessible(true);
 
         assertEquals(f.get(source), innerSource.get());

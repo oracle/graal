@@ -286,6 +286,19 @@ public abstract class NativeImageCodeCache {
         }
 
         /*
+         * DeoptEntries corresponding to explicit instructions must have registered exception
+         * handlers and DeoptEntries corresponding to exception objects cannot.
+         */
+        if (!targetFrame.duringCall()) {
+            boolean hasExceptionHandler = result.getExceptionOffset() != 0;
+            if (!targetFrame.rethrowException() && !hasExceptionHandler) {
+                return error(method, encodedBci, "no exception handler registered for deopt entry");
+            } else if (targetFrame.rethrowException() && hasExceptionHandler) {
+                return error(method, encodedBci, "exception handler registered for rethrowException");
+            }
+        }
+
+        /*
          * Validating the sizes of the source and target frames match.
          */
 

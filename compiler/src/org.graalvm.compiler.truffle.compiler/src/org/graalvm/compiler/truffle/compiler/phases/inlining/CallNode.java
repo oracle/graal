@@ -45,7 +45,7 @@ import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
-import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
+import org.graalvm.compiler.truffle.common.TruffleInliningData;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.PerformanceInformationHandler;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
@@ -396,7 +396,7 @@ public final class CallNode extends Node implements Comparable<CallNode> {
         }
     }
 
-    void collectTargetsToDequeue(TruffleMetaAccessProvider provider) {
+    void collectTargetsToDequeue(TruffleInliningData provider) {
         if (state == State.Inlined) {
             if (truffleAST != getCallTree().getRoot().truffleAST && truffleAST.getKnownCallSiteCount() == 1) {
                 provider.addTargetToDequeue(truffleAST);
@@ -407,7 +407,7 @@ public final class CallNode extends Node implements Comparable<CallNode> {
         }
     }
 
-    public void collectInlinedTargets(TruffleMetaAccessProvider inliningPlan) {
+    public void collectInlinedTargets(TruffleInliningData inliningPlan) {
         if (state == State.Inlined) {
             inliningPlan.addInlinedTarget(truffleAST);
             for (CallNode child : children) {

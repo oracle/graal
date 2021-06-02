@@ -31,6 +31,8 @@ import java.lang.ref.ReferenceQueue;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -44,6 +46,7 @@ import java.util.logging.Level;
 import java.util.stream.Collectors;
 
 import com.oracle.truffle.espresso.FinalizationFeature;
+import com.oracle.truffle.espresso.redefinition.plugins.api.InternalRedefinitionPlugin;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionMap;
 import org.graalvm.polyglot.Engine;
@@ -52,6 +55,7 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -150,6 +154,8 @@ public final class EspressoContext {
     private VMListener eventListener;
     // endregion JDWP
 
+    private Map<Class<? extends InternalRedefinitionPlugin>, InternalRedefinitionPlugin> redefinitionPlugins;
+
     // region Options
     // Checkstyle: stop field name check
 
@@ -157,7 +163,7 @@ public final class EspressoContext {
     public final boolean InlineFieldAccessors;
     public final boolean InlineMethodHandle;
     public final boolean SplitMethodHandles;
-    public final EspressoOptions.LivenessAnalysisMode livenessAnalysisMode;
+    public final boolean livenessAnalysis;
 
     // Behavior control
     public final boolean EnableManagement;
@@ -247,7 +253,7 @@ public final class EspressoContext {
         this.Verify = env.getOptions().get(EspressoOptions.Verify);
         this.EnableSignals = env.getOptions().get(EspressoOptions.EnableSignals);
         this.SpecCompliancyMode = env.getOptions().get(EspressoOptions.SpecCompliancy);
-        this.livenessAnalysisMode = env.getOptions().get(EspressoOptions.LivenessAnalysis);
+        this.livenessAnalysis = env.getOptions().get(EspressoOptions.LivenessAnalysis);
         this.EnableManagement = env.getOptions().get(EspressoOptions.EnableManagement);
         this.EnableAgents = getEnv().getOptions().get(EspressoOptions.EnableAgents);
         String multiThreadingDisabledReason = null;
@@ -319,6 +325,10 @@ public final class EspressoContext {
 
     public String getMultiThreadingDisabledReason() {
         return multiThreadingDisabled;
+    }
+
+    public JDWPContextImpl getJdwpContext() {
+        return jdwpContext;
     }
 
     /**
@@ -400,7 +410,10 @@ public final class EspressoContext {
         spawnVM();
         this.initialized = true;
         this.jdwpContext = new JDWPContextImpl(this);
-        this.eventListener = jdwpContext.jdwpInit(env, getMainThread());
+        // enable JDWP instrumenter only if options are set (assumed valid if non-null)
+        if (JDWPOptions != null) {
+            this.eventListener = jdwpContext.jdwpInit(env, getMainThread());
+        }
         referenceDrainer.startReferenceDrain();
     }
 
@@ -711,7 +724,26 @@ public final class EspressoContext {
     }
 
     public void prepareDispose() {
-        jdwpContext.finalizeContext();
+        if (jdwpContext != null) {
+            jdwpContext.finalizeContext();
+        }
+    }
+
+    public void registerRedefinitionPlugin(InternalRedefinitionPlugin plugin) {
+        // lazy initialization
+        if (redefinitionPlugins == null) {
+            redefinitionPlugins = Collections.synchronizedMap(new HashMap<>(2));
+        }
+        redefinitionPlugins.put(plugin.getClass(), plugin);
+    }
+
+    @SuppressWarnings("unchecked")
+    @TruffleBoundary
+    public <T> T lookup(Class<? extends InternalRedefinitionPlugin> pluginType) {
+        if (redefinitionPlugins == null) {
+            return null;
+        }
+        return (T) redefinitionPlugins.get(pluginType);
     }
 
     // region Agents
