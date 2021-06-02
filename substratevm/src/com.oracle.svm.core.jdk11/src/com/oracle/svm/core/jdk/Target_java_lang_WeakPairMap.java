@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,21 +24,30 @@
  */
 package com.oracle.svm.core.jdk;
 
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
-import java.util.List;
-
-import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 
-@TargetClass(className = "java.lang.Module", onlyWith = JDK11OrLater.class)
-public final class Target_java_lang_Module {
-    @SuppressWarnings("static-method")
-    @Substitute
-    @TargetElement(name = "getResourceAsStream")
-    public InputStream getResourceAsStream(String name) {
-        List<byte[]> arr = Resources.get(name);
-        return arr == null ? null : new ByteArrayInputStream(arr.get(0));
+import java.lang.ref.ReferenceQueue;
+import java.util.concurrent.ConcurrentHashMap;
+
+@TargetClass(className = "java.lang.WeakPairMap", onlyWith = JDK11OrLater.class)
+final class Target_java_lang_WeakPairMap<K1, K2, V> {
+
+    @Alias //
+    @TargetElement(name = "map")
+    ConcurrentHashMap<Target_java_lang_WeakPairMap_Pair<K1, K2>, V> map;
+
+    @Alias //
+    ReferenceQueue<Object> queue;
+
+    @TargetClass(className = "java.lang.WeakPairMap", innerClass = "Pair", onlyWith = JDK11OrLater.class)
+    interface Target_java_lang_WeakPairMap_Pair<K1, K2> {
+        @Alias
+        K1 first();
+
+        @Alias
+        K2 second();
     }
+
 }

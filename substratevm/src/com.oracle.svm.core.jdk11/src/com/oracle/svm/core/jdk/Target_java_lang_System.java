@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2007, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,21 +25,24 @@
  */
 package com.oracle.svm.core.jdk;
 
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
-import java.util.List;
-
-import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
 
-@TargetClass(className = "java.lang.Module", onlyWith = JDK11OrLater.class)
-public final class Target_java_lang_Module {
-    @SuppressWarnings("static-method")
-    @Substitute
-    @TargetElement(name = "getResourceAsStream")
-    public InputStream getResourceAsStream(String name) {
-        List<byte[]> arr = Resources.get(name);
-        return arr == null ? null : new ByteArrayInputStream(arr.get(0));
+@TargetClass(value = System.class, onlyWith = JDK11OrLater.class)
+@SuppressWarnings("unused")
+final class Target_java_lang_System_JDK11OrLater {
+
+    @Alias @InjectAccessors(BootModuleLayerAccessor.class) //
+    static ModuleLayer bootLayer;
+
+}
+
+final class BootModuleLayerAccessor {
+    @SuppressWarnings("unused")
+    static ModuleLayer get() {
+        Object bootLayer = BootModuleLayerSupport.instance().getBootLayer();
+        return SubstrateUtil.cast(bootLayer, ModuleLayer.class);
     }
 }

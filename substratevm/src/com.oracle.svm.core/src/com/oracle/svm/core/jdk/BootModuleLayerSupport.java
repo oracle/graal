@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,21 +24,26 @@
  */
 package com.oracle.svm.core.jdk;
 
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
-import java.util.List;
+import java.util.Set;
 
-import com.oracle.svm.core.annotate.Substitute;
-import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
+public final class BootModuleLayerSupport {
 
-@TargetClass(className = "java.lang.Module", onlyWith = JDK11OrLater.class)
-public final class Target_java_lang_Module {
-    @SuppressWarnings("static-method")
-    @Substitute
-    @TargetElement(name = "getResourceAsStream")
-    public InputStream getResourceAsStream(String name) {
-        List<byte[]> arr = Resources.get(name);
-        return arr == null ? null : new ByteArrayInputStream(arr.get(0));
+    public static BootModuleLayerSupport instance() {
+        return null;
+    }
+
+    public BootModuleLayerSupport() {
+    }
+
+    public void setReachableModules(Set<Object> modules) {
+
+    }
+
+    public boolean isAnalysisComplete() {
+        return false;
+    }
+
+    public Object getBootLayer() {
+        return null;
     }
 }

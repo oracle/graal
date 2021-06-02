@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,9 +24,31 @@
  */
 package com.oracle.svm.core.jdk;
 
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 
-@TargetClass(className = "java.lang.WeakPairMap", onlyWith = JDK11OrLater.class)
-final class Target_java_lang_WeakPairMap<K1, K2, V> {
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.util.List;
+
+@TargetClass(className = "java.lang.Module", onlyWith = JDK11OrLater.class)
+public final class Target_java_lang_Module {
+    @SuppressWarnings("static-method")
+    @Substitute
+    @TargetElement(name = "getResourceAsStream")
+    public InputStream getResourceAsStream(String name) {
+        List<byte[]> arr = Resources.get(name);
+        return arr == null ? null : new ByteArrayInputStream(arr.get(0));
+    }
+
+    @TargetClass(className = "java.lang.Module", innerClass = "ReflectionData", onlyWith = JDK11OrLater.class)
+    private static final class Target_java_lang_Module_ReflectionData {
+        @Alias //
+        @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "java.lang.WeakPairMap") //
+        static Target_java_lang_WeakPairMap<Module, Class<?>, Boolean> uses;
+    }
 
 }
