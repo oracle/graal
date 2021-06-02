@@ -43,6 +43,7 @@ package com.oracle.truffle.polyglot;
 import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -200,6 +201,11 @@ final class PolyglotThreadLocalActions {
     }
 
     Future<Void> submit(Thread[] threads, String originId, ThreadLocalAction action, boolean needsEnter) {
+        boolean sync = EngineAccessor.LANGUAGE.isSynchronousTLAction(action);
+        return submit(threads, originId, action, needsEnter, sync, sync);
+    }
+
+    Future<Void> submit(Thread[] threads, String originId, ThreadLocalAction action, boolean needsEnter, boolean syncStartOfEvent, boolean syncEndOfEvent) {
         TL_HANDSHAKE.testSupport();
         Objects.requireNonNull(action);
         if (threads != null) {
@@ -213,7 +219,7 @@ final class PolyglotThreadLocalActions {
             context.setCachedThreadInfo(PolyglotThreadInfo.NULL);
 
             if (context.closed) {
-                throw new IllegalStateException("Thread local actions can no longer be submitted for this context as it is already closed.");
+                return CompletableFuture.completedFuture(null);
             }
 
             Set<Thread> filterThreads = null;
@@ -242,6 +248,8 @@ final class PolyglotThreadLocalActions {
             if (sync) {
                 handshake = new SyncEvent(context, threads, originId, action, needsEnter);
             } else {
+                assert !syncStartOfEvent : "Start of event sync requested for async event!";
+                assert !syncEndOfEvent : "End of event sync requested for async event!";
                 handshake = new AsyncEvent(context, threads, originId, action, needsEnter);
             }
 
@@ -262,7 +270,7 @@ final class PolyglotThreadLocalActions {
             }
             if (activeThreads.length > 0) {
                 Future<Void> future = handshake.future = TL_HANDSHAKE.runThreadLocal(activeThreads, handshake,
-                                AbstractTLHandshake::notifyDone, EngineAccessor.LANGUAGE.isSideEffectingTLAction(action), sync);
+                                AbstractTLHandshake::notifyDone, EngineAccessor.LANGUAGE.isSideEffectingTLAction(action), syncStartOfEvent, syncEndOfEvent);
                 this.activeEvents.put(handshake, null);
                 return future;
             } else {
@@ -282,14 +290,16 @@ final class PolyglotThreadLocalActions {
         }
     }
 
-    void notifyThreadActivation(PolyglotThreadInfo info, boolean active) {
+    Set<ThreadLocalAction> notifyThreadActivation(PolyglotThreadInfo info, boolean active) {
         assert info.getEnteredCount() == (active ? 1 : 0) : "must be currently entered successfully";
         assert Thread.holdsLock(context);
 
         if (activeEvents.isEmpty()) {
             // fast common path
-            return;
+            return Collections.emptySet();
         }
+
+        Set<ThreadLocalAction> activatedActions = new HashSet<>();
 
         // we cannot process the events while the context lock is held
         // so we need to collect them first.
@@ -303,11 +313,16 @@ final class PolyglotThreadLocalActions {
                 continue;
             }
             if (active) {
-                TL_HANDSHAKE.activateThread(s, handshake.future);
+                if (TL_HANDSHAKE.activateThread(s, handshake.future)) {
+                    activatedActions.add(handshake.action);
+                }
             } else {
-                TL_HANDSHAKE.deactivateThread(s, handshake.future);
+                if (TL_HANDSHAKE.deactivateThread(s, handshake.future)) {
+                    activatedActions.add(handshake.action);
+                }
             }
         }
+        return activatedActions;
     }
 
     void notifyLastDone(AbstractTLHandshake handshake) {

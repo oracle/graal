@@ -686,7 +686,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
         @Override
         public Object execute(VirtualFrame frame) {
-            StringBuilder b = new StringBuilder();
+            StringBuilderWrapper b = new StringBuilderWrapper();
             b.append("(");
             if (children != null) {
                 for (int i = 0; i < children.length; i++) {
@@ -702,7 +702,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                 }
             }
             b.append(")");
-            return InstrumentationTestLanguage.toString(b);
+            return b.toString();
         }
 
         @Override
@@ -804,7 +804,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         Object readMember(String key) throws UnknownIdentifierException {
             switch (key) {
                 case "simpleName":
-                    return getClass().getSimpleName();
+                    return classSimpleName(getClass());
             }
             if (this instanceof ConstantNode) {
                 switch (key) {
@@ -3161,9 +3161,30 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
     }
 
+    private static class StringBuilderWrapper {
+        private final StringBuilder delegate = new StringBuilder();
+
+        @TruffleBoundary
+        StringBuilderWrapper append(String s) {
+            delegate.append(s);
+            return this;
+        }
+
+        @TruffleBoundary
+        @Override
+        public String toString() {
+            return delegate.toString();
+        }
+    }
+
     @TruffleBoundary
     private static String toString(Object object) {
         return object.toString();
+    }
+
+    @TruffleBoundary
+    private static String classSimpleName(Class<?> clazz) {
+        return clazz.getSimpleName();
     }
 
     public static final class SpecialServiceImpl implements SpecialService {
@@ -3195,7 +3216,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                     }
                 } else {
                     interrupted = e != null && e.getCause() instanceof InterruptedException;
-                    cancelled = e != null && "com.oracle.truffle.polyglot.PolyglotEngineImpl$CancelExecution".equals(e.getClass().getName());
+                    cancelled = e instanceof ThreadDeath;
                 }
                 if (!interrupted && !cancelled) {
                     Env currentEnv = context.env;

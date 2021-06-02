@@ -1315,6 +1315,18 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
+        public Future<Void> pause(Object polyglotContext) {
+            PolyglotContextImpl context = ((PolyglotContextImpl) polyglotContext);
+            return context.pause();
+        }
+
+        @Override
+        public void resume(Object polyglotContext, Future<Void> pauseFuture) {
+            PolyglotContextImpl context = ((PolyglotContextImpl) polyglotContext);
+            context.resume(pauseFuture);
+        }
+
+        @Override
         public boolean isContextActive(Object polyglotContext) {
             PolyglotContextImpl context = (PolyglotContextImpl) polyglotContext;
             return context.isActive(Thread.currentThread());

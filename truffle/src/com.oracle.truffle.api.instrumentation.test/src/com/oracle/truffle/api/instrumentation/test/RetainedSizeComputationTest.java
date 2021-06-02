@@ -244,9 +244,11 @@ public class RetainedSizeComputationTest {
                 future.get();
             }
             long previousResult = 0;
+            int cnt = 0;
             for (long calculationResult : retainedSizesList) {
+                cnt++;
                 if (previousResult > 1024L * 1024L) {
-                    Assert.assertTrue(String.format("previousCalculationResult = %d, calculationResult = %d", previousResult, calculationResult),
+                    Assert.assertTrue(String.format("previousCalculationResult = %d, calculationResult = %d, cnt = %d", previousResult, calculationResult, cnt),
                                     previousResult > 16L * 1024 * 1024L || previousResult <= calculationResult);
                 }
                 previousResult = calculationResult;

@@ -40,10 +40,10 @@
  */
 package com.oracle.truffle.polyglot;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-
-import java.util.concurrent.atomic.AtomicInteger;
 
 final class PolyglotThread extends Thread {
 
