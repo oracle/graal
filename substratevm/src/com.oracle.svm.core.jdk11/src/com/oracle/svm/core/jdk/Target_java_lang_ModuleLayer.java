@@ -24,28 +24,15 @@
  */
 package com.oracle.svm.core.jdk;
 
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
-
-import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
+import java.util.Map;
+import java.util.Set;
 
-@TargetClass(className = "java.lang.Module", onlyWith = JDK11OrLater.class)
-public final class Target_java_lang_Module {
+@TargetClass(className = "java.lang.ModuleLayer", onlyWith = JDK11OrLater.class)
+final class Target_java_lang_ModuleLayer {
 
-    @SuppressWarnings("static-method")
-    @Substitute
-    public InputStream getResourceAsStream(String name) {
-        ResourceStorageEntry entry = Resources.get(name);
-        if (entry == null) {
-            return null;
-        } else {
-            return new ByteArrayInputStream(entry.getData().get(0));
-        }
-    }
+    @Alias Map<String, Module> nameToModule;
+    @Alias volatile Set<Module> modules;
 
-    @TargetClass(className = "java.lang.Module", innerClass = "ReflectionData", onlyWith = JDK11OrLater.class)
-    public static final class ReflectionData {
-    }
 }

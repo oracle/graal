@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,28 +24,24 @@
  */
 package com.oracle.svm.core.jdk;
 
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
-
-import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
 
-@TargetClass(className = "java.lang.Module", onlyWith = JDK11OrLater.class)
-public final class Target_java_lang_Module {
+@TargetClass(value = System.class, onlyWith = JDK11OrLater.class)
+@SuppressWarnings("unused")
+final class Target_java_lang_System_JDK11OrLater {
 
-    @SuppressWarnings("static-method")
-    @Substitute
-    public InputStream getResourceAsStream(String name) {
-        ResourceStorageEntry entry = Resources.get(name);
-        if (entry == null) {
-            return null;
-        } else {
-            return new ByteArrayInputStream(entry.getData().get(0));
-        }
-    }
+    @Alias @InjectAccessors(BootModuleLayerAccessor.class) //
+    static ModuleLayer bootLayer;
 
-    @TargetClass(className = "java.lang.Module", innerClass = "ReflectionData", onlyWith = JDK11OrLater.class)
-    public static final class ReflectionData {
+}
+
+final class BootModuleLayerAccessor {
+    @SuppressWarnings("unused")
+    static ModuleLayer get() {
+        Object bootLayer = BootModuleLayerSupport.instance().getBootLayer();
+        return SubstrateUtil.cast(bootLayer, ModuleLayer.class);
     }
 }

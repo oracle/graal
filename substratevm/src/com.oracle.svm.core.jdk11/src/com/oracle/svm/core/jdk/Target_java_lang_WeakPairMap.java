@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,28 +24,8 @@
  */
 package com.oracle.svm.core.jdk;
 
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
-
-import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
 
-@TargetClass(className = "java.lang.Module", onlyWith = JDK11OrLater.class)
-public final class Target_java_lang_Module {
-
-    @SuppressWarnings("static-method")
-    @Substitute
-    public InputStream getResourceAsStream(String name) {
-        ResourceStorageEntry entry = Resources.get(name);
-        if (entry == null) {
-            return null;
-        } else {
-            return new ByteArrayInputStream(entry.getData().get(0));
-        }
-    }
-
-    @TargetClass(className = "java.lang.Module", innerClass = "ReflectionData", onlyWith = JDK11OrLater.class)
-    public static final class ReflectionData {
-    }
+@TargetClass(className = "java.lang.WeakPairMap", onlyWith = JDK11OrLater.class)
+final class Target_java_lang_WeakPairMap<K1, K2, V> {
 }
