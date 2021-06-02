@@ -35,15 +35,24 @@ public final class BootModuleLayerSupport {
     public BootModuleLayerSupport() {
     }
 
+    @SuppressWarnings({"unused", "static"})
     public void setReachableModules(Set<Object> modules) {
 
     }
 
+    @SuppressWarnings("static")
     public boolean isAnalysisComplete() {
         return false;
     }
 
+    @SuppressWarnings("static")
     public Object getBootLayer() {
         return null;
     }
+
+    @SuppressWarnings("static")
+    public Object getModuleReflectionDataUsesMap() {
+        return null;
+    }
+
 }
