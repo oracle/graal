@@ -117,7 +117,7 @@ final class EventContextObject extends AbstractContextObject {
         }
         Object retValue = Truffle.getRuntime().iterateFrames((frameInstance) -> {
             final Node n = frameInstance.getCallNode();
-            if (n == null) {
+            if (n == null || n.getRootNode().getName() == null) {
                 // skip top most record about the instrument
                 return null;
             }
