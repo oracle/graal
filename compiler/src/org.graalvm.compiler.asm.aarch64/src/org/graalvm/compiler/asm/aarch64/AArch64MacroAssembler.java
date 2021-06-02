@@ -2268,9 +2268,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     public void cacheWriteback(AArch64Address line) {
-        assert line.getAddressingMode() == AddressingMode.REGISTER_OFFSET : line;
-        assert line.getOffset().equals(Register.None) : line;
-        assert line.getImmediate() == 0 : line;
+        assert line.getAddressingMode() == AddressingMode.BASE_REGISTER_ONLY : line;
         // writeback using clear virtual address to point of persistence
         dc(DataCacheOperationType.CVAP, line.getBase());
     }
