@@ -130,6 +130,11 @@ public final class LLVMPThreadStart {
         }
 
         @Override
+        public boolean isInternal() {
+            return false;
+        }
+
+        @Override
         public Object execute(VirtualFrame frame) {
             if (ctxRef == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
