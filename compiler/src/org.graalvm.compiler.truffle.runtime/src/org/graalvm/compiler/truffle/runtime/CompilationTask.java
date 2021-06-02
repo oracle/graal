@@ -26,6 +26,7 @@ package org.graalvm.compiler.truffle.runtime;
 
 import java.lang.ref.WeakReference;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
@@ -36,10 +37,11 @@ import java.util.function.Consumer;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 
 import com.oracle.truffle.api.Truffle;
+import org.graalvm.compiler.truffle.common.TruffleInliningData;
 
 public final class CompilationTask implements TruffleCompilationTask, Callable<Void>, Comparable<CompilationTask> {
 
-    private static final Consumer<CompilationTask> compilationAction = new Consumer<CompilationTask>() {
+    private static final Consumer<CompilationTask> COMPILATION_ACTION = new Consumer<CompilationTask>() {
         @Override
         public void accept(CompilationTask task) {
             OptimizedCallTarget callTarget = task.targetRef.get();
@@ -66,6 +68,8 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
     private long lastTime;
     private double lastWeight;
 
+    private final TruffleInlining inliningData = new TruffleInlining();
+
     private CompilationTask(BackgroundCompileQueue.Priority priority, WeakReference<OptimizedCallTarget> targetRef, Consumer<CompilationTask> action, long id) {
         this.priority = priority;
         this.targetRef = targetRef;
@@ -84,21 +88,30 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
     }
 
     static CompilationTask createCompilationTask(BackgroundCompileQueue.Priority priority, WeakReference<OptimizedCallTarget> targetRef, long id) {
-        return new CompilationTask(priority, targetRef, compilationAction, id);
+        return new CompilationTask(priority, targetRef, COMPILATION_ACTION, id);
     }
 
     public void awaitCompletion(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
-        future.get(timeout, unit);
+        try {
+            future.get(timeout, unit);
+        } catch (CancellationException e) {
+            // Ignored
+        }
     }
 
     public void awaitCompletion() throws ExecutionException, InterruptedException {
-        future.get();
+        try {
+            future.get();
+        } catch (CancellationException e) {
+            // Ignored
+        }
     }
 
     public synchronized boolean cancel() {
         if (!cancelled) {
             cancelled = true;
             if (!started) {
+                future.cancel(false);
                 finished();
             }
             return true;
@@ -134,6 +147,11 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
     @Override
     public boolean isLastTier() {
         return priority.tier == BackgroundCompileQueue.Priority.Tier.LAST;
+    }
+
+    @Override
+    public TruffleInliningData inliningData() {
+        return inliningData;
     }
 
     public Future<?> getFuture() {
@@ -197,6 +215,10 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
      * corrupt a queue data structure.
      */
     boolean isHigherPriorityThan(CompilationTask other) {
+        if (action != COMPILATION_ACTION) {
+            // Any non-compilation action (e.g. compiler init) is higher priority.
+            return true;
+        }
         int tier = tier();
         if (engineData.traversingFirstTierPriority && tier != other.tier()) {
             return tier < other.tier();
@@ -213,14 +235,17 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
         return false;
     }
 
-    double updateWeight(long currentTime) {
+    /**
+     * @return false if the target reference is null (i.e. if the target was garbage-collected).
+     */
+    boolean updateWeight(long currentTime) {
         OptimizedCallTarget target = targetRef.get();
         if (target == null) {
-            return -1.0;
+            return false;
         }
         long elapsed = currentTime - lastTime;
         if (elapsed < 1_000_000) {
-            return lastWeight;
+            return true;
         }
         int count = target.getCallAndLoopCount();
         double weight = rate(count, elapsed) * count;
@@ -228,7 +253,7 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
         lastCount = count;
         lastWeight = weight;
         assert weight >= 0.0 : "weight must be positive";
-        return weight;
+        return true;
     }
 
     private double rate(int count, long elapsed) {

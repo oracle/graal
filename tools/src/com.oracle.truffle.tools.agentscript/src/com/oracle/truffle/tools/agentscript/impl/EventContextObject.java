@@ -106,7 +106,7 @@ final class EventContextObject extends AbstractContextObject {
     @CompilerDirectives.TruffleBoundary
     private static Object iterateFrames(Object[] args, EventContextObject obj) throws ArityException, UnsupportedTypeException {
         if (args.length == 0) {
-            throw ArityException.create(1, 0);
+            throw ArityException.create(0, 0, args.length);
         }
         final NodeLibrary lib = NodeLibrary.getUncached();
         final InteropLibrary iop = InteropLibrary.getUncached();

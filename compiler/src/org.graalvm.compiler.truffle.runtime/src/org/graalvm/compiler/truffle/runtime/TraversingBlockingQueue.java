@@ -30,7 +30,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.TimeUnit;
 
-public final class TraversingBlockingQueue implements BlockingQueue<Runnable> {
+class TraversingBlockingQueue implements BlockingQueue<Runnable> {
     final BlockingQueue<Runnable> entries = new LinkedBlockingDeque<>();
 
     @SuppressWarnings("unchecked")
@@ -84,13 +84,9 @@ public final class TraversingBlockingQueue implements BlockingQueue<Runnable> {
         Runnable max = null;
         while (it.hasNext()) {
             Runnable entry = it.next();
-            if (!(entry instanceof CompilationTask.ExecutorServiceWrapper)) {
-                // Any non compilation task (e.g. init tasks) has priority
-                removeAndReturn(entry);
-            }
             CompilationTask task = task(entry);
-            // updateWeight returns a negative number only if the task's target does not exist
-            if (task.isCancelled() || task.updateWeight(time) < 0) {
+            // updateWeight returns false only if the task's target does not exist
+            if (task.isCancelled() || !task.updateWeight(time)) {
                 it.remove();
                 continue;
             }
@@ -98,16 +94,8 @@ public final class TraversingBlockingQueue implements BlockingQueue<Runnable> {
                 max = entry;
             }
         }
-        return removeAndReturn(max);
-    }
-
-    private Runnable removeAndReturn(Runnable max) {
         // entries.remove can only return false if a sleeping thread takes the only element
-        if (entries.remove(max)) {
-            return max;
-        } else {
-            return null;
-        }
+        return entries.remove(max) ? max : null;
     }
 
     @Override
@@ -142,6 +130,10 @@ public final class TraversingBlockingQueue implements BlockingQueue<Runnable> {
 
     @Override
     public Runnable take() throws InterruptedException {
+        Runnable max = takeMax();
+        if (max != null) {
+            return max;
+        }
         return entries.take();
     }
 

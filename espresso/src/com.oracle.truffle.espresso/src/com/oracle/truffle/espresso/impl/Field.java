@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -53,14 +53,18 @@ public final class Field extends Member<Type> implements FieldRef {
 
     @CompilationFinal private Symbol<ModifiedUTF8> genericSignature = null;
 
-    public Field(ObjectKlass holder, LinkedField linkedField, boolean hidden) {
-        super(hidden ? null : linkedField.getType(), linkedField.getName());
+    public Field(ObjectKlass holder, LinkedField linkedField) {
         this.linkedField = linkedField;
         this.holder = holder;
     }
 
+    @Override
+    public Symbol<Name> getName() {
+        return linkedField.getName();
+    }
+
     public Symbol<Type> getType() {
-        return descriptor;
+        return linkedField.getType();
     }
 
     public Attribute[] getAttributes() {
@@ -80,7 +84,7 @@ public final class Field extends Member<Type> implements FieldRef {
     }
 
     public boolean isHidden() {
-        return getDescriptor() == null;
+        return linkedField.isHidden();
     }
 
     public JavaKind getKind() {
@@ -102,13 +106,6 @@ public final class Field extends Member<Type> implements FieldRef {
      */
     public int getSlot() {
         return linkedField.getSlot();
-    }
-
-    /**
-     * The offset in the field array of an actual instance.
-     */
-    public int getOffset() {
-        return linkedField.getOffset();
     }
 
     @Override
@@ -623,12 +620,12 @@ public final class Field extends Member<Type> implements FieldRef {
 
     @Override
     public String getNameAsString() {
-        return super.getName().toString();
+        return getName().toString();
     }
 
     @Override
     public String getTypeAsString() {
-        return super.getDescriptor().toString();
+        return getType().toString();
     }
 
     @Override

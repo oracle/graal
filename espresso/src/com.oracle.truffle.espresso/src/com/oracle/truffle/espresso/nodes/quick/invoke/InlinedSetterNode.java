@@ -72,17 +72,12 @@ public class InlinedSetterNode extends QuickNode {
 
     @Override
     public int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
-        BytecodeNode root = getBytecodesNode();
+        BytecodeNode root = getBytecodeNode();
         StaticObject receiver = field.isStatic()
                         ? field.getDeclaringKlass().tryInitializeAndGetStatics()
                         : nullCheck(BytecodeNode.popObject(refs, top - 1 - slotCount));
         setFieldNode.setField(frame, primitives, refs, root, receiver, top, statementIndex);
         return -slotCount + stackEffect;
-    }
-
-    @Override
-    public boolean producedForeignObject(Object[] refs) {
-        return false;
     }
 
     private static Field getInlinedField(Method inlinedMethod) {

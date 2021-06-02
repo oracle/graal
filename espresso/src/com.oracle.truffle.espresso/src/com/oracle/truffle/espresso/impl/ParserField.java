@@ -29,6 +29,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.Attribute;
+import com.oracle.truffle.espresso.staticobject.StaticPropertyKind;
 
 import java.lang.reflect.Modifier;
 
@@ -80,7 +81,38 @@ public final class ParserField {
         return Modifier.isStatic(flags);
     }
 
+    public boolean isFinal() {
+        return Modifier.isFinal(flags);
+    }
+
     public JavaKind getKind() {
         return Types.getJavaKind(type);
+    }
+
+    public StaticPropertyKind getPropertyKind() {
+        if (type.length() == 1) {
+            char ch = (char) type.byteAt(0);
+            switch (ch) {
+                case 'Z':
+                    return StaticPropertyKind.Boolean;
+                case 'C':
+                    return StaticPropertyKind.Char;
+                case 'F':
+                    return StaticPropertyKind.Float;
+                case 'D':
+                    return StaticPropertyKind.Double;
+                case 'B':
+                    return StaticPropertyKind.Byte;
+                case 'S':
+                    return StaticPropertyKind.Short;
+                case 'I':
+                    return StaticPropertyKind.Int;
+                case 'J':
+                    return StaticPropertyKind.Long;
+                default:
+                    throw new IllegalArgumentException("unknown primitive or void type character: " + ch);
+            }
+        }
+        return StaticPropertyKind.Object;
     }
 }

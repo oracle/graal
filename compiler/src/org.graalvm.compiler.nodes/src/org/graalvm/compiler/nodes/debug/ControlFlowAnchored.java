@@ -24,10 +24,12 @@
  */
 package org.graalvm.compiler.nodes.debug;
 
+import org.graalvm.compiler.graph.spi.NodeWithIdentity;
+
 /**
  * Marker interface for nodes that prevents control flow optimizations. The node should never be
  * duplicated nor deduplicated.
  */
-public interface ControlFlowAnchored {
+public interface ControlFlowAnchored extends NodeWithIdentity {
 
 }

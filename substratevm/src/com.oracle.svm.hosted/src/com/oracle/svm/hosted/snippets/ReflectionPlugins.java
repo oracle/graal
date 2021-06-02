@@ -60,6 +60,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.ParsingReason;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.TypeResult;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -445,6 +446,8 @@ public final class ReflectionPlugins {
         return null;
     }
 
+    private final boolean parseOnce = SubstrateOptions.parseOnce();
+
     /**
      * This method checks if the element should be intrinsified and returns the cached intrinsic
      * element if found. Caching intrinsic elements during analysis and reusing the same element
@@ -464,7 +467,7 @@ public final class ReflectionPlugins {
         if (context.bciCanBeDuplicated()) {
             return null;
         }
-        if (reason == ParsingReason.PointsToAnalysis) {
+        if (parseOnce || reason == ParsingReason.PointsToAnalysis) {
             if (isDeleted(element, context.getMetaAccess())) {
                 /*
                  * Should not intrinsify. Will fail during the reflective lookup at

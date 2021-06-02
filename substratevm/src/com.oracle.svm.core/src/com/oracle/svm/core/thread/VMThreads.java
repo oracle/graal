@@ -445,7 +445,7 @@ public abstract class VMThreads {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code, but still safe at this point.", calleeMustBe = false, mayBeInlined = true)
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, reason = "Still safe at this point.")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true, reason = "Still safe at this point.")
     private static void cleanupBeforeDetach(IsolateThread thread) {
         JavaThreads.cleanupBeforeDetach(thread);
     }
@@ -504,6 +504,15 @@ public abstract class VMThreads {
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected abstract OSThreadId getCurrentOSThreadId();
+
+    /**
+     * Puts this thread to sleep on the operating-system level and does not care about Java
+     * semantics. May only be used in very specific situations, e.g., when printing diagnostics.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void nativeSleep(@SuppressWarnings("unused") int milliseconds) {
+        throw VMError.shouldNotReachHere();
+    }
 
     @Uninterruptible(reason = "Called from uninterruptible verification code.", mayBeInlined = true)
     public boolean verifyThreadIsAttached(IsolateThread thread) {

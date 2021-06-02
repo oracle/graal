@@ -345,7 +345,7 @@ public class StackWalk {
                 fillFrame(frameInstance, m, index);
             } else {
                 // Only class info is needed.
-                frames.putObject(m.getDeclaringKlass().mirror(), index, meta);
+                meta.getInterpreterToVM().setArrayObject(m.getDeclaringKlass().mirror(), index, frames);
             }
         }
 

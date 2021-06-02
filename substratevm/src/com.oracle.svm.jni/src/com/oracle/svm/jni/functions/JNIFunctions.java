@@ -55,7 +55,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -829,7 +829,7 @@ public final class JNIFunctions {
         Log log = Log.log().autoflush(true);
         log.string("Fatal error reported via JNI: ").string(message).newline();
         VMThreads.StatusSupport.setStatusIgnoreSafepoints();
-        SubstrateUtil.printDiagnostics(log, KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress());
+        SubstrateDiagnostics.print(log, KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress());
         ImageSingletons.lookup(LogHandler.class).fatalError();
     }
 

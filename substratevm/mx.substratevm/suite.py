@@ -1,7 +1,7 @@
 suite = {
-    "mxversion": "5.292.5",
+    "mxversion": "5.294.0",
     "name": "substratevm",
-    "version" : "21.1.0",
+    "version" : "21.2.0",
     "release" : False,
     "url" : "https://github.com/oracle/graal/tree/master/substratevm",
 
@@ -444,7 +444,7 @@ suite = {
                 },
                 "windows": {
                     "<others>": {
-                        "cflags": ["-Zi", "-O2", "-D_LITTLE_ENDIAN"],
+                        "cflags": ["-Zi", "-O2", "-D_LITTLE_ENDIAN", "-DJDK_VER=<jdk_ver>"],
                     },
                 },
                 "<others>": {
@@ -630,6 +630,7 @@ suite = {
             "dependencies": [
                 "mx:JUNIT_TOOL",
                 "sdk:GRAAL_SDK",
+                "SVM",
             ],
             "checkstyle": "com.oracle.svm.core",
             "workingSets": "SVM",
@@ -1039,8 +1040,8 @@ suite = {
             "subDir": "src",
             "description" : "SubstrateVM image builder components",
             "dependencies": [
-                "com.oracle.svm.graal",  # necessary until Truffle is fully supported on Windows (GR-7941)
-                "com.oracle.svm.truffle",  # necessary until Truffle is fully supported on Windows (GR-7941)
+                "com.oracle.svm.graal",
+                "com.oracle.svm.truffle",
                 "com.oracle.svm.hosted",
                 "com.oracle.svm.core",
                 "com.oracle.svm.core.graal.amd64",
@@ -1083,6 +1084,9 @@ suite = {
                     "java.desktop",
                     "java.security.sasl",
                     "java.smartcardio",
+                    "java.net.http",
+                    "jdk.sctp",
+                    "jdk.scripting.nashorn@11..14",
                 ],
                 "uses" : [
                     "org.graalvm.nativeimage.Platform",
@@ -1365,6 +1369,7 @@ suite = {
           "distDependencies": [
             "mx:JUNIT_TOOL",
             "sdk:GRAAL_SDK",
+            "SVM",
             "SVM_CONFIGURE",
           ],
           "testDistribution" : True,

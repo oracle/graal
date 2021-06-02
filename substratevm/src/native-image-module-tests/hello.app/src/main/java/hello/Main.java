@@ -28,6 +28,18 @@ import hello.lib.Greeter;
 
 public class Main {
     public static void main(String[] args) {
+        Module helloAppModule = Main.class.getModule();
+        assert helloAppModule.getName().equals("moduletests.hello.app");
+        assert helloAppModule.isExported("hello");
+
+        Module helloLibModule = Greeter.class.getModule();
+        assert helloLibModule.getName().equals("moduletests.hello.lib");
+        assert helloLibModule.isExported("hello.lib");
+
+        assert helloAppModule.canRead(helloLibModule);
+        // assert !helloLibModule.canRead(helloAppModule); GR-30957
+
+        System.out.println("Basic Module test involving " + helloAppModule + " and " + helloLibModule);
         Greeter.greet();
     }
 }

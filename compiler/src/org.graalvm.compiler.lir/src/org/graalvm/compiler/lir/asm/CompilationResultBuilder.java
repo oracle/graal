@@ -43,7 +43,6 @@ import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.CompilationResult.CodeAnnotation;
 import org.graalvm.compiler.code.CompilationResult.JumpTable;
 import org.graalvm.compiler.code.DataSection.Data;
-import org.graalvm.compiler.code.DataSection.RawData;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.core.common.spi.CodeGenProviders;
@@ -384,13 +383,13 @@ public class CompilationResultBuilder {
         assert constant != null;
         debug.log("Constant reference in code: pos = %d, data = %s", asm.position(), constant);
         Data data = createDataItem(constant);
-        data.updateAlignment(alignment);
+        dataBuilder.updateAlignment(data, alignment);
         return recordDataSectionReference(data);
     }
 
     public AbstractAddress recordDataReferenceInCode(Data data, int alignment) {
         assert data != null;
-        data.updateAlignment(alignment);
+        dataBuilder.updateAlignment(data, alignment);
         return recordDataSectionReference(data);
     }
 
@@ -408,7 +407,8 @@ public class CompilationResultBuilder {
         if (debug.isLogEnabled()) {
             debug.log("Data reference in code: pos = %d, data = %s", asm.position(), Arrays.toString(data));
         }
-        return recordDataSectionReference(new RawData(data, alignment));
+        ArrayDataPointerConstant arrayConstant = new ArrayDataPointerConstant(data, alignment);
+        return recordDataSectionReference(dataBuilder.createSerializableData(arrayConstant, alignment));
     }
 
     /**
@@ -582,7 +582,7 @@ public class CompilationResultBuilder {
                     afterOp.accept(op);
                 }
             } catch (GraalError e) {
-                throw e.addContext("lir instruction", block + "@" + op.id() + " " + op.getClass().getName() + " " + op + "\n" + Arrays.toString(lir.codeEmittingOrder()));
+                throw e.addContext("lir instruction", block + "@" + op.id() + " " + op.getClass().getName() + " " + op);
             }
         }
     }

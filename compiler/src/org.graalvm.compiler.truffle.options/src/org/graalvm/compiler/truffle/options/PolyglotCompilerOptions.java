@@ -508,13 +508,25 @@ public final class PolyglotCompilerOptions {
     public static final OptionKey<Boolean> PriorityQueue = new OptionKey<>(true);
 
     @Option(help = "Use a traversing compilation queue.", category = OptionCategory.INTERNAL)
-    public static final OptionKey<Boolean> TraversingCompilationQueue = new OptionKey<>(false);
+    public static final OptionKey<Boolean> TraversingCompilationQueue = new OptionKey<>(true);
 
     @Option(help = "Traversing queue uses rate as priority for both tier.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> TraversingQueueWeightingBothTiers = new OptionKey<>(true);
 
     @Option(help = "Traversing queue gives first tier compilations priority.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> TraversingQueueFirstTierPriority = new OptionKey<>(true);
+
+    @Option(help = "Reduce or increase the compilation threshold depending on the size of the compilation queue.", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Boolean> DynamicCompilationThresholds = new OptionKey<>(true);
+
+    @Option(help = "The minimal scale the compilation thresholds can be reduced to.", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Double> DynamicCompilationThresholdsMinScale = new OptionKey<>(0.1);
+
+    @Option(help = "The desired minimum compilation queue load. When the load falls bellow this value, the compilation thresholds are decreased. The load is scaled by the number of compiler threads.", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Integer> DynamicCompilationThresholdsMinNormalLoad = new OptionKey<>(10);
+
+    @Option(help = "The desired maximum compilation queue load. When the load rises above this value, the compilation thresholds are increased. The load is scaled by the number of compiler threads.", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Integer> DynamicCompilationThresholdsMaxNormalLoad = new OptionKey<>(90);
 
     // Language agnostic inlining
 

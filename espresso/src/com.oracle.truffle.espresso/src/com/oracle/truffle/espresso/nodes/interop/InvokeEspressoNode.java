@@ -34,7 +34,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.espresso.impl.ClassRedefinition;
+import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -47,7 +47,7 @@ public abstract class InvokeEspressoNode extends Node {
     public final Object execute(Method method, Object receiver, Object[] arguments) throws ArityException, UnsupportedTypeException {
         Method resolutionSeed = method;
         if (resolutionSeed.isRemovedByRedefition()) {
-            resolutionSeed = ClassRedefinition.handleRemovedMethod(method, method.isStatic() ? method.getDeclaringKlass() : ((StaticObject) receiver).getKlass());
+            resolutionSeed = ClassRedefinition.handleRemovedMethod(method, method.isStatic() ? method.getDeclaringKlass() : ((StaticObject) receiver).getKlass(), (StaticObject) receiver);
         }
         Object result = executeMethod(resolutionSeed.getMethodVersion(), receiver, arguments);
         /*
@@ -95,7 +95,7 @@ public abstract class InvokeEspressoNode extends Node {
         int expectedArity = cachedMethod.getMethod().getParameterCount();
         if (arguments.length != expectedArity) {
             badArityProfile.enter();
-            throw ArityException.create(expectedArity, arguments.length);
+            throw ArityException.create(expectedArity, expectedArity, arguments.length);
         }
 
         Klass[] parameterKlasses = method.getMethod().resolveParameterKlasses();
@@ -125,7 +125,7 @@ public abstract class InvokeEspressoNode extends Node {
 
         int expectedArity = method.getMethod().getParameterCount();
         if (arguments.length != expectedArity) {
-            throw ArityException.create(expectedArity, arguments.length);
+            throw ArityException.create(expectedArity, expectedArity, arguments.length);
         }
 
         Klass[] parameterKlasses = method.getMethod().resolveParameterKlasses();

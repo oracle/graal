@@ -25,6 +25,7 @@
 package com.oracle.svm.core.posix.thread;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunction.Transition;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -39,14 +40,17 @@ import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.Pthread;
+import com.oracle.svm.core.posix.headers.Time;
+import com.oracle.svm.core.posix.headers.Time.timespec;
 import com.oracle.svm.core.posix.pthread.PthreadVMLockSupport;
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.util.TimeUtils;
 
 public final class PosixVMThreads extends VMThreads {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
-    protected OSThreadHandle getCurrentOSThreadHandle() {
+    public OSThreadHandle getCurrentOSThreadHandle() {
         return Pthread.pthread_self();
     }
 
@@ -61,6 +65,15 @@ public final class PosixVMThreads extends VMThreads {
     protected void joinNoTransition(OSThreadHandle osThreadHandle) {
         Pthread.pthread_t pthread = (Pthread.pthread_t) osThreadHandle;
         PosixUtils.checkStatusIs0(Pthread.pthread_join_no_transition(pthread, WordFactory.nullPointer()), "Pthread.joinNoTransition");
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Override
+    public void nativeSleep(int milliseconds) {
+        timespec ts = StackValue.get(timespec.class);
+        ts.set_tv_sec(milliseconds / TimeUtils.millisPerSecond);
+        ts.set_tv_nsec((milliseconds % TimeUtils.millisPerSecond) * TimeUtils.nanosPerMilli);
+        Time.NoTransitions.nanosleep(ts, WordFactory.nullPointer());
     }
 
     @Uninterruptible(reason = "Thread state not set up.")

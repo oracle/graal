@@ -216,7 +216,7 @@ public class LoopFragmentInside extends LoopFragment {
         if (opaqueUnrolledStrides != null) {
             OpaqueNode opaque = opaqueUnrolledStrides.get(loop.loopBegin());
             CountedLoopInfo counted = loop.counted();
-            ValueNode counterStride = counted.getCounter().strideNode();
+            ValueNode counterStride = counted.getLimitCheckedIV().strideNode();
             if (opaque == null || opaque.isDeleted()) {
                 ValueNode limit = counted.getLimit();
                 opaque = new OpaqueNode(AddNode.add(counterStride, counterStride, NodeView.DEFAULT));
@@ -224,8 +224,8 @@ public class LoopFragmentInside extends LoopFragment {
                 condition.replaceFirstInput(limit, graph.addOrUniqueWithInputs(newLimit));
                 opaqueUnrolledStrides.put(loop.loopBegin(), opaque);
             } else {
-                assert counted.getCounter().isConstantStride();
-                assert Math.addExact(counted.getCounter().constantStride(), counted.getCounter().constantStride()) == counted.getCounter().constantStride() * 2;
+                assert counted.getLimitCheckedIV().isConstantStride();
+                assert Math.addExact(counted.getLimitCheckedIV().constantStride(), counted.getLimitCheckedIV().constantStride()) == counted.getLimitCheckedIV().constantStride() * 2;
                 ValueNode previousValue = opaque.getValue();
                 opaque.setValue(graph.addOrUniqueWithInputs(AddNode.add(counterStride, previousValue, NodeView.DEFAULT)));
                 GraphUtil.tryKillUnused(previousValue);

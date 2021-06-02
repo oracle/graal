@@ -33,6 +33,7 @@ import com.oracle.svm.hosted.c.GraalAccess;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -64,15 +65,15 @@ public class SubstitutionField implements ReadableJavaField, OriginalFieldProvid
     }
 
     @Override
-    public JavaConstant readValue(JavaConstant receiver) {
+    public JavaConstant readValue(MetaAccessProvider metaAccess, JavaConstant receiver) {
         /* First try reading the value using the original field. */
-        JavaConstant value = ReadableJavaField.readFieldValue(GraalAccess.getOriginalProviders().getConstantReflection(), original, receiver);
+        JavaConstant value = ReadableJavaField.readFieldValue(metaAccess, GraalAccess.getOriginalProviders().getConstantReflection(), original, receiver);
         if (value == null) {
             /*
              * If the original field didn't yield a value, try reading using the annotated field.
              * The value can be null only if the receiver doesn't contain the field.
              */
-            value = ReadableJavaField.readFieldValue(GraalAccess.getOriginalProviders().getConstantReflection(), annotated, receiver);
+            value = ReadableJavaField.readFieldValue(metaAccess, GraalAccess.getOriginalProviders().getConstantReflection(), annotated, receiver);
         }
         return value;
     }

@@ -28,7 +28,7 @@ package com.oracle.objectfile.debugentry;
 
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange;
 
-import java.util.LinkedList;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -59,7 +59,7 @@ public class PrimaryEntry {
     public PrimaryEntry(Range primary, List<DebugFrameSizeChange> frameSizeInfos, int frameSize, ClassEntry classEntry) {
         this.primary = primary;
         this.classEntry = classEntry;
-        this.subranges = new LinkedList<>();
+        this.subranges = new ArrayList<>();
         this.frameSizeInfos = frameSizeInfos;
         this.frameSize = frameSize;
     }

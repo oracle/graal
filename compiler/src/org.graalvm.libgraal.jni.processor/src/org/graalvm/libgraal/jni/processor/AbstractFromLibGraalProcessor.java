@@ -203,10 +203,10 @@ public abstract class AbstractFromLibGraalProcessor<T extends Enum<T> & FromLibG
             }
             out.println("");
             out.println("import org.graalvm.nativeimage.StackValue;");
-            out.println("import org.graalvm.libgraal.jni.JNI.JNIEnv;");
-            out.println("import org.graalvm.libgraal.jni.JNI.JValue;");
+            out.println("import org.graalvm.nativebridge.jni.JNI.JNIEnv;");
+            out.println("import org.graalvm.nativebridge.jni.JNI.JValue;");
             if (usesJObject) {
-                out.println("import org.graalvm.libgraal.jni.JNI.JObject;");
+                out.println("import org.graalvm.nativebridge.jni.JNI.JObject;");
             }
             out.println("");
             out.printf("final class %s {%n", genClassName);

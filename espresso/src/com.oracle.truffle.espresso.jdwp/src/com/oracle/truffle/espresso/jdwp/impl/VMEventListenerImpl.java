@@ -33,19 +33,26 @@ import java.util.regex.Pattern;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.debug.Breakpoint;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.espresso.jdwp.api.CallFrame;
 import com.oracle.truffle.espresso.jdwp.api.FieldBreakpoint;
 import com.oracle.truffle.espresso.jdwp.api.FieldRef;
 import com.oracle.truffle.espresso.jdwp.api.Ids;
 import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
-import com.oracle.truffle.espresso.jdwp.api.MethodBreakpoint;
+import com.oracle.truffle.espresso.jdwp.api.MethodHook;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
+import com.oracle.truffle.espresso.jdwp.api.MethodVariable;
 import com.oracle.truffle.espresso.jdwp.api.TagConstants;
 
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 public final class VMEventListenerImpl implements VMEventListener {
+
+    public static final InteropLibrary UNCACHED = InteropLibrary.getUncached();
 
     private final Ids<Object> ids;
     private final JDWPContext context;
@@ -145,13 +152,69 @@ public final class VMEventListenerImpl implements VMEventListener {
 
     @Override
     @TruffleBoundary
+    public boolean onMethodEntry(MethodRef method, Object scope) {
+        boolean active = false;
+        // collect variable information from scope
+        List<MethodVariable> variables = new ArrayList<>(1);
+        try {
+            if (UNCACHED.hasMembers(scope)) {
+                Object identifiers = UNCACHED.getMembers(scope);
+                if (UNCACHED.hasArrayElements(identifiers)) {
+                    long size = UNCACHED.getArraySize(identifiers);
+                    for (long i = 0; i < size; i++) {
+                        String identifier = (String) UNCACHED.readArrayElement(identifiers, i);
+                        Object value = UNCACHED.readMember(scope, identifier);
+                        variables.add(new MethodVariable(identifier, value));
+                    }
+                }
+            }
+        } catch (UnsupportedMessageException | InvalidArrayIndexException | UnknownIdentifierException e) {
+            // not able to fetch locals, so leave variables list empty
+        }
+
+        for (MethodHook hook : method.getMethodHooks()) {
+            // pass on the variables to the method entry hook
+            if (hook.onMethodEnter(method, variables.toArray(new MethodVariable[variables.size()]))) {
+                // OK, tell the Debug API to suspend the thread now
+                debuggerController.prepareMethodBreakpoint(new MethodBreakpointEvent((MethodBreakpointInfo) hook, null));
+                debuggerController.suspend(context.asGuestThread(Thread.currentThread()));
+                active = true;
+            }
+            switch (hook.getKind()) {
+                case ONE_TIME:
+                    if (hook.hasFired()) {
+                        method.removedMethodHook(hook);
+                    }
+                    break;
+                case INDEFINITE:
+                    // leave the hook active
+                    break;
+            }
+        }
+        return active;
+    }
+
+    @Override
+    @TruffleBoundary
     public boolean onMethodReturn(MethodRef method, Object returnValue) {
         boolean active = false;
-        for (MethodBreakpoint info : method.getMethodBreakpointInfos()) {
-            // OK, tell the Debug API to suspend the thread now
-            debuggerController.prepareMethodBreakpoint(new MethodBreakpointEvent((MethodBreakpointInfo) info, returnValue));
-            debuggerController.suspend(context.asGuestThread(Thread.currentThread()));
-            active = true;
+        for (MethodHook hook : method.getMethodHooks()) {
+            if (hook.onMethodExit(method, returnValue)) {
+                // OK, tell the Debug API to suspend the thread now
+                debuggerController.prepareMethodBreakpoint(new MethodBreakpointEvent((MethodBreakpointInfo) hook, returnValue));
+                debuggerController.suspend(context.asGuestThread(Thread.currentThread()));
+                active = true;
+            }
+            switch (hook.getKind()) {
+                case ONE_TIME:
+                    if (hook.hasFired()) {
+                        method.removedMethodHook(hook);
+                    }
+                    break;
+                case INDEFINITE:
+                    // leave the hook active
+                    break;
+            }
         }
         return active;
     }
@@ -208,7 +271,7 @@ public final class VMEventListenerImpl implements VMEventListener {
                         if (holdEvents) {
                             heldEvents.add(stream);
                         } else {
-                            JDWPLogger.log("SENDING CLASS PREPARE EVENT FOR KLASS: %s WITH THREAD %s", JDWPLogger.LogLevel.THREAD, klass.getNameAsString(), context.getThreadName(prepareThread));
+                            JDWP.LOGGER.fine(() -> "SENDING CLASS PREPARE EVENT FOR KLASS: " + klass.getNameAsString() + " WITH THREAD " + context.getThreadName(prepareThread));
                             connection.queuePacket(stream);
                         }
                         return null;
@@ -249,7 +312,7 @@ public final class VMEventListenerImpl implements VMEventListener {
         stream.writeLong(frame.getClassId());
         stream.writeLong(frame.getMethodId());
         stream.writeLong(frame.getCodeIndex());
-        JDWPLogger.log("Sending breakpoint hit event in thread: %s with suspension policy: %d", JDWPLogger.LogLevel.PACKET, context.getThreadName(currentThread), info.getSuspendPolicy());
+        JDWP.LOGGER.fine(() -> "Sending breakpoint hit event in thread: " + context.getThreadName(currentThread) + " with suspension policy: " + info.getSuspendPolicy());
         if (holdEvents) {
             heldEvents.add(stream);
         } else {
@@ -421,7 +484,7 @@ public final class VMEventListenerImpl implements VMEventListener {
         if (info.isPopFrames()) {
             // send reply packet when "step" is completed
             PacketStream reply = new PacketStream().replyPacket().id(info.getRequestId());
-            JDWPLogger.log("Sending pop frames reply packet", JDWPLogger.LogLevel.PACKET);
+            JDWP.LOGGER.fine(() -> "Sending pop frames reply packet");
             if (holdEvents) {
                 heldEvents.add(reply);
             } else {
@@ -444,7 +507,7 @@ public final class VMEventListenerImpl implements VMEventListener {
             stream.writeLong(currentFrame.getMethodId());
             long codeIndex = info.getStepOutBCI() != -1 ? info.getStepOutBCI() : currentFrame.getCodeIndex();
             stream.writeLong(codeIndex);
-            JDWPLogger.log("Sending step completed event", JDWPLogger.LogLevel.STEPPING);
+            JDWP.LOGGER.fine(() -> "Sending step completed event");
 
             if (holdEvents) {
                 heldEvents.add(stream);
@@ -477,7 +540,7 @@ public final class VMEventListenerImpl implements VMEventListener {
         stream.writeLong(currentFrame.getMethodId());
         long codeIndex = currentFrame.getCodeIndex();
         stream.writeLong(codeIndex);
-        JDWPLogger.log("Sending monitor contended event", JDWPLogger.LogLevel.PACKET);
+        JDWP.LOGGER.fine(() -> "Sending monitor contended event");
 
         if (holdEvents) {
             heldEvents.add(stream);
@@ -519,7 +582,7 @@ public final class VMEventListenerImpl implements VMEventListener {
         stream.writeLong(currentFrame.getMethodId());
         long codeIndex = currentFrame.getCodeIndex();
         stream.writeLong(codeIndex);
-        JDWPLogger.log("Sending monitor contended entered event", JDWPLogger.LogLevel.PACKET);
+        JDWP.LOGGER.fine(() -> "Sending monitor contended entered event");
 
         if (holdEvents) {
             heldEvents.add(stream);
@@ -563,7 +626,7 @@ public final class VMEventListenerImpl implements VMEventListener {
 
         // timeout
         stream.writeLong(timeout);
-        JDWPLogger.log("Sending monitor wait event", JDWPLogger.LogLevel.PACKET);
+        JDWP.LOGGER.fine(() -> "Sending monitor wait event");
 
         if (holdEvents) {
             heldEvents.add(stream);
@@ -637,7 +700,7 @@ public final class VMEventListenerImpl implements VMEventListener {
 
         // timeout
         stream.writeBoolean(timedOut);
-        JDWPLogger.log("Sending monitor wait event", JDWPLogger.LogLevel.PACKET);
+        JDWP.LOGGER.fine(() -> "Sending monitor wait event");
 
         if (holdEvents) {
             heldEvents.add(stream);
@@ -769,7 +832,7 @@ public final class VMEventListenerImpl implements VMEventListener {
         stream.writeByte(RequestedJDWPEvents.THREAD_START);
         stream.writeInt(threadStartedRequestId);
         stream.writeLong(ids.getIdAsLong(thread));
-        JDWPLogger.log("sending thread started event for thread: %s", JDWPLogger.LogLevel.THREAD, context.getThreadName(thread));
+        JDWP.LOGGER.fine(() -> "sending thread started event for thread: " + context.getThreadName(thread));
         if (holdEvents) {
             heldEvents.add(stream);
         } else {
@@ -823,19 +886,19 @@ public final class VMEventListenerImpl implements VMEventListener {
     @Override
     public void addClassUnloadRequestId(int id) {
         // not implemented yet
-        JDWPLogger.log("class unload events not yet implemented!", JDWPLogger.LogLevel.ALL);
+        JDWP.LOGGER.fine(() -> "class unload events not yet implemented!");
     }
 
     @Override
     public void addThreadStartedRequestId(int id, byte suspendPolicy) {
-        JDWPLogger.log("Adding thread start listener", JDWPLogger.LogLevel.THREAD);
+        JDWP.LOGGER.fine(() -> "Adding thread start listener");
         this.threadStartedRequestId = id;
         this.threadStartSuspendPolicy = suspendPolicy;
     }
 
     @Override
     public void addThreadDiedRequestId(int id, byte suspendPolicy) {
-        JDWPLogger.log("Adding thread death listener", JDWPLogger.LogLevel.THREAD);
+        JDWP.LOGGER.fine(() -> "Adding thread death listener");
         this.threadDeathRequestId = id;
         this.threadDeathSuspendPolicy = suspendPolicy;
     }

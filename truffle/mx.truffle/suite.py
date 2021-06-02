@@ -39,9 +39,9 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion" : "5.292.5",
+  "mxversion" : "5.300.4",
   "name" : "truffle",
-  "version" : "21.1.0",
+  "version" : "21.2.0",
   "release" : False,
   "groupId" : "org.graalvm.truffle",
   "sourceinprojectwhitelist" : [],
@@ -91,18 +91,18 @@ suite = {
     },
 
     "ANTLR4": {
-      "sha1" : "e27d8ab4f984f9d186f54da984a6ab1cccac755e",
+      "sha1" : "ece33ec76e002dfde574cf7b57451a91a99185c5",
       "maven" : {
         "groupId" : "org.antlr",
         "artifactId" : "antlr4-runtime",
-        "version" : "4.7.2",
+        "version" : "4.9.2",
       }
     },
 
     "ANTLR4_COMPLETE": {
-      # original: https://www.antlr.org/download/antlr-4.7.2-complete.jar
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/antlr-4.7.2-complete.jar"],
-      "sha1": "34fc363424d3b060b660f84974a82d6bdc7ebe0c",
+      # original: https://www.antlr.org/download/antlr-4.9.2-complete.jar
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/antlr-4.9.2-complete.jar"],
+      "sha1": "3ce2e9d96baa6e5de18eb370efc71cbb820021fb",
     },
 
     "TRUFFLE_ASM_7.2" : {
@@ -604,6 +604,7 @@ suite = {
       "subDir" : "src",
       "native" : "shared_lib",
       "deliverable" : "trufflenfi",
+      "use_jdk_headers" : True,
       "buildDependencies" : [
         "libffi",
         "com.oracle.truffle.nfi.backend.libffi",
@@ -651,7 +652,8 @@ suite = {
       "workingSets" : "Truffle",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "javaProperties" : {
-        "native.test.lib" : "<path:TRUFFLE_TEST_NATIVE>/<lib:nativetest>"
+        "native.test.lib" : "<path:TRUFFLE_TEST_NATIVE>/<lib:nativetest>",
+        "native.isolation.test.lib" : "<path:TRUFFLE_TEST_NATIVE>/<lib:isolationtest>"
       },
       "testProject" : True,
       "jacoco" : "exclude",
@@ -673,14 +675,40 @@ suite = {
         "solaris" : {
           "<others>" : {
             "cflags" : ["-g", "-Wall", "-Werror", "-m64"],
-            "ldflags" : ["-m64"],
+            "ldflags" : ["-m64", "-pthread"],
             "ldlibs" : ["-lm"],
           },
         },
         "<others>" : {
           "<others>" : {
             "cflags" : ["-g", "-Wall", "-Werror"],
+            "ldflags" : ["-pthread"],
             "ldlibs" : ["-lm"],
+          },
+        },
+      },
+      "testProject" : True,
+      "jacoco" : "exclude",
+    },
+
+    "com.oracle.truffle.nfi.test.native.isolation" : {
+      "subDir" : "src",
+      "native" : "shared_lib",
+      "deliverable" : "isolationtest",
+      "os_arch" : {
+        "windows" : {
+          "<others>" : {
+            "cflags" : []
+          }
+        },
+        "solaris" : {
+          "<others>" : {
+            "cflags" : ["-g", "-Wall", "-Werror", "-m64"],
+          },
+        },
+        "<others>" : {
+          "<others>" : {
+            "cflags" : ["-g", "-Wall", "-Werror"],
           },
         },
       },
@@ -1150,6 +1178,7 @@ suite = {
        "output" : "<mxbuild>/truffle-test-native",
        "dependencies" : [
          "com.oracle.truffle.nfi.test.native",
+         "com.oracle.truffle.nfi.test.native.isolation",
        ],
        "testDistribution" : True,
       "maven" : False,

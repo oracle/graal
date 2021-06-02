@@ -149,4 +149,9 @@ public abstract class InductionVariable {
         assert !offsetIsZero(ref);
         return null;
     }
+
+    /**
+     * Duplicate this iv including all (non-constant) nodes.
+     */
+    public abstract InductionVariable duplicate();
 }

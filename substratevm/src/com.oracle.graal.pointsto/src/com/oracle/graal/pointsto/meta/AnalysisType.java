@@ -231,8 +231,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     private AnalysisType[] convertTypes(ResolvedJavaType[] originalTypes) {
         List<AnalysisType> result = new ArrayList<>(originalTypes.length);
         for (ResolvedJavaType originalType : originalTypes) {
-            if (!universe.platformSupported(originalType)) {
-                /* Ignore types that are not in our platform (including hosted-only types). */
+            if (universe.hostVM.skipInterface(universe, originalType, wrapped)) {
                 continue;
             }
             result.add(universe.lookup(originalType));
@@ -583,11 +582,22 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
                 registerAsAllocated(null);
 
                 componentType.registerAsReachable();
-                if (elementalType.isInterface()) {
-                    universe.objectType().getArrayClass(dimension).registerAsReachable();
-                }
-                if (dimension >= 2) {
-                    universe.objectType().getArrayClass(dimension - 1).registerAsReachable();
+
+                /*
+                 * For a class B extends A, the array type A[] is not a superclass of the array type
+                 * B[]. So there is no strict need to make A[] reachable when B[] is reachable. But
+                 * it turns out that this is puzzling for users, and there are frameworks that
+                 * instantiate such arrays programmatically using Array.newInstance(). To reduce the
+                 * amount of manual configuration that is necessary, we mark all array types of the
+                 * elemental supertypes and superinterfaces also as reachable.
+                 */
+                for (int i = 1; i <= dimension; i++) {
+                    if (elementalType.superClass != null) {
+                        elementalType.superClass.getArrayClass(i).registerAsReachable();
+                    }
+                    for (AnalysisType iface : elementalType.interfaces) {
+                        iface.getArrayClass(i).registerAsReachable();
+                    }
                 }
             }
 

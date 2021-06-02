@@ -329,6 +329,7 @@ public abstract class LibraryFactory<T extends Library> {
         return dispatch;
     }
 
+    @SuppressWarnings("deprecation")
     private void ensureLibraryInitialized() {
         CompilerAsserts.neverPartOfCompilation();
         /*

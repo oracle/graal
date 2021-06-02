@@ -1,13 +1,2 @@
 builds += [
-  // JDK 8
-  ${x52.c1-tmpfs10g} ${bench-dacapo-hwloc}        ${oraclejdk8} { targets: [bench, weekly], name: "bench-compiler-dacapo-linux-x52-c1" }
-  ${x52.c1-tmpfs10g} ${bench-scala-dacapo-hwloc}  ${oraclejdk8} { targets: [bench, weekly], name: "bench-compiler-scala-dacapo-linux-x52-c1", timelimit: "1:00:00" }
-  ${x52.c1} ${bench-specjvm2008-Single-hwloc}     ${oraclejdk8} { targets: [bench, weekly], name: "bench-compiler-specjvm2008-Single-linux-x52-c1" }
-  ${x52.c1} ${bench-specjbb2015-hwloc}            ${oraclejdk8} { targets: [bench, weekly], name: "bench-compiler-specjbb2015-linux-x52-c1" }
-
-  // JDK 11
-  ${x52.c1-tmpfs10g} ${bench-dacapo-hwloc}        ${labsjdk11} { targets: [bench, weekly], name: "bench-compiler-dacapo-11-linux-x52-c1" }
-  ${x52.c1-tmpfs10g} ${bench-scala-dacapo-hwloc}  ${labsjdk11} { targets: [bench, weekly], name: "bench-compiler-scala-dacapo-11-linux-x52-c1", timelimit: "1:00:00" }
-  ${x52.c1} ${bench-specjvm2008-Single-hwloc}     ${labsjdk11} { targets: [bench, weekly], name: "bench-compiler-specjvm2008-Single-11-linux-x52-c1" }
-  ${x52.c1} ${bench-specjbb2015-hwloc}            ${labsjdk11} { targets: [bench, weekly], name: "bench-compiler-specjbb2015-11-linux-x52-c1" }
 ]

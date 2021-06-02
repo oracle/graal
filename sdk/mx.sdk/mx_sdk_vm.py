@@ -84,7 +84,9 @@ _graalvm_hostvm_configs = [
     ('jvm', [], ['--jvm'], 50),
     ('jvm-no-truffle-compilation', [], ['--jvm', '--experimental-options', '--engine.Compilation=false'], 29),
     ('native', [], ['--native'], 100),
-    ('native-no-truffle-compilation', [], ['--native', '--experimental-options', '--engine.Compilation=false'], 39)
+    ('native-no-truffle-compilation', [], ['--native', '--experimental-options', '--engine.Compilation=false'], 39),
+    ('jvm-3-compiler-threads', [], ['--jvm', '--engine.CompilerThreads=3'], 50),
+    ('native-3-compiler-threads', [], ['--native', '--engine.CompilerThreads=3'], 100)
 ]
 _known_vms = set()
 _base_jdk = None
@@ -290,16 +292,17 @@ class GraalVmComponent(object):
                 raise mx.abort("{}: Cannot use `stability` attribute in combination with deprecated `supported` and `early_adopter` attributes".format(name))
             mx.warn("{}: `supported` and `early_adopter` attributes are deprecated, please use `stability`".format(name))
 
-        if supported:
-            if early_adopter:
-                stability = "earlyadopter"
+        if stability is None:
+            if supported:
+                if early_adopter:
+                    stability = "earlyadopter"
+                else:
+                    stability = "supported"
             else:
-                stability = "supported"
-        else:
-            if early_adopter:
-                stability = "experimental-earlyadopter"
-            else:
-                stability = "experimental"
+                if early_adopter:
+                    stability = "experimental-earlyadopter"
+                else:
+                    stability = "experimental"
         self.stability = stability
 
         self.jlink = jlink

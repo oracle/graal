@@ -82,7 +82,7 @@ public class TestutilModule extends BuiltinModule {
     @Override
     protected WasmInstance createInstance(WasmLanguage language, WasmContext context, String name) {
         final Path temporaryDirectory = createTemporaryDirectory();
-        WasmInstance instance = new WasmInstance(new WasmModule(name, null));
+        WasmInstance instance = new WasmInstance(context, new WasmModule(name, null));
 
         // Note: in the following methods, the types are not important here, since these methods
         // are not accessed by Wasm code.

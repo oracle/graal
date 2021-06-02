@@ -728,6 +728,9 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         }
 
         pos = writeParameterDeclarationAbbrevs(context, buffer, pos);
+
+        /* write a null abbrev to terminate the sequence */
+        pos = writeNullAbbrev(context, buffer, pos);
         return pos;
     }
 
@@ -1310,6 +1313,12 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          */
         pos = writeAttrType(DwarfDebugInfo.DW_AT_null, buffer, pos);
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_null, buffer, pos);
+        return pos;
+    }
+
+    private int writeNullAbbrev(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
+        int pos = p;
+        pos = writeAbbrevCode(DwarfDebugInfo.DW_ABBREV_CODE_null, buffer, pos);
         return pos;
     }
 

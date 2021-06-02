@@ -30,6 +30,7 @@ import re
 from os.path import dirname, join
 from traceback import print_tb
 import inspect
+import subprocess
 
 import mx
 import mx_benchmark
@@ -133,29 +134,34 @@ class NativeImageVM(GraalVm):
             self.stages = bm_suite.stages(args)
             self.last_stage = self.stages[-1]
             self.skip_agent_assertions = bm_suite.skip_agent_assertions(self.benchmark_name, args)
-            self.root_dir = self.benchmark_output_dir if self.benchmark_output_dir else mx.join(mx.suite('vm').dir, 'mxbuild')
+            self.root_dir = self.benchmark_output_dir if self.benchmark_output_dir else mx.suite('vm').get_output_root(platformDependent=False, jdkDependent=False)
             self.executable_suffix = ('-' + self.benchmark_name) if self.benchmark_name else ''
             self.executable, self.classpath_arguments, self.system_properties, self.image_run_args = NativeImageVM.extract_benchmark_arguments(args)
             self.executable_name = (os.path.splitext(os.path.basename(self.executable[1]))[0] + self.executable_suffix if self.executable[0] == '-jar' else self.executable[0] + self.executable_suffix).lower()
             self.final_image_name = self.executable_name + '-' + vm.config_name()
-            self.output_dir = mx.join(os.path.abspath(self.root_dir), 'native-image-bench-' + self.executable_name + '-' + vm.config_name())
+            self.output_dir = mx.join(os.path.abspath(self.root_dir), 'native-image-benchmarks', self.executable_name + '-' + vm.config_name())
             self.profile_path_no_extension = os.path.join(self.output_dir, self.executable_name)
             self.latest_profile_path = self.profile_path_no_extension + '-latest' + self.profile_file_extension
             self.config_dir = os.path.join(self.output_dir, 'config')
             self.log_dir = self.output_dir
+            self.analysis_report_path = os.path.join(self.output_dir, self.executable_name + '-analysis.json')
             self.base_image_build_args = [os.path.join(mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True), 'bin', 'native-image')]
             self.base_image_build_args += ['--no-fallback', '--no-server', '-g', '--allow-incomplete-classpath']
-            self.base_image_build_args += ['-J-ea', '-J-esa', '-H:+VerifyGraalGraphs', '-H:+VerifyPhases'] if vm.is_gate else []
+            self.base_image_build_args += ['-H:+VerifyGraalGraphs', '-H:+VerifyPhases'] if vm.is_gate else []
+            self.base_image_build_args += ['-J-ea', '-J-esa'] if vm.is_gate and not bm_suite.skip_build_assertions(self.benchmark_name) else []
             self.base_image_build_args += self.system_properties
             self.base_image_build_args += self.classpath_arguments
             self.base_image_build_args += self.executable
             self.base_image_build_args += ['-H:Path=' + self.output_dir]
             self.base_image_build_args += ['-H:ConfigurationFileDirectories=' + self.config_dir]
+            self.base_image_build_args += ['-H:+PrintAnalysisStatistics', '-H:AnalysisStatisticsFile=' + self.analysis_report_path]
             if vm.is_llvm:
                 self.base_image_build_args += ['-H:CompilerBackend=llvm', '-H:Features=org.graalvm.home.HomeFinderFeature', '-H:DeadlockWatchdogInterval=0']
+            if vm.gc:
+                self.base_image_build_args += ['--gc=' + vm.gc, '-H:+SpawnIsolates']
             self.base_image_build_args += self.extra_image_build_arguments
 
-    def __init__(self, name, config_name, extra_java_args, extra_launcher_args, pgo_instrumented_iterations, pgo_inline_explored, hotspot_pgo, is_gate, is_llvm=False, pgo_context_sensitive=True):
+    def __init__(self, name, config_name, extra_java_args, extra_launcher_args, pgo_instrumented_iterations, pgo_inline_explored, hotspot_pgo, is_gate, is_llvm=False, pgo_context_sensitive=True, gc=None):
         super(NativeImageVM, self).__init__(name, config_name, extra_java_args, extra_launcher_args)
         self.pgo_instrumented_iterations = pgo_instrumented_iterations
         self.pgo_context_sensitive = pgo_context_sensitive
@@ -163,6 +169,7 @@ class NativeImageVM(GraalVm):
         self.hotspot_pgo = hotspot_pgo
         self.is_gate = is_gate
         self.is_llvm = is_llvm
+        self.gc = gc
 
     @staticmethod
     def supported_vm_arg_prefixes():
@@ -196,6 +203,13 @@ class NativeImageVM(GraalVm):
 
     @staticmethod
     def extract_benchmark_arguments(args):
+        i = 0
+        while i < len(args):
+            if args[i].startswith('--jvmArgsPrepend'):
+                args[i + 1] = ' '.join([x for x in args[i + 1].split(' ') if "-Dnative-image" not in x])
+                i += 2
+            else:
+                i += 1
         args = [x for x in args if "-Dnative-image" not in x]
         vm_args, executable, image_run_args = NativeImageVM._split_vm_arguments(args)
 
@@ -270,7 +284,7 @@ class NativeImageVM(GraalVm):
             self.stderr_file.flush()
 
             if self.exit_code == 0 and (tb is None):
-                if self.current_stage == self.config.last_stage:
+                if self.current_stage.startswith(self.config.last_stage):
                     self.bench_out('Successfully finished the last specified stage:' + ' ' + self.current_stage + ' for ' + self.final_image_name)
                 else:
                     mx.log('Successfully finished stage:' + ' ' + self.current_stage)
@@ -357,17 +371,22 @@ class NativeImageVM(GraalVm):
             self.command = command
             return self
 
-        def execute_command(self, final_command=False, vm=None):
-            write_output = final_command or self.is_gate
+        def execute_command(self, vm=None):
+            write_output = self.current_stage == 'run' or self.is_gate
             cmd = self.command
-            if final_command and vm is not None:
-                # only apply the command manipulation hooks when running the final image
-                cmd = mx.apply_command_mapper_hooks(cmd, vm.command_mapper_hooks)
-            self.exit_code = self.config.bmSuite.run_stage(self.current_stage, cmd, self.stdout(write_output), self.stderr(write_output), self.cwd, False)
+            self.exit_code = self.config.bmSuite.run_stage(vm, self.current_stage, cmd, self.stdout(write_output), self.stderr(write_output), self.cwd, False)
             if "image" not in self.current_stage and self.config.bmSuite.validateReturnCode(self.exit_code):
                 self.exit_code = 0
 
     def rules(self, output, benchmarks, bmSuiteArgs):
+        class NativeImageTimeToInt(object):
+            def __call__(self, *args, **kwargs):
+                return int(float(args[0].replace(',', '')))
+
+        class NativeImageHexToInt(object):
+            def __call__(self, *args, **kwargs):
+                return int(args[0], 16)
+
         return [
             mx_benchmark.StdOutRule(
                 r"The executed image size for benchmark (?P<bench_suite>[a-zA-Z0-9_\-]+):(?P<benchmark>[a-zA-Z0-9_\-]+) is (?P<value>[0-9]+) B",
@@ -382,7 +401,99 @@ class NativeImageVM(GraalVm):
                     "metric.score-function": "id",
                     "metric.better": "lower",
                     "metric.iteration": 0,
-                })
+                }),
+            mx_benchmark.StdOutRule(
+                r"The (?P<type>[a-zA-Z0-9_\-]+) configuration size for benchmark (?P<bench_suite>[a-zA-Z0-9_\-]+):(?P<benchmark>[a-zA-Z0-9_\-]+) is (?P<value>[0-9]+) B",
+                {
+                    "bench-suite": ("<bench_suite>", str),
+                    "benchmark": ("<benchmark>", str),
+                    "vm": "svm",
+                    "metric.name": "config-size",
+                    "metric.value": ("<value>", int),
+                    "metric.unit": "B",
+                    "metric.type": "numeric",
+                    "metric.score-function": "id",
+                    "metric.better": "lower",
+                    "metric.iteration": 0,
+                    "metric.object": ("<type>", str)
+                }),
+            mx_benchmark.StdOutRule(r'^\[\S+:[0-9]+\][ ]+\[total\]:[ ]+(?P<time>[0-9,.]+?) ms', {
+                "benchmark": benchmarks[0],
+                "metric.name": "compile-time",
+                "metric.type": "numeric",
+                "metric.unit": "ms",
+                "metric.value": ("<time>", NativeImageTimeToInt()),
+                "metric.score-function": "id",
+                "metric.better": "lower",
+                "metric.iteration": 0,
+                "metric.object": "total",
+            }),
+            mx_benchmark.StdOutRule(r'^\[\S+:[0-9]+\][ ]+(?P<phase>\w+?):[ ]+(?P<time>[0-9,.]+?) ms', {
+                "benchmark": benchmarks[0],
+                "metric.name": "compile-time",
+                "metric.type": "numeric",
+                "metric.unit": "ms",
+                "metric.value": ("<time>", NativeImageTimeToInt()),
+                "metric.score-function": "id",
+                "metric.better": "lower",
+                "metric.iteration": 0,
+                "metric.object": ("<phase>", str),
+            }),
+            mx_benchmark.StdOutRule(r'^[ ]*[0-9]+[ ]+.(?P<section>[a-zA-Z0-9._-]+?)[ ]+(?P<size>[0-9a-f]+?)[ ]+', {
+                "benchmark": benchmarks[0],
+                "metric.name": "binary-section-size",
+                "metric.type": "numeric",
+                "metric.unit": "B",
+                "metric.value": ("<size>", NativeImageHexToInt()),
+                "metric.score-function": "id",
+                "metric.better": "lower",
+                "metric.iteration": 0,
+                "metric.object": ("<section>", str),
+            }),
+            mx_benchmark.JsonStdOutFileRule(r'^# Printing analysis results stats to: (?P<path>\S+?)$', 'path', {
+                "benchmark": benchmarks[0],
+                "metric.name": "analysis-stats",
+                "metric.type": "numeric",
+                "metric.unit": "#",
+                "metric.value": ("<total_reachable_types>", int),
+                "metric.score-function": "id",
+                "metric.better": "lower",
+                "metric.iteration": 0,
+                "metric.object": "reachable-types",
+            }, ['total_reachable_types']),
+            mx_benchmark.JsonStdOutFileRule(r'^# Printing analysis results stats to: (?P<path>\S+?)$', 'path', {
+                "benchmark": benchmarks[0],
+                "metric.name": "analysis-stats",
+                "metric.type": "numeric",
+                "metric.unit": "#",
+                "metric.value": ("<total_reachable_methods>", int),
+                "metric.score-function": "id",
+                "metric.better": "lower",
+                "metric.iteration": 0,
+                "metric.object": "reachable-methods",
+            }, ['total_reachable_methods']),
+            mx_benchmark.JsonStdOutFileRule(r'^# Printing analysis results stats to: (?P<path>\S+?)$', 'path', {
+                "benchmark": benchmarks[0],
+                "metric.name": "analysis-stats",
+                "metric.type": "numeric",
+                "metric.unit": "#",
+                "metric.value": ("<total_reachable_fields>", int),
+                "metric.score-function": "id",
+                "metric.better": "lower",
+                "metric.iteration": 0,
+                "metric.object": "reachable-fields",
+            }, ['total_reachable_fields']),
+            mx_benchmark.JsonStdOutFileRule(r'^# Printing analysis results stats to: (?P<path>\S+?)$', 'path', {
+                "benchmark": benchmarks[0],
+                "metric.name": "analysis-stats",
+                "metric.type": "numeric",
+                "metric.unit": "B",
+                "metric.value": ("<total_memory_bytes>", int),
+                "metric.score-function": "id",
+                "metric.better": "lower",
+                "metric.iteration": 0,
+                "metric.object": "memory"
+            }, ['total_memory_bytes'])
         ]
 
     def run_stage_agent(self, config, stages):
@@ -441,16 +552,23 @@ class NativeImageVM(GraalVm):
         pgo_args = ['--pgo=' + config.latest_profile_path, '-H:+VerifyPGOProfiles', '-H:VerificationDumpFile=' + pgo_verification_output_path] if self.pgo_instrumented_iterations > 0 or self.hotspot_pgo else []
         final_image_command = config.base_image_build_args + executable_name_args + pgo_args
         with stages.set_command(final_image_command) as s:
-            s.execute_command()
+            s.execute_command(True)
 
     def run_stage_run(self, config, stages, out):
         image_path = os.path.join(config.output_dir, config.final_image_name)
         with stages.set_command([image_path] + config.image_run_args + config.extra_run_args) as s:
-            s.execute_command(True, vm=self)
+            s.execute_command(vm=self)
             if s.exit_code == 0:
                 # The image size for benchmarks is tracked by printing on stdout and matching the rule.
                 image_size = os.stat(image_path).st_size
                 out('The executed image size for benchmark ' + config.benchmark_suite_name + ':' + config.benchmark_name + ' is ' + str(image_size) + ' B')
+                image_sections_command = "objdump -h " + image_path
+                out(subprocess.check_output(image_sections_command, shell=True, universal_newlines=True))
+                for config_type in ['jni', 'proxy', 'reflect', 'resource', 'serialization']:
+                    config_path = os.path.join(config.config_dir, config_type + '-config.json')
+                    if os.path.exists(config_path):
+                        config_size = os.stat(config_path).st_size
+                        out('The ' + config_type + ' configuration size for benchmark ' + config.benchmark_suite_name + ':' + config.benchmark_name + ' is ' + str(config_size) + ' B')
 
     def run_java(self, args, out=None, err=None, cwd=None, nonZeroIsFatal=False):
 
@@ -466,6 +584,7 @@ class NativeImageVM(GraalVm):
         # never fatal, we handle it ourselves
         config = NativeImageVM.BenchmarkConfig(self, self.bmSuite, args)
         stages = NativeImageVM.Stages(config, out, err, self.is_gate, True if self.is_gate else nonZeroIsFatal, os.path.abspath(cwd if cwd else os.getcwd()))
+        instrumented_iterations = self.pgo_instrumented_iterations if config.pgo_iteration_num is None else int(config.pgo_iteration_num)
 
         if not os.path.exists(config.output_dir):
             os.makedirs(config.output_dir)
@@ -474,11 +593,12 @@ class NativeImageVM(GraalVm):
             os.makedirs(config.config_dir)
 
         if stages.change_stage('agent'):
+            if instrumented_iterations == 0 and config.last_stage.startswith('instrument-'):
+                config.last_stage = 'agent'
             self.run_stage_agent(config, stages)
 
         if not self.hotspot_pgo:
             # Native Image profile collection
-            instrumented_iterations = self.pgo_instrumented_iterations if config.pgo_iteration_num is None else int(config.pgo_iteration_num)
             for i in range(instrumented_iterations):
                 profile_path = config.profile_path_no_extension + '-' + str(i) + config.profile_file_extension
                 instrumentation_image_name = config.executable_name + '-instrument-' + str(i)

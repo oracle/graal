@@ -40,6 +40,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.perf.DebugCloseable;
 import com.oracle.truffle.espresso.perf.DebugTimer;
+import com.oracle.truffle.espresso.redefinition.DefineKlassListener;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -271,7 +272,7 @@ public abstract class ClassRegistry implements ContextAccess {
 
     private ParserKlass getParserKlass(byte[] bytes, String strType) {
         // May throw guest ClassFormatError, NoClassDefFoundError.
-        ParserKlass parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), strType, null, context);
+        ParserKlass parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), getClassLoader(), strType, context);
         Meta meta = getMeta();
         if (!loaderIsBootOrPlatform(getClassLoader(), meta) && parserKlass.getName().toString().startsWith("java/")) {
             throw meta.throwExceptionWithMessage(meta.java_lang_SecurityException, "Define class in prohibited package name: " + parserKlass.getName());
@@ -327,7 +328,7 @@ public abstract class ClassRegistry implements ContextAccess {
 
         try (DebugCloseable define = KLASS_DEFINE.scope(getContext().getTimers())) {
             // FIXME(peterssen): Do NOT create a LinkedKlass every time, use a global cache.
-            LinkedKlass linkedKlass = new LinkedKlass(parserKlass, superKlass == null ? null : superKlass.getLinkedKlass(), linkedInterfaces);
+            LinkedKlass linkedKlass = LinkedKlass.create(getEspressoLanguage(), parserKlass, superKlass == null ? null : superKlass.getLinkedKlass(), linkedInterfaces);
             klass = new ObjectKlass(context, linkedKlass, superKlass, superInterfaces, getClassLoader());
         }
 
@@ -347,6 +348,7 @@ public abstract class ClassRegistry implements ContextAccess {
         EspressoError.guarantee(previous == null, "Class " + type + " is already defined");
 
         getRegistries().recordConstraint(type, klass, getClassLoader());
+        getRegistries().onKlassDefined(klass);
         if (defineKlassListener != null) {
             defineKlassListener.onKlassDefined(klass);
         }
@@ -372,9 +374,27 @@ public abstract class ClassRegistry implements ContextAccess {
         return (ObjectKlass) klass;
     }
 
-    public void onClassRenamed(ObjectKlass oldKlass, Symbol<Symbol.Name> newName) {
-        Symbol<Symbol.Type> newType = context.getTypes().fromName(newName);
-        classes.put(newType, new ClassRegistries.RegistryEntry(oldKlass));
+    public void onClassRenamed(ObjectKlass renamedKlass) {
+        // this method is constructed so that any existing class loader constraint
+        // for the new type is removed from the class registries first. This allows
+        // a clean addition of a new class loader constraint for the new type for a
+        // different klass object.
+
+        // The old type of the renamed klass object will not be handled within this
+        // method. There are two possible ways in which the old type is handled, 1)
+        // if another renamed class instance now has the old type, it will also go
+        // through this method directly or 2) if no klass instance has the new type
+        // the old klass instance will be marked as removed and will follow a direct
+        // path to ClassRegistries.removeUnloadedKlassConstraint().
+
+        Klass loadedKlass = findLoadedKlass(renamedKlass.getType());
+        if (loadedKlass != null) {
+            context.getRegistries().removeUnloadedKlassConstraint(loadedKlass, renamedKlass.getType());
+        }
+
+        classes.put(renamedKlass.getType(), new ClassRegistries.RegistryEntry(renamedKlass));
+        // record the new loading constraint
+        context.getRegistries().recordConstraint(renamedKlass.getType(), renamedKlass, renamedKlass.getDefiningClassLoader());
     }
 
     public void onInnerClassRemoved(Symbol<Symbol.Type> type) {

@@ -57,7 +57,7 @@ import static org.graalvm.wasm.WasmType.I64_TYPE;
 public class SpectestModule extends BuiltinModule {
     @Override
     protected WasmInstance createInstance(WasmLanguage language, WasmContext context, String name) {
-        WasmInstance module = new WasmInstance(new WasmModule(name, null));
+        WasmInstance module = new WasmInstance(context, new WasmModule(name, null));
         defineFunction(module, "print", types(), types(), new PrintNode(language, module));
         defineFunction(module, "print_i32", types(I32_TYPE), types(), new PrintNode(language, module));
         defineFunction(module, "print_i64", types(I64_TYPE), types(), new PrintNode(language, module));

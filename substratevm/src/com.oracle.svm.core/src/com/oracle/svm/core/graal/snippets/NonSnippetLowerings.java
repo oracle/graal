@@ -65,6 +65,7 @@ import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.StampProvider;
+import org.graalvm.compiler.nodes.spi.LoweringTool.StandardLoweringStage;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
@@ -178,6 +179,10 @@ public abstract class NonSnippetLowerings {
     private class BytecodeExceptionLowering implements NodeLoweringProvider<BytecodeExceptionNode> {
         @Override
         public void lower(BytecodeExceptionNode node, LoweringTool tool) {
+            if (tool.getLoweringStage() == StandardLoweringStage.HIGH_TIER) {
+                return;
+            }
+
             StructuredGraph graph = node.graph();
             List<ValueNode> arguments = new ArrayList<>();
             ForeignCallDescriptor descriptor = lookupBytecodeException(node.getExceptionKind(), node.getArguments(), graph, tool,
@@ -192,6 +197,10 @@ public abstract class NonSnippetLowerings {
     private class ThrowBytecodeExceptionLowering implements NodeLoweringProvider<ThrowBytecodeExceptionNode> {
         @Override
         public void lower(ThrowBytecodeExceptionNode node, LoweringTool tool) {
+            if (tool.getLoweringStage() == StandardLoweringStage.HIGH_TIER) {
+                return;
+            }
+
             StructuredGraph graph = node.graph();
             List<ValueNode> arguments = new ArrayList<>();
             ForeignCallDescriptor descriptor = lookupBytecodeException(node.getExceptionKind(), node.getArguments(), graph, tool,

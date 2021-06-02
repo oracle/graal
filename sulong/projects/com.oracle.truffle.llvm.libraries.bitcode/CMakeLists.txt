@@ -64,32 +64,51 @@ endif()
 add_compile_definitions(OS_${MX_OS} ARCH_${MX_ARCH})
 
 # using glob patterns is not recommended: https://cmake.org/cmake/help/latest/command/file.html#glob
-add_library(sulong SHARED
-    src/abort.c
-    src/assert.c
-    src/builtin.c
-    src/clone.c
-    src/complex.c
-    src/crt0.c
-    src/exec.c
-    src/exit.c
-    src/fork.c
-    src/memcpy.c
-    src/pthreads.c
-    src/qsort.c
-    src/setjmp.c
-    src/signals.c
-    src/stat.c
-    src/string.c
-    src/sulong_dispose_context.c
-)
+add_library(sulong SHARED)
+
+if(WIN32)
+    if(NOT LLVM_LINK)
+        message(FATAL_ERROR "LLVM_LINK needs to be set")
+    endif()
+    target_sources(sulong PRIVATE
+      src/crt0.c
+      src/exit.c
+      src/sulong_dispose_context.c
+    )
+    # link to bitcode
+    set(CMAKE_BC_CREATE_SHARED_LIBRARY "${LLVM_LINK} <OBJECTS> -o <TARGET>")
+    set_target_properties(sulong PROPERTIES LINKER_LANGUAGE BC)
+else()
+    target_sources(sulong PRIVATE
+      src/abort.c
+      src/assert.c
+      src/builtin.c
+      src/clone.c
+      src/complex.c
+      src/crt0.c
+      src/exec.c
+      src/exit.c
+      src/fork.c
+      src/memcpy.c
+      src/pthreads.c
+      src/qsort.c
+      src/setjmp.c
+      src/signals.c
+      src/stat.c
+      src/string.c
+      src/sulong_dispose_context.c
+    )
+endif()
+
 target_include_directories(sulong PRIVATE ${GRAALVM_LLVM_INCLUDE_DIR})
 target_link_options(sulong PRIVATE -nostdlib)
 install(TARGETS sulong DESTINATION bin)
 
-add_library(sulong++ SHARED libsulongxx/exception_support.cpp)
-target_include_directories(sulong++ PRIVATE ${LIBCXX_SRC}/libcxx/src ${LIBCXX_SRC}/libcxxabi/src)
-target_compile_definitions(sulong++ PRIVATE LIBCXXABI_SILENT_TERMINATE)
-target_compile_options(sulong++ PRIVATE -std=c++11 -stdlib=libc++ -Wno-undefined-internal)
-target_link_options(sulong++ PRIVATE -stdlib=libc++ -Wno-undefined-internal)
-install(TARGETS sulong++ DESTINATION bin)
+if(NOT WIN32)
+    add_library(sulong++ SHARED libsulongxx/exception_support.cpp)
+    target_include_directories(sulong++ PRIVATE ${LIBCXX_SRC}/libcxx/src ${LIBCXX_SRC}/libcxxabi/src)
+    target_compile_definitions(sulong++ PRIVATE LIBCXXABI_SILENT_TERMINATE)
+    target_compile_options(sulong++ PRIVATE -std=c++11 -stdlib=libc++ -Wno-undefined-internal)
+    target_link_options(sulong++ PRIVATE -stdlib=libc++ -Wno-undefined-internal)
+    install(TARGETS sulong++ DESTINATION bin)
+endif()

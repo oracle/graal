@@ -33,7 +33,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import sun.misc.Unsafe;
 
 /**
- * Tests the VM independent intrinsification of {@link Unsafe} methods.
+ * Tests the HotSpot dependent intrinsification of {@link Unsafe} methods.
  */
 public class HotSpotUnsafeSubstitutionTest extends MethodSubstitutionTest {
 

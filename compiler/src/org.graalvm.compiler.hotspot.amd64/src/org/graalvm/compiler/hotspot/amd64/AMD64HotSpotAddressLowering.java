@@ -213,7 +213,7 @@ public class AMD64HotSpotAddressLowering extends AMD64CompressAddressLowering {
                             }
                         }
                     }
-                    if (countedLoopInfo.getCounter() == inductionVariable &&
+                    if (countedLoopInfo.getLimitCheckedIV() == inductionVariable &&
                                     inductionVariable.direction() == InductionVariable.Direction.Up &&
                                     (countedLoopInfo.getOverFlowGuard() != null || countedLoopInfo.counterNeverOverflows())) {
                         return graph.unique(new ZeroExtendNode(input, INT_BITS, ADDRESS_BITS, true));

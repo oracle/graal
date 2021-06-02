@@ -57,7 +57,9 @@ public final class Meta implements ContextAccess {
     private final EspressoContext context;
     private final ExceptionDispatch dispatch;
     private final StringConversion stringConversion;
+    private final InteropKlassesDispatch interopDispatch;
 
+    @SuppressWarnings({"unchecked", "rawtypes"})
     public Meta(EspressoContext context) {
         CompilerAsserts.neverPartOfCompilation();
         this.context = context;
@@ -610,6 +612,66 @@ public final class Meta implements ContextAccess {
         java_time_ZoneId_getId = java_time_ZoneId.requireDeclaredMethod(Name.getId, Signature.String);
         java_time_ZoneId_of = java_time_ZoneId.requireDeclaredMethod(Name.of, Signature.ZoneId_String);
         assert java_time_ZoneId_of.isStatic();
+
+        java_util_Map = knownKlass(Type.java_util_Map);
+        java_util_Map_get = java_util_Map.requireDeclaredMethod(Name.get, Signature.Object_Object);
+        java_util_Map_put = java_util_Map.requireDeclaredMethod(Name.put, Signature.Object_Object_Object);
+        java_util_Map_size = java_util_Map.requireDeclaredMethod(Name.size, Signature._int);
+        java_util_Map_remove = java_util_Map.requireDeclaredMethod(Name.remove, Signature.Object_Object);
+        java_util_Map_containsKey = java_util_Map.requireDeclaredMethod(Name.containsKey, Signature._boolean_Object);
+        java_util_Map_entrySet = java_util_Map.requireDeclaredMethod(Name.entrySet, Signature.java_util_Set);
+        assert java_util_Map.isInterface();
+
+        java_util_Map_Entry = knownKlass(Type.java_util_Map_Entry);
+        java_util_Map_Entry_getKey = java_util_Map_Entry.requireDeclaredMethod(Name.getKey, Signature.Object);
+        java_util_Map_Entry_getValue = java_util_Map_Entry.requireDeclaredMethod(Name.getValue, Signature.Object);
+        java_util_Map_Entry_setValue = java_util_Map_Entry.requireDeclaredMethod(Name.setValue, Signature.Object_Object);
+
+        java_util_List = knownKlass(Type.java_util_List);
+        java_util_List_get = java_util_List.requireDeclaredMethod(Name.get, Signature.Object_int);
+        java_util_List_set = java_util_List.requireDeclaredMethod(Name.set, Signature.Object_int_Object);
+        java_util_List_size = java_util_List.requireDeclaredMethod(Name.size, Signature._int);
+        assert java_util_List.isInterface();
+
+        java_lang_Iterable = knownKlass(Type.java_lang_Iterable);
+        java_lang_Iterable_iterator = java_lang_Iterable.requireDeclaredMethod(Name.iterator, Signature.java_util_Iterator);
+        assert java_lang_Iterable.isInterface();
+
+        java_util_Iterator = knownKlass(Type.java_util_Iterator);
+        java_util_Iterator_next = java_util_Iterator.requireDeclaredMethod(Name.next, Signature.Object);
+        java_util_Iterator_hasNext = java_util_Iterator.requireDeclaredMethod(Name.hasNext, Signature._boolean);
+        java_util_Iterator_remove = java_util_Iterator.requireDeclaredMethod(Name.remove, Signature._void);
+        assert java_util_Iterator.isInterface();
+
+        java_util_NoSuchElementException = knownKlass(Type.java_util_NoSuchElementException);
+
+        interopDispatch = new InteropKlassesDispatch(this);
+
+        // used for class redefinition
+        java_lang_reflect_Proxy = knownKlass(Type.java_lang_reflect_Proxy);
+
+        // java.beans package only available if java.desktop module is present on JDK9+
+        java_beans_ThreadGroupContext = loadKlassWithBootClassLoader(Type.java_beans_ThreadGroupContext);
+        java_beans_Introspector = loadKlassWithBootClassLoader(Type.java_beans_Introspector);
+
+        java_beans_ThreadGroupContext_init = java_beans_ThreadGroupContext != null ? java_beans_ThreadGroupContext.requireDeclaredMethod(Name._init_, Signature._void) : null;
+        java_beans_ThreadGroupContext_removeBeanInfo = java_beans_ThreadGroupContext != null ? java_beans_ThreadGroupContext.requireDeclaredMethod(Name.removeBeanInfo, Signature._void_Class) : null;
+        java_beans_Introspector_flushFromCaches = java_beans_Introspector != null ? java_beans_Introspector.requireDeclaredMethod(Name.flushFromCaches, Signature._void_Class) : null;
+
+        // sun.misc.Proxygenerator -> java.lang.reflect.Proxygenerator in JDK 9
+        if (getJavaVersion().java8OrEarlier()) {
+            sun_misc_ProxyGenerator = knownKlass(Type.sun_misc_ProxyGenerator);
+            sun_misc_ProxyGenerator_generateProxyClass = sun_misc_ProxyGenerator.lookupDeclaredMethod(Name.generateProxyClass, Signature._byte_array_String_Class_array_int);
+
+            java_lang_reflect_ProxyGenerator = null;
+            java_lang_reflect_ProxyGenerator_generateProxyClass = null;
+        } else {
+            sun_misc_ProxyGenerator = null;
+            sun_misc_ProxyGenerator_generateProxyClass = null;
+
+            java_lang_reflect_ProxyGenerator = knownKlass(Type.java_lang_reflect_ProxyGenerator);
+            java_lang_reflect_ProxyGenerator_generateProxyClass = java_lang_reflect_ProxyGenerator.requireDeclaredMethod(Name.generateProxyClass, Signature._byte_array_String_Class_array_int);
+        }
     }
 
     /**
@@ -758,6 +820,18 @@ public final class Meta implements ContextAccess {
     public final Field java_lang_Integer_value;
     public final Field java_lang_Double_value;
     public final Field java_lang_Long_value;
+
+    // used by class redefinition
+    public final ObjectKlass java_lang_reflect_Proxy;
+    public final ObjectKlass sun_misc_ProxyGenerator;
+    public final Method sun_misc_ProxyGenerator_generateProxyClass;
+    public final ObjectKlass java_lang_reflect_ProxyGenerator;
+    public final Method java_lang_reflect_ProxyGenerator_generateProxyClass;
+    public final ObjectKlass java_beans_ThreadGroupContext;
+    public final Method java_beans_ThreadGroupContext_init;
+    public final Method java_beans_ThreadGroupContext_removeBeanInfo;
+    public final ObjectKlass java_beans_Introspector;
+    public final Method java_beans_Introspector_flushFromCaches;
 
     // Guest String.
     public final Field java_lang_String_value;
@@ -1107,6 +1181,34 @@ public final class Meta implements ContextAccess {
     public final Method java_time_ZoneId_getId;
     public final Method java_time_ZoneId_of;
 
+    public final ObjectKlass java_util_Map;
+    public final Method java_util_Map_size;
+    public final Method java_util_Map_get;
+    public final Method java_util_Map_put;
+    public final Method java_util_Map_remove;
+    public final Method java_util_Map_containsKey;
+    public final Method java_util_Map_entrySet;
+
+    public final ObjectKlass java_util_Map_Entry;
+    public final Method java_util_Map_Entry_getKey;
+    public final Method java_util_Map_Entry_getValue;
+    public final Method java_util_Map_Entry_setValue;
+
+    public final ObjectKlass java_util_List;
+    public final Method java_util_List_get;
+    public final Method java_util_List_set;
+    public final Method java_util_List_size;
+
+    public final ObjectKlass java_lang_Iterable;
+    public final Method java_lang_Iterable_iterator;
+
+    public final ObjectKlass java_util_Iterator;
+    public final Method java_util_Iterator_next;
+    public final Method java_util_Iterator_hasNext;
+    public final Method java_util_Iterator_remove;
+
+    public final ObjectKlass java_util_NoSuchElementException;
+
     @CompilationFinal public ObjectKlass java_lang_management_MemoryUsage;
     @CompilationFinal public ObjectKlass sun_management_ManagementFactory;
     @CompilationFinal public Method sun_management_ManagementFactory_createMemoryPool;
@@ -1375,6 +1477,10 @@ public final class Meta implements ContextAccess {
             throw EspressoError.shouldNotReachHere("Failed loading known class: ", type, ", discovered java version: ", getJavaVersion());
         }
         return k;
+    }
+
+    public Class<?> resolveDispatch(Klass k) {
+        return interopDispatch.resolveDispatch(k);
     }
 
     /**

@@ -100,6 +100,8 @@ JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext
 
     LibFFIContext = (*env)->FindClass(env, "com/oracle/truffle/nfi/backend/libffi/LibFFIContext");
     ret->LibFFIContext_getNativeEnv = (*env)->GetMethodID(env, LibFFIContext, "getNativeEnv", "()J");
+    ret->LibFFIContext_attachThread = (*env)->GetMethodID(env, LibFFIContext, "attachThread", "()Z");
+    ret->LibFFIContext_detachThread = (*env)->GetMethodID(env, LibFFIContext, "detachThread", "()V");
     ret->LibFFIContext_createClosureNativePointer = (*env)->GetMethodID(env, LibFFIContext, "createClosureNativePointer",
             "(JJLcom/oracle/truffle/api/CallTarget;Lcom/oracle/truffle/nfi/backend/libffi/LibFFISignature;Ljava/lang/Object;)Lcom/oracle/truffle/nfi/backend/libffi/ClosureNativePointer;");
     ret->LibFFIContext_newClosureRef = (*env)->GetMethodID(env, LibFFIContext, "newClosureRef", "(J)V");

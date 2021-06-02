@@ -1,0 +1,48 @@
+From 67b19b2aedf7dca7524aa26ac6b420213017c8e2 Mon Sep 17 00:00:00 2001
+From: James Nagurne <j-nagurne@ti.com>
+Date: Fri, 24 Jan 2020 19:15:32 -0800
+Subject: [PATCH 5/6] [libunwind] Set LIBUNWIND_ASM_SOURCES to the ASM source
+ language from C
+
+I believe this is an oversight from the import of libunwind into its own
+library from libc++abi.
+
+In libc++abi, these files had the .s suffix, which indicates that the file
+is a preprocessed assembly source file. This caused problems because the
+files rely upon preprocessors to guard target-specific blocks.
+
+To fix this, the CMakeLists file marked these files as C so that the
+preprocessor would be run over them, but then the compiler would correctly
+identify the files as assembly and compile them as such.
+
+When imported to libunwind, these files were (correctly) renamed with .S
+suffixes, which are non-preprocessed assembly. Thus, we no longer need the
+C language property.
+
+The benefit here is that the files can now benefit from CMAKE_ASM_FLAGS
+rather than CMAKE_C_FLAGS.
+
+Patch By: JamesNagurne
+
+Differential Revision: https://reviews.llvm.org/D72952
+---
+ libunwind/src/CMakeLists.txt | 3 ---
+ 1 file changed, 3 deletions(-)
+
+diff --git a/libunwind/src/CMakeLists.txt b/libunwind/src/CMakeLists.txt
+index d02f8a21dd48..01ec4b6de651 100644
+--- a/libunwind/src/CMakeLists.txt
++++ b/libunwind/src/CMakeLists.txt
+@@ -24,9 +24,6 @@ set(LIBUNWIND_ASM_SOURCES
+     UnwindRegistersRestore.S
+     UnwindRegistersSave.S
+     )
+-set_source_files_properties(${LIBUNWIND_ASM_SOURCES}
+-                            PROPERTIES
+-                              LANGUAGE C)
+ 
+ set(LIBUNWIND_HEADERS
+     AddressSpace.hpp
+-- 
+2.31.1
+

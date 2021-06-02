@@ -59,7 +59,6 @@ import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.SourceSection;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractExceptionImpl;
 import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -72,13 +71,13 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.polyglot.PolyglotEngineImpl.CancelExecution;
 
-final class PolyglotExceptionImpl extends AbstractExceptionImpl {
+final class PolyglotExceptionImpl {
 
     private static final String CAUSE_CAPTION = "Caused by host exception: ";
 
     private static final boolean TRACE_STACK_TRACE_WALKING = false;
 
-    private PolyglotException impl;
+    private Object api;
 
     final PolyglotImpl polyglot;
     final PolyglotEngineImpl engine;
@@ -115,14 +114,14 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
     PolyglotExceptionImpl(PolyglotImpl polyglot, PolyglotEngineImpl engine, boolean polyglotContextCancellingOrCancelled, PolyglotLanguageContext languageContext, Throwable original,
                     boolean allowInterop,
                     boolean entered) {
-        super(polyglot);
         this.polyglot = polyglot;
         this.engine = engine;
         this.context = (languageContext != null) ? languageContext.context : null;
         this.exception = original;
         this.guestFrames = TruffleStackTrace.getStackTrace(original);
         this.showInternalStackFrames = engine == null ? false : engine.engineOptionValues.get(PolyglotEngineOptions.ShowInternalStackFrames);
-        this.resourceExhausted = isResourceLimit(exception);
+        Error resourceLimitError = getResourceLimitError(exception);
+        this.resourceExhausted = resourceLimitError != null;
         InteropLibrary interop;
         if (allowInterop && (interop = InteropLibrary.getUncached()).isException(exception)) {
             try {
@@ -194,7 +193,21 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
             if (internal) {
                 this.message = exception.toString();
             } else {
-                this.message = exception.getMessage();
+                String exceptionMessage = exception.getMessage();
+                if (exceptionMessage != null) {
+                    this.message = exceptionMessage;
+                } else if (resourceLimitError != null) {
+                    String resourceExhaustedMessage = "Resource exhausted";
+                    if (resourceLimitError instanceof StackOverflowError) {
+                        resourceExhaustedMessage += ": Stack overflow";
+                    }
+                    if (resourceLimitError instanceof OutOfMemoryError) {
+                        resourceExhaustedMessage += ": Out of memory";
+                    }
+                    this.message = resourceExhaustedMessage;
+                } else {
+                    this.message = null;
+                }
             }
         }
 
@@ -203,9 +216,9 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
         EngineAccessor.LANGUAGE.materializeHostFrames(original);
     }
 
-    private static boolean isResourceLimit(Throwable e) {
+    private static Error getResourceLimitError(Throwable e) {
         if (e instanceof CancelExecution) {
-            return ((CancelExecution) e).isResourceLimit();
+            return ((CancelExecution) e).isResourceLimit() ? (Error) e : null;
         }
         Throwable toCheck;
         if (e instanceof HostException) {
@@ -213,7 +226,10 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
         } else {
             toCheck = e;
         }
-        return toCheck instanceof StackOverflowError || toCheck instanceof OutOfMemoryError;
+        if (toCheck instanceof StackOverflowError || toCheck instanceof OutOfMemoryError) {
+            return (Error) toCheck;
+        }
+        return null;
     }
 
     @SuppressWarnings("deprecation")
@@ -286,32 +302,26 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
         return exception.hashCode();
     }
 
-    @Override
     public org.graalvm.polyglot.SourceSection getSourceLocation() {
         return sourceLocation;
     }
 
-    @Override
     public void onCreate(PolyglotException instance) {
-        this.impl = instance;
+        this.api = instance;
     }
 
-    @Override
     public boolean isResourceExhausted() {
         return resourceExhausted;
     }
 
-    @Override
     public boolean isInterrupted() {
         return interrupted;
     }
 
-    @Override
     public boolean isHostException() {
         return exception instanceof HostException;
     }
 
-    @Override
     public Throwable asHostException() {
         if (!(exception instanceof HostException)) {
             throw PolyglotEngineException.unsupported(
@@ -322,12 +332,10 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
         return ((HostException) exception).getOriginal();
     }
 
-    @Override
     public void printStackTrace(PrintWriter s) {
         printStackTrace(new WrappedPrintWriter(s));
     }
 
-    @Override
     public void printStackTrace(PrintStream s) {
         printStackTrace(new WrappedPrintStream(s));
     }
@@ -336,14 +344,14 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
         synchronized (s.lock()) {
             // For an internal error without guest frames print only the internal error.
             if (isInternalError() && (guestFrames == null || guestFrames.isEmpty())) {
-                s.print(impl.getClass().getName() + ": ");
+                s.print(api.getClass().getName() + ": ");
                 s.printStackTrace(exception);
                 s.println("Internal GraalVM error, please report at https://github.com/oracle/graal/issues/.");
                 return;
             }
             // Print our stack trace
             if (isInternalError() || getMessage() == null || getMessage().isEmpty()) {
-                s.println(impl);
+                s.println(api);
             } else {
                 s.println(getMessage());
             }
@@ -352,12 +360,12 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
             int languageIdLength = 0; // java
             for (StackFrame traceElement : getPolyglotStackTrace()) {
                 if (!traceElement.isHostFrame()) {
-                    languageIdLength = Math.max(languageIdLength, polyglot.getAPIAccess().getImpl(traceElement).getLanguage().getId().length());
+                    languageIdLength = Math.max(languageIdLength, polyglot.getAPIAccess().getDispatch(traceElement).getLanguage().getId().length());
                 }
             }
 
             for (StackFrame traceElement : getPolyglotStackTrace()) {
-                s.println("\tat " + polyglot.getAPIAccess().getImpl(traceElement).toStringImpl(languageIdLength));
+                s.println("\tat " + polyglot.getAPIAccess().getDispatch(traceElement).toStringImpl(languageIdLength));
             }
 
             // Print cause, if any
@@ -371,7 +379,6 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
         }
     }
 
-    @Override
     public String getMessage() {
         return message;
     }
@@ -397,17 +404,14 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
         }
     }
 
-    @Override
     public StackTraceElement[] getStackTrace() {
         return getJavaStackTrace().clone();
     }
 
-    @Override
     public boolean isInternalError() {
         return internal;
     }
 
-    @Override
     public Iterable<StackFrame> getPolyglotStackTrace() {
         if (materializedFrames != null) {
             return materializedFrames;
@@ -420,32 +424,26 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
         }
     }
 
-    @Override
     public boolean isCancelled() {
         return cancelled;
     }
 
-    @Override
     public boolean isExit() {
         return exit;
     }
 
-    @Override
     public boolean isIncompleteSource() {
         return incompleteSource;
     }
 
-    @Override
     public int getExitStatus() {
         return exitStatus;
     }
 
-    @Override
     public boolean isSyntaxError() {
         return syntaxError;
     }
 
-    @Override
     public Value getGuestObject() {
         return guestObject;
     }
@@ -583,7 +581,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
         return new MergedHostGuestIterator<>(hostStack, guestFrames, inHostLanguage, new Function<StackTraceElement, StackFrame>() {
             @Override
             public StackFrame apply(StackTraceElement element) {
-                return apiAccess.newPolyglotStackTraceElement(impl.impl, PolyglotExceptionFrame.createHost(impl, element));
+                return apiAccess.newPolyglotStackTraceElement(PolyglotExceptionFrame.createHost(impl, element), impl.api);
             }
         }, new Function<TruffleStackTraceElement, StackFrame>() {
 
@@ -595,7 +593,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
                 this.firstGuestFrame = false;
                 PolyglotExceptionFrame guest = PolyglotExceptionFrame.createGuest(impl, guestFrame, first);
                 if (guest != null) {
-                    return apiAccess.newPolyglotStackTraceElement(impl.impl, guest);
+                    return apiAccess.newPolyglotStackTraceElement(guest, impl.api);
                 } else {
                     return null;
                 }

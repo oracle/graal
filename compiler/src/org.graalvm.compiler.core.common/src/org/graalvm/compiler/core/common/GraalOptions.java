@@ -114,10 +114,12 @@ public final class GraalOptions {
     @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> UseLoopLimitChecks = new OptionKey<>(true);
 
-    @Option(help = "", type = OptionType.Debug)
+    @Option(help = "Hoists array bounds checks out of simple loops. This is ignored if " +
+                   "SpeculativeGuardMovement is enabled.", type = OptionType.Debug)
     public static final OptionKey<Boolean> LoopPredication = new OptionKey<>(true);
 
-    @Option(help = "", type = OptionType.Debug)
+    @Option(help = "Restricts LoopPredication to only focus on array bounds checks that " +
+                   "dominate the back edge of a loop.", type = OptionType.Debug)
     public static final OptionKey<Boolean> LoopPredicationMainPath = new OptionKey<>(true);
 
     // debugging settings
@@ -244,6 +246,9 @@ public final class GraalOptions {
     @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> OptDevirtualizeInvokesOptimistically = new OptionKey<>(true);
 
+    @Option(help = "Move loop invariant guards (e.g., array bounds checks) out of loops.", type = OptionType.Debug)
+    public static final OptionKey<Boolean> SpeculativeGuardMovement = new OptionKey<>(true);
+
     @Option(help = "Track the NodeSourcePosition.", type = OptionType.Debug)
     public static final OptionKey<Boolean> TrackNodeSourcePosition = new OptionKey<>(false);
 
@@ -282,7 +287,7 @@ public final class GraalOptions {
 
     @Option(help = "String.indexOf invocations will be evaluated at compile time if the receiver is a constant and its length is lower than this value.", type = OptionType.Expert)
     public static final OptionKey<Integer> StringIndexOfLimit = new OptionKey<>(4096);
-    
+
     @Option(help = "Emit substitutions for String methods", type = OptionType.Debug)//
     public static final OptionKey<Boolean> EmitStringSubstitutions = new OptionKey<>(true);
 }

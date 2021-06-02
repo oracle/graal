@@ -34,7 +34,7 @@ import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
-import org.graalvm.compiler.graph.spi.SimplifierTool;
+import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ProfileData.LoopFrequencyData;
@@ -63,6 +63,8 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
     protected LoopType loopType;
     protected int unrollFactor;
     protected boolean osrLoop;
+    protected boolean stripMinedOuter;
+    protected boolean stripMinedInner;
     /**
      * Flag to indicate that this loop must not be detected as a counted loop.
      */
@@ -116,6 +118,26 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
             }
         }
         disableCounted = disableCountedBasedOnSpeculation;
+    }
+
+    public boolean canEndsSafepoint() {
+        return canEndsSafepoint;
+    }
+
+    public void setStripMinedInner(boolean stripMinedInner) {
+        this.stripMinedInner = stripMinedInner;
+    }
+
+    public void setStripMinedOuter(boolean stripMinedOuter) {
+        this.stripMinedOuter = stripMinedOuter;
+    }
+
+    public boolean isStripMinedInner() {
+        return stripMinedInner;
+    }
+
+    public boolean isStripMinedOuter() {
+        return stripMinedOuter;
     }
 
     public boolean canNeverOverflow() {

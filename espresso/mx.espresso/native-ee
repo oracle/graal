@@ -4,3 +4,4 @@ DYNAMIC_IMPORTS=/vm-enterprise,/substratevm-enterprise,/tools-enterprise
 COMPONENTS=Java on Truffle,SubstrateVM Enterprise,suite:tools,suite:tools-enterprise
 NATIVE_IMAGES=lib:espresso
 DISABLE_INSTALLABLES=true
+EXCLUDE_COMPONENTS=hprf

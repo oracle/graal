@@ -48,4 +48,6 @@ public interface TruffleCompilationTask {
     default int tier() {
         return isFirstTier() ? 1 : 2;
     }
+
+    TruffleInliningData inliningData();
 }

@@ -27,19 +27,29 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.Attribute;
+import com.oracle.truffle.espresso.staticobject.StaticProperty;
 
 final class LinkedField extends StaticProperty {
     private final ParserField parserField;
     private final int slot;
 
-    LinkedField(ParserField parserField, int slot, int offset) {
-        super(parserField.getKind(), offset);
+    LinkedField(ParserField parserField, int slot) {
+        super(parserField.getPropertyKind(), parserField.isFinal());
         this.parserField = parserField;
         this.slot = slot;
     }
 
-    public static LinkedField createHidden(Symbol<Name> name, int slot, int offset) {
-        return new LinkedField(new ParserField(ParserField.HIDDEN, name, Type.java_lang_Object, null), slot, offset);
+    /**
+     * This method is required by the Static Object Model. In Espresso we should rather call
+     * `getName()` and use Symbols.
+     */
+    @Override
+    protected String getId() {
+        return getName().toString();
+    }
+
+    public Symbol<Name> getName() {
+        return parserField.getName();
     }
 
     /**
@@ -51,10 +61,6 @@ final class LinkedField extends StaticProperty {
 
     public Symbol<Type> getType() {
         return parserField.getType();
-    }
-
-    public Symbol<Name> getName() {
-        return parserField.getName();
     }
 
     public int getFlags() {

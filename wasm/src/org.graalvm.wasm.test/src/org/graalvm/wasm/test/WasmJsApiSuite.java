@@ -40,19 +40,14 @@
  */
 package org.graalvm.wasm.test;
 
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.ExceptionType;
-import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.nodes.RootNode;
+import static org.graalvm.wasm.utils.WasmBinaryTools.compileWat;
+
+import java.io.IOException;
+import java.nio.ByteOrder;
+import java.util.HashMap;
+import java.util.concurrent.Callable;
+import java.util.function.Consumer;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
@@ -85,13 +80,20 @@ import org.graalvm.wasm.predefined.testutil.TestutilModule;
 import org.graalvm.wasm.utils.Assert;
 import org.junit.Test;
 
-import java.io.IOException;
-import java.nio.ByteOrder;
-import java.util.HashMap;
-import java.util.concurrent.Callable;
-import java.util.function.Consumer;
-
-import static org.graalvm.wasm.utils.WasmBinaryTools.compileWat;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.ExceptionType;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.nodes.RootNode;
 
 public class WasmJsApiSuite {
     @Test
@@ -465,6 +467,7 @@ public class WasmJsApiSuite {
 
             final WasmFunctionInstance functionInstance = new WasmFunctionInstance(
                             null,
+                            null,
                             Truffle.getRuntime().createCallTarget(new RootNode(WasmContext.getCurrent().language()) {
                                 @Override
                                 public Object execute(VirtualFrame frame) {
@@ -731,6 +734,64 @@ public class WasmJsApiSuite {
                 Assert.fail(ex.getMessage());
             }
         });
+    }
+
+    @Test
+    public void testTableImport() throws IOException, InterruptedException {
+        // Exports table with a function
+        final byte[] exportTable = compileWat("exportTable", "(module" +
+                        "(func $f0 (result i32) i32.const 42)" +
+                        "(table 1 1 funcref)" +
+                        "(export \"table\" (table 0))" +
+                        "(elem (i32.const 0) $f0)" +
+                        ")");
+
+        // Imports table and exports function that invokes functions from the table
+        final byte[] importTable = compileWat("importTable", "(module" +
+                        "(type (func (param i32) (result i32)))" +
+                        "(type (func (result i32)))" +
+                        "(import \"tableImport\" \"table\" (table 1 1 funcref))" +
+                        "(func (type 0) (param i32) (result i32) local.get 0 call_indirect (type 1))" +
+                        "(export \"testFunc\" (func 0))" +
+                        ")");
+
+        runTest(context -> {
+            WebAssembly wasm = new WebAssembly(context);
+            Instance exportInstance = wasm.instantiate(exportTable, null).instance();
+            try {
+                Object exports = InteropLibrary.getUncached().readMember(exportInstance, "exports");
+                Object exportedTable = InteropLibrary.getUncached().readMember(exports, "table");
+
+                Dictionary importObject = new Dictionary();
+                Dictionary tableImport = new Dictionary();
+                tableImport.addMember("table", exportedTable);
+                importObject.addMember("tableImport", tableImport);
+
+                Instance importInstance = wasm.instantiate(importTable, importObject).instance();
+
+                exports = InteropLibrary.getUncached().readMember(importInstance, "exports");
+                Object testFunc = InteropLibrary.getUncached().readMember(exports, "testFunc");
+                Object result = InteropLibrary.getUncached().execute(testFunc, 0);
+
+                Assert.assertEquals("Return value should be 42", 42, result);
+            } catch (InteropException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
+    public void testMemoryAllocationFailure() {
+        // Memory allocation should either succeed or throw an interop
+        // exception (not an internal error like OutOfMemoryError).
+        try {
+            Object[] memories = new Object[5];
+            for (int i = 0; i < memories.length; i++) {
+                memories[i] = Memory.create(new MemoryDescriptor(32767, 32767));
+            }
+        } catch (AbstractTruffleException ex) {
+            Assert.assertTrue("Should throw interop exception", InteropLibrary.getUncached(ex).isException(ex));
+        }
     }
 
     private static void runTest(Consumer<WasmContext> testCase) throws IOException {

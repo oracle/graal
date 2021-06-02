@@ -61,7 +61,7 @@ import java.util.function.Predicate;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextImpl;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextDispatch;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
 import org.graalvm.polyglot.io.ProcessHandler;
@@ -307,10 +307,32 @@ import org.graalvm.polyglot.proxy.Proxy;
  */
 public final class Context implements AutoCloseable {
 
-    final AbstractContextImpl impl;
+    final AbstractContextDispatch dispatch;
+    final Object receiver;
+    final Context currentAPI;
+    final Engine engine;
 
-    Context(AbstractContextImpl impl) {
-        this.impl = impl;
+    @SuppressWarnings("unchecked")
+    <T> Context(AbstractContextDispatch dispatch, T receiver, Engine engine) {
+        this.dispatch = dispatch;
+        this.receiver = receiver;
+        this.engine = engine;
+        this.currentAPI = new Context(this);
+        dispatch.setAPI(receiver, this);
+    }
+
+    private Context() {
+        this.dispatch = null;
+        this.receiver = null;
+        this.engine = null;
+        this.currentAPI = null;
+    }
+
+    private <T> Context(Context creatorAPI) {
+        this.dispatch = creatorAPI.dispatch;
+        this.receiver = creatorAPI.receiver;
+        this.engine = creatorAPI.engine.currentAPI;
+        this.currentAPI = null;
     }
 
     /**
@@ -320,7 +342,7 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public Engine getEngine() {
-        return impl.getEngineImpl(this);
+        return engine;
     }
 
     /**
@@ -350,7 +372,7 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public Value eval(Source source) {
-        return impl.eval(source.getLanguage(), source.impl);
+        return dispatch.eval(receiver, source.getLanguage(), source.receiver);
     }
 
     /**
@@ -431,7 +453,7 @@ public final class Context implements AutoCloseable {
      * @since 20.2
      */
     public Value parse(Source source) throws PolyglotException {
-        return impl.parse(source.getLanguage(), source.impl);
+        return dispatch.parse(receiver, source.getLanguage(), source.receiver);
     }
 
     /**
@@ -494,7 +516,7 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public Value getPolyglotBindings() {
-        return impl.getPolyglotBindings();
+        return dispatch.getPolyglotBindings(receiver);
     }
 
     /**
@@ -511,7 +533,7 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public Value getBindings(String languageId) {
-        return impl.getBindings(languageId);
+        return dispatch.getBindings(receiver, languageId);
     }
 
     /**
@@ -527,7 +549,7 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public boolean initialize(String languageId) {
-        return impl.initializeLanguage(languageId);
+        return dispatch.initializeLanguage(receiver, languageId);
     }
 
     /**
@@ -536,7 +558,7 @@ public final class Context implements AutoCloseable {
      * @since 19.3
      */
     public void resetLimits() {
-        impl.resetLimits();
+        dispatch.resetLimits(receiver);
     }
 
     /**
@@ -686,7 +708,7 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public Value asValue(Object hostValue) {
-        return impl.asValue(hostValue);
+        return dispatch.asValue(receiver, hostValue);
     }
 
     /**
@@ -703,7 +725,8 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public void enter() {
-        impl.explicitEnter(this);
+        checkCreatorAccess("entered");
+        dispatch.explicitEnter(receiver);
     }
 
     /**
@@ -715,7 +738,7 @@ public final class Context implements AutoCloseable {
     public boolean equals(Object obj) {
         if (obj instanceof Context) {
             Context other = ((Context) obj);
-            return impl.equals(other.impl);
+            return receiver.equals(other.receiver);
         }
         return false;
     }
@@ -727,7 +750,7 @@ public final class Context implements AutoCloseable {
      */
     @Override
     public int hashCode() {
-        return impl.hashCode();
+        return receiver.hashCode();
     }
 
     /**
@@ -740,7 +763,14 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public void leave() {
-        impl.explicitLeave(this);
+        checkCreatorAccess("left");
+        dispatch.explicitLeave(receiver);
+    }
+
+    private void checkCreatorAccess(String operation) {
+        if (this.currentAPI == null) {
+            throw new IllegalStateException(String.format("Context instances that were received using Context.get() cannot be %s.", operation));
+        }
     }
 
     /**
@@ -767,7 +797,8 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public void close(boolean cancelIfExecuting) {
-        impl.close(this, cancelIfExecuting);
+        checkCreatorAccess("closed");
+        dispatch.close(receiver, cancelIfExecuting);
     }
 
     /**
@@ -810,7 +841,8 @@ public final class Context implements AutoCloseable {
      * @since 20.3
      */
     public void interrupt(Duration timeout) throws TimeoutException {
-        if (!impl.interrupt(this, timeout)) {
+        checkCreatorAccess("interrupted");
+        if (!dispatch.interrupt(receiver, timeout)) {
             throw new TimeoutException("Interrupt timed out.");
         }
     }
@@ -858,7 +890,7 @@ public final class Context implements AutoCloseable {
      * @since 21.1
      */
     public void safepoint() {
-        impl.safepoint();
+        dispatch.safepoint(receiver);
     }
 
     /**
@@ -890,7 +922,12 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public static Context getCurrent() {
-        return Engine.getImpl().getCurrentContext();
+        Context context = Engine.getImpl().getCurrentContext();
+        if (context.currentAPI == null) {
+            return context;
+        } else {
+            return context.currentAPI;
+        }
     }
 
     /**
@@ -917,7 +954,7 @@ public final class Context implements AutoCloseable {
         return EMPTY.new Builder(permittedLanguages);
     }
 
-    private static final Context EMPTY = new Context(null);
+    private static final Context EMPTY = new Context();
 
     static final Predicate<String> UNSET_HOST_LOOKUP = new Predicate<String>() {
         public boolean test(String t) {
@@ -1653,7 +1690,7 @@ public final class Context implements AutoCloseable {
             }
             Object limits;
             if (resourceLimits != null) {
-                limits = resourceLimits.impl;
+                limits = resourceLimits.receiver;
             } else {
                 limits = null;
             }
@@ -1663,6 +1700,7 @@ public final class Context implements AutoCloseable {
             }
             String localCurrentWorkingDirectory = currentWorkingDirectory == null ? null : currentWorkingDirectory.toString();
             Engine engine = this.sharedEngine;
+            Context ctx;
             if (engine == null) {
                 org.graalvm.polyglot.Engine.Builder engineBuilder = Engine.newBuilder().options(options == null ? Collections.emptyMap() : options);
                 if (out != null) {
@@ -1685,22 +1723,22 @@ public final class Context implements AutoCloseable {
                 engineBuilder.allowExperimentalOptions(experimentalOptions);
                 engineBuilder.setBoundEngine(true);
                 engine = engineBuilder.build();
-                Context ctx = engine.impl.createContext(null, null, null, hostClassLookupEnabled, hostAccess, polyglotAccess, nativeAccess, createThread,
+                ctx = engine.dispatch.createContext(engine.receiver, null, null, null, hostClassLookupEnabled, hostAccess, polyglotAccess, nativeAccess, createThread,
                                 io, hostClassLoading, experimentalOptions,
                                 localHostLookupFilter, Collections.emptyMap(), arguments == null ? Collections.emptyMap() : arguments,
                                 onlyLanguages, customFileSystem, customLogHandler, createProcess, processHandler, environmentAccess, environment, zone, limits,
                                 localCurrentWorkingDirectory, hostClassLoader);
-                return ctx;
             } else {
                 if (messageTransport != null) {
                     throw new IllegalStateException("Cannot use MessageTransport in a context that shares an Engine.");
                 }
-                return engine.impl.createContext(out, err, in, hostClassLookupEnabled, hostAccess, polyglotAccess, nativeAccess, createThread,
+                ctx = engine.dispatch.createContext(engine.receiver, out, err, in, hostClassLookupEnabled, hostAccess, polyglotAccess, nativeAccess, createThread,
                                 io, hostClassLoading, experimentalOptions,
                                 localHostLookupFilter, options == null ? Collections.emptyMap() : options, arguments == null ? Collections.emptyMap() : arguments,
                                 onlyLanguages, customFileSystem, customLogHandler, createProcess, processHandler, environmentAccess, environment, zone, limits,
                                 localCurrentWorkingDirectory, hostClassLoader);
             }
+            return ctx;
         }
 
         private boolean orAllAccess(Boolean optionalBoolean) {

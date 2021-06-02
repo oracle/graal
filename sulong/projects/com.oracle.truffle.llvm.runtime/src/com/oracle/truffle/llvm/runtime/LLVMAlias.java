@@ -40,7 +40,7 @@ public class LLVMAlias extends LLVMSymbol {
     @CompilationFinal private LLVMSymbol target;
 
     public LLVMAlias(String name, LLVMSymbol target, boolean exported) {
-        super(name, LLVMSymbol.INVALID_ID, LLVMSymbol.INVALID_ID, exported, false);
+        super(name, IDGenerater.INVALID_ID, LLVMSymbol.INVALID_INDEX, exported, false);
         setTarget(target);
     }
 

@@ -119,12 +119,21 @@ public abstract class SymbolTable {
             if (this.paramTypes.length != that.paramTypes.length) {
                 return false;
             }
-            for (int i = 0; i < paramTypes.length; i++) {
+            for (int i = 0; i < this.paramTypes.length; i++) {
                 if (this.paramTypes[i] != that.paramTypes[i]) {
                     return false;
                 }
             }
             return true;
+        }
+
+        @Override
+        public String toString() {
+            String[] paramNames = new String[paramTypes.length];
+            for (int i = 0; i < paramTypes.length; i++) {
+                paramNames[i] = WasmType.toString(paramTypes[i]);
+            }
+            return Arrays.toString(paramNames) + " -> " + WasmType.toString(returnType);
         }
     }
 
@@ -568,7 +577,7 @@ public abstract class SymbolTable {
         return typeCount;
     }
 
-    FunctionType typeAt(int index) {
+    public FunctionType typeAt(int index) {
         return new FunctionType(functionTypeArgumentTypes(index).toArray(), functionTypeReturnType(index));
     }
 

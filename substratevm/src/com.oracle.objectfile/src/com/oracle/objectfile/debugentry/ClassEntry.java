@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -26,19 +26,22 @@
 
 package com.oracle.objectfile.debugentry;
 
-import com.oracle.objectfile.debuginfo.DebugInfoProvider;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugMethodInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugInstanceTypeInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind;
-import org.graalvm.compiler.debug.DebugContext;
-
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
+
+import org.graalvm.compiler.debug.DebugContext;
+
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFieldInfo;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugInstanceTypeInfo;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugMethodInfo;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind;
 
 /**
  * Track debug info associated with a Java class.
@@ -51,7 +54,7 @@ public class ClassEntry extends StructureTypeEntry {
     /**
      * Details of this class's interfaces.
      */
-    protected LinkedList<InterfaceClassEntry> interfaces;
+    protected List<InterfaceClassEntry> interfaces;
     /**
      * Details of the associated file.
      */
@@ -64,7 +67,7 @@ public class ClassEntry extends StructureTypeEntry {
      * A list recording details of all primary ranges included in this class sorted by ascending
      * address range.
      */
-    private LinkedList<PrimaryEntry> primaryEntries;
+    private List<PrimaryEntry> primaryEntries;
     /**
      * An index identifying primary ranges which have already been encountered.
      */
@@ -76,7 +79,7 @@ public class ClassEntry extends StructureTypeEntry {
     /**
      * A list of the same files.
      */
-    private LinkedList<FileEntry> localFiles;
+    private List<FileEntry> localFiles;
     /**
      * An index of all primary and secondary dirs referenced from this class's compilation unit.
      */
@@ -84,7 +87,7 @@ public class ClassEntry extends StructureTypeEntry {
     /**
      * A list of the same dirs.
      */
-    private LinkedList<DirEntry> localDirs;
+    private List<DirEntry> localDirs;
     /**
      * This flag is true iff the entry includes methods that are deopt targets.
      */
@@ -92,14 +95,17 @@ public class ClassEntry extends StructureTypeEntry {
 
     public ClassEntry(String className, FileEntry fileEntry, int size) {
         super(className, size);
-        this.interfaces = new LinkedList<>();
+        this.interfaces = new ArrayList<>();
         this.fileEntry = fileEntry;
+        // methods is a sorted list and we want to be able to add more elements to it while keeping
+        // it sorted,
+        // so a LinkedList seems more appropriate than an ArrayList. (see getMethodEntry)
         this.methods = new LinkedList<>();
-        this.primaryEntries = new LinkedList<>();
+        this.primaryEntries = new ArrayList<>();
         this.primaryIndex = new HashMap<>();
-        this.localFiles = new LinkedList<>();
+        this.localFiles = new ArrayList<>();
         this.localFilesIndex = new HashMap<>();
-        this.localDirs = new LinkedList<>();
+        this.localDirs = new ArrayList<>();
         this.localDirsIndex = new HashMap<>();
         if (fileEntry != null) {
             localFiles.add(fileEntry);
@@ -134,7 +140,9 @@ public class ClassEntry extends StructureTypeEntry {
         /* Add details of fields and field types */
         debugInstanceTypeInfo.fieldInfoProvider().forEach(debugFieldInfo -> this.processField(debugFieldInfo, debugInfoBase, debugContext));
         /* Add details of methods and method types */
-        debugInstanceTypeInfo.methodInfoProvider().forEach(methodFieldInfo -> this.processMethod(methodFieldInfo, debugInfoBase, debugContext));
+        debugInstanceTypeInfo.methodInfoProvider().forEach(methodFieldInfo -> this.methods.add(this.processMethod(methodFieldInfo, debugInfoBase, debugContext)));
+        /* Sort methods to improve lookup speed */
+        this.methods.sort(MethodEntry::compareTo);
     }
 
     public void indexPrimary(Range primary, List<DebugFrameSizeChange> frameSizeInfos, int frameSize) {
@@ -227,7 +235,7 @@ public class ClassEntry extends StructureTypeEntry {
         return fileEntry;
     }
 
-    public LinkedList<PrimaryEntry> getPrimaryEntries() {
+    public List<PrimaryEntry> getPrimaryEntries() {
         return primaryEntries;
     }
 
@@ -236,11 +244,11 @@ public class ClassEntry extends StructureTypeEntry {
         return primaryIndex.get(primaryRange);
     }
 
-    public LinkedList<DirEntry> getLocalDirs() {
+    public List<DirEntry> getLocalDirs() {
         return localDirs;
     }
 
-    public LinkedList<FileEntry> getLocalFiles() {
+    public List<FileEntry> getLocalFiles() {
         return localFiles;
     }
 
@@ -267,7 +275,7 @@ public class ClassEntry extends StructureTypeEntry {
         interfaceClassEntry.addImplementor(this, debugContext);
     }
 
-    protected void processMethod(DebugMethodInfo debugMethodInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
+    protected MethodEntry processMethod(DebugMethodInfo debugMethodInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
         String methodName = debugInfoBase.uniqueDebugString(debugMethodInfo.name());
         String resultTypeName = TypeEntry.canonicalize(debugMethodInfo.valueType());
         int modifiers = debugMethodInfo.modifiers();
@@ -294,11 +302,11 @@ public class ClassEntry extends StructureTypeEntry {
          * substitution
          */
         FileEntry methodFileEntry = debugInfoBase.ensureFileEntry(fileName, filePath, cachePath);
-        methods.add(new MethodEntry(methodFileEntry, methodName, this, resultType, paramTypeArray, paramNameArray, modifiers));
+        return new MethodEntry(methodFileEntry, methodName, this, resultType, paramTypeArray, paramNameArray, modifiers, debugMethodInfo.isDeoptTarget());
     }
 
     @Override
-    protected FieldEntry addField(DebugInfoProvider.DebugFieldInfo debugFieldInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
+    protected FieldEntry addField(DebugFieldInfo debugFieldInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
         FieldEntry fieldEntry = super.addField(debugFieldInfo, debugInfoBase, debugContext);
         FileEntry fieldFileEntry = fieldEntry.getFileEntry();
         if (fieldFileEntry != null) {
@@ -335,27 +343,39 @@ public class ClassEntry extends StructureTypeEntry {
         return superClass;
     }
 
-    public Range makePrimaryRange(String methodName, String symbolName, String paramSignature, String returnTypeName, StringTable stringTable, FileEntry primaryFileEntry, int lo,
-                    int hi, int primaryLine,
-                    int modifiers, boolean isDeoptTarget) {
-        FileEntry fileEntryToUse = primaryFileEntry;
+    public Range makePrimaryRange(String symbolName, StringTable stringTable, MethodEntry method, int lo, int hi, int primaryLine) {
+        FileEntry fileEntryToUse = method.fileEntry;
         if (fileEntryToUse == null) {
-            /*
-             * Search for a matching method to supply the file entry or failing that use the one
-             * from this class.
-             */
-            for (MethodEntry methodEntry : methods) {
-                if (methodEntry.match(methodName, paramSignature, returnTypeName)) {
-                    /* maybe the method's file entry */
-                    fileEntryToUse = methodEntry.getFileEntry();
-                    break;
-                }
-            }
-            if (fileEntryToUse == null) {
-                /* Last chance is the class's file entry. */
-                fileEntryToUse = this.fileEntry;
+            /* Last chance is the class's file entry. */
+            fileEntryToUse = this.fileEntry;
+        }
+        return new Range(symbolName, stringTable, method, fileEntryToUse, lo, hi, primaryLine);
+    }
+
+    public MethodEntry getMethodEntry(DebugMethodInfo debugMethodInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
+        assert listIsSorted(methods);
+        String methodName = debugInfoBase.uniqueDebugString(debugMethodInfo.name());
+        String paramSignature = debugMethodInfo.paramSignature();
+        String returnTypeName = debugMethodInfo.valueType();
+        ListIterator<MethodEntry> methodIterator = methods.listIterator();
+        while (methodIterator.hasNext()) {
+            MethodEntry methodEntry = methodIterator.next();
+            int comparisonResult = methodEntry.compareTo(methodName, paramSignature, returnTypeName);
+            if (comparisonResult == 0) {
+                return methodEntry;
+            } else if (comparisonResult > 0) {
+                methodIterator.previous();
+                break;
             }
         }
-        return new Range(this.typeName, methodName, symbolName, paramSignature, returnTypeName, stringTable, fileEntryToUse, lo, hi, primaryLine, modifiers, isDeoptTarget);
+        MethodEntry newMethodEntry = processMethod(debugMethodInfo, debugInfoBase, debugContext);
+        methodIterator.add(newMethodEntry);
+        return newMethodEntry;
+    }
+
+    private static boolean listIsSorted(List<MethodEntry> list) {
+        List<MethodEntry> copy = new ArrayList<>(list);
+        copy.sort(MethodEntry::compareTo);
+        return list.equals(copy);
     }
 }

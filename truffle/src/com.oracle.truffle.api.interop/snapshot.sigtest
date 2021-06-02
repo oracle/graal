@@ -4,11 +4,18 @@
 CLSS public final com.oracle.truffle.api.interop.ArityException
 meth public int getActualArity()
 meth public int getExpectedArity()
+ anno 0 java.lang.Deprecated()
+meth public int getExpectedMaxArity()
+meth public int getExpectedMinArity()
 meth public java.lang.String getMessage()
 meth public static com.oracle.truffle.api.interop.ArityException create(int,int)
+ anno 0 java.lang.Deprecated()
+meth public static com.oracle.truffle.api.interop.ArityException create(int,int,int)
+meth public static com.oracle.truffle.api.interop.ArityException create(int,int,int,java.lang.Throwable)
 meth public static com.oracle.truffle.api.interop.ArityException create(int,int,java.lang.Throwable)
+ anno 0 java.lang.Deprecated()
 supr com.oracle.truffle.api.interop.InteropException
-hfds actualArity,expectedArity,serialVersionUID
+hfds actualArity,expectedMaxArity,expectedMinArity,serialVersionUID
 
 CLSS public final !enum com.oracle.truffle.api.interop.ExceptionType
 fld public final static com.oracle.truffle.api.interop.ExceptionType EXIT
@@ -185,7 +192,7 @@ meth public long getLength()
 meth public static com.oracle.truffle.api.interop.InvalidBufferOffsetException create(long,long)
 meth public static com.oracle.truffle.api.interop.InvalidBufferOffsetException create(long,long,java.lang.Throwable)
 supr com.oracle.truffle.api.interop.InteropException
-hfds index,length,serialVersionUID
+hfds byteOffset,length,serialVersionUID
 
 CLSS public abstract com.oracle.truffle.api.interop.NodeLibrary
 cons protected init()
@@ -208,7 +215,7 @@ meth public java.lang.String getMessage()
 meth public static com.oracle.truffle.api.interop.StopIterationException create()
 meth public static com.oracle.truffle.api.interop.StopIterationException create(java.lang.Throwable)
 supr com.oracle.truffle.api.interop.InteropException
-hfds serialVersionUID
+hfds INSTANCE,serialVersionUID
 
 CLSS public abstract interface com.oracle.truffle.api.interop.TruffleObject
 

@@ -172,6 +172,11 @@ final class StackOverflowCheckImpl implements StackOverflowCheck {
         }
     }
 
+    @Override
+    public boolean isYellowZoneAvailable() {
+        return yellowZoneStateTL.get() > STATE_YELLOW_ENABLED;
+    }
+
     @Uninterruptible(reason = "Atomically manipulating state of multiple thread local variables.")
     @Override
     public void protectYellowZone() {

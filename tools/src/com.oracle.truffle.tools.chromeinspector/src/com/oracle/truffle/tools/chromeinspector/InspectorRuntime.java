@@ -327,6 +327,10 @@ public final class InspectorRuntime extends RuntimeDomain {
                         @Override
                         public Void executeCommand() throws CommandProcessException {
                             Collection<DebugValue> properties = new ArrayList<>();
+                            DebugValue scopeReceiver = object.getScopeReceiver();
+                            if (scopeReceiver != null) {
+                                properties.add(scopeReceiver);
+                            }
                             for (DebugValue p : scope.getDeclaredValues()) {
                                 properties.add(p);
                             }

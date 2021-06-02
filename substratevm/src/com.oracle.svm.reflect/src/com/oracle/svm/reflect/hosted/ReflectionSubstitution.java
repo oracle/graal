@@ -29,9 +29,8 @@ package com.oracle.svm.reflect.hosted;
 /* Allow imports of java.lang.reflect and sun.misc.ProxyGenerator: Checkstyle: allow reflection. */
 
 import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
+import java.lang.reflect.Executable;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Proxy;
@@ -60,21 +59,21 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
- * Maintains a mapping between reflection-accessible {@link Member}s and {@link Proxy} classes used
- * to access the member reflectively. Also holds a mapping between {@link Proxy} classes and
- * {@link ReflectionSubstitutionType}s that are used as substitutions for the proxy classes at image
- * build time.
+ * Maintains a mapping between reflection-accessible {@link Executable}s and {@link Proxy} classes
+ * used to invoke the method/constructor reflectively. Also holds a mapping between {@link Proxy}
+ * classes and {@link ReflectionSubstitutionType}s that are used as substitutions for the proxy
+ * classes at image build time.
  * <p>
  * The proxy classes are generated dynamically at build time, in the hosted environment. There is
- * one proxy class per reflection-accessible {@link Member} (but there may be multiple instances of
- * each proxy class). Instances of the proxy classes are used for the accessor fields of
- * {@link Member} instances in Native Image (see {@link AccessorComputer}). The proxy instances
- * dispatch calls to a placeholder invocation handler that only implements {@code toString()} (see
- * {@link ReflectionProxyHelper#setDefaultInvocationHandler}).
+ * one proxy class per reflection-accessible {@link Executable} (but there may be multiple instances
+ * of each proxy class). Instances of the proxy classes are used for the accessor fields of
+ * {@link Executable} instances in Native Image (see {@link ExecutableAccessorComputer}). The proxy
+ * instances dispatch calls to a placeholder invocation handler that only implements
+ * {@code toString()} (see {@link ReflectionProxyHelper#setDefaultInvocationHandler}).
  * <p>
  * At image build time, the proxy instances are substituted with {@link ReflectionSubstitutionType}s
  * that either implement {@code FieldAccessor}, {@code ConstructorAccessor} or
- * {@code MethodAccessor} (depending on the type of {@link Member}).
+ * {@code MethodAccessor} (depending on the type of {@link Executable}).
  */
 final class ReflectionSubstitution extends CustomSubstitution<ReflectionSubstitutionType> {
 
@@ -93,16 +92,16 @@ final class ReflectionSubstitution extends CustomSubstitution<ReflectionSubstitu
     private final ResolvedJavaType javaLangReflectProxy;
 
     /**
-     * Maps each {@link Member} accessible by reflection to the dynamic proxy class that should be
-     * used to access it reflectively.
+     * Maps each {@link Executable} accessible by reflection to the dynamic proxy class that should
+     * be used to access it reflectively.
      */
-    private final HashMap<Member, Class<?>> proxyMap = new HashMap<>();
+    private final HashMap<Executable, Class<?>> proxyMap = new HashMap<>();
 
     /**
-     * Maps the type of each generated dynamic proxy class to the {@link Member} that it accesses
-     * reflectively.
+     * Maps the type of each generated dynamic proxy class to the {@link Executable} that it
+     * accesses reflectively.
      */
-    private final HashMap<ResolvedJavaType, Member> typeToMember = new HashMap<>();
+    private final HashMap<ResolvedJavaType, Executable> typeToMember = new HashMap<>();
 
     private static final AtomicInteger proxyNr = new AtomicInteger(0);
 
@@ -122,14 +121,12 @@ final class ReflectionSubstitution extends CustomSubstitution<ReflectionSubstitu
      * Gets a unique, stable, fully qualified name for the {@link Proxy} class used to access a
      * given member.
      */
-    static String getStableProxyName(Member member) {
+    static String getStableProxyName(Executable member) {
         return "com.oracle.svm.reflect." + SubstrateUtil.uniqueShortName(member);
     }
 
-    private static Class<?> getAccessorInterface(Member member) {
-        if (member instanceof Field) {
-            return packageJdkInternalReflectClassForName("FieldAccessor");
-        } else if (member instanceof Method) {
+    private static Class<?> getAccessorInterface(Executable member) {
+        if (member instanceof Method) {
             return packageJdkInternalReflectClassForName("MethodAccessor");
         } else if (member instanceof Constructor) {
             return packageJdkInternalReflectClassForName("ConstructorAccessor");
@@ -209,12 +206,12 @@ final class ReflectionSubstitution extends CustomSubstitution<ReflectionSubstitu
     }
 
     /**
-     * Gets or creates a proxy class for accessing a given {@link Member} reflectively.
+     * Gets or creates a proxy class for accessing a given {@link Executable} reflectively.
      * <p>
      * The proxy class extends {@link Proxy} and implements either {@code FieldAccessor},
      * {@code MethodAccessor} or {@code ConstructorAccessor}.
      */
-    synchronized Class<?> getProxyClass(Member member) {
+    synchronized Class<?> getProxyClass(Executable member) {
         Class<?> proxyClass = proxyMap.get(member);
         if (proxyClass == null) {
             /* the unique ID is added for unit tests that don't change the class loader */
@@ -295,7 +292,7 @@ final class ReflectionSubstitution extends CustomSubstitution<ReflectionSubstitu
     private synchronized ReflectionSubstitutionType getSubstitution(ResolvedJavaType proxyClass) {
         ReflectionSubstitutionType subst = getSubstitutionType(proxyClass);
         if (subst == null) {
-            Member member = typeToMember.get(proxyClass);
+            Executable member = typeToMember.get(proxyClass);
             subst = ImageSingletons.lookup(ReflectionSubstitutionType.Factory.class).create(proxyClass, member);
             addSubstitutionType(proxyClass, subst);
         }

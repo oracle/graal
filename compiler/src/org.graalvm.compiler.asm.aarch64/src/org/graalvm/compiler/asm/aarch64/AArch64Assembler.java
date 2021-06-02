@@ -25,20 +25,6 @@
  */
 package org.graalvm.compiler.asm.aarch64;
 
-import jdk.vm.ci.aarch64.AArch64;
-import jdk.vm.ci.aarch64.AArch64.CPUFeature;
-import jdk.vm.ci.aarch64.AArch64.Flag;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.TargetDescription;
-import org.graalvm.compiler.asm.Assembler;
-import org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode;
-import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.compiler.debug.GraalError;
-
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.util.Arrays;
-
 import static jdk.vm.ci.aarch64.AArch64.CPU;
 import static jdk.vm.ci.aarch64.AArch64.SIMD;
 import static jdk.vm.ci.aarch64.AArch64.cpuRegisters;
@@ -141,6 +127,21 @@ import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.InstructionType.
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.InstructionType.General64;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.InstructionType.floatFromSize;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.InstructionType.generalFromSize;
+
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.util.Arrays;
+
+import org.graalvm.compiler.asm.Assembler;
+import org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode;
+import org.graalvm.compiler.core.common.NumUtil;
+import org.graalvm.compiler.debug.GraalError;
+
+import jdk.vm.ci.aarch64.AArch64;
+import jdk.vm.ci.aarch64.AArch64.CPUFeature;
+import jdk.vm.ci.aarch64.AArch64.Flag;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.TargetDescription;
 
 public abstract class AArch64Assembler extends Assembler {
 
@@ -658,7 +659,8 @@ public abstract class AArch64Assembler extends Assembler {
     }
 
     public enum DataCacheOperationType {
-        ZVA(0b011, 0b0100, 0b001);
+        ZVA(0b011, 0b0100, 0b001),
+        CVAP(0b011, 0b1100, 0b001);
 
         DataCacheOperationType(int op1, int crm, int op2) {
             this.op1 = op1;
@@ -1010,6 +1012,13 @@ public abstract class AArch64Assembler extends Assembler {
      * @param imm28 Signed 28-bit offset, has to be word aligned.
      */
     public void bl(int imm28) {
+        /*
+         * Currently within Graal all bl instructions will be patched later.
+         *
+         * Hence, for now imm28 should always be 0. If at a later time the imm28 can be a meaningful
+         * value, then this assert can be reevaluated.
+         */
+        assert imm28 == 0;
         unconditionalBranchImmInstruction(imm28, Instruction.BL, -1);
     }
 
@@ -1282,8 +1291,8 @@ public abstract class AArch64Assembler extends Assembler {
     /**
      * Insert ldp/stp at the specified position.
      */
-    protected void insertLdpStp(int position, int size, Instruction instr, Register rt, Register rt2, AArch64Address address) {
-        int instructionEncoding = generateLoadStorePairInstructionEncoding(instr, rt, rt2, address, false, getLog2TransferSize(size));
+    protected void insertLdpStp(int position, int size, Instruction instr, boolean isFP, Register rt, Register rt2, AArch64Address address) {
+        int instructionEncoding = generateLoadStorePairInstructionEncoding(instr, rt, rt2, address, isFP, getLog2TransferSize(size));
         emitInt(instructionEncoding, position);
     }
 

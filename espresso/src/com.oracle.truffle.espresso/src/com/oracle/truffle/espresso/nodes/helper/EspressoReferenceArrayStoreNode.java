@@ -41,21 +41,17 @@ public class EspressoReferenceArrayStoreNode extends Node {
     }
 
     public void arrayStore(StaticObject value, int index, StaticObject array) {
-        assert !array.isForeignObject();
-        assert array.isArray();
-        if (index >= 0 && index < array.length()) {
-            if (StaticObject.isNull(value) || typeCheck.executeTypeCheck(((ArrayKlass) array.getKlass()).getComponentType(), value.getKlass())) {
-                array.putObjectUnsafe(value, index);
-            } else {
-                enterArrayStoreEx();
-                Meta meta = typeCheck.getMeta();
-                throw meta.throwException(meta.java_lang_ArrayStoreException);
-            }
-        } else {
+        if (Integer.compareUnsigned(index, array.length()) >= 0) {
             enterOutOfBound();
             Meta meta = typeCheck.getMeta();
             throw meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
         }
+        if (!StaticObject.isNull(value) && !typeCheck.executeTypeCheck(((ArrayKlass) array.getKlass()).getComponentType(), value.getKlass())) {
+            enterArrayStoreEx();
+            Meta meta = typeCheck.getMeta();
+            throw meta.throwException(meta.java_lang_ArrayStoreException);
+        }
+        (array.<Object[]> unwrap())[index] = value;
     }
 
     private void enterOutOfBound() {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,7 @@ import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.impl.ClassRedefinition;
+import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
@@ -253,7 +253,7 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
 
         Method reflectedMethod = m;
         if (reflectedMethod.isRemovedByRedefition()) {
-            reflectedMethod = ClassRedefinition.handleRemovedMethod(reflectedMethod, reflectedMethod.isStatic() ? reflectedMethod.getDeclaringKlass() : receiver.getKlass());
+            reflectedMethod = ClassRedefinition.handleRemovedMethod(reflectedMethod, reflectedMethod.isStatic() ? reflectedMethod.getDeclaringKlass() : receiver.getKlass(), receiver);
         }
 
         Method method;      // actual method to invoke

@@ -221,6 +221,11 @@
       <property name="message" value="Single year shouldn't be duplicated"/>
       <property name="illegalPattern" value="true"/>
     </module>
+    <module name="Regexp">
+      <property name="format" value="[^/](?i)master|(?i)slave|(?i)whitelist|(?i)blacklist|(?i)whitehat|(?i)blackhat|(?i)grandfather"/>
+      <message key="illegal.regexp" value="Avoid insensitive term matched by {0}." />
+      <property name="illegalPattern" value="true"/>
+    </module>
   </module>
   <module name="LineLength">
     <property name="max" value="250"/>

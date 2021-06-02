@@ -49,6 +49,7 @@ import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.IntrinsicSubstitutorNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.dispatch.EspressoInterop;
 
 /**
  * Substitutions/intrinsics for Espresso.
@@ -236,7 +237,7 @@ public final class Substitutions implements ContextAccess {
                         StaticObject givenLoader = methodToSubstitute.getDeclaringKlass().getDefiningClassLoader();
                         return "Static substitution for " + methodToSubstitute + " does not apply.\n" +
                                         "\tExpected class loader: Boot (null) or platform class loader\n" +
-                                        "\tGiven class loader: " + givenLoader.toDisplayString(false) + "\n";
+                                        "\tGiven class loader: " + EspressoInterop.toDisplayString(givenLoader, false) + "\n";
                     }
                 });
                 return null;

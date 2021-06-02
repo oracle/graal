@@ -51,6 +51,7 @@ public abstract class TestWithSynchronousCompiling extends TestWithPolyglotOptio
                     "engine.SingleTierCompilationThreshold", "10", //
                     "engine.LastTierCompilationThreshold", "10", //
                     "engine.FirstTierCompilationThreshold", "5", //
+                    "engine.DynamicCompilationThresholds", Boolean.FALSE.toString(), //
                     "engine.CompileImmediately", Boolean.FALSE.toString()
     };
 

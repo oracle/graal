@@ -78,16 +78,6 @@ final class DynamicObjectSupport {
         trimPrimitiveStore(object, thisShape, otherShape);
     }
 
-    static void growAndSetShape(DynamicObject object, Shape thisShape, Shape otherShape) {
-        grow(object, thisShape, otherShape);
-        ACCESS.setShape(object, otherShape);
-    }
-
-    static void resizeAndSetShape(DynamicObject object, Shape thisShape, Shape otherShape) {
-        resize(object, thisShape, otherShape);
-        ACCESS.setShape(object, otherShape);
-    }
-
     private static void growObjectStore(DynamicObject object, Shape oldShape, Shape newShape) {
         int sourceCapacity = getObjectArrayCapacity(oldShape);
         int destinationCapacity = getObjectArrayCapacity(newShape);

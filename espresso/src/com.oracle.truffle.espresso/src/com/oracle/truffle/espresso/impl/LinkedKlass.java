@@ -26,12 +26,16 @@ import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINALIZER;
 
 import java.lang.reflect.Modifier;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.runtime.Attribute;
+import com.oracle.truffle.espresso.runtime.StaticObject.StaticObjectFactory;
+import com.oracle.truffle.espresso.staticobject.ClassLoaderCache;
+import com.oracle.truffle.espresso.staticobject.StaticShape;
 
 // Structural shareable klass (superklass in superinterfaces resolved and linked)
 // contains shape, field locations.
@@ -52,12 +56,28 @@ public final class LinkedKlass {
 
     private final boolean hasFinalizer;
 
-    private final LinkedKlassFieldLayout fieldLayout;
+    private final StaticShape<StaticObjectFactory> instanceShape;
+    private final StaticShape<StaticObjectFactory> staticShape;
 
-    public LinkedKlass(ParserKlass parserKlass, LinkedKlass superKlass, LinkedKlass[] interfaces) {
+    // instance fields declared in the corresponding LinkedKlass (includes hidden fields)
+    @CompilerDirectives.CompilationFinal(dimensions = 1) //
+    final LinkedField[] instanceFields;
+    // static fields declared in the corresponding LinkedKlass (no hidden fields)
+    @CompilerDirectives.CompilationFinal(dimensions = 1) //
+    final LinkedField[] staticFields;
+
+    final int fieldTableLength;
+
+    private LinkedKlass(ParserKlass parserKlass, LinkedKlass superKlass, LinkedKlass[] interfaces, StaticShape<StaticObjectFactory> instanceShape,
+                    StaticShape<StaticObjectFactory> staticShape, LinkedField[] instanceFields, LinkedField[] staticFields, int fieldTableLength) {
         this.parserKlass = parserKlass;
         this.superKlass = superKlass;
         this.interfaces = interfaces;
+        this.instanceShape = instanceShape;
+        this.staticShape = staticShape;
+        this.instanceFields = instanceFields;
+        this.staticFields = staticFields;
+        this.fieldTableLength = fieldTableLength;
 
         // Streams are forbidden in Espresso.
         // assert Arrays.stream(interfaces).allMatch(i -> Modifier.isInterface(i.getFlags()));
@@ -77,34 +97,42 @@ public final class LinkedKlass {
             // supported.
             linkedMethods[i] = new LinkedMethod(parserMethod);
         }
-
         this.methods = linkedMethods;
-
-        fieldLayout = LinkedKlassFieldLayout.create(parserKlass, superKlass);
     }
 
-    public int getObjectFieldsCount() {
-        return fieldLayout.objectFields;
+    public static LinkedKlass create(ClassLoaderCache clc, ParserKlass parserKlass, LinkedKlass superKlass, LinkedKlass[] interfaces) {
+        LinkedKlassFieldLayout fieldLayout = new LinkedKlassFieldLayout(clc, parserKlass, superKlass);
+        return new LinkedKlass(
+                        parserKlass,
+                        superKlass,
+                        interfaces,
+                        fieldLayout.instanceShape,
+                        fieldLayout.staticShape,
+                        fieldLayout.instanceFields,
+                        fieldLayout.staticFields,
+                        fieldLayout.fieldTableLength);
     }
 
-    public int getInstancePrimitiveToAlloc() {
-        return fieldLayout.instanceToAlloc;
-    }
-
-    public int getPrimitiveInstanceFieldLastOffset() {
-        return fieldLayout.primInstanceLastOffset;
-    }
-
-    public int getStaticObjectFieldsCount() {
-        return fieldLayout.staticObjectFields;
-    }
-
-    public int getStaticPrimitiveToAlloc() {
-        return fieldLayout.staticToAlloc;
-    }
-
-    public int getPrimitiveStaticFieldLastOffset() {
-        return fieldLayout.primStaticLastOffset;
+    public static LinkedKlass redefine(ParserKlass parserKlass, LinkedKlass superKlass, LinkedKlass[] interfaces, LinkedKlass redefinedKlass) {
+        // On class redefinition we need to re-use the old shape.
+        // If we don't do it, shape checks on field accesses fail because `Field` instances in
+        // `ObjectKlass.fieldTable` hold references to the old shape, which does not match the shape
+        // of the new object instances.
+        // If we work around this issue by patching the `ObjectKlass.fieldTable` on class
+        // redefinition, these new `Field` instances cannot be used to access object instances with
+        // the old shape.
+        // An option would be to create a new shape that stems from the redefined one and contains
+        // only the new fields.
+        // However, this would not work if the redefined shape has subtypes.
+        return new LinkedKlass(
+                        parserKlass,
+                        superKlass,
+                        interfaces,
+                        redefinedKlass.instanceShape,
+                        redefinedKlass.staticShape,
+                        redefinedKlass.instanceFields,
+                        redefinedKlass.staticFields,
+                        redefinedKlass.fieldTableLength);
     }
 
     int getFlags() {
@@ -131,7 +159,7 @@ public final class LinkedKlass {
         return parserKlass.getName();
     }
 
-    ParserKlass getParserKlass() {
+    public ParserKlass getParserKlass() {
         return parserKlass;
     }
 
@@ -156,18 +184,18 @@ public final class LinkedKlass {
     }
 
     LinkedField[] getInstanceFields() {
-        return fieldLayout.instanceFields;
+        return instanceFields;
     }
 
     LinkedField[] getStaticFields() {
-        return fieldLayout.staticFields;
+        return staticFields;
     }
 
     int getFieldTableLength() {
-        return fieldLayout.fieldTableLength;
+        return fieldTableLength;
     }
 
-    int[][] getLeftoverHoles() {
-        return fieldLayout.leftoverHoles;
+    public StaticShape<StaticObjectFactory> getShape(boolean isStatic) {
+        return isStatic ? staticShape : instanceShape;
     }
 }
