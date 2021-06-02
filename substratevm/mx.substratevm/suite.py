@@ -544,10 +544,7 @@ suite = {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
-                "com.oracle.svm.core",
                 "com.oracle.svm.hosted",
-                "com.oracle.svm.util",
-                "com.oracle.graal.pointsto"
             ],
             "checkstyle": "com.oracle.svm.core",
             "javaCompliance": "11+",

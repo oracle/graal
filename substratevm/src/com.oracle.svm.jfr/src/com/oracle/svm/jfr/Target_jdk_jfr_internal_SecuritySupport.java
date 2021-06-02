@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,21 +24,32 @@
  */
 package com.oracle.svm.jfr;
 
+import java.util.List;
+
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.jfr.traceid.JfrTraceIdEpoch;
+import com.oracle.svm.core.util.VMError;
 
-import jdk.internal.misc.Unsafe;
+import jdk.jfr.internal.SecuritySupport.SafePath;
 
-@TargetClass(value = jdk.jfr.internal.StringPool.class, onlyWith = JfrEnabled.class)
-final class Target_jdk_jfr_internal_StringPool {
-
-    @Alias private static Unsafe unsafe;
+@TargetClass(value = jdk.jfr.internal.SecuritySupport.class, onlyWith = JfrEnabled.class)
+public final class Target_jdk_jfr_internal_SecuritySupport {
+    // Checkstyle: stop
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    static SafePath JFC_DIRECTORY;
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    static SafePath USER_HOME;
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    static SafePath JAVA_IO_TMPDIR;
+    // Checkstyle: resume
 
     @Substitute
-    private static boolean getCurrentEpoch() {
-        long addr = JfrTraceIdEpoch.getInstance().getEpochAddress();
-        return unsafe.getByte(addr) == 1;
+    public static List<SafePath> getPredefinedJFCFiles() {
+        throw VMError.shouldNotReachHere("Paths from the image build must not be embedded into the Native Image.");
     }
+
+    @Alias
+    static native SafePath getPathInProperty(String prop, String subPath);
 }

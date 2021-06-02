@@ -28,11 +28,11 @@ import java.util.function.BooleanSupplier;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
+import com.oracle.svm.core.OS;
 import com.oracle.svm.core.VMInspection;
 
 /**
- * Used to include/exclude JFR feature and substitutions. JFR is included when the VMInspection feature is enabled and
- * the underlying JDK is 11+
+ * Used to include/exclude JFR feature and substitutions.
  */
 public class JfrEnabled implements BooleanSupplier {
     @Override
@@ -41,6 +41,6 @@ public class JfrEnabled implements BooleanSupplier {
     }
 
     public static boolean get() {
-        return VMInspection.isEnabled() && JavaVersionUtil.JAVA_SPEC == 11;
+        return VMInspection.isEnabled() && JavaVersionUtil.JAVA_SPEC == 11 && (OS.getCurrent() == OS.LINUX || OS.getCurrent() == OS.DARWIN);
     }
 }

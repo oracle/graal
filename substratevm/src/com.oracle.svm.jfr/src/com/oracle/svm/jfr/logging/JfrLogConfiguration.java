@@ -74,7 +74,7 @@ class JfrLogConfiguration {
         verifySelections(selections);
     }
 
-    private void setLogTagSetLevels(JfrLogSelection[] selections) {
+    private static void setLogTagSetLevels(JfrLogSelection[] selections) {
         LogTag[] values = LogTag.values();
         for (LogTag logTagSet : values) {
             JfrLogLevel logLevel = JfrLogLevel.WARNING;
@@ -88,7 +88,7 @@ class JfrLogConfiguration {
         }
     }
 
-    private void verifySelections(JfrLogSelection[] selections) {
+    private static void verifySelections(JfrLogSelection[] selections) {
         for (JfrLogSelection selection : selections) {
             if (!selection.matchesATagSet) {
                 throw UserError.abort("No tag set matches tag combination %s for FlightRecorderLogging",

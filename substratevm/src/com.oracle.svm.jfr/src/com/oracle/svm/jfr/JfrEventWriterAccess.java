@@ -30,7 +30,6 @@ import java.lang.reflect.Field;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.util.ReflectionUtil;
@@ -41,7 +40,7 @@ import sun.misc.Unsafe;
 /**
  * Used to access the Java event writer class, see {@link jdk.jfr.internal.EventWriter}.
  */
-public final class JfrEventWriterAccess implements Feature {
+public final class JfrEventWriterAccess {
     private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
 
     private static final Field startPosition = ReflectionUtil.lookupField(EventWriter.class, "startPosition");

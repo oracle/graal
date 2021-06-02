@@ -49,15 +49,17 @@ import com.oracle.svm.jfr.traceid.JfrTraceIdMap;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.jfr.events.ClassLoadingStatistics;
 
+import jdk.jfr.Configuration;
 import jdk.jfr.Event;
 import jdk.jfr.internal.JVM;
+import jdk.jfr.internal.jfc.JFC;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.jfr.internal.EventWriter;
 
 /**
  * Provides basic JFR support. As this support is both platform-dependent and JDK-specific, the
  * current support is limited to JDK 11 on Linux/MacOS.
- * 
+ *
  * There are two different kinds of JFR events:
  * <ul>
  * <li>Java-level events where there is a Java class such as {@link ClassLoadingStatistics} that
@@ -67,7 +69,7 @@ import jdk.jfr.internal.EventWriter;
  * For writing such an event to a buffer, we call into {@link JfrNativeEventWriter} and pass a
  * {@link JfrNativeEventWriterData} struct that is typically allocated on the stack.</li>
  * </ul>
- * 
+ *
  * JFR tries to minimize the runtime overhead, so it heavily relies on a hierarchy of buffers when
  * persisting events:
  * <ul>
@@ -110,9 +112,11 @@ public class JfrFeature implements Feature {
         ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.jfr", false);
         ModuleSupport.exportAndOpenAllPackagesToUnnamed("java.base", false);
 
+        // Initialize some parts of JFR/JFC at image build time.
+        List<Configuration> knownConfigurations = JFC.getConfigurations();
         JVM.getJVM().createNativeJFR();
 
-        ImageSingletons.add(SubstrateJVM.class, new SubstrateJVM());
+        ImageSingletons.add(SubstrateJVM.class, new SubstrateJVM(knownConfigurations));
         ImageSingletons.add(JfrManager.class, new JfrManager());
         ImageSingletons.add(JfrSerializerSupport.class, new JfrSerializerSupport());
         ImageSingletons.add(JfrTraceIdMap.class, new JfrTraceIdMap());

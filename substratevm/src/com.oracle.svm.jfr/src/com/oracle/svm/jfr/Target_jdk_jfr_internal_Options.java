@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,20 +25,13 @@
 package com.oracle.svm.jfr;
 
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.jfr.traceid.JfrTraceIdEpoch;
 
-import jdk.internal.misc.Unsafe;
+import jdk.jfr.internal.SecuritySupport.SafePath;
 
-@TargetClass(value = jdk.jfr.internal.StringPool.class, onlyWith = JfrEnabled.class)
-final class Target_jdk_jfr_internal_StringPool {
-
-    @Alias private static Unsafe unsafe;
-
-    @Substitute
-    private static boolean getCurrentEpoch() {
-        long addr = JfrTraceIdEpoch.getInstance().getEpochAddress();
-        return unsafe.getByte(addr) == 1;
-    }
+@TargetClass(value = jdk.jfr.internal.Options.class, onlyWith = JfrEnabled.class)
+public final class Target_jdk_jfr_internal_Options {
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    private static SafePath dumpPath;
 }
