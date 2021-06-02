@@ -261,7 +261,6 @@ def _svm_truffle_tck(native_image, svm_suite, language_suite, language_id):
             '-H:+EnforceMaxRuntimeCompileMethods',
             '-cp',
             cp,
-            '--no-server',
             '-H:-FoldSecurityManagerGetter',
             '-H:TruffleTCKPermissionsReportFile={}'.format(report_file),
             '-H:Path={}'.format(svmbuild),

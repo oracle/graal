@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,9 +23,18 @@
  * questions.
  */
 
-/*
- * This package is intentionally not annotated as HOSTED_ONLY. It contains
- * the server message classes that are used by the driver, i.e., by code
- * distributed as a native image.
- */
-package com.oracle.svm.hosted.server;
+package com.oracle.svm.driver;
+
+import java.nio.file.Path;
+import java.util.List;
+
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+
+public class ModuleAccess {
+    @SuppressWarnings("unused")
+    public static List<String> getModuleNames(Path... modulePathEntries) {
+        assert JavaVersionUtil.JAVA_SPEC <= 8;
+        /* For Java 8 this method does not have any effect */
+        return null;
+    }
+}

@@ -32,12 +32,14 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.word.WordTypes;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.util.ModuleSupport;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -67,6 +69,21 @@ public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
                 ((AnalysisMethod) targetMethod).registerAsIntrinsicMethod();
             }
             return result;
+        }
+
+        @Override
+        protected boolean applyInvocationPlugin(InvokeKind invokeKind, ValueNode[] args, ResolvedJavaMethod targetMethod, JavaKind resultType, InvocationPlugin plugin) {
+            Class<? extends InvocationPlugin> accessingClass = plugin.getClass();
+            /*
+             * The annotation-processor creates InvocationPlugins in classes in modules that e.g.
+             * use the @Fold annotation. This way InvocationPlugins can be in various classes in
+             * various modules. For these InvocationPlugins to do their work they need access to
+             * bits of graal. Thus the modules that contain such plugins need to be allowed such
+             * access.
+             */
+            ModuleSupport.exportAndOpenPackageToClass("jdk.internal.vm.ci", "jdk.vm.ci.meta", false, accessingClass);
+            ModuleSupport.exportAndOpenPackageToClass("jdk.internal.vm.compiler", "org.graalvm.compiler.nodes", false, accessingClass);
+            return super.applyInvocationPlugin(invokeKind, args, targetMethod, resultType, plugin);
         }
 
         private final boolean parseOnce = SubstrateOptions.parseOnce();

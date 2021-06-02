@@ -26,21 +26,31 @@ package com.oracle.svm.hosted;
 
 import java.io.File;
 import java.lang.module.Configuration;
+import java.lang.module.ModuleDescriptor;
 import java.lang.module.ModuleFinder;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.graalvm.collections.Pair;
+import org.graalvm.compiler.options.OptionValues;
+
+import com.oracle.svm.core.option.LocatableMultiOptionValue;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ModuleSupport;
+
+import jdk.internal.module.Modules;
 
 public class NativeImageClassLoaderSupport extends AbstractNativeImageClassLoaderSupport {
 
@@ -48,8 +58,7 @@ public class NativeImageClassLoaderSupport extends AbstractNativeImageClassLoade
     private final List<Path> buildmp;
 
     private final ClassLoader classLoader;
-    private final Function<String, Optional<Module>> moduleFinder;
-    private final ModuleLayer.Controller moduleController;
+    private final ModuleLayer moduleLayerForImageBuild;
 
     NativeImageClassLoaderSupport(ClassLoader defaultSystemClassLoader, String[] classpath, String[] modulePath) {
         super(defaultSystemClassLoader, classpath);
@@ -57,22 +66,63 @@ public class NativeImageClassLoaderSupport extends AbstractNativeImageClassLoade
         imagemp = Arrays.stream(modulePath).map(Paths::get).collect(Collectors.toUnmodifiableList());
         buildmp = Arrays.stream(System.getProperty("jdk.module.path", "").split(File.pathSeparator)).map(Paths::get).collect(Collectors.toUnmodifiableList());
 
-        moduleController = createModuleController(imagemp.toArray(Path[]::new), classPathClassLoader);
-        ModuleLayer moduleLayer = moduleController.layer();
-        moduleFinder = moduleLayer::findModule;
+        ModuleLayer moduleLayer = createModuleLayer(imagemp.toArray(Path[]::new), classPathClassLoader);
         if (moduleLayer.modules().isEmpty()) {
+            this.moduleLayerForImageBuild = null;
             classLoader = classPathClassLoader;
         } else {
-            classLoader = moduleLayer.modules().iterator().next().getClassLoader();
+            adjustBootLayerQualifiedExports(moduleLayer);
+            this.moduleLayerForImageBuild = moduleLayer;
+            classLoader = getSingleClassloader(moduleLayer);
         }
     }
 
-    private static ModuleLayer.Controller createModuleController(Path[] modulePaths, ClassLoader parent) {
+    private static ModuleLayer createModuleLayer(Path[] modulePaths, ClassLoader parent) {
         ModuleFinder finder = ModuleFinder.of(modulePaths);
         List<Configuration> parents = List.of(ModuleLayer.boot().configuration());
         Set<String> moduleNames = finder.findAll().stream().map(moduleReference -> moduleReference.descriptor().name()).collect(Collectors.toSet());
         Configuration configuration = Configuration.resolve(finder, parents, finder, moduleNames);
-        return ModuleLayer.defineModulesWithOneLoader(configuration, List.of(ModuleLayer.boot()), parent);
+        /**
+         * For the modules we want to build an image for, a ModuleLayer is needed that can be
+         * accessed with a single classloader so we can use it for {@link ImageClassLoader}.
+         */
+        return ModuleLayer.defineModulesWithOneLoader(configuration, List.of(ModuleLayer.boot()), parent).layer();
+    }
+
+    private void adjustBootLayerQualifiedExports(ModuleLayer layer) {
+        /*
+         * For all qualified exports packages of modules in the the boot layer we check if layer
+         * contains modules that satisfy such qualified exports. If we find a match we perform a
+         * addExports.
+         */
+        for (Module module : ModuleLayer.boot().modules()) {
+            for (ModuleDescriptor.Exports export : module.getDescriptor().exports()) {
+                for (String target : export.targets()) {
+                    Optional<Module> optExportTargetModule = layer.findModule(target);
+                    if (optExportTargetModule.isEmpty()) {
+                        continue;
+                    }
+                    Module exportTargetModule = optExportTargetModule.get();
+                    if (module.isExported(export.source(), exportTargetModule)) {
+                        continue;
+                    }
+                    Modules.addExports(module, export.source(), exportTargetModule);
+                }
+            }
+        }
+    }
+
+    private static ClassLoader getSingleClassloader(ModuleLayer moduleLayer) {
+        ClassLoader singleClassloader = null;
+        for (Module module : moduleLayer.modules()) {
+            ClassLoader moduleClassLoader = module.getClassLoader();
+            if (singleClassloader == null) {
+                singleClassloader = moduleClassLoader;
+            } else {
+                VMError.guarantee(singleClassloader == moduleClassLoader);
+            }
+        }
+        return singleClassloader;
     }
 
     @Override
@@ -86,8 +136,93 @@ public class NativeImageClassLoaderSupport extends AbstractNativeImageClassLoade
     }
 
     @Override
-    public Optional<Object> findModule(String moduleName) {
-        return Optional.ofNullable(moduleFinder).flatMap(f -> f.apply(moduleName));
+    public Optional<Module> findModule(String moduleName) {
+        if (moduleLayerForImageBuild == null) {
+            return Optional.empty();
+        }
+        return moduleLayerForImageBuild.findModule(moduleName);
+    }
+
+    @Override
+    void processAddExportsAndAddOpens(OptionValues parsedHostedOptions) {
+        LocatableMultiOptionValue.Strings addExports = NativeImageClassLoaderOptions.AddExports.getValue(parsedHostedOptions);
+        addExports.getValuesWithOrigins().map(this::asAddExportsAndOpensFormatValue).forEach(val -> {
+            if (val.targetModules.isEmpty()) {
+                Modules.addExportsToAllUnnamed(val.module, val.packageName);
+            } else {
+                for (Module targetModule : val.targetModules) {
+                    Modules.addExports(val.module, val.packageName, targetModule);
+                }
+            }
+        });
+        LocatableMultiOptionValue.Strings addOpens = NativeImageClassLoaderOptions.AddOpens.getValue(parsedHostedOptions);
+        addOpens.getValuesWithOrigins().map(this::asAddExportsAndOpensFormatValue).forEach(val -> {
+            if (val.targetModules.isEmpty()) {
+                Modules.addOpensToAllUnnamed(val.module, val.packageName);
+            } else {
+                for (Module targetModule : val.targetModules) {
+                    Modules.addOpens(val.module, val.packageName, targetModule);
+                }
+            }
+        });
+    }
+
+    private static final class AddExportsAndOpensFormatValue {
+        private final Module module;
+        private final String packageName;
+        private final List<Module> targetModules;
+
+        private AddExportsAndOpensFormatValue(Module module, String packageName, List<Module> targetModules) {
+            this.module = module;
+            this.packageName = packageName;
+            this.targetModules = targetModules;
+        }
+    }
+
+    private AddExportsAndOpensFormatValue asAddExportsAndOpensFormatValue(Pair<String, String> valueOrigin) {
+        String optionOrigin = valueOrigin.getRight();
+        String optionValue = valueOrigin.getLeft();
+
+        String syntaxErrorMessage = " Allowed value format: " + NativeImageClassLoaderOptions.AddExportsAndOpensFormat;
+
+        String[] modulePackageAndTargetModules = optionValue.split("=", 2);
+        if (modulePackageAndTargetModules.length != 2) {
+            throw userErrorAddExportsAndOpens(optionOrigin, optionValue, syntaxErrorMessage);
+        }
+        String modulePackage = modulePackageAndTargetModules[0];
+        String targetModuleNames = modulePackageAndTargetModules[1];
+
+        String[] moduleAndPackage = modulePackage.split("/");
+        if (moduleAndPackage.length != 2) {
+            throw userErrorAddExportsAndOpens(optionOrigin, optionValue, syntaxErrorMessage);
+        }
+        String moduleName = moduleAndPackage[0];
+        String packageName = moduleAndPackage[1];
+
+        List<String> targetModuleNamesList = Arrays.asList(targetModuleNames.split(","));
+        if (targetModuleNamesList.isEmpty()) {
+            throw userErrorAddExportsAndOpens(optionOrigin, optionValue, syntaxErrorMessage);
+        }
+
+        Module module = findModule(moduleName).orElseThrow(() -> {
+            return userErrorAddExportsAndOpens(optionOrigin, optionValue, " Specified module '" + moduleName + "' is unknown.");
+        });
+        List<Module> targetModules;
+        if (targetModuleNamesList.contains("ALL-UNNAMED")) {
+            targetModules = Collections.emptyList();
+        } else {
+            targetModules = targetModuleNamesList.stream().map(mn -> {
+                return findModule(mn).orElseThrow(() -> {
+                    throw userErrorAddExportsAndOpens(optionOrigin, optionValue, " Specified target-module '" + mn + "' is unknown.");
+                });
+            }).collect(Collectors.toList());
+        }
+        return new AddExportsAndOpensFormatValue(module, packageName, targetModules);
+    }
+
+    private static UserError.UserException userErrorAddExportsAndOpens(String origin, String value, String detailMessage) {
+        Objects.requireNonNull(detailMessage, "missing detailMessage");
+        return UserError.abort("Invalid option %s provided by %s." + detailMessage, SubstrateOptionsParser.commandArgument(NativeImageClassLoaderOptions.AddExports, value), origin);
     }
 
     @Override

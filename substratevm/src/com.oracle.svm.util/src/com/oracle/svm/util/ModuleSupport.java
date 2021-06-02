@@ -83,11 +83,11 @@ public final class ModuleSupport {
     }
 
     /**
-     * Exports and opens a single package {@code packageName} in the module named {@code name} to
-     * all unnamed modules.
+     * Exports and opens a single package {@code packageName} in the module named {@code moduleName}
+     * to all unnamed modules.
      */
     @SuppressWarnings("unused")
-    public static void exportAndOpenPackageToClass(String name, String packageName, boolean optional, Class<?> accessingClass) {
+    public static void exportAndOpenPackageToClass(String moduleName, String packageName, boolean optional, Class<?> accessingClass) {
         /* Nothing to do in JDK 8 version. JDK 11 version provides a proper implementation. */
         assert JavaVersionUtil.JAVA_SPEC <= 8;
     }

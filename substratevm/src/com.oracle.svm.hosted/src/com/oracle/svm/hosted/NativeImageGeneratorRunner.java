@@ -43,7 +43,6 @@ import java.util.stream.Collectors;
 
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.DebugContext.Builder;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -79,7 +78,7 @@ import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
 
-public class NativeImageGeneratorRunner implements ImageBuildTask {
+public class NativeImageGeneratorRunner {
 
     private volatile NativeImageGenerator generator;
     public static final String IMAGE_BUILDER_ARG_FILE_OPTION = "--image-args-file=";
@@ -246,6 +245,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
         if (!verifyValidJavaVersionAndPlatform()) {
             return 1;
         }
+        String imageName = null;
         Timer totalTimer = new Timer("[total]", false);
         ForkJoinPool analysisExecutor = null;
         ForkJoinPool compilationExecutor = null;
@@ -267,9 +267,9 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
              * to pass the OptionValues explicitly when accessing options.
              */
             parsedHostedOptions = new OptionValues(optionParser.getHostedValues());
-            DebugContext debug = new Builder(parsedHostedOptions, new GraalDebugHandlersFactory(GraalAccess.getOriginalSnippetReflection())).build();
+            DebugContext debug = new DebugContext.Builder(parsedHostedOptions, new GraalDebugHandlersFactory(GraalAccess.getOriginalSnippetReflection())).build();
 
-            String imageName = SubstrateOptions.Name.getValue(parsedHostedOptions);
+            imageName = SubstrateOptions.Name.getValue(parsedHostedOptions);
             if (imageName.length() == 0) {
                 throw UserError.abort("No output file name specified. Use '%s'.", SubstrateOptionsParser.commandArgument(SubstrateOptions.Name, "<output-file>"));
             }
@@ -306,6 +306,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
             }
 
             if (!className.isEmpty() || !moduleName.isEmpty()) {
+                classLoader.processAddExportsAndAddOpens(parsedHostedOptions);
                 Method mainEntryPoint;
                 Class<?> mainClass;
                 try {
@@ -433,10 +434,13 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
             NativeImageGeneratorRunner.reportFatalError(e);
             return 1;
         } finally {
+            totalTimer.print();
+            if (imageName != null && generator != null) {
+                generator.reportBuildArtifacts(imageName);
+            }
             NativeImageGenerator.clearSystemPropertiesForImage();
             ImageSingletonsSupportImpl.HostedManagement.clearInThread();
         }
-        totalTimer.print();
         return 0;
     }
 
@@ -535,17 +539,8 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
         System.err.println("Warning: " + msg);
     }
 
-    @Override
     public int build(String[] args, ImageClassLoader imageClassLoader) {
         return buildImage(args, imageClassLoader);
-    }
-
-    @Override
-    public void interruptBuild() {
-        final NativeImageGenerator generatorInstance = generator;
-        if (generatorInstance != null) {
-            generatorInstance.interruptBuild();
-        }
     }
 
     /**

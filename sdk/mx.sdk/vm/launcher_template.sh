@@ -102,6 +102,7 @@ cp_or_mp="$(IFS=: ; echo "${absolute_cp[*]}")"
 
 module_launcher="<module_launcher>"
 if [[ "${module_launcher}" == "True" ]]; then
+    main_class='--module <main_module>/<main_class>'
     app_path_arg="--module-path"
     IFS=" " read -ra add_exports <<< "<add_exports>"
     for e in "${add_exports[@]}"; do
@@ -109,10 +110,11 @@ if [[ "${module_launcher}" == "True" ]]; then
     done
 else
     app_path_arg="-cp"
+    main_class='<main_class>'
 fi
 
 if [[ "${VERBOSE_GRAALVM_LAUNCHERS}" == "true" ]]; then
     set -x
 fi
 
-exec "${location}/<jre_bin>/java" <extra_jvm_args> "${jvm_args[@]}" ${app_path_arg} "${cp_or_mp}" '<main_class>' "${launcher_args[@]}"
+exec "${location}/<jre_bin>/java" <extra_jvm_args> "${jvm_args[@]}" ${app_path_arg} "${cp_or_mp}" ${main_class} "${launcher_args[@]}"

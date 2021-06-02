@@ -276,7 +276,6 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
                     TruffleCompilationTask task,
                     TruffleCompilerListener inListener) {
         Objects.requireNonNull(compilation, "Compilation must be non null.");
-        Objects.requireNonNull(task, "Compilation task must be non null.");
         org.graalvm.options.OptionValues options = getOptionsForCompiler(optionsMap);
         TruffleCompilationIdentifier compilationId = asTruffleCompilationIdentifier(compilation);
         CompilableTruffleAST compilable = compilationId.getCompilable();
