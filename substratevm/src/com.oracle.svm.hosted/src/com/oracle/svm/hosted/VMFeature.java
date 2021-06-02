@@ -53,6 +53,15 @@ public class VMFeature implements Feature {
     private static final String STATIC_BINARY_MARKER_SYMBOL_NAME = "__svm_vm_is_static_binary";
 
     @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        ImageSingletons.add(VM.class, createVMSingletonValue());
+    }
+
+    protected VM createVMSingletonValue() {
+        return new VM("CE");
+    }
+
+    @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         if (SubstrateOptions.DumpTargetInfo.getValue()) {
             System.out.println("# Building image for target platform: " + ImageSingletons.lookup(Platform.class).getClass().getName());
