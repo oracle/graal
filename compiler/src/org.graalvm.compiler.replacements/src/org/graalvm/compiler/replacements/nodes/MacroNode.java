@@ -30,8 +30,6 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_UNKNOWN;
 
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.debug.DebugCloseable;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeInputList;
@@ -40,14 +38,11 @@ import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeNode;
-import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
-import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
-import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -62,7 +57,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
           size = SIZE_UNKNOWN,
           sizeRationale = "If this node is not optimized away it will be lowered to a call, which we cannot estimate")
 //@formatter:on
-public abstract class MacroNode extends FixedWithNextNode implements Lowerable, MacroInvokable {
+public abstract class MacroNode extends FixedWithNextNode implements MacroInvokable {
 
     public static final NodeClass<MacroNode> TYPE = NodeClass.create(MacroNode.class);
     @Input protected NodeInputList<ValueNode> arguments;
@@ -179,37 +174,8 @@ public abstract class MacroNode extends FixedWithNextNode implements Lowerable, 
     }
 
     @Override
-    public void lower(LoweringTool tool) {
-        StructuredGraph replacementGraph = getLoweredSnippetGraph(tool);
-
-        InvokeNode invoke = replaceWithInvoke();
-        assert invoke.verify();
-
-        if (replacementGraph != null) {
-            // Pull out the receiver null check so that a replaced
-            // receiver can be lowered if necessary
-            if (!targetMethod.isStatic()) {
-                ValueNode nonNullReceiver = InliningUtil.nonNullReceiver(invoke);
-                if (nonNullReceiver instanceof Lowerable) {
-                    ((Lowerable) nonNullReceiver).lower(tool);
-                }
-            }
-            InliningUtil.inline(invoke, replacementGraph, false, targetMethod, "Replace with graph.", "LoweringPhase");
-            replacementGraph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph(), "After inlining replacement %s", replacementGraph);
-        } else {
-            if (isPlaceholderBci(invoke.bci())) {
-                throw new GraalError("%s: cannot lower to invoke with placeholder BCI: %s", graph(), this);
-            }
-
-            if (invoke.stateAfter() == null) {
-                throw new GraalError("%s: cannot lower to invoke without state: %s", graph(), this);
-            }
-            invoke.lower(tool);
-        }
-    }
-
     @SuppressWarnings("try")
-    public InvokeNode replaceWithInvoke() {
+    public Invoke replaceWithInvoke() {
         try (DebugCloseable context = withNodeSourcePosition()) {
             InvokeNode invoke = createInvoke();
             graph().replaceFixedWithFixed(this, invoke);
