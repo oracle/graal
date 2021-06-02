@@ -24,10 +24,18 @@
  */
 package org.graalvm.compiler.replacements.nodes;
 
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.Invokable;
+import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.phases.common.CanonicalizerPhase;
+import org.graalvm.compiler.phases.common.FrameStateAssignmentPhase;
+import org.graalvm.compiler.phases.common.GuardLoweringPhase;
+import org.graalvm.compiler.phases.common.LoweringPhase;
+import org.graalvm.compiler.phases.common.RemoveValueProxyPhase;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -37,6 +45,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * @see MacroNode
  */
 public interface MacroInvokable extends Invokable {
+
     CallTargetNode.InvokeKind getInvokeKind();
 
     /**
@@ -62,6 +71,42 @@ public interface MacroInvokable extends Invokable {
         ResolvedJavaMethod method = macro.getTargetMethod();
         assert method.getSignature().getParameterCount(!method.isStatic()) == macro.getArgumentCount();
         return true;
+    }
+
+
+    /**
+     * Gets a snippet to be used for lowering this macro node. The returned graph (if non-null) must
+     * have been {@linkplain MacroInvokable#lowerReplacement(StructuredGraph, StructuredGraph, LoweringTool) lowered}.
+     */
+    @SuppressWarnings("unused")
+    default StructuredGraph getLoweredSnippetGraph(LoweringTool tool) {
+        return null;
+    }
+
+    /**
+     * Applies {@linkplain LoweringPhase lowering} to a replacement graph.
+     *
+     * @param replacementGraph a replacement (i.e., snippet or method substitution) graph
+     */
+    @SuppressWarnings("try")
+    static StructuredGraph lowerReplacement(StructuredGraph graph, StructuredGraph replacementGraph, LoweringTool tool) {
+        if (graph.isAfterStage(StructuredGraph.StageFlag.VALUE_PROXY_REMOVAL)) {
+            new RemoveValueProxyPhase().apply(replacementGraph);
+        }
+        StructuredGraph.GuardsStage guardsStage = graph.getGuardsStage();
+        if (!guardsStage.allowsFloatingGuards()) {
+            new GuardLoweringPhase().apply(replacementGraph, null);
+            if (guardsStage.areFrameStatesAtDeopts()) {
+                new FrameStateAssignmentPhase().apply(replacementGraph);
+            }
+        }
+        DebugContext debug = replacementGraph.getDebug();
+        try (DebugContext.Scope s = debug.scope("LoweringSnippetTemplate", replacementGraph)) {
+            new LoweringPhase(CanonicalizerPhase.create(), tool.getLoweringStage()).apply(replacementGraph, tool);
+        } catch (Throwable e) {
+            throw debug.handle(e);
+        }
+        return replacementGraph;
     }
 
 }

@@ -43,18 +43,12 @@ import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
-import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
-import org.graalvm.compiler.phases.common.CanonicalizerPhase;
-import org.graalvm.compiler.phases.common.FrameStateAssignmentPhase;
-import org.graalvm.compiler.phases.common.GuardLoweringPhase;
 import org.graalvm.compiler.phases.common.LoweringPhase;
-import org.graalvm.compiler.phases.common.RemoveValueProxyPhase;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.word.LocationIdentity;
 
@@ -195,41 +189,6 @@ public abstract class MacroNode extends FixedWithNextNode implements Lowerable, 
     @Override
     public FixedNode asFixedNode() {
         return this;
-    }
-
-    /**
-     * Gets a snippet to be used for lowering this macro node. The returned graph (if non-null) must
-     * have been {@linkplain #lowerReplacement(StructuredGraph, LoweringTool) lowered}.
-     */
-    @SuppressWarnings("unused")
-    protected StructuredGraph getLoweredSnippetGraph(LoweringTool tool) {
-        return null;
-    }
-
-    /**
-     * Applies {@linkplain LoweringPhase lowering} to a replacement graph.
-     *
-     * @param replacementGraph a replacement (i.e., snippet or method substitution) graph
-     */
-    @SuppressWarnings("try")
-    protected StructuredGraph lowerReplacement(final StructuredGraph replacementGraph, LoweringTool tool) {
-        if (graph().isAfterStage(StageFlag.VALUE_PROXY_REMOVAL)) {
-            new RemoveValueProxyPhase().apply(replacementGraph);
-        }
-        GuardsStage guardsStage = graph().getGuardsStage();
-        if (!guardsStage.allowsFloatingGuards()) {
-            new GuardLoweringPhase().apply(replacementGraph, null);
-            if (guardsStage.areFrameStatesAtDeopts()) {
-                new FrameStateAssignmentPhase().apply(replacementGraph);
-            }
-        }
-        DebugContext debug = replacementGraph.getDebug();
-        try (DebugContext.Scope s = debug.scope("LoweringSnippetTemplate", replacementGraph)) {
-            new LoweringPhase(CanonicalizerPhase.create(), tool.getLoweringStage()).apply(replacementGraph, tool);
-        } catch (Throwable e) {
-            throw debug.handle(e);
-        }
-        return replacementGraph;
     }
 
     @Override
