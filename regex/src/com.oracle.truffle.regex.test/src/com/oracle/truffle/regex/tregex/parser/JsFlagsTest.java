@@ -45,6 +45,7 @@ import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.RegexSource;
 import org.junit.Test;
 
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class JsFlagsTest {
@@ -62,5 +63,23 @@ public class JsFlagsTest {
         assertTrue(parse("u").isUnicode());
         assertTrue(parse("s").isDotAll());
         assertTrue(parse("d").hasIndices());
+
+        RegexFlags allFlags = parse("imygusd");
+        assertTrue(allFlags.isIgnoreCase());
+        assertTrue(allFlags.isMultiline());
+        assertTrue(allFlags.isSticky());
+        assertTrue(allFlags.isGlobal());
+        assertTrue(allFlags.isUnicode());
+        assertTrue(allFlags.isDotAll());
+        assertTrue(allFlags.hasIndices());
+
+        RegexFlags noFlags = parse("");
+        assertFalse(noFlags.isIgnoreCase());
+        assertFalse(noFlags.isMultiline());
+        assertFalse(noFlags.isSticky());
+        assertFalse(noFlags.isGlobal());
+        assertFalse(noFlags.isUnicode());
+        assertFalse(noFlags.isDotAll());
+        assertFalse(noFlags.hasIndices());
     }
 }
