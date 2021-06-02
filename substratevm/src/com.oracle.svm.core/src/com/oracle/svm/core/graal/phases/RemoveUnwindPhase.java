@@ -27,6 +27,7 @@ package com.oracle.svm.core.graal.phases;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractEndNode;
@@ -78,11 +79,13 @@ public class RemoveUnwindPhase extends Phase {
          */
         for (WithExceptionNode node : withExceptionNodes) {
             if (node.isAlive()) {
+                graph.getDebug().log(DebugContext.VERY_DETAILED_LEVEL, "Removing exception edge for: %s", node);
                 node.replaceWithNonThrowing();
             }
         }
         for (BytecodeExceptionNode bytecodeExceptionNode : bytecodeExceptionNodes) {
             if (bytecodeExceptionNode.isAlive()) {
+                graph.getDebug().log(DebugContext.VERY_DETAILED_LEVEL, "Converting a BytecodeException node to a ThrowBytecodeException node for: %s", bytecodeExceptionNode);
                 convertToThrow(bytecodeExceptionNode);
             }
         }
@@ -104,13 +107,11 @@ public class RemoveUnwindPhase extends Phase {
         } else if (n instanceof BytecodeExceptionNode) {
             BytecodeExceptionNode node = (BytecodeExceptionNode) n;
             bytecodeExceptionNodes.add(node);
-
         } else if (n instanceof MergeNode) {
             MergeNode node = (MergeNode) n;
             for (ValueNode predecessor : node.cfgPredecessors()) {
                 walkBack(predecessor, node, withExceptionNodes, bytecodeExceptionNodes);
             }
-
         } else if (n instanceof AbstractBeginNode || n instanceof AbstractEndNode || n instanceof LoopExitNode || n instanceof ExceptionObjectNode) {
             walkBack(n.predecessor(), n, withExceptionNodes, bytecodeExceptionNodes);
         }
