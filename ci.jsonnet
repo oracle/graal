@@ -14,7 +14,7 @@ local sulong = import 'sulong/ci.jsonnet';
 # for a PR that only touches *.md flles.
 local add_markdown_guard(build) = build + {
   guard+: {
-    excludes+: ["**.md"]
+    excludes+: ["**.md", "docs/**"]
   }
 };
 
