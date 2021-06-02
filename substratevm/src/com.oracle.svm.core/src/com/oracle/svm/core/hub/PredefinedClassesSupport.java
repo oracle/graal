@@ -53,7 +53,7 @@ public final class PredefinedClassesSupport {
     }
 
     public static String hash(byte[] classData, int offset, int length) {
-        try {
+        try { // Only for lookups, cryptographic properties are irrelevant
             MessageDigest md = MessageDigest.getInstance("SHA-256");
             md.update(classData, offset, length);
             return SubstrateUtil.toHex(md.digest());
