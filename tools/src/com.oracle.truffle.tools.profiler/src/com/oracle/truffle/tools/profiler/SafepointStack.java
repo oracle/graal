@@ -61,12 +61,12 @@ final class SafepointStack {
 
     private final int stackLimit;
     private final SourceSectionFilter sourceSectionFilter;
-
     private final ConcurrentLinkedQueue<StackVisitor> stackVisitorCache = new ConcurrentLinkedQueue<>();
+    private final AtomicReference<SampleAction> cachedAction = new AtomicReference<>();
 
     SafepointStack(int stackLimit, SourceSectionFilter sourceSectionFilter) {
         this.stackLimit = stackLimit;
-        this.sourceSectionFilter = SourceSectionFilter.ANY;
+        this.sourceSectionFilter = sourceSectionFilter;
     }
 
     private StackVisitor fetchStackVisitor() {
@@ -82,12 +82,59 @@ final class SafepointStack {
         stackVisitorCache.add(visitor);
     }
 
+    List<StackSample> sample(Env env, TruffleContext context) {
+        if (context.isActive()) {
+            throw new IllegalArgumentException("Cannot sample a context that is currently active on the current thread.");
+        }
+        SampleAction action = cachedAction.getAndSet(null);
+        if (action == null) {
+            action = new SampleAction();
+        }
+
+        if (context.isClosed()) {
+            return Collections.emptyList();
+        }
+        long time = System.nanoTime();
+        Future<Void> future;
+        try {
+            future = env.submitThreadLocal(context, null, action);
+        } catch (IllegalStateException e) {
+            // context may be closed while submitting
+            return Collections.emptyList();
+        }
+
+        List<StackVisitor> stacks;
+        try {
+            future.get(100L, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException | ExecutionException e) {
+            return null;
+        } catch (TimeoutException e) {
+            future.cancel(false);
+        }
+        // we compute the time to find out how accurate this sample is.
+        stacks = action.getStacks();
+        List<StackSample> threads = new ArrayList<>();
+        for (StackVisitor stackVisitor : stacks) {
+            // time until the safepoint is executed from schedule
+            long bias = stackVisitor.startTime - time;
+            long overhead = stackVisitor.endTime - stackVisitor.startTime;
+
+            threads.add(new StackSample(stackVisitor.thread, stackVisitor.createEntries(sourceSectionFilter),
+                            bias, overhead, stackVisitor.overflowed));
+            returnStackVisitor(stackVisitor);
+        }
+        action.reset();
+        cachedAction.set(action);
+
+        return threads;
+    }
+
     static class StackVisitor implements FrameInstanceVisitor<FrameInstance> {
 
-        private Thread thread;
-
+        private static final Set<Class<?>> TAGS = new HashSet<>(Arrays.asList(StandardTags.RootTag.class));
         private final CallTarget[] targets;
         private final byte[] states;
+        private Thread thread;
         private int nextFrameIndex;
         private long startTime;
         private long endTime;
@@ -100,28 +147,7 @@ final class SafepointStack {
         }
 
         public FrameInstance visitFrame(FrameInstance frameInstance) {
-            byte state;
-            int tier = frameInstance.getCompilationTier();
-            switch (tier) {
-                case 0:
-                    state = StackTraceEntry.STATE_INTERPRETED;
-                    break;
-                case 1:
-                    if (frameInstance.isCompilationRoot()) {
-                        state = StackTraceEntry.STATE_FIRST_TIER_COMPILATION_ROOT;
-                    } else {
-                        state = StackTraceEntry.STATE_FIRST_TIER_COMPILED;
-                    }
-                    break;
-                default:
-                    if (frameInstance.isCompilationRoot()) {
-                        state = StackTraceEntry.STATE_LAST_TIER_COMPILED;
-                    } else {
-                        state = StackTraceEntry.STATE_LAST_TIER_COMPILATION_ROOT;
-                    }
-                    break;
-            }
-            states[nextFrameIndex] = state;
+            states[nextFrameIndex] = state(frameInstance);
             targets[nextFrameIndex] = frameInstance.getCallTarget();
             nextFrameIndex++;
             if (nextFrameIndex >= targets.length) {
@@ -130,6 +156,25 @@ final class SafepointStack {
                 return frameInstance;
             }
             return null;
+        }
+
+        private static byte state(FrameInstance frameInstance) {
+            switch (frameInstance.getCompilationTier()) {
+                case 0:
+                    return StackTraceEntry.STATE_INTERPRETED;
+                case 1:
+                    if (frameInstance.isCompilationRoot()) {
+                        return StackTraceEntry.STATE_FIRST_TIER_COMPILATION_ROOT;
+                    } else {
+                        return StackTraceEntry.STATE_FIRST_TIER_COMPILED;
+                    }
+                default:
+                    if (frameInstance.isCompilationRoot()) {
+                        return StackTraceEntry.STATE_LAST_TIER_COMPILED;
+                    } else {
+                        return StackTraceEntry.STATE_LAST_TIER_COMPILATION_ROOT;
+                    }
+            }
         }
 
         void beforeVisit(Node topOfStackNode) {
@@ -148,8 +193,6 @@ final class SafepointStack {
             this.startTime = 0L;
             this.endTime = 0L;
         }
-
-        private static final Set<Class<?>> TAGS = new HashSet<>(Arrays.asList(StandardTags.RootTag.class));
 
         List<StackTraceEntry> createEntries(SourceSectionFilter filter) {
             List<StackTraceEntry> entries = new ArrayList<>(nextFrameIndex);
@@ -224,54 +267,5 @@ final class SafepointStack {
             cancelled = false;
             completed.clear();
         }
-    }
-
-    private final AtomicReference<SampleAction> cachedAction = new AtomicReference<>();
-
-    List<StackSample> sample(Env env, TruffleContext context) {
-        if (context.isActive()) {
-            throw new IllegalArgumentException("Cannot sample a context that is currently active on the current thread.");
-        }
-        SampleAction action = cachedAction.getAndSet(null);
-        if (action == null) {
-            action = new SampleAction();
-        }
-
-        if (context.isClosed()) {
-            return Collections.emptyList();
-        }
-        long time = System.nanoTime();
-        Future<Void> future;
-        try {
-            future = env.submitThreadLocal(context, null, action);
-        } catch (IllegalStateException e) {
-            // context may be closed while submitting
-            return Collections.emptyList();
-        }
-
-        List<StackVisitor> stacks;
-        try {
-            future.get(100L, TimeUnit.MILLISECONDS);
-        } catch (InterruptedException | ExecutionException e) {
-            return null;
-        } catch (TimeoutException e) {
-            future.cancel(false);
-        }
-        // we compute the time to find out how accurate this sample is.
-        stacks = action.getStacks();
-        List<StackSample> threads = new ArrayList<>();
-        for (StackVisitor stackVisitor : stacks) {
-            // time until the safepoint is executed from schedule
-            long bias = stackVisitor.startTime - time;
-            long overhead = stackVisitor.endTime - stackVisitor.startTime;
-
-            threads.add(new StackSample(stackVisitor.thread, stackVisitor.createEntries(sourceSectionFilter),
-                            bias, overhead, stackVisitor.overflowed));
-            returnStackVisitor(stackVisitor);
-        }
-        action.reset();
-        cachedAction.set(action);
-
-        return threads;
     }
 }
