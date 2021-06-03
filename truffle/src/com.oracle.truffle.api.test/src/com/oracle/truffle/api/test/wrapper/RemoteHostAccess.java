@@ -40,85 +40,102 @@
  */
 package com.oracle.truffle.api.test.wrapper;
 
-import java.time.Duration;
+import java.util.function.Predicate;
 
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextDispatch;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueDispatch;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.EngineHostAccess;
 
-public class WrappingContextDispatch extends AbstractContextDispatch {
+public class RemoteHostAccess extends EngineHostAccess {
 
-    final AbstractContextDispatch delegate;
-
-    protected WrappingContextDispatch(AbstractPolyglotImpl impl, AbstractContextDispatch next) {
+    protected RemoteHostAccess(AbstractPolyglotImpl impl) {
         super(impl);
-        this.delegate = next;
     }
 
     @Override
-    public boolean initializeLanguage(Object receiver, String languageId) {
-        return delegate.initializeLanguage(((WrappingContext) receiver).delegate, languageId);
+    public Object createHostContext(HostAccess access, ClassLoader contextClassLoader, Predicate<String> clFilter, boolean hostCLAllowed, boolean hostLookupAllowed) {
+        return null;
     }
 
     @Override
-    public Value eval(Object receiver, String language, Object sourceImpl) {
-        return delegate.eval(((WrappingContext) receiver).delegate, language, sourceImpl);
+    public Object asHostValue(Object context, Object value) {
+        return null;
     }
 
     @Override
-    public Value parse(Object receiver, String language, Object sourceImpl) {
-        return delegate.parse(((WrappingContext) receiver).delegate, language, sourceImpl);
+    public Object asHostDynamicClass(Object context, Class<?> value) {
+        return null;
     }
 
     @Override
-    public void close(Object receiver, boolean interuptExecution) {
-        delegate.close(((WrappingContext) receiver).delegate, interuptExecution);
+    public Object asHostStaticClass(Object context, Class<?> value) {
+        return null;
     }
 
     @Override
-    public boolean interrupt(Object receiver, Duration timeout) {
-        return delegate.interrupt(((WrappingContext) receiver).delegate, timeout);
+    public boolean isHostValue(Object value) {
+        return false;
     }
 
     @Override
-    public Value asValue(Object receiver, Object hostValue) {
-        return delegate.asValue(((WrappingContext) receiver).delegate, hostValue);
+    public Object asHostValue(Object value) {
+        return null;
     }
 
     @Override
-    public void explicitEnter(Object receiver) {
-        delegate.explicitEnter(((WrappingContext) receiver).delegate);
+    public boolean isHostException(Object value) {
+        return false;
     }
 
     @Override
-    public void explicitLeave(Object receiver) {
-        delegate.explicitLeave(((WrappingContext) receiver).delegate);
+    public Throwable asHostException(Object value) {
+        return null;
     }
 
     @Override
-    public Value getBindings(Object receiver, String language) {
-        return delegate.getBindings(((WrappingContext) receiver).delegate, language);
+    public Object findDynamicClass(Object context, String classValue) {
+        return null;
     }
 
     @Override
-    public Value getPolyglotBindings(Object receiver) {
-        return delegate.getPolyglotBindings(((WrappingContext) receiver).delegate);
+    public Object findStaticClass(Object context, String classValue) {
+        return null;
     }
 
     @Override
-    public void resetLimits(Object receiver) {
-        delegate.resetLimits(((WrappingContext) receiver).delegate);
+    public void disposeContext(Object receiver) {
+
     }
 
     @Override
-    public void safepoint(Object receiver) {
-        delegate.safepoint(((WrappingContext) receiver).delegate);
+    public Object getLanguageView(Object receiver, Object value) {
+        return null;
     }
 
     @Override
-    public void setAPI(Object receiver, Context key) {
-        delegate.setAPI(((WrappingContext) receiver).delegate, key);
+    public Object getTopScope(Object context) {
+        return null;
+    }
+
+    @Override
+    public void patchHostContext(Object receiver, HostAccess hostAccess, ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed, boolean hostLookupAllowed) {
+
+    }
+
+    @Override
+    public void addToHostClassPath(Object receiver, Object truffleFile) {
+
+    }
+
+    @Override
+    public Object toGuestValue(Object receiver, Object hostValue) {
+        return null;
+    }
+
+    @Override
+    public AbstractValueDispatch lookupValueDispatch(Object guestValue) {
+        return null;
     }
 
 }

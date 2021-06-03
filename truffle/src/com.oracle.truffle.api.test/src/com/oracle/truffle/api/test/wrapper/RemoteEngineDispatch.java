@@ -56,50 +56,21 @@ import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractEngineDispatch;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.ProcessHandler;
 
-public class WrappingEngineDispatch extends AbstractEngineDispatch {
+public class RemoteEngineDispatch extends AbstractEngineDispatch {
 
-    final AbstractEngineDispatch delegate;
-    final AbstractPolyglotImpl impl;
+    final RemotePolyglotDispatch dispatch;
+    final HostToGuest hostToGuest;
+    final RemoteContextDispatch remoteContext;
 
-    protected WrappingEngineDispatch(AbstractPolyglotImpl impl, AbstractEngineDispatch next) {
+    protected RemoteEngineDispatch(RemotePolyglotDispatch impl) {
         super(impl);
-        this.impl = impl;
-        this.delegate = next;
-    }
-
-    @Override
-    public Language requirePublicLanguage(Object receiver, String id) {
-        return delegate.requirePublicLanguage(((WrappingEngine) receiver).delegate, id);
-    }
-
-    @Override
-    public Instrument requirePublicInstrument(Object receiver, String id) {
-        return delegate.requirePublicInstrument(((WrappingEngine) receiver).delegate, id);
-    }
-
-    @Override
-    public void close(Object receiver, Object apiObject, boolean cancelIfExecuting) {
-        delegate.close(((WrappingEngine) receiver).delegate, apiObject, cancelIfExecuting);
-    }
-
-    @Override
-    public Map<String, Instrument> getInstruments(Object receiver) {
-        return delegate.getInstruments(((WrappingEngine) receiver).delegate);
-    }
-
-    @Override
-    public Map<String, Language> getLanguages(Object receiver) {
-        return delegate.getLanguages(((WrappingEngine) receiver).delegate);
-    }
-
-    @Override
-    public OptionDescriptors getOptions(Object receiver) {
-        return delegate.getOptions(((WrappingEngine) receiver).delegate);
+        this.dispatch = impl;
+        this.hostToGuest = impl.getHostToGuest();
+        this.remoteContext = new RemoteContextDispatch(dispatch);
     }
 
     @Override
@@ -108,33 +79,61 @@ public class WrappingEngineDispatch extends AbstractEngineDispatch {
                     Map<String, String> options, Map<String, String[]> arguments, String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream, boolean allowCreateProcess,
                     ProcessHandler processHandler, EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory,
                     ClassLoader hostClassLoader) {
-        Context context = delegate.createContext(((WrappingEngine) receiver).delegate, out, err, in, allowHostAccess, hostAccess, polyglotAccess, allowNativeAccess, allowCreateThread, allowHostIO,
-                        allowHostClassLoading,
-                        allowExperimentalOptions, classFilter, options, arguments, onlyLanguages, fileSystem, logHandlerOrStream, allowCreateProcess, processHandler, environmentAccess, environment,
-                        zone, limitsImpl, currentWorkingDirectory, hostClassLoader);
-        WrappingContext wrapping = new WrappingContext(impl.getAPIAccess().getReceiver(context));
-        WrappingContextDispatch dispatch = new WrappingContextDispatch(impl, impl.getAPIAccess().getDispatch(context));
-        return impl.getAPIAccess().newContext(dispatch, wrapping, context.getEngine());
-    }
-
-    @Override
-    public String getImplementationName(Object receiver) {
-        return delegate.getImplementationName(((WrappingEngine) receiver).delegate);
-    }
-
-    @Override
-    public Set<Source> getCachedSources(Object receiver) {
-        return delegate.getCachedSources(((WrappingEngine) receiver).delegate);
+        RemoteEngine engine = ((RemoteEngine) receiver);
+        Object hostContext = engine.hostAccess.createHostContext(hostAccess, hostClassLoader, classFilter, allowHostClassLoading, allowHostAccess);
+        long contextId = hostToGuest.remoteCreateContext(engine.id);
+        RemoteContext context = new RemoteContext(engine, contextId, hostContext);
+        return dispatch.getAPIAccess().newContext(remoteContext, context, engine.api);
     }
 
     @Override
     public void setAPI(Object receiver, Engine key) {
-        delegate.setAPI(((WrappingEngine) receiver).delegate, key);
+        ((RemoteEngine) receiver).setApi(key);
+    }
+
+    @Override
+    public Language requirePublicLanguage(Object receiver, String id) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Instrument requirePublicInstrument(Object receiver, String id) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void close(Object receiver, Object apiObject, boolean cancelIfExecuting) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Map<String, Instrument> getInstruments(Object receiver) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Map<String, Language> getLanguages(Object receiver) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public OptionDescriptors getOptions(Object receiver) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public String getImplementationName(Object receiver) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Set<Source> getCachedSources(Object receiver) {
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public String getVersion(Object receiver) {
-        return delegate.getVersion(((WrappingEngine) receiver).delegate);
+        throw new UnsupportedOperationException();
     }
 
 }

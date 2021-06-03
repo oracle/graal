@@ -40,12 +40,14 @@
  */
 package com.oracle.truffle.api.test.wrapper;
 
-public final class WrappingEngine {
+import com.oracle.truffle.api.interop.TruffleObject;
 
-    final Object delegate;
+class RemoteValue implements TruffleObject {
 
-    WrappingEngine(Object delegate) {
-        this.delegate = delegate;
+    final long id;
+
+    RemoteValue(int id) {
+        this.id = id;
     }
 
 }

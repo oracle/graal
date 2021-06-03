@@ -46,50 +46,111 @@ import java.lang.reflect.Field;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
+
 import sun.misc.Unsafe;
 
-/*
- * This test is pretty hacky, modifying the polyglot impl with unsafe is arguably pretty bad.
- * But we should not install a polyglot wrapper for all the tests and at the same time the impl
- * field should stay a static final.
+/**
+ * This test shows how the polyglot API can be intercepted such that its implementation can be
+ * implemented remotely.
  */
-public class WrappingPolyglotTest {
+/*
+ * This test is pretty hacky, modifying the polyglot impl with unsafe is arguably pretty bad. But we
+ * should not install a polyglot wrapper for all the tests and at the same time the impl field
+ * should stay a static final.
+ */
+public class RemotePolyglotTest {
 
     private static AbstractPolyglotImpl previousPolyglot;
 
     @BeforeClass
-    public static void installWrappingPolyglot() throws Throwable {
+    public static void setupClass() throws Throwable {
         // ensure polyglot initialized
         Engine.create().close();
 
         previousPolyglot = getPolylgotImpl();
-        WrappingPolyglotDispatch dispatch = new WrappingPolyglotDispatch();
+        RemotePolyglotDispatch dispatch = new RemotePolyglotDispatch();
         dispatch.setConstructors(previousPolyglot.getAPIAccess());
         dispatch.setNext(previousPolyglot);
         setPolylgotImpl(dispatch);
+
+        ProxyLanguage.setDelegate(new ProxyLanguage() {
+            @Override
+            protected CallTarget parse(ParsingRequest request) throws Exception {
+                return Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
+
+                    @Override
+                    public Object execute(VirtualFrame frame) {
+                        return new TestGuestFunction();
+                    }
+                });
+            }
+        });
     }
 
     @AfterClass
-    public static void afterWrappingPolyglot() throws Throwable {
+    public static void tearDownClass() throws Throwable {
         setPolylgotImpl(previousPolyglot);
+        ProxyLanguage.setDelegate(null);
+    }
+
+    public Object testFunction(Object v) {
+        return v;
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    @SuppressWarnings("static-method")
+    static class TestGuestFunction implements TruffleObject {
+
+        @ExportMessage
+        final boolean isExecutable() {
+            return true;
+        }
+
+        @ExportMessage
+        final Object execute(Object[] args) {
+            return args[0];
+        }
+
     }
 
     @Test
     public void test() {
-        Engine engine = Engine.create();
-        Context context = Context.newBuilder().engine(engine).build();
+        try (Context context = Context.newBuilder().option("engine.SpawnRemote", "true").allowHostAccess(HostAccess.ALL).build()) {
+            // basic test. Needs more
+            assertNotNull(context);
+            Value directHostValue = context.asValue(this);
 
-        // basic test. Needs more
-        assertNotNull(engine);
-        assertNotNull(context);
+            // invoke host directly
+            Value hostFunction = directHostValue.getMember("testFunction");
+            Value guestfunction = context.eval(ProxyLanguage.ID, "");
+            Value guestToGuestValue = guestfunction.execute(guestfunction);
+            Value guestToHostValue = guestfunction.execute(hostFunction);
+            Value hostToGuestValue = guestfunction.execute(guestfunction);
+            Value hostToHostValue = guestfunction.execute(hostFunction);
 
-        context.close();
-        engine.close();
+            assertNotNull(guestToGuestValue);
+            assertNotNull(guestToHostValue);
+            assertNotNull(hostToGuestValue);
+            assertNotNull(hostToHostValue);
+
+            // TODO exceptions!?
+        }
     }
 
     private static final Unsafe UNSAFE;

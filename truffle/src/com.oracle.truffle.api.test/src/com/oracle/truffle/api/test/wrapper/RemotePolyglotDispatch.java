@@ -50,7 +50,6 @@ import java.util.function.Predicate;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.ResourceLimitEvent;
 import org.graalvm.polyglot.Source;
@@ -59,15 +58,32 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
 
-public class WrappingPolyglotDispatch extends AbstractPolyglotImpl {
+public class RemotePolyglotDispatch extends AbstractPolyglotImpl {
+
+    private HostToGuest hostToGuest;
+
+    public HostToGuest getHostToGuest() {
+        if (hostToGuest == null) {
+            hostToGuest = new HostToGuest(getNext());
+        }
+        return hostToGuest;
+    }
 
     @Override
     public Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> options, boolean useSystemProperties, boolean allowExperimentalOptions, boolean boundEngine,
-                    MessageTransport messageInterceptor, Object logHandlerOrStream, HostAccess conf) {
-        Engine nextEngine = getNext().buildEngine(out, err, in, options, useSystemProperties, allowExperimentalOptions, boundEngine, messageInterceptor, logHandlerOrStream, conf);
-        Object receiver = new WrappingEngine(getAPIAccess().getReceiver(nextEngine));
-        AbstractEngineDispatch nextEngineImpl = getAPIAccess().getDispatch(nextEngine);
-        return getAPIAccess().newEngine(new WrappingEngineDispatch(this, nextEngineImpl), receiver);
+                    MessageTransport messageInterceptor, Object logHandlerOrStream, EngineHostAccess conf) {
+        String option = options.get("engine.SpawnRemote");
+        if (option != null && Boolean.parseBoolean(option)) {
+            RemoteEngine engine = new RemoteEngine(getHostToGuest().remoteCreateEngine(), createHostAccess());
+            return getAPIAccess().newEngine(new RemoteEngineDispatch(this), engine);
+        } else {
+            return getNext().buildEngine(out, err, in, options, useSystemProperties, allowExperimentalOptions, boundEngine, messageInterceptor, logHandlerOrStream, conf);
+        }
+    }
+
+    @Override
+    public EngineHostAccess createHostAccess() {
+        return getNext().createHostAccess();
     }
 
     @Override
