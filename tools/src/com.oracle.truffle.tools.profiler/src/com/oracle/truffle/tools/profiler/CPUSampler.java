@@ -26,7 +26,6 @@ package com.oracle.truffle.tools.profiler;
 
 import java.io.Closeable;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.DoubleSummaryStatistics;
@@ -202,6 +201,8 @@ public final class CPUSampler implements Closeable {
     private volatile boolean closed;
 
     private volatile boolean collecting;
+
+    private boolean stackOverflowed = false;
 
     private long period = 10;
 
@@ -517,7 +518,7 @@ public final class CPUSampler implements Closeable {
         return Collections.unmodifiableMap(returnValue);
     }
 
-    public synchronized Map<TruffleContext, CPUSamplerData> getContextData() {
+    public synchronized Map<TruffleContext, Map<Thread, Collection<ProfilerNode<Payload>>>> getContextData() {
         if (activeContexts.isEmpty()) {
             return Collections.emptyMap();
         }
@@ -610,28 +611,11 @@ public final class CPUSampler implements Closeable {
      * @since 19.0
      */
     public Map<Thread, List<StackTraceEntry>> takeSample() {
-        ShadowStack localShadowStack = shadowStack;
-        if (localShadowStack == null) {
-            localShadowStack = initializeShadowStack();
-        }
         if (delaySamplingUntilNonInternalLangInit && !nonInternalLanguageContextInitialized) {
             return Collections.emptyMap();
         }
-        assert localShadowStack != null;
         Map<Thread, List<StackTraceEntry>> stacks = new HashMap<>();
-        for (ShadowStack.ThreadLocalStack stack : localShadowStack.getStacks()) {
-            if (stack.hasStackOverflowed()) {
-                stackOverflowed = true;
-                continue;
-            }
-            StackTraceEntry[] strace = stack.getStack();
-            if (strace != null && strace.length > 0) {
-                assert !stacks.containsKey(stack.getThread());
-                final List<StackTraceEntry> stackTraceEntries = Arrays.asList(strace);
-                Collections.reverse(stackTraceEntries);
-                stacks.put(stack.getThread(), Collections.unmodifiableList(stackTraceEntries));
-            }
-        }
+        // TODO: Implement using safepoint stack
         return Collections.unmodifiableMap(stacks);
     }
 
