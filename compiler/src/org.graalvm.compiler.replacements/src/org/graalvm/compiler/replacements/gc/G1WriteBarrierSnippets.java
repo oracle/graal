@@ -119,8 +119,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
     }
 
     @Snippet
-    public void g1ReferentReadBarrier(Address address, Object object, Object expectedObject, Word offset,
-                    @ConstantParameter int traceStartCycle, @ConstantParameter Counters counters) {
+    public void g1ReferentReadBarrier(Address address, Object object, Object expectedObject, @ConstantParameter int traceStartCycle, @ConstantParameter Counters counters) {
         satbBarrier(address, object, expectedObject, false, false, traceStartCycle, counters);
     }
 
@@ -479,7 +478,6 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
             }
 
             args.add("expectedObject", expected);
-            args.add("offset", address.getOffset());
             args.addConst("traceStartCycle", traceStartCycle(barrier.graph()));
             args.addConst("counters", counters);
 
