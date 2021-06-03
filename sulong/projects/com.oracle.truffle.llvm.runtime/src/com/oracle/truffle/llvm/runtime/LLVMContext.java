@@ -677,14 +677,15 @@ public final class LLVMContext {
             } catch (ArrayIndexOutOfBoundsException e) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 MapCursor<BitcodeID, Source> entry = sourceCache.getEntries();
+                String sourceString = "";
                 while (entry.advance()) {
                     BitcodeID sourceID = entry.getKey();
                     Source sourceSource = entry.getValue();
-                    System.out.println("id: " + sourceID.getId() + " matches the source: " + sourceSource.toString());
+                    sourceString = sourceSource + "id: " + sourceID.getId() + " matches the source: " + sourceSource.toString() + "\n";
                 }
-                throw new IllegalStateException("id: " + id + " index: " + index + " id length: " + symbolDynamicStorage.length +
-                                " symbol name: " + symbol.getName() + " symbol kind: " + symbol.getKind() +
-                                " symbol class: " + symbol.getClass(), e);
+                throw new IllegalStateException("id: " + id + ", index: " + index + ", id length: " + symbolDynamicStorage.length +
+                                ", symbol name: " + symbol.getName() + ", symbol kind: " + symbol.getKind() +
+                                ", symbol class: " + symbol.getClass() + "\n source strings: " + sourceString, e);
             }
         }
     }
