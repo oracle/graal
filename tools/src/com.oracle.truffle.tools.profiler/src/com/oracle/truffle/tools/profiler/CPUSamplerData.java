@@ -15,6 +15,16 @@ public final class CPUSamplerData {
     final long samplesTaken;
     final long intervalMs;
 
+    public CPUSamplerData(TruffleContext context, Map<Thread, ProfilerNode<Payload>> threadData, LongSummaryStatistics biasStatistics, LongSummaryStatistics durationStatistics, long samplesTaken,
+                    long intervalMs) {
+        this.context = context;
+        this.threadData = threadData;
+        this.biasStatistics = biasStatistics;
+        this.durationStatistics = durationStatistics;
+        this.samplesTaken = samplesTaken;
+        this.intervalMs = intervalMs;
+    }
+
     public TruffleContext getContext() {
         return context;
     }
