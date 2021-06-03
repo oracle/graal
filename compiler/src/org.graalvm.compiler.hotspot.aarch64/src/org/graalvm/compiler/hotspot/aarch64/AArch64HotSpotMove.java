@@ -141,14 +141,14 @@ public class AArch64HotSpotMove {
             // result = (ptr - base) >> shift
             if (!pic && !encoding.hasBase()) {
                 if (encoding.hasShift()) {
-                    masm.lshr(64, resultRegister, ptr, encoding.getShift());
+                    masm.lsr(64, resultRegister, ptr, encoding.getShift());
                 } else {
                     masm.movx(resultRegister, ptr);
                 }
             } else if (nonNull) {
                 masm.sub(64, resultRegister, ptr, base);
                 if (encoding.hasShift()) {
-                    masm.lshr(64, resultRegister, resultRegister, encoding.getShift());
+                    masm.lsr(64, resultRegister, resultRegister, encoding.getShift());
                 }
             } else {
                 // if ptr is null it still has to be null after compression
@@ -156,7 +156,7 @@ public class AArch64HotSpotMove {
                 masm.csel(64, resultRegister, ptr, base, AArch64Assembler.ConditionFlag.NE);
                 masm.sub(64, resultRegister, resultRegister, base);
                 if (encoding.hasShift()) {
-                    masm.lshr(64, resultRegister, resultRegister, encoding.getShift());
+                    masm.lsr(64, resultRegister, resultRegister, encoding.getShift());
                 }
             }
         }
@@ -197,7 +197,7 @@ public class AArch64HotSpotMove {
             // result = ptr << shift
             if (baseReg == null) {
                 if (shift != 0) {
-                    masm.shl(64, resReg, inputRegister, shift);
+                    masm.lsl(64, resReg, inputRegister, shift);
                 } else if (!resReg.equals(inputRegister)) {
                     masm.movx(resReg, inputRegister);
                 }

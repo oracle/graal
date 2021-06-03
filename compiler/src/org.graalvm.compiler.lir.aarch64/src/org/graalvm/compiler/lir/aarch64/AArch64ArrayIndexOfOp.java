@@ -210,7 +210,7 @@ public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
          */
         masm.sub(64, curIndex, fromIndex, endIndex);
         if (isUTF16) {
-            masm.shl(64, curIndex, curIndex, 1);
+            masm.lsl(64, curIndex, curIndex, 1);
         }
 
         try (ScratchRegister scratchReg1 = masm.getScratchRegister(); ScratchRegister scratchReg2 = masm.getScratchRegister()) {
@@ -258,7 +258,7 @@ public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
         masm.bind(match);
         if (isUTF16) {
             // Convert byte offset of searchChar to its char index in UTF-16 string
-            masm.ashr(64, curIndex, curIndex, 1);
+            masm.asr(64, curIndex, curIndex, 1);
         }
         masm.add(64, result, endIndex, curIndex);
         masm.bind(end);
