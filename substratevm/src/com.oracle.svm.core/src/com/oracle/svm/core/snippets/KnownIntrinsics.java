@@ -98,33 +98,6 @@ public class KnownIntrinsics {
     public static native boolean isDeoptimizationTarget();
 
     /**
-     * This method is a helper for the static analysis. It converts objects that have an unknown
-     * value, e.g., objects that resulted from a low level memory read, i.e., word-to-object reads,
-     * into proper objects. By default during analysis all objects that result from low level reads
-     * are treated as having unknown value. We only convert them to proper objects when they are
-     * used as a receiver object in calls, loads, stores, etc. Thus, objects that are never used as
-     * proper Java objects, but only passed around as data, e.g., in the GC, will not interfere with
-     * the points-to analysis. If an unknown value object is used as a proper object, for example as
-     * a receiver for a call, an unsupported feature will be reported.
-     *
-     * The type parameter will reduce the type of the return value from the all instantiated types
-     * to the type subtree of the specified type. If {@code Object.class} is specified no actual
-     * type reduction is done.
-     *
-     * The method has a default implementation which just returns the obj parameter because it can
-     * used in places that are reached at runtime (hence analyzed) but also during image building
-     * (e.g., SharedConstantReflectionProvider.unboxPrimitive(JavaConstant)).
-     *
-     * For the analysis case a call to it is intercepted in
-     * SubstrateGraphBuilderPlugins.registerKnownIntrinsicsPlugins() and replaced with a
-     * ConvertUnknownValueNode which later is processed during analysis type flow graph building.
-     **/
-    @SuppressWarnings({"unchecked", "unused"})
-    public static <T> T convertUnknownValue(Object obj, Class<T> type) {
-        return (T) obj;
-    }
-
-    /**
      * Casts the given object to the exact class represented by {@code clazz}. The cast succeeds
      * only if {@code object == null || object.getClass() == clazz} and thus fails for any subclass.
      *

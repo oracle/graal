@@ -69,7 +69,6 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.ThreadStatus;
 import com.oracle.svm.core.thread.VMOperation;
@@ -353,7 +352,7 @@ public final class HeapImpl extends Heap {
                         reason = "Allocation is fine: this method traverses only the image heap.")
         public boolean visitObject(Object o) {
             if (o instanceof Class<?>) {
-                list.add(KnownIntrinsics.convertUnknownValue(o, Class.class));
+                list.add((Class<?>) o);
             }
             return true;
         }

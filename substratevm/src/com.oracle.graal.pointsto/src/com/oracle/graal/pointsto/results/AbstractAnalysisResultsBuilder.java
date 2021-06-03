@@ -84,9 +84,8 @@ public abstract class AbstractAnalysisResultsBuilder {
     public abstract JavaTypeProfile makeTypeProfile(AnalysisField field);
 
     protected JavaTypeProfile makeTypeProfile(TypeState typeState) {
-        if (typeState == null || typeState.isUnknown() ||
-                        PointstoOptions.AnalysisSizeCutoff.getValue(bb.getOptions()) != -1 &&
-                                        typeState.typesCount() > PointstoOptions.AnalysisSizeCutoff.getValue(bb.getOptions())) {
+        if (typeState == null || PointstoOptions.AnalysisSizeCutoff.getValue(bb.getOptions()) != -1 &&
+                        typeState.typesCount() > PointstoOptions.AnalysisSizeCutoff.getValue(bb.getOptions())) {
             return null;
         }
 

@@ -44,7 +44,6 @@ import com.oracle.svm.core.hub.InteriorObjRefWalker;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -158,9 +157,9 @@ public final class GreyToBlackObjectVisitor implements ObjectVisitor {
                     boolean headerInImageHeap = imageHeapInfo.isInReadOnlyReferencePartition(headerHub) ||
                                     imageHeapInfo.isInReadOnlyRelocatablePartition(headerHub);
                     if (headerInImageHeap) {
-                        DynamicHub hub = (DynamicHub) KnownIntrinsics.convertUnknownValue(headerHub.toObject(), Object.class);
+                        DynamicHub hub = (DynamicHub) headerHub.toObject();
                         log.string("  class: ").string(hub.getName());
-                        Object entryAsObject = KnownIntrinsics.convertUnknownValue(objectEntry.toObject(), Object.class);
+                        Object entryAsObject = objectEntry.toObject();
                         if (LayoutEncoding.isArray(entryAsObject)) {
                             int length = ArrayLengthNode.arrayLength(entryAsObject);
                             log.string("  length: ").signed(length);

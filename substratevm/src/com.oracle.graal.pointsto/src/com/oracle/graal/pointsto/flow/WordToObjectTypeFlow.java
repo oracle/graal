@@ -26,14 +26,8 @@ package com.oracle.graal.pointsto.flow;
 
 import org.graalvm.compiler.graph.Node;
 
-import com.oracle.graal.pointsto.nodes.ConvertUnknownValueNode;
-
 /**
- * Models an 'word to object' operation, i.e., reading an object from a pointer. The input is thus
- * the *unknown* type flow, i.e., a place-holder type flow that signifies *any type*. We don't use
- * *all-instantiated* type flow because we don't care about individual types. Operations that use
- * this *value* must first convert it to actual types. See {@link ConvertUnknownValueNode} for
- * details.
+ * Models an 'word to object' operation, i.e., reading an object from a pointer.
  */
 public class WordToObjectTypeFlow extends ProxyTypeFlow {
 

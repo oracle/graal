@@ -427,7 +427,7 @@ public final class NonmovableArrays {
             return (T) hosted[index];
         }
         assert matches(array, false, ConfigurationValues.getObjectLayout().getReferenceSize());
-        return (T) KnownIntrinsics.convertUnknownValue(ReferenceAccess.singleton().readObjectAt(addressOf(array, index), true), Object.class);
+        return (T) ReferenceAccess.singleton().readObjectAt(addressOf(array, index), true);
     }
 
     /** Writes the value at the given index in an object array. */

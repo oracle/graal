@@ -57,7 +57,6 @@ import com.oracle.svm.core.annotate.RestrictHeapAccess.Access;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.JavaContinuations;
@@ -437,7 +436,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     }
 
     protected ReentrantLock getOrCreateMonitorFromObject(Object obj, boolean createIfNotExisting, int monitorOffset) {
-        ReentrantLock existingMonitor = KnownIntrinsics.convertUnknownValue(BarrieredAccess.readObject(obj, monitorOffset), ReentrantLock.class);
+        ReentrantLock existingMonitor = (ReentrantLock) BarrieredAccess.readObject(obj, monitorOffset);
         if (existingMonitor != null || !createIfNotExisting) {
             assert existingMonitor == null || isMonitorLock(existingMonitor);
             return existingMonitor;
@@ -448,7 +447,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
             return newMonitor;
         }
         /* We lost the race, use the lock some other thread installed. */
-        return KnownIntrinsics.convertUnknownValue(BarrieredAccess.readObject(obj, monitorOffset), ReentrantLock.class);
+        return (ReentrantLock) BarrieredAccess.readObject(obj, monitorOffset);
     }
 
     protected ReentrantLock getOrCreateMonitorFromMap(Object obj, boolean createIfNotExisting) {

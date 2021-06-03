@@ -59,7 +59,6 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionValues;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.SubstrateStackIntrospection;
 import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.truffle.TruffleSupport;
@@ -335,9 +334,8 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     protected <T> T asObject(Class<T> type, JavaConstant constant) {
-        return (T) KnownIntrinsics.convertUnknownValue(SubstrateObjectConstant.asObject(type, constant), Object.class);
+        return SubstrateObjectConstant.asObject(type, constant);
     }
 
     @Override

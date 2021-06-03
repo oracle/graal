@@ -150,7 +150,7 @@ final class CardTable {
                 if (hub.isReferenceInstanceClass()) {
                     // The referent field of java.lang.Reference is excluded from the reference map,
                     // so we need to verify it separately.
-                    Reference<?> ref = KnownIntrinsics.convertUnknownValue(obj, Reference.class);
+                    Reference<?> ref = (Reference<?>) obj;
                     success &= verifyReferent(ref, cardTableStart, objectsStart);
                 }
             }

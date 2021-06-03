@@ -34,6 +34,7 @@ import java.lang.reflect.Type;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Inject;
@@ -45,7 +46,6 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -115,8 +115,7 @@ final class Util_sun_reflect_generics_reflectiveObjects_TypeVariableImpl {
     /** Emulate the Java class hierarchy. */
     static Target_sun_reflect_generics_reflectiveObjects_LazyReflectiveObjectGenerator asLazyReflectiveObjectGenerator(
                     Target_sun_reflect_generics_reflectiveObjects_TypeVariableImpl typeVariableImpl) {
-        /* TODO: Can I just cast between these types and get checks at runtime? */
-        return KnownIntrinsics.convertUnknownValue(typeVariableImpl, Target_sun_reflect_generics_reflectiveObjects_LazyReflectiveObjectGenerator.class);
+        return SubstrateUtil.cast(typeVariableImpl, Target_sun_reflect_generics_reflectiveObjects_LazyReflectiveObjectGenerator.class);
     }
 
     /** Emulate virtual dispatch. */
