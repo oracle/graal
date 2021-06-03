@@ -652,6 +652,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Object toGuestValue(Object receiver, Object hostValue);
 
+        public abstract AbstractValueDispatch lookupValueDispatch(Object guestValue);
+
     }
 
     public abstract static class AbstractValueDispatch {
@@ -939,5 +941,9 @@ public abstract class AbstractPolyglotImpl {
     public abstract Object buildLimits(long statementLimit, Predicate<Source> statementLimitSourceFilter, Consumer<ResourceLimitEvent> onLimit);
 
     public abstract FileSystem newDefaultFileSystem();
+
+    public AbstractValueDispatch createValueDispatch(Object context, Object o) {
+        throw new UnsupportedOperationException();
+    }
 
 }

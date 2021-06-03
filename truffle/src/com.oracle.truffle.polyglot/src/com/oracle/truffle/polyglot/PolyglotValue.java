@@ -62,6 +62,7 @@ import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.SourceSection;
 import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueDispatch;
 
 import com.oracle.truffle.api.CallTarget;
@@ -156,10 +157,10 @@ abstract class PolyglotValue extends AbstractValueDispatch {
 
     static final InteropLibrary UNCACHED_INTEROP = InteropLibrary.getFactory().getUncached();
 
-    private final PolyglotImpl polyglot;
+    final AbstractPolyglotImpl polyglot;
     final PolyglotLanguage language;
 
-    PolyglotValue(PolyglotImpl polyglot, PolyglotLanguageInstance languageInstance) {
+    PolyglotValue(AbstractPolyglotImpl polyglot, PolyglotLanguageInstance languageInstance) {
         super(polyglot);
         this.polyglot = polyglot;
         this.language = languageInstance != null ? languageInstance.language : null;
@@ -1534,7 +1535,7 @@ abstract class PolyglotValue extends AbstractValueDispatch {
     }
 
     static PolyglotValue createInteropValue(PolyglotLanguageInstance languageInstance, TruffleObject receiver, Class<?> receiverType) {
-        return new InteropValue(languageInstance, receiver, receiverType);
+        return new InteropValue(languageInstance.getImpl(), languageInstance, receiver, receiverType);
     }
 
     static PolyglotValue createHostNull(PolyglotImpl polyglot) {
@@ -1770,7 +1771,7 @@ abstract class PolyglotValue extends AbstractValueDispatch {
         protected abstract String getOperationName();
 
         protected InteropNode(InteropValue polyglot) {
-            super(polyglot.language.getEngine());
+            super(polyglot.language != null ? polyglot.language.getEngine() : null);
             this.polyglot = polyglot;
         }
 
@@ -1936,8 +1937,8 @@ abstract class PolyglotValue extends AbstractValueDispatch {
         final CallTarget asTypeLiteral;
         final Class<?> receiverType;
 
-        InteropValue(PolyglotLanguageInstance languageInstance, Object receiverObject, Class<?> receiverType) {
-            super(languageInstance.getImpl(), languageInstance);
+        InteropValue(AbstractPolyglotImpl polyglot, PolyglotLanguageInstance languageInstance, Object receiverObject, Class<?> receiverType) {
+            super(polyglot, languageInstance);
             this.isProxy = PolyglotProxy.isProxyGuestObject(receiverObject);
             this.isHost = HostObject.isInstance(receiverObject);
             this.receiverType = receiverType;
@@ -4187,7 +4188,7 @@ abstract class PolyglotValue extends AbstractValueDispatch {
 
             protected ExecuteNode(InteropValue interop) {
                 super(interop);
-                this.toHostValue = ToHostValueNode.create(interop.language.getImpl());
+                this.toHostValue = ToHostValueNode.create(interop.polyglot);
             }
 
             @Override
@@ -4213,7 +4214,7 @@ abstract class PolyglotValue extends AbstractValueDispatch {
 
             protected ExecuteNoArgsNode(InteropValue interop) {
                 super(interop);
-                this.toHostValue = ToHostValueNode.create(interop.language.getImpl());
+                this.toHostValue = ToHostValueNode.create(interop.polyglot);
             }
 
             @Override
@@ -4240,7 +4241,7 @@ abstract class PolyglotValue extends AbstractValueDispatch {
 
             protected NewInstanceNode(InteropValue interop) {
                 super(interop);
-                this.toHostValue = ToHostValueNode.create(interop.language.getImpl());
+                this.toHostValue = ToHostValueNode.create(interop.polyglot);
             }
 
             @Override
@@ -4289,7 +4290,7 @@ abstract class PolyglotValue extends AbstractValueDispatch {
 
             protected AbstractInvokeNode(InteropValue interop) {
                 super(interop);
-                this.toHostValue = ToHostValueNode.create(interop.language.getImpl());
+                this.toHostValue = ToHostValueNode.create(interop.polyglot);
             }
 
             protected final Object executeShared(PolyglotLanguageContext context, Object receiver, String key, Object[] guestArguments) {

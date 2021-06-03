@@ -86,7 +86,7 @@ abstract class HostToGuestRootNode extends RootNode {
             this.engine = engine;
             EngineAccessor.NODES.setPolyglotEngine(this, engine);
         }
-        assert this.engine != null : "all host to guest root nodes need to be initialized when entered";
+// assert this.engine != null : "all host to guest root nodes need to be initialized when entered";
         assert needsEnter() || !needsExceptionWrapping() : "HostToGuestRootNode which does not require enter cannot have exception wrapping.";
     }
 

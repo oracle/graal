@@ -47,6 +47,7 @@ import java.util.function.Predicate;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueDispatch;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.EngineHostAccess;
 import org.graalvm.polyglot.proxy.Proxy;
 
@@ -57,6 +58,7 @@ import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.polyglot.PolyglotValue.InteropValue;
 
 final class PolyglotHostAccess extends EngineHostAccess {
 
@@ -75,6 +77,11 @@ final class PolyglotHostAccess extends EngineHostAccess {
         initializeHostAccess(hostAccess, useCl);
         HostContext context = (HostContext) receiver;
         context.patch(useCl, clFilter, hostCLAllowed, hostLookupAllowed);
+    }
+
+    @Override
+    public AbstractValueDispatch lookupValueDispatch(Object guestValue) {
+        return new InteropValue(polyglot, null, guestValue, guestValue.getClass());
     }
 
     @Override

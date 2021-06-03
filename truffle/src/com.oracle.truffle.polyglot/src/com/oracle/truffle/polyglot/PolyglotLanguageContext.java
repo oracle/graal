@@ -62,6 +62,7 @@ import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.UnmodifiableEconomicSet;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.proxy.Proxy;
 
@@ -836,7 +837,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         @CompilationFinal volatile Class<?> cachedClass;
         @CompilationFinal volatile PolyglotValue cachedValue;
 
-        private ToHostValueNode(PolyglotImpl polyglot) {
+        private ToHostValueNode(AbstractPolyglotImpl polyglot) {
             this.apiAccess = polyglot.getAPIAccess();
         }
 
@@ -881,7 +882,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             return languageContext.asValue(value);
         }
 
-        public static ToHostValueNode create(PolyglotImpl polyglot) {
+        public static ToHostValueNode create(AbstractPolyglotImpl polyglot) {
             return new ToHostValueNode(polyglot);
         }
     }
