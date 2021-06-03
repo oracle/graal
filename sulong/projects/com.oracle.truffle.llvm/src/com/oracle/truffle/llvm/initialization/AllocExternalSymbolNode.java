@@ -132,7 +132,7 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
         }
 
         protected boolean isDefaultFlagActive(RTLDFlags rtldFlags) {
-            return RTLDFlags.RTLD_DEFAULT.isActive(rtldFlags);
+            return RTLDFlags.RTLD_OPEN_DEFAULT.isActive(rtldFlags);
         }
 
         /**
