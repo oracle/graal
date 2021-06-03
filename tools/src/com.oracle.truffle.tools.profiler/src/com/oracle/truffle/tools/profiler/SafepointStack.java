@@ -63,6 +63,7 @@ final class SafepointStack {
     private final SourceSectionFilter sourceSectionFilter;
     private final ConcurrentLinkedQueue<StackVisitor> stackVisitorCache = new ConcurrentLinkedQueue<>();
     private final AtomicReference<SampleAction> cachedAction = new AtomicReference<>();
+    private boolean overflowed;
 
     SafepointStack(int stackLimit, SourceSectionFilter sourceSectionFilter) {
         this.stackLimit = stackLimit;
@@ -88,7 +89,7 @@ final class SafepointStack {
         }
         SampleAction action = cachedAction.getAndSet(null);
         if (action == null) {
-            action = new SampleAction();
+            action = new SampleAction(this);
         }
 
         if (context.isClosed()) {
@@ -103,7 +104,6 @@ final class SafepointStack {
             return Collections.emptyList();
         }
 
-        List<StackVisitor> stacks;
         try {
             future.get(100L, TimeUnit.MILLISECONDS);
         } catch (InterruptedException | ExecutionException e) {
@@ -112,9 +112,8 @@ final class SafepointStack {
             future.cancel(false);
         }
         // we compute the time to find out how accurate this sample is.
-        stacks = action.getStacks();
         List<StackSample> threads = new ArrayList<>();
-        for (StackVisitor stackVisitor : stacks) {
+        for (StackVisitor stackVisitor : action.getStacks()) {
             // time until the safepoint is executed from schedule
             long bias = stackVisitor.startTime - time;
             long overhead = stackVisitor.endTime - stackVisitor.startTime;
@@ -127,6 +126,10 @@ final class SafepointStack {
         cachedAction.set(action);
 
         return threads;
+    }
+
+    public boolean hasOverflowed() {
+        return overflowed;
     }
 
     static class StackVisitor implements FrameInstanceVisitor<FrameInstance> {
@@ -200,7 +203,8 @@ final class SafepointStack {
                 CallTarget target = targets[i];
                 RootNode root = ((RootCallTarget) target).getRootNode();
                 SourceSection sourceSection = root.getSourceSection();
-                if (sourceSection != null && filter.includes(root, sourceSection)) {
+                // TODO: Figure out how to filter source sections with only a root node.
+                if (sourceSection != null /*&& filter.includes(root, sourceSection)*/) {
                     entries.add(new StackTraceEntry(TAGS, sourceSection, root, root, states[i]));
                 }
             }
@@ -232,11 +236,13 @@ final class SafepointStack {
     private class SampleAction extends ThreadLocalAction {
 
         final ConcurrentHashMap<Thread, StackVisitor> completed = new ConcurrentHashMap<>();
+        private final SafepointStack safepointStack;
 
         private volatile boolean cancelled;
 
-        protected SampleAction() {
+        protected SampleAction(SafepointStack safepointStack) {
             super(false, false);
+            this.safepointStack = safepointStack;
         }
 
         @Override
@@ -249,6 +255,7 @@ final class SafepointStack {
             StackVisitor visitor = fetchStackVisitor();
             visitor.beforeVisit(access.getLocation());
             Truffle.getRuntime().iterateFrames(visitor);
+            safepointStack.stackOverflowed(visitor.overflowed);
             if (cancelled) {
                 // did not complete on time
                 returnStackVisitor(visitor);
@@ -267,5 +274,9 @@ final class SafepointStack {
             cancelled = false;
             completed.clear();
         }
+    }
+
+    private void stackOverflowed(boolean overflowed) {
+        this.overflowed |= overflowed;
     }
 }

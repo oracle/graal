@@ -201,6 +201,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         for (int i = 0; i < executionCount; i++) {
             eval(defaultSourceForSampling);
         }
+        Assert.assertTrue(sampler.hasData());
         Assert.assertTrue(sampler.hasStackOverflowed());
     }
 
@@ -403,6 +404,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
     }
 
     @Test
+    @Ignore("Not needed since we don't recreate the shadow stack")
     public void testCorrectInitShadowStackStatements() {
         sampler.setMode(CPUSampler.Mode.STATEMENTS);
         sampler.setFilter(NO_INTERNAL_STATEMENT_TAG_FILTER);
@@ -431,6 +433,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
     }
 
     @Test
+    @Ignore("Not needed since we don't recreate the shadow stack")
     public void testCorrectInitShadowStackRoots() {
         sampler.setMode(CPUSampler.Mode.ROOTS);
         sampler.setFilter(NO_INTERNAL_ROOT_TAG_FILTER);
@@ -555,6 +558,7 @@ public class CPUSamplerTest extends AbstractProfilerTest {
     }
 
     @Test
+    @Ignore("Should be rewritten with contexts")
     public void testThreadSafe() throws InterruptedException {
         sampler.setFilter(NO_INTERNAL_ROOT_TAG_FILTER);
         sampler.setCollecting(true);
