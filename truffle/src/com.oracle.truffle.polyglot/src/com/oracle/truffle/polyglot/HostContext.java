@@ -74,7 +74,7 @@ final class HostContext {
     final Map<String, Class<?>> classCache = new HashMap<>();
     final Object topScope = new TopScopeObject(this);
     volatile HostClassLoader classloader;
-    private final PolyglotHostAccess language;
+    private final PolyglotHostEngine hostEngine;
     private ClassLoader contextClassLoader;
     private Predicate<String> classFilter;
     private boolean hostClassLoadingAllowed;
@@ -95,8 +95,8 @@ final class HostContext {
         }
     };
 
-    HostContext(PolyglotHostAccess language, ClassLoader contextClassLoader, Predicate<String> classFilter, boolean hostClassLoadingAllowed, boolean hostLookupAllowed) {
-        this.language = language;
+    HostContext(PolyglotHostEngine hostEngine, ClassLoader contextClassLoader, Predicate<String> classFilter, boolean hostClassLoadingAllowed, boolean hostLookupAllowed) {
+        this.hostEngine = hostEngine;
         this.contextClassLoader = contextClassLoader;
         this.classFilter = classFilter;
         this.hostClassLoadingAllowed = hostClassLoadingAllowed;
@@ -121,11 +121,11 @@ final class HostContext {
     }
 
     public HostClassCache getHostClassCache() {
-        return language.hostClassCache;
+        return hostEngine.hostClassCache;
     }
 
     GuestToHostCodeCache getGuestToHostCache() {
-        return language.getGuestToHostCache();
+        return hostEngine.getGuestToHostCache();
     }
 
     @TruffleBoundary
@@ -236,7 +236,7 @@ final class HostContext {
     }
 
     private APIAccess getAPIAccess() {
-        return language.polyglot.getAPIAccess();
+        return hostEngine.polyglot.getAPIAccess();
     }
 
     Object toGuestValue(Node parentNode, Object hostValue) {

@@ -1463,7 +1463,7 @@ abstract class PolyglotValue extends AbstractValueDispatch {
             if (result == null) {
                 return null;
             }
-            return polyglot.getPolyglotSourceSection(result);
+            return PolyglotImpl.getPolyglotSourceSection(polyglot, result);
         } catch (Throwable e) {
             throw guestToHostException(context, e, true);
         } finally {

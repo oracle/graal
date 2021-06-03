@@ -120,7 +120,7 @@ final class PolyglotManagementDispatch extends AbstractManagementDispatch {
                     return false;
                 } else if (sourceFilter != null) {
                     try {
-                        return sourceFilter.test(engineImpl.getOrCreatePolyglotSource(s));
+                        return sourceFilter.test(PolyglotImpl.getOrCreatePolyglotSource(engineImpl, s));
                     } catch (Throwable e) {
                         if (config.closing) {
                             // configuration is closing ignore errors.
@@ -524,7 +524,7 @@ final class PolyglotManagementDispatch extends AbstractManagementDispatch {
         AbstractNode(ListenerImpl config, EventContext context) {
             this.config = config;
             this.context = context;
-            this.location = config.engine.impl.getPolyglotSourceSection(context.getInstrumentedSourceSection());
+            this.location = PolyglotImpl.getPolyglotSourceSection(config.engine.impl, context.getInstrumentedSourceSection());
             this.cachedEvent = config.engine.impl.getManagement().newExecutionEvent(this);
         }
 

@@ -54,7 +54,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.logging.Level;
 
 import org.graalvm.collections.EconomicSet;
@@ -79,7 +78,6 @@ import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.NodeLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LanguageInfo;
@@ -482,7 +480,6 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                                             envConfig.getApplicationArguments(language));
                             Lazy localLazy = new Lazy(lang, envConfig);
                             checkThreadAccess(localEnv);
-                            PolyglotValue.createDefaultValues(getImpl(), lang, lang.valueCache);
 
                             // no more errors after this line
                             creatingThread = Thread.currentThread();
@@ -805,30 +802,8 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         assert !(guestValue instanceof Value);
         assert !(guestValue instanceof Proxy);
         Object receiver = guestValue;
-        PolyglotValue cache = lazy.languageInstance.valueCache.get(receiver.getClass());
-        if (cache == null) {
-            Object prev = language.engine.enterIfNeeded(this.context, true);
-            try {
-                cache = lookupValueCache(guestValue);
-            } finally {
-                language.engine.leaveIfNeeded(prev, this.context);
-            }
-        }
+        PolyglotValue cache = getLanguageInstance().lookupValueCache(context, guestValue, receiver);
         return getAPIAccess().newValue(cache, this, receiver);
-    }
-
-    synchronized PolyglotValue lookupValueCache(Object guestValue) {
-        Object prev = context.engine.enterIfNeeded(context, true);
-        try {
-            PolyglotValue cache = lazy.languageInstance.valueCache.computeIfAbsent(guestValue.getClass(), new Function<Class<?>, PolyglotValue>() {
-                public PolyglotValue apply(Class<?> t) {
-                    return PolyglotValue.createInteropValue(lazy.languageInstance, (TruffleObject) guestValue, guestValue.getClass());
-                }
-            });
-            return cache;
-        } finally {
-            context.engine.leaveIfNeeded(prev, context);
-        }
     }
 
     static final class ToHostValueNode {
@@ -850,12 +825,8 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     if (languageContext.context.engine.singleContext.isValid()) {
                         cachedClass = receiver.getClass();
-                        cache = languageContext.lazy.languageInstance.valueCache.get(receiver.getClass());
-                        if (cache == null) {
-                            cache = languageContext.lookupValueCache(receiver);
-                        }
-                        cachedValue = cache;
-                        return apiAccess.newValue(cache, languageContext, receiver);
+                        cachedValue = cache = languageContext.lazy.languageInstance.lookupValueCache(languageContext.context, receiver);
+                        return apiAccess.newValue(cachedValue, languageContext, receiver);
                     } else {
                         // TODO this needs to be rewritten to cache that uses
                         // InteropCodeCache and does not store the context in a node directly

@@ -266,7 +266,7 @@ final class PolyglotLimits {
                             @Override
                             public boolean test(com.oracle.truffle.api.source.Source s) {
                                 try {
-                                    return statementLimitSourcePredicate.test(engine.getImpl().getOrCreatePolyglotSource(s));
+                                    return statementLimitSourcePredicate.test(PolyglotImpl.getOrCreatePolyglotSource(engine.getImpl(), s));
                                 } catch (Throwable e) {
                                     throw context.getHostContextImpl().hostToGuestException(e);
                                 }

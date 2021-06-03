@@ -254,8 +254,7 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public org.graalvm.polyglot.SourceSection createSourceSection(Object polyglotObject, org.graalvm.polyglot.Source source, SourceSection sectionImpl) {
-            PolyglotImpl impl = ((VMObject) polyglotObject).getImpl();
-            return impl.getPolyglotSourceSection(sectionImpl);
+            return PolyglotImpl.getPolyglotSourceSection(((VMObject) polyglotObject).getImpl(), sectionImpl);
         }
 
         @Override

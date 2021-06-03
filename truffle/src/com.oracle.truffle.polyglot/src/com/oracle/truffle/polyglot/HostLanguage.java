@@ -42,7 +42,7 @@ package com.oracle.truffle.polyglot;
 
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.EngineHostAccess;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.HostEngine;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -61,11 +61,11 @@ import com.oracle.truffle.api.nodes.RootNode;
  */
 final class HostLanguage extends TruffleLanguage<Object> {
 
-    final EngineHostAccess access;
+    final HostEngine access;
     final PolyglotImpl polyglot;
     final APIAccess api;
 
-    HostLanguage(PolyglotImpl polyglot, EngineHostAccess hostAccess) {
+    HostLanguage(PolyglotImpl polyglot, HostEngine hostAccess) {
         this.polyglot = polyglot;
         this.access = hostAccess;
         this.api = polyglot.getAPIAccess();

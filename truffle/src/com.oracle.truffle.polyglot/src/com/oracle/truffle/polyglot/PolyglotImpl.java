@@ -72,7 +72,6 @@ import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.polyglot.PolyglotEngineImpl.LogConfig;
 import com.oracle.truffle.polyglot.PolyglotLoggers.EngineLoggerProvider;
 
@@ -98,11 +97,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     final PolyglotLanguageDispatch languageDispatch = new PolyglotLanguageDispatch(this);
 
     private final AtomicReference<PolyglotEngineImpl> preInitializedEngineRef = new AtomicReference<>();
-    private final Function<Source, org.graalvm.polyglot.Source> sourceConstructor = new Function<Source, org.graalvm.polyglot.Source>() {
-        public org.graalvm.polyglot.Source apply(Source t) {
-            return getAPIAccess().newSource(t);
-        }
-    };
 
     final Map<Class<?>, PolyglotValue> primitiveValues = new HashMap<>();
     Value hostNull; // effectively final
@@ -211,7 +205,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     @Override
     public Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> originalOptions, boolean useSystemProperties, final boolean allowExperimentalOptions,
                     boolean boundEngine,
-                    MessageTransport messageInterceptor, Object logHandlerOrStream, EngineHostAccess conf) {
+                    MessageTransport messageInterceptor, Object logHandlerOrStream, HostEngine conf) {
         PolyglotEngineImpl impl = null;
         try {
             if (TruffleOptions.AOT) {
@@ -431,20 +425,20 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     }
 
     @Override
-    public EngineHostAccess createHostAccess() {
-        return new PolyglotHostAccess(this);
+    public HostEngine createHostAccess() {
+        return new PolyglotHostEngine(this);
     }
 
-    org.graalvm.polyglot.Source getOrCreatePolyglotSource(Source source) {
-        return EngineAccessor.SOURCE.getOrCreatePolyglotSource(source, this.sourceConstructor);
+    static org.graalvm.polyglot.Source getOrCreatePolyglotSource(AbstractPolyglotImpl polyglot, Source source) {
+        return EngineAccessor.SOURCE.getOrCreatePolyglotSource(source, (t) -> polyglot.getAPIAccess().newSource(t));
     }
 
-    org.graalvm.polyglot.SourceSection getPolyglotSourceSection(SourceSection sourceSection) {
+    static org.graalvm.polyglot.SourceSection getPolyglotSourceSection(AbstractPolyglotImpl polyglot, com.oracle.truffle.api.source.SourceSection sourceSection) {
         if (sourceSection == null) {
             return null;
         }
-        org.graalvm.polyglot.Source polyglotSource = getOrCreatePolyglotSource(sourceSection.getSource());
-        return getAPIAccess().newSourceSection(polyglotSource, sourceSection);
+        org.graalvm.polyglot.Source polyglotSource = getOrCreatePolyglotSource(polyglot, sourceSection.getSource());
+        return polyglot.getAPIAccess().newSourceSection(polyglotSource, sourceSection);
     }
 
     /**

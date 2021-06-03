@@ -47,6 +47,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 
 import org.graalvm.polyglot.Source;
 
@@ -56,6 +57,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.polyglot.PolyglotImpl.VMObject;
 import com.oracle.truffle.polyglot.PolyglotLocals.LanguageContextLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.LanguageContextThreadLocal;
@@ -67,7 +69,7 @@ final class PolyglotLanguageInstance implements VMObject {
     final TruffleLanguage<Object> spi;
 
     private final PolyglotSourceCache sourceCache;
-    final Map<Class<?>, PolyglotValue> valueCache;
+    private final Map<Class<?>, PolyglotValue> valueCache;
 
     final Map<Object, Object> hostToGuestCodeCache = new ConcurrentHashMap<>();
     private volatile OptionValuesImpl firstOptionValues;
@@ -123,6 +125,7 @@ final class PolyglotLanguageInstance implements VMObject {
             }
         }
         this.directLanguageSupplier = PolyglotReferences.createAlwaysSingleLanguage(language, this);
+        PolyglotValue.createDefaultValues(getImpl(), this, this.valueCache);
     }
 
     public PolyglotEngineImpl getEngine() {
@@ -219,6 +222,33 @@ final class PolyglotLanguageInstance implements VMObject {
 
     void listCachedSources(Collection<Source> sources) {
         sourceCache.listCachedSources(this, sources);
+    }
+
+    PolyglotValue lookupValueCache(PolyglotContextImpl context, Object guestValue, Object receiver) {
+        PolyglotValue cache = valueCache.get(receiver.getClass());
+        if (cache == null) {
+            Object prev = language.engine.enterIfNeeded(context, true);
+            try {
+                cache = lookupValueCache(context, guestValue);
+            } finally {
+                language.engine.leaveIfNeeded(prev, context);
+            }
+        }
+        return cache;
+    }
+
+    synchronized PolyglotValue lookupValueCache(PolyglotContextImpl context, Object guestValue) {
+        Object prev = language.engine.enterIfNeeded(context, true);
+        try {
+            PolyglotValue cache = valueCache.computeIfAbsent(guestValue.getClass(), new Function<Class<?>, PolyglotValue>() {
+                public PolyglotValue apply(Class<?> t) {
+                    return PolyglotValue.createInteropValue(PolyglotLanguageInstance.this, (TruffleObject) guestValue, guestValue.getClass());
+                }
+            });
+            return cache;
+        } finally {
+            context.engine.leaveIfNeeded(prev, context);
+        }
     }
 
 }

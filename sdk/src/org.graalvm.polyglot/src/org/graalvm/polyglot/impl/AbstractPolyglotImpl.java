@@ -48,7 +48,6 @@ import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.Reader;
 import java.lang.reflect.AnnotatedElement;
-import java.lang.reflect.Type;
 import java.net.URI;
 import java.net.URL;
 import java.nio.ByteOrder;
@@ -269,7 +268,7 @@ public abstract class AbstractPolyglotImpl {
 
     public abstract Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> options, boolean useSystemProperties, boolean allowExperimentalOptions,
                     boolean boundEngine,
-                    MessageTransport messageInterceptor, Object logHandlerOrStream, EngineHostAccess conf);
+                    MessageTransport messageInterceptor, Object logHandlerOrStream, HostEngine conf);
 
     public abstract int getPriority();
 
@@ -286,7 +285,7 @@ public abstract class AbstractPolyglotImpl {
     /**
      * Returns the default host dispatch of this polyglot abstraction.
      */
-    public abstract EngineHostAccess createHostAccess();
+    public abstract HostEngine createHostAccess();
 
     public abstract static class AbstractManagementDispatch {
 
@@ -614,9 +613,9 @@ public abstract class AbstractPolyglotImpl {
         public abstract String getDefaultMimeType(Object receiver);
     }
 
-    public abstract static class EngineHostAccess {
+    public abstract static class HostEngine {
 
-        protected EngineHostAccess(AbstractPolyglotImpl impl) {
+        protected HostEngine(AbstractPolyglotImpl impl) {
             Objects.requireNonNull(impl);
         }
 

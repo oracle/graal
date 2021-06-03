@@ -48,7 +48,7 @@ import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueDispatch;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.EngineHostAccess;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.HostEngine;
 import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -60,13 +60,13 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.polyglot.PolyglotValue.InteropValue;
 
-final class PolyglotHostAccess extends EngineHostAccess {
+final class PolyglotHostEngine extends HostEngine {
 
     @CompilationFinal private GuestToHostCodeCache hostToGuestCodeCache;
     @CompilationFinal HostClassCache hostClassCache; // effectively final
     final AbstractPolyglotImpl polyglot;
 
-    protected PolyglotHostAccess(AbstractPolyglotImpl polyglot) {
+    protected PolyglotHostEngine(AbstractPolyglotImpl polyglot) {
         super(polyglot);
         this.polyglot = polyglot;
     }

@@ -866,7 +866,7 @@ public final class Engine implements AutoCloseable {
 
         @Override
         public Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, boolean useSystemProperties, boolean allowExperimentalOptions, boolean boundEngine,
-                        MessageTransport messageInterceptor, Object logHandlerOrStream, EngineHostAccess conf) {
+                        MessageTransport messageInterceptor, Object logHandlerOrStream, HostEngine conf) {
             throw noPolyglotImplementationFound();
         }
 
@@ -876,7 +876,7 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public EngineHostAccess createHostAccess() {
+        public HostEngine createHostAccess() {
             throw noPolyglotImplementationFound();
         }
 
