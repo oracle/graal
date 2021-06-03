@@ -489,7 +489,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
      */
     private static Function<String, Class<?>> getConstructorParameterClassAccessor(ImageClassLoader loader) {
         Map<String, /* EngineDescription */ Object> knownEngines = ReflectionUtil.readStaticField(Provider.class, "knownEngines");
-        Class<?> clazz = loader.findClass("java.security.Provider$EngineDescription").getOrFail();
+        Class<?> clazz = loader.findClassOrFail("java.security.Provider$EngineDescription");
         Field consParamClassNameField = ReflectionUtil.lookupField(clazz, "constructorParameterClassName");
 
         /*
@@ -609,7 +609,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
      * and dynamically allocated by sun.security.provider.KeyStoreDelegator.engineLoad().
      */
     private static void registerJks(ImageClassLoader loader) {
-        Class<?> javaKeyStoreJks = loader.findClass("sun.security.provider.JavaKeyStore$JKS").getOrFail();
+        Class<?> javaKeyStoreJks = loader.findClassOrFail("sun.security.provider.JavaKeyStore$JKS");
         registerForReflection(javaKeyStoreJks);
         trace("Registered KeyStore.JKS implementation class: %s", javaKeyStoreJks.getName());
     }
@@ -667,15 +667,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
          * For JDK 16 and later, the verification cache is an IdentityWrapper -> Verification result
          * ConcurrentHashMap. The IdentityWrapper contains the actual provider in the 'obj' field.
          */
-        Field providerField;
-        try {
-            // Checkstyle: stop
-            Class<?> identityWrapper = loader.findClassOrFail("javax.crypto.JceSecurity$IdentityWrapper");
-            // Checkstyle: resume
-            providerField = ReflectionUtil.lookupField(identityWrapper, "obj");
-        } catch (ReflectionUtil.ReflectionUtilError e) {
-            throw VMError.shouldNotReachHere(e);
-        }
+        Class<?> identityWrapper = loader.findClassOrFail("javax.crypto.JceSecurity$IdentityWrapper");
+        Field providerField = ReflectionUtil.lookupField(identityWrapper, "obj");
 
         Predicate<Object> listRemovalPredicate = wrapper -> {
             try {
