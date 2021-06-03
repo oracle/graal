@@ -114,6 +114,7 @@ import com.oracle.truffle.polyglot.PolyglotLocals.InstrumentContextThreadLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.LanguageContextLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.LanguageContextThreadLocal;
 import com.oracle.truffle.polyglot.PolyglotSourceDispatch.EmbedderFileSystemContext;
+import com.oracle.truffle.polyglot.PolyglotThread.ThreadSpawnRootNode;
 
 final class EngineAccessor extends Accessor {
 
@@ -1226,8 +1227,8 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public boolean isHostToGuestRootNode(RootNode rootNode) {
-            return rootNode instanceof HostToGuestRootNode;
+        public boolean skipEngineValidation(RootNode rootNode) {
+            return rootNode instanceof HostToGuestRootNode || rootNode instanceof ThreadSpawnRootNode;
         }
 
         @Override

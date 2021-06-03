@@ -653,6 +653,12 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract AbstractValueDispatch lookupValueDispatch(Object guestValue);
 
+        public abstract boolean needsEnter(Object hostContext);
+
+        public abstract Object enter(Object hostContext);
+
+        public abstract void leave(Object hostContext, Object prev);
+
     }
 
     public abstract static class AbstractValueDispatch {

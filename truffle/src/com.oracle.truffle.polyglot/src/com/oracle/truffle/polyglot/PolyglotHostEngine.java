@@ -80,6 +80,21 @@ final class PolyglotHostEngine extends HostEngine {
     }
 
     @Override
+    public Object enter(Object hostContext) {
+        return null;
+    }
+
+    @Override
+    public void leave(Object hostContext, Object prev) {
+
+    }
+
+    @Override
+    public boolean needsEnter(Object hostContext) {
+        return false;
+    }
+
+    @Override
     public AbstractValueDispatch lookupValueDispatch(Object guestValue) {
         return new InteropValue(polyglot, null, guestValue, guestValue.getClass());
     }

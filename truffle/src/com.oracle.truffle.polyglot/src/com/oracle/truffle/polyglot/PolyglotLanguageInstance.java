@@ -52,12 +52,14 @@ import java.util.function.Function;
 import org.graalvm.polyglot.Source;
 
 import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.polyglot.PolyglotImpl.VMObject;
 import com.oracle.truffle.polyglot.PolyglotLocals.LanguageContextLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.LanguageContextThreadLocal;
@@ -70,6 +72,7 @@ final class PolyglotLanguageInstance implements VMObject {
 
     private final PolyglotSourceCache sourceCache;
     private final Map<Class<?>, PolyglotValue> valueCache;
+    private final Map<Class<?>, CallTarget> callTargetCache;
 
     final Map<Object, Object> hostToGuestCodeCache = new ConcurrentHashMap<>();
     private volatile OptionValuesImpl firstOptionValues;
@@ -98,6 +101,7 @@ final class PolyglotLanguageInstance implements VMObject {
         this.language = language;
         this.sourceCache = new PolyglotSourceCache();
         this.valueCache = new ConcurrentHashMap<>();
+        this.callTargetCache = new ConcurrentHashMap<>();
         try {
             this.spi = (TruffleLanguage<Object>) language.cache.loadLanguage();
             LANGUAGE.initializeLanguage(spi, language.info, language, this);
@@ -126,6 +130,14 @@ final class PolyglotLanguageInstance implements VMObject {
         }
         this.directLanguageSupplier = PolyglotReferences.createAlwaysSingleLanguage(language, this);
         PolyglotValue.createDefaultValues(getImpl(), this, this.valueCache);
+    }
+
+    CallTarget lookupCallTarget(Class<? extends RootNode> rootNodeClass) {
+        return callTargetCache.get(rootNodeClass);
+    }
+
+    CallTarget installCallTarget(RootNode rootNode) {
+        return callTargetCache.computeIfAbsent(rootNode.getClass(), (r) -> Truffle.getRuntime().createCallTarget(rootNode));
     }
 
     public PolyglotEngineImpl getEngine() {

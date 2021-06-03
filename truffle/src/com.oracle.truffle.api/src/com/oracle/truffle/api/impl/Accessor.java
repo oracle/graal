@@ -503,7 +503,7 @@ public abstract class Accessor {
 
         public abstract Map<String, Collection<? extends FileTypeDetector>> getEngineFileTypeDetectors(Object engineFileSystemContext);
 
-        public abstract boolean isHostToGuestRootNode(RootNode rootNode);
+        public abstract boolean skipEngineValidation(RootNode rootNode);
 
         public abstract AssertionError invalidSharingError(Object polyglotEngine) throws AssertionError;
 
