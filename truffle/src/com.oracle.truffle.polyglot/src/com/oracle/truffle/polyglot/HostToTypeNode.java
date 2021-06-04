@@ -77,7 +77,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
 
 @GenerateUncached
-abstract class ToHostNode extends Node {
+abstract class HostToTypeNode extends Node {
     static final int LIMIT = 5;
 
     /** Reserved for target type mappings with highest precedence. */
@@ -114,7 +114,7 @@ abstract class ToHostNode extends Node {
                     @Cached("targetType") Class<?> cachedTargetType,
                     @Cached("isPrimitiveTarget(cachedTargetType)") boolean primitiveTarget,
                     @Cached("allowsImplementation(context, targetType)") boolean allowsImplementation,
-                    @Cached TargetMappingNode targetMapping,
+                    @Cached HostTargetMappingNode targetMapping,
                     @Cached BranchProfile error) {
         return convertImpl(operand, cachedTargetType, genericType, allowsImplementation, primitiveTarget, context, interop, useCustomTargetTypes, targetMapping, error);
     }
@@ -142,7 +142,7 @@ abstract class ToHostNode extends Node {
                         isPrimitiveTarget(targetType), context,
                         InteropLibrary.getUncached(operand),
                         useTargetMapping,
-                        TargetMappingNode.getUncached(),
+                        HostTargetMappingNode.getUncached(),
                         BranchProfile.getUncached());
     }
 
@@ -189,10 +189,10 @@ abstract class ToHostNode extends Node {
     }
 
     private static Object convertImpl(Object value, Class<?> targetType, Type genericType, boolean allowsImplementation, boolean primitiveTargetType,
-                    HostContext context, InteropLibrary interop, boolean useCustomTargetTypes, TargetMappingNode targetMapping, BranchProfile error) {
+                    HostContext context, InteropLibrary interop, boolean useCustomTargetTypes, HostTargetMappingNode targetMapping, BranchProfile error) {
         if (useCustomTargetTypes) {
             Object result = targetMapping.execute(value, targetType, context, interop, false, HIGHEST, STRICT);
-            if (result != TargetMappingNode.NO_RESULT) {
+            if (result != HostTargetMappingNode.NO_RESULT) {
                 return result;
             }
         }
@@ -209,7 +209,7 @@ abstract class ToHostNode extends Node {
 
         if (useCustomTargetTypes) {
             convertedValue = targetMapping.execute(value, targetType, context, interop, false, STRICT + 1, LOOSE);
-            if (convertedValue != TargetMappingNode.NO_RESULT) {
+            if (convertedValue != HostTargetMappingNode.NO_RESULT) {
                 return convertedValue;
             }
         }
@@ -240,7 +240,7 @@ abstract class ToHostNode extends Node {
         } else {
             if (useCustomTargetTypes) {
                 Object result = targetMapping.execute(value, targetType, context, interop, false, LOOSE + 1, LOWEST);
-                if (result != TargetMappingNode.NO_RESULT) {
+                if (result != HostTargetMappingNode.NO_RESULT) {
                     return result;
                 }
             }
@@ -270,7 +270,7 @@ abstract class ToHostNode extends Node {
     static boolean canConvert(Object value, Class<?> targetType, Type genericType, Boolean allowsImplementation,
                     HostContext hostContext, int priority,
                     InteropLibrary interop,
-                    TargetMappingNode targetMapping) {
+                    HostTargetMappingNode targetMapping) {
         if (targetMapping != null) {
             /*
              * For canConvert the order of target type mappings does not really matter, as the
@@ -724,7 +724,7 @@ abstract class ToHostNode extends Node {
             } catch (UnsupportedMessageException e) {
                 throw HostInteropErrors.arrayReadUnsupported(hostContext, receiver, componentType);
             }
-            Object hostValue = ToHostNodeGen.getUncached().execute(hostContext, guestValue, componentType, genericComponentType, true);
+            Object hostValue = HostToTypeNodeGen.getUncached().execute(hostContext, guestValue, componentType, genericComponentType, true);
             Array.set(array, i, hostValue);
         }
         return array;

@@ -686,7 +686,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         assert guestValue != null;
         assert !(guestValue instanceof Value);
         assert !(guestValue instanceof Proxy);
-        PolyglotValue cache = getLanguageInstance().lookupValueCache(context, guestValue);
+        PolyglotValueDispatch cache = getLanguageInstance().lookupValueCache(context, guestValue);
         return getAPIAccess().newValue(cache, this, guestValue);
     }
 
@@ -698,7 +698,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
         final APIAccess apiAccess;
         @CompilationFinal volatile Class<?> cachedClass;
-        @CompilationFinal volatile PolyglotValue cachedValue;
+        @CompilationFinal volatile PolyglotValueDispatch cachedValue;
 
         private ToHostValueNode(AbstractPolyglotImpl polyglot) {
             this.apiAccess = polyglot.getAPIAccess();
@@ -707,7 +707,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         Value execute(PolyglotLanguageContext languageContext, Object value) {
             Object receiver = value;
             Class<?> cachedClassLocal = cachedClass;
-            PolyglotValue cache;
+            PolyglotValueDispatch cache;
             if (cachedClassLocal != Generic.class) {
                 if (cachedClassLocal == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();

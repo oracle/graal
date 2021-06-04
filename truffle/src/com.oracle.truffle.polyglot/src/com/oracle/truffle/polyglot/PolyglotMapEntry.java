@@ -54,7 +54,7 @@ import java.lang.reflect.Type;
 import java.util.Map;
 import java.util.Objects;
 
-class PolyglotMapEntry<K, V> implements Map.Entry<K, V>, HostWrapper {
+class PolyglotMapEntry<K, V> implements Map.Entry<K, V>, PolyglotWrapper {
 
     final PolyglotLanguageContext languageContext;
     final Object guestObject;
@@ -110,7 +110,7 @@ class PolyglotMapEntry<K, V> implements Map.Entry<K, V>, HostWrapper {
     @Override
     public final boolean equals(Object o) {
         if (o instanceof PolyglotMapEntry) {
-            return HostWrapper.equals(languageContext, guestObject, ((PolyglotMapEntry<?, ?>) o).guestObject);
+            return PolyglotWrapper.equals(languageContext, guestObject, ((PolyglotMapEntry<?, ?>) o).guestObject);
         } else {
             return false;
         }
@@ -118,12 +118,12 @@ class PolyglotMapEntry<K, V> implements Map.Entry<K, V>, HostWrapper {
 
     @Override
     public final int hashCode() {
-        return HostWrapper.hashCode(languageContext, guestObject);
+        return PolyglotWrapper.hashCode(languageContext, guestObject);
     }
 
     @Override
     public final String toString() {
-        return HostWrapper.toString(this);
+        return PolyglotWrapper.toString(this);
     }
 
     static final class Cache {

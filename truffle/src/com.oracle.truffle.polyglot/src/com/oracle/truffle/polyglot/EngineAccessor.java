@@ -1055,7 +1055,7 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public Object convertPrimitive(Object value, Class<?> requestedType) {
-            return ToHostNode.convertLossLess(value, requestedType, InteropLibrary.getFactory().getUncached());
+            return HostToTypeNode.convertLossLess(value, requestedType, InteropLibrary.getFactory().getUncached());
         }
 
         @SuppressWarnings("unchecked")

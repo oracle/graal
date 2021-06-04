@@ -60,7 +60,7 @@ import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 
-class PolyglotIterator<T> implements Iterator<T>, HostWrapper {
+class PolyglotIterator<T> implements Iterator<T>, PolyglotWrapper {
 
     final Object guestObject;
     final PolyglotLanguageContext languageContext;
@@ -138,18 +138,18 @@ class PolyglotIterator<T> implements Iterator<T>, HostWrapper {
 
     @Override
     public String toString() {
-        return HostWrapper.toString(this);
+        return PolyglotWrapper.toString(this);
     }
 
     @Override
     public int hashCode() {
-        return HostWrapper.hashCode(languageContext, guestObject);
+        return PolyglotWrapper.hashCode(languageContext, guestObject);
     }
 
     @Override
     public boolean equals(Object o) {
         if (o instanceof PolyglotIterator) {
-            return HostWrapper.equals(languageContext, guestObject, ((PolyglotIterator<?>) o).guestObject);
+            return PolyglotWrapper.equals(languageContext, guestObject, ((PolyglotIterator<?>) o).guestObject);
         } else {
             return false;
         }

@@ -98,9 +98,9 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
     private final AtomicReference<PolyglotEngineImpl> preInitializedEngineRef = new AtomicReference<>();
 
-    final Map<Class<?>, PolyglotValue> primitiveValues = new HashMap<>();
+    final Map<Class<?>, PolyglotValueDispatch> primitiveValues = new HashMap<>();
     Value hostNull; // effectively final
-    PolyglotValue disconnectedHostValue;
+    PolyglotValueDispatch disconnectedHostValue;
 
     static volatile PolyglotImpl polyglotImpl;
 
@@ -139,9 +139,9 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
     @Override
     protected void initialize() {
-        this.hostNull = getAPIAccess().newValue(PolyglotValue.createHostNull(this), null, HostObject.NULL);
-        PolyglotValue.createDefaultValues(this, null, primitiveValues);
-        disconnectedHostValue = new PolyglotValue.HostValue(this);
+        this.hostNull = getAPIAccess().newValue(PolyglotValueDispatch.createHostNull(this), null, HostObject.NULL);
+        PolyglotValueDispatch.createDefaultValues(this, null, primitiveValues);
+        disconnectedHostValue = new PolyglotValueDispatch.HostValue(this);
     }
 
     @Override
@@ -382,8 +382,8 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             return hostNull;
         } else if (isGuestPrimitive(hostValue)) {
             return getAPIAccess().newValue(primitiveValues.get(hostValue.getClass()), null, hostValue);
-        } else if (HostWrapper.isInstance(hostValue)) {
-            HostWrapper hostWrapper = HostWrapper.asInstance(hostValue);
+        } else if (PolyglotWrapper.isInstance(hostValue)) {
+            PolyglotWrapper hostWrapper = PolyglotWrapper.asInstance(hostValue);
             // host wrappers can nicely reuse the associated context
             PolyglotLanguageContext languageContext = hostWrapper.getLanguageContext();
             assert languageContext != null : "HostWrappers must be guaranteed to have non-null language context.";
@@ -398,7 +398,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             if (hostValue instanceof TruffleObject) {
                 guestValue = hostValue;
             } else if (hostValue instanceof Proxy) {
-                guestValue = PolyglotProxy.toProxyGuestObject(null, (Proxy) hostValue);
+                guestValue = HostProxy.toProxyGuestObject(null, (Proxy) hostValue);
             } else if (hostValue instanceof Class) {
                 guestValue = HostObject.forClass((Class<?>) hostValue, null);
             } else {

@@ -85,69 +85,69 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToGuestValueNode;
 import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToGuestValuesNode;
 import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToHostValueNode;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.AsDateNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.AsDurationNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.AsInstantNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.AsNativePointerNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.AsTimeNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.AsTimeZoneNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.CanExecuteNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.CanInstantiateNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.CanInvokeNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.GetArrayElementNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.GetArraySizeNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.GetBufferSizeNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.GetHashEntriesIteratorNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.GetHashKeysIteratorNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.GetHashSizeNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.GetHashValueNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.GetHashValueOrDefaultNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.GetHashValuesIteratorNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.GetIteratorNextElementNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.GetMemberKeysNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.GetMemberNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.GetMetaQualifiedNameNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.GetMetaSimpleNameNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.HasArrayElementsNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.HasBufferElementsNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.HasHashEntriesNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.HasHashEntryNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.HasIteratorNextElementNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.HasIteratorNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.HasMemberNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.HasMembersNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.IsBufferWritableNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.IsDateNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.IsDurationNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.IsExceptionNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.IsMetaInstanceNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.IsMetaObjectNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.IsNativePointerNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.IsNullNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.IsTimeNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.IsTimeZoneNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.NewInstanceNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.PutHashEntryNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.PutMemberNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.ReadBufferByteNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.ReadBufferDoubleNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.ReadBufferFloatNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.ReadBufferIntNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.ReadBufferLongNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.ReadBufferShortNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.RemoveArrayElementNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.RemoveHashEntryNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.RemoveMemberNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.SetArrayElementNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.ThrowExceptionNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.WriteBufferByteNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.WriteBufferDoubleNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.WriteBufferFloatNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.WriteBufferIntNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.WriteBufferLongNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.WriteBufferShortNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.AsDateNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.AsDurationNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.AsInstantNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.AsNativePointerNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.AsTimeNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.AsTimeZoneNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.CanExecuteNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.CanInstantiateNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.CanInvokeNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.GetArrayElementNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.GetArraySizeNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.GetBufferSizeNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.GetHashEntriesIteratorNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.GetHashKeysIteratorNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.GetHashSizeNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.GetHashValueNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.GetHashValueOrDefaultNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.GetHashValuesIteratorNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.GetIteratorNextElementNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.GetMemberKeysNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.GetMemberNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.GetMetaQualifiedNameNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.GetMetaSimpleNameNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.HasArrayElementsNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.HasBufferElementsNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.HasHashEntriesNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.HasHashEntryNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.HasIteratorNextElementNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.HasIteratorNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.HasMemberNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.HasMembersNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.IsBufferWritableNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.IsDateNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.IsDurationNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.IsExceptionNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.IsMetaInstanceNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.IsMetaObjectNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.IsNativePointerNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.IsNullNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.IsTimeNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.IsTimeZoneNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.NewInstanceNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.PutHashEntryNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.PutMemberNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.ReadBufferByteNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.ReadBufferDoubleNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.ReadBufferFloatNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.ReadBufferIntNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.ReadBufferLongNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.ReadBufferShortNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.RemoveArrayElementNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.RemoveHashEntryNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.RemoveMemberNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.SetArrayElementNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.ThrowExceptionNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.WriteBufferByteNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.WriteBufferDoubleNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.WriteBufferFloatNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.WriteBufferIntNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.WriteBufferLongNodeGen;
+import com.oracle.truffle.polyglot.PolyglotValueDispatchFactory.InteropValueFactory.WriteBufferShortNodeGen;
 
-abstract class PolyglotValue extends AbstractValueDispatch {
+abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
     private static final String TRUNCATION_SUFFIX = "...";
 
@@ -158,7 +158,7 @@ abstract class PolyglotValue extends AbstractValueDispatch {
     final AbstractPolyglotImpl impl;
     final PolyglotEngineImpl engine;
 
-    PolyglotValue(AbstractPolyglotImpl impl, PolyglotEngineImpl engine) {
+    PolyglotValueDispatch(AbstractPolyglotImpl impl, PolyglotEngineImpl engine) {
         super(impl);
         this.impl = impl;
         this.engine = engine;
@@ -1479,12 +1479,12 @@ abstract class PolyglotValue extends AbstractValueDispatch {
         if (receiver == obj) {
             return true;
         }
-        return HostWrapper.equals(context, receiver, obj);
+        return PolyglotWrapper.equals(context, receiver, obj);
     }
 
     @Override
     public int hashCodeImpl(Object context, Object receiver) {
-        return HostWrapper.hashCode(context, receiver);
+        return PolyglotWrapper.hashCode(context, receiver);
     }
 
     @Override
@@ -1532,15 +1532,15 @@ abstract class PolyglotValue extends AbstractValueDispatch {
         return target;
     }
 
-    static PolyglotValue createInteropValue(PolyglotLanguageInstance languageInstance, TruffleObject receiver, Class<?> receiverType) {
+    static PolyglotValueDispatch createInteropValue(PolyglotLanguageInstance languageInstance, TruffleObject receiver, Class<?> receiverType) {
         return new InteropValue(languageInstance.getImpl(), languageInstance, receiver, receiverType);
     }
 
-    static PolyglotValue createHostNull(PolyglotImpl polyglot) {
+    static PolyglotValueDispatch createHostNull(PolyglotImpl polyglot) {
         return new HostNull(polyglot);
     }
 
-    static void createDefaultValues(PolyglotImpl polyglot, PolyglotLanguageInstance languageInsance, Map<Class<?>, PolyglotValue> valueCache) {
+    static void createDefaultValues(PolyglotImpl polyglot, PolyglotLanguageInstance languageInsance, Map<Class<?>, PolyglotValueDispatch> valueCache) {
         addDefaultValue(polyglot, languageInsance, valueCache, false);
         addDefaultValue(polyglot, languageInsance, valueCache, "");
         addDefaultValue(polyglot, languageInsance, valueCache, 'a');
@@ -1552,11 +1552,11 @@ abstract class PolyglotValue extends AbstractValueDispatch {
         addDefaultValue(polyglot, languageInsance, valueCache, 0D);
     }
 
-    static void addDefaultValue(PolyglotImpl polyglot, PolyglotLanguageInstance languageInstance, Map<Class<?>, PolyglotValue> valueCache, Object primitive) {
+    static void addDefaultValue(PolyglotImpl polyglot, PolyglotLanguageInstance languageInstance, Map<Class<?>, PolyglotValueDispatch> valueCache, Object primitive) {
         valueCache.put(primitive.getClass(), new PrimitiveValue(polyglot, languageInstance, primitive));
     }
 
-    static final class PrimitiveValue extends PolyglotValue {
+    static final class PrimitiveValue extends PolyglotValueDispatch {
 
         private final InteropLibrary interop;
         private final PolyglotLanguage language;
@@ -1690,18 +1690,16 @@ abstract class PolyglotValue extends AbstractValueDispatch {
 
         @SuppressWarnings("unchecked")
         @Override
-        public <T> T as(Object context, Object receiver, Class<T> targetType) {
-            Object prev = hostEnter(context);
+        public <T> T as(Object languageContext, Object receiver, Class<T> targetType) {
+            Object prev = hostEnter(languageContext);
             try {
-                HostContext host = null;
-                if (context != null) {
-                    host = ((PolyglotLanguageContext) context).context.getHostContextImpl();
-                }
-                return (T) ToHostNodeGen.getUncached().execute(host, receiver, targetType, targetType, true);
+                PolyglotContextImpl context = ((PolyglotLanguageContext) languageContext).context;
+                Object hostContext = context.getHostContextObject();
+                return context.engine.host.toHostType(null, hostContext, receiver, targetType, targetType);
             } catch (Throwable e) {
-                throw guestToHostException((context), e, true);
+                throw guestToHostException((languageContext), e, true);
             } finally {
-                hostLeave(context, prev);
+                hostLeave(languageContext, prev);
             }
         }
 
@@ -1731,7 +1729,7 @@ abstract class PolyglotValue extends AbstractValueDispatch {
 
     }
 
-    private static final class HostNull extends PolyglotValue {
+    private static final class HostNull extends PolyglotValueDispatch {
 
         private final PolyglotImpl polyglot;
 
@@ -1806,7 +1804,7 @@ abstract class PolyglotValue extends AbstractValueDispatch {
      * Host value implementation used when a Value needs to be created but not context is available.
      * If a context is available the normal interop value implementation is used.
      */
-    static final class HostValue extends PolyglotValue {
+    static final class HostValue extends PolyglotValueDispatch {
 
         HostValue(PolyglotImpl polyglot) {
             super(polyglot, null);
@@ -1824,12 +1822,12 @@ abstract class PolyglotValue extends AbstractValueDispatch {
 
         @Override
         public boolean isProxyObject(Object context, Object receiver) {
-            return PolyglotProxy.isProxyGuestObject(receiver);
+            return HostProxy.isProxyGuestObject(receiver);
         }
 
         @Override
         public Object asProxyObject(Object context, Object receiver) {
-            return PolyglotProxy.toProxyHostObject((TruffleObject) receiver);
+            return HostProxy.toProxyHostObject((TruffleObject) receiver);
         }
 
         @Override
@@ -1858,7 +1856,7 @@ abstract class PolyglotValue extends AbstractValueDispatch {
     }
 
     @SuppressWarnings("unused")
-    static final class InteropValue extends PolyglotValue {
+    static final class InteropValue extends PolyglotValueDispatch {
 
         final CallTarget isNativePointer;
         final CallTarget asNativePointer;
@@ -1939,7 +1937,7 @@ abstract class PolyglotValue extends AbstractValueDispatch {
 
         InteropValue(AbstractPolyglotImpl polyglot, PolyglotLanguageInstance languageInstance, Object receiverObject, Class<?> receiverType) {
             super(polyglot, languageInstance.getEngine());
-            this.isProxy = PolyglotProxy.isProxyGuestObject(receiverObject);
+            this.isProxy = HostProxy.isProxyGuestObject(receiverObject);
             this.isHost = HostObject.isInstance(receiverObject);
             this.receiverType = receiverType;
             this.asClassLiteral = createTarget(new AsClassLiteralNode(this));
@@ -1999,8 +1997,8 @@ abstract class PolyglotValue extends AbstractValueDispatch {
             this.getMetaQualifiedName = createTarget(GetMetaQualifiedNameNodeGen.create(this));
             this.getMetaSimpleName = createTarget(GetMetaSimpleNameNodeGen.create(this));
             this.hasIterator = createTarget(HasIteratorNodeGen.create(this));
-            this.getIterator = createTarget(PolyglotValueFactory.InteropValueFactory.GetIteratorNodeGen.create(this));
-            this.isIterator = createTarget(PolyglotValueFactory.InteropValueFactory.IsIteratorNodeGen.create(this));
+            this.getIterator = createTarget(PolyglotValueDispatchFactory.InteropValueFactory.GetIteratorNodeGen.create(this));
+            this.isIterator = createTarget(PolyglotValueDispatchFactory.InteropValueFactory.IsIteratorNodeGen.create(this));
             this.hasIteratorNextElement = createTarget(HasIteratorNextElementNodeGen.create(this));
             this.getIteratorNextElement = createTarget(GetIteratorNextElementNodeGen.create(this));
             this.hasHashEntries = createTarget(HasHashEntriesNodeGen.create(this));
@@ -2235,7 +2233,7 @@ abstract class PolyglotValue extends AbstractValueDispatch {
         @Override
         public Object asProxyObject(Object context, Object receiver) {
             if (this.isProxy) {
-                return PolyglotProxy.toProxyHostObject((TruffleObject) receiver);
+                return HostProxy.toProxyHostObject((TruffleObject) receiver);
             } else {
                 return super.asProxyObject(context, receiver);
             }

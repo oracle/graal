@@ -71,7 +71,7 @@ final class PolyglotLanguageInstance implements VMObject {
     final TruffleLanguage<Object> spi;
 
     private final PolyglotSourceCache sourceCache;
-    private final Map<Class<?>, PolyglotValue> valueCache;
+    private final Map<Class<?>, PolyglotValueDispatch> valueCache;
     private final Map<Class<?>, CallTarget> callTargetCache;
 
     final Map<Object, Object> hostToGuestCodeCache = new ConcurrentHashMap<>();
@@ -129,7 +129,7 @@ final class PolyglotLanguageInstance implements VMObject {
             }
         }
         this.directLanguageSupplier = PolyglotReferences.createAlwaysSingleLanguage(language, this);
-        PolyglotValue.createDefaultValues(getImpl(), this, this.valueCache);
+        PolyglotValueDispatch.createDefaultValues(getImpl(), this, this.valueCache);
     }
 
     CallTarget lookupCallTarget(Class<? extends RootNode> rootNodeClass) {
@@ -236,8 +236,8 @@ final class PolyglotLanguageInstance implements VMObject {
         sourceCache.listCachedSources(this, sources);
     }
 
-    PolyglotValue lookupValueCache(PolyglotContextImpl context, Object guestValue) {
-        PolyglotValue cache = valueCache.get(guestValue.getClass());
+    PolyglotValueDispatch lookupValueCache(PolyglotContextImpl context, Object guestValue) {
+        PolyglotValueDispatch cache = valueCache.get(guestValue.getClass());
         if (cache == null) {
             Object prev = language.engine.enterIfNeeded(context, true);
             try {
@@ -249,10 +249,10 @@ final class PolyglotLanguageInstance implements VMObject {
         return cache;
     }
 
-    private synchronized PolyglotValue lookupValueCacheImpl(Object guestValue) {
-        PolyglotValue cache = valueCache.computeIfAbsent(guestValue.getClass(), new Function<Class<?>, PolyglotValue>() {
-            public PolyglotValue apply(Class<?> t) {
-                return PolyglotValue.createInteropValue(PolyglotLanguageInstance.this, (TruffleObject) guestValue, guestValue.getClass());
+    private synchronized PolyglotValueDispatch lookupValueCacheImpl(Object guestValue) {
+        PolyglotValueDispatch cache = valueCache.computeIfAbsent(guestValue.getClass(), new Function<Class<?>, PolyglotValueDispatch>() {
+            public PolyglotValueDispatch apply(Class<?> t) {
+                return PolyglotValueDispatch.createInteropValue(PolyglotLanguageInstance.this, (TruffleObject) guestValue, guestValue.getClass());
             }
         });
         return cache;

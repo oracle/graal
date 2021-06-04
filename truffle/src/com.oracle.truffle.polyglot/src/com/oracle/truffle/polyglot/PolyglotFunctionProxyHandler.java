@@ -60,7 +60,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.polyglot.PolyglotFunctionProxyHandlerFactory.FunctionProxyNodeGen;
 
-final class PolyglotFunctionProxyHandler implements InvocationHandler, HostWrapper {
+final class PolyglotFunctionProxyHandler implements InvocationHandler, PolyglotWrapper {
     final Object functionObj;
     final PolyglotLanguageContext languageContext;
     private final Method functionMethod;
@@ -128,13 +128,13 @@ final class PolyglotFunctionProxyHandler implements InvocationHandler, HostWrapp
 
     @Override
     public int hashCode() {
-        return HostWrapper.hashCode(languageContext, functionObj);
+        return PolyglotWrapper.hashCode(languageContext, functionObj);
     }
 
     @Override
     public boolean equals(Object o) {
         if (o instanceof PolyglotFunctionProxyHandler) {
-            return HostWrapper.equals(languageContext, functionObj, ((PolyglotFunctionProxyHandler) o).functionObj);
+            return PolyglotWrapper.equals(languageContext, functionObj, ((PolyglotFunctionProxyHandler) o).functionObj);
         } else {
             return false;
         }
@@ -167,15 +167,15 @@ final class PolyglotFunctionProxyHandler implements InvocationHandler, HostWrapp
         }
     }
 
-    static Object invokeDefault(HostWrapper host, Object proxy, Method method, Object[] arguments) throws Throwable {
+    static Object invokeDefault(PolyglotWrapper host, Object proxy, Method method, Object[] arguments) throws Throwable {
         if (method.getDeclaringClass() == Object.class) {
             switch (method.getName()) {
                 case "equals":
-                    return HostWrapper.equalsProxy(host, arguments[0]);
+                    return PolyglotWrapper.equalsProxy(host, arguments[0]);
                 case "hashCode":
-                    return HostWrapper.hashCode(host.getLanguageContext(), host.getGuestObject());
+                    return PolyglotWrapper.hashCode(host.getLanguageContext(), host.getGuestObject());
                 case "toString":
-                    return HostWrapper.toString(host);
+                    return PolyglotWrapper.toString(host);
                 default:
                     throw new UnsupportedOperationException(method.getName());
             }

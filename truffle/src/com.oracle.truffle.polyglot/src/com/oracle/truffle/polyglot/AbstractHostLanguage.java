@@ -51,7 +51,7 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.nodes.Node;
 
-public abstract class AbstractHostLanguage<T> extends TruffleLanguage<T> {
+public abstract class AbstractHostLanguage<C> extends TruffleLanguage<C> {
 
     protected AbstractHostLanguage(AbstractPolyglotImpl polyglot) {
         Objects.requireNonNull(polyglot);
@@ -72,8 +72,8 @@ public abstract class AbstractHostLanguage<T> extends TruffleLanguage<T> {
 
     protected abstract Object findStaticClass(Object context, String classValue);
 
-    protected abstract Node createToHostNode();
+    protected abstract Node createToHostTypeNode();
 
-    protected abstract Object asHostValue(Node hostNode, Object hostContext, Object value, Class<?> targetType, Type genericType);
+    protected abstract <T> T toHostType(Node hostNode, Object hostContext, Object value, Class<T> targetType, Type genericType);
 
 }

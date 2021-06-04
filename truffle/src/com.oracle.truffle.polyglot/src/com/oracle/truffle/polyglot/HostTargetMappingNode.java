@@ -52,10 +52,10 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.polyglot.TargetMappingNodeGen.SingleMappingNodeGen;
+import com.oracle.truffle.polyglot.HostTargetMappingNodeGen.SingleMappingNodeGen;
 
 @GenerateUncached
-abstract class TargetMappingNode extends Node {
+abstract class HostTargetMappingNode extends Node {
 
     public static final Object NO_RESULT = new Object();
 
@@ -131,12 +131,12 @@ abstract class TargetMappingNode extends Node {
         return nodes;
     }
 
-    static TargetMappingNode create() {
-        return TargetMappingNodeGen.create();
+    static HostTargetMappingNode create() {
+        return HostTargetMappingNodeGen.create();
     }
 
-    static TargetMappingNode getUncached() {
-        return TargetMappingNodeGen.getUncached();
+    static HostTargetMappingNode getUncached() {
+        return HostTargetMappingNodeGen.getUncached();
     }
 
     @GenerateUncached
@@ -150,11 +150,11 @@ abstract class TargetMappingNode extends Node {
                         HostContext context, InteropLibrary interop, boolean checkOnly,
                         @Cached ConditionProfile acceptsProfile,
                         @Cached(value = "allowsImplementation(context, cachedMapping.sourceType)", allowUncached = true) boolean allowsImplementation,
-                        @Cached ToHostNode toHostRecursive) {
+                        @Cached HostToTypeNode toHostRecursive) {
             CompilerAsserts.partialEvaluationConstant(checkOnly);
             Object convertedValue = NO_RESULT;
-            if (acceptsProfile.profile(ToHostNode.canConvert(receiver, cachedMapping.sourceType, cachedMapping.sourceType,
-                            allowsImplementation, context, ToHostNode.LOWEST, interop, null))) {
+            if (acceptsProfile.profile(HostToTypeNode.canConvert(receiver, cachedMapping.sourceType, cachedMapping.sourceType,
+                            allowsImplementation, context, HostToTypeNode.LOWEST, interop, null))) {
                 if (!checkOnly || cachedMapping.accepts != null) {
                     convertedValue = toHostRecursive.execute(context, receiver, cachedMapping.sourceType, cachedMapping.sourceType, false);
                 }
@@ -172,7 +172,7 @@ abstract class TargetMappingNode extends Node {
         }
 
         static boolean allowsImplementation(HostContext context, Class<?> type) {
-            return ToHostNode.allowsImplementation(context, type);
+            return HostToTypeNode.allowsImplementation(context, type);
         }
 
         @TruffleBoundary

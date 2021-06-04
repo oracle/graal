@@ -54,7 +54,7 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueDispatch;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.HostLanguageAccess;
 
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.polyglot.PolyglotValue.InteropValue;
+import com.oracle.truffle.polyglot.PolyglotValueDispatch.InteropValue;
 
 final class PolyglotHostEngine extends HostLanguageAccess {
 
@@ -78,8 +78,8 @@ final class PolyglotHostEngine extends HostLanguageAccess {
                 valueReceiver = internalContext.migrateValue(parentNode, valueReceiver, valueContext);
             }
             return valueReceiver;
-        } else if (HostWrapper.isInstance(hostValue)) {
-            return internalContext.migrateHostWrapper(parentNode, HostWrapper.asInstance(hostValue));
+        } else if (PolyglotWrapper.isInstance(hostValue)) {
+            return internalContext.migrateHostWrapper(parentNode, PolyglotWrapper.asInstance(hostValue));
         }
         return null;
     }

@@ -87,7 +87,7 @@ import com.oracle.truffle.api.utilities.TriState;
 
 @SuppressWarnings("deprecation")
 @ExportLibrary(InteropLibrary.class)
-final class PolyglotProxy implements TruffleObject {
+final class HostProxy implements TruffleObject {
 
     static final int LIMIT = 5;
 
@@ -109,17 +109,17 @@ final class PolyglotProxy implements TruffleObject {
     final Proxy proxy;
     final HostContext context;
 
-    PolyglotProxy(HostContext context, Proxy proxy) {
+    HostProxy(HostContext context, Proxy proxy) {
         this.context = context;
         this.proxy = proxy;
     }
 
     @Override
     public boolean equals(Object obj) {
-        if (!(obj instanceof PolyglotProxy)) {
+        if (!(obj instanceof HostProxy)) {
             return false;
         }
-        return proxy == ((PolyglotProxy) obj).proxy;
+        return proxy == ((HostProxy) obj).proxy;
     }
 
     @Override
@@ -700,36 +700,36 @@ final class PolyglotProxy implements TruffleObject {
     @SuppressWarnings("unused")
     static final class IsIdenticalOrUndefined {
         @Specialization
-        static TriState doHostObject(PolyglotProxy receiver, PolyglotProxy other) {
+        static TriState doHostObject(HostProxy receiver, HostProxy other) {
             return receiver.proxy == other.proxy ? TriState.TRUE : TriState.FALSE;
         }
 
         @Fallback
-        static TriState doOther(PolyglotProxy receiver, Object other) {
+        static TriState doOther(HostProxy receiver, Object other) {
             return TriState.UNDEFINED;
         }
     }
 
     @ExportMessage
     @TruffleBoundary
-    static int identityHashCode(PolyglotProxy receiver) {
+    static int identityHashCode(HostProxy receiver) {
         return System.identityHashCode(receiver.proxy);
     }
 
     public static boolean isProxyGuestObject(TruffleObject value) {
-        return value instanceof PolyglotProxy;
+        return value instanceof HostProxy;
     }
 
     public static boolean isProxyGuestObject(Object value) {
-        return value instanceof PolyglotProxy;
+        return value instanceof HostProxy;
     }
 
     public static Proxy toProxyHostObject(TruffleObject value) {
-        return ((PolyglotProxy) value).proxy;
+        return ((HostProxy) value).proxy;
     }
 
     public static TruffleObject toProxyGuestObject(HostContext context, Proxy receiver) {
-        return new PolyglotProxy(context, receiver);
+        return new HostProxy(context, receiver);
     }
 
 }

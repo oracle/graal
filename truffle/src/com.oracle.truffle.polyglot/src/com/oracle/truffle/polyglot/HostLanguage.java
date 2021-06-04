@@ -141,7 +141,7 @@ final class HostLanguage extends AbstractHostLanguage<HostContext> {
             } catch (UnsupportedMessageException e) {
                 throw shouldNotReachHere(e);
             }
-            wrapped = ToHostNode.convertToObject(hostContext, value, lib);
+            wrapped = HostToTypeNode.convertToObject(hostContext, value, lib);
         } else {
             wrapped = value;
         }
@@ -230,18 +230,19 @@ final class HostLanguage extends AbstractHostLanguage<HostContext> {
     }
 
     @Override
-    protected Node createToHostNode() {
-        return ToHostNodeGen.create();
+    protected Node createToHostTypeNode() {
+        return HostToTypeNodeGen.create();
     }
 
+    @SuppressWarnings("unchecked")
     @Override
-    protected Object asHostValue(Node hostNode, Object hostContext, Object value, Class<?> targetType, Type genericType) {
+    protected <T> T toHostType(Node hostNode, Object hostContext, Object value, Class<T> targetType, Type genericType) {
         HostContext context = (HostContext) hostContext;
-        ToHostNode node = (ToHostNode) hostNode;
+        HostToTypeNode node = (HostToTypeNode) hostNode;
         if (node == null) {
-            node = ToHostNodeGen.getUncached();
+            node = HostToTypeNodeGen.getUncached();
         }
-        return node.execute(context, value, targetType, genericType, true);
+        return (T) node.execute(context, value, targetType, genericType, true);
     }
 
     @Override
@@ -253,12 +254,12 @@ final class HostLanguage extends AbstractHostLanguage<HostContext> {
     protected Object toGuestValue(Object receiver, Object hostValue) {
         HostContext context = (HostContext) receiver;
         assert !(hostValue instanceof Value);
-        assert !HostWrapper.isInstance(hostValue);
+        assert !PolyglotWrapper.isInstance(hostValue);
 
         if (PolyglotImpl.isGuestPrimitive(hostValue)) {
             return hostValue;
         } else if (hostValue instanceof Proxy) {
-            return PolyglotProxy.toProxyGuestObject(context, (Proxy) hostValue);
+            return HostProxy.toProxyGuestObject(context, (Proxy) hostValue);
         } else if (hostValue instanceof TruffleObject) {
             return hostValue;
         } else if (hostValue instanceof Class) {

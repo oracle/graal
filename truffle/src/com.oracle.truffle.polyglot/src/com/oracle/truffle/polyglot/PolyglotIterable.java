@@ -56,7 +56,7 @@ import java.lang.reflect.Type;
 import java.util.Iterator;
 import java.util.Objects;
 
-class PolyglotIterable<T> implements Iterable<T>, HostWrapper {
+class PolyglotIterable<T> implements Iterable<T>, PolyglotWrapper {
 
     final Object guestObject;
     final PolyglotLanguageContext languageContext;
@@ -91,18 +91,18 @@ class PolyglotIterable<T> implements Iterable<T>, HostWrapper {
 
     @Override
     public String toString() {
-        return HostWrapper.toString(this);
+        return PolyglotWrapper.toString(this);
     }
 
     @Override
     public int hashCode() {
-        return HostWrapper.hashCode(languageContext, guestObject);
+        return PolyglotWrapper.hashCode(languageContext, guestObject);
     }
 
     @Override
     public boolean equals(Object o) {
         if (o instanceof PolyglotIterable) {
-            return HostWrapper.equals(languageContext, guestObject, ((PolyglotIterable<?>) o).guestObject);
+            return PolyglotWrapper.equals(languageContext, guestObject, ((PolyglotIterable<?>) o).guestObject);
         } else {
             return false;
         }

@@ -61,7 +61,7 @@ import com.oracle.truffle.polyglot.PolyglotListFactory.CacheFactory.RemoveNodeGe
 import com.oracle.truffle.polyglot.PolyglotListFactory.CacheFactory.SetNodeGen;
 import com.oracle.truffle.polyglot.PolyglotListFactory.CacheFactory.SizeNodeGen;
 
-class PolyglotList<T> extends AbstractList<T> implements HostWrapper {
+class PolyglotList<T> extends AbstractList<T> implements PolyglotWrapper {
 
     final Object guestObject;
     final PolyglotLanguageContext languageContext;
@@ -125,18 +125,18 @@ class PolyglotList<T> extends AbstractList<T> implements HostWrapper {
 
     @Override
     public String toString() {
-        return HostWrapper.toString(this);
+        return PolyglotWrapper.toString(this);
     }
 
     @Override
     public int hashCode() {
-        return HostWrapper.hashCode(languageContext, guestObject);
+        return PolyglotWrapper.hashCode(languageContext, guestObject);
     }
 
     @Override
     public boolean equals(Object o) {
         if (o instanceof PolyglotList) {
-            return HostWrapper.equals(languageContext, guestObject, ((PolyglotList<?>) o).guestObject);
+            return PolyglotWrapper.equals(languageContext, guestObject, ((PolyglotList<?>) o).guestObject);
         } else {
             return false;
         }

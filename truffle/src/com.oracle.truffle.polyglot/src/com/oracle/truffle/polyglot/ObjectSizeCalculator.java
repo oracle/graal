@@ -261,7 +261,7 @@ final class ObjectSizeCalculator {
                         !(obj instanceof ExecutionEventListener) &&
                         !(obj instanceof ClassValue) &&
                         !(obj instanceof ClassLoader) &&
-                        !(obj instanceof HostWrapper) &&
+                        !(obj instanceof PolyglotWrapper) &&
                         !(obj instanceof Value) &&
                         !(obj instanceof Context) &&
                         !(obj instanceof Engine) &&
@@ -275,7 +275,7 @@ final class ObjectSizeCalculator {
                         (obj instanceof HostFunction) ||
                         (obj instanceof HostException) ||
                         (obj instanceof HostContext) ||
-                        (obj instanceof PolyglotProxy) ||
+                        (obj instanceof HostProxy) ||
 
                         (obj instanceof Class) ||
                         (obj instanceof OptionValues) ||
@@ -313,7 +313,7 @@ final class ObjectSizeCalculator {
                         (obj instanceof ExecutionEventListener) ||
                         (obj instanceof ClassValue) ||
                         (obj instanceof ClassLoader) ||
-                        (obj instanceof HostWrapper) ||
+                        (obj instanceof PolyglotWrapper) ||
                         (obj instanceof Value) ||
                         (obj instanceof Context) ||
                         (obj instanceof Engine) ||

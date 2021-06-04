@@ -45,7 +45,7 @@ import java.lang.reflect.Proxy;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 
-interface HostWrapper {
+interface PolyglotWrapper {
 
     Object getGuestObject();
 
@@ -59,34 +59,34 @@ interface HostWrapper {
         } else if (v instanceof Proxy) {
             return isHostProxy(v);
         } else {
-            return v instanceof HostWrapper;
+            return v instanceof PolyglotWrapper;
         }
     }
 
     @TruffleBoundary
     static boolean isHostProxy(Object v) {
         if (Proxy.isProxyClass(v.getClass())) {
-            return Proxy.getInvocationHandler(v) instanceof HostWrapper;
+            return Proxy.getInvocationHandler(v) instanceof PolyglotWrapper;
         } else {
             return false;
         }
     }
 
-    static HostWrapper asInstance(Object v) {
+    static PolyglotWrapper asInstance(Object v) {
         if (v instanceof Proxy) {
             return getHostProxy(v);
         } else {
-            return (HostWrapper) v;
+            return (PolyglotWrapper) v;
         }
     }
 
     @TruffleBoundary
-    static HostWrapper getHostProxy(Object v) {
-        return (HostWrapper) Proxy.getInvocationHandler(v);
+    static PolyglotWrapper getHostProxy(Object v) {
+        return (PolyglotWrapper) Proxy.getInvocationHandler(v);
     }
 
     @TruffleBoundary
-    static boolean equalsProxy(HostWrapper wrapper, Object other) {
+    static boolean equalsProxy(PolyglotWrapper wrapper, Object other) {
         if (other == null) {
             return false;
         } else if (Proxy.isProxyClass(other.getClass())) {
@@ -110,7 +110,7 @@ interface HostWrapper {
         }
         Object prev = null;
         try {
-            prev = PolyglotValue.hostEnter(languageContext);
+            prev = PolyglotValueDispatch.hostEnter(languageContext);
         } catch (Throwable t) {
             // enter might fail if context was closed asynchonously.
             // Can no longer call interop.
@@ -125,7 +125,7 @@ interface HostWrapper {
             throw PolyglotImpl.guestToHostException(languageContext, t, true);
         } finally {
             try {
-                PolyglotValue.hostLeave(languageContext, prev);
+                PolyglotValueDispatch.hostLeave(languageContext, prev);
             } catch (Throwable t) {
                 // ignore errors leaving we cannot propagate them.
             }
@@ -142,7 +142,7 @@ interface HostWrapper {
         }
         Object prev = null;
         try {
-            prev = PolyglotValue.hostEnter(languageContext);
+            prev = PolyglotValueDispatch.hostEnter(languageContext);
         } catch (Throwable t) {
             // enter might fail if context was closed.
             // Can no longer call interop.
@@ -160,14 +160,14 @@ interface HostWrapper {
             throw PolyglotImpl.guestToHostException(languageContext, t, true);
         } finally {
             try {
-                PolyglotValue.hostLeave(languageContext, prev);
+                PolyglotValueDispatch.hostLeave(languageContext, prev);
             } catch (Throwable t) {
                 // ignore errors leaving we cannot propagate them.
             }
         }
     }
 
-    static String toString(HostWrapper thisObj) {
+    static String toString(PolyglotWrapper thisObj) {
         PolyglotLanguageContext thisContext = thisObj.getLanguageContext();
         Object thisGuestObject = thisObj.getGuestObject();
         if (thisContext != null) {

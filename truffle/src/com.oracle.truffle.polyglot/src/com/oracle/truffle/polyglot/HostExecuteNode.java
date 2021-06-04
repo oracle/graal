@@ -74,8 +74,8 @@ import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.polyglot.HostContext.ToGuestValueNode;
 import com.oracle.truffle.polyglot.HostMethodDesc.OverloadedMethod;
 import com.oracle.truffle.polyglot.HostMethodDesc.SingleMethod;
-import com.oracle.truffle.polyglot.TargetMappingNode.SingleMappingNode;
-import com.oracle.truffle.polyglot.TargetMappingNodeGen.SingleMappingNodeGen;
+import com.oracle.truffle.polyglot.HostTargetMappingNode.SingleMappingNode;
+import com.oracle.truffle.polyglot.HostTargetMappingNodeGen.SingleMappingNodeGen;
 
 @ReportPolymorphism
 @GenerateUncached
@@ -92,10 +92,10 @@ abstract class HostExecuteNode extends Node {
 
     public abstract Object execute(HostMethodDesc method, Object obj, Object[] args, HostContext hostContext) throws UnsupportedTypeException, ArityException;
 
-    static ToHostNode[] createToHost(int argsLength) {
-        ToHostNode[] toJava = new ToHostNode[argsLength];
+    static HostToTypeNode[] createToHost(int argsLength) {
+        HostToTypeNode[] toJava = new HostToTypeNode[argsLength];
         for (int i = 0; i < argsLength; i++) {
-            toJava[i] = ToHostNodeGen.create();
+            toJava[i] = HostToTypeNodeGen.create();
         }
         return toJava;
     }
@@ -105,7 +105,7 @@ abstract class HostExecuteNode extends Node {
     @Specialization(guards = {"!method.isVarArgs()", "method == cachedMethod"}, limit = "LIMIT")
     Object doFixed(SingleMethod method, Object obj, Object[] args, HostContext hostContext,
                     @Cached("method") SingleMethod cachedMethod,
-                    @Cached("createToHost(method.getParameterCount())") ToHostNode[] toJavaNodes,
+                    @Cached("createToHost(method.getParameterCount())") HostToTypeNode[] toJavaNodes,
                     @Cached ToGuestValueNode toGuest,
                     @Cached("createClassProfile()") ValueProfile receiverProfile,
                     @Cached BranchProfile errorBranch,
@@ -133,7 +133,7 @@ abstract class HostExecuteNode extends Node {
     @Specialization(guards = {"method.isVarArgs()", "method == cachedMethod"}, limit = "LIMIT")
     Object doVarArgs(SingleMethod method, Object obj, Object[] args, HostContext hostContext,
                     @Cached("method") SingleMethod cachedMethod,
-                    @Cached ToHostNode toJavaNode,
+                    @Cached HostToTypeNode toJavaNode,
                     @Cached ToGuestValueNode toGuest,
                     @Cached("createClassProfile()") ValueProfile receiverProfile,
                     @Cached BranchProfile errorBranch,
@@ -170,7 +170,7 @@ abstract class HostExecuteNode extends Node {
 
     @Specialization(replaces = {"doFixed", "doVarArgs"})
     static Object doSingleUncached(SingleMethod method, Object obj, Object[] args, HostContext hostContext,
-                    @Shared("toHost") @Cached ToHostNode toJavaNode,
+                    @Shared("toHost") @Cached HostToTypeNode toJavaNode,
                     @Shared("toGuest") @Cached ToGuestValueNode toGuest,
                     @Shared("varArgsProfile") @Cached ConditionProfile isVarArgsProfile,
                     @Shared("hostMethodProfile") @Cached HostMethodProfileNode methodProfile,
@@ -209,7 +209,7 @@ abstract class HostExecuteNode extends Node {
     @Specialization(guards = {"method == cachedMethod", "checkArgTypes(args, cachedArgTypes, interop, hostContext, asVarArgs)"}, limit = "LIMIT")
     final Object doOverloadedCached(OverloadedMethod method, Object obj, Object[] args, HostContext hostContext,
                     @Cached("method") OverloadedMethod cachedMethod,
-                    @Cached ToHostNode toJavaNode,
+                    @Cached HostToTypeNode toJavaNode,
                     @Cached ToGuestValueNode toGuest,
                     @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                     @Cached("createArgTypesArray(args)") TypeCheckNode[] cachedArgTypes,
@@ -247,7 +247,7 @@ abstract class HostExecuteNode extends Node {
     @SuppressWarnings("static-method")
     @Specialization(replaces = "doOverloadedCached")
     final Object doOverloadedUncached(OverloadedMethod method, Object obj, Object[] args, HostContext hostContext,
-                    @Shared("toHost") @Cached ToHostNode toJavaNode,
+                    @Shared("toHost") @Cached HostToTypeNode toJavaNode,
                     @Shared("toGuest") @Cached ToGuestValueNode toGuest,
                     @Shared("varArgsProfile") @Cached ConditionProfile isVarArgsProfile,
                     @Shared("hostMethodProfile") @Cached HostMethodProfileNode methodProfile,
@@ -264,7 +264,7 @@ abstract class HostExecuteNode extends Node {
         return doInvoke(methodProfile.execute(overload), obj, convertedArguments, cache, hostContext, toGuest);
     }
 
-    private static Object[] prepareArgumentsUncached(SingleMethod method, Object[] args, HostContext context, ToHostNode toJavaNode, ConditionProfile isVarArgsProfile) {
+    private static Object[] prepareArgumentsUncached(SingleMethod method, Object[] args, HostContext context, HostToTypeNode toJavaNode, ConditionProfile isVarArgsProfile) {
         Class<?>[] types = method.getParameterTypes();
         Type[] genericTypes = method.getGenericParameterTypes();
         Object[] convertedArguments = new Object[args.length];
@@ -320,8 +320,8 @@ abstract class HostExecuteNode extends Node {
                      * checked for not applicable in order to ensure that mappings with priority
                      * continue to not apply.
                      */
-                    if (!ToHostNode.canConvert(arg, paramType, paramType, null, context, priority,
-                                    InteropLibrary.getFactory().getUncached(), TargetMappingNodeGen.getUncached())) {
+                    if (!HostToTypeNode.canConvert(arg, paramType, paramType, null, context, priority,
+                                    InteropLibrary.getFactory().getUncached(), HostTargetMappingNode.getUncached())) {
                         HostTargetMapping[] otherMappings = cache.getMappings(paramType);
                         if (otherPossibleMappings == null) {
                             otherPossibleMappings = new LinkedHashSet<>();
@@ -335,7 +335,7 @@ abstract class HostExecuteNode extends Node {
             TypeCheckNode argType;
             if (arg == null) {
                 argType = NullCheckNode.INSTANCE;
-            } else if (multiple && ToHostNode.isPrimitiveTarget(targetType)) {
+            } else if (multiple && HostToTypeNode.isPrimitiveTarget(targetType)) {
                 argType = createPrimitiveTargetCheck(applicable, selected, arg, targetType, i, priority, varArgs);
             } else if (arg instanceof HostObject) {
                 argType = new JavaObjectType(((HostObject) arg).getObjectClass());
@@ -381,7 +381,7 @@ abstract class HostExecuteNode extends Node {
              * param type, we must not guard against the other param type, and we do not have to as
              * this overload was better fit regardless.
              */
-            if ((ToHostNode.isPrimitiveTarget(paramType) || ToHostNode.isPrimitiveTarget(targetType)) &&
+            if ((HostToTypeNode.isPrimitiveTarget(paramType) || HostToTypeNode.isPrimitiveTarget(targetType)) &&
                             isAssignableFrom(targetType, paramType) && !isSubtypeOf(arg, paramType)) {
                 otherPossibleTypes.add(paramType);
             }
@@ -409,9 +409,9 @@ abstract class HostExecuteNode extends Node {
             int parameterCount = overload.getParameterCount();
             if (args.length == parameterCount) {
                 Class<?> varArgParamType = overload.getParameterTypes()[parameterCount - 1];
-                return !ToHostNode.canConvert(args[parameterCount - 1], varArgParamType, overload.getGenericParameterTypes()[parameterCount - 1],
-                                null, hostContext, ToHostNode.COERCE,
-                                InteropLibrary.getFactory().getUncached(), TargetMappingNode.getUncached());
+                return !HostToTypeNode.canConvert(args[parameterCount - 1], varArgParamType, overload.getGenericParameterTypes()[parameterCount - 1],
+                                null, hostContext, HostToTypeNode.COERCE,
+                                InteropLibrary.getFactory().getUncached(), HostTargetMappingNode.getUncached());
             } else {
                 assert args.length != parameterCount;
                 return true;
@@ -504,14 +504,14 @@ abstract class HostExecuteNode extends Node {
         }
 
         SingleMethod best;
-        for (int priority : ToHostNode.PRIORITIES) {
+        for (int priority : HostToTypeNode.PRIORITIES) {
             best = findBestCandidate(applicableByArity, args, hostContext, false, priority, cachedArgTypes);
             if (best != null) {
                 return best;
             }
         }
         if (anyVarArgs) {
-            for (int priority : ToHostNode.PRIORITIES) {
+            for (int priority : HostToTypeNode.PRIORITIES) {
                 best = findBestCandidate(applicableByArity, args, hostContext, true, priority, cachedArgTypes);
                 if (best != null) {
                     return best;
@@ -536,9 +536,9 @@ abstract class HostExecuteNode extends Node {
                     Type[] genericParameterTypes = candidate.getGenericParameterTypes();
                     boolean applicable = true;
                     for (int i = 0; i < paramCount; i++) {
-                        if (!ToHostNode.canConvert(args[i], parameterTypes[i], genericParameterTypes[i], null,
+                        if (!HostToTypeNode.canConvert(args[i], parameterTypes[i], genericParameterTypes[i], null,
                                         hostContext, priority, InteropLibrary.getFactory().getUncached(args[i]),
-                                        TargetMappingNode.getUncached())) {
+                                        HostTargetMappingNode.getUncached())) {
                             applicable = false;
                             break;
                         }
@@ -556,9 +556,9 @@ abstract class HostExecuteNode extends Node {
                     Type[] genericParameterTypes = candidate.getGenericParameterTypes();
                     boolean applicable = true;
                     for (int i = 0; i < parameterCount - 1; i++) {
-                        if (!ToHostNode.canConvert(args[i], parameterTypes[i], genericParameterTypes[i], null,
+                        if (!HostToTypeNode.canConvert(args[i], parameterTypes[i], genericParameterTypes[i], null,
                                         hostContext, priority, InteropLibrary.getFactory().getUncached(args[i]),
-                                        TargetMappingNode.getUncached())) {
+                                        HostTargetMappingNode.getUncached())) {
                             applicable = false;
                             break;
                         }
@@ -573,9 +573,9 @@ abstract class HostExecuteNode extends Node {
                             varArgsGenericComponentType = varArgsComponentType;
                         }
                         for (int i = parameterCount - 1; i < args.length; i++) {
-                            if (!ToHostNode.canConvert(args[i], varArgsComponentType, varArgsGenericComponentType, null,
+                            if (!HostToTypeNode.canConvert(args[i], varArgsComponentType, varArgsGenericComponentType, null,
                                             hostContext, priority,
-                                            InteropLibrary.getFactory().getUncached(args[i]), TargetMappingNode.getUncached())) {
+                                            InteropLibrary.getFactory().getUncached(args[i]), HostTargetMappingNode.getUncached())) {
                                 applicable = false;
                                 break;
                             }
@@ -682,17 +682,17 @@ abstract class HostExecuteNode extends Node {
     }
 
     private static int compareByPriority(HostContext context, Class<?> t1, Class<?> t2, Object arg, int priority) {
-        if (priority <= ToHostNode.STRICT) {
+        if (priority <= HostToTypeNode.STRICT) {
             return 0;
         }
         InteropLibrary argInterop = InteropLibrary.getFactory().getUncached(arg);
-        TargetMappingNode mapping = TargetMappingNode.getUncached();
-        for (int p : ToHostNode.PRIORITIES) {
+        HostTargetMappingNode mapping = HostTargetMappingNode.getUncached();
+        for (int p : HostToTypeNode.PRIORITIES) {
             if (p > priority) {
                 break;
             }
-            boolean p1 = ToHostNode.canConvert(arg, t1, t1, null, context, p, argInterop, mapping);
-            boolean p2 = ToHostNode.canConvert(arg, t2, t2, null, context, p, argInterop, mapping);
+            boolean p1 = HostToTypeNode.canConvert(arg, t1, t1, null, context, p, argInterop, mapping);
+            boolean p2 = HostToTypeNode.canConvert(arg, t2, t2, null, context, p, argInterop, mapping);
             if (p1 != p2) {
                 return p1 ? -1 : 1;
             }
@@ -908,7 +908,7 @@ abstract class HostExecuteNode extends Node {
         @CompilationFinal(dimensions = 1) final HostTargetMapping[] otherMappings;
 
         @Child TypeCheckNode fallback;
-        @Child TargetMappingNode targetMapping;
+        @Child HostTargetMappingNode targetMapping;
         @Children final SingleMappingNode[] mappingNodes;
         @Children final SingleMappingNode[] otherMappingNodes;
         final int priority;
@@ -929,7 +929,7 @@ abstract class HostExecuteNode extends Node {
             for (int i = 0; i < otherMappings.length; i++) {
                 otherMappingNodes[i] = SingleMappingNodeGen.create();
             }
-            this.targetMapping = TargetMappingNode.create();
+            this.targetMapping = HostTargetMappingNode.create();
         }
 
         @Override
@@ -1025,11 +1025,11 @@ abstract class HostExecuteNode extends Node {
         @Override
         public boolean execute(Object value, InteropLibrary interop, HostContext context) {
             for (Class<?> otherType : otherTypes) {
-                if (ToHostNode.canConvert(value, otherType, otherType, null, context, priority, interop, null)) {
+                if (HostToTypeNode.canConvert(value, otherType, otherType, null, context, priority, interop, null)) {
                     return false;
                 }
             }
-            return ToHostNode.canConvert(value, targetType, targetType, null, context, priority, interop, null);
+            return HostToTypeNode.canConvert(value, targetType, targetType, null, context, priority, interop, null);
         }
     }
 

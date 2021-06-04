@@ -65,13 +65,13 @@ final class HostTargetMapping implements Comparable<HostTargetMapping> {
     private static int toHostPriority(TargetMappingPrecedence p) {
         switch (p) {
             case HIGHEST:
-                return ToHostNode.HIGHEST;
+                return HostToTypeNode.HIGHEST;
             case HIGH:
-                return ToHostNode.STRICT;
+                return HostToTypeNode.STRICT;
             case LOW:
-                return ToHostNode.LOOSE;
+                return HostToTypeNode.LOOSE;
             case LOWEST:
-                return ToHostNode.LOWEST;
+                return HostToTypeNode.LOWEST;
             default:
                 throw new AssertionError("invalid precedence");
         }

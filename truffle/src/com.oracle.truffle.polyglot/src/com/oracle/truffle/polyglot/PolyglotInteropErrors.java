@@ -161,7 +161,7 @@ final class PolyglotInteropErrors {
     static RuntimeException invalidInstantiateArity(PolyglotLanguageContext context, Object receiver, Object[] arguments, int minArity, int maxArity, int actual) {
         String[] formattedArgs = formatArgs(context, arguments);
         String message = String.format("Invalid argument count when instantiating %s with arguments %s. %s",
-                        getValueInfo(context, receiver), Arrays.asList(formattedArgs), PolyglotValue.formatExpectedArguments(minArity, maxArity, actual));
+                        getValueInfo(context, receiver), Arrays.asList(formattedArgs), PolyglotValueDispatch.formatExpectedArguments(minArity, maxArity, actual));
         throw PolyglotEngineException.illegalArgument(message);
     }
 
@@ -169,7 +169,7 @@ final class PolyglotInteropErrors {
     static RuntimeException invalidExecuteArity(PolyglotLanguageContext context, Object receiver, Object[] arguments, int minArity, int maxArity, int actual) {
         String[] formattedArgs = formatArgs(context, arguments);
         String message = String.format("Invalid argument count when executing %s with arguments %s. %s",
-                        getValueInfo(context, receiver), Arrays.asList(formattedArgs), PolyglotValue.formatExpectedArguments(minArity, maxArity, actual));
+                        getValueInfo(context, receiver), Arrays.asList(formattedArgs), PolyglotValueDispatch.formatExpectedArguments(minArity, maxArity, actual));
         throw PolyglotEngineException.illegalArgument(message);
     }
 
@@ -198,11 +198,11 @@ final class PolyglotInteropErrors {
     }
 
     static String getValueInfo(PolyglotLanguageContext context, Object value) {
-        return PolyglotValue.getValueInfo(context != null ? context.context : null, value);
+        return PolyglotValueDispatch.getValueInfo(context != null ? context.context : null, value);
     }
 
     static String getValueInfo(PolyglotContextImpl context, Object value) {
-        return PolyglotValue.getValueInfo(context, value);
+        return PolyglotValueDispatch.getValueInfo(context, value);
     }
 
     @TruffleBoundary

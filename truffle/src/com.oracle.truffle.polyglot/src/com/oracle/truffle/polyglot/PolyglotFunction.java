@@ -49,7 +49,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.TruffleObject;
 
-final class PolyglotFunction<T, R> implements Function<T, R>, HostWrapper {
+final class PolyglotFunction<T, R> implements Function<T, R>, PolyglotWrapper {
 
     final Object guestObject;
     final PolyglotLanguageContext languageContext;
@@ -83,18 +83,18 @@ final class PolyglotFunction<T, R> implements Function<T, R>, HostWrapper {
 
     @Override
     public String toString() {
-        return HostWrapper.toString(this);
+        return PolyglotWrapper.toString(this);
     }
 
     @Override
     public int hashCode() {
-        return HostWrapper.hashCode(languageContext, guestObject);
+        return PolyglotWrapper.hashCode(languageContext, guestObject);
     }
 
     @Override
     public boolean equals(Object o) {
         if (o instanceof PolyglotFunction) {
-            return HostWrapper.equals(languageContext, guestObject, ((PolyglotFunction<?, ?>) o).guestObject);
+            return PolyglotWrapper.equals(languageContext, guestObject, ((PolyglotFunction<?, ?>) o).guestObject);
         } else {
             return false;
         }

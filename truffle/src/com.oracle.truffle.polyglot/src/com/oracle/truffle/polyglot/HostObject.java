@@ -536,7 +536,7 @@ final class HostObject implements TruffleObject {
         @Specialization(guards = {"isArray.execute(receiver)"}, limit = "1")
         @SuppressWarnings("unchecked")
         static void doArray(HostObject receiver, long index, Object value,
-                        @Shared("toHost") @Cached ToHostNode toHostNode,
+                        @Shared("toHost") @Cached HostToTypeNode toHostNode,
                         @Shared("isArray") @Cached IsArrayNode isArray,
                         @Cached ArraySet arraySet,
                         @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
@@ -569,7 +569,7 @@ final class HostObject implements TruffleObject {
         @SuppressWarnings("unchecked")
         static void doList(HostObject receiver, long index, Object value,
                         @Shared("isList") @Cached IsListNode isList,
-                        @Shared("toHost") @Cached ToHostNode toHostNode,
+                        @Shared("toHost") @Cached HostToTypeNode toHostNode,
                         @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
             if (index < 0 || Integer.MAX_VALUE < index) {
                 error.enter();
@@ -597,7 +597,7 @@ final class HostObject implements TruffleObject {
         @SuppressWarnings("unchecked")
         static void doMapEntry(HostObject receiver, long index, Object value,
                         @Shared("isMapEntry") @Cached IsMapEntryNode isMapEntry,
-                        @Shared("toHost") @Cached ToHostNode toHostNode,
+                        @Shared("toHost") @Cached HostToTypeNode toHostNode,
                         @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
             if (index == 1) {
                 Object hostValue;
@@ -1936,7 +1936,7 @@ final class HostObject implements TruffleObject {
         @Specialization(guards = "isMap.execute(receiver)", limit = "1")
         protected static Object doMap(HostObject receiver, Object key,
                         @Shared("isMap") @Cached IsMapNode isMap,
-                        @Shared("toHost") @Cached ToHostNode toHost,
+                        @Shared("toHost") @Cached HostToTypeNode toHost,
                         @Shared("toGuest") @Cached ToGuestValueNode toGuest,
                         @Shared("error") @Cached BranchProfile error) throws UnknownKeyException {
             Object hostKey;
@@ -1981,7 +1981,7 @@ final class HostObject implements TruffleObject {
         @Specialization(guards = "isMap.execute(receiver)", limit = "1")
         protected static void doMap(HostObject receiver, Object key, Object value,
                         @Shared("isMap") @Cached IsMapNode isMap,
-                        @Shared("toHost") @Cached ToHostNode toHost,
+                        @Shared("toHost") @Cached HostToTypeNode toHost,
                         @Shared("error") @Cached BranchProfile error) throws UnsupportedTypeException {
 
             Object hostKey;
@@ -2020,7 +2020,7 @@ final class HostObject implements TruffleObject {
         @Specialization(guards = "isMap.execute(receiver)", limit = "1")
         protected static void doMap(HostObject receiver, Object key,
                         @Shared("isMap") @Cached IsMapNode isMap,
-                        @Shared("toHost") @Cached ToHostNode toHost,
+                        @Shared("toHost") @Cached HostToTypeNode toHost,
                         @Shared("error") @Cached BranchProfile error) throws UnknownKeyException {
             Object hostKey;
             try {
@@ -2131,15 +2131,15 @@ final class HostObject implements TruffleObject {
                 } else {
                     return c.isInstance(otherHostObj);
                 }
-            } else if (PolyglotProxy.isProxyGuestObject(other)) {
-                PolyglotProxy otherHost = (PolyglotProxy) other;
+            } else if (HostProxy.isProxyGuestObject(other)) {
+                HostProxy otherHost = (HostProxy) other;
                 return c.isInstance(otherHost.proxy);
             } else {
-                boolean canConvert = ToHostNode.canConvert(other, c, c,
-                                ToHostNode.allowsImplementation(context, c),
-                                context, ToHostNode.LOWEST,
+                boolean canConvert = HostToTypeNode.canConvert(other, c, c,
+                                HostToTypeNode.allowsImplementation(context, c),
+                                context, HostToTypeNode.LOWEST,
                                 InteropLibrary.getFactory().getUncached(other),
-                                TargetMappingNode.getUncached());
+                                HostTargetMappingNode.getUncached());
                 return canConvert;
             }
         } else {
@@ -2494,7 +2494,7 @@ final class HostObject implements TruffleObject {
         @Specialization(guards = {"field == cachedField"}, limit = "LIMIT")
         static void doCached(HostFieldDesc field, HostObject object, Object rawValue,
                         @Cached("field") HostFieldDesc cachedField,
-                        @Cached ToHostNode toHost,
+                        @Cached HostToTypeNode toHost,
                         @Cached BranchProfile error) throws UnsupportedTypeException, UnknownIdentifierException {
             if (field.isFinal()) {
                 error.enter();
@@ -2512,7 +2512,7 @@ final class HostObject implements TruffleObject {
         @Specialization(replaces = "doCached")
         @TruffleBoundary
         static void doUncached(HostFieldDesc field, HostObject object, Object rawValue,
-                        @Cached ToHostNode toHost) throws UnsupportedTypeException, UnknownIdentifierException {
+                        @Cached HostToTypeNode toHost) throws UnsupportedTypeException, UnknownIdentifierException {
             if (field.isFinal()) {
                 throw UnknownIdentifierException.create(field.getName());
             }
@@ -2644,7 +2644,7 @@ final class HostObject implements TruffleObject {
         @Specialization(guards = "isMap.execute(receiver)", limit = "1")
         protected static boolean doMap(HostObject receiver, Object key,
                         @Shared("isMap") @Cached IsMapNode isMap,
-                        @Cached ToHostNode toHost,
+                        @Cached HostToTypeNode toHost,
                         @Cached BranchProfile error) {
             Object hostKey;
             try {

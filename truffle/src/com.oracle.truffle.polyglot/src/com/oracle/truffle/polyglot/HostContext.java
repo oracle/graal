@@ -241,7 +241,7 @@ final class HostContext {
         } else if (PolyglotImpl.isGuestPrimitive(hostValue)) {
             return hostValue;
         } else if (hostValue instanceof Proxy) {
-            return PolyglotProxy.toProxyGuestObject(this, (Proxy) hostValue);
+            return HostProxy.toProxyGuestObject(this, (Proxy) hostValue);
         } else if (hostValue instanceof TruffleObject) {
             return hostValue;
         } else if (hostValue instanceof Class) {

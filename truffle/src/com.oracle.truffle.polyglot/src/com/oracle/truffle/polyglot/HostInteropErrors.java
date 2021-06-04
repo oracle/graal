@@ -61,7 +61,7 @@ final class HostInteropErrors {
     @TruffleBoundary
     static RuntimeException cannotConvertPrimitive(HostContext context, Object value, Class<?> targetType) {
         String reason;
-        if (ToHostNode.isPrimitiveTarget(targetType)) {
+        if (HostToTypeNode.isPrimitiveTarget(targetType)) {
             reason = "Invalid or lossy primitive coercion.";
         } else {
             reason = "Unsupported target type.";
@@ -107,7 +107,7 @@ final class HostInteropErrors {
     static RuntimeException invalidExecuteArity(HostContext context, Object receiver, Object[] arguments, int minArity, int maxArity, int actual) {
         String[] formattedArgs = formatArgs(context, arguments);
         String message = String.format("Invalid argument count when executing %s with arguments %s. %s",
-                        getValueInfo(context, receiver), Arrays.asList(formattedArgs), PolyglotValue.formatExpectedArguments(minArity, maxArity, actual));
+                        getValueInfo(context, receiver), Arrays.asList(formattedArgs), PolyglotValueDispatch.formatExpectedArguments(minArity, maxArity, actual));
         throw PolyglotEngineException.illegalArgument(message);
     }
 
@@ -120,7 +120,7 @@ final class HostInteropErrors {
     }
 
     static String getValueInfo(HostContext context, Object value) {
-        return PolyglotValue.getValueInfo(context != null ? context.internalContext : null, value);
+        return PolyglotValueDispatch.getValueInfo(context != null ? context.internalContext : null, value);
     }
 
     @TruffleBoundary

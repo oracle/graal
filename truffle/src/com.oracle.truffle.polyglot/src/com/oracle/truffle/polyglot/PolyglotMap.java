@@ -75,7 +75,7 @@ import com.oracle.truffle.polyglot.PolyglotMapFactory.CacheFactory.HashSizeNodeG
 import com.oracle.truffle.polyglot.PolyglotMapFactory.CacheFactory.PutNodeGen;
 import com.oracle.truffle.polyglot.PolyglotMapFactory.CacheFactory.RemoveBooleanNodeGen;
 
-class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
+class PolyglotMap<K, V> extends AbstractMap<K, V> implements PolyglotWrapper {
 
     final PolyglotLanguageContext languageContext;
     final Object guestObject;
@@ -145,18 +145,18 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
 
     @Override
     public String toString() {
-        return HostWrapper.toString(this);
+        return PolyglotWrapper.toString(this);
     }
 
     @Override
     public int hashCode() {
-        return HostWrapper.hashCode(languageContext, guestObject);
+        return PolyglotWrapper.hashCode(languageContext, guestObject);
     }
 
     @Override
     public boolean equals(Object o) {
         if (o instanceof PolyglotMap) {
-            return HostWrapper.equals(languageContext, guestObject, ((PolyglotMap<?, ?>) o).guestObject);
+            return PolyglotWrapper.equals(languageContext, guestObject, ((PolyglotMap<?, ?>) o).guestObject);
         } else {
             return false;
         }

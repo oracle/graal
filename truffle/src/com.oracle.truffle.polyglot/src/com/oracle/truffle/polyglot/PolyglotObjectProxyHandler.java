@@ -67,7 +67,7 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.polyglot.HostContext.ToGuestValuesNode;
 import com.oracle.truffle.polyglot.PolyglotObjectProxyHandlerFactory.ProxyInvokeNodeGen;
 
-final class PolyglotObjectProxyHandler implements InvocationHandler, HostWrapper {
+final class PolyglotObjectProxyHandler implements InvocationHandler, PolyglotWrapper {
 
     final Object obj;
     final PolyglotLanguageContext languageContext;
