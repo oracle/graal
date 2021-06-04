@@ -491,8 +491,10 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                                 List<Object> languageServicesCollector = new ArrayList<>();
                                 Object contextImpl = LANGUAGE.createEnvContext(localEnv, languageServicesCollector);
                                 language.initializeContextClass(contextImpl);
+                                if (language.isHost()) {
+                                    context.initializeHostContext(contextImpl, context.config);
+                                }
                                 context.contextImpls[lang.language.index] = contextImpl;
-
                                 String errorMessage = verifyServices(language.info, languageServicesCollector, language.cache.getServices());
                                 if (errorMessage != null) {
                                     throw PolyglotEngineException.illegalState(errorMessage);
@@ -506,6 +508,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                                 context.weakReference.freeInstances.add(lang);
                                 context.invokeContextLocalsFactory(context.contextLocals, lang.contextLocalLocations);
                                 context.invokeContextThreadLocalFactory(lang.contextThreadLocalLocations);
+
                                 lang = null; // commit language use
                             } catch (Throwable e) {
                                 env = null;
@@ -801,9 +804,8 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         assert guestValue != null;
         assert !(guestValue instanceof Value);
         assert !(guestValue instanceof Proxy);
-        Object receiver = guestValue;
-        PolyglotValue cache = getLanguageInstance().lookupValueCache(context, guestValue, receiver);
-        return getAPIAccess().newValue(cache, this, receiver);
+        PolyglotValue cache = getLanguageInstance().lookupValueCache(context, guestValue);
+        return getAPIAccess().newValue(cache, this, guestValue);
     }
 
     static final class ToHostValueNode {

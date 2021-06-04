@@ -40,9 +40,15 @@
  */
 package com.oracle.truffle.polyglot;
 
+import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
+
+import java.util.function.Predicate;
+
+import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.HostEngine;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.HostLanguageAccess;
+import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -51,24 +57,34 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.RootNode;
 
 /*
  * Java host language implementation.
  */
-final class HostLanguage extends TruffleLanguage<Object> {
+final class HostLanguage extends TruffleLanguage<Object> implements HostLanguageService {
 
-    final HostEngine access;
+    @CompilationFinal private GuestToHostCodeCache hostToGuestCodeCache;
+    @CompilationFinal HostClassCache hostClassCache; // effectively final
+    final HostLanguageAccess access;
     final PolyglotImpl polyglot;
     final APIAccess api;
 
-    HostLanguage(PolyglotImpl polyglot, HostEngine hostAccess) {
+    HostLanguage(PolyglotImpl polyglot, HostLanguageAccess hostAccess) {
         this.polyglot = polyglot;
         this.access = hostAccess;
         this.api = polyglot.getAPIAccess();
+    }
+
+    @Override
+    protected Object createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
+        return new HostContext(this);
     }
 
     @SuppressWarnings("serial")
@@ -79,10 +95,56 @@ final class HostLanguage extends TruffleLanguage<Object> {
         }
     }
 
+    GuestToHostCodeCache getGuestToHostCache() {
+        GuestToHostCodeCache cache = this.hostToGuestCodeCache;
+        if (cache == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            hostToGuestCodeCache = cache = new GuestToHostCodeCache();
+        }
+        return cache;
+    }
+
+    void initializeHostAccess(HostAccess policy, ClassLoader cl) {
+        if (policy == null) {
+            // should only happen during context preinitialization
+            return;
+        }
+
+        HostClassCache cache = HostClassCache.findOrInitialize(PolyglotImpl.getInstance().getAPIAccess(), policy, cl);
+        if (this.hostClassCache != null) {
+            if (this.hostClassCache.hostAccess.equals(cache.hostAccess)) {
+                /*
+                 * The cache can be effectively be reused if the same host access configuration
+                 * applies.
+                 */
+            } else {
+                throw PolyglotEngineException.illegalState("Found different host access configuration for a context with a shared engine. " +
+                                "The host access configuration must be the same for all contexts of an engine. " +
+                                "Provide the same host access configuration using the Context.Builder.allowHostAccess method when constructing the context.");
+            }
+        } else {
+            this.hostClassCache = cache;
+        }
+    }
+
     @Override
     @TruffleBoundary
     protected Object getLanguageView(Object context, Object value) {
-        return access.getLanguageView(context, value);
+        HostContext context1 = (HostContext) context;
+
+        Object wrapped;
+        if (value instanceof TruffleObject) {
+            InteropLibrary lib = InteropLibrary.getFactory().getUncached(value);
+            try {
+                assert !lib.hasLanguage(value) || lib.getLanguage(value) != HostLanguage.class;
+            } catch (UnsupportedMessageException e) {
+                throw shouldNotReachHere(e);
+            }
+            wrapped = ToHostNode.convertToObject(value, context1.internalContext.getHostContext(), lib);
+        } else {
+            wrapped = value;
+        }
+        return HostObject.forObject(wrapped, context1);
     }
 
     @Override
@@ -99,34 +161,47 @@ final class HostLanguage extends TruffleLanguage<Object> {
                     contextRef = lookupContextReference(HostLanguage.class);
                 }
                 Object context = contextRef.get();
-                return access.findDynamicClass(context, sourceString);
+                return findDynamicClass(context, sourceString);
             }
         });
     }
 
     @Override
     protected void disposeContext(Object context) {
-        access.disposeContext(context);
+        HostContext context1 = (HostContext) context;
+        context1.disposeClassLoader();
+    }
+
+    @Override
+    public void initializeHostContext(Object receiver, HostAccess hostAccess, ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed, boolean hostLookupAllowed) {
+        HostContext context = (HostContext) receiver;
+        ClassLoader useCl = resolveClassLoader(cl);
+        initializeHostAccess(hostAccess, useCl);
+        context.initialize(useCl, clFilter, hostCLAllowed, hostLookupAllowed);
     }
 
     @Override
     protected boolean patchContext(Object context, Env newEnv) {
-        PolyglotLanguageContext languageContext = (PolyglotLanguageContext) EngineAccessor.LANGUAGE.getPolyglotLanguageContext(newEnv);
-        PolyglotContextConfig config = languageContext.context.config;
-        access.patchHostContext(context, config.hostAccess, config.hostClassLoader, config.classFilter, config.hostClassLoadingAllowed, config.hostLookupAllowed);
         return true;
     }
 
     @Override
-    protected Object createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
-        PolyglotLanguageContext languageContext = (PolyglotLanguageContext) EngineAccessor.LANGUAGE.getPolyglotLanguageContext(env);
-        PolyglotContextConfig config = languageContext.context.config;
-        return access.createHostContext(config.hostAccess, config.hostClassLoader, config.classFilter, config.hostClassLoadingAllowed, config.hostLookupAllowed);
+    public void addToHostClassPath(Object receiver, TruffleFile truffleFile) {
+        HostContext context = (HostContext) receiver;
+        context.addToHostClasspath(truffleFile);
+    }
+
+    private static ClassLoader resolveClassLoader(ClassLoader cl) {
+        ClassLoader useCl = cl;
+        if (useCl == null) {
+            useCl = TruffleOptions.AOT ? null : Thread.currentThread().getContextClassLoader();
+        }
+        return useCl;
     }
 
     @Override
     protected Object getScope(Object context) {
-        return access.getTopScope(context);
+        return ((HostContext) context).topScope;
     }
 
     @Override
@@ -134,27 +209,57 @@ final class HostLanguage extends TruffleLanguage<Object> {
         return true;
     }
 
-    void addToHostClassPath(PolyglotContextImpl context, TruffleFile entry) {
-        if (FileSystems.hasNoIOFileSystem(entry)) {
-            throw new HostLanguageException("Host class loading is disabled without IO permissions.");
-        }
-        access.addToHostClassPath(context.getHostContextObject(), entry);
+    public Object asHostDynamicClass(Object context, Class<?> value) {
+        return null;
     }
 
-    Object toGuestValue(Node location, PolyglotContextImpl context, Object hostValue) {
-        if (hostValue instanceof Value) {
-            Value receiverValue = (Value) hostValue;
-            PolyglotLanguageContext languageContext = (PolyglotLanguageContext) api.getContext(receiverValue);
-            PolyglotContextImpl valueContext = languageContext != null ? languageContext.context : null;
-            Object valueReceiver = api.getReceiver(receiverValue);
-            if (valueContext != context) {
-                valueReceiver = context.migrateValue(location, valueReceiver, valueContext);
-            }
-            return valueReceiver;
-        } else if (HostWrapper.isInstance(hostValue)) {
-            return context.migrateHostWrapper(location, HostWrapper.asInstance(hostValue));
+    @Override
+    public Object findDynamicClass(Object receiver, String classValue) {
+        HostContext context = (HostContext) receiver;
+        Class<?> found = context.findClass(classValue);
+        if (found == null) {
+            return null;
+        }
+        return HostObject.forClass(found, context);
+    }
+
+    @Override
+    public Object findStaticClass(Object receiver, String classValue) {
+        HostContext context = (HostContext) receiver;
+        Class<?> found = context.findClass(classValue);
+        if (found == null) {
+            return null;
+        }
+        return HostObject.forStaticClass(found, context);
+    }
+
+    public Object asHostStaticClass(Object context, Class<?> value) {
+        return null;
+    }
+
+    public Object asHostValue(Object context, Object value) {
+        return null;
+    }
+
+    public Object toGuestValue(Object receiver, Object hostValue) {
+        HostContext context = (HostContext) receiver;
+        assert !(hostValue instanceof Value);
+        assert !HostWrapper.isInstance(hostValue);
+
+        if (PolyglotImpl.isGuestPrimitive(hostValue)) {
+            return hostValue;
+        } else if (hostValue instanceof Proxy) {
+            return PolyglotProxy.toProxyGuestObject(context, (Proxy) hostValue);
+        } else if (hostValue instanceof TruffleObject) {
+            return hostValue;
+        } else if (hostValue instanceof Class) {
+            return HostObject.forClass((Class<?>) hostValue, context);
+        } else if (hostValue == null) {
+            return HostObject.NULL;
+        } else if (hostValue.getClass().isArray()) {
+            return HostObject.forObject(hostValue, context);
         } else {
-            return access.toGuestValue(context.getHostContextObject(), hostValue);
+            return HostInteropReflect.asTruffleViaReflection(hostValue, context);
         }
     }
 

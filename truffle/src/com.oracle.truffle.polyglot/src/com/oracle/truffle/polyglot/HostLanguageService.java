@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,23 +40,28 @@
  */
 package com.oracle.truffle.polyglot;
 
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueDispatch;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.HostLanguageAccess;
+import java.util.function.Predicate;
 
-import com.oracle.truffle.polyglot.PolyglotValue.InteropValue;
+import org.graalvm.polyglot.HostAccess;
 
-final class PolyglotHostEngine extends HostLanguageAccess {
+import com.oracle.truffle.api.TruffleFile;
 
-    final AbstractPolyglotImpl polyglot;
+public interface HostLanguageService {
 
-    protected PolyglotHostEngine(AbstractPolyglotImpl polyglot) {
-        super(polyglot);
-        this.polyglot = polyglot;
-    }
+    void initializeHostContext(Object context, HostAccess access, ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed, boolean hostLookupAllowed);
 
-    @Override
-    public AbstractValueDispatch lookupValueDispatch(Object guestValue) {
-        return new InteropValue(polyglot, null, guestValue, guestValue.getClass());
-    }
+    void addToHostClassPath(Object receiver, TruffleFile truffleFile);
+
+    Object toGuestValue(Object context, Object hostValue);
+
+    Object asHostValue(Object context, Object value);
+
+    Object asHostDynamicClass(Object context, Class<?> value);
+
+    Object asHostStaticClass(Object context, Class<?> value);
+
+    Object findDynamicClass(Object context, String classValue);
+
+    Object findStaticClass(Object context, String classValue);
+
 }

@@ -236,12 +236,12 @@ final class PolyglotLanguageInstance implements VMObject {
         sourceCache.listCachedSources(this, sources);
     }
 
-    PolyglotValue lookupValueCache(PolyglotContextImpl context, Object guestValue, Object receiver) {
-        PolyglotValue cache = valueCache.get(receiver.getClass());
+    PolyglotValue lookupValueCache(PolyglotContextImpl context, Object guestValue) {
+        PolyglotValue cache = valueCache.get(guestValue.getClass());
         if (cache == null) {
             Object prev = language.engine.enterIfNeeded(context, true);
             try {
-                cache = lookupValueCache(context, guestValue);
+                cache = lookupValueCacheImpl(guestValue);
             } finally {
                 language.engine.leaveIfNeeded(prev, context);
             }
@@ -249,18 +249,13 @@ final class PolyglotLanguageInstance implements VMObject {
         return cache;
     }
 
-    synchronized PolyglotValue lookupValueCache(PolyglotContextImpl context, Object guestValue) {
-        Object prev = language.engine.enterIfNeeded(context, true);
-        try {
-            PolyglotValue cache = valueCache.computeIfAbsent(guestValue.getClass(), new Function<Class<?>, PolyglotValue>() {
-                public PolyglotValue apply(Class<?> t) {
-                    return PolyglotValue.createInteropValue(PolyglotLanguageInstance.this, (TruffleObject) guestValue, guestValue.getClass());
-                }
-            });
-            return cache;
-        } finally {
-            context.engine.leaveIfNeeded(prev, context);
-        }
+    private synchronized PolyglotValue lookupValueCacheImpl(Object guestValue) {
+        PolyglotValue cache = valueCache.computeIfAbsent(guestValue.getClass(), new Function<Class<?>, PolyglotValue>() {
+            public PolyglotValue apply(Class<?> t) {
+                return PolyglotValue.createInteropValue(PolyglotLanguageInstance.this, (TruffleObject) guestValue, guestValue.getClass());
+            }
+        });
+        return cache;
     }
 
 }

@@ -268,7 +268,7 @@ public abstract class AbstractPolyglotImpl {
 
     public abstract Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> options, boolean useSystemProperties, boolean allowExperimentalOptions,
                     boolean boundEngine,
-                    MessageTransport messageInterceptor, Object logHandlerOrStream, HostEngine conf);
+                    MessageTransport messageInterceptor, Object logHandlerOrStream, HostLanguageAccess conf);
 
     public abstract int getPriority();
 
@@ -285,7 +285,7 @@ public abstract class AbstractPolyglotImpl {
     /**
      * Returns the default host dispatch of this polyglot abstraction.
      */
-    public abstract HostEngine createHostAccess();
+    public abstract HostLanguageAccess createHostAccess();
 
     public abstract static class AbstractManagementDispatch {
 
@@ -613,51 +613,13 @@ public abstract class AbstractPolyglotImpl {
         public abstract String getDefaultMimeType(Object receiver);
     }
 
-    public abstract static class HostEngine {
+    public abstract static class HostLanguageAccess {
 
-        protected HostEngine(AbstractPolyglotImpl impl) {
+        protected HostLanguageAccess(AbstractPolyglotImpl impl) {
             Objects.requireNonNull(impl);
         }
 
-        public abstract Object createHostContext(HostAccess access, ClassLoader contextClassLoader, Predicate<String> clFilter, boolean hostCLAllowed, boolean hostLookupAllowed);
-
-        public abstract Object asHostValue(Object context, Object value);
-
-        public abstract Object asHostDynamicClass(Object context, Class<?> value);
-
-        public abstract Object asHostStaticClass(Object context, Class<?> value);
-
-        public abstract boolean isHostValue(Object value);
-
-        public abstract Object asHostValue(Object value);
-
-        public abstract boolean isHostException(Object value);
-
-        public abstract Throwable asHostException(Object value);
-
-        public abstract Object findDynamicClass(Object context, String classValue);
-
-        public abstract Object findStaticClass(Object context, String classValue);
-
-        public abstract void disposeContext(Object receiver);
-
-        public abstract Object getLanguageView(Object receiver, Object value);
-
-        public abstract Object getTopScope(Object context);
-
-        public abstract void patchHostContext(Object receiver, HostAccess hostAccess, ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed, boolean hostLookupAllowed);
-
-        public abstract void addToHostClassPath(Object receiver, Object truffleFile);
-
-        public abstract Object toGuestValue(Object receiver, Object hostValue);
-
         public abstract AbstractValueDispatch lookupValueDispatch(Object guestValue);
-
-        public abstract boolean needsEnter(Object hostContext);
-
-        public abstract Object enter(Object hostContext);
-
-        public abstract void leave(Object hostContext, Object prev);
 
     }
 

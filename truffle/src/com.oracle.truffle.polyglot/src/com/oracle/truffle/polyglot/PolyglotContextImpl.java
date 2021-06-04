@@ -1350,11 +1350,28 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             } else {
                 targetLanguageContext = languageContext;
             }
-            return targetLanguageContext.asValue(engine.host.toGuestValue(null, this, hostValue));
+            return targetLanguageContext.asValue(toGuestValue(null, hostValue));
         } catch (Throwable e) {
             throw PolyglotImpl.guestToHostException(this.getHostContext(), e, true);
         } finally {
             hostLeave(languageContext, prev);
+        }
+    }
+
+    Object toGuestValue(Node location, Object hostValue) {
+        if (hostValue instanceof Value) {
+            Value receiverValue = (Value) hostValue;
+            PolyglotLanguageContext languageContext = (PolyglotLanguageContext) getAPIAccess().getContext(receiverValue);
+            PolyglotContextImpl valueContext = languageContext != null ? languageContext.context : null;
+            Object valueReceiver = getAPIAccess().getReceiver(receiverValue);
+            if (valueContext != this) {
+                valueReceiver = this.migrateValue(location, valueReceiver, valueContext);
+            }
+            return valueReceiver;
+        } else if (HostWrapper.isInstance(hostValue)) {
+            return migrateHostWrapper(location, HostWrapper.asInstance(hostValue));
+        } else {
+            return engine.host.toGuestValue(getHostContextObject(), hostValue);
         }
     }
 
@@ -2102,6 +2119,9 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         try {
             for (int i = 1; i < this.contexts.length; i++) {
                 final PolyglotLanguageContext context = this.contexts[i];
+                if (context.language.isHost()) {
+                    initializeHostContext(this.contextImpls[i], newConfig);
+                }
                 if (!context.patch(newConfig)) {
                     return false;
                 }
@@ -2110,6 +2130,10 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             engine.leave(prev, this);
         }
         return true;
+    }
+
+    void initializeHostContext(Object context, PolyglotContextConfig newConfig) {
+        engine.host.initializeHostContext(context, newConfig.hostAccess, newConfig.hostClassLoader, newConfig.classFilter, newConfig.hostClassLoadingAllowed, newConfig.hostLookupAllowed);
     }
 
     void replayInstrumentationEvents() {

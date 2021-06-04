@@ -205,7 +205,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     @Override
     public Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> originalOptions, boolean useSystemProperties, final boolean allowExperimentalOptions,
                     boolean boundEngine,
-                    MessageTransport messageInterceptor, Object logHandlerOrStream, HostEngine conf) {
+                    MessageTransport messageInterceptor, Object logHandlerOrStream, HostLanguageAccess conf) {
         PolyglotEngineImpl impl = null;
         try {
             if (TruffleOptions.AOT) {
@@ -425,7 +425,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     }
 
     @Override
-    public HostEngine createHostAccess() {
+    public HostLanguageAccess createHostAccess() {
         return new PolyglotHostEngine(this);
     }
 

@@ -593,7 +593,7 @@ final class EngineAccessor extends Accessor {
         @Override
         public Object lookupHostSymbol(Object polyglotLanguageContext, TruffleLanguage.Env env, String symbolName) {
             PolyglotContextImpl context = ((PolyglotLanguageContext) polyglotLanguageContext).context;
-            return context.engine.host.access.findStaticClass(context.getHostContextObject(), symbolName);
+            return context.engine.host.findStaticClass(context.getHostContextObject(), symbolName);
         }
 
         @Override
@@ -930,7 +930,7 @@ final class EngineAccessor extends Accessor {
         @Override
         public void addToHostClassPath(Object polyglotLanguageContext, TruffleFile entry) {
             PolyglotContextImpl context = ((PolyglotLanguageContext) polyglotLanguageContext).context;
-            context.engine.host.addToHostClassPath(context, entry);
+            context.engine.host.addToHostClassPath(context.getHostContextObject(), entry);
         }
 
         @Override

@@ -74,7 +74,7 @@ final class HostContext {
     final Map<String, Class<?>> classCache = new HashMap<>();
     final Object topScope = new TopScopeObject(this);
     volatile HostClassLoader classloader;
-    private final PolyglotHostEngine hostEngine;
+    private final HostLanguage hostLanguage;
     private ClassLoader contextClassLoader;
     private Predicate<String> classFilter;
     private boolean hostClassLoadingAllowed;
@@ -95,16 +95,12 @@ final class HostContext {
         }
     };
 
-    HostContext(PolyglotHostEngine hostEngine, ClassLoader contextClassLoader, Predicate<String> classFilter, boolean hostClassLoadingAllowed, boolean hostLookupAllowed) {
-        this.hostEngine = hostEngine;
-        this.contextClassLoader = contextClassLoader;
-        this.classFilter = classFilter;
-        this.hostClassLoadingAllowed = hostClassLoadingAllowed;
-        this.hostLookupAllowed = hostLookupAllowed;
+    HostContext(HostLanguage hostLanguage) {
+        this.hostLanguage = hostLanguage;
     }
 
     @SuppressWarnings("hiding")
-    void patch(ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed, boolean hostLookupAllowed) {
+    void initialize(ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed, boolean hostLookupAllowed) {
         assert classloader == null : "must not be used during context preinitialization";
         // if assertions are not enabled. dispose the previous class loader to be on the safe side
         disposeClassLoader();
@@ -121,11 +117,11 @@ final class HostContext {
     }
 
     public HostClassCache getHostClassCache() {
-        return hostEngine.hostClassCache;
+        return hostLanguage.hostClassCache;
     }
 
     GuestToHostCodeCache getGuestToHostCache() {
-        return hostEngine.getGuestToHostCache();
+        return hostLanguage.getGuestToHostCache();
     }
 
     @TruffleBoundary
@@ -236,7 +232,7 @@ final class HostContext {
     }
 
     private APIAccess getAPIAccess() {
-        return hostEngine.polyglot.getAPIAccess();
+        return hostLanguage.polyglot.getAPIAccess();
     }
 
     Object toGuestValue(Node parentNode, Object hostValue) {
@@ -249,6 +245,8 @@ final class HostContext {
                 valueReceiver = internalContext.migrateValue(parentNode, valueReceiver, valueContext);
             }
             return valueReceiver;
+        } else if (HostWrapper.isInstance(hostValue)) {
+            return internalContext.migrateHostWrapper(parentNode, HostWrapper.asInstance(hostValue));
         } else if (PolyglotImpl.isGuestPrimitive(hostValue)) {
             return hostValue;
         } else if (hostValue instanceof Proxy) {
@@ -261,8 +259,6 @@ final class HostContext {
             return HostObject.NULL;
         } else if (hostValue.getClass().isArray()) {
             return HostObject.forObject(hostValue, this);
-        } else if (HostWrapper.isInstance(hostValue)) {
-            return internalContext.migrateHostWrapper(parentNode, HostWrapper.asInstance(hostValue));
         } else {
             return HostInteropReflect.asTruffleViaReflection(hostValue, this);
         }
