@@ -282,10 +282,10 @@ class PolyglotList<T> extends AbstractList<T> implements HostWrapper {
                     return toHost.execute(languageContext, interop.readArrayElement(receiver, index), cache.valueClass, cache.valueType);
                 } catch (InvalidArrayIndexException e) {
                     error.enter();
-                    throw HostInteropErrors.invalidListIndex(languageContext, receiver, cache.valueType, index);
+                    throw PolyglotInteropErrors.invalidListIndex(languageContext, receiver, cache.valueType, index);
                 } catch (UnsupportedMessageException e) {
                     error.enter();
-                    throw HostInteropErrors.listUnsupported(languageContext, receiver, cache.valueType, "get()");
+                    throw PolyglotInteropErrors.listUnsupported(languageContext, receiver, cache.valueType, "get()");
                 }
             }
 
@@ -321,13 +321,13 @@ class PolyglotList<T> extends AbstractList<T> implements HostWrapper {
                     interop.writeArrayElement(receiver, index, value);
                 } catch (InvalidArrayIndexException e) {
                     error.enter();
-                    throw HostInteropErrors.invalidListIndex(languageContext, receiver, cache.valueType, index);
+                    throw PolyglotInteropErrors.invalidListIndex(languageContext, receiver, cache.valueType, index);
                 } catch (UnsupportedMessageException e) {
                     error.enter();
-                    throw HostInteropErrors.listUnsupported(languageContext, receiver, cache.valueType, "set");
+                    throw PolyglotInteropErrors.listUnsupported(languageContext, receiver, cache.valueType, "set");
                 } catch (UnsupportedTypeException e) {
                     error.enter();
-                    throw HostInteropErrors.invalidListValue(languageContext, receiver, cache.valueType, (int) key, value);
+                    throw PolyglotInteropErrors.invalidListValue(languageContext, receiver, cache.valueType, (int) key, value);
                 }
                 return null;
             }
@@ -357,10 +357,10 @@ class PolyglotList<T> extends AbstractList<T> implements HostWrapper {
                     interop.removeArrayElement(receiver, index);
                 } catch (InvalidArrayIndexException e) {
                     error.enter();
-                    throw HostInteropErrors.invalidListIndex(languageContext, receiver, cache.valueType, index);
+                    throw PolyglotInteropErrors.invalidListIndex(languageContext, receiver, cache.valueType, index);
                 } catch (UnsupportedMessageException e) {
                     error.enter();
-                    throw HostInteropErrors.listUnsupported(languageContext, receiver, cache.valueType, "remove");
+                    throw PolyglotInteropErrors.listUnsupported(languageContext, receiver, cache.valueType, "remove");
                 }
                 return null;
             }

@@ -684,9 +684,9 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                     }
                     error.enter();
                     if (!supported) {
-                        throw HostInteropErrors.mapUnsupported(languageContext, receiver, getKeyType(), getValueType(), "put");
+                        throw PolyglotInteropErrors.mapUnsupported(languageContext, receiver, getKeyType(), getValueType(), "put");
                     } else {
-                        throw HostInteropErrors.invalidMapIdentifier(languageContext, receiver, getKeyType(), getValueType(), key);
+                        throw PolyglotInteropErrors.invalidMapIdentifier(languageContext, receiver, getKeyType(), getValueType(), key);
                     }
                 } catch (UnknownIdentifierException | InvalidArrayIndexException | UnknownKeyException | UnsupportedMessageException | UnsupportedTypeException e) {
                     error.enter();
@@ -697,11 +697,11 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
             @TruffleBoundary
             RuntimeException error(PolyglotLanguageContext languageContext, Object receiver, InteropException e, Object key, Object guestValue) {
                 if (e instanceof UnknownIdentifierException || e instanceof InvalidArrayIndexException) {
-                    throw HostInteropErrors.invalidMapIdentifier(languageContext, receiver, getKeyType(), getValueType(), key);
+                    throw PolyglotInteropErrors.invalidMapIdentifier(languageContext, receiver, getKeyType(), getValueType(), key);
                 } else if (e instanceof UnsupportedMessageException) {
-                    throw HostInteropErrors.mapUnsupported(languageContext, receiver, getKeyType(), getValueType(), "put");
+                    throw PolyglotInteropErrors.mapUnsupported(languageContext, receiver, getKeyType(), getValueType(), "put");
                 } else if (e instanceof UnsupportedTypeException) {
-                    throw HostInteropErrors.invalidMapValue(languageContext, receiver, getKeyType(), getValueType(), key, guestValue);
+                    throw PolyglotInteropErrors.invalidMapValue(languageContext, receiver, getKeyType(), getValueType(), key, guestValue);
                 } else {
                     throw shouldNotReachHere("unhandled error");
                 }
@@ -747,7 +747,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
 
                     error.enter();
                     if (!supported) {
-                        throw HostInteropErrors.mapUnsupported(languageContext, receiver, getKeyType(), getValueType(), "remove");
+                        throw PolyglotInteropErrors.mapUnsupported(languageContext, receiver, getKeyType(), getValueType(), "remove");
                     } else {
                         return null;
                     }
@@ -756,7 +756,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                     return null;
                 } catch (UnsupportedMessageException e) {
                     error.enter();
-                    throw HostInteropErrors.mapUnsupported(languageContext, receiver, getKeyType(), getValueType(), "remove");
+                    throw PolyglotInteropErrors.mapUnsupported(languageContext, receiver, getKeyType(), getValueType(), "remove");
                 }
             }
 
@@ -819,7 +819,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                     }
                     error.enter();
                     if (!supported) {
-                        throw HostInteropErrors.mapUnsupported(languageContext, receiver, getKeyType(), getValueType(), "remove");
+                        throw PolyglotInteropErrors.mapUnsupported(languageContext, receiver, getKeyType(), getValueType(), "remove");
                     } else {
                         return false;
                     }
@@ -828,7 +828,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                     return false;
                 } catch (UnsupportedMessageException e) {
                     error.enter();
-                    throw HostInteropErrors.mapUnsupported(languageContext, receiver, getKeyType(), getValueType(), "remove");
+                    throw PolyglotInteropErrors.mapUnsupported(languageContext, receiver, getKeyType(), getValueType(), "remove");
                 }
             }
 
@@ -865,11 +865,11 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                         return toHost.execute(languageContext, iterator, Iterator.class, genericType);
                     } catch (UnsupportedMessageException e) {
                         error.enter();
-                        throw HostInteropErrors.mapUnsupported(languageContext, receiver, getKeyType(), getValueType(), "iterator");
+                        throw PolyglotInteropErrors.mapUnsupported(languageContext, receiver, getKeyType(), getValueType(), "iterator");
                     }
                 } else {
                     error.enter();
-                    throw HostInteropErrors.mapUnsupported(languageContext, receiver, getKeyType(), getValueType(), "iterator");
+                    throw PolyglotInteropErrors.mapUnsupported(languageContext, receiver, getKeyType(), getValueType(), "iterator");
                 }
             }
         }
@@ -894,11 +894,11 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                         return interop.getHashSize(receiver);
                     } catch (UnsupportedMessageException e) {
                         error.enter();
-                        throw HostInteropErrors.mapUnsupported(languageContext, receiver, getKeyType(), getValueType(), "size");
+                        throw PolyglotInteropErrors.mapUnsupported(languageContext, receiver, getKeyType(), getValueType(), "size");
                     }
                 } else {
                     error.enter();
-                    throw HostInteropErrors.mapUnsupported(languageContext, receiver, getKeyType(), getValueType(), "size");
+                    throw PolyglotInteropErrors.mapUnsupported(languageContext, receiver, getKeyType(), getValueType(), "size");
                 }
             }
         }

@@ -2132,7 +2132,12 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
     }
 
     void initializeHostContext(Object hostContext, PolyglotContextConfig newConfig) {
-        engine.host.initializeHostContext(this, hostContext, newConfig.hostAccess, newConfig.hostClassLoader, newConfig.classFilter, newConfig.hostClassLoadingAllowed, newConfig.hostLookupAllowed);
+        try {
+            engine.host.initializeHostContext(this, hostContext, newConfig.hostAccess, newConfig.hostClassLoader, newConfig.classFilter, newConfig.hostClassLoadingAllowed,
+                            newConfig.hostLookupAllowed);
+        } catch (IllegalStateException e) {
+            throw PolyglotEngineException.illegalState(e.getMessage());
+        }
     }
 
     void replayInstrumentationEvents() {

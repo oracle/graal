@@ -47,12 +47,18 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Proxy;
+import java.lang.reflect.Type;
+import java.util.Objects;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.polyglot.PolyglotFunctionProxyHandlerFactory.FunctionProxyNodeGen;
 
 final class PolyglotFunctionProxyHandler implements InvocationHandler, HostWrapper {
     final Object functionObj;
@@ -191,4 +197,62 @@ final class PolyglotFunctionProxyHandler implements InvocationHandler, HostWrapp
         }
         return mh.bindTo(proxy).invokeWithArguments(arguments);
     }
+
+    @ImportStatic(HostInteropReflect.class)
+    abstract static class FunctionProxyNode extends HostToGuestRootNode {
+
+        final Class<?> receiverClass;
+        final Method method;
+
+        FunctionProxyNode(Class<?> receiverType, Method method) {
+            this.receiverClass = receiverType;
+            this.method = method;
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        protected Class<? extends TruffleObject> getReceiverType() {
+            return (Class<? extends TruffleObject>) receiverClass;
+        }
+
+        @Override
+        public final String getName() {
+            return "FunctionalInterfaceProxy<" + receiverClass + ", " + method + ">";
+        }
+
+        @Specialization
+        protected Object doCached(PolyglotLanguageContext languageContext, TruffleObject function, Object[] args,
+                        @Cached("getMethodReturnType(method)") Class<?> returnClass,
+                        @Cached("getMethodGenericReturnType(method)") Type returnType,
+                        @Cached PolyglotExecuteNode executeNode) {
+            return executeNode.execute(languageContext, function, args[ARGUMENT_OFFSET], returnClass, returnType, Object[].class, Object[].class);
+        }
+
+        @Override
+        public int hashCode() {
+            int result = 1;
+            result = 31 * result + Objects.hashCode(receiverClass);
+            result = 31 * result + Objects.hashCode(method);
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (!(obj instanceof FunctionProxyNode)) {
+                return false;
+            }
+            FunctionProxyNode other = (FunctionProxyNode) obj;
+            return receiverClass == other.receiverClass && method.equals(other.method);
+        }
+
+        static CallTarget lookup(PolyglotLanguageContext languageContext, Class<?> receiverClass, Method method) {
+            FunctionProxyNode node = FunctionProxyNodeGen.create(receiverClass, method);
+            CallTarget target = lookupHostCodeCache(languageContext, node, CallTarget.class);
+            if (target == null) {
+                target = installHostCodeCache(languageContext, node, createTarget(node), CallTarget.class);
+            }
+            return target;
+        }
+    }
+
 }

@@ -47,6 +47,7 @@ import java.util.function.Predicate;
 
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.HostLanguageAccess;
 import org.graalvm.polyglot.proxy.Proxy;
@@ -75,10 +76,10 @@ final class HostLanguage extends TruffleLanguage<Object> implements HostLanguage
     @CompilationFinal private GuestToHostCodeCache hostToGuestCodeCache;
     @CompilationFinal HostClassCache hostClassCache; // effectively final
     final HostLanguageAccess access;
-    final PolyglotImpl polyglot;
+    final AbstractPolyglotImpl polyglot;
     final APIAccess api;
 
-    HostLanguage(PolyglotImpl polyglot, HostLanguageAccess hostAccess) {
+    HostLanguage(AbstractPolyglotImpl polyglot, HostLanguageAccess hostAccess) {
         this.polyglot = polyglot;
         this.access = hostAccess;
         this.api = polyglot.getAPIAccess();
@@ -112,7 +113,7 @@ final class HostLanguage extends TruffleLanguage<Object> implements HostLanguage
             return;
         }
 
-        HostClassCache cache = HostClassCache.findOrInitialize(PolyglotImpl.getInstance().getAPIAccess(), policy, cl);
+        HostClassCache cache = HostClassCache.findOrInitialize(api, policy, cl);
         if (this.hostClassCache != null) {
             if (this.hostClassCache.hostAccess.equals(cache.hostAccess)) {
                 /*
@@ -120,7 +121,7 @@ final class HostLanguage extends TruffleLanguage<Object> implements HostLanguage
                  * applies.
                  */
             } else {
-                throw PolyglotEngineException.illegalState("Found different host access configuration for a context with a shared engine. " +
+                throw new IllegalStateException("Found different host access configuration for a context with a shared engine. " +
                                 "The host access configuration must be the same for all contexts of an engine. " +
                                 "Provide the same host access configuration using the Context.Builder.allowHostAccess method when constructing the context.");
             }

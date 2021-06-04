@@ -235,11 +235,11 @@ class PolyglotMapEntry<K, V> implements Map.Entry<K, V>, HostWrapper {
             }
 
             protected final RuntimeException unsupported(PolyglotLanguageContext languageContext, Object receiver) {
-                throw HostInteropErrors.mapEntryUnsupported(languageContext, receiver, getKeyType(), getValueType(), getOperationName());
+                throw PolyglotInteropErrors.mapEntryUnsupported(languageContext, receiver, getKeyType(), getValueType(), getOperationName());
             }
 
             protected final RuntimeException invalidArrayIndex(PolyglotLanguageContext languageContext, Object receiver, long index) {
-                throw HostInteropErrors.invalidMapEntryArrayIndex(languageContext, receiver, getKeyType(), getValueType(), index);
+                throw PolyglotInteropErrors.invalidMapEntryArrayIndex(languageContext, receiver, getKeyType(), getValueType(), index);
             }
 
             protected final Type getKeyType() {

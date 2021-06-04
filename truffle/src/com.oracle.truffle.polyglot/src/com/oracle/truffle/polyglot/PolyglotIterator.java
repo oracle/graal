@@ -262,7 +262,7 @@ class PolyglotIterator<T> implements Iterator<T>, HostWrapper {
                     return iterators.hasIteratorNextElement(receiver);
                 } catch (UnsupportedMessageException e) {
                     error.enter();
-                    throw HostInteropErrors.iteratorUnsupported(languageContext, receiver, cache.valueType, "hasNext");
+                    throw PolyglotInteropErrors.iteratorUnsupported(languageContext, receiver, cache.valueType, "hasNext");
                 }
             }
         }
@@ -290,19 +290,19 @@ class PolyglotIterator<T> implements Iterator<T>, HostWrapper {
                     Object next = iterators.getIteratorNextElement(receiver);
                     if (lastHasNext == TriState.FALSE) {
                         error.enter();
-                        throw HostInteropErrors.iteratorConcurrentlyModified(languageContext, receiver, cache.valueType);
+                        throw PolyglotInteropErrors.iteratorConcurrentlyModified(languageContext, receiver, cache.valueType);
                     }
                     return toHost.execute(languageContext, next, cache.valueClass, cache.valueType);
                 } catch (StopIterationException e) {
                     stop.enter();
                     if (lastHasNext == TriState.TRUE) {
-                        throw HostInteropErrors.iteratorConcurrentlyModified(languageContext, receiver, cache.valueType);
+                        throw PolyglotInteropErrors.iteratorConcurrentlyModified(languageContext, receiver, cache.valueType);
                     } else {
-                        throw HostInteropErrors.stopIteration(languageContext, receiver, cache.valueType);
+                        throw PolyglotInteropErrors.stopIteration(languageContext, receiver, cache.valueType);
                     }
                 } catch (UnsupportedMessageException e) {
                     error.enter();
-                    throw HostInteropErrors.iteratorElementUnreadable(languageContext, receiver, cache.valueType);
+                    throw PolyglotInteropErrors.iteratorElementUnreadable(languageContext, receiver, cache.valueType);
                 }
             }
         }
