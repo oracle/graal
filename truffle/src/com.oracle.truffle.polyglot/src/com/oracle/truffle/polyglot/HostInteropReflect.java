@@ -40,9 +40,6 @@
  */
 package com.oracle.truffle.polyglot;
 
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -53,7 +50,6 @@ import java.util.Objects;
 import org.graalvm.collections.EconomicSet;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -124,6 +120,35 @@ final class HostInteropReflect {
     static HostFieldDesc findField(HostContext context, Class<?> clazz, String name, boolean onlyStatic) {
         HostClassDesc classDesc = HostClassDesc.forClass(context, clazz);
         return classDesc.lookupField(name, onlyStatic);
+    }
+
+    static Method functionalInterfaceMethod(Class<?> functionalInterface) {
+        if (!functionalInterface.isInterface()) {
+            return null;
+        }
+        Method found = null;
+        for (Method m : functionalInterface.getMethods()) {
+            if (Modifier.isAbstract(m.getModifiers()) && !HostClassDesc.isObjectMethodOverride(m)) {
+                if (found != null) {
+                    return null;
+                }
+                found = m;
+            }
+        }
+        return found;
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    static boolean isFunctionalInterface(Class<?> type) {
+        if (!type.isInterface() || type == TruffleObject.class) {
+            return false;
+        }
+        if (type.getAnnotation(FunctionalInterface.class) != null) {
+            return true;
+        } else if (functionalInterfaceMethod(type) != null) {
+            return true;
+        }
+        return false;
     }
 
     @TruffleBoundary
@@ -216,44 +241,6 @@ final class HostInteropReflect {
         return false;
     }
 
-    @CompilerDirectives.TruffleBoundary
-    static <T> T asJavaFunction(Class<T> functionalType, Object function, PolyglotLanguageContext languageContext) {
-        assert isFunctionalInterface(functionalType);
-        Method functionalInterfaceMethod = functionalInterfaceMethod(functionalType);
-        final FunctionProxyHandler handler = new FunctionProxyHandler(function, functionalInterfaceMethod, languageContext);
-        Object obj = Proxy.newProxyInstance(functionalType.getClassLoader(), new Class<?>[]{functionalType}, handler);
-        return functionalType.cast(obj);
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    static boolean isFunctionalInterface(Class<?> type) {
-        if (!type.isInterface() || type == TruffleObject.class) {
-            return false;
-        }
-        if (type.getAnnotation(FunctionalInterface.class) != null) {
-            return true;
-        } else if (functionalInterfaceMethod(type) != null) {
-            return true;
-        }
-        return false;
-    }
-
-    static Method functionalInterfaceMethod(Class<?> functionalInterface) {
-        if (!functionalInterface.isInterface()) {
-            return null;
-        }
-        Method found = null;
-        for (Method m : functionalInterface.getMethods()) {
-            if (Modifier.isAbstract(m.getModifiers()) && !HostClassDesc.isObjectMethodOverride(m)) {
-                if (found != null) {
-                    return null;
-                }
-                found = m;
-            }
-        }
-        return found;
-    }
-
     static Object asTruffleViaReflection(Object obj, HostContext context) {
         if (obj instanceof Proxy) {
             return asTruffleObjectProxy(obj, context);
@@ -265,26 +252,20 @@ final class HostInteropReflect {
     private static Object asTruffleObjectProxy(Object obj, HostContext context) {
         if (Proxy.isProxyClass(obj.getClass())) {
             InvocationHandler h = Proxy.getInvocationHandler(obj);
-            if (h instanceof FunctionProxyHandler) {
-                return ((FunctionProxyHandler) h).functionObj;
-            } else if (h instanceof ObjectProxyHandler) {
-                return ((ObjectProxyHandler) h).obj;
+            if (h instanceof PolyglotFunctionProxyHandler) {
+                return ((PolyglotFunctionProxyHandler) h).functionObj;
+            } else if (h instanceof PolyglotObjectProxyHandler) {
+                return ((PolyglotObjectProxyHandler) h).obj;
             }
         }
         return HostObject.forObject(obj, context);
     }
 
     @TruffleBoundary
-    static Object newProxyInstance(Class<?> clazz, Object obj, PolyglotLanguageContext languageContext) throws IllegalArgumentException {
-        return Proxy.newProxyInstance(clazz.getClassLoader(), new Class<?>[]{clazz}, new ObjectProxyHandler(obj, languageContext, clazz));
-    }
-
-    @TruffleBoundary
-    static Object newAdapterInstance(Class<?> clazz, Object obj, PolyglotLanguageContext context) throws IllegalArgumentException {
+    static Object newAdapterInstance(HostContext hostContext, Class<?> clazz, Object obj) throws IllegalArgumentException {
         if (TruffleOptions.AOT) {
             throw PolyglotEngineException.unsupported("Unsupported target type.");
         }
-        HostContext hostContext = context.context.getHostContextImpl();
         HostClassDesc classDesc = HostClassDesc.forClass(hostContext, clazz);
         AdapterResult adapter = classDesc.getAdapter(hostContext);
         if (!adapter.isAutoConvertible()) {
@@ -295,9 +276,9 @@ final class HostInteropReflect {
         try {
             return ((HostObject) HostExecuteNodeGen.getUncached().execute(adapterConstructor, null, arguments, hostContext)).obj;
         } catch (UnsupportedTypeException e) {
-            throw HostInteropErrors.invalidExecuteArgumentType(context, null, e.getSuppliedValues());
+            throw HostInteropErrors.invalidExecuteArgumentType(hostContext, null, e.getSuppliedValues());
         } catch (ArityException e) {
-            throw HostInteropErrors.invalidExecuteArity(context, null, arguments, e.getExpectedMinArity(), e.getExpectedMaxArity(), e.getActualArity());
+            throw HostInteropErrors.invalidExecuteArity(hostContext, null, arguments, e.getExpectedMinArity(), e.getExpectedMaxArity(), e.getActualArity());
         }
     }
 
@@ -494,107 +475,6 @@ abstract class FunctionProxyNode extends HostToGuestRootNode {
     }
 }
 
-final class FunctionProxyHandler implements InvocationHandler, HostWrapper {
-    final Object functionObj;
-    final PolyglotLanguageContext languageContext;
-    private final Method functionMethod;
-    private final CallTarget target;
-
-    FunctionProxyHandler(Object obj, Method functionMethod, PolyglotLanguageContext languageContext) {
-        this.functionObj = obj;
-        this.languageContext = languageContext;
-        this.functionMethod = functionMethod;
-        this.target = FunctionProxyNode.lookup(languageContext, obj.getClass(), functionMethod);
-    }
-
-    @Override
-    public Object getGuestObject() {
-        return functionObj;
-    }
-
-    @Override
-    public PolyglotContextImpl getContext() {
-        return languageContext.context;
-    }
-
-    @Override
-    public PolyglotLanguageContext getLanguageContext() {
-        return languageContext;
-    }
-
-    @Override
-    public int hashCode() {
-        return HostWrapper.hashCode(languageContext, functionObj);
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (o instanceof FunctionProxyHandler) {
-            return HostWrapper.equals(languageContext, functionObj, ((FunctionProxyHandler) o).functionObj);
-        } else {
-            return false;
-        }
-    }
-
-    @Override
-    public Object invoke(Object proxy, Method method, Object[] arguments) throws Throwable {
-        CompilerAsserts.neverPartOfCompilation();
-        Object[] resolvedArguments = arguments == null ? HostInteropReflect.EMPTY : arguments;
-        if (method.equals(functionMethod)) {
-            return target.call(languageContext, functionObj, spreadVarArgsArray(resolvedArguments));
-        } else {
-            return invokeDefault(this, proxy, method, resolvedArguments);
-        }
-    }
-
-    private Object[] spreadVarArgsArray(Object[] arguments) {
-        if (!functionMethod.isVarArgs()) {
-            return arguments;
-        }
-        if (arguments.length == 1) {
-            return (Object[]) arguments[0];
-        } else {
-            final int allButOne = arguments.length - 1;
-            Object[] last = (Object[]) arguments[allButOne];
-            Object[] merge = new Object[allButOne + last.length];
-            System.arraycopy(arguments, 0, merge, 0, allButOne);
-            System.arraycopy(last, 0, merge, allButOne, last.length);
-            return merge;
-        }
-    }
-
-    static Object invokeDefault(HostWrapper host, Object proxy, Method method, Object[] arguments) throws Throwable {
-        if (method.getDeclaringClass() == Object.class) {
-            switch (method.getName()) {
-                case "equals":
-                    return HostWrapper.equalsProxy(host, arguments[0]);
-                case "hashCode":
-                    return HostWrapper.hashCode(host.getLanguageContext(), host.getGuestObject());
-                case "toString":
-                    return HostWrapper.toString(host);
-                default:
-                    throw new UnsupportedOperationException(method.getName());
-            }
-        }
-
-        if (TruffleOptions.AOT) {
-            throw new UnsupportedOperationException("calling default method " + method.getName() + " is not yet supported on SubstrateVM");
-        }
-
-        // default method; requires Java 9 (JEP 274)
-        Class<?> declaringClass = method.getDeclaringClass();
-        assert declaringClass.isInterface() : declaringClass;
-        MethodHandle mh;
-        try {
-            EngineAccessor.JDKSERVICES.addReads(declaringClass);
-            mh = MethodHandles.lookup().findSpecial(declaringClass, method.getName(), MethodType.methodType(method.getReturnType(), method.getParameterTypes()), declaringClass);
-        } catch (IllegalAccessException e) {
-            throw new UnsupportedOperationException(method.getName(), e);
-        }
-        return mh.bindTo(proxy).invokeWithArguments(arguments);
-    }
-}
-
 class ObjectProxyNode extends HostToGuestRootNode {
 
     final Class<?> receiverClass;
@@ -730,51 +610,6 @@ abstract class ProxyInvokeNode extends Node {
         } catch (UnsupportedMessageException e) {
             error.enter();
             throw HostInteropErrors.invokeUnsupported(polyglotContext, receiver, member);
-        }
-    }
-
-}
-
-final class ObjectProxyHandler implements InvocationHandler, HostWrapper {
-
-    final Object obj;
-    final PolyglotLanguageContext languageContext;
-    final CallTarget invoke;
-
-    ObjectProxyHandler(Object obj, PolyglotLanguageContext languageContext, Class<?> interfaceClass) {
-        this.obj = obj;
-        this.languageContext = languageContext;
-        this.invoke = ObjectProxyNode.lookup(languageContext, obj.getClass(), interfaceClass);
-    }
-
-    @Override
-    public Object getGuestObject() {
-        return obj;
-    }
-
-    @Override
-    public PolyglotLanguageContext getLanguageContext() {
-        return languageContext;
-    }
-
-    @Override
-    public PolyglotContextImpl getContext() {
-        return languageContext.context;
-    }
-
-    @Override
-    public Object invoke(Object proxy, Method method, Object[] arguments) throws Throwable {
-        CompilerAsserts.neverPartOfCompilation();
-        Object[] resolvedArguments = arguments == null ? HostInteropReflect.EMPTY : arguments;
-        try {
-            return invoke.call(languageContext, obj, method, resolvedArguments);
-        } catch (UnsupportedOperationException e) {
-            try {
-                return FunctionProxyHandler.invokeDefault(this, proxy, method, resolvedArguments);
-            } catch (Exception innerE) {
-                e.addSuppressed(innerE);
-                throw e;
-            }
         }
     }
 

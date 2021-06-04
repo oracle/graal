@@ -73,7 +73,7 @@ final class HostInteropErrors {
     }
 
     @TruffleBoundary
-    static RuntimeException cannotConvert(PolyglotLanguageContext context, Object value, Type targetType, String reason) {
+    static RuntimeException cannotConvert(HostContext context, Object value, Type targetType, String reason) {
         return PolyglotEngineException.classCast(String.format("Cannot convert %s to Java type '%s': %s",
                         getValueInfo(context, value),
                         targetType.getTypeName(),
@@ -87,7 +87,7 @@ final class HostInteropErrors {
     }
 
     @TruffleBoundary
-    static RuntimeException invalidArrayIndex(PolyglotLanguageContext context, Object receiver, Type componentType, int index) {
+    static RuntimeException invalidArrayIndex(HostContext context, Object receiver, Type componentType, int index) {
         String message = String.format("Invalid array index %s for %s[] %s.", index, formatComponentType(componentType), getValueInfo(context, receiver));
         throw PolyglotEngineException.arrayIndexOutOfBounds(message);
     }
@@ -97,7 +97,7 @@ final class HostInteropErrors {
     }
 
     @TruffleBoundary
-    static RuntimeException arrayReadUnsupported(PolyglotLanguageContext context, Object receiver, Type componentType) {
+    static RuntimeException arrayReadUnsupported(HostContext context, Object receiver, Type componentType) {
         String message = String.format("Unsupported array read operation for %s[] %s.", formatComponentType(componentType), getValueInfo(context, receiver));
         throw PolyglotEngineException.unsupported(message);
     }
@@ -185,6 +185,13 @@ final class HostInteropErrors {
     }
 
     @TruffleBoundary
+    static RuntimeException invalidExecuteArgumentType(HostContext context, Object receiver, Object[] arguments) {
+        String[] formattedArgs = formatArgs(context, arguments);
+        String message = String.format("Invalid argument when executing %s with arguments %s.", getValueInfo(context, receiver), Arrays.asList(formattedArgs));
+        throw PolyglotEngineException.illegalArgument(message);
+    }
+
+    @TruffleBoundary
     static RuntimeException invalidExecuteArgumentType(PolyglotLanguageContext context, Object receiver, Object[] arguments) {
         String[] formattedArgs = formatArgs(context, arguments);
         String message = String.format("Invalid argument when executing %s with arguments %s.", getValueInfo(context, receiver), Arrays.asList(formattedArgs));
@@ -202,6 +209,14 @@ final class HostInteropErrors {
     static RuntimeException invalidInstantiateArity(PolyglotLanguageContext context, Object receiver, Object[] arguments, int minArity, int maxArity, int actual) {
         String[] formattedArgs = formatArgs(context, arguments);
         String message = String.format("Invalid argument count when instantiating %s with arguments %s. %s",
+                        getValueInfo(context, receiver), Arrays.asList(formattedArgs), PolyglotValue.formatExpectedArguments(minArity, maxArity, actual));
+        throw PolyglotEngineException.illegalArgument(message);
+    }
+
+    @TruffleBoundary
+    static RuntimeException invalidExecuteArity(HostContext context, Object receiver, Object[] arguments, int minArity, int maxArity, int actual) {
+        String[] formattedArgs = formatArgs(context, arguments);
+        String message = String.format("Invalid argument count when executing %s with arguments %s. %s",
                         getValueInfo(context, receiver), Arrays.asList(formattedArgs), PolyglotValue.formatExpectedArguments(minArity, maxArity, actual));
         throw PolyglotEngineException.illegalArgument(message);
     }
@@ -228,6 +243,14 @@ final class HostInteropErrors {
 
     private static String[] formatArgs(PolyglotLanguageContext context, Object[] arguments) {
         return formatArgs(context.context, arguments);
+    }
+
+    private static String[] formatArgs(HostContext context, Object[] arguments) {
+        String[] formattedArgs = new String[arguments.length];
+        for (int i = 0; i < arguments.length; i++) {
+            formattedArgs[i] = getValueInfo(context, arguments[i]);
+        }
+        return formattedArgs;
     }
 
     private static String[] formatArgs(PolyglotContextImpl context, Object[] arguments) {

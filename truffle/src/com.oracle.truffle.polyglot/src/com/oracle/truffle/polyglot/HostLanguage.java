@@ -130,7 +130,7 @@ final class HostLanguage extends TruffleLanguage<Object> implements HostLanguage
     @Override
     @TruffleBoundary
     protected Object getLanguageView(Object context, Object value) {
-        HostContext context1 = (HostContext) context;
+        HostContext hostContext = (HostContext) context;
 
         Object wrapped;
         if (value instanceof TruffleObject) {
@@ -140,11 +140,11 @@ final class HostLanguage extends TruffleLanguage<Object> implements HostLanguage
             } catch (UnsupportedMessageException e) {
                 throw shouldNotReachHere(e);
             }
-            wrapped = ToHostNode.convertToObject(value, context1.internalContext.getHostContext(), lib);
+            wrapped = ToHostNode.convertToObject(hostContext, value, lib);
         } else {
             wrapped = value;
         }
-        return HostObject.forObject(wrapped, context1);
+        return HostObject.forObject(wrapped, hostContext);
     }
 
     @Override

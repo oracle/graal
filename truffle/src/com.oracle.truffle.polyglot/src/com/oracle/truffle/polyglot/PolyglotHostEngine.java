@@ -40,6 +40,14 @@
  */
 package com.oracle.truffle.polyglot;
 
+import java.lang.reflect.Type;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.function.Function;
+
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueDispatch;
@@ -80,4 +88,65 @@ final class PolyglotHostEngine extends HostLanguageAccess {
     public AbstractValueDispatch lookupValueDispatch(Object guestValue) {
         return new InteropValue(polyglot, null, guestValue, guestValue.getClass());
     }
+
+    @Override
+    public <T> List<T> toList(Object internalContext, Object guestValue, boolean implementFunction, Class<T> elementClass, Type elementType) {
+        PolyglotContextImpl context = (PolyglotContextImpl) internalContext;
+        return PolyglotList.<T> create(context.getHostContext(), guestValue, implementFunction, elementClass, elementType);
+    }
+
+    @Override
+    public <K, V> Map<K, V> toMap(Object internalContext, Object foreignObject, boolean implementsFunction, Class<K> keyClass, Type keyType, Class<V> valueClass, Type valueType) {
+        PolyglotContextImpl context = (PolyglotContextImpl) internalContext;
+        return PolyglotMap.create(context.getHostContext(), foreignObject, implementsFunction, keyClass, keyType, valueClass, valueType);
+    }
+
+    @Override
+    public <K, V> Entry<K, V> toMapEntry(Object internalContext, Object foreignObject, boolean implementsFunction, Class<K> keyClass, Type keyType, Class<V> valueClass, Type valueType) {
+        PolyglotContextImpl context = (PolyglotContextImpl) internalContext;
+        return PolyglotMapEntry.create(context.getHostContext(), foreignObject, implementsFunction, keyClass, keyType, valueClass, valueType);
+    }
+
+    @Override
+    public <T> Function<?, ?> toFunction(Object internalContext, Object function, Class<?> returnClass, Type returnType) {
+        PolyglotContextImpl context = (PolyglotContextImpl) internalContext;
+        return PolyglotFunction.create(context.getHostContext(), function, returnClass, returnType);
+    }
+
+    @Override
+    public Object toObjectProxy(Object internalContext, Class<?> clazz, Object obj) throws IllegalArgumentException {
+        PolyglotContextImpl context = (PolyglotContextImpl) internalContext;
+        return PolyglotObjectProxyHandler.newProxyInstance(clazz, obj, context.getHostContext());
+    }
+
+    @Override
+    public <T> T toFunctionProxy(Object internalContext, Class<T> functionalType, Object function) {
+        PolyglotContextImpl context = (PolyglotContextImpl) internalContext;
+        return PolyglotFunctionProxyHandler.create(functionalType, function, context.getHostContext());
+    }
+
+    @Override
+    public <T> Iterable<T> toIterable(Object internalContext, Object iterable, boolean implementFunction, Class<T> elementClass, Type elementType) {
+        PolyglotContextImpl context = (PolyglotContextImpl) internalContext;
+        return PolyglotIterable.create(context.getHostContext(), iterable, implementFunction, elementClass, elementType);
+    }
+
+    @Override
+    public <T> Iterator<T> toIterator(Object internalContext, Object iterable, boolean implementFunction, Class<T> elementClass, Type elementType) {
+        PolyglotContextImpl context = (PolyglotContextImpl) internalContext;
+        return PolyglotIterator.create(context.getHostContext(), iterable, implementFunction, elementClass, elementType);
+    }
+
+    @Override
+    public PolyglotException toPolyglotException(Object internalContext, Throwable e) {
+        PolyglotContextImpl context = (PolyglotContextImpl) internalContext;
+        return PolyglotImpl.guestToHostException(context.getHostContext(), e, true);
+    }
+
+    @Override
+    public Value toValue(Object internalContext, Object receiver) {
+        PolyglotContextImpl context = (PolyglotContextImpl) internalContext;
+        return context.getHostContext().asValue(receiver);
+    }
+
 }

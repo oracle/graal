@@ -1,0 +1,194 @@
+/*
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * The Universal Permissive License (UPL), Version 1.0
+ *
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
+ *
+ * (a) the Software, and
+ *
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+package com.oracle.truffle.polyglot;
+
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.lang.reflect.Proxy;
+
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.interop.TruffleObject;
+
+final class PolyglotFunctionProxyHandler implements InvocationHandler, HostWrapper {
+    final Object functionObj;
+    final PolyglotLanguageContext languageContext;
+    private final Method functionMethod;
+    private final CallTarget target;
+
+    PolyglotFunctionProxyHandler(Object obj, Method functionMethod, PolyglotLanguageContext languageContext) {
+        this.functionObj = obj;
+        this.languageContext = languageContext;
+        this.functionMethod = functionMethod;
+        this.target = FunctionProxyNode.lookup(languageContext, obj.getClass(), functionMethod);
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    static <T> T create(Class<T> functionalType, Object function, PolyglotLanguageContext languageContext) {
+        assert isFunctionalInterface(functionalType);
+        Method functionalInterfaceMethod = functionalInterfaceMethod(functionalType);
+        final PolyglotFunctionProxyHandler handler = new PolyglotFunctionProxyHandler(function, functionalInterfaceMethod, languageContext);
+        Object obj = Proxy.newProxyInstance(functionalType.getClassLoader(), new Class<?>[]{functionalType}, handler);
+        return functionalType.cast(obj);
+    }
+
+    static Method functionalInterfaceMethod(Class<?> functionalInterface) {
+        if (!functionalInterface.isInterface()) {
+            return null;
+        }
+        Method found = null;
+        for (Method m : functionalInterface.getMethods()) {
+            if (Modifier.isAbstract(m.getModifiers()) && !HostClassDesc.isObjectMethodOverride(m)) {
+                if (found != null) {
+                    return null;
+                }
+                found = m;
+            }
+        }
+        return found;
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    static boolean isFunctionalInterface(Class<?> type) {
+        if (!type.isInterface() || type == TruffleObject.class) {
+            return false;
+        }
+        if (type.getAnnotation(FunctionalInterface.class) != null) {
+            return true;
+        } else if (functionalInterfaceMethod(type) != null) {
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public Object getGuestObject() {
+        return functionObj;
+    }
+
+    @Override
+    public PolyglotContextImpl getContext() {
+        return languageContext.context;
+    }
+
+    @Override
+    public PolyglotLanguageContext getLanguageContext() {
+        return languageContext;
+    }
+
+    @Override
+    public int hashCode() {
+        return HostWrapper.hashCode(languageContext, functionObj);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o instanceof PolyglotFunctionProxyHandler) {
+            return HostWrapper.equals(languageContext, functionObj, ((PolyglotFunctionProxyHandler) o).functionObj);
+        } else {
+            return false;
+        }
+    }
+
+    @Override
+    public Object invoke(Object proxy, Method method, Object[] arguments) throws Throwable {
+        CompilerAsserts.neverPartOfCompilation();
+        Object[] resolvedArguments = arguments == null ? HostInteropReflect.EMPTY : arguments;
+        if (method.equals(functionMethod)) {
+            return target.call(languageContext, functionObj, spreadVarArgsArray(resolvedArguments));
+        } else {
+            return invokeDefault(this, proxy, method, resolvedArguments);
+        }
+    }
+
+    private Object[] spreadVarArgsArray(Object[] arguments) {
+        if (!functionMethod.isVarArgs()) {
+            return arguments;
+        }
+        if (arguments.length == 1) {
+            return (Object[]) arguments[0];
+        } else {
+            final int allButOne = arguments.length - 1;
+            Object[] last = (Object[]) arguments[allButOne];
+            Object[] merge = new Object[allButOne + last.length];
+            System.arraycopy(arguments, 0, merge, 0, allButOne);
+            System.arraycopy(last, 0, merge, allButOne, last.length);
+            return merge;
+        }
+    }
+
+    static Object invokeDefault(HostWrapper host, Object proxy, Method method, Object[] arguments) throws Throwable {
+        if (method.getDeclaringClass() == Object.class) {
+            switch (method.getName()) {
+                case "equals":
+                    return HostWrapper.equalsProxy(host, arguments[0]);
+                case "hashCode":
+                    return HostWrapper.hashCode(host.getLanguageContext(), host.getGuestObject());
+                case "toString":
+                    return HostWrapper.toString(host);
+                default:
+                    throw new UnsupportedOperationException(method.getName());
+            }
+        }
+
+        if (TruffleOptions.AOT) {
+            throw new UnsupportedOperationException("calling default method " + method.getName() + " is not yet supported on SubstrateVM");
+        }
+
+        // default method; requires Java 9 (JEP 274)
+        Class<?> declaringClass = method.getDeclaringClass();
+        assert declaringClass.isInterface() : declaringClass;
+        MethodHandle mh;
+        try {
+            EngineAccessor.JDKSERVICES.addReads(declaringClass);
+            mh = MethodHandles.lookup().findSpecial(declaringClass, method.getName(), MethodType.methodType(method.getReturnType(), method.getParameterTypes()), declaringClass);
+        } catch (IllegalAccessException e) {
+            throw new UnsupportedOperationException(method.getName(), e);
+        }
+        return mh.bindTo(proxy).invokeWithArguments(arguments);
+    }
+}

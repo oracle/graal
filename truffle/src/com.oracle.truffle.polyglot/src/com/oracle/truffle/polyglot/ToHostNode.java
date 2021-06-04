@@ -228,7 +228,7 @@ abstract class ToHostNode extends Node {
             }
             return null;
         } else if (value instanceof TruffleObject) {
-            convertedValue = asJavaObject((TruffleObject) value, targetType, genericType, allowsImplementation, context.internalContext.getHostContext());
+            convertedValue = asJavaObject(context, (TruffleObject) value, targetType, genericType, allowsImplementation);
             if (convertedValue != null) {
                 return convertedValue;
             }
@@ -390,7 +390,7 @@ abstract class ToHostNode extends Node {
     /**
      * See {@link Value#as(Class)} documentation.
      */
-    static Object convertToObject(Object value, PolyglotLanguageContext languageContext, InteropLibrary interop) {
+    static Object convertToObject(HostContext hostContext, Object value, InteropLibrary interop) {
         try {
             if (interop.isNull(value)) {
                 return null;
@@ -405,17 +405,17 @@ abstract class ToHostNode extends Node {
                 }
                 // fallthrough
             } else if (interop.hasMembers(value)) {
-                return asJavaObject(value, Map.class, null, false, languageContext);
+                return asJavaObject(hostContext, value, Map.class, null, false);
             } else if (interop.hasArrayElements(value)) {
-                return asJavaObject(value, List.class, null, false, languageContext);
+                return asJavaObject(hostContext, value, List.class, null, false);
             } else if (interop.hasIterator(value)) {
-                return asJavaObject(value, Iterable.class, null, false, languageContext);
+                return asJavaObject(hostContext, value, Iterable.class, null, false);
             } else if (interop.isIterator(value)) {
-                return asJavaObject(value, Iterator.class, null, false, languageContext);
+                return asJavaObject(hostContext, value, Iterator.class, null, false);
             } else if (interop.isExecutable(value) || interop.isInstantiable(value)) {
-                return asJavaObject(value, Function.class, null, false, languageContext);
+                return asJavaObject(hostContext, value, Function.class, null, false);
             }
-            return languageContext.asValue(value);
+            return hostContext.language.access.toValue(hostContext.internalContext, value);
         } catch (UnsupportedMessageException e) {
             throw shouldNotReachHere(e);
         }
@@ -444,21 +444,21 @@ abstract class ToHostNode extends Node {
     }
 
     @TruffleBoundary
-    private static <T> T asJavaObject(Object value, Class<T> targetType, Type genericType, boolean allowsImplementation, PolyglotLanguageContext languageContext) {
+    private static <T> T asJavaObject(HostContext hostContext, Object value, Class<T> targetType, Type genericType, boolean allowsImplementation) {
         InteropLibrary interop = InteropLibrary.getFactory().getUncached(value);
         assert !interop.isNull(value); // already handled
         Object obj;
         if (HostObject.isJavaInstance(targetType, value)) {
             obj = HostObject.valueOf(value);
         } else if (targetType == Object.class) {
-            obj = convertToObject(value, languageContext, interop);
+            obj = convertToObject(hostContext, value, interop);
         } else if (targetType == List.class) {
             if (interop.hasArrayElements(value)) {
                 boolean implementsFunction = shouldImplementFunction(value, interop);
                 TypeAndClass<?> elementType = getGenericParameterType(genericType, 0);
-                obj = PolyglotList.create(languageContext, value, implementsFunction, elementType.clazz, elementType.type);
+                obj = hostContext.language.access.toList(hostContext.internalContext, value, implementsFunction, elementType.clazz, elementType.type);
             } else {
-                throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must have array elements.");
+                throw HostInteropErrors.cannotConvert(hostContext, value, targetType, "Value must have array elements.");
             }
         } else if (targetType == Map.class) {
             TypeAndClass<?> keyType = getGenericParameterType(genericType, 0);
@@ -471,34 +471,34 @@ abstract class ToHostNode extends Node {
             boolean hasKeys = (keyType.clazz == Object.class || keyType.clazz == String.class) && interop.hasMembers(value);
             if (hasKeys || hasSize || hasHashEntries) {
                 boolean implementsFunction = shouldImplementFunction(value, interop);
-                obj = PolyglotMap.create(languageContext, value, implementsFunction, keyType.clazz, keyType.type, valueType.clazz, valueType.type);
+                obj = hostContext.language.access.toMap(hostContext.internalContext, value, implementsFunction, keyType.clazz, keyType.type, valueType.clazz, valueType.type);
             } else {
-                throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must have members, array elements or hash entries.");
+                throw HostInteropErrors.cannotConvert(hostContext, value, targetType, "Value must have members, array elements or hash entries.");
             }
         } else if (targetType == Map.Entry.class) {
             if (interop.hasArrayElements(value)) {
                 TypeAndClass<?> keyType = getGenericParameterType(genericType, 0);
                 TypeAndClass<?> valueType = getGenericParameterType(genericType, 1);
                 boolean implementsFunction = shouldImplementFunction(value, interop);
-                obj = PolyglotMapEntry.create(languageContext, value, implementsFunction, keyType.clazz, keyType.type, valueType.clazz, valueType.type);
+                obj = hostContext.language.access.toMapEntry(hostContext.internalContext, value, implementsFunction, keyType.clazz, keyType.type, valueType.clazz, valueType.type);
             } else {
-                throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must have array elements.");
+                throw HostInteropErrors.cannotConvert(hostContext, value, targetType, "Value must have array elements.");
             }
         } else if (targetType == Function.class) {
             TypeAndClass<?> paramType = getGenericParameterType(genericType, 0);
             TypeAndClass<?> returnType = getGenericParameterType(genericType, 1);
             if (interop.isExecutable(value) || interop.isInstantiable(value)) {
-                obj = PolyglotFunction.create(languageContext, value, returnType.clazz, returnType.type, paramType.clazz, paramType.type);
+                obj = hostContext.language.access.toFunction(hostContext.internalContext, value, returnType.clazz, returnType.type, paramType.clazz, paramType.type);
             } else if (interop.hasMembers(value)) {
-                obj = HostInteropReflect.newProxyInstance(targetType, value, languageContext);
+                obj = hostContext.language.access.toObjectProxy(hostContext.internalContext, targetType, value);
             } else {
-                throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must be executable or instantiable.");
+                throw HostInteropErrors.cannotConvert(hostContext, value, targetType, "Value must be executable or instantiable.");
             }
         } else if (targetType.isArray()) {
             if (interop.hasArrayElements(value)) {
-                obj = truffleObjectToArray(interop, value, targetType, genericType, languageContext);
+                obj = truffleObjectToArray(hostContext, interop, value, targetType, genericType);
             } else {
-                throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must have array elements.");
+                throw HostInteropErrors.cannotConvert(hostContext, value, targetType, "Value must have array elements.");
             }
         } else if (targetType == LocalDate.class) {
             if (interop.isDate(value)) {
@@ -508,7 +508,7 @@ abstract class ToHostNode extends Node {
                     throw shouldNotReachHere(e);
                 }
             } else {
-                throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must have date and time information.");
+                throw HostInteropErrors.cannotConvert(hostContext, value, targetType, "Value must have date and time information.");
             }
         } else if (targetType == LocalTime.class) {
             if (interop.isTime(value)) {
@@ -518,7 +518,7 @@ abstract class ToHostNode extends Node {
                     throw shouldNotReachHere(e);
                 }
             } else {
-                throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must have date and time information.");
+                throw HostInteropErrors.cannotConvert(hostContext, value, targetType, "Value must have date and time information.");
             }
         } else if (targetType == LocalDateTime.class) {
             if (interop.isDate(value) && interop.isTime(value)) {
@@ -532,7 +532,7 @@ abstract class ToHostNode extends Node {
                 }
                 obj = createDateTime(date, time);
             } else {
-                throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must have date and time information.");
+                throw HostInteropErrors.cannotConvert(hostContext, value, targetType, "Value must have date and time information.");
             }
         } else if (targetType == ZonedDateTime.class) {
             if (interop.isDate(value) && interop.isTime(value) && interop.isTimeZone(value)) {
@@ -548,7 +548,7 @@ abstract class ToHostNode extends Node {
                 }
                 obj = createZonedDateTime(date, time, timeZone);
             } else {
-                throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must have date, time and time-zone information.");
+                throw HostInteropErrors.cannotConvert(hostContext, value, targetType, "Value must have date, time and time-zone information.");
             }
         } else if (targetType == ZoneId.class) {
             if (interop.isTimeZone(value)) {
@@ -558,7 +558,7 @@ abstract class ToHostNode extends Node {
                     throw shouldNotReachHere(e);
                 }
             } else {
-                throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must have time-zone information.");
+                throw HostInteropErrors.cannotConvert(hostContext, value, targetType, "Value must have time-zone information.");
             }
         } else if (targetType == Instant.class || targetType == Date.class) {
             if (interop.isDate(value) && interop.isTime(value) && interop.isTimeZone(value)) {
@@ -574,7 +574,7 @@ abstract class ToHostNode extends Node {
                     obj = targetType.cast(instantValue);
                 }
             } else {
-                throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must have date, time and time-zone information.");
+                throw HostInteropErrors.cannotConvert(hostContext, value, targetType, "Value must have date, time and time-zone information.");
             }
         } else if (targetType == Duration.class) {
             if (interop.isDuration(value)) {
@@ -584,45 +584,45 @@ abstract class ToHostNode extends Node {
                     throw shouldNotReachHere(e);
                 }
             } else {
-                throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must have duration information.");
+                throw HostInteropErrors.cannotConvert(hostContext, value, targetType, "Value must have duration information.");
             }
         } else if (targetType == PolyglotException.class) {
             if (interop.isException(value)) {
-                obj = asPolyglotException(value, interop, languageContext);
+                obj = asPolyglotException(hostContext, value, interop);
             } else {
-                throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must be an exception.");
+                throw HostInteropErrors.cannotConvert(hostContext, value, targetType, "Value must be an exception.");
             }
         } else if (targetType == Iterable.class) {
             if (interop.hasIterator(value)) {
                 boolean implementsFunction = shouldImplementFunction(value, interop);
                 TypeAndClass<?> elementType = getGenericParameterType(genericType, 0);
-                obj = PolyglotIterable.create(languageContext, value, implementsFunction, elementType.clazz, elementType.type);
+                obj = hostContext.language.access.toIterable(hostContext.internalContext, value, implementsFunction, elementType.clazz, elementType.type);
             } else if (allowsImplementation && interop.hasMembers(value)) {
-                obj = HostInteropReflect.newProxyInstance(targetType, value, languageContext);
+                obj = hostContext.language.access.toObjectProxy(hostContext.internalContext, targetType, value);
             } else {
-                throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must have an iterator.");
+                throw HostInteropErrors.cannotConvert(hostContext, value, targetType, "Value must have an iterator.");
             }
         } else if (targetType == Iterator.class) {
             if (interop.isIterator(value)) {
                 boolean implementsFunction = shouldImplementFunction(value, interop);
                 TypeAndClass<?> elementType = getGenericParameterType(genericType, 0);
-                obj = PolyglotIterator.create(languageContext, value, implementsFunction, elementType.clazz, elementType.type);
+                obj = hostContext.language.access.toIterator(hostContext.internalContext, value, implementsFunction, elementType.clazz, elementType.type);
             } else if (allowsImplementation && interop.hasMembers(value)) {
-                obj = HostInteropReflect.newProxyInstance(targetType, value, languageContext);
+                obj = hostContext.language.access.toObjectProxy(hostContext.internalContext, targetType, value);
             } else {
-                throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must be an iterator.");
+                throw HostInteropErrors.cannotConvert(hostContext, value, targetType, "Value must be an iterator.");
             }
         } else if (allowsImplementation && HostInteropReflect.isAbstractType(targetType)) {
             if (HostInteropReflect.isFunctionalInterface(targetType) && (interop.isExecutable(value) || interop.isInstantiable(value))) {
-                obj = HostInteropReflect.asJavaFunction(targetType, value, languageContext);
+                obj = hostContext.language.access.toFunctionProxy(hostContext.internalContext, targetType, value);
             } else if (interop.hasMembers(value)) {
                 if (targetType.isInterface()) {
-                    obj = HostInteropReflect.newProxyInstance(targetType, value, languageContext);
+                    obj = hostContext.language.access.toObjectProxy(hostContext.internalContext, targetType, value);
                 } else {
-                    obj = HostInteropReflect.newAdapterInstance(targetType, value, languageContext);
+                    obj = HostInteropReflect.newAdapterInstance(hostContext, targetType, value);
                 }
             } else {
-                throw HostInteropErrors.cannotConvert(languageContext, value, targetType, "Value must have members.");
+                throw HostInteropErrors.cannotConvert(hostContext, value, targetType, "Value must have members.");
             }
         } else {
             return null;
@@ -631,7 +631,7 @@ abstract class ToHostNode extends Node {
         return targetType.cast(obj);
     }
 
-    private static Object asPolyglotException(Object value, InteropLibrary interop, PolyglotLanguageContext languageContext) {
+    private static Object asPolyglotException(HostContext hostContext, Object value, InteropLibrary interop) {
         try {
             interop.throwException(value);
             throw UnsupportedMessageException.create();
@@ -640,7 +640,7 @@ abstract class ToHostNode extends Node {
         } catch (ThreadDeath e) {
             throw e;
         } catch (Throwable e) {
-            return PolyglotImpl.guestToHostException(languageContext, e, true);
+            return hostContext.language.access.toPolyglotException(hostContext.internalContext, e);
         }
     }
 
@@ -702,7 +702,7 @@ abstract class ToHostNode extends Node {
         return genericComponentType;
     }
 
-    private static Object truffleObjectToArray(InteropLibrary interop, Object receiver, Class<?> arrayType, Type genericArrayType, PolyglotLanguageContext languageContext) {
+    private static Object truffleObjectToArray(HostContext hostContext, InteropLibrary interop, Object receiver, Class<?> arrayType, Type genericArrayType) {
         Class<?> componentType = arrayType.getComponentType();
         long size;
         try {
@@ -719,11 +719,11 @@ abstract class ToHostNode extends Node {
             try {
                 guestValue = interop.readArrayElement(receiver, i);
             } catch (InvalidArrayIndexException e) {
-                throw HostInteropErrors.invalidArrayIndex(languageContext, receiver, componentType, i);
+                throw HostInteropErrors.invalidArrayIndex(hostContext, receiver, componentType, i);
             } catch (UnsupportedMessageException e) {
-                throw HostInteropErrors.arrayReadUnsupported(languageContext, receiver, componentType);
+                throw HostInteropErrors.arrayReadUnsupported(hostContext, receiver, componentType);
             }
-            Object hostValue = ToHostNodeGen.getUncached().execute(guestValue, componentType, genericComponentType, languageContext.context.getHostContextImpl(), true);
+            Object hostValue = ToHostNodeGen.getUncached().execute(guestValue, componentType, genericComponentType, hostContext, true);
             Array.set(array, i, hostValue);
         }
         return array;

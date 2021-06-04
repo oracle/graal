@@ -48,6 +48,7 @@ import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.Reader;
 import java.lang.reflect.AnnotatedElement;
+import java.lang.reflect.Type;
 import java.net.URI;
 import java.net.URL;
 import java.nio.ByteOrder;
@@ -59,6 +60,7 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -85,6 +87,7 @@ import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.SourceSection;
 import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.HostLanguageAccess.AbstractValueDispatch;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
@@ -622,6 +625,27 @@ public abstract class AbstractPolyglotImpl {
         public abstract AbstractValueDispatch lookupValueDispatch(Object guestValue);
 
         public abstract Object toGuestValue(Object internalContext, Object parentNode, Object hostValue);
+
+        public abstract <T> List<T> toList(Object internalContext, Object guestValue, boolean implementFunction, Class<T> elementClass, Type elementType);
+
+        public abstract <K, V> Map<K, V> toMap(Object internalContext, Object foreignObject, boolean implementsFunction, Class<K> keyClass, Type keyType, Class<V> valueClass, Type valueType);
+
+        public abstract <K, V> Map.Entry<K, V> toMapEntry(Object internalContext, Object foreignObject, boolean implementsFunction,
+                        Class<K> keyClass, Type keyType, Class<V> valueClass, Type valueType);
+
+        public abstract <T> Function<?, ?> toFunction(Object internalContext, Object function, Class<?> returnClass, Type returnType);
+
+        public abstract Object toObjectProxy(Object internalContext, Class<?> clazz, Object obj) throws IllegalArgumentException;
+
+        public abstract <T> T toFunctionProxy(Object internalContext, Class<T> functionalType, Object function);
+
+        public abstract <T> Iterable<T> toIterable(Object internalContext, Object iterable, boolean implementFunction, Class<T> elementClass, Type elementType);
+
+        public abstract <T> Iterator<T> toIterator(Object internalContext, Object iterable, boolean implementFunction, Class<T> elementClass, Type elementType);
+
+        public abstract PolyglotException toPolyglotException(Object internalContext, Throwable e);
+
+        public abstract Value toValue(Object internalContext, Object receiver);
 
     }
 

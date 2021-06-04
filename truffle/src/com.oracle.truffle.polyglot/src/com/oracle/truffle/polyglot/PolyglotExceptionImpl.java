@@ -628,8 +628,8 @@ final class PolyglotExceptionImpl {
                         HOST_INTEROP_PACKAGE + "PolyglotList",
                         HOST_INTEROP_PACKAGE + "PolyglotFunction",
                         HOST_INTEROP_PACKAGE + "PolyglotMapAndFunction",
-                        HOST_INTEROP_PACKAGE + "FunctionProxyHandler",
-                        HOST_INTEROP_PACKAGE + "ObjectProxyHandler"
+                        HOST_INTEROP_PACKAGE + "PolyglotFunctionProxyHandler",
+                        HOST_INTEROP_PACKAGE + "PolyglotObjectProxyHandler"
         };
 
         private final Iterator<G> guestFrames;

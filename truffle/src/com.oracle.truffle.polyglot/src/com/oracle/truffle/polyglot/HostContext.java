@@ -80,7 +80,7 @@ final class HostContext {
     final Map<String, Class<?>> classCache = new HashMap<>();
     final Object topScope = new TopScopeObject(this);
     volatile HostClassLoader classloader;
-    private final HostLanguage language;
+    final HostLanguage language;
     private ClassLoader contextClassLoader;
     private Predicate<String> classFilter;
     private boolean hostClassLoadingAllowed;
