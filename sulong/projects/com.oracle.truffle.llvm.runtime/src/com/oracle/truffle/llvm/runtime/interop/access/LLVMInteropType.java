@@ -29,13 +29,14 @@
  */
 package com.oracle.truffle.llvm.runtime.interop.access;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.NoSuchElementException;
+import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
@@ -46,17 +47,18 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.Pair;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
@@ -73,6 +75,7 @@ import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 /**
  * Describes how foreign interop should interpret values.
@@ -377,6 +380,7 @@ public abstract class LLVMInteropType implements TruffleObject {
          * @throws UnknownIdentifierException if neither self class nor parent classes contain a
          *             StructMember with name 'ident'
          */
+        @TruffleBoundary
         public Pair<long[], Struct> getSuperOffsetInformation(String ident) throws UnknownIdentifierException {
             for (StructMember member : members) {
                 if (member.name.equals(ident)) {
@@ -530,12 +534,13 @@ public abstract class LLVMInteropType implements TruffleObject {
     }
 
     public static final class VTable {
-        final HashMap<Long, Method> table;
+        final Method[] table;
         final Clazz clazz;
 
         VTable(Clazz clazz) {
             this.clazz = clazz;
-            this.table = new HashMap<>();
+            int maxIndex = -1;
+            HashMap<Integer, Method> map = new HashMap<>();
             List<Clazz> list = new LinkedList<>(clazz.getSuperClasses());
             list.add(0, clazz);
             do {
@@ -543,26 +548,32 @@ public abstract class LLVMInteropType implements TruffleObject {
                 list.addAll(c.getSuperClasses());
                 for (Method m : c.methods) {
                     if (m != null && m.getVirtualIndex() >= 0) {
-                        table.putIfAbsent(m.virtualIndex, m);
+                        int idx = Type.toUnsignedInt(m.virtualIndex);
+                        map.putIfAbsent(idx, m);
+                        maxIndex = Math.max(maxIndex, idx);
                     }
                 }
             } while (list.size() > 0);
+
+            this.table = new Method[maxIndex + 1];
+            for (Map.Entry<Integer, Method> entry : map.entrySet()) {
+                this.table[entry.getKey()] = entry.getValue();
+            }
         }
 
         public LLVMInteropType.Method findMethod(long virtualIndex) {
-            final LLVMInteropType.Method m = table.get(virtualIndex);
-            if (m == null) {
-                CompilerDirectives.transferToInterpreter();
-                throw new NoSuchElementException(String.format("No method in %s with virtualIndex %d", clazz.name, virtualIndex));
+            if (Long.compareUnsigned(virtualIndex, table.length) >= 0) {
+                return null;
+            } else {
+                return table[Type.toUnsignedInt(virtualIndex)];
             }
-            return m;
         }
     }
 
     @ExportLibrary(value = InteropLibrary.class)
     public static final class VTableObjectPair implements TruffleObject {
         private final VTable vtable;
-        private final Object foreign;
+        final Object foreign;
 
         private VTableObjectPair(VTable vtable, Object foreign) {
             this.vtable = vtable;
@@ -580,26 +591,28 @@ public abstract class LLVMInteropType implements TruffleObject {
         }
 
         @ExportMessage
-        Object readArrayElement(long index) throws UnsupportedMessageException {
-            try {
-                final String methodName = vtable.findMethod(index).getName();
+        Object readArrayElement(long index,
+                        @CachedLibrary("this.foreign") InteropLibrary foreignInterop) throws UnsupportedMessageException, InvalidArrayIndexException {
+            Method m = vtable.findMethod(index);
+            if (m == null) {
+                throw InvalidArrayIndexException.create(index);
+            } else {
+                final String methodName = m.getName();
                 try {
-                    Object readMember = InteropLibrary.getUncached(foreign).readMember(foreign, methodName);
+                    Object readMember = foreignInterop.readMember(foreign, methodName);
                     return new RemoveSelfArgument(readMember);
                 } catch (UnknownIdentifierException e) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
                     final String msg = String.format("External method %s (identifier \"%s\") not found in type %s", methodName, e.getUnknownIdentifier(), foreign.getClass().getSimpleName());
                     throw new IllegalStateException(msg);
                     // TODO pichristoph: change to UnknownIdentifierException
                 }
-            } catch (NoSuchElementException e) {
-                final String msg = String.format("No method found in vtable of %s with index %d", vtable.clazz, index);
-                throw new IllegalStateException(msg);
             }
         }
 
         @ExportMessage
         long getArraySize() {
-            return vtable.table.size();
+            return vtable.table.length;
         }
 
         @ExportMessage
