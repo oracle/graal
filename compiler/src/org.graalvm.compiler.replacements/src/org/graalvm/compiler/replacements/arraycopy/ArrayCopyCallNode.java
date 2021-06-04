@@ -306,7 +306,7 @@ public final class ArrayCopyCallNode extends AbstractMemoryCheckpoint implements
                 aligned = isHeapWordAligned(metaAccess, constantSrc, componentKind) && isHeapWordAligned(metaAccess, constantDst, componentKind);
             }
             if (constantSrc.asInt() >= constantDst.asInt()) {
-                // low to high copy so treat as disjoint
+                // low to high copy (copying forwards) so treat as disjoint
                 disjoint = true;
             }
         }

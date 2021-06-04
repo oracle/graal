@@ -316,6 +316,15 @@ public final class AArch64Address extends AbstractAddress {
     }
 
     /**
+     * @param bitMemoryTransferSize Memory operation size.
+     * @param base May not be null or the zero register.
+     * @return an address specifying the address pointed to by base.
+     */
+    public static AArch64Address createPairBaseRegisterOnlyAddress(int bitMemoryTransferSize, Register base) {
+        return createImmediateAddress(bitMemoryTransferSize, AddressingMode.IMMEDIATE_PAIR_SIGNED_SCALED, base, 0);
+    }
+
+    /**
      * AArch64Address specifying a structure memory access of the form "[Xn|SP]".
      */
     public static AArch64Address createStructureNoOffsetAddress(Register base) {
