@@ -210,10 +210,10 @@ class PolyglotIterable<T> implements Iterable<T>, HostWrapper {
             @SuppressWarnings("unused")
             Object doCached(PolyglotLanguageContext languageContext, Object receiver, Object[] args,
                             @CachedLibrary("receiver") InteropLibrary iterables,
-                            @Cached ToHostNode toHost,
+                            @Cached PolyglotToHostNode toHost,
                             @Cached BranchProfile error) {
                 try {
-                    return toHost.execute(languageContext.context.getHostContextImpl(), iterables.getIterator(receiver), Iterator.class, cache.iteratorType, true);
+                    return toHost.execute(languageContext, iterables.getIterator(receiver), Iterator.class, cache.iteratorType);
                 } catch (UnsupportedMessageException e) {
                     error.enter();
                     throw HostInteropErrors.iterableUnsupported(languageContext, receiver, cache.valueType, "iterator()");

@@ -362,7 +362,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     @Override
     public <S, T> Object newTargetTypeMapping(Class<S> sourceType, Class<T> targetType, Predicate<S> acceptsValue, Function<S, T> convertValue, TargetMappingPrecedence precedence) {
         try {
-            return new PolyglotTargetMapping(sourceType, targetType, acceptsValue, convertValue, precedence);
+            return new HostTargetMapping(sourceType, targetType, acceptsValue, convertValue, precedence);
         } catch (Throwable t) {
             throw PolyglotImpl.guestToHostException(this, t);
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,32 +40,45 @@
  */
 package com.oracle.truffle.polyglot;
 
-import java.lang.reflect.Type;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
-import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 
-import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.api.nodes.Node;
+final class HostTargetMapping implements Comparable<HostTargetMapping> {
 
-public interface HostLanguageService {
+    final Class<Object> sourceType;
+    final Class<Object> targetType;
+    final Predicate<Object> accepts;
+    final Function<Object, Object> converter;
+    final int hostPriority;
 
-    void initializeHostContext(Object internalContext, Object context, HostAccess access, ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed, boolean hostLookupAllowed);
+    @SuppressWarnings("unchecked")
+    <S, T> HostTargetMapping(Class<S> sourceType, Class<T> targetType, Predicate<S> accepts, Function<S, T> converter, TargetMappingPrecedence precedence) {
+        this.sourceType = (Class<Object>) sourceType;
+        this.targetType = (Class<Object>) targetType;
+        this.accepts = (Predicate<Object>) accepts;
+        this.converter = (Function<Object, Object>) converter;
+        this.hostPriority = toHostPriority(precedence);
+    }
 
-    void addToHostClassPath(Object receiver, TruffleFile truffleFile);
+    private static int toHostPriority(TargetMappingPrecedence p) {
+        switch (p) {
+            case HIGHEST:
+                return ToHostNode.HIGHEST;
+            case HIGH:
+                return ToHostNode.STRICT;
+            case LOW:
+                return ToHostNode.LOOSE;
+            case LOWEST:
+                return ToHostNode.LOWEST;
+            default:
+                throw new AssertionError("invalid precedence");
+        }
+    }
 
-    Object toGuestValue(Object context, Object hostValue);
-
-    Object asHostDynamicClass(Object context, Class<?> value);
-
-    Object asHostStaticClass(Object context, Class<?> value);
-
-    Object findDynamicClass(Object context, String classValue);
-
-    Object findStaticClass(Object context, String classValue);
-
-    Node createToHostNode();
-
-    Object asHostValue(Node hostNode, Object hostContext, Object value, Class<?> targetType, Type genericType);
+    public int compareTo(HostTargetMapping o) {
+        return Integer.compare(hostPriority, o.hostPriority);
+    }
 
 }

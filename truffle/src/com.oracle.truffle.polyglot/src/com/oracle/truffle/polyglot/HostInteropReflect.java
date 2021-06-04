@@ -559,10 +559,10 @@ abstract class ProxyInvokeNode extends Node {
                     @CachedLibrary("receiver") InteropLibrary receivers,
                     @CachedLibrary(limit = "LIMIT") InteropLibrary members,
                     @Cached ConditionProfile branchProfile,
-                    @Cached("create()") ToHostNode toHost,
+                    @Cached PolyglotToHostNode toHost,
                     @Cached BranchProfile error) {
         Object result = invokeOrExecute(languageContext, receiver, arguments, name, receivers, members, branchProfile, error);
-        return toHost.execute(languageContext.context.getHostContextImpl(), result, returnClass, returnType, true);
+        return toHost.execute(languageContext, result, returnClass, returnType);
     }
 
     @TruffleBoundary

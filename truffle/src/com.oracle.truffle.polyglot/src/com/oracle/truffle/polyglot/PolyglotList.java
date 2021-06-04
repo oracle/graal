@@ -272,14 +272,14 @@ class PolyglotList<T> extends AbstractList<T> implements HostWrapper {
             @SuppressWarnings("unused")
             Object doCached(PolyglotLanguageContext languageContext, Object receiver, Object[] args,
                             @CachedLibrary("receiver") InteropLibrary interop,
-                            @Cached ToHostNode toHost,
+                            @Cached PolyglotToHostNode toHost,
                             @Cached BranchProfile error) {
                 Object key = args[ARGUMENT_OFFSET];
                 Object result = null;
                 assert key instanceof Integer;
                 int index = (int) key;
                 try {
-                    return toHost.execute(languageContext.context.getHostContextImpl(), interop.readArrayElement(receiver, index), cache.valueClass, cache.valueType, true);
+                    return toHost.execute(languageContext, interop.readArrayElement(receiver, index), cache.valueClass, cache.valueType);
                 } catch (InvalidArrayIndexException e) {
                     error.enter();
                     throw HostInteropErrors.invalidListIndex(languageContext, receiver, cache.valueType, index);

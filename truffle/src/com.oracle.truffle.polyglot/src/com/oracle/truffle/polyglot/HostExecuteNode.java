@@ -302,7 +302,7 @@ abstract class HostExecuteNode extends Node {
         for (int i = 0; i < args.length; i++) {
             Object arg = args[i];
             Class<?> targetType = getParameterType(selected.getParameterTypes(), i, varArgs);
-            Set<PolyglotTargetMapping> otherPossibleMappings = null;
+            Set<HostTargetMapping> otherPossibleMappings = null;
             if (multiple) {
                 for (SingleMethod other : applicable) {
                     if (other == selected) {
@@ -322,11 +322,11 @@ abstract class HostExecuteNode extends Node {
                      */
                     if (!ToHostNode.canConvert(arg, paramType, paramType, null, context, priority,
                                     InteropLibrary.getFactory().getUncached(), TargetMappingNodeGen.getUncached())) {
-                        PolyglotTargetMapping[] otherMappings = cache.getMappings(paramType);
+                        HostTargetMapping[] otherMappings = cache.getMappings(paramType);
                         if (otherPossibleMappings == null) {
                             otherPossibleMappings = new LinkedHashSet<>();
                         }
-                        for (PolyglotTargetMapping mapping : otherMappings) {
+                        for (HostTargetMapping mapping : otherMappings) {
                             otherPossibleMappings.add(mapping);
                         }
                     }
@@ -342,9 +342,9 @@ abstract class HostExecuteNode extends Node {
             } else {
                 argType = new DirectTypeCheck(arg.getClass());
             }
-            PolyglotTargetMapping[] mappings = cache.getMappings(targetType);
+            HostTargetMapping[] mappings = cache.getMappings(targetType);
             if (mappings.length > 0 || otherPossibleMappings != null) {
-                PolyglotTargetMapping[] otherMappings = otherPossibleMappings != null ? otherPossibleMappings.toArray(HostClassCache.EMPTY_MAPPINGS) : HostClassCache.EMPTY_MAPPINGS;
+                HostTargetMapping[] otherMappings = otherPossibleMappings != null ? otherPossibleMappings.toArray(HostClassCache.EMPTY_MAPPINGS) : HostClassCache.EMPTY_MAPPINGS;
                 argType = new TargetMappingType(argType, mappings, otherMappings, priority);
             }
             /*
@@ -904,8 +904,8 @@ abstract class HostExecuteNode extends Node {
 
     static final class TargetMappingType extends TypeCheckNode {
 
-        @CompilationFinal(dimensions = 1) final PolyglotTargetMapping[] mappings;
-        @CompilationFinal(dimensions = 1) final PolyglotTargetMapping[] otherMappings;
+        @CompilationFinal(dimensions = 1) final HostTargetMapping[] mappings;
+        @CompilationFinal(dimensions = 1) final HostTargetMapping[] otherMappings;
 
         @Child TypeCheckNode fallback;
         @Child TargetMappingNode targetMapping;
@@ -914,8 +914,8 @@ abstract class HostExecuteNode extends Node {
         final int priority;
 
         TargetMappingType(TypeCheckNode fallback,
-                        PolyglotTargetMapping[] mappings,
-                        PolyglotTargetMapping[] otherMappings,
+                        HostTargetMapping[] mappings,
+                        HostTargetMapping[] otherMappings,
                         int priority) {
             this.fallback = fallback;
             this.priority = priority;
@@ -936,7 +936,7 @@ abstract class HostExecuteNode extends Node {
         @ExplodeLoop
         boolean execute(Object test, InteropLibrary interop, HostContext context) {
             for (int i = 0; i < otherMappingNodes.length; i++) {
-                PolyglotTargetMapping mapping = otherMappings[i];
+                HostTargetMapping mapping = otherMappings[i];
                 if (mapping.hostPriority > priority) {
                     break;
                 }
@@ -947,7 +947,7 @@ abstract class HostExecuteNode extends Node {
             }
 
             for (int i = 0; i < mappingNodes.length; i++) {
-                PolyglotTargetMapping mapping = mappings[i];
+                HostTargetMapping mapping = mappings[i];
                 if (mapping.hostPriority > priority) {
                     break;
                 }

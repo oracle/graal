@@ -282,7 +282,7 @@ class PolyglotIterator<T> implements Iterator<T>, HostWrapper {
             @SuppressWarnings("unused")
             Object doCached(PolyglotLanguageContext languageContext, Object receiver, Object[] args,
                             @CachedLibrary("receiver") InteropLibrary iterators,
-                            @Cached ToHostNode toHost,
+                            @Cached PolyglotToHostNode toHost,
                             @Cached BranchProfile error,
                             @Cached BranchProfile stop) {
                 TriState lastHasNext = (TriState) args[ARGUMENT_OFFSET];
@@ -292,7 +292,7 @@ class PolyglotIterator<T> implements Iterator<T>, HostWrapper {
                         error.enter();
                         throw HostInteropErrors.iteratorConcurrentlyModified(languageContext, receiver, cache.valueType);
                     }
-                    return toHost.execute(languageContext.context.getHostContextImpl(), next, cache.valueClass, cache.valueType, true);
+                    return toHost.execute(languageContext, next, cache.valueClass, cache.valueType);
                 } catch (StopIterationException e) {
                     stop.enter();
                     if (lastHasNext == TriState.TRUE) {

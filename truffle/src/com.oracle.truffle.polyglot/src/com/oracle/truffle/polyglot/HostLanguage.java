@@ -42,6 +42,7 @@ package com.oracle.truffle.polyglot;
 
 import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 
+import java.lang.reflect.Type;
 import java.util.function.Predicate;
 
 import org.graalvm.polyglot.HostAccess;
@@ -63,6 +64,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
 /*
@@ -233,11 +235,20 @@ final class HostLanguage extends TruffleLanguage<Object> implements HostLanguage
         return HostObject.forStaticClass(found, context);
     }
 
-    public Object asHostStaticClass(Object context, Class<?> value) {
-        return null;
+    public Node createToHostNode() {
+        return ToHostNodeGen.create();
     }
 
-    public Object asHostValue(Object context, Object value) {
+    public Object asHostValue(Node hostNode, Object hostContext, Object value, Class<?> targetType, Type genericType) {
+        HostContext context = (HostContext) hostContext;
+        ToHostNode node = (ToHostNode) hostNode;
+        if (node == null) {
+            node = ToHostNodeGen.getUncached();
+        }
+        return node.execute(context, value, targetType, genericType, true);
+    }
+
+    public Object asHostStaticClass(Object context, Class<?> value) {
         return null;
     }
 

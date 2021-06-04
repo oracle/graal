@@ -65,13 +65,13 @@ abstract class TargetMappingNode extends Node {
     @Specialization(guards = "targetType != null")
     @ExplodeLoop
     protected Object doCached(Object operand, Class<?> targetType, HostContext context, InteropLibrary interop, boolean checkOnly, int startPriority, int endPriority,
-                    @Cached(value = "getMappings(context, targetType)", dimensions = 1) PolyglotTargetMapping[] mappings,
+                    @Cached(value = "getMappings(context, targetType)", dimensions = 1) HostTargetMapping[] mappings,
                     @Cached(value = "createMappingNodes(mappings)") SingleMappingNode[] mappingNodes) {
         assert startPriority <= endPriority;
         Object result = NO_RESULT;
         if (mappingNodes != null) {
             for (int i = 0; i < mappingNodes.length; i++) {
-                PolyglotTargetMapping mapping = mappings[i];
+                HostTargetMapping mapping = mappings[i];
                 if (mapping.hostPriority < startPriority) {
                     continue; // skip
                 } else if (mapping.hostPriority > endPriority) {
@@ -92,11 +92,11 @@ abstract class TargetMappingNode extends Node {
     protected Object doUncached(Object operand, Class<?> targetType, HostContext hostContext, InteropLibrary interop, boolean checkOnly, int startPriority, int endPriority) {
         assert startPriority <= endPriority;
         Object result = NO_RESULT;
-        PolyglotTargetMapping[] mappings = getMappings(hostContext, targetType);
+        HostTargetMapping[] mappings = getMappings(hostContext, targetType);
         if (mappings != null) {
             SingleMappingNode uncachedNode = SingleMappingNodeGen.getUncached();
             for (int i = 0; i < mappings.length; i++) {
-                PolyglotTargetMapping mapping = mappings[i];
+                HostTargetMapping mapping = mappings[i];
                 if (mapping.hostPriority < startPriority) {
                     continue; // skip
                 } else if (mapping.hostPriority > endPriority) {
@@ -112,7 +112,7 @@ abstract class TargetMappingNode extends Node {
     }
 
     @TruffleBoundary
-    static PolyglotTargetMapping[] getMappings(HostContext hostContext, Class<?> targetType) {
+    static HostTargetMapping[] getMappings(HostContext hostContext, Class<?> targetType) {
         if (hostContext == null) {
             return HostClassCache.EMPTY_MAPPINGS;
         }
@@ -120,7 +120,7 @@ abstract class TargetMappingNode extends Node {
     }
 
     @TruffleBoundary
-    static SingleMappingNode[] createMappingNodes(PolyglotTargetMapping[] mappings) {
+    static SingleMappingNode[] createMappingNodes(HostTargetMapping[] mappings) {
         if (mappings == null) {
             return null;
         }
@@ -143,10 +143,10 @@ abstract class TargetMappingNode extends Node {
     @SuppressWarnings("unchecked")
     abstract static class SingleMappingNode extends Node {
 
-        abstract Object execute(Object receiver, PolyglotTargetMapping targetMapping, HostContext context, InteropLibrary interop, boolean checkOnly);
+        abstract Object execute(Object receiver, HostTargetMapping targetMapping, HostContext context, InteropLibrary interop, boolean checkOnly);
 
         @Specialization
-        protected Object doDefault(Object receiver, @SuppressWarnings("unused") PolyglotTargetMapping cachedMapping,
+        protected Object doDefault(Object receiver, @SuppressWarnings("unused") HostTargetMapping cachedMapping,
                         HostContext context, InteropLibrary interop, boolean checkOnly,
                         @Cached ConditionProfile acceptsProfile,
                         @Cached(value = "allowsImplementation(context, cachedMapping.sourceType)", allowUncached = true) boolean allowsImplementation,

@@ -275,7 +275,7 @@ class PolyglotMapEntry<K, V> implements Map.Entry<K, V>, HostWrapper {
             @SuppressWarnings("unused")
             protected Object doCached(PolyglotLanguageContext languageContext, Object receiver, Object[] args,
                             @CachedLibrary("receiver") InteropLibrary interop,
-                            @Cached ToHostNode toHost,
+                            @Cached PolyglotToHostNode toHost,
                             @Cached BranchProfile error) {
                 if (interop.hasArrayElements(receiver)) {
                     Object result;
@@ -288,7 +288,7 @@ class PolyglotMapEntry<K, V> implements Map.Entry<K, V>, HostWrapper {
                         error.enter();
                         throw invalidArrayIndex(languageContext, receiver, e.getInvalidIndex());
                     }
-                    return toHost.execute(languageContext.context.getHostContextImpl(), result, elementClass, elementType, true);
+                    return toHost.execute(languageContext, result, elementClass, elementType);
                 } else {
                     error.enter();
                     throw unsupported(languageContext, receiver);

@@ -559,7 +559,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
             @SuppressWarnings("unchecked")
             protected Object doCached(PolyglotLanguageContext languageContext, Object receiver, Object[] args,
                             @CachedLibrary("receiver") InteropLibrary interop,
-                            @Cached ToHostNode toHost,
+                            @Cached PolyglotToHostNode toHost,
                             @Cached BranchProfile error) {
                 PolyglotMap<Object, Object> originalMap = (PolyglotMap<Object, Object>) args[ARGUMENT_OFFSET];
 
@@ -615,7 +615,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
             protected Object doCached(PolyglotLanguageContext languageContext, Object receiver, Object[] args,
                             @CachedLibrary("receiver") InteropLibrary interop,
                             @Cached ToGuestValueNode toGuest,
-                            @Cached ToHostNode toHost,
+                            @Cached PolyglotToHostNode toHost,
                             @Cached BranchProfile error) {
                 Object key = args[ARGUMENT_OFFSET];
                 Object result;
@@ -641,7 +641,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                     error.enter();
                     return null;
                 }
-                return toHost.execute(languageContext.context.getHostContextImpl(), result, cache.valueClass, cache.valueType, true);
+                return toHost.execute(languageContext, result, cache.valueClass, cache.valueType);
             }
         }
 
@@ -853,7 +853,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
             @Specialization(limit = "LIMIT")
             protected Object doCached(PolyglotLanguageContext languageContext, Object receiver, @SuppressWarnings("unused") Object[] args,
                             @CachedLibrary("receiver") InteropLibrary interop,
-                            @Cached ToHostNode toHost,
+                            @Cached PolyglotToHostNode toHost,
                             @Cached BranchProfile error) {
                 if (interop.hasHashEntries(receiver)) {
                     try {
@@ -862,7 +862,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                         Type useKeyType = cache.keyType != null ? cache.keyType : Object.class;
                         Type useValueType = cache.valueType != null ? cache.valueType : Object.class;
                         genericType = new ParameterizedTypeImpl(Iterator.class, new ParameterizedTypeImpl(Map.Entry.class, useKeyType, useValueType));
-                        return toHost.execute(languageContext.context.getHostContextImpl(), iterator, Iterator.class, genericType, true);
+                        return toHost.execute(languageContext, iterator, Iterator.class, genericType);
                     } catch (UnsupportedMessageException e) {
                         error.enter();
                         throw HostInteropErrors.mapUnsupported(languageContext, receiver, getKeyType(), getValueType(), "iterator");

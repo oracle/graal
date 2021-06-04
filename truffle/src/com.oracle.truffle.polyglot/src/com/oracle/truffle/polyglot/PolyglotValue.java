@@ -2966,7 +2966,7 @@ abstract class PolyglotValue extends AbstractValueDispatch {
 
         private static class AsClassLiteralNode extends InteropNode {
 
-            @Child ToHostNode toHost = ToHostNodeGen.create();
+            @Child PolyglotToHostNode toHost = PolyglotToHostNodeGen.create();
 
             protected AsClassLiteralNode(InteropValue interop) {
                 super(interop);
@@ -2984,14 +2984,14 @@ abstract class PolyglotValue extends AbstractValueDispatch {
 
             @Override
             protected Object executeImpl(PolyglotLanguageContext context, Object receiver, Object[] args) {
-                return toHost.execute(context.context.getHostContextImpl(), receiver, (Class<?>) args[ARGUMENT_OFFSET], null, true);
+                return toHost.execute(context, receiver, (Class<?>) args[ARGUMENT_OFFSET], null);
             }
 
         }
 
         private static class AsTypeLiteralNode extends InteropNode {
 
-            @Child ToHostNode toHost = ToHostNodeGen.create();
+            @Child PolyglotToHostNode toHost = PolyglotToHostNodeGen.create();
 
             protected AsTypeLiteralNode(InteropValue interop) {
                 super(interop);
@@ -3010,7 +3010,7 @@ abstract class PolyglotValue extends AbstractValueDispatch {
             @Override
             protected Object executeImpl(PolyglotLanguageContext context, Object receiver, Object[] args) {
                 TypeLiteral<?> typeLiteral = (TypeLiteral<?>) args[ARGUMENT_OFFSET];
-                return toHost.execute(context.context.getHostContextImpl(), receiver, typeLiteral.getRawType(), typeLiteral.getType(), true);
+                return toHost.execute(context, receiver, typeLiteral.getRawType(), typeLiteral.getType());
             }
 
         }

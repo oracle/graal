@@ -109,7 +109,7 @@ abstract class PolyglotExecuteNode extends Node {
     Object doCached(PolyglotLanguageContext languageContext, Object function, Object[] functionArgs,
                     Class<?> resultClass, Type resultType,
                     @CachedLibrary("function") InteropLibrary interop,
-                    @Cached ToHostNode toHost,
+                    @Cached PolyglotToHostNode toHost,
                     @Cached ConditionProfile executableCondition,
                     @Cached ConditionProfile instantiableCondition,
                     @Cached BranchProfile unsupportedError,
@@ -145,7 +145,7 @@ abstract class PolyglotExecuteNode extends Node {
             unsupportedError.enter();
             throw HostInteropErrors.executeUnsupported(languageContext, function);
         }
-        return toHost.execute(languageContext.context.getHostContextImpl(), result, resultClass, resultType, true);
+        return toHost.execute(languageContext, result, resultClass, resultType);
     }
 
 }

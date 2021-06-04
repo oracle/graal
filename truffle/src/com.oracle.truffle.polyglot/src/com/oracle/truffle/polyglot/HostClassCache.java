@@ -60,7 +60,7 @@ import java.util.Map.Entry;
 
 final class HostClassCache {
 
-    static final PolyglotTargetMapping[] EMPTY_MAPPINGS = new PolyglotTargetMapping[0];
+    static final HostTargetMapping[] EMPTY_MAPPINGS = new HostTargetMapping[0];
 
     private final APIAccess apiAccess;
     final HostAccess hostAccess;
@@ -108,7 +108,7 @@ final class HostClassCache {
     }
 
     @TruffleBoundary
-    PolyglotTargetMapping[] getMappings(Class<?> targetType) {
+    HostTargetMapping[] getMappings(Class<?> targetType) {
         if (targetMappings != null) {
             Class<?> lookupType;
             if (targetType.isPrimitive()) {
@@ -136,7 +136,7 @@ final class HostClassCache {
             } else {
                 lookupType = targetType;
             }
-            PolyglotTargetMapping[] mappings = (PolyglotTargetMapping[]) targetMappings.get(lookupType);
+            HostTargetMapping[] mappings = (HostTargetMapping[]) targetMappings.get(lookupType);
             if (mappings == null) {
                 return EMPTY_MAPPINGS;
             } else {
@@ -154,8 +154,8 @@ final class HostClassCache {
         }
         Map<Class<?>, Object> localMappings = new HashMap<>();
         for (Object mapping : mappings) {
-            PolyglotTargetMapping map = (PolyglotTargetMapping) mapping;
-            List<PolyglotTargetMapping> list = (List<PolyglotTargetMapping>) localMappings.get(map.targetType);
+            HostTargetMapping map = (HostTargetMapping) mapping;
+            List<HostTargetMapping> list = (List<HostTargetMapping>) localMappings.get(map.targetType);
             if (list == null) {
                 list = new ArrayList<>();
                 localMappings.put(map.targetType, list);
@@ -164,7 +164,7 @@ final class HostClassCache {
         }
 
         for (Entry<Class<?>, Object> object : localMappings.entrySet()) {
-            List<PolyglotTargetMapping> classMappings = ((List<PolyglotTargetMapping>) object.getValue());
+            List<HostTargetMapping> classMappings = ((List<HostTargetMapping>) object.getValue());
             Collections.sort(classMappings);
             object.setValue(classMappings.toArray(EMPTY_MAPPINGS));
         }
