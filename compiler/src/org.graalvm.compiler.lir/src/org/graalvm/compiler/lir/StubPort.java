@@ -28,7 +28,7 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Target;
 
 /**
- * Denotes a port of the HotSpot stub. This information will be parsed by
+ * Denotes port of a HotSpot stub. This information will be parsed by
  * {@code org.graalvm.compiler.lir.processor.StubPortProcessor}.
  */
 @Target(ElementType.TYPE)
@@ -49,12 +49,12 @@ public @interface StubPort {
     int lineEnd();
 
     /**
-     * Commit hash of the source code file when porting.
+     * Version of the original source code when the port was created or last updated.
      */
     String commit();
 
     /**
-     * sha1 digest of the ported stub.
+     * Digest of the source code that was ported.
      */
     String sha1();
 

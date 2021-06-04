@@ -152,21 +152,6 @@ gateWindowsAMD64 : ${windows-amd64} ${gateCommon}
 
 gateLinuxAArch64 : ${linux-aarch64} ${gateCommon}
 
-# This task listens to the hotspot math stubs changes. In case of failure, please check if the hotspot changes affect the
-# emitted stub code in C2, and update corresponding recasts in the org.graalvm.compiler.lir.amd64 package accordingly.
-gateMathStubsListener: ${linux-amd64} ${compilerCommon} {
-  targets: [daily]
-  environment : {
-    HOTSPOT_PORT_SYNC_CHECK : "true"
-  }
-  run : [
-    ["mx"] ["build"]
-  ]
-  notify_emails: [
-    "yudi.zheng@oracle.com"
-  ]
-}
-
 gateLinuxAMD64AVX3 : ${gateLinuxAMD64} {
   capabilities : ["linux", "amd64", "x82"]
   environment : {
