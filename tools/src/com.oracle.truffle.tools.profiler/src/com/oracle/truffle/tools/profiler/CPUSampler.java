@@ -47,7 +47,6 @@ import org.graalvm.polyglot.Engine;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
-import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
@@ -605,17 +604,16 @@ public final class CPUSampler implements Closeable {
         if (delaySamplingUntilNonInternalLangInit && !nonInternalLanguageContextInitialized) {
             return Collections.emptyMap();
         }
-        Map<Thread, List<StackTraceEntry>> stacks = new HashMap<>();
-        // TODO: Implement using safepoint stack
-        return Collections.unmodifiableMap(stacks);
-    }
-
-    static Map<Thread, StackTraceElement[]> toStackTraceElement(Map<Thread, List<StackTraceEntry>> sample) {
-        Map<Thread, StackTraceElement[]> converted = new HashMap<>();
-        for (Entry<Thread, List<StackTraceEntry>> entry : sample.entrySet()) {
-            converted.put(entry.getKey(), (StackTraceElement[]) entry.getValue().stream().map((e) -> e.toStackTraceElement()).toArray());
+        if (activeContexts.isEmpty()) {
+            return Collections.emptyMap();
         }
-        return converted;
+        Map<Thread, List<StackTraceEntry>> stacks = new HashMap<>();
+        TruffleContext context = activeContexts.keySet().iterator().next();
+        List<StackSample> sample = safepointStack.sample(env, context);
+        for (StackSample stackSample : sample) {
+            stacks.put(stackSample.thread, stackSample.stack);
+        }
+        return Collections.unmodifiableMap(stacks);
     }
 
     private void resetSampling() {
