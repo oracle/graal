@@ -83,8 +83,6 @@ import org.junit.After;
 import org.junit.Ignore;
 import org.junit.Test;
 
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.tck.tests.ValueAssert;
 import com.oracle.truffle.tck.tests.ValueAssert.Trait;
 

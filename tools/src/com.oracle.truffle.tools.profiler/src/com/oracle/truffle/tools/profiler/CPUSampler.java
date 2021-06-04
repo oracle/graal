@@ -193,15 +193,11 @@ public final class CPUSampler implements Closeable {
         STATEMENTS
     }
 
-    private Mode mode = Mode.EXCLUDE_INLINED_ROOTS;
-
     static final SourceSectionFilter DEFAULT_FILTER = SourceSectionFilter.newBuilder().tagIs(RootTag.class).build();
 
     private volatile boolean closed;
 
     private volatile boolean collecting;
-
-    private boolean stackOverflowed = false;
 
     private long period = 10;
 
@@ -228,8 +224,6 @@ public final class CPUSampler implements Closeable {
     private boolean delaySamplingUntilNonInternalLangInit = true;
 
     private final Map<TruffleContext, Map<Thread, ProfilerNode<Payload>>> activeContexts = Collections.synchronizedMap(new HashMap<>());
-
-    private static final boolean SAFEPOINT_SAMPLING = true;
 
     CPUSampler(Env env) {
         this.env = env;
@@ -283,18 +277,20 @@ public final class CPUSampler implements Closeable {
             @Override
             public void onContextClosed(TruffleContext context) {
                 // print?
-                synchronized (CPUSampler.this) {
-                    // print here instead?
+// synchronized (CPUSampler.this) {
+// print here instead?
 // activeContexts.remove(context);
-                }
+// }
             }
         }, true);
     }
 
+    @SuppressWarnings("unused")
     private void pushSyntheticFrame(TruffleContext context, LanguageInfo info, String message) {
         // TODO
     }
 
+    @SuppressWarnings("unused")
     private void popSyntheticFrame(TruffleContext context, LanguageInfo info) {
         // TODO
     }
@@ -335,9 +331,9 @@ public final class CPUSampler implements Closeable {
      * @param mode the new mode for the sampler.
      * @since 0.30
      */
+    @SuppressWarnings("unused")
     public synchronized void setMode(Mode mode) {
-        enterChangeConfig();
-        this.mode = mode;
+        // TODO: Deprecate
     }
 
     /**
@@ -518,8 +514,7 @@ public final class CPUSampler implements Closeable {
     }
 
     /**
-     * TODO: Write javaodc
-     * @return
+     * TODO: Write javadoc.
      */
     public synchronized Map<TruffleContext, Map<Thread, Collection<ProfilerNode<Payload>>>> getContextData() {
         if (activeContexts.isEmpty()) {
@@ -631,15 +626,6 @@ public final class CPUSampler implements Closeable {
         this.samplerThread.schedule(samplerTask, delay, period);
     }
 
-    private static SourceSectionFilter combine(SourceSectionFilter filter, Mode mode) {
-        List<Class<?>> tags = new ArrayList<>();
-        tags.add(StandardTags.RootTag.class);
-        if (mode == Mode.STATEMENTS) {
-            tags.add(StandardTags.StatementTag.class);
-        }
-        return SourceSectionFilter.newBuilder().tagIs(tags.toArray(new Class<?>[0])).and(filter).build();
-    }
-
     private void cleanup() {
         assert Thread.holdsLock(this);
         if (samplerTask != null) {
@@ -708,11 +694,6 @@ public final class CPUSampler implements Closeable {
                 }
             }
 
-            if (samplesTaken.get() % 500 == 1) {
-                System.out.printf("bias %15f duration %15f %n", biasStatistic.getAverage(),
-                                durationStatistic.getAverage());
-            }
-
             if (sampleTaken) {
                 samplesTaken.incrementAndGet();
             }
@@ -748,51 +729,6 @@ public final class CPUSampler implements Closeable {
                 }
             }
 
-            return true;
-        }
-
-        boolean sample(ShadowStack.ThreadLocalStack stack, long timestamp, ProfilerNode<Payload> threadNode) {
-            if (stack.hasStackOverflowed()) {
-                stackOverflowed = true;
-                return false;
-            }
-
-            if (stack.getStackIndex() == -1) {
-                // nothing on the stack
-                return false;
-            }
-            StackTraceEntry[] stackFrames = stack.getStack();
-            if (stackFrames == null || stackFrames.length == 0) {
-                return false;
-            }
-            synchronized (CPUSampler.this) {
-                // now traverse the stack and insert the path into the tree
-                ProfilerNode<Payload> treeNode = threadNode;
-                for (int i = 0; i < stackFrames.length; i++) {
-                    StackTraceEntry location = stackFrames[i];
-                    boolean isCompiled = location.isCompiled();
-
-                    treeNode = addOrUpdateChild(treeNode, location);
-                    Payload payload = treeNode.getPayload();
-                    if (i == stackFrames.length - 1) {
-                        // last element is counted as self time
-                        if (isCompiled) {
-                            payload.selfCompiledHitCount++;
-                        } else {
-                            payload.selfInterpretedHitCount++;
-                        }
-                        if (gatherSelfHitTimes) {
-                            payload.selfHitTimes.add(timestamp);
-                            assert payload.selfHitTimes.size() == payload.getSelfHitCount();
-                        }
-                    }
-                    if (isCompiled) {
-                        payload.compiledHitCount++;
-                    } else {
-                        payload.interpretedHitCount++;
-                    }
-                }
-            }
             return true;
         }
 
