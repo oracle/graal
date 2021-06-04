@@ -164,10 +164,14 @@ public abstract class StaticShape<T> {
             if (!storageFactoryInterface.isInterface()) {
                 throw new RuntimeException(storageFactoryInterface.getName() + " must be an interface.");
             }
+            // since methods in the factory interface must have the storage super class as return
+            // type, calling `storageFactoryInterface.getMethods()` also verifies that the class
+            // loader of the factory interface can load the storage super class
             for (Method m : storageFactoryInterface.getMethods()) {
+                // this also verifies that the class loader of the factory interface is the same or
+                // a child of the class loader of the storage super class
                 if (!m.getReturnType().isAssignableFrom(storageSuperClass)) {
-                    throw new RuntimeException("The return type of '" + m.getReturnType().getName() + " " + storageFactoryInterface.getName() + "." + m + "' is not assignable from '" +
-                                    storageSuperClass.getName() + "'");
+                    throw new RuntimeException("The return type of '" + m + "' is not assignable from '" + storageSuperClass.getName() + "'");
                 }
                 try {
                     storageSuperClass.getDeclaredConstructor(m.getParameterTypes());
