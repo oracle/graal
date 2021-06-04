@@ -596,6 +596,9 @@ public final class CPUSampler implements Closeable {
      * @since 19.0
      */
     public Map<Thread, List<StackTraceEntry>> takeSample() {
+        if (safepointStack == null) {
+            this.safepointStack = new SafepointStack(stackLimit, filter);
+        }
         if (delaySamplingUntilNonInternalLangInit && !nonInternalLanguageContextInitialized) {
             return Collections.emptyMap();
         }

@@ -112,6 +112,11 @@ public interface FrameInstance {
         return 0;
     }
 
+    /**
+     * TODO: Write javadoc.
+     * @return false.
+     * @since todo
+     */
     default boolean isCompilationRoot() {
         return true;
     }

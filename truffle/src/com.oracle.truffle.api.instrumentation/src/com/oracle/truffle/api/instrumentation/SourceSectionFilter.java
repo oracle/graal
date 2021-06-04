@@ -137,6 +137,13 @@ public final class SourceSectionFilter {
         return includesImpl(node, node.getSourceSection());
     }
 
+    /**
+     * TODO: javadoc.
+     * @param node
+     * @param sourceSection
+     * @return todo
+     * @since todo
+     */
     public boolean includes(Node node, SourceSection sourceSection) {
         if (node != null && !InstrumentationHandler.isInstrumentableNode(node)) {
             return false;

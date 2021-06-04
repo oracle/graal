@@ -43,6 +43,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Value;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.debug.Debugger;
@@ -62,6 +63,7 @@ import com.oracle.truffle.tools.profiler.CPUSampler;
 import com.oracle.truffle.tools.profiler.CPUSampler.Mode;
 import com.oracle.truffle.tools.profiler.StackTraceEntry;
 
+@Ignore("Needs to rewritten")
 public class ManualSamplingTest extends AbstractPolyglotTest {
 
     protected static final SourceSectionFilter DEFAULT_FILTER = SourceSectionFilter.newBuilder().sourceIs(s -> !s.isInternal()).tagIs(RootTag.class, StatementTag.class).build();
@@ -141,6 +143,7 @@ public class ManualSamplingTest extends AbstractPolyglotTest {
     }
 
     @Test
+    @Ignore("We don't do statements anymore")
     public void testLazySingleThreadStatements() throws InterruptedException {
         sampler.setMode(Mode.STATEMENTS);
         testSampling(new String[]{"ROOT(STATEMENT(CALL(sample)))"
