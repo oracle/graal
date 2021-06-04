@@ -59,6 +59,7 @@ import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
+import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
 import com.oracle.svm.util.UnsafePartitionKind;
 
 import jdk.vm.ci.common.JVMCIError;
@@ -80,6 +81,10 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
 
     private static final AtomicReferenceFieldUpdater<AnalysisType, ConstantContextSensitiveObject> UNIQUE_CONSTANT_UPDATER = //
                     AtomicReferenceFieldUpdater.newUpdater(AnalysisType.class, ConstantContextSensitiveObject.class, "uniqueConstant");
+
+    @SuppressWarnings("rawtypes")//
+    private static final AtomicReferenceFieldUpdater<AnalysisType, Object> INTERCEPTORS_UPDATER = //
+                    AtomicReferenceFieldUpdater.newUpdater(AnalysisType.class, Object.class, "interceptors");
 
     protected final AnalysisUniverse universe;
     private final ResolvedJavaType wrapped;
@@ -153,6 +158,8 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     private boolean isArray;
 
     private final int dimension;
+
+    @SuppressWarnings("unused") private volatile Object interceptors;
 
     public enum UsageKind {
         InHeap,
@@ -886,6 +893,10 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
         return elementalType;
     }
 
+    public boolean hasSubTypes() {
+        return subTypes != null ? subTypes.length > 0 : false;
+    }
+
     @Override
     public AnalysisMethod resolveMethod(ResolvedJavaMethod method, ResolvedJavaType callerType) {
         Object resolvedMethod = resolvedMethods.get(method);
@@ -967,6 +978,11 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
 
     private final InstanceFieldsCache instanceFieldsCache = new InstanceFieldsCache();
 
+    public void clearInstanceFieldsCache() {
+        instanceFieldsCache.withSuper = null;
+        instanceFieldsCache.local = null;
+    }
+
     @Override
     public AnalysisField[] getInstanceFields(boolean includeSuperclasses) {
         InstanceFieldsCache cache = instanceFieldsCache;
@@ -983,7 +999,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
         if (includeSupeclasses && getSuperclass() != null) {
             list.addAll(Arrays.asList(getSuperclass().getInstanceFields(true)));
         }
-        return convertFields(wrapped.getInstanceFields(false), list, includeSupeclasses);
+        return convertFields(interceptInstanceFields(wrapped.getInstanceFields(false)), list, includeSupeclasses);
     }
 
     private AnalysisField[] convertFields(ResolvedJavaField[] original, List<AnalysisField> list, boolean listIncludesSuperClassesFields) {
@@ -1152,5 +1168,21 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     /* Method copied from java.lang.Class. */
     public boolean isAnnotation() {
         return (getModifiers() & ANNOTATION) != 0;
+    }
+
+    public void addInstanceFieldsInterceptor(InstanceFieldsInterceptor interceptor) {
+        ConcurrentLightHashSet.addElement(this, INTERCEPTORS_UPDATER, interceptor);
+    }
+
+    private ResolvedJavaField[] interceptInstanceFields(ResolvedJavaField[] fields) {
+        ResolvedJavaField[] result = fields;
+        for (Object interceptor : ConcurrentLightHashSet.getElements(this, INTERCEPTORS_UPDATER)) {
+            result = ((InstanceFieldsInterceptor) interceptor).interceptInstanceFields(universe, result, this);
+        }
+        return result;
+    }
+
+    public interface InstanceFieldsInterceptor {
+        ResolvedJavaField[] interceptInstanceFields(AnalysisUniverse universe, ResolvedJavaField[] fields, AnalysisType type);
     }
 }
