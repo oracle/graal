@@ -114,6 +114,7 @@ public interface FrameInstance {
 
     /**
      * TODO: Write javadoc.
+     * 
      * @return false.
      * @since todo
      */
