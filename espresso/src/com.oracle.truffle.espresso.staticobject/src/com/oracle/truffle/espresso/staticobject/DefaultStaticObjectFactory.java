@@ -22,8 +22,6 @@
  */
 package com.oracle.truffle.espresso.staticobject;
 
-public class DefaultStaticObject {
-    public interface Factory {
-        DefaultStaticObject create();
-    }
+public interface DefaultStaticObjectFactory {
+    Object create();
 }

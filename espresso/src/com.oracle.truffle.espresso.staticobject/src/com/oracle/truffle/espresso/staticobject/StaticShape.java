@@ -105,23 +105,20 @@ public abstract class StaticShape<T> {
             return this;
         }
 
-        public StaticShape<DefaultStaticObject.Factory> build() {
-            // The classloader that loaded the default superClass must be able to load the default
-            // factory.
-            // Therefore, we can't use java.lang.Object as default superClass.
-            return build(DefaultStaticObject.class, DefaultStaticObject.Factory.class);
+        public StaticShape<DefaultStaticObjectFactory> build() {
+            return build(Object.class, DefaultStaticObjectFactory.class);
         }
 
         public <T> StaticShape<T> build(StaticShape<T> parentShape) {
             Objects.requireNonNull(parentShape);
-            GeneratorClassLoader gcl = getOrCreateClassLoader(parentShape.getStorageClass());
+            GeneratorClassLoader gcl = getOrCreateClassLoader(parentShape.getFactoryInterface());
             ShapeGenerator<T> sg = ShapeGenerator.getShapeGenerator(gcl, parentShape);
             return build(sg, parentShape);
         }
 
         public <T> StaticShape<T> build(Class<?> superClass, Class<T> factoryInterface) {
             validateClasses(factoryInterface, superClass);
-            GeneratorClassLoader gcl = getOrCreateClassLoader(superClass);
+            GeneratorClassLoader gcl = getOrCreateClassLoader(factoryInterface);
             ShapeGenerator<T> sg = ShapeGenerator.getShapeGenerator(gcl, superClass, factoryInterface);
             return build(sg, null);
         }

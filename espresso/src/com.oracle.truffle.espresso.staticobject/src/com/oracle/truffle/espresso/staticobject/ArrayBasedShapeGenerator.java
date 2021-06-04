@@ -411,7 +411,6 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
         return load(gcl, storageName, storageWriter.toByteArray());
     }
 
-    @SuppressWarnings("unchecked")
     private static <T> Class<? extends T> generateFactory(GeneratorClassLoader gcl, Class<?> storageClass, Class<T> storageFactoryInterface) {
         ClassWriter factoryWriter = new ClassWriter(0);
         int factoryAccess = ACC_PUBLIC | ACC_SUPER | ACC_SYNTHETIC | ACC_FINAL;
@@ -421,6 +420,6 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
         addFactoryConstructor(factoryWriter, factoryName);
         addFactoryMethods(factoryWriter, storageClass, storageFactoryInterface, factoryName);
         factoryWriter.visitEnd();
-        return (Class<? extends T>) load(gcl, factoryName, factoryWriter.toByteArray());
+        return load(gcl, factoryName, factoryWriter.toByteArray());
     }
 }
