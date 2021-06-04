@@ -329,13 +329,14 @@ public abstract class LLVMInteropType implements TruffleObject {
         @CompilationFinal(dimensions = 1) final Method[] methods;
         private SortedSet<ClazzInheritance> superclasses;
         private VTable vtable;
-        private Boolean virtualMethods;
+        private boolean virtualMethodsInitialized;
+        private boolean virtualMethods;
 
         Clazz(String name, StructMember[] members, Method[] methods, long size) {
             super(name, members, size);
             this.methods = methods;
             this.vtable = null;
-            this.virtualMethods = null;
+            this.virtualMethodsInitialized = false;
             this.superclasses = new TreeSet<>((a, b) -> a.compareTo(b));
         }
 
@@ -455,31 +456,41 @@ public abstract class LLVMInteropType implements TruffleObject {
             return new HashSet<>(superclasses.stream().map(ci -> ci.superClass).collect(Collectors.toSet()));
         }
 
+        @TruffleBoundary
+        private void initVirtualMethods() {
+            virtualMethodsInitialized = true;
+            for (Method m : methods) {
+                if (m.getVirtualIndex() >= 0) {
+                    virtualMethods = true;
+                    return;
+                }
+            }
+            for (ClazzInheritance ci : superclasses) {
+                if (ci.superClass.hasVirtualMethods()) {
+                    virtualMethods = true;
+                    return;
+                }
+            }
+            virtualMethods = false;
+        }
+
         public boolean hasVirtualMethods() {
-            if (virtualMethods == null) {
-                for (Method m : methods) {
-                    if (m.getVirtualIndex() >= 0) {
-                        virtualMethods = true;
-                        return true;
-                    }
-                }
-                for (ClazzInheritance ci : superclasses) {
-                    if (ci.superClass.hasVirtualMethods()) {
-                        return true;
-                    }
-                }
-                virtualMethods = false;
+            if (!virtualMethodsInitialized) {
+                initVirtualMethods();
             }
             return virtualMethods;
         }
 
         public VTable getVTable() {
-            buildVTable();
+            if (vtable == null) {
+                buildVTable();
+            }
             return vtable;
         }
 
+        @TruffleBoundary
         public void buildVTable() {
-            virtualMethods = null;
+            virtualMethodsInitialized = false;
             if (vtable == null && hasVirtualMethods()) {
                 for (ClazzInheritance ci : superclasses) {
                     ci.superClass.buildVTable();
