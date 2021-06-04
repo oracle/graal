@@ -58,7 +58,6 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -71,7 +70,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 /*
  * Java host language implementation.
  */
-final class HostLanguage extends TruffleLanguage<Object> implements HostLanguageService {
+final class HostLanguage extends AbstractHostLanguage<HostContext> {
 
     @CompilationFinal private GuestToHostCodeCache hostToGuestCodeCache;
     @CompilationFinal HostClassCache hostClassCache; // effectively final
@@ -80,13 +79,14 @@ final class HostLanguage extends TruffleLanguage<Object> implements HostLanguage
     final APIAccess api;
 
     HostLanguage(AbstractPolyglotImpl polyglot, HostLanguageAccess hostAccess) {
+        super(polyglot);
         this.polyglot = polyglot;
         this.access = hostAccess;
         this.api = polyglot.getAPIAccess();
     }
 
     @Override
-    protected Object createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
+    protected HostContext createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
         return new HostContext(this);
     }
 
@@ -132,9 +132,7 @@ final class HostLanguage extends TruffleLanguage<Object> implements HostLanguage
 
     @Override
     @TruffleBoundary
-    protected Object getLanguageView(Object context, Object value) {
-        HostContext hostContext = (HostContext) context;
-
+    protected Object getLanguageView(HostContext hostContext, Object value) {
         Object wrapped;
         if (value instanceof TruffleObject) {
             InteropLibrary lib = InteropLibrary.getFactory().getUncached(value);
@@ -155,7 +153,7 @@ final class HostLanguage extends TruffleLanguage<Object> implements HostLanguage
         String sourceString = request.getSource().getCharacters().toString();
         return Truffle.getRuntime().createCallTarget(new RootNode(this) {
 
-            @CompilationFinal ContextReference<Object> contextRef;
+            @CompilationFinal ContextReference<HostContext> contextRef;
 
             @Override
             public Object execute(VirtualFrame frame) {
@@ -170,13 +168,12 @@ final class HostLanguage extends TruffleLanguage<Object> implements HostLanguage
     }
 
     @Override
-    protected void disposeContext(Object context) {
-        HostContext context1 = (HostContext) context;
-        context1.disposeClassLoader();
+    protected void disposeContext(HostContext context) {
+        context.disposeClassLoader();
     }
 
     @Override
-    public void initializeHostContext(Object internalContext, Object receiver, HostAccess hostAccess, ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed, boolean hostLookupAllowed) {
+    protected void initializeHostContext(Object internalContext, Object receiver, HostAccess hostAccess, ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed, boolean hostLookupAllowed) {
         HostContext context = (HostContext) receiver;
         ClassLoader useCl = resolveClassLoader(cl);
         initializeHostAccess(hostAccess, useCl);
@@ -184,12 +181,12 @@ final class HostLanguage extends TruffleLanguage<Object> implements HostLanguage
     }
 
     @Override
-    protected boolean patchContext(Object context, Env newEnv) {
+    protected boolean patchContext(HostContext context, Env newEnv) {
         return true;
     }
 
     @Override
-    public void addToHostClassPath(Object receiver, TruffleFile truffleFile) {
+    protected void addToHostClassPath(Object receiver, TruffleFile truffleFile) {
         HostContext context = (HostContext) receiver;
         context.addToHostClasspath(truffleFile);
     }
@@ -203,8 +200,8 @@ final class HostLanguage extends TruffleLanguage<Object> implements HostLanguage
     }
 
     @Override
-    protected Object getScope(Object context) {
-        return ((HostContext) context).topScope;
+    protected Object getScope(HostContext context) {
+        return context.topScope;
     }
 
     @Override
@@ -212,12 +209,8 @@ final class HostLanguage extends TruffleLanguage<Object> implements HostLanguage
         return true;
     }
 
-    public Object asHostDynamicClass(Object context, Class<?> value) {
-        return null;
-    }
-
     @Override
-    public Object findDynamicClass(Object receiver, String classValue) {
+    protected Object findDynamicClass(Object receiver, String classValue) {
         HostContext context = (HostContext) receiver;
         Class<?> found = context.findClass(classValue);
         if (found == null) {
@@ -227,7 +220,7 @@ final class HostLanguage extends TruffleLanguage<Object> implements HostLanguage
     }
 
     @Override
-    public Object findStaticClass(Object receiver, String classValue) {
+    protected Object findStaticClass(Object receiver, String classValue) {
         HostContext context = (HostContext) receiver;
         Class<?> found = context.findClass(classValue);
         if (found == null) {
@@ -236,11 +229,13 @@ final class HostLanguage extends TruffleLanguage<Object> implements HostLanguage
         return HostObject.forStaticClass(found, context);
     }
 
-    public Node createToHostNode() {
+    @Override
+    protected Node createToHostNode() {
         return ToHostNodeGen.create();
     }
 
-    public Object asHostValue(Node hostNode, Object hostContext, Object value, Class<?> targetType, Type genericType) {
+    @Override
+    protected Object asHostValue(Node hostNode, Object hostContext, Object value, Class<?> targetType, Type genericType) {
         HostContext context = (HostContext) hostContext;
         ToHostNode node = (ToHostNode) hostNode;
         if (node == null) {
@@ -249,11 +244,13 @@ final class HostLanguage extends TruffleLanguage<Object> implements HostLanguage
         return node.execute(context, value, targetType, genericType, true);
     }
 
-    public Object asHostStaticClass(Object context, Class<?> value) {
+    @Override
+    protected Object asHostStaticClass(Object context, Class<?> value) {
         return null;
     }
 
-    public Object toGuestValue(Object receiver, Object hostValue) {
+    @Override
+    protected Object toGuestValue(Object receiver, Object hostValue) {
         HostContext context = (HostContext) receiver;
         assert !(hostValue instanceof Value);
         assert !HostWrapper.isInstance(hostValue);
@@ -273,6 +270,11 @@ final class HostLanguage extends TruffleLanguage<Object> implements HostLanguage
         } else {
             return HostInteropReflect.asTruffleViaReflection(hostValue, context);
         }
+    }
+
+    @Override
+    protected Object asHostDynamicClass(Object context, Class<?> value) {
+        return null;
     }
 
 }

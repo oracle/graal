@@ -41,31 +41,39 @@
 package com.oracle.truffle.polyglot;
 
 import java.lang.reflect.Type;
+import java.util.Objects;
 import java.util.function.Predicate;
 
 import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 
 import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.nodes.Node;
 
-public interface HostLanguageService {
+public abstract class AbstractHostLanguage<T> extends TruffleLanguage<T> {
 
-    void initializeHostContext(Object internalContext, Object context, HostAccess access, ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed, boolean hostLookupAllowed);
+    protected AbstractHostLanguage(AbstractPolyglotImpl polyglot) {
+        Objects.requireNonNull(polyglot);
+    }
 
-    void addToHostClassPath(Object receiver, TruffleFile truffleFile);
+    protected abstract void initializeHostContext(Object internalContext, Object context, HostAccess access, ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed,
+                    boolean hostLookupAllowed);
 
-    Object toGuestValue(Object context, Object hostValue);
+    protected abstract void addToHostClassPath(Object context, TruffleFile truffleFile);
 
-    Object asHostDynamicClass(Object context, Class<?> value);
+    protected abstract Object toGuestValue(Object context, Object hostValue);
 
-    Object asHostStaticClass(Object context, Class<?> value);
+    protected abstract Object asHostDynamicClass(Object context, Class<?> value);
 
-    Object findDynamicClass(Object context, String classValue);
+    protected abstract Object asHostStaticClass(Object context, Class<?> value);
 
-    Object findStaticClass(Object context, String classValue);
+    protected abstract Object findDynamicClass(Object context, String classValue);
 
-    Node createToHostNode();
+    protected abstract Object findStaticClass(Object context, String classValue);
 
-    Object asHostValue(Node hostNode, Object hostContext, Object value, Class<?> targetType, Type genericType);
+    protected abstract Node createToHostNode();
+
+    protected abstract Object asHostValue(Node hostNode, Object hostContext, Object value, Class<?> targetType, Type genericType);
 
 }
