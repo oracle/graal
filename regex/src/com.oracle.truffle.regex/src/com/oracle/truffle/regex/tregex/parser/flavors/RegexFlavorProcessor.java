@@ -53,8 +53,8 @@ import com.oracle.truffle.regex.UnsupportedRegexException;
  * expression.
  * <p>
  * After either {@link #validate} or {@link #toECMAScriptRegex} was called,
- * {@link #getNamedCaptureGroups}, {@link #getFlags} and {@link #isUnicodePattern} can be called to
- * extract extra information obtained during the parse.
+ * {@link #getNumberOfCaptureGroups}, {@link #getNamedCaptureGroups}, {@link #getFlags} and
+ * {@link #isUnicodePattern} can be called to extract extra information obtained during the parse.
  */
 public interface RegexFlavorProcessor {
 
