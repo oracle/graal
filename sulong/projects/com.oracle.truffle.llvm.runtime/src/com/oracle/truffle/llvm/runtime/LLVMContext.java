@@ -677,12 +677,10 @@ public final class LLVMContext {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 MapCursor<BitcodeID, Source> entry = sourceCache.getEntries();
                 String sourceString = "";
-                boolean next = true;
-                while (next) {
+                while (entry.advance()) {
                     BitcodeID sourceID = entry.getKey();
                     String sourcePath = entry.getValue().getPath();
                     sourceString = sourceString + " ***ID***: " + sourceID.getId() + " ~~~matches the source~~~: " + sourcePath + "\n";
-                    next = entry.advance();
                 }
                 throw new IllegalStateException("id: " + id + ", index: " + index + ", id length: " + symbolDynamicStorage.length +
                                 ", symbol name: " + symbol.getName() + ", symbol kind: " + symbol.getKind() +
