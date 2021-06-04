@@ -76,4 +76,8 @@ public abstract class AbstractHostLanguage<C> extends TruffleLanguage<C> {
 
     protected abstract <T> T toHostType(Node hostNode, Object hostContext, Object value, Class<T> targetType, Type genericType);
 
+    protected abstract boolean isHostValue(Object value);
+
+    protected abstract Object asHostValue(Object value);
+
 }

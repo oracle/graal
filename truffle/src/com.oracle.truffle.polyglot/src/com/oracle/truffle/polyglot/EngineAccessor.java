@@ -107,7 +107,6 @@ import com.oracle.truffle.api.nodes.NodeInterface;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.polyglot.HostAdapterFactory.AdapterResult;
 import com.oracle.truffle.polyglot.PolyglotImpl.VMObject;
 import com.oracle.truffle.polyglot.PolyglotLocals.InstrumentContextLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.InstrumentContextThreadLocal;
@@ -115,6 +114,13 @@ import com.oracle.truffle.polyglot.PolyglotLocals.LanguageContextLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.LanguageContextThreadLocal;
 import com.oracle.truffle.polyglot.PolyglotSourceDispatch.EmbedderFileSystemContext;
 import com.oracle.truffle.polyglot.PolyglotThread.ThreadSpawnRootNode;
+import com.oracle.truffle.polyglot.host.HostAdapterFactory;
+import com.oracle.truffle.polyglot.host.HostContext;
+import com.oracle.truffle.polyglot.host.HostException;
+import com.oracle.truffle.polyglot.host.HostFunction;
+import com.oracle.truffle.polyglot.host.HostObject;
+import com.oracle.truffle.polyglot.host.HostToTypeNode;
+import com.oracle.truffle.polyglot.host.HostAdapterFactory.AdapterResult;
 
 final class EngineAccessor extends Accessor {
 

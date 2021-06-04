@@ -84,6 +84,7 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.polyglot.host.GuestToHostRootNode;
 
 final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 

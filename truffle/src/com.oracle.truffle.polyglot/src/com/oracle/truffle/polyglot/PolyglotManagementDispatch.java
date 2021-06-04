@@ -68,6 +68,7 @@ import com.oracle.truffle.api.instrumentation.SourceSectionFilter.SourcePredicat
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.polyglot.host.HostException;
 
 final class PolyglotManagementDispatch extends AbstractManagementDispatch {
 

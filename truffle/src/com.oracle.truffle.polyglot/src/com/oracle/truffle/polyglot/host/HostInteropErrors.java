@@ -38,13 +38,15 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.polyglot;
+package com.oracle.truffle.polyglot.host;
 
 import java.lang.reflect.Type;
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.polyglot.PolyglotEngineException;
+import com.oracle.truffle.polyglot.PolyglotValueDispatch;
 
 final class HostInteropErrors {
 

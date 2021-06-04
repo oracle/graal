@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.polyglot;
+package com.oracle.truffle.polyglot.host;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
@@ -54,7 +54,11 @@ import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.polyglot.HostAdapterFactory.AdapterResult;
+import com.oracle.truffle.polyglot.HostExecuteNodeGen;
+import com.oracle.truffle.polyglot.PolyglotEngineException;
+import com.oracle.truffle.polyglot.PolyglotFunctionProxyHandler;
+import com.oracle.truffle.polyglot.PolyglotObjectProxyHandler;
+import com.oracle.truffle.polyglot.host.HostAdapterFactory.AdapterResult;
 
 final class HostInteropReflect {
     static final Object[] EMPTY = {};

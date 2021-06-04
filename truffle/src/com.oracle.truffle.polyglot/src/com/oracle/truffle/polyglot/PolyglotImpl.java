@@ -74,6 +74,12 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.polyglot.PolyglotEngineImpl.LogConfig;
 import com.oracle.truffle.polyglot.PolyglotLoggers.EngineLoggerProvider;
+import com.oracle.truffle.polyglot.host.HostContext;
+import com.oracle.truffle.polyglot.host.HostException;
+import com.oracle.truffle.polyglot.host.HostLanguage;
+import com.oracle.truffle.polyglot.host.HostObject;
+import com.oracle.truffle.polyglot.host.HostProxy;
+import com.oracle.truffle.polyglot.host.HostTargetMapping;
 
 /*
  * This class is exported to the GraalVM SDK. Keep that in mind when changing its class or package name.

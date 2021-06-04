@@ -59,6 +59,8 @@ import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.polyglot.PolyglotFunctionProxyHandlerFactory.FunctionProxyNodeGen;
+import com.oracle.truffle.polyglot.host.HostClassDesc;
+import com.oracle.truffle.polyglot.host.HostInteropReflect;
 
 final class PolyglotFunctionProxyHandler implements InvocationHandler, PolyglotWrapper {
     final Object functionObj;

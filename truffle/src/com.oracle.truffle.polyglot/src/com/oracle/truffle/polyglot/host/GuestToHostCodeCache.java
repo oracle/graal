@@ -38,9 +38,9 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.polyglot;
+package com.oracle.truffle.polyglot.host;
 
-import static com.oracle.truffle.polyglot.GuestToHostRootNode.createGuestToHost;
+import static com.oracle.truffle.polyglot.host.GuestToHostRootNode.createGuestToHost;
 
 import java.lang.invoke.MethodHandle;
 import java.time.Duration;
@@ -73,8 +73,8 @@ import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.polyglot.HostMethodDesc.SingleMethod;
-import com.oracle.truffle.polyglot.HostMethodDesc.SingleMethod.MHBase;
+import com.oracle.truffle.polyglot.host.HostMethodDesc.SingleMethod;
+import com.oracle.truffle.polyglot.host.HostMethodDesc.SingleMethod.MHBase;
 
 final class GuestToHostCodeCache {
 

@@ -38,9 +38,9 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.polyglot;
+package com.oracle.truffle.polyglot.host;
 
-import static com.oracle.truffle.polyglot.GuestToHostRootNode.guestToHostCall;
+import static com.oracle.truffle.polyglot.host.GuestToHostRootNode.guestToHostCall;
 
 import java.time.Duration;
 import java.time.Instant;
