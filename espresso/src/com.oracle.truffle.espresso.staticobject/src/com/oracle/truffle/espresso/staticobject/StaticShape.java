@@ -28,6 +28,7 @@ import sun.misc.Unsafe;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Objects;
@@ -162,7 +163,7 @@ public abstract class StaticShape<T> {
         private static void validateClasses(Class<?> storageFactoryInterface, Class<?> storageSuperClass) {
             CompilerAsserts.neverPartOfCompilation();
             if (!storageFactoryInterface.isInterface()) {
-                throw new RuntimeException(storageFactoryInterface.getName() + " must be an interface.");
+                throw new IllegalArgumentException(storageFactoryInterface.getName() + " must be an interface.");
             }
             // since methods in the factory interface must have the storage super class as return
             // type, calling `storageFactoryInterface.getMethods()` also verifies that the class
@@ -171,14 +172,31 @@ public abstract class StaticShape<T> {
                 // this also verifies that the class loader of the factory interface is the same or
                 // a child of the class loader of the storage super class
                 if (!m.getReturnType().isAssignableFrom(storageSuperClass)) {
-                    throw new RuntimeException("The return type of '" + m + "' is not assignable from '" + storageSuperClass.getName() + "'");
+                    throw new IllegalArgumentException("The return type of '" + m + "' is not assignable from '" + storageSuperClass.getName() + "'");
                 }
                 try {
                     storageSuperClass.getDeclaredConstructor(m.getParameterTypes());
                 } catch (NoSuchMethodException e) {
-                    throw new RuntimeException("Method '" + m + "' does not match any constructor in '" + storageSuperClass.getName() + "'", e);
+                    throw new IllegalArgumentException("Method '" + m + "' does not match any constructor in '" + storageSuperClass.getName() + "'", e);
                 }
             }
+            if (Cloneable.class.isAssignableFrom(storageSuperClass)) {
+                Method clone = getCloneMethod(storageSuperClass);
+                if (Modifier.isFinal(clone.getModifiers())) {
+                    throw new IllegalArgumentException("'" + storageSuperClass.getName() + "' implements Cloneable and declares a final 'clone()' method");
+                }
+            }
+        }
+
+        private static Method getCloneMethod(Class<?> c) {
+            for (Class<?> clazz = c; clazz != null; clazz = clazz.getSuperclass()) {
+                try {
+                    return clazz.getDeclaredMethod("clone");
+                } catch (NoSuchMethodException e) {
+                    // Swallow the error, check the super class
+                }
+            }
+            return null;
         }
     }
 
