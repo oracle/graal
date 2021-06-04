@@ -205,14 +205,15 @@ class NativeImageVM(GraalVm):
     @staticmethod
     def extract_benchmark_arguments(args):
         i = 0
+        clean_args = args[:]
         while i < len(args):
             if args[i].startswith('--jvmArgsPrepend'):
-                args[i + 1] = ' '.join([x for x in args[i + 1].split(' ') if "-Dnative-image" not in x])
+                clean_args[i + 1] = ' '.join([x for x in args[i + 1].split(' ') if "-Dnative-image" not in x])
                 i += 2
             else:
                 i += 1
-        args = [x for x in args if "-Dnative-image" not in x]
-        vm_args, executable, image_run_args = NativeImageVM._split_vm_arguments(args)
+        clean_args = [x for x in clean_args if "-Dnative-image" not in x]
+        vm_args, executable, image_run_args = NativeImageVM._split_vm_arguments(clean_args)
 
         classpath_arguments = []
         system_properties = [a for a in vm_args if a.startswith('-D')]
