@@ -621,6 +621,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract AbstractValueDispatch lookupValueDispatch(Object guestValue);
 
+        public abstract Object toGuestValue(Object internalContext, Object parentNode, Object hostValue);
+
     }
 
     public abstract static class AbstractValueDispatch {

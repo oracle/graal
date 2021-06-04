@@ -88,7 +88,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.api.utilities.TriState;
-import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToGuestValueNode;
+import com.oracle.truffle.polyglot.HostContext.ToGuestValueNode;
 
 @ExportLibrary(InteropLibrary.class)
 @SuppressWarnings("unused")

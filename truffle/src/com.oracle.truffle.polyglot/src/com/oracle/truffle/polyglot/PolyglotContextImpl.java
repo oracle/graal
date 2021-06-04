@@ -378,7 +378,6 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             newContexts[i] = new PolyglotLanguageContext(this, language);
         }
         hostContext.ensureInitialized(null);
-        ((HostContext) hostContext.getContextImpl()).initializeInternal(this);
         return newContexts;
     }
 
@@ -2132,8 +2131,8 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         return true;
     }
 
-    void initializeHostContext(Object context, PolyglotContextConfig newConfig) {
-        engine.host.initializeHostContext(context, newConfig.hostAccess, newConfig.hostClassLoader, newConfig.classFilter, newConfig.hostClassLoadingAllowed, newConfig.hostLookupAllowed);
+    void initializeHostContext(Object hostContext, PolyglotContextConfig newConfig) {
+        engine.host.initializeHostContext(this, hostContext, newConfig.hostAccess, newConfig.hostClassLoader, newConfig.classFilter, newConfig.hostClassLoadingAllowed, newConfig.hostLookupAllowed);
     }
 
     void replayInstrumentationEvents() {

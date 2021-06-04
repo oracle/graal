@@ -48,7 +48,7 @@ import com.oracle.truffle.api.TruffleFile;
 
 public interface HostLanguageService {
 
-    void initializeHostContext(Object context, HostAccess access, ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed, boolean hostLookupAllowed);
+    void initializeHostContext(Object internalContext, Object context, HostAccess access, ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed, boolean hostLookupAllowed);
 
     void addToHostClassPath(Object receiver, TruffleFile truffleFile);
 

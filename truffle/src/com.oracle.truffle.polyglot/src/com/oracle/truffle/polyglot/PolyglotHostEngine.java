@@ -40,10 +40,12 @@
  */
 package com.oracle.truffle.polyglot;
 
+import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueDispatch;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.HostLanguageAccess;
 
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.polyglot.PolyglotValue.InteropValue;
 
 final class PolyglotHostEngine extends HostLanguageAccess {
@@ -53,6 +55,25 @@ final class PolyglotHostEngine extends HostLanguageAccess {
     protected PolyglotHostEngine(AbstractPolyglotImpl polyglot) {
         super(polyglot);
         this.polyglot = polyglot;
+    }
+
+    @Override
+    public Object toGuestValue(Object polyglotContext, Object node, Object hostValue) {
+        Node parentNode = (Node) node;
+        PolyglotContextImpl internalContext = (PolyglotContextImpl) polyglotContext;
+        if (hostValue instanceof Value) {
+            Value receiverValue = (Value) hostValue;
+            PolyglotLanguageContext languageContext = (PolyglotLanguageContext) polyglot.getAPIAccess().getContext(receiverValue);
+            PolyglotContextImpl valueContext = languageContext != null ? languageContext.context : null;
+            Object valueReceiver = polyglot.getAPIAccess().getReceiver(receiverValue);
+            if (valueContext != internalContext) {
+                valueReceiver = internalContext.migrateValue(parentNode, valueReceiver, valueContext);
+            }
+            return valueReceiver;
+        } else if (HostWrapper.isInstance(hostValue)) {
+            return internalContext.migrateHostWrapper(parentNode, HostWrapper.asInstance(hostValue));
+        }
+        return null;
     }
 
     @Override

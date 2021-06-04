@@ -104,7 +104,6 @@ import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.GetH
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.GetHashValueOrDefaultNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.GetHashValuesIteratorNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.GetIteratorNextElementNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.GetIteratorNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.GetMemberKeysNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.GetMemberNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.GetMetaQualifiedNameNodeGen;
@@ -121,7 +120,6 @@ import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.IsBu
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.IsDateNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.IsDurationNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.IsExceptionNodeGen;
-import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.IsIteratorNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.IsMetaInstanceNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.IsMetaObjectNodeGen;
 import com.oracle.truffle.polyglot.PolyglotValueFactory.InteropValueFactory.IsNativePointerNodeGen;
@@ -2001,8 +1999,8 @@ abstract class PolyglotValue extends AbstractValueDispatch {
             this.getMetaQualifiedName = createTarget(GetMetaQualifiedNameNodeGen.create(this));
             this.getMetaSimpleName = createTarget(GetMetaSimpleNameNodeGen.create(this));
             this.hasIterator = createTarget(HasIteratorNodeGen.create(this));
-            this.getIterator = createTarget(GetIteratorNodeGen.create(this));
-            this.isIterator = createTarget(IsIteratorNodeGen.create(this));
+            this.getIterator = createTarget(PolyglotValueFactory.InteropValueFactory.GetIteratorNodeGen.create(this));
+            this.isIterator = createTarget(PolyglotValueFactory.InteropValueFactory.IsIteratorNodeGen.create(this));
             this.hasIteratorNextElement = createTarget(HasIteratorNextElementNodeGen.create(this));
             this.getIteratorNextElement = createTarget(GetIteratorNextElementNodeGen.create(this));
             this.hasHashEntries = createTarget(HasHashEntriesNodeGen.create(this));
@@ -3182,7 +3180,7 @@ abstract class PolyglotValue extends AbstractValueDispatch {
                             @Cached BranchProfile invalidIndex,
                             @Cached BranchProfile invalidValue) {
                 long index = (long) args[ARGUMENT_OFFSET];
-                Object value = toGuestValue.execute(context.context.getHostContextImpl(), args[ARGUMENT_OFFSET + 1]);
+                Object value = toGuestValue.execute(context, args[ARGUMENT_OFFSET + 1]);
                 try {
                     arrays.writeArrayElement(receiver, index, value);
                 } catch (UnsupportedMessageException e) {
@@ -3889,7 +3887,7 @@ abstract class PolyglotValue extends AbstractValueDispatch {
                             @Cached BranchProfile unknown) {
                 String key = (String) args[ARGUMENT_OFFSET];
                 Object originalValue = args[ARGUMENT_OFFSET + 1];
-                Object value = toGuestValue.execute(context.context.getHostContextImpl(), originalValue);
+                Object value = toGuestValue.execute(context, originalValue);
                 assert key != null;
                 try {
                     objects.writeMember(receiver, key, value);
@@ -4117,7 +4115,7 @@ abstract class PolyglotValue extends AbstractValueDispatch {
             }
 
             protected final Object executeShared(PolyglotLanguageContext context, Object receiver, Object[] args) {
-                Object[] guestArguments = toGuestValues.apply(context.context.getHostContextImpl(), args);
+                Object[] guestArguments = toGuestValues.apply(context, args);
                 try {
                     return executables.execute(receiver, guestArguments);
                 } catch (UnsupportedTypeException e) {
@@ -4259,7 +4257,7 @@ abstract class PolyglotValue extends AbstractValueDispatch {
                             @Cached BranchProfile arity,
                             @Cached BranchProfile invalidArgument,
                             @Cached BranchProfile unsupported) {
-                Object[] instantiateArguments = toGuestValues.apply(context.context.getHostContextImpl(), (Object[]) args[ARGUMENT_OFFSET]);
+                Object[] instantiateArguments = toGuestValues.apply(context, (Object[]) args[ARGUMENT_OFFSET]);
                 try {
                     return toHostValue.execute(context, instantiables.instantiate(receiver, instantiateArguments));
                 } catch (UnsupportedTypeException e) {
@@ -4336,7 +4334,7 @@ abstract class PolyglotValue extends AbstractValueDispatch {
             @Override
             protected Object executeImpl(PolyglotLanguageContext context, Object receiver, Object[] args) {
                 String key = (String) args[ARGUMENT_OFFSET];
-                Object[] guestArguments = toGuestValues.apply(context.context.getHostContextImpl(), (Object[]) args[ARGUMENT_OFFSET + 1]);
+                Object[] guestArguments = toGuestValues.apply(context, (Object[]) args[ARGUMENT_OFFSET + 1]);
                 return executeShared(context, receiver, key, guestArguments);
             }
 
@@ -4523,7 +4521,7 @@ abstract class PolyglotValue extends AbstractValueDispatch {
                             @Cached ToGuestValueNode toGuest,
                             @Cached BranchProfile unsupported) {
                 try {
-                    return objects.isMetaInstance(receiver, toGuest.execute(context.context.getHostContextImpl(), args[ARGUMENT_OFFSET]));
+                    return objects.isMetaInstance(receiver, toGuest.execute(context, args[ARGUMENT_OFFSET]));
                 } catch (UnsupportedMessageException e) {
                     unsupported.enter();
                     throw unsupported(context, receiver, "throwException()", "isException()");
@@ -4743,7 +4741,7 @@ abstract class PolyglotValue extends AbstractValueDispatch {
                             @CachedLibrary("receiver") InteropLibrary hashes,
                             @Cached ToGuestValueNode toGuestKey) {
                 Object hostKey = args[ARGUMENT_OFFSET];
-                Object key = toGuestKey.execute(context.context.getHostContextImpl(), hostKey);
+                Object key = toGuestKey.execute(context, hostKey);
                 return hashes.isHashEntryExisting(receiver, key);
             }
         }
@@ -4772,7 +4770,7 @@ abstract class PolyglotValue extends AbstractValueDispatch {
                             @Cached BranchProfile unsupported,
                             @Cached BranchProfile invalidKey) {
                 Object hostKey = args[ARGUMENT_OFFSET];
-                Object key = toGuestKey.execute(context.context.getHostContextImpl(), hostKey);
+                Object key = toGuestKey.execute(context, hostKey);
                 try {
                     return toHost.execute(context, hashes.readHashValue(receiver, key));
                 } catch (UnsupportedMessageException e) {
@@ -4815,9 +4813,8 @@ abstract class PolyglotValue extends AbstractValueDispatch {
                             @Cached BranchProfile invalidKey) {
                 Object hostKey = args[ARGUMENT_OFFSET];
                 Object hostDefaultValue = args[ARGUMENT_OFFSET + 1];
-                HostContext hostContext = context.context.getHostContextImpl();
-                Object key = toGuestKey.execute(hostContext, hostKey);
-                Object defaultValue = toGuestDefaultValue.execute(hostContext, hostDefaultValue);
+                Object key = toGuestKey.execute(context, hostKey);
+                Object defaultValue = toGuestDefaultValue.execute(context, hostDefaultValue);
                 try {
                     return toHost.execute(context, hashes.readHashValueOrDefault(receiver, key, hostDefaultValue));
                 } catch (UnsupportedMessageException e) {
@@ -4853,9 +4850,8 @@ abstract class PolyglotValue extends AbstractValueDispatch {
                             @Cached BranchProfile invalidValue) {
                 Object hostKey = args[ARGUMENT_OFFSET];
                 Object hostValue = args[ARGUMENT_OFFSET + 1];
-                HostContext hostContext = context.context.getHostContextImpl();
-                Object key = toGuestKey.execute(hostContext, hostKey);
-                Object value = toGuestValue.execute(hostContext, hostValue);
+                Object key = toGuestKey.execute(context, hostKey);
+                Object value = toGuestValue.execute(context, hostValue);
                 try {
                     hashes.writeHashEntry(receiver, key, value);
                 } catch (UnsupportedMessageException | UnknownKeyException e) {
@@ -4892,7 +4888,7 @@ abstract class PolyglotValue extends AbstractValueDispatch {
                             @Cached BranchProfile unsupported,
                             @Cached BranchProfile invalidKey) {
                 Object hostKey = args[ARGUMENT_OFFSET];
-                Object key = toGuestKey.execute(context.context.getHostContextImpl(), hostKey);
+                Object key = toGuestKey.execute(context, hostKey);
                 Boolean result;
                 try {
                     hashes.removeHashEntry(receiver, key);

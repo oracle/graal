@@ -56,8 +56,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToGuestValueNode;
-import com.oracle.truffle.polyglot.PolyglotListFactory.CacheFactory.GetNodeGen;
+import com.oracle.truffle.polyglot.HostContext.ToGuestValueNode;
 import com.oracle.truffle.polyglot.PolyglotListFactory.CacheFactory.RemoveNodeGen;
 import com.oracle.truffle.polyglot.PolyglotListFactory.CacheFactory.SetNodeGen;
 import com.oracle.truffle.polyglot.PolyglotListFactory.CacheFactory.SizeNodeGen;
@@ -159,7 +158,7 @@ class PolyglotList<T> extends AbstractList<T> implements HostWrapper {
             this.receiverClass = receiverClass;
             this.valueClass = valueClass;
             this.valueType = valueType;
-            this.get = initializeCall(GetNodeGen.create(this));
+            this.get = initializeCall(PolyglotListFactory.CacheFactory.GetNodeGen.create(this));
             this.size = initializeCall(SizeNodeGen.create(this));
             this.set = initializeCall(SetNodeGen.create(this));
             this.remove = initializeCall(RemoveNodeGen.create(this));

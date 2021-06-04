@@ -72,7 +72,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.polyglot.HostAdapterFactory.AdapterResult;
-import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToGuestValuesNode;
+import com.oracle.truffle.polyglot.HostContext.ToGuestValuesNode;
 
 final class HostInteropReflect {
     static final Object[] EMPTY = {};

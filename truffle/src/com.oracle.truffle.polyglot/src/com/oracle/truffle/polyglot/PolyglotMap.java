@@ -62,20 +62,18 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownKeyException;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownKeyException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToGuestValueNode;
-import com.oracle.truffle.polyglot.PolyglotMapFactory.CacheFactory.ContainsKeyNodeGen;
+import com.oracle.truffle.polyglot.HostContext.ToGuestValueNode;
 import com.oracle.truffle.polyglot.PolyglotMapFactory.CacheFactory.EntrySetNodeGen;
 import com.oracle.truffle.polyglot.PolyglotMapFactory.CacheFactory.HashEntriesIteratorNodeGen;
 import com.oracle.truffle.polyglot.PolyglotMapFactory.CacheFactory.HashSizeNodeGen;
 import com.oracle.truffle.polyglot.PolyglotMapFactory.CacheFactory.PutNodeGen;
 import com.oracle.truffle.polyglot.PolyglotMapFactory.CacheFactory.RemoveBooleanNodeGen;
-import com.oracle.truffle.polyglot.PolyglotMapFactory.CacheFactory.RemoveNodeGen;
 
 class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
 
@@ -405,10 +403,10 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
             this.memberKey = keyClass == Object.class || keyClass == String.class || keyClass == CharSequence.class;
             this.numberKey = keyClass == Object.class || keyClass == Number.class || keyClass == Integer.class || keyClass == Long.class || keyClass == Short.class || keyClass == Byte.class;
             this.get = initializeCall(PolyglotMapFactory.CacheFactory.GetNodeGen.create(this));
-            this.containsKey = initializeCall(ContainsKeyNodeGen.create(this));
+            this.containsKey = initializeCall(PolyglotMapFactory.CacheFactory.ContainsKeyNodeGen.create(this));
             this.entrySet = initializeCall(EntrySetNodeGen.create(this));
             this.put = initializeCall(PutNodeGen.create(this));
-            this.remove = initializeCall(RemoveNodeGen.create(this));
+            this.remove = initializeCall(PolyglotMapFactory.CacheFactory.RemoveNodeGen.create(this));
             this.removeBoolean = initializeCall(RemoveBooleanNodeGen.create(this));
             this.hashEntriesIterator = initializeCall(HashEntriesIteratorNodeGen.create(this));
             this.hashSize = initializeCall(HashSizeNodeGen.create(this));

@@ -173,11 +173,11 @@ final class HostLanguage extends TruffleLanguage<Object> implements HostLanguage
     }
 
     @Override
-    public void initializeHostContext(Object receiver, HostAccess hostAccess, ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed, boolean hostLookupAllowed) {
+    public void initializeHostContext(Object internalContext, Object receiver, HostAccess hostAccess, ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed, boolean hostLookupAllowed) {
         HostContext context = (HostContext) receiver;
         ClassLoader useCl = resolveClassLoader(cl);
         initializeHostAccess(hostAccess, useCl);
-        context.initialize(useCl, clFilter, hostCLAllowed, hostLookupAllowed);
+        context.initialize(internalContext, useCl, clFilter, hostCLAllowed, hostLookupAllowed);
     }
 
     @Override

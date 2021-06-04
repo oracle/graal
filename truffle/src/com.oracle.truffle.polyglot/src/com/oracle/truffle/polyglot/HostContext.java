@@ -43,6 +43,7 @@ package com.oracle.truffle.polyglot;
 import java.io.IOException;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -51,21 +52,26 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 
 import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.proxy.Proxy;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.polyglot.HostAdapterFactory.AdapterResult;
+import com.oracle.truffle.polyglot.HostContextFactory.ToGuestValueNodeGen;
 import com.oracle.truffle.polyglot.HostLanguage.HostLanguageException;
 
 final class HostContext {
@@ -74,7 +80,7 @@ final class HostContext {
     final Map<String, Class<?>> classCache = new HashMap<>();
     final Object topScope = new TopScopeObject(this);
     volatile HostClassLoader classloader;
-    private final HostLanguage hostLanguage;
+    private final HostLanguage language;
     private ClassLoader contextClassLoader;
     private Predicate<String> classFilter;
     private boolean hostClassLoadingAllowed;
@@ -96,11 +102,12 @@ final class HostContext {
     };
 
     HostContext(HostLanguage hostLanguage) {
-        this.hostLanguage = hostLanguage;
+        this.language = hostLanguage;
     }
 
     @SuppressWarnings("hiding")
-    void initialize(ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed, boolean hostLookupAllowed) {
+    void initialize(Object internalContext, ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed, boolean hostLookupAllowed) {
+        this.internalContext = (PolyglotContextImpl) internalContext;
         assert classloader == null : "must not be used during context preinitialization";
         // if assertions are not enabled. dispose the previous class loader to be on the safe side
         disposeClassLoader();
@@ -117,11 +124,11 @@ final class HostContext {
     }
 
     public HostClassCache getHostClassCache() {
-        return hostLanguage.hostClassCache;
+        return language.hostClassCache;
     }
 
     GuestToHostCodeCache getGuestToHostCache() {
-        return hostLanguage.getGuestToHostCache();
+        return language.getGuestToHostCache();
     }
 
     @TruffleBoundary
@@ -215,10 +222,6 @@ final class HostContext {
         getClassloader().addClasspathRoot(classpathEntry);
     }
 
-    void initializeInternal(PolyglotContextImpl context) {
-        this.internalContext = context;
-    }
-
     <T extends Throwable> RuntimeException hostToGuestException(T e) {
         return PolyglotImpl.hostToGuestException(this, e);
     }
@@ -231,22 +234,10 @@ final class HostContext {
         return HostObject.forClass(receiver, this);
     }
 
-    private APIAccess getAPIAccess() {
-        return hostLanguage.polyglot.getAPIAccess();
-    }
-
     Object toGuestValue(Node parentNode, Object hostValue) {
-        if (hostValue instanceof Value) {
-            Value receiverValue = (Value) hostValue;
-            PolyglotLanguageContext languageContext = (PolyglotLanguageContext) getAPIAccess().getContext(receiverValue);
-            PolyglotContextImpl valueContext = languageContext != null ? languageContext.context : null;
-            Object valueReceiver = getAPIAccess().getReceiver(receiverValue);
-            if (valueContext != this.internalContext) {
-                valueReceiver = internalContext.migrateValue(parentNode, valueReceiver, valueContext);
-            }
-            return valueReceiver;
-        } else if (HostWrapper.isInstance(hostValue)) {
-            return internalContext.migrateHostWrapper(parentNode, HostWrapper.asInstance(hostValue));
+        Object result = language.access.toGuestValue(internalContext, parentNode, hostValue);
+        if (result != null) {
+            return result;
         } else if (PolyglotImpl.isGuestPrimitive(hostValue)) {
             return hostValue;
         } else if (hostValue instanceof Proxy) {
@@ -261,6 +252,163 @@ final class HostContext {
             return HostObject.forObject(hostValue, this);
         } else {
             return HostInteropReflect.asTruffleViaReflection(hostValue, this);
+        }
+    }
+
+    @GenerateUncached
+    abstract static class ToGuestValueNode extends Node {
+
+        abstract Object execute(HostContext context, Object receiver);
+
+        @Specialization(guards = "receiver == null")
+        Object doNull(HostContext context, @SuppressWarnings("unused") Object receiver) {
+            return context.toGuestValue(this, receiver);
+        }
+
+        @Specialization(guards = {"receiver != null", "receiver.getClass() == cachedReceiver"}, limit = "3")
+        Object doCached(HostContext context, Object receiver, @Cached("receiver.getClass()") Class<?> cachedReceiver) {
+            return context.toGuestValue(this, cachedReceiver.cast(receiver));
+        }
+
+        @Specialization(replaces = "doCached")
+        @TruffleBoundary
+        Object doUncached(HostContext context, Object receiver) {
+            return context.toGuestValue(this, receiver);
+        }
+    }
+
+    static final class ToGuestValuesNode extends Node {
+
+        @Children private volatile ToGuestValueNode[] toGuestValue;
+        @CompilationFinal private volatile boolean needsCopy = false;
+        @CompilationFinal private volatile boolean generic = false;
+
+        private ToGuestValuesNode() {
+        }
+
+        public Object[] apply(HostContext context, Object[] args) {
+            ToGuestValueNode[] nodes = this.toGuestValue;
+            if (nodes == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                nodes = new ToGuestValueNode[args.length];
+                for (int i = 0; i < nodes.length; i++) {
+                    nodes[i] = ToGuestValueNodeGen.create();
+                }
+                toGuestValue = insert(nodes);
+            }
+            if (args.length == nodes.length) {
+                // fast path
+                if (nodes.length == 0) {
+                    return args;
+                } else {
+                    Object[] newArgs = fastToGuestValuesUnroll(nodes, context, args);
+                    return newArgs;
+                }
+            } else {
+                if (!generic || nodes.length != 1) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    nodes = Arrays.copyOf(nodes, 1);
+                    if (nodes[0] == null) {
+                        nodes[0] = ToGuestValueNodeGen.create();
+                    }
+                    this.toGuestValue = insert(nodes);
+                    this.generic = true;
+                }
+                if (args.length == 0) {
+                    return args;
+                }
+                return fastToGuestValues(nodes[0], context, args);
+            }
+        }
+
+        /*
+         * Specialization for constant number of arguments. Uses a profile for each argument.
+         */
+        @ExplodeLoop
+        private Object[] fastToGuestValuesUnroll(ToGuestValueNode[] nodes, HostContext context, Object[] args) {
+            Object[] newArgs = needsCopy ? new Object[nodes.length] : args;
+            for (int i = 0; i < nodes.length; i++) {
+                Object arg = args[i];
+                Object newArg = nodes[i].execute(context, arg);
+                if (needsCopy) {
+                    newArgs[i] = newArg;
+                } else if (arg != newArg) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    newArgs = new Object[nodes.length];
+                    System.arraycopy(args, 0, newArgs, 0, args.length);
+                    newArgs[i] = newArg;
+                    needsCopy = true;
+                }
+            }
+            return newArgs;
+        }
+
+        /*
+         * Specialization that supports multiple argument lengths but uses a single profile for all
+         * arguments.
+         */
+        private Object[] fastToGuestValues(ToGuestValueNode node, HostContext context, Object[] args) {
+            assert toGuestValue[0] != null;
+            Object[] newArgs = needsCopy ? new Object[args.length] : args;
+            for (int i = 0; i < args.length; i++) {
+                Object arg = args[i];
+                Object newArg = node.execute(context, arg);
+                if (needsCopy) {
+                    newArgs[i] = newArg;
+                } else if (arg != newArg) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    newArgs = new Object[args.length];
+                    System.arraycopy(args, 0, newArgs, 0, args.length);
+                    newArgs[i] = newArg;
+                    needsCopy = true;
+                }
+            }
+            return newArgs;
+        }
+
+        public static ToGuestValuesNode create() {
+            return new ToGuestValuesNode();
+        }
+
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static final class ClassNamesObject implements TruffleObject {
+
+        final ArrayList<String> names;
+
+        private ClassNamesObject(Set<String> names) {
+            this.names = new ArrayList<>(names);
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean hasArrayElements() {
+            return true;
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        Object readArrayElement(long index) throws InvalidArrayIndexException {
+            if (index < 0L || index > Integer.MAX_VALUE) {
+                throw InvalidArrayIndexException.create(index);
+            }
+            try {
+                return names.get((int) index);
+            } catch (IndexOutOfBoundsException ioob) {
+                throw InvalidArrayIndexException.create(index);
+            }
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        long getArraySize() {
+            return names.size();
+        }
+
+        @ExportMessage
+        boolean isArrayElementReadable(long index) {
+            return index >= 0 && index < getArraySize();
         }
     }
 
@@ -319,46 +467,6 @@ final class HostContext {
         @ExportMessage
         Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
             return "Static Scope";
-        }
-    }
-
-    @ExportLibrary(InteropLibrary.class)
-    static final class ClassNamesObject implements TruffleObject {
-
-        final ArrayList<String> names;
-
-        private ClassNamesObject(Set<String> names) {
-            this.names = new ArrayList<>(names);
-        }
-
-        @SuppressWarnings("static-method")
-        @ExportMessage
-        boolean hasArrayElements() {
-            return true;
-        }
-
-        @ExportMessage
-        @TruffleBoundary
-        Object readArrayElement(long index) throws InvalidArrayIndexException {
-            if (index < 0L || index > Integer.MAX_VALUE) {
-                throw InvalidArrayIndexException.create(index);
-            }
-            try {
-                return names.get((int) index);
-            } catch (IndexOutOfBoundsException ioob) {
-                throw InvalidArrayIndexException.create(index);
-            }
-        }
-
-        @ExportMessage
-        @TruffleBoundary
-        long getArraySize() {
-            return names.size();
-        }
-
-        @ExportMessage
-        boolean isArrayElementReadable(long index) {
-            return index >= 0 && index < getArraySize();
         }
     }
 
