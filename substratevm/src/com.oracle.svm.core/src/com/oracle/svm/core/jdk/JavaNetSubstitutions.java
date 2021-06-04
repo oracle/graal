@@ -118,6 +118,7 @@ final class DefaultProxySelectorSystemProxiesAccessor {
     static boolean ensureInitialized() {
         Boolean b = NetProperties.getBoolean("java.net.useSystemProxies");
         if (b != null && b) {
+            // NOTE: System.loadLibrary("net") has already been called early on
             while (true) {
                 SignedWord value = initState.get().readWord(0);
                 if (value.greaterOrEqual(0)) {

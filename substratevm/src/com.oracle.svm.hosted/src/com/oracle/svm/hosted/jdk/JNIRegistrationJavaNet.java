@@ -302,7 +302,7 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
     }
 
     private static void registerDefaultProxySelectorInit(DuringAnalysisAccess a) {
-        if (isWindows()) {
+        if (isWindows() && JavaVersionUtil.JAVA_SPEC >= 11) {
             DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
             access.getNativeLibraries().addDynamicNonJniLibrary("winhttp");
         }
