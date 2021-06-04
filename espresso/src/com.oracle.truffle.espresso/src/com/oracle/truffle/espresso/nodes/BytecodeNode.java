@@ -242,6 +242,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.ReplaceObserver;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
@@ -341,9 +342,11 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
+import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntimeListener;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 
 /**
  * Bytecode interpreter loop.
@@ -359,7 +362,7 @@ import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
  * bytecode is first processed/executed without growing or shrinking the stack and only then the
  * {@code top} of the stack index is adjusted depending on the bytecode stack offset.
  */
-public final class BytecodeNode extends EspressoMethodNode {
+public final class BytecodeNode extends EspressoMethodNode implements ReplaceObserver {
 
     private static final DebugCounter EXECUTED_BYTECODES_COUNT = DebugCounter.create("Executed bytecodes");
     private static final DebugCounter QUICKENED_BYTECODES = DebugCounter.create("Quickened bytecodes");
@@ -412,7 +415,8 @@ public final class BytecodeNode extends EspressoMethodNode {
     private final LivenessAnalysis livenessAnalysis;
 
     private final OptimizedCallTarget[] osrTargets;
-    private volatile boolean canCompile = true;
+    private int backedgeCount = 0;
+    private volatile boolean canCompile;
 
     private static final class EspressoOSRReturnException extends ControlFlowException {
         private static final long serialVersionUID = 117347248600170993L;
@@ -440,6 +444,7 @@ public final class BytecodeNode extends EspressoMethodNode {
         this.implicitExceptionProfile = false;
         this.livenessAnalysis = LivenessAnalysis.analyze(method.getMethod());
         this.osrTargets = new OptimizedCallTarget[bs.endBCI()];
+        this.canCompile = getContext().OSRThreshold > 0;
     }
 
     public BytecodeNode(BytecodeNode copy) {
@@ -1687,13 +1692,12 @@ public final class BytecodeNode extends EspressoMethodNode {
         if (targetBCI <= curBCI) {
             checkStopping();
             if (++loopCount[0] >= REPORT_LOOP_STRIDE) {
-                if (CompilerDirectives.inInterpreter() && canCompile) {
-                    // piggyback on this counter for now. we may want a different parameter for OSR.
-                    tryOSR(primitives, refs, targetBCI);
-                }
-
                 LoopNode.reportLoopCount(this, REPORT_LOOP_STRIDE);
                 loopCount[0] = 0;
+            }
+            if (CompilerDirectives.inInterpreter() && canCompile && ++backedgeCount >= getContext().OSRThreshold) {
+                backedgeCount = 0;
+                tryOSR(primitives, refs, targetBCI);
             }
         }
         if (instrument != null) {
@@ -1705,7 +1709,6 @@ public final class BytecodeNode extends EspressoMethodNode {
 
     private void tryOSR(long[] primitives, Object[] refs, int targetBCI) {
         CompilerAsserts.neverPartOfCompilation();
-
         OptimizedCallTarget osrTarget = osrTargets[targetBCI];
         if (osrTarget == null) {
             synchronized (osrTargets) {
@@ -1716,7 +1719,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                 }
             }
         }
-        if (!osrTarget.isSubmittedForCompilation()) {
+        if (osrTarget != null && !osrTarget.isSubmittedForCompilation()) {
             if (osrTarget.isValid()) {
                 System.err.println("~~~~ Calling OSR for bci " + targetBCI + " on method " + getMethod().getDeclaringKlass().getNameAsString() + "." + getMethod().getNameAsString());
                 Object result = osrTarget.callOSR(primitives, refs);
@@ -1724,21 +1727,8 @@ public final class BytecodeNode extends EspressoMethodNode {
                                 ". Result = " + result);
                 throw new EspressoOSRReturnException(result);
             } else {
-                // Atomically invalidate and remove the target, as done in OptimizedOSRLoopNode.
-                atomic(new Runnable() {
-                    @Override
-                    public void run() {
-                        OptimizedCallTarget target = osrTargets[targetBCI];
-                        if (target != null) {
-                            System.err.println("~~~~ OSR for bci " + targetBCI + " on method " + getMethod().getDeclaringKlass().getNameAsString() + "." + getMethod().getNameAsString() + " failed!");
-                            if (target.isCompilationFailed()) {
-                                canCompile = false;
-                            }
-                            osrTargets[targetBCI] = null;
-                            target.invalidate("OSR compilation failed or cancelled");
-                        }
-                    }
-                });
+                System.err.println("~~~~ OSR for bci " + targetBCI + " on method " + getMethod().getDeclaringKlass().getNameAsString() + "." + getMethod().getNameAsString() + " failed!");
+                invalidateOSRTarget(targetBCI, "OSR compilation failed or cancelled");
             }
         }
 
@@ -1755,23 +1745,71 @@ public final class BytecodeNode extends EspressoMethodNode {
             OptimizedCallTarget osrTarget = runtime.createOSRCallTarget(osrRootNode);
             osrRootNode.methodNode = this;
 
+            if (!osrTarget.acceptForCompilation()) {
+                canCompile = false;
+                return null;
+            }
+
             runtime.addListener(new GraalTruffleRuntimeListener() {
                 @Override
                 public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout, int tier) {
-                    if (permanentBailout && target == osrTarget) {
-                        System.err.println("~~~~ OSR for bci " + targetBCI + " failed: " + reason);
+                    if (target == osrTarget) {
+                        System.err.println("~~~~ OSR for bci " + targetBCI + (permanentBailout ? " permanently" : "") + " failed: " + reason);
+                        if (permanentBailout) {
+                            canCompile = false;
+                        }
+                    }
+                }
+
+                @Override
+                public void onCompilationDeoptimized(OptimizedCallTarget target, Frame frame) {
+                    if (target == osrTarget) {
+                        System.err.println("~~~~ OSR for bci " + targetBCI + " deoptimized.");
                         canCompile = false;
                     }
                 }
             });
-
-            if (!osrTarget.acceptForCompilation()) {
-                canCompile = false;
-            }
             osrTarget.compile(true);
             this.osrTargets[targetBCI] = osrTarget;
             return osrTarget;
         }
+    }
+
+    @Override
+    public boolean nodeReplaced(Node oldNode, Node newNode, CharSequence reason) {
+        CompilerAsserts.neverPartOfCompilation();
+        callNodeReplacedOnOSRTargets(oldNode, newNode, reason);
+        return false;
+    }
+
+    private void callNodeReplacedOnOSRTargets(Node oldNode, Node newNode, CharSequence reason) {
+        atomic(() -> {
+            for (int bci = 0; bci < osrTargets.length; bci++) {
+                OptimizedCallTarget target = osrTargets[bci];
+                if (target != null) {
+                    if (target.isCompilationFailed()) {
+                        canCompile = false;
+                    }
+                    target.nodeReplaced(oldNode, newNode, reason);
+                }
+                osrTargets[bci] = null;
+            }
+        });
+    }
+
+    private void invalidateOSRTarget(int bci, CharSequence reason) {
+        atomic(() -> {
+            OptimizedCallTarget target = osrTargets[bci];
+            if (target != null) {
+                // TODO: unconditionally disable compilation here. we can get into a compile->execute->deopt loop and
+                //  for some reason the deoptimization listener does not get hit.
+                //if (target.isCompilationFailed()) {
+                    canCompile = false;
+                //}
+                target.invalidate(reason);
+            }
+            osrTargets[bci] = null;
+        });
     }
 
     private void checkStopping() {
