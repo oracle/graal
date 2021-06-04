@@ -547,7 +547,7 @@ final class HostObject implements TruffleObject {
             Object obj = receiver.obj;
             Object javaValue;
             try {
-                javaValue = toHostNode.execute(value, obj.getClass().getComponentType(), null, receiver.context, true);
+                javaValue = toHostNode.execute(receiver.context, value, obj.getClass().getComponentType(), null, true);
             } catch (PolyglotEngineException e) {
                 error.enter();
                 throw UnsupportedTypeException.create(new Object[]{value}, getMessage(e));
@@ -577,7 +577,7 @@ final class HostObject implements TruffleObject {
             }
             Object javaValue;
             try {
-                javaValue = toHostNode.execute(value, Object.class, null, receiver.context, true);
+                javaValue = toHostNode.execute(receiver.context, value, Object.class, null, true);
             } catch (PolyglotEngineException e) {
                 error.enter();
                 throw UnsupportedTypeException.create(new Object[]{value}, getMessage(e));
@@ -602,7 +602,7 @@ final class HostObject implements TruffleObject {
             if (index == 1) {
                 Object hostValue;
                 try {
-                    hostValue = toHostNode.execute(value, Object.class, null, receiver.context, true);
+                    hostValue = toHostNode.execute(receiver.context, value, Object.class, null, true);
                 } catch (PolyglotEngineException e) {
                     error.enter();
                     throw UnsupportedTypeException.create(new Object[]{value}, getMessage(e));
@@ -1941,7 +1941,7 @@ final class HostObject implements TruffleObject {
                         @Shared("error") @Cached BranchProfile error) throws UnknownKeyException {
             Object hostKey;
             try {
-                hostKey = toHost.execute(key, Object.class, null, receiver.context, true);
+                hostKey = toHost.execute(receiver.context, key, Object.class, null, true);
             } catch (PolyglotEngineException e) {
                 error.enter();
                 throw UnknownKeyException.create(key);
@@ -1987,13 +1987,13 @@ final class HostObject implements TruffleObject {
             Object hostKey;
             Object hostValue;
             try {
-                hostKey = toHost.execute(key, Object.class, null, receiver.context, true);
+                hostKey = toHost.execute(receiver.context, key, Object.class, null, true);
             } catch (PolyglotEngineException e) {
                 error.enter();
                 throw UnsupportedTypeException.create(new Object[]{key}, getMessage(e));
             }
             try {
-                hostValue = toHost.execute(value, Object.class, null, receiver.context, true);
+                hostValue = toHost.execute(receiver.context, value, Object.class, null, true);
             } catch (PolyglotEngineException e) {
                 error.enter();
                 throw UnsupportedTypeException.create(new Object[]{value}, getMessage(e));
@@ -2024,7 +2024,7 @@ final class HostObject implements TruffleObject {
                         @Shared("error") @Cached BranchProfile error) throws UnknownKeyException {
             Object hostKey;
             try {
-                hostKey = toHost.execute(key, Object.class, null, receiver.context, true);
+                hostKey = toHost.execute(receiver.context, key, Object.class, null, true);
             } catch (PolyglotEngineException e) {
                 error.enter();
                 throw UnknownKeyException.create(key);
@@ -2501,7 +2501,7 @@ final class HostObject implements TruffleObject {
                 throw UnknownIdentifierException.create(field.getName());
             }
             try {
-                Object value = toHost.execute(rawValue, cachedField.getType(), cachedField.getGenericType(), object.context, true);
+                Object value = toHost.execute(object.context, rawValue, cachedField.getType(), cachedField.getGenericType(), true);
                 cachedField.set(object.obj, value);
             } catch (PolyglotEngineException e) {
                 error.enter();
@@ -2517,7 +2517,7 @@ final class HostObject implements TruffleObject {
                 throw UnknownIdentifierException.create(field.getName());
             }
             try {
-                Object val = toHost.execute(rawValue, field.getType(), field.getGenericType(), object.context, true);
+                Object val = toHost.execute(object.context, rawValue, field.getType(), field.getGenericType(), true);
                 field.set(object.obj, val);
             } catch (PolyglotEngineException e) {
                 throw HostInteropErrors.unsupportedTypeException(rawValue, e.e);
@@ -2648,7 +2648,7 @@ final class HostObject implements TruffleObject {
                         @Cached BranchProfile error) {
             Object hostKey;
             try {
-                hostKey = toHost.execute(key, Object.class, null, receiver.context, true);
+                hostKey = toHost.execute(receiver.context, key, Object.class, null, true);
             } catch (PolyglotEngineException e) {
                 error.enter();
                 return false;

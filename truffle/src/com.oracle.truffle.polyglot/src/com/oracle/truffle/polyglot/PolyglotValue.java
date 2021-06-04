@@ -1697,7 +1697,7 @@ abstract class PolyglotValue extends AbstractValueDispatch {
                 if (context != null) {
                     host = ((PolyglotLanguageContext) context).context.getHostContextImpl();
                 }
-                return (T) ToHostNodeGen.getUncached().execute(receiver, targetType, targetType, host, true);
+                return (T) ToHostNodeGen.getUncached().execute(host, receiver, targetType, targetType, true);
             } catch (Throwable e) {
                 throw guestToHostException((context), e, true);
             } finally {
@@ -2984,7 +2984,7 @@ abstract class PolyglotValue extends AbstractValueDispatch {
 
             @Override
             protected Object executeImpl(PolyglotLanguageContext context, Object receiver, Object[] args) {
-                return toHost.execute(receiver, (Class<?>) args[ARGUMENT_OFFSET], null, context.context.getHostContextImpl(), true);
+                return toHost.execute(context.context.getHostContextImpl(), receiver, (Class<?>) args[ARGUMENT_OFFSET], null, true);
             }
 
         }
@@ -3010,7 +3010,7 @@ abstract class PolyglotValue extends AbstractValueDispatch {
             @Override
             protected Object executeImpl(PolyglotLanguageContext context, Object receiver, Object[] args) {
                 TypeLiteral<?> typeLiteral = (TypeLiteral<?>) args[ARGUMENT_OFFSET];
-                return toHost.execute(receiver, typeLiteral.getRawType(), typeLiteral.getType(), context.context.getHostContextImpl(), true);
+                return toHost.execute(context.context.getHostContextImpl(), receiver, typeLiteral.getRawType(), typeLiteral.getType(), true);
             }
 
         }

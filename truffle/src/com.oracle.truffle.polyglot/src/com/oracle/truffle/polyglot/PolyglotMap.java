@@ -641,7 +641,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                     error.enter();
                     return null;
                 }
-                return toHost.execute(result, cache.valueClass, cache.valueType, languageContext.context.getHostContextImpl(), true);
+                return toHost.execute(languageContext.context.getHostContextImpl(), result, cache.valueClass, cache.valueType, true);
             }
         }
 
@@ -862,7 +862,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements HostWrapper {
                         Type useKeyType = cache.keyType != null ? cache.keyType : Object.class;
                         Type useValueType = cache.valueType != null ? cache.valueType : Object.class;
                         genericType = new ParameterizedTypeImpl(Iterator.class, new ParameterizedTypeImpl(Map.Entry.class, useKeyType, useValueType));
-                        return toHost.execute(iterator, Iterator.class, genericType, languageContext.context.getHostContextImpl(), true);
+                        return toHost.execute(languageContext.context.getHostContextImpl(), iterator, Iterator.class, genericType, true);
                     } catch (UnsupportedMessageException e) {
                         error.enter();
                         throw HostInteropErrors.mapUnsupported(languageContext, receiver, getKeyType(), getValueType(), "iterator");

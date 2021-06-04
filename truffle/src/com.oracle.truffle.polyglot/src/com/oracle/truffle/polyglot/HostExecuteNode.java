@@ -120,7 +120,7 @@ abstract class HostExecuteNode extends Node {
         Object[] convertedArguments = new Object[args.length];
         try {
             for (int i = 0; i < toJavaNodes.length; i++) {
-                convertedArguments[i] = toJavaNodes[i].execute(args[i], types[i], genericTypes[i], hostContext, true);
+                convertedArguments[i] = toJavaNodes[i].execute(hostContext, args[i], types[i], genericTypes[i], true);
             }
         } catch (PolyglotEngineException e) {
             errorBranch.enter();
@@ -149,17 +149,17 @@ abstract class HostExecuteNode extends Node {
         Object[] convertedArguments = new Object[args.length];
         try {
             for (int i = 0; i < minArity; i++) {
-                convertedArguments[i] = toJavaNode.execute(args[i], types[i], genericTypes[i], hostContext, true);
+                convertedArguments[i] = toJavaNode.execute(hostContext, args[i], types[i], genericTypes[i], true);
             }
             if (asVarArgs(args, cachedMethod, hostContext)) {
                 for (int i = minArity; i < args.length; i++) {
                     Class<?> expectedType = types[minArity].getComponentType();
                     Type expectedGenericType = getGenericComponentType(genericTypes[minArity]);
-                    convertedArguments[i] = toJavaNode.execute(args[i], expectedType, expectedGenericType, hostContext, true);
+                    convertedArguments[i] = toJavaNode.execute(hostContext, args[i], expectedType, expectedGenericType, true);
                 }
                 convertedArguments = createVarArgsArray(cachedMethod, convertedArguments, parameterCount);
             } else {
-                convertedArguments[minArity] = toJavaNode.execute(args[minArity], types[minArity], genericTypes[minArity], hostContext, true);
+                convertedArguments[minArity] = toJavaNode.execute(hostContext, args[minArity], types[minArity], genericTypes[minArity], true);
             }
         } catch (PolyglotEngineException e) {
             errorBranch.enter();
@@ -229,12 +229,12 @@ abstract class HostExecuteNode extends Node {
                 for (int i = 0; i < cachedArgTypes.length; i++) {
                     Class<?> expectedType = i < parameterCount - 1 ? types[i] : types[parameterCount - 1].getComponentType();
                     Type expectedGenericType = i < parameterCount - 1 ? genericTypes[i] : getGenericComponentType(genericTypes[parameterCount - 1]);
-                    convertedArguments[i] = toJavaNode.execute(args[i], expectedType, expectedGenericType, hostContext, true);
+                    convertedArguments[i] = toJavaNode.execute(hostContext, args[i], expectedType, expectedGenericType, true);
                 }
                 convertedArguments = createVarArgsArray(overload, convertedArguments, parameterCount);
             } else {
                 for (int i = 0; i < cachedArgTypes.length; i++) {
-                    convertedArguments[i] = toJavaNode.execute(args[i], types[i], genericTypes[i], hostContext, true);
+                    convertedArguments[i] = toJavaNode.execute(hostContext, args[i], types[i], genericTypes[i], true);
                 }
             }
         } catch (PolyglotEngineException e) {
@@ -273,12 +273,12 @@ abstract class HostExecuteNode extends Node {
             for (int i = 0; i < args.length; i++) {
                 Class<?> expectedType = i < parameterCount - 1 ? types[i] : types[parameterCount - 1].getComponentType();
                 Type expectedGenericType = i < parameterCount - 1 ? genericTypes[i] : getGenericComponentType(genericTypes[parameterCount - 1]);
-                convertedArguments[i] = toJavaNode.execute(args[i], expectedType, expectedGenericType, context, true);
+                convertedArguments[i] = toJavaNode.execute(context, args[i], expectedType, expectedGenericType, true);
             }
             convertedArguments = createVarArgsArray(method, convertedArguments, parameterCount);
         } else {
             for (int i = 0; i < args.length; i++) {
-                convertedArguments[i] = toJavaNode.execute(args[i], types[i], genericTypes[i], context, true);
+                convertedArguments[i] = toJavaNode.execute(context, args[i], types[i], genericTypes[i], true);
             }
         }
         return convertedArguments;

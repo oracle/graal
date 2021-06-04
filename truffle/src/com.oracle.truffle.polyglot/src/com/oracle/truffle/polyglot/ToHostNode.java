@@ -101,14 +101,14 @@ abstract class ToHostNode extends Node {
 
     static final int[] PRIORITIES = {HIGHEST, STRICT, LOOSE, COERCE, FUNCTION_PROXY, OBJECT_PROXY_IFACE, OBJECT_PROXY_CLASS, HOST_PROXY, LOWEST};
 
-    public abstract Object execute(Object value, Class<?> targetType, Type genericType, HostContext context, boolean useTargetMapping);
+    public abstract Object execute(HostContext context, Object value, Class<?> targetType, Type genericType, boolean useTargetMapping);
 
     @SuppressWarnings("unused")
     @Specialization(guards = {"targetType == cachedTargetType"}, limit = "LIMIT")
-    protected Object doCached(Object operand,
+    protected Object doCached(HostContext context,
+                    Object operand,
                     Class<?> targetType,
                     Type genericType,
-                    HostContext context,
                     boolean useCustomTargetTypes,
                     @CachedLibrary("operand") InteropLibrary interop,
                     @Cached("targetType") Class<?> cachedTargetType,
@@ -133,9 +133,10 @@ abstract class ToHostNode extends Node {
 
     @Specialization(replaces = "doCached")
     @TruffleBoundary
-    protected static Object doGeneric(Object operand,
-                    Class<?> targetType, Type genericType,
+    protected static Object doGeneric(
                     HostContext context,
+                    Object operand,
+                    Class<?> targetType, Type genericType,
                     boolean useTargetMapping) {
         return convertImpl(operand, targetType, genericType, allowsImplementation(context, targetType),
                         isPrimitiveTarget(targetType), context,
@@ -723,7 +724,7 @@ abstract class ToHostNode extends Node {
             } catch (UnsupportedMessageException e) {
                 throw HostInteropErrors.arrayReadUnsupported(hostContext, receiver, componentType);
             }
-            Object hostValue = ToHostNodeGen.getUncached().execute(guestValue, componentType, genericComponentType, hostContext, true);
+            Object hostValue = ToHostNodeGen.getUncached().execute(hostContext, guestValue, componentType, genericComponentType, true);
             Array.set(array, i, hostValue);
         }
         return array;

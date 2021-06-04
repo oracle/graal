@@ -279,7 +279,7 @@ class PolyglotList<T> extends AbstractList<T> implements HostWrapper {
                 assert key instanceof Integer;
                 int index = (int) key;
                 try {
-                    return toHost.execute(interop.readArrayElement(receiver, index), cache.valueClass, cache.valueType, languageContext.context.getHostContextImpl(), true);
+                    return toHost.execute(languageContext.context.getHostContextImpl(), interop.readArrayElement(receiver, index), cache.valueClass, cache.valueType, true);
                 } catch (InvalidArrayIndexException e) {
                     error.enter();
                     throw HostInteropErrors.invalidListIndex(languageContext, receiver, cache.valueType, index);

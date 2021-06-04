@@ -213,7 +213,7 @@ class PolyglotIterable<T> implements Iterable<T>, HostWrapper {
                             @Cached ToHostNode toHost,
                             @Cached BranchProfile error) {
                 try {
-                    return toHost.execute(iterables.getIterator(receiver), Iterator.class, cache.iteratorType, languageContext.context.getHostContextImpl(), true);
+                    return toHost.execute(languageContext.context.getHostContextImpl(), iterables.getIterator(receiver), Iterator.class, cache.iteratorType, true);
                 } catch (UnsupportedMessageException e) {
                     error.enter();
                     throw HostInteropErrors.iterableUnsupported(languageContext, receiver, cache.valueType, "iterator()");

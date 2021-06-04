@@ -562,7 +562,7 @@ abstract class ProxyInvokeNode extends Node {
                     @Cached("create()") ToHostNode toHost,
                     @Cached BranchProfile error) {
         Object result = invokeOrExecute(languageContext, receiver, arguments, name, receivers, members, branchProfile, error);
-        return toHost.execute(result, returnClass, returnType, languageContext.context.getHostContextImpl(), true);
+        return toHost.execute(languageContext.context.getHostContextImpl(), result, returnClass, returnType, true);
     }
 
     @TruffleBoundary

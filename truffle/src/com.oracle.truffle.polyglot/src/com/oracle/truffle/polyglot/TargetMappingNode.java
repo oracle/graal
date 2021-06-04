@@ -156,7 +156,7 @@ abstract class TargetMappingNode extends Node {
             if (acceptsProfile.profile(ToHostNode.canConvert(receiver, cachedMapping.sourceType, cachedMapping.sourceType,
                             allowsImplementation, context, ToHostNode.LOWEST, interop, null))) {
                 if (!checkOnly || cachedMapping.accepts != null) {
-                    convertedValue = toHostRecursive.execute(receiver, cachedMapping.sourceType, cachedMapping.sourceType, context, false);
+                    convertedValue = toHostRecursive.execute(context, receiver, cachedMapping.sourceType, cachedMapping.sourceType, false);
                 }
             } else {
                 return NO_RESULT;
