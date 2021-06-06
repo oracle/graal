@@ -113,7 +113,7 @@ final class PolyglotBindingsValue extends PolyglotValueDispatch {
     }
 
     @Override
-    public Value getMetaObjectImpl(Object context, Object receiver) {
+    public Value getMetaObjectImpl(PolyglotLanguageContext context, Object receiver) {
         return delegateBindings.getMetaObject();
     }
 }

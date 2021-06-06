@@ -950,9 +950,9 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             // allowed to be passed freely
             return value;
         } else if (engine.host.isHostObject(value)) {
-            return engine.host.migrateHostObject(getHostContextObject(), value);
+            return engine.host.migrateHostObject(getHostContextImpl(), value);
         } else if (engine.host.isHostProxy(value)) {
-            return engine.host.migrateHostProxy(getHostContextObject(), value);
+            return engine.host.migrateHostProxy(getHostContextImpl(), value);
         } else if (valueContext == null) {
             /*
              * The only way this can happen is with Value.asValue(TruffleObject). If it happens
@@ -986,7 +986,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         return contexts[PolyglotEngineImpl.HOST_LANGUAGE_INDEX];
     }
 
-    Object getHostContextObject() {
+    Object getHostContextImpl() {
         return contextImpls[PolyglotEngineImpl.HOST_LANGUAGE_INDEX];
     }
 
@@ -1366,7 +1366,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         } else if (PolyglotWrapper.isInstance(hostValue)) {
             return migrateHostWrapper(location, PolyglotWrapper.asInstance(hostValue));
         } else {
-            return engine.host.toGuestValue(getHostContextObject(), hostValue);
+            return engine.host.toGuestValue(getHostContextImpl(), hostValue);
         }
     }
 

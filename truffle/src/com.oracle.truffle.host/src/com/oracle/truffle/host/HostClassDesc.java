@@ -512,8 +512,8 @@ final class HostClassDesc {
     public HostMethodDesc lookupMethod(String name, boolean onlyStatic) {
         return onlyStatic ? lookupStaticMethod(name) : lookupMethod(name);
     }
-^w
-    public HostMethodDesc lookupMethodBySignature(String nameAndSignature, boolean onlyStatic) {
+
+    HostMethodDesc lookupMethodBySignature(String nameAndSignature, boolean onlyStatic) {
         MethodsBySignature m = getMethodsBySignature();
         return onlyStatic ? m.staticMethods.get(nameAndSignature) : m.methods.get(nameAndSignature);
     }

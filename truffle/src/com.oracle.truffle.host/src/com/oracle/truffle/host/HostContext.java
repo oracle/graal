@@ -77,7 +77,7 @@ import com.oracle.truffle.host.HostLanguage.HostLanguageException;
 
 final class HostContext {
 
-    @CompilationFinal volatile Object internalContext;
+    @CompilationFinal Object internalContext;
     final Map<String, Class<?>> classCache = new HashMap<>();
     final Object topScope = new TopScopeObject(this);
     volatile HostClassLoader classloader;

@@ -593,13 +593,13 @@ final class EngineAccessor extends Accessor {
         @Override
         public Object lookupHostSymbol(Object polyglotLanguageContext, TruffleLanguage.Env env, String symbolName) {
             PolyglotContextImpl context = ((PolyglotLanguageContext) polyglotLanguageContext).context;
-            return context.engine.host.findStaticClass(context.getHostContextObject(), symbolName);
+            return context.engine.host.findStaticClass(context.getHostContextImpl(), symbolName);
         }
 
         @Override
         public Object asHostSymbol(Object polyglotLanguageContext, Class<?> symbolClass) {
             PolyglotContextImpl context = ((PolyglotLanguageContext) polyglotLanguageContext).context;
-            return context.engine.host.asHostStaticClass(context.getHostContextObject(), symbolClass);
+            return context.engine.host.asHostStaticClass(context.getHostContextImpl(), symbolClass);
         }
 
         @Override
@@ -659,14 +659,14 @@ final class EngineAccessor extends Accessor {
         @Override
         public Object toGuestValue(Object obj, Object languageContext) {
             PolyglotContextImpl context = ((PolyglotLanguageContext) languageContext).context;
-            return context.engine.host.toGuestValue(context.getHostContextObject(), obj);
+            return context.engine.host.toGuestValue(context.getHostContextImpl(), obj);
         }
 
         @Override
         public Object asBoxedGuestValue(Object guestObject, Object polyglotLanguageContext) {
             PolyglotContextImpl context = ((PolyglotLanguageContext) polyglotLanguageContext).context;
             if (PolyglotImpl.isGuestPrimitive(guestObject)) {
-                return context.engine.host.toHostObject(context.getHostContextObject(), guestObject);
+                return context.engine.host.toHostObject(context.getHostContextImpl(), guestObject);
             } else if (guestObject instanceof TruffleObject) {
                 return guestObject;
             } else {
@@ -817,7 +817,7 @@ final class EngineAccessor extends Accessor {
         @Override
         public RuntimeException wrapHostException(Node location, Object languageContext, Throwable exception) {
             PolyglotContextImpl context = ((PolyglotLanguageContext) languageContext).context;
-            return context.engine.host.toHostException(context.getHostContextObject(), exception);
+            return context.engine.host.toHostException(context.getHostContextImpl(), exception);
         }
 
         @Override
@@ -931,7 +931,7 @@ final class EngineAccessor extends Accessor {
         @Override
         public void addToHostClassPath(Object polyglotLanguageContext, TruffleFile entry) {
             PolyglotContextImpl context = ((PolyglotLanguageContext) polyglotLanguageContext).context;
-            context.engine.host.addToHostClassPath(context.getHostContextObject(), entry);
+            context.engine.host.addToHostClassPath(context.getHostContextImpl(), entry);
         }
 
         @Override
@@ -1369,7 +1369,7 @@ final class EngineAccessor extends Accessor {
         public Object createHostAdapterClass(Object languageContext, Class<?>[] types, Object classOverrides) {
             CompilerAsserts.neverPartOfCompilation();
             PolyglotContextImpl context = ((PolyglotLanguageContext) languageContext).context;
-            return context.engine.host.createHostAdapter(context.getHostContextObject(), types, classOverrides);
+            return context.engine.host.createHostAdapter(context.getHostContextImpl(), types, classOverrides);
         }
 
         @Override

@@ -92,17 +92,17 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     private final PolyglotManagementDispatch executionListenerDispatch = new PolyglotManagementDispatch(this);
     final PolyglotEngineDispatch engineDispatch = new PolyglotEngineDispatch(this);
     final PolyglotContextDispatch contextDispatch = new PolyglotContextDispatch(this);
-    final PolyglotExceptionDispatch exceptionDispatch = new PolyglotExceptionDispatch(this);
+    private final PolyglotExceptionDispatch exceptionDispatch = new PolyglotExceptionDispatch(this);
     final PolyglotInstrumentDispatch instrumentDispatch = new PolyglotInstrumentDispatch(this);
     final PolyglotLanguageDispatch languageDispatch = new PolyglotLanguageDispatch(this);
 
     private final AtomicReference<PolyglotEngineImpl> preInitializedEngineRef = new AtomicReference<>();
 
-    final Map<Class<?>, PolyglotValueDispatch> primitiveValues = new HashMap<>();
+    private final Map<Class<?>, PolyglotValueDispatch> primitiveValues = new HashMap<>();
     Value hostNull; // effectively final
-    PolyglotValueDispatch disconnectedHostValue;
+    private PolyglotValueDispatch disconnectedHostValue;
 
-    static volatile PolyglotImpl polyglotImpl;
+    private static volatile PolyglotImpl polyglotImpl;
 
     /**
      * Internal method do not use.

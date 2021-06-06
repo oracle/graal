@@ -54,7 +54,7 @@ abstract class PolyglotToHostNode extends Node {
     static Object doDefault(PolyglotLanguageContext languageContext, Object value, Class<?> targetType, Type genericType,
                     @Cached("languageContext.context.engine.host") AbstractHostLanguage<?> host,
                     @Cached("createToHostNode(host)") Node toHostNode) {
-        return host.toHostType(toHostNode, languageContext.context.getHostContextObject(), value, targetType, genericType);
+        return host.toHostType(toHostNode, languageContext.context.getHostContextImpl(), value, targetType, genericType);
     }
 
     static Node createToHostNode(AbstractHostLanguage<?> host) {
