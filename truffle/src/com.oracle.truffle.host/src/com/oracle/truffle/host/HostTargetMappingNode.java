@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.polyglot.host;
+package com.oracle.truffle.host;
 
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -52,7 +52,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.polyglot.host.HostTargetMappingNodeGen.SingleMappingNodeGen;
+import com.oracle.truffle.host.HostTargetMappingNodeGen.SingleMappingNodeGen;
 
 @GenerateUncached
 abstract class HostTargetMappingNode extends Node {

@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.polyglot.host;
+package com.oracle.truffle.host;
 
 import java.lang.reflect.Array;
 import java.nio.ByteBuffer;
@@ -90,7 +90,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.api.utilities.TriState;
-import com.oracle.truffle.polyglot.host.HostContext.ToGuestValueNode;
+import com.oracle.truffle.host.HostContext.ToGuestValueNode;
 
 @ExportLibrary(InteropLibrary.class)
 @SuppressWarnings("unused")

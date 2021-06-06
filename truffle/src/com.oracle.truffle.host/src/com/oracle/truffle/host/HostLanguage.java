@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.polyglot.host;
+package com.oracle.truffle.host;
 
 import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 
@@ -65,10 +65,10 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.host.HostAdapterFactory.AdapterResult;
+import com.oracle.truffle.host.HostMethodDesc.SingleMethod;
+import com.oracle.truffle.host.HostObject.GuestToHostCalls;
 import com.oracle.truffle.polyglot.AbstractHostLanguage;
-import com.oracle.truffle.polyglot.host.HostAdapterFactory.AdapterResult;
-import com.oracle.truffle.polyglot.host.HostMethodDesc.SingleMethod;
-import com.oracle.truffle.polyglot.host.HostObject.GuestToHostCalls;
 
 /*
  * Java host language implementation.
@@ -395,19 +395,19 @@ final class HostLanguage extends AbstractHostLanguage<HostContext> {
     }
 
     private static boolean isGuestToHostCallFromHostInterop(StackTraceElement element) {
-        assert assertClassNameUnchanged(GuestToHostCalls.class, "com.oracle.truffle.polyglot.host.HostObject$GuestToHostCalls");
-        assert assertClassNameUnchanged(GuestToHostCodeCache.class, "com.oracle.truffle.polyglot.host.GuestToHostCodeCache");
-        assert assertClassNameUnchanged(SingleMethod.class, "com.oracle.truffle.polyglot.host.HostMethodDesc$SingleMethod");
+        assert assertClassNameUnchanged(GuestToHostCalls.class, "com.oracle.truffle.host.HostObject$GuestToHostCalls");
+        assert assertClassNameUnchanged(GuestToHostCodeCache.class, "com.oracle.truffle.host.GuestToHostCodeCache");
+        assert assertClassNameUnchanged(SingleMethod.class, "com.oracle.truffle.host.HostMethodDesc$SingleMethod");
 
         switch (element.getClassName()) {
-            case "com.oracle.truffle.polyglot.host.HostMethodDesc$SingleMethod$MHBase":
+            case "com.oracle.truffle.host.HostMethodDesc$SingleMethod$MHBase":
                 return element.getMethodName().equals("invokeHandle");
-            case "com.oracle.truffle.polyglot.host.HostMethodDesc$SingleMethod$MethodReflectImpl":
+            case "com.oracle.truffle.host.HostMethodDesc$SingleMethod$MethodReflectImpl":
                 return element.getMethodName().equals("reflectInvoke");
-            case "com.oracle.truffle.polyglot.host.HostObject$GuestToHostCalls":
+            case "com.oracle.truffle.host.HostObject$GuestToHostCalls":
                 return true;
             default:
-                return element.getClassName().startsWith("com.oracle.truffle.polyglot.host.GuestToHostCodeCache$") && element.getMethodName().equals("executeImpl");
+                return element.getClassName().startsWith("com.oracle.truffle.host.GuestToHostCodeCache$") && element.getMethodName().equals("executeImpl");
         }
     }
 

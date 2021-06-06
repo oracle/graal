@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.polyglot.host;
+package com.oracle.truffle.host;
 
 import static com.oracle.truffle.api.impl.asm.Opcodes.ACC_FINAL;
 import static com.oracle.truffle.api.impl.asm.Opcodes.ACC_PRIVATE;
@@ -195,7 +195,7 @@ final class HostAdapterBytecodeGenerator {
      * Package used when the adapter can't be defined in the adaptee's package (either because it's
      * sealed, or because it's a java.* package.
      */
-    private static final String ADAPTER_PACKAGE_PREFIX = "com/oracle/truffle/polyglot/hostadapters/";
+    private static final String ADAPTER_PACKAGE_PREFIX = "com/oracle/truffle/host/adapters/";
     /*
      * Class name suffix used to append to the adaptee class name, when it can be defined in the
      * adaptee's package.

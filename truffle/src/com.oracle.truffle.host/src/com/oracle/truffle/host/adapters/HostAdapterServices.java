@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.polyglot.hostadapters;
+package com.oracle.truffle.host.adapters;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

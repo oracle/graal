@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.polyglot.host;
+package com.oracle.truffle.host;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -70,7 +70,7 @@ final class HostAdapterClassLoader {
     static final ProtectionDomain GENERATED_PROTECTION_DOMAIN = createGeneratedProtectionDomain();
     static final Collection<String> VISIBLE_INTERNAL_CLASS_NAMES = Collections.unmodifiableCollection(
                     new HashSet<>(Arrays.asList(Value.class.getName())));
-    static final String SERVICE_CLASS_NAME = "com.oracle.truffle.polyglot.hostadapters.HostAdapterServices";
+    static final String SERVICE_CLASS_NAME = "com.oracle.truffle.host.adapters.HostAdapterServices";
 
     interface LazyClassBytes {
         byte[] SERVICE_CLASS_BYTES = loadClassBytes(SERVICE_CLASS_NAME);

@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.polyglot.host;
+package com.oracle.truffle.host;
 
 import java.lang.ref.Reference;
 import java.lang.reflect.Constructor;
@@ -63,9 +63,9 @@ import org.graalvm.collections.UnmodifiableEconomicMap;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.polyglot.host.HostAdapterFactory.AdapterResult;
-import com.oracle.truffle.polyglot.host.HostMethodDesc.OverloadedMethod;
-import com.oracle.truffle.polyglot.host.HostMethodDesc.SingleMethod;
+import com.oracle.truffle.host.HostAdapterFactory.AdapterResult;
+import com.oracle.truffle.host.HostMethodDesc.OverloadedMethod;
+import com.oracle.truffle.host.HostMethodDesc.SingleMethod;
 
 final class HostClassDesc {
     @TruffleBoundary

@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.polyglot.host;
+package com.oracle.truffle.host;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.GenericArrayType;
@@ -71,11 +71,11 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
-import com.oracle.truffle.polyglot.host.HostContext.ToGuestValueNode;
-import com.oracle.truffle.polyglot.host.HostMethodDesc.OverloadedMethod;
-import com.oracle.truffle.polyglot.host.HostMethodDesc.SingleMethod;
-import com.oracle.truffle.polyglot.host.HostTargetMappingNode.SingleMappingNode;
-import com.oracle.truffle.polyglot.host.HostTargetMappingNodeGen.SingleMappingNodeGen;
+import com.oracle.truffle.host.HostContext.ToGuestValueNode;
+import com.oracle.truffle.host.HostMethodDesc.OverloadedMethod;
+import com.oracle.truffle.host.HostMethodDesc.SingleMethod;
+import com.oracle.truffle.host.HostTargetMappingNode.SingleMappingNode;
+import com.oracle.truffle.host.HostTargetMappingNodeGen.SingleMappingNodeGen;
 
 @ReportPolymorphism
 @GenerateUncached

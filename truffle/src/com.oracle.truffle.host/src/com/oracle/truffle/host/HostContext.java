@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.polyglot.host;
+package com.oracle.truffle.host;
 
 import java.io.IOException;
 import java.lang.reflect.Array;
@@ -71,9 +71,9 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.polyglot.host.HostAdapterFactory.AdapterResult;
-import com.oracle.truffle.polyglot.host.HostContextFactory.ToGuestValueNodeGen;
-import com.oracle.truffle.polyglot.host.HostLanguage.HostLanguageException;
+import com.oracle.truffle.host.HostAdapterFactory.AdapterResult;
+import com.oracle.truffle.host.HostContextFactory.ToGuestValueNodeGen;
+import com.oracle.truffle.host.HostLanguage.HostLanguageException;
 
 final class HostContext {
 

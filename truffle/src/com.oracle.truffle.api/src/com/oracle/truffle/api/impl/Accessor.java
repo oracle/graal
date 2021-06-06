@@ -245,7 +245,7 @@ public abstract class Accessor {
 
     public abstract static class HostSupport extends Support {
 
-        static final String IMPL_CLASS_NAME = "com.oracle.truffle.polyglot.host.HostAccessor$HostImpl";
+        static final String IMPL_CLASS_NAME = "com.oracle.truffle.host.HostAccessor$HostImpl";
 
         protected HostSupport() {
             super(IMPL_CLASS_NAME);
