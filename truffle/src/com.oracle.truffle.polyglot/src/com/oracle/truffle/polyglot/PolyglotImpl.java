@@ -520,7 +520,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
      * only be used when no engine is accessible.
      */
     @TruffleBoundary
-    static <T extends Throwable> PolyglotException guestToHostException(PolyglotImpl polyglot, T e) {
+    private static <T extends Throwable> PolyglotException guestToHostException(PolyglotImpl polyglot, T e) {
         assert !(e instanceof PolyglotException) : "polyglot exceptions must not be thrown to the host: " + e;
         PolyglotEngineException.rethrow(e);
 

@@ -120,7 +120,7 @@ class PolyglotInstrument implements com.oracle.truffle.polyglot.PolyglotImpl.VMO
         return engine;
     }
 
-    void ensureInitialized() {
+    private void ensureInitialized() {
         if (!initialized) {
             synchronized (instrumentLock) {
                 if (!initialized) {

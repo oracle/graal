@@ -495,7 +495,7 @@ final class HostClassDesc {
      * @param name method name
      * @return method descriptor or {@code null} if there is no such method
      */
-    public HostMethodDesc lookupMethod(String name) {
+    private HostMethodDesc lookupMethod(String name) {
         return getMembers().methods.get(name);
     }
 
@@ -505,14 +505,14 @@ final class HostClassDesc {
      * @param name method name
      * @return method descriptor or {@code null} if there is no such method
      */
-    public HostMethodDesc lookupStaticMethod(String name) {
+    private HostMethodDesc lookupStaticMethod(String name) {
         return getMembers().staticMethods.get(name);
     }
 
     public HostMethodDesc lookupMethod(String name, boolean onlyStatic) {
         return onlyStatic ? lookupStaticMethod(name) : lookupMethod(name);
     }
-
+^w
     public HostMethodDesc lookupMethodBySignature(String nameAndSignature, boolean onlyStatic) {
         MethodsBySignature m = getMethodsBySignature();
         return onlyStatic ? m.staticMethods.get(nameAndSignature) : m.methods.get(nameAndSignature);
@@ -553,7 +553,7 @@ final class HostClassDesc {
      * @param name field name
      * @return field or {@code null} if there is no such field
      */
-    public HostFieldDesc lookupField(String name) {
+    private HostFieldDesc lookupField(String name) {
         return getMembers().fields.get(name);
     }
 
@@ -563,7 +563,7 @@ final class HostClassDesc {
      * @param name field name
      * @return field or {@code null} if there is no such field
      */
-    public HostFieldDesc lookupStaticField(String name) {
+    private HostFieldDesc lookupStaticField(String name) {
         return getMembers().staticFields.get(name);
     }
 

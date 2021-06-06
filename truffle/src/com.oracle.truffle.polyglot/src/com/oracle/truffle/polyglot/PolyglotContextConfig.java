@@ -67,7 +67,6 @@ import com.oracle.truffle.polyglot.PolyglotImpl.VMObject;
 final class PolyglotContextConfig {
     private static final String[] EMPTY_STRING_ARRAY = new String[0];
 
-    final PolyglotEngineImpl engine;
     final OutputStream out;
     final OutputStream err;
     final InputStream in;
@@ -86,7 +85,7 @@ final class PolyglotContextConfig {
     final Handler logHandler;
     final PolyglotAccess polyglotAccess;
     final ProcessHandler processHandler;
-    final EnvironmentAccess environmentAccess;
+    private final EnvironmentAccess environmentAccess;
     private final Map<String, String> environment;
     private volatile Map<String, String> configuredEnvironement;
     private volatile ZoneId timeZone;
@@ -106,7 +105,6 @@ final class PolyglotContextConfig {
         assert err != null;
         assert in != null;
         assert environmentAccess != null;
-        this.engine = engine;
         this.out = out;
         this.err = err;
         this.in = in;
