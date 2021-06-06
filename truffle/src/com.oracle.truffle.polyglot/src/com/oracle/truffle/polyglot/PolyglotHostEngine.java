@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.polyglot;
 
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
 import java.util.Iterator;
 import java.util.List;
@@ -50,11 +52,11 @@ import java.util.function.Function;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueDispatch;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.HostLanguageAccess;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.polyglot.PolyglotValueDispatch.InteropValue;
 
 final class PolyglotHostEngine extends HostLanguageAccess {
 
@@ -80,13 +82,23 @@ final class PolyglotHostEngine extends HostLanguageAccess {
             return valueReceiver;
         } else if (PolyglotWrapper.isInstance(hostValue)) {
             return internalContext.migrateHostWrapper(parentNode, PolyglotWrapper.asInstance(hostValue));
+        } else if (hostValue instanceof Proxy) {
+            return toGuestProxy(hostValue);
         }
         return null;
     }
 
-    @Override
-    public AbstractValueDispatch lookupValueDispatch(Object guestValue) {
-        return new InteropValue(polyglot, null, guestValue, guestValue.getClass());
+    @TruffleBoundary
+    private static Object toGuestProxy(Object hostValue) {
+        if (Proxy.isProxyClass(hostValue.getClass())) {
+            InvocationHandler h = Proxy.getInvocationHandler(hostValue);
+            if (h instanceof PolyglotFunctionProxyHandler) {
+                return ((PolyglotFunctionProxyHandler) h).functionObj;
+            } else if (h instanceof PolyglotObjectProxyHandler) {
+                return ((PolyglotObjectProxyHandler) h).obj;
+            }
+        }
+        return null;
     }
 
     @Override
@@ -147,6 +159,59 @@ final class PolyglotHostEngine extends HostLanguageAccess {
     public Value toValue(Object internalContext, Object receiver) {
         PolyglotContextImpl context = (PolyglotContextImpl) internalContext;
         return context.getHostContext().asValue(receiver);
+    }
+
+    @Override
+    public String getValueInfo(Object internalContext, Object value) {
+        PolyglotContextImpl context = (PolyglotContextImpl) internalContext;
+        return PolyglotValueDispatch.getValueInfo(context, value);
+    }
+
+    @TruffleBoundary
+    @Override
+    public Value[] toValues(Object internalContext, Object[] values, int startIndex) {
+        return (((PolyglotContextImpl) internalContext).getHostContext()).toHostValues(values, startIndex);
+    }
+
+    @TruffleBoundary
+    @Override
+    public Value[] toValues(Object internalContext, Object[] values) {
+        return (((PolyglotContextImpl) internalContext).getHostContext()).toHostValues(values);
+    }
+
+    @Override
+    public boolean isEngineException(RuntimeException e) {
+        return e instanceof PolyglotEngineException;
+    }
+
+    @Override
+    public RuntimeException toEngineException(RuntimeException e) {
+        return new PolyglotEngineException(e);
+    }
+
+    @Override
+    public RuntimeException unboxEngineException(RuntimeException e) {
+        return ((PolyglotEngineException) e).e;
+    }
+
+    @Override
+    public void rethrowPolyglotException(Object internalContext, PolyglotException e) {
+        PolyglotContextImpl context = (PolyglotContextImpl) internalContext;
+        APIAccess api = polyglot.getAPIAccess();
+        PolyglotExceptionImpl exceptionImpl = ((PolyglotExceptionImpl) api.getReceiver(e));
+        if (exceptionImpl.context == context || exceptionImpl.context == null || exceptionImpl.isHostException()) {
+            // for values of the same context the TruffleException is allowed to be unboxed
+            // for host exceptions no guest values are bound therefore it can also be
+            // unboxed
+            Throwable original = ((PolyglotExceptionImpl) api.getReceiver(e)).exception;
+            if (original instanceof RuntimeException) {
+                throw (RuntimeException) original;
+            } else if (original instanceof Error) {
+                throw (Error) original;
+            }
+        }
+        // fall-through and treat it as any other host exception
+
     }
 
 }

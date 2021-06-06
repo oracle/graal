@@ -78,6 +78,34 @@ public abstract class AbstractHostLanguage<C> extends TruffleLanguage<C> {
 
     protected abstract boolean isHostValue(Object value);
 
-    protected abstract Object asHostValue(Object value);
+    protected abstract Object unboxHostObject(Object hostValue);
+
+    protected abstract Object unboxProxyObject(Object hostValue);
+
+    protected abstract Throwable unboxHostException(Throwable hostValue);
+
+    protected abstract Object toHostObject(Object context, Object value);
+
+    protected abstract RuntimeException toHostException(Object hostContext, Throwable exception);
+
+    protected abstract boolean isHostException(Throwable exception);
+
+    protected abstract boolean isHostFunction(Object obj);
+
+    protected abstract boolean isHostObject(Object obj);
+
+    protected abstract boolean isHostSymbol(Object obj);
+
+    protected abstract Object createHostAdapter(Object hostContextObject, Class<?>[] types, Object classOverrides);
+
+    protected abstract boolean isHostProxy(Object value);
+
+    protected abstract Object migrateHostObject(Object newContext, Object value);
+
+    protected abstract Object migrateHostProxy(Object newContext, Object value);
+
+    protected abstract Error toHostResourceError(Throwable hostException);
+
+    protected abstract int findNextGuestToHostStackTraceElement(StackTraceElement firstElement, StackTraceElement[] hostStack, int nextElementIndex);
 
 }

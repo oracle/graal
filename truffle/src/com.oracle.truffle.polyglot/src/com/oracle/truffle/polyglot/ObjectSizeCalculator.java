@@ -82,11 +82,6 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.polyglot.host.HostContext;
-import com.oracle.truffle.polyglot.host.HostException;
-import com.oracle.truffle.polyglot.host.HostFunction;
-import com.oracle.truffle.polyglot.host.HostObject;
-import com.oracle.truffle.polyglot.host.HostProxy;
 
 final class ObjectSizeCalculator {
     private static volatile int staticObjectAlignment = -1;
@@ -276,11 +271,7 @@ final class ObjectSizeCalculator {
                         !(obj instanceof org.graalvm.polyglot.SourceSection) : obj.getClass().getName() + " should not be reachable";
 
         return (obj instanceof Thread) ||
-                        (obj instanceof HostObject) ||
-                        (obj instanceof HostFunction) ||
-                        (obj instanceof HostException) ||
-                        (obj instanceof HostContext) ||
-                        (obj instanceof HostProxy) ||
+                        EngineAccessor.HOST.isHostBoundaryValue(obj) ||
 
                         (obj instanceof Class) ||
                         (obj instanceof OptionValues) ||

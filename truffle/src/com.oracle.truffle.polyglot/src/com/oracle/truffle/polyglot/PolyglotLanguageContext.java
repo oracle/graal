@@ -84,7 +84,6 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.polyglot.host.GuestToHostRootNode;
 
 final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
@@ -659,11 +658,16 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                 LOG.log(Level.FINE, "Exception during patching context of language: {0}", this.language.getId());
                 // The conversion to the host exception happens in the
                 // PolyglotEngineImpl.createContext
-                throw GuestToHostRootNode.silenceException(RuntimeException.class, t);
+                throw silenceException(RuntimeException.class, t);
             }
         } else {
             return true;
         }
+    }
+
+    @SuppressWarnings({"unchecked", "unused"})
+    static <E extends Throwable> RuntimeException silenceException(Class<E> type, Throwable ex) throws E {
+        throw (E) ex;
     }
 
     <S> S lookupService(Class<S> type) {

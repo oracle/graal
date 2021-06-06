@@ -114,6 +114,15 @@ final class HostProxy implements TruffleObject {
         this.proxy = proxy;
     }
 
+    static Object withContext(Object obj, HostContext context) {
+        if (obj instanceof HostProxy) {
+            HostProxy hostObject = (HostProxy) obj;
+            return new HostProxy(context, hostObject.proxy);
+        } else {
+            throw CompilerDirectives.shouldNotReachHere("Parameter must be HostProxy.");
+        }
+    }
+
     @Override
     public boolean equals(Object obj) {
         if (!(obj instanceof HostProxy)) {
@@ -138,7 +147,7 @@ final class HostProxy implements TruffleObject {
                     @CachedLibrary("this") InteropLibrary library,
                     @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) throws UnsupportedMessageException {
         if (proxy instanceof ProxyInstantiable) {
-            Value[] convertedArguments = context.internalContext.getHostContext().toHostValues(arguments, 0);
+            Value[] convertedArguments = cache.language.access.toValues(context.internalContext, arguments);
             Object result = guestToHostCall(library, cache.instantiate, context, proxy, convertedArguments);
             return context.toGuestValue(library, result);
         }
@@ -156,7 +165,7 @@ final class HostProxy implements TruffleObject {
                     @CachedLibrary("this") InteropLibrary library,
                     @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) throws UnsupportedMessageException {
         if (proxy instanceof ProxyExecutable) {
-            Value[] convertedArguments = context.internalContext.getHostContext().toHostValues(arguments, 0);
+            Value[] convertedArguments = context.language.access.toValues(context.internalContext, arguments);
             Object result = guestToHostCall(library, cache.execute, context, proxy, convertedArguments);
             return context.toGuestValue(library, result);
         }
@@ -724,7 +733,7 @@ final class HostProxy implements TruffleObject {
         return value instanceof HostProxy;
     }
 
-    public static Proxy toProxyHostObject(TruffleObject value) {
+    public static Proxy toProxyHostObject(Object value) {
         return ((HostProxy) value).proxy;
     }
 

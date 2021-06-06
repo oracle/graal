@@ -59,6 +59,8 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.HostLanguageAccess;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -88,10 +90,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.api.utilities.TriState;
-import com.oracle.truffle.polyglot.EngineAccessor;
-import com.oracle.truffle.polyglot.PolyglotEngineException;
-import com.oracle.truffle.polyglot.PolyglotExceptionImpl;
-import com.oracle.truffle.polyglot.PolyglotExceptionImpl.MergedHostGuestIterator;
 import com.oracle.truffle.polyglot.host.HostContext.ToGuestValueNode;
 
 @ExportLibrary(InteropLibrary.class)
@@ -196,6 +194,14 @@ final class HostObject implements TruffleObject {
 
     boolean isDefaultClass() {
         return isClass() && !asClass().isArray();
+    }
+
+    private static RuntimeException unboxEngineException(HostObject receiver, RuntimeException e) {
+        HostLanguageAccess access = receiver.context.language.access;
+        if (access.isEngineException(e)) {
+            return access.unboxEngineException(e);
+        }
+        return null;
     }
 
     @ExportMessage
@@ -552,9 +558,13 @@ final class HostObject implements TruffleObject {
             Object javaValue;
             try {
                 javaValue = toHostNode.execute(receiver.context, value, obj.getClass().getComponentType(), null, true);
-            } catch (PolyglotEngineException e) {
+            } catch (RuntimeException e) {
                 error.enter();
-                throw UnsupportedTypeException.create(new Object[]{value}, getMessage(e));
+                RuntimeException ee = unboxEngineException(receiver, e);
+                if (ee != null) {
+                    throw UnsupportedTypeException.create(new Object[]{value}, getMessage(ee));
+                }
+                throw e;
             }
             try {
                 arraySet.execute(obj, (int) index, javaValue);
@@ -562,11 +572,6 @@ final class HostObject implements TruffleObject {
                 error.enter();
                 throw InvalidArrayIndexException.create(index);
             }
-        }
-
-        @TruffleBoundary
-        private static String getMessage(PolyglotEngineException e) {
-            return e.e.getMessage();
         }
 
         @Specialization(guards = {"isList.execute(receiver)"}, limit = "1")
@@ -582,9 +587,13 @@ final class HostObject implements TruffleObject {
             Object javaValue;
             try {
                 javaValue = toHostNode.execute(receiver.context, value, Object.class, null, true);
-            } catch (PolyglotEngineException e) {
+            } catch (RuntimeException e) {
                 error.enter();
-                throw UnsupportedTypeException.create(new Object[]{value}, getMessage(e));
+                RuntimeException ee = unboxEngineException(receiver, e);
+                if (ee != null) {
+                    throw UnsupportedTypeException.create(new Object[]{value}, getMessage(ee));
+                }
+                throw e;
             }
             try {
                 GuestToHostCalls.setListElement(receiver, index, javaValue);
@@ -607,9 +616,13 @@ final class HostObject implements TruffleObject {
                 Object hostValue;
                 try {
                     hostValue = toHostNode.execute(receiver.context, value, Object.class, null, true);
-                } catch (PolyglotEngineException e) {
+                } catch (RuntimeException e) {
                     error.enter();
-                    throw UnsupportedTypeException.create(new Object[]{value}, getMessage(e));
+                    RuntimeException ee = unboxEngineException(receiver, e);
+                    if (ee != null) {
+                        throw UnsupportedTypeException.create(new Object[]{value}, getMessage(ee));
+                    }
+                    throw e;
                 }
                 try {
                     GuestToHostCalls.setMapEntryValue(receiver, hostValue);
@@ -1711,7 +1724,7 @@ final class HostObject implements TruffleObject {
     @TruffleBoundary
     Object getExceptionStackTrace() throws UnsupportedMessageException {
         if (isException()) {
-            return EngineAccessor.EXCEPTION.getExceptionStackTrace(obj);
+            return HostAccessor.EXCEPTION.getExceptionStackTrace(obj);
         }
         throw UnsupportedMessageException.create();
     }
@@ -1721,7 +1734,7 @@ final class HostObject implements TruffleObject {
         if (isException()) {
             HostException ex = (HostException) extraInfo;
             if (ex == null) {
-                ex = new HostException((Throwable) obj);
+                ex = new HostException((Throwable) obj, context);
             }
             throw ex;
         }
@@ -1810,7 +1823,7 @@ final class HostObject implements TruffleObject {
 
         @TruffleBoundary
         private static Object arrayIteratorImpl(Object receiver) {
-            return EngineAccessor.INTEROP.createDefaultIterator(receiver);
+            return HostAccessor.INTEROP.createDefaultIterator(receiver);
         }
 
         @Specialization(guards = {"isIterable.execute(receiver)"}, limit = "1")
@@ -1946,9 +1959,13 @@ final class HostObject implements TruffleObject {
             Object hostKey;
             try {
                 hostKey = toHost.execute(receiver.context, key, Object.class, null, true);
-            } catch (PolyglotEngineException e) {
+            } catch (RuntimeException e) {
                 error.enter();
-                throw UnknownKeyException.create(key);
+                RuntimeException ee = unboxEngineException(receiver, e);
+                if (ee != null) {
+                    throw UnknownKeyException.create(key);
+                }
+                throw e;
             }
             Object hostResult;
             try {
@@ -1992,15 +2009,24 @@ final class HostObject implements TruffleObject {
             Object hostValue;
             try {
                 hostKey = toHost.execute(receiver.context, key, Object.class, null, true);
-            } catch (PolyglotEngineException e) {
+            } catch (RuntimeException e) {
                 error.enter();
-                throw UnsupportedTypeException.create(new Object[]{key}, getMessage(e));
+                RuntimeException ee = unboxEngineException(receiver, e);
+                if (ee != null) {
+                    throw UnsupportedTypeException.create(new Object[]{key}, getMessage(ee));
+                }
+                throw e;
             }
+
             try {
                 hostValue = toHost.execute(receiver.context, value, Object.class, null, true);
-            } catch (PolyglotEngineException e) {
+            } catch (RuntimeException e) {
                 error.enter();
-                throw UnsupportedTypeException.create(new Object[]{value}, getMessage(e));
+                RuntimeException ee = unboxEngineException(receiver, e);
+                if (ee != null) {
+                    throw UnsupportedTypeException.create(new Object[]{value}, getMessage(ee));
+                }
+                throw e;
             }
             try {
                 GuestToHostCalls.putMapValue(receiver, hostKey, hostValue);
@@ -2029,9 +2055,13 @@ final class HostObject implements TruffleObject {
             Object hostKey;
             try {
                 hostKey = toHost.execute(receiver.context, key, Object.class, null, true);
-            } catch (PolyglotEngineException e) {
+            } catch (RuntimeException e) {
                 error.enter();
-                throw UnknownKeyException.create(key);
+                RuntimeException ee = unboxEngineException(receiver, e);
+                if (ee != null) {
+                    throw UnknownKeyException.create(key);
+                }
+                throw e;
             }
             boolean removed;
             try {
@@ -2507,9 +2537,13 @@ final class HostObject implements TruffleObject {
             try {
                 Object value = toHost.execute(object.context, rawValue, cachedField.getType(), cachedField.getGenericType(), true);
                 cachedField.set(object.obj, value);
-            } catch (PolyglotEngineException e) {
+            } catch (RuntimeException e) {
                 error.enter();
-                throw HostInteropErrors.unsupportedTypeException(rawValue, e.e);
+                RuntimeException ee = unboxEngineException(object, e);
+                if (ee != null) {
+                    throw HostInteropErrors.unsupportedTypeException(rawValue, ee);
+                }
+                throw e;
             }
         }
 
@@ -2523,8 +2557,12 @@ final class HostObject implements TruffleObject {
             try {
                 Object val = toHost.execute(object.context, rawValue, field.getType(), field.getGenericType(), true);
                 field.set(object.obj, val);
-            } catch (PolyglotEngineException e) {
-                throw HostInteropErrors.unsupportedTypeException(rawValue, e.e);
+            } catch (RuntimeException e) {
+                RuntimeException ee = unboxEngineException(object, e);
+                if (ee != null) {
+                    throw HostInteropErrors.unsupportedTypeException(rawValue, ee);
+                }
+                throw e;
             }
         }
     }
@@ -2653,9 +2691,14 @@ final class HostObject implements TruffleObject {
             Object hostKey;
             try {
                 hostKey = toHost.execute(receiver.context, key, Object.class, null, true);
-            } catch (PolyglotEngineException e) {
+            } catch (RuntimeException e) {
                 error.enter();
-                return false;
+                RuntimeException ee = unboxEngineException(receiver, e);
+                if (ee != null) {
+                    return false;
+                }
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw e;
             }
             try {
                 return GuestToHostCalls.containsMapKey(receiver, hostKey);
@@ -2698,7 +2741,7 @@ final class HostObject implements TruffleObject {
      * @see PolyglotExceptionImpl.MergedHostGuestIterator#isGuestToHost(StackTraceElement,
      *      StackTraceElement[], int)
      */
-    private abstract static class GuestToHostCalls {
+    abstract static class GuestToHostCalls {
 
         private GuestToHostCalls() {
         }

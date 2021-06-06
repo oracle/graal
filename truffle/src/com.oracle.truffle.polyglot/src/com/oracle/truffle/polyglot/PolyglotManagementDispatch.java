@@ -68,7 +68,6 @@ import com.oracle.truffle.api.instrumentation.SourceSectionFilter.SourcePredicat
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.polyglot.host.HostException;
 
 final class PolyglotManagementDispatch extends AbstractManagementDispatch {
 
@@ -127,7 +126,7 @@ final class PolyglotManagementDispatch extends AbstractManagementDispatch {
                             // configuration is closing ignore errors.
                             return false;
                         }
-                        throw new HostException(e);
+                        throw engine.host.toHostException(null, e);
                     }
                 } else {
                     return true;
@@ -145,7 +144,7 @@ final class PolyglotManagementDispatch extends AbstractManagementDispatch {
                             // configuration is closing ignore errors.
                             return false;
                         }
-                        throw new HostException(e);
+                        throw engine.host.toHostException(null, e);
                     }
                 }
             });
@@ -554,8 +553,8 @@ final class PolyglotManagementDispatch extends AbstractManagementDispatch {
         }
 
         protected RuntimeException wrapHostError(Throwable t) {
-            assert !(t instanceof HostException);
-            throw new HostException(t);
+            assert !config.engine.host.isHostException(t);
+            throw config.engine.host.toHostException(null, t);
         }
 
         @TruffleBoundary(allowInlining = true)

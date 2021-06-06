@@ -268,7 +268,7 @@ final class PolyglotLimits {
                                 try {
                                     return statementLimitSourcePredicate.test(PolyglotImpl.getOrCreatePolyglotSource(engine.getImpl(), s));
                                 } catch (Throwable e) {
-                                    throw context.getHostContextImpl().hostToGuestException(e);
+                                    throw context.engine.host.toHostException(context.getHostContextObject(), e);
                                 }
                             }
                         });
@@ -301,7 +301,7 @@ final class PolyglotLimits {
             try {
                 onEvent.accept(event);
             } catch (Throwable t) {
-                throw context.getHostContextImpl().hostToGuestException(t);
+                throw context.engine.host.toHostException(context.getHostContextObject(), t);
             }
             return null;
         }

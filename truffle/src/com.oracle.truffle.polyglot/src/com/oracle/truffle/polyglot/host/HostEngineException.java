@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,32 +40,35 @@
  */
 package com.oracle.truffle.polyglot.host;
 
-import com.oracle.truffle.api.exception.AbstractTruffleException;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.library.ExportLibrary;
-
-/**
- * Exception wrapper for an error occurred in the host language.
- */
 @SuppressWarnings("serial")
-@ExportLibrary(value = InteropLibrary.class, delegateTo = "delegate")
-final class HostException extends AbstractTruffleException {
+final class HostEngineException {
 
-    private final Throwable original;
-    final HostObject delegate;
-
-    HostException(Throwable original, HostContext context) {
-        this.original = original;
-        this.delegate = HostObject.forException(original, context, this);
+    static RuntimeException illegalArgument(HostLanguage language, IllegalArgumentException e) {
+        return toEngineException(language, e);
     }
 
-    Throwable getOriginal() {
-        return original;
+    static RuntimeException illegalArgument(HostLanguage language, String message) {
+        return toEngineException(language, new IllegalArgumentException(message));
     }
 
-    @Override
-    public String getMessage() {
-        return getOriginal().getMessage();
+    static RuntimeException nullPointer(HostLanguage language, String message) {
+        return toEngineException(language, new NullPointerException(message));
+    }
+
+    static RuntimeException unsupported(HostLanguage language, String message) {
+        return toEngineException(language, new UnsupportedOperationException(message));
+    }
+
+    static RuntimeException classCast(HostLanguage language, String message) {
+        return toEngineException(language, new ClassCastException(message));
+    }
+
+    static RuntimeException arrayIndexOutOfBounds(HostLanguage language, String message) {
+        return toEngineException(language, new ArrayIndexOutOfBoundsException(message));
+    }
+
+    static RuntimeException toEngineException(HostLanguage language, RuntimeException e) {
+        return language.access.toEngineException(e);
     }
 
 }

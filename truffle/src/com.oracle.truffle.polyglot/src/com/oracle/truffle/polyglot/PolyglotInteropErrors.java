@@ -52,6 +52,20 @@ final class PolyglotInteropErrors {
     }
 
     @TruffleBoundary
+    static RuntimeException cannotConvertPrimitive(PolyglotLanguageContext context, Object value, Class<?> targetType) {
+        String reason;
+        if (EngineAccessor.HOST.isPrimitiveTarget(targetType)) {
+            reason = "Invalid or lossy primitive coercion.";
+        } else {
+            reason = "Unsupported target type.";
+        }
+        return PolyglotEngineException.classCast(String.format("Cannot convert %s to Java type '%s': %s",
+                        getValueInfo(context, value),
+                        targetType.getTypeName(),
+                        reason));
+    }
+
+    @TruffleBoundary
     static RuntimeException invalidListIndex(PolyglotLanguageContext context, Object receiver, Type componentType, int index) {
         String message = String.format("Invalid index %s for List<%s> %s.", index, formatComponentType(componentType), getValueInfo(context, receiver));
         throw PolyglotEngineException.arrayIndexOutOfBounds(message);

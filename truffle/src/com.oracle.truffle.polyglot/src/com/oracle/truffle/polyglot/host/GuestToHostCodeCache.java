@@ -78,6 +78,12 @@ import com.oracle.truffle.polyglot.host.HostMethodDesc.SingleMethod.MHBase;
 
 final class GuestToHostCodeCache {
 
+    final HostLanguage language;
+
+    GuestToHostCodeCache(HostLanguage language) {
+        this.language = language;
+    }
+
     final CallTarget methodHandleHostInvoke = GuestToHostRootNode.createGuestToHost(new GuestToHostRootNode(HostObject.class, "doInvoke") {
         @Override
         protected Object executeImpl(Object receiver, Object[] callArguments) {

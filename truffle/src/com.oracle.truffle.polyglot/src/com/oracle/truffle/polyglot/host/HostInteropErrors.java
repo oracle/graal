@@ -45,8 +45,6 @@ import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.polyglot.PolyglotEngineException;
-import com.oracle.truffle.polyglot.PolyglotValueDispatch;
 
 final class HostInteropErrors {
 
@@ -55,7 +53,7 @@ final class HostInteropErrors {
 
     @TruffleBoundary
     static RuntimeException nullCoercion(HostContext context, Object nullValue, Type targetType) {
-        throw PolyglotEngineException.nullPointer(String.format("Cannot convert null value %s to Java type '%s'.",
+        throw HostEngineException.nullPointer(context.language, String.format("Cannot convert null value %s to Java type '%s'.",
                         getValueInfo(context, nullValue),
                         targetType.getTypeName()));
     }
@@ -68,7 +66,7 @@ final class HostInteropErrors {
         } else {
             reason = "Unsupported target type.";
         }
-        return PolyglotEngineException.classCast(String.format("Cannot convert %s to Java type '%s': %s",
+        return HostEngineException.classCast(context.language, String.format("Cannot convert %s to Java type '%s': %s",
                         getValueInfo(context, value),
                         targetType.getTypeName(),
                         reason));
@@ -76,7 +74,7 @@ final class HostInteropErrors {
 
     @TruffleBoundary
     static RuntimeException cannotConvert(HostContext context, Object value, Type targetType, String reason) {
-        return PolyglotEngineException.classCast(String.format("Cannot convert %s to Java type '%s': %s",
+        return HostEngineException.classCast(context.language, String.format("Cannot convert %s to Java type '%s': %s",
                         getValueInfo(context, value),
                         targetType.getTypeName(),
                         reason));
@@ -85,7 +83,7 @@ final class HostInteropErrors {
     @TruffleBoundary
     static RuntimeException invalidArrayIndex(HostContext context, Object receiver, Type componentType, int index) {
         String message = String.format("Invalid array index %s for %s[] %s.", index, formatComponentType(componentType), getValueInfo(context, receiver));
-        throw PolyglotEngineException.arrayIndexOutOfBounds(message);
+        throw HostEngineException.arrayIndexOutOfBounds(context.language, message);
     }
 
     private static Object formatComponentType(Type componentType) {
@@ -95,22 +93,22 @@ final class HostInteropErrors {
     @TruffleBoundary
     static RuntimeException arrayReadUnsupported(HostContext context, Object receiver, Type componentType) {
         String message = String.format("Unsupported array read operation for %s[] %s.", formatComponentType(componentType), getValueInfo(context, receiver));
-        throw PolyglotEngineException.unsupported(message);
+        throw HostEngineException.unsupported(context.language, message);
     }
 
     @TruffleBoundary
     static RuntimeException invalidExecuteArgumentType(HostContext context, Object receiver, Object[] arguments) {
         String[] formattedArgs = formatArgs(context, arguments);
         String message = String.format("Invalid argument when executing %s with arguments %s.", getValueInfo(context, receiver), Arrays.asList(formattedArgs));
-        throw PolyglotEngineException.illegalArgument(message);
+        throw HostEngineException.illegalArgument(context.language, message);
     }
 
     @TruffleBoundary
     static RuntimeException invalidExecuteArity(HostContext context, Object receiver, Object[] arguments, int minArity, int maxArity, int actual) {
         String[] formattedArgs = formatArgs(context, arguments);
         String message = String.format("Invalid argument count when executing %s with arguments %s. %s",
-                        getValueInfo(context, receiver), Arrays.asList(formattedArgs), PolyglotValueDispatch.formatExpectedArguments(minArity, maxArity, actual));
-        throw PolyglotEngineException.illegalArgument(message);
+                        getValueInfo(context, receiver), Arrays.asList(formattedArgs), formatExpectedArguments(minArity, maxArity, actual));
+        throw HostEngineException.illegalArgument(context.language, message);
     }
 
     private static String[] formatArgs(HostContext context, Object[] arguments) {
@@ -122,7 +120,7 @@ final class HostInteropErrors {
     }
 
     static String getValueInfo(HostContext context, Object value) {
-        return PolyglotValueDispatch.getValueInfo(context != null ? context.internalContext : null, value);
+        return context.language.access.getValueInfo(context.internalContext, value);
     }
 
     @TruffleBoundary
@@ -133,5 +131,25 @@ final class HostInteropErrors {
     @TruffleBoundary
     static UnsupportedTypeException unsupportedTypeException(Object arg, Throwable e) {
         return UnsupportedTypeException.create(new Object[]{arg}, e.getMessage());
+    }
+
+    static String formatExpectedArguments(int expectedMinArity, int expectedMaxArity, int actualArity) {
+        String actual;
+        if (actualArity < 0) {
+            actual = "unknown";
+        } else {
+            actual = String.valueOf(actualArity);
+        }
+        String expected;
+        if (expectedMinArity == expectedMaxArity) {
+            expected = String.valueOf(expectedMinArity);
+        } else {
+            if (expectedMaxArity < 0) {
+                expected = expectedMinArity + "+";
+            } else {
+                expected = expectedMinArity + "-" + expectedMaxArity;
+            }
+        }
+        return String.format("Expected %s argument(s) but got %s.", expected, actual);
     }
 }

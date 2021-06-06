@@ -40,13 +40,6 @@
  */
 package com.oracle.truffle.polyglot.host;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.polyglot.EngineAccessor;
-import com.oracle.truffle.api.TruffleOptions;
-import org.graalvm.polyglot.HostAccess;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
-
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -59,12 +52,20 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleOptions;
+
 final class HostClassCache {
 
     static final HostTargetMapping[] EMPTY_MAPPINGS = new HostTargetMapping[0];
 
     private final APIAccess apiAccess;
     final HostAccess hostAccess;
+    final HostLanguage language;
     private final boolean arrayAccess;
     private final boolean listAccess;
     private final boolean bufferAccess;
@@ -87,17 +88,18 @@ final class HostClassCache {
         }
     };
 
-    private HostClassCache(AbstractPolyglotImpl.APIAccess apiAccess, HostAccess conf, ClassLoader classLoader) {
+    private HostClassCache(HostLanguage language, HostAccess conf, ClassLoader classLoader) {
+        this.language = language;
         this.hostAccess = conf;
+        this.apiAccess = language.api;
         this.arrayAccess = apiAccess.isArrayAccessible(hostAccess);
         this.listAccess = apiAccess.isListAccessible(hostAccess);
         this.bufferAccess = apiAccess.isBufferAccessible(hostAccess);
         this.iterableAccess = apiAccess.isIterableAccessible(hostAccess);
         this.iteratorAccess = apiAccess.isIteratorAccessible(hostAccess);
         this.mapAccess = apiAccess.isMapAccessible(hostAccess);
-        this.apiAccess = apiAccess;
         this.targetMappings = groupMappings(apiAccess, conf);
-        this.unnamedModule = EngineAccessor.JDKSERVICES.getUnnamedModule(classLoader);
+        this.unnamedModule = HostAccessor.JDKSERVICES.getUnnamedModule(classLoader);
     }
 
     Object getUnnamedModule() {
@@ -172,21 +174,21 @@ final class HostClassCache {
         return localMappings;
     }
 
-    public static HostClassCache findOrInitialize(AbstractPolyglotImpl.APIAccess apiAccess, HostAccess conf, ClassLoader classLoader) {
-        HostClassCache cache = (HostClassCache) apiAccess.getHostAccessImpl(conf);
+    public static HostClassCache findOrInitialize(HostLanguage hostLanguage, HostAccess conf, ClassLoader classLoader) {
+        HostClassCache cache = (HostClassCache) hostLanguage.api.getHostAccessImpl(conf);
         if (cache == null) {
-            cache = initializeHostCache(apiAccess, conf, classLoader);
+            cache = initializeHostCache(hostLanguage, conf, classLoader);
         }
         return cache;
     }
 
-    private static HostClassCache initializeHostCache(AbstractPolyglotImpl.APIAccess apiAccess, HostAccess conf, ClassLoader classLoader) {
+    private static HostClassCache initializeHostCache(HostLanguage hostLanguage, HostAccess conf, ClassLoader classLoader) {
         HostClassCache cache;
         synchronized (conf) {
-            cache = (HostClassCache) apiAccess.getHostAccessImpl(conf);
+            cache = (HostClassCache) hostLanguage.api.getHostAccessImpl(conf);
             if (cache == null) {
-                cache = new HostClassCache(apiAccess, conf, classLoader);
-                apiAccess.setHostAccessImpl(conf, cache);
+                cache = new HostClassCache(hostLanguage, conf, classLoader);
+                hostLanguage.api.setHostAccessImpl(conf, cache);
             }
         }
         return cache;

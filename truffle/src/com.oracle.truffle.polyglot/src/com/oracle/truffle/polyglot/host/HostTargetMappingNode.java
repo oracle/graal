@@ -52,9 +52,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.polyglot.HostTargetMappingNodeGen;
-import com.oracle.truffle.polyglot.PolyglotEngineException;
-import com.oracle.truffle.polyglot.HostTargetMappingNodeGen.SingleMappingNodeGen;
+import com.oracle.truffle.polyglot.host.HostTargetMappingNodeGen.SingleMappingNodeGen;
 
 @GenerateUncached
 abstract class HostTargetMappingNode extends Node {
@@ -183,7 +181,7 @@ abstract class HostTargetMappingNode extends Node {
                 return converter.apply(value);
             } catch (ClassCastException t) {
                 // we allow class cast exceptions
-                throw PolyglotEngineException.classCast(t.getMessage());
+                throw HostEngineException.classCast(context.language, t.getMessage());
             } catch (Throwable t) {
                 throw context.hostToGuestException(t);
             }

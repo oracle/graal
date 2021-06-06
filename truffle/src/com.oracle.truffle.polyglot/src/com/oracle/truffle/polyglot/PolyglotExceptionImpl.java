@@ -70,7 +70,6 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.polyglot.PolyglotEngineImpl.CancelExecution;
-import com.oracle.truffle.polyglot.host.HostException;
 
 final class PolyglotExceptionImpl {
 
@@ -121,7 +120,7 @@ final class PolyglotExceptionImpl {
         this.exception = original;
         this.guestFrames = TruffleStackTrace.getStackTrace(original);
         this.showInternalStackFrames = engine == null ? false : engine.engineOptionValues.get(PolyglotEngineOptions.ShowInternalStackFrames);
-        Error resourceLimitError = getResourceLimitError(exception);
+        Error resourceLimitError = getResourceLimitError(engine, exception);
         this.resourceExhausted = resourceLimitError != null;
         InteropLibrary interop;
         if (allowInterop && (interop = InteropLibrary.getUncached()).isException(exception)) {
@@ -142,14 +141,14 @@ final class PolyglotExceptionImpl {
                 }
                 Object exceptionObject;
                 if (entered && languageContext != null && languageContext.isCreated() &&
-                                !(exception instanceof HostException) && (exceptionObject = ((com.oracle.truffle.api.TruffleException) exception).getExceptionObject()) != null) {
+                                !engine.host.isHostException(exception) && (exceptionObject = ((com.oracle.truffle.api.TruffleException) exception).getExceptionObject()) != null) {
                     /*
                      * Allow proxies in guest language objects. This is for legacy support. Ideally
                      * we should get rid of this if it is no longer relied upon.
                      */
                     Object receiver = exceptionObject;
                     if (receiver instanceof Proxy) {
-                        receiver = languageContext.context.getHostContextImpl().toGuestValue(null, receiver);
+                        receiver = languageContext.toGuestValue(null, receiver);
                     }
                     this.guestObject = languageContext.asValue(receiver);
                 } else {
@@ -217,18 +216,15 @@ final class PolyglotExceptionImpl {
         EngineAccessor.LANGUAGE.materializeHostFrames(original);
     }
 
-    private static Error getResourceLimitError(Throwable e) {
+    private static Error getResourceLimitError(PolyglotEngineImpl engine, Throwable e) {
         if (e instanceof CancelExecution) {
             return ((CancelExecution) e).isResourceLimit() ? (Error) e : null;
-        }
-        Throwable toCheck;
-        if (e instanceof HostException) {
-            toCheck = ((HostException) e).getOriginal();
-        } else {
-            toCheck = e;
-        }
-        if (toCheck instanceof StackOverflowError || toCheck instanceof OutOfMemoryError) {
+        } else if (engine != null && engine.host.isHostException(e)) {
+            Throwable toCheck = engine.host.toHostResourceError(e);
+            assert toCheck == null || toCheck instanceof StackOverflowError || toCheck instanceof OutOfMemoryError;
             return (Error) toCheck;
+        } else if (e instanceof StackOverflowError || e instanceof OutOfMemoryError) {
+            return (Error) e;
         }
         return null;
     }
@@ -276,7 +272,7 @@ final class PolyglotExceptionImpl {
             Object exceptionObject = ((com.oracle.truffle.api.TruffleException) e).getExceptionObject();
             if (exceptionObject != null) {
                 if (exceptionObject instanceof Proxy) {
-                    exceptionObject = languageContext.context.getHostContextImpl().toGuestValue(null, exceptionObject);
+                    exceptionObject = languageContext.toGuestValue(null, exceptionObject);
                 }
                 return languageContext.asValue(exceptionObject);
             }
@@ -320,17 +316,20 @@ final class PolyglotExceptionImpl {
     }
 
     public boolean isHostException() {
-        return exception instanceof HostException;
+        if (engine == null) {
+            return false;
+        }
+        return engine.host.isHostException(exception);
     }
 
     public Throwable asHostException() {
-        if (!(exception instanceof HostException)) {
+        if (!isHostException()) {
             throw PolyglotEngineException.unsupported(
                             String.format("Unsupported operation %s.%s. You can ensure that the operation is supported using %s.%s.",
                                             PolyglotException.class.getSimpleName(), "asHostException()",
                                             PolyglotException.class.getSimpleName(), "isHostException()"));
         }
-        return ((HostException) exception).getOriginal();
+        return engine.host.unboxHostException(exception);
     }
 
     public void printStackTrace(PrintWriter s) {
@@ -561,7 +560,7 @@ final class PolyglotExceptionImpl {
     static Iterator<StackFrame> createStackFrameIterator(PolyglotExceptionImpl impl) {
         APIAccess apiAccess = impl.polyglot.getAPIAccess();
 
-        Throwable cause = findCause(impl.exception);
+        Throwable cause = findCause(impl.engine, impl.exception);
         StackTraceElement[] hostStack;
         if (EngineAccessor.LANGUAGE.isTruffleStackTrace(cause)) {
             hostStack = EngineAccessor.LANGUAGE.getInternalStackTraceElements(cause);
@@ -579,7 +578,7 @@ final class PolyglotExceptionImpl {
             PrintStream out = System.out;
             out.println();
         }
-        return new MergedHostGuestIterator<>(hostStack, guestFrames, inHostLanguage, new Function<StackTraceElement, StackFrame>() {
+        return new MergedHostGuestIterator<>(impl.engine, hostStack, guestFrames, inHostLanguage, new Function<StackTraceElement, StackFrame>() {
             @Override
             public StackFrame apply(StackTraceElement element) {
                 return apiAccess.newPolyglotStackTraceElement(PolyglotExceptionFrame.createHost(impl, element), impl.api);
@@ -602,16 +601,16 @@ final class PolyglotExceptionImpl {
         });
     }
 
-    private static Throwable findCause(Throwable throwable) {
+    private static Throwable findCause(PolyglotEngineImpl engine, Throwable throwable) {
         Throwable cause = throwable;
-        if (cause instanceof HostException) {
-            return findCause(((HostException) cause).getOriginal());
+        if (engine != null && engine.host.isHostException(cause)) {
+            return findCause(engine, engine.host.unboxHostException(cause));
         } else if (EngineAccessor.EXCEPTION.isException(cause)) {
             return EngineAccessor.EXCEPTION.getLazyStackTrace(cause);
         } else {
             while (cause.getCause() != null && cause.getStackTrace().length == 0) {
-                if (cause instanceof HostException) {
-                    cause = ((HostException) cause).getOriginal();
+                if (engine != null && engine.host.isHostException(cause)) {
+                    cause = engine.host.unboxHostException(cause);
                 } else {
                     cause = cause.getCause();
                 }
@@ -633,6 +632,7 @@ final class PolyglotExceptionImpl {
                         HOST_INTEROP_PACKAGE + "PolyglotObjectProxyHandler"
         };
 
+        private final PolyglotEngineImpl engine;
         private final Iterator<G> guestFrames;
         private final StackTraceElement[] hostStack;
         private final ListIterator<StackTraceElement> hostFrames;
@@ -641,7 +641,9 @@ final class PolyglotExceptionImpl {
         private boolean inHostLanguage;
         private T fetchedNext;
 
-        MergedHostGuestIterator(StackTraceElement[] hostStack, Iterator<G> guestFrames, boolean inHostLanguage, Function<StackTraceElement, T> hostFrameConvertor, Function<G, T> guestFrameConvertor) {
+        MergedHostGuestIterator(PolyglotEngineImpl engine, StackTraceElement[] hostStack, Iterator<G> guestFrames, boolean inHostLanguage, Function<StackTraceElement, T> hostFrameConvertor,
+                        Function<G, T> guestFrameConvertor) {
+            this.engine = engine;
             this.hostStack = hostStack;
             this.hostFrames = Arrays.asList(hostStack).listIterator();
             this.guestFrames = guestFrames;
@@ -676,18 +678,15 @@ final class PolyglotExceptionImpl {
                 // we need to flip inHostLanguage state in opposite order as the stack is top to
                 // bottom.
                 if (inHostLanguage) {
-                    int guestToHost = isGuestToHost(element, hostStack, hostFrames.nextIndex());
+                    int guestToHost = findGuestToHostFrame(engine, element, hostStack, hostFrames.nextIndex());
                     if (guestToHost >= 0) {
                         assert !isHostToGuest(element);
                         inHostLanguage = false;
 
                         for (int i = 0; i < guestToHost; i++) {
-                            assert isGuestToHostReflectiveCall(element);
                             element = hostFrames.next();
                             traceStackTraceElement(element);
                         }
-
-                        assert isGuestToHostCallFromHostInterop(element);
                     }
                 } else {
                     if (isHostToGuest(element)) {
@@ -765,54 +764,22 @@ final class PolyglotExceptionImpl {
         }
 
         // Return the number of frames with reflective calls to skip
-        static int isGuestToHost(StackTraceElement firstElement, StackTraceElement[] hostStack, int nextElementIndex) {
+        static int findGuestToHostFrame(PolyglotEngineImpl engine, StackTraceElement firstElement, StackTraceElement[] hostStack, int nextElementIndex) {
             if (isLazyStackTraceElement(firstElement)) {
                 return -1;
             }
-
-            StackTraceElement element = firstElement;
-            int index = nextElementIndex;
-            while (isGuestToHostReflectiveCall(element) && index < hostStack.length) {
-                element = hostStack[index++];
-            }
-            if (isGuestToHostCallFromHostInterop(element)) {
-                return index - nextElementIndex;
-            } else {
+            if (engine == null) {
                 return -1;
             }
-        }
+            return engine.host.findNextGuestToHostStackTraceElement(firstElement, hostStack, nextElementIndex);
 
-        private static boolean isGuestToHostCallFromHostInterop(StackTraceElement element) {
-            switch (element.getClassName()) {
-                case "com.oracle.truffle.polyglot.HostMethodDesc$SingleMethod$MHBase":
-                    return element.getMethodName().equals("invokeHandle");
-                case "com.oracle.truffle.polyglot.HostMethodDesc$SingleMethod$MethodReflectImpl":
-                    return element.getMethodName().equals("reflectInvoke");
-                case "com.oracle.truffle.polyglot.HostObject$GuestToHostCalls":
-                    return true;
-                default:
-                    return element.getClassName().startsWith("com.oracle.truffle.polyglot.GuestToHostCodeCache$") && element.getMethodName().equals("executeImpl");
-            }
-        }
-
-        private static boolean isGuestToHostReflectiveCall(StackTraceElement element) {
-            switch (element.getClassName()) {
-                case "sun.reflect.NativeMethodAccessorImpl":
-                case "sun.reflect.DelegatingMethodAccessorImpl":
-                case "jdk.internal.reflect.NativeMethodAccessorImpl":
-                case "jdk.internal.reflect.DelegatingMethodAccessorImpl":
-                case "java.lang.reflect.Method":
-                    return element.getMethodName().startsWith("invoke");
-                default:
-                    return false;
-            }
         }
 
         private void traceStackTraceElement(StackTraceElement element) {
             if (TRACE_STACK_TRACE_WALKING) {
                 PrintStream out = System.out;
                 out.printf("host: %5s, guestToHost: %2s, hostToGuest: %5s, guestCall: %5s, -- %s %n", inHostLanguage,
-                                isGuestToHost(element, hostStack, hostFrames.nextIndex()), isHostToGuest(element),
+                                findGuestToHostFrame(engine, element, hostStack, hostFrames.nextIndex()), isHostToGuest(element),
                                 isGuestCall(element), element);
             }
         }

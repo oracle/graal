@@ -269,12 +269,13 @@ public abstract class AbstractPolyglotImpl {
     }
 
     public abstract Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> options, boolean useSystemProperties, boolean allowExperimentalOptions,
-                    boolean boundEngine,
-                    MessageTransport messageInterceptor, Object logHandlerOrStream, HostLanguageAccess conf);
+                    boolean boundEngine, MessageTransport messageInterceptor, Object logHandlerOrStream, Object hostLanguage);
 
     public abstract int getPriority();
 
     public abstract void preInitializeEngine();
+
+    public abstract Object createHostLanguage(HostLanguageAccess access);
 
     public abstract void resetPreInitializedEngine();
 
@@ -621,8 +622,6 @@ public abstract class AbstractPolyglotImpl {
             Objects.requireNonNull(impl);
         }
 
-        public abstract AbstractValueDispatch lookupValueDispatch(Object guestValue);
-
         public abstract Object toGuestValue(Object internalContext, Object parentNode, Object hostValue);
 
         public abstract <T> List<T> toList(Object internalContext, Object guestValue, boolean implementFunction, Class<T> elementClass, Type elementType);
@@ -645,6 +644,20 @@ public abstract class AbstractPolyglotImpl {
         public abstract PolyglotException toPolyglotException(Object internalContext, Throwable e);
 
         public abstract Value toValue(Object internalContext, Object receiver);
+
+        public abstract String getValueInfo(Object internalContext, Object value);
+
+        public abstract Value[] toValues(Object internalContext, Object[] values, int startIndex);
+
+        public abstract Value[] toValues(Object internalContext, Object[] values);
+
+        public abstract void rethrowPolyglotException(Object internalContext, PolyglotException e);
+
+        public abstract RuntimeException toEngineException(RuntimeException e);
+
+        public abstract boolean isEngineException(RuntimeException e);
+
+        public abstract RuntimeException unboxEngineException(RuntimeException e);
 
     }
 

@@ -71,15 +71,11 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
-import com.oracle.truffle.polyglot.HostExecuteNodeGen;
-import com.oracle.truffle.polyglot.HostTargetMappingNodeGen;
-import com.oracle.truffle.polyglot.HostToTypeNodeGen;
-import com.oracle.truffle.polyglot.PolyglotEngineException;
-import com.oracle.truffle.polyglot.HostTargetMappingNodeGen.SingleMappingNodeGen;
 import com.oracle.truffle.polyglot.host.HostContext.ToGuestValueNode;
 import com.oracle.truffle.polyglot.host.HostMethodDesc.OverloadedMethod;
 import com.oracle.truffle.polyglot.host.HostMethodDesc.SingleMethod;
 import com.oracle.truffle.polyglot.host.HostTargetMappingNode.SingleMappingNode;
+import com.oracle.truffle.polyglot.host.HostTargetMappingNodeGen.SingleMappingNodeGen;
 
 @ReportPolymorphism
 @GenerateUncached
@@ -126,9 +122,12 @@ abstract class HostExecuteNode extends Node {
             for (int i = 0; i < toJavaNodes.length; i++) {
                 convertedArguments[i] = toJavaNodes[i].execute(hostContext, args[i], types[i], genericTypes[i], true);
             }
-        } catch (PolyglotEngineException e) {
+        } catch (RuntimeException e) {
             errorBranch.enter();
-            throw HostInteropErrors.unsupportedTypeException(args, e.e);
+            if (cache.language.access.isEngineException(e)) {
+                throw HostInteropErrors.unsupportedTypeException(args, cache.language.access.unboxEngineException(e));
+            }
+            throw e;
         }
         return doInvoke(cachedMethod, receiverProfile.profile(obj), convertedArguments, cache, hostContext, toGuest);
     }
@@ -165,9 +164,12 @@ abstract class HostExecuteNode extends Node {
             } else {
                 convertedArguments[minArity] = toJavaNode.execute(hostContext, args[minArity], types[minArity], genericTypes[minArity], true);
             }
-        } catch (PolyglotEngineException e) {
+        } catch (RuntimeException e) {
             errorBranch.enter();
-            throw HostInteropErrors.unsupportedTypeException(args, e.e);
+            if (cache.language.access.isEngineException(e)) {
+                throw HostInteropErrors.unsupportedTypeException(args, cache.language.access.unboxEngineException(e));
+            }
+            throw e;
         }
         return doInvoke(cachedMethod, receiverProfile.profile(obj), convertedArguments, cache, hostContext, toGuest);
     }
@@ -200,9 +202,12 @@ abstract class HostExecuteNode extends Node {
         Object[] convertedArguments;
         try {
             convertedArguments = prepareArgumentsUncached(method, args, hostContext, toJavaNode, isVarArgsProfile);
-        } catch (PolyglotEngineException e) {
+        } catch (RuntimeException e) {
             errorBranch.enter();
-            throw HostInteropErrors.unsupportedTypeException(args, e.e);
+            if (cache.language.access.isEngineException(e)) {
+                throw HostInteropErrors.unsupportedTypeException(args, cache.language.access.unboxEngineException(e));
+            }
+            throw e;
         }
         return doInvoke(methodProfile.execute(method), obj, convertedArguments, cache, hostContext, toGuest);
     }
@@ -241,9 +246,12 @@ abstract class HostExecuteNode extends Node {
                     convertedArguments[i] = toJavaNode.execute(hostContext, args[i], types[i], genericTypes[i], true);
                 }
             }
-        } catch (PolyglotEngineException e) {
+        } catch (RuntimeException e) {
             errorBranch.enter();
-            throw HostInteropErrors.unsupportedTypeException(args, e.e);
+            if (cache.language.access.isEngineException(e)) {
+                throw HostInteropErrors.unsupportedTypeException(args, cache.language.access.unboxEngineException(e));
+            }
+            throw e;
         }
         return doInvoke(overload, receiverProfile.profile(obj), convertedArguments, cache, hostContext, toGuest);
     }
@@ -261,9 +269,12 @@ abstract class HostExecuteNode extends Node {
         Object[] convertedArguments;
         try {
             convertedArguments = prepareArgumentsUncached(overload, args, hostContext, toJavaNode, isVarArgsProfile);
-        } catch (PolyglotEngineException e) {
+        } catch (RuntimeException e) {
             errorBranch.enter();
-            throw HostInteropErrors.unsupportedTypeException(args, e.e);
+            if (cache.language.access.isEngineException(e)) {
+                throw HostInteropErrors.unsupportedTypeException(args, cache.language.access.unboxEngineException(e));
+            }
+            throw e;
         }
         return doInvoke(methodProfile.execute(overload), obj, convertedArguments, cache, hostContext, toGuest);
     }

@@ -328,6 +328,11 @@ final class InstrumentAccessor extends Accessor {
             return targets;
         }
 
+        @Override
+        public Object getPolyglotInstrument(Object instrumentEnv) {
+            return ((TruffleInstrument.Env) instrumentEnv).getPolyglotInstrument();
+        }
+
         private static InstrumentationHandler getHandler(RootNode rootNode) {
             Object polyglotEngineImpl = nodesAccess().getPolyglotEngine(rootNode);
             if (polyglotEngineImpl == null) {

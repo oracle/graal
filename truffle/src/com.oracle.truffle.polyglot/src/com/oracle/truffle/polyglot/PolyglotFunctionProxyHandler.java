@@ -59,8 +59,7 @@ import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.polyglot.PolyglotFunctionProxyHandlerFactory.FunctionProxyNodeGen;
-import com.oracle.truffle.polyglot.host.HostClassDesc;
-import com.oracle.truffle.polyglot.host.HostInteropReflect;
+import com.oracle.truffle.polyglot.PolyglotObjectProxyHandler.ProxyInvokeNode;
 
 final class PolyglotFunctionProxyHandler implements InvocationHandler, PolyglotWrapper {
     final Object functionObj;
@@ -90,7 +89,7 @@ final class PolyglotFunctionProxyHandler implements InvocationHandler, PolyglotW
         }
         Method found = null;
         for (Method m : functionalInterface.getMethods()) {
-            if (Modifier.isAbstract(m.getModifiers()) && !HostClassDesc.isObjectMethodOverride(m)) {
+            if (Modifier.isAbstract(m.getModifiers()) && !isObjectMethodOverride(m)) {
                 if (found != null) {
                     return null;
                 }
@@ -98,6 +97,11 @@ final class PolyglotFunctionProxyHandler implements InvocationHandler, PolyglotW
             }
         }
         return found;
+    }
+
+    static boolean isObjectMethodOverride(Method m) {
+        return ((m.getParameterCount() == 0 && (m.getName().equals("hashCode") || m.getName().equals("toString"))) ||
+                        (m.getParameterCount() == 1 && m.getName().equals("equals") && m.getParameterTypes()[0] == Object.class));
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -145,7 +149,7 @@ final class PolyglotFunctionProxyHandler implements InvocationHandler, PolyglotW
     @Override
     public Object invoke(Object proxy, Method method, Object[] arguments) throws Throwable {
         CompilerAsserts.neverPartOfCompilation();
-        Object[] resolvedArguments = arguments == null ? HostInteropReflect.EMPTY : arguments;
+        Object[] resolvedArguments = arguments == null ? PolyglotObjectProxyHandler.EMPTY : arguments;
         if (method.equals(functionMethod)) {
             return target.call(languageContext, functionObj, spreadVarArgsArray(resolvedArguments));
         } else {
@@ -200,7 +204,7 @@ final class PolyglotFunctionProxyHandler implements InvocationHandler, PolyglotW
         return mh.bindTo(proxy).invokeWithArguments(arguments);
     }
 
-    @ImportStatic(HostInteropReflect.class)
+    @ImportStatic(ProxyInvokeNode.class)
     abstract static class FunctionProxyNode extends HostToGuestRootNode {
 
         final Class<?> receiverClass;

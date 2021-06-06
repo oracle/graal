@@ -51,6 +51,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.Proxy;
 
@@ -70,17 +71,13 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.polyglot.EngineAccessor;
-import com.oracle.truffle.polyglot.HostContextFactory;
-import com.oracle.truffle.polyglot.PolyglotContextImpl;
-import com.oracle.truffle.polyglot.PolyglotImpl;
-import com.oracle.truffle.polyglot.HostContextFactory.ToGuestValueNodeGen;
 import com.oracle.truffle.polyglot.host.HostAdapterFactory.AdapterResult;
+import com.oracle.truffle.polyglot.host.HostContextFactory.ToGuestValueNodeGen;
 import com.oracle.truffle.polyglot.host.HostLanguage.HostLanguageException;
 
 final class HostContext {
 
-    @CompilationFinal volatile PolyglotContextImpl internalContext;
+    @CompilationFinal volatile Object internalContext;
     final Map<String, Class<?>> classCache = new HashMap<>();
     final Object topScope = new TopScopeObject(this);
     volatile HostClassLoader classloader;
@@ -111,7 +108,7 @@ final class HostContext {
 
     @SuppressWarnings("hiding")
     void initialize(Object internalContext, ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed, boolean hostLookupAllowed) {
-        this.internalContext = (PolyglotContextImpl) internalContext;
+        this.internalContext = internalContext;
         assert classloader == null : "must not be used during context preinitialization";
         // if assertions are not enabled. dispose the previous class loader to be on the safe side
         disposeClassLoader();
@@ -175,8 +172,8 @@ final class HostContext {
         try {
             ClassLoader classLoader = getClassloader();
             Class<?> foundClass = classLoader.loadClass(className);
-            Object currentModule = EngineAccessor.JDKSERVICES.getUnnamedModule(classLoader);
-            if (EngineAccessor.JDKSERVICES.verifyModuleVisibility(currentModule, foundClass)) {
+            Object currentModule = HostAccessor.JDKSERVICES.getUnnamedModule(classLoader);
+            if (HostAccessor.JDKSERVICES.verifyModuleVisibility(currentModule, foundClass)) {
                 return foundClass;
             } else {
                 throw new HostLanguageException(String.format("Access to host class %s is not allowed or does not exist.", className));
@@ -226,12 +223,35 @@ final class HostContext {
         getClassloader().addClasspathRoot(classpathEntry);
     }
 
+    /**
+     * Performs necessary conversions for exceptions coming from the polyglot embedding API and
+     * thrown to the language or engine. The conversion must happen exactly once per API call, that
+     * is why this coercion should only be used in the catch block at the outermost API call.
+     */
+    @TruffleBoundary
     <T extends Throwable> RuntimeException hostToGuestException(T e) {
-        return PolyglotImpl.hostToGuestException(this, e);
+        assert !(e instanceof HostException) : "host exceptions not expected here";
+
+        if (e instanceof ThreadDeath) {
+            throw (ThreadDeath) e;
+        } else if (e instanceof PolyglotException) {
+            // this will rethrow if the guest exception in the polyglot exception can be rethrown.
+            language.access.rethrowPolyglotException(internalContext, (PolyglotException) e);
+
+            // fall-through and treat it as any other host exception
+        }
+        try {
+            return new HostException(e, this);
+        } catch (StackOverflowError stack) {
+            /*
+             * Cannot create a new host exception. Use a readily prepared instance.
+             */
+            return stackoverflowError;
+        }
     }
 
-    public Value asValue(Object value) {
-        return internalContext.asValue(value);
+    Value asValue(Object value) {
+        return language.access.toValue(internalContext, value);
     }
 
     Object toGuestValue(Class<?> receiver) {
@@ -242,7 +262,7 @@ final class HostContext {
         Object result = language.access.toGuestValue(internalContext, parentNode, hostValue);
         if (result != null) {
             return result;
-        } else if (PolyglotImpl.isGuestPrimitive(hostValue)) {
+        } else if (isGuestPrimitive(hostValue)) {
             return hostValue;
         } else if (hostValue instanceof Proxy) {
             return HostProxy.toProxyGuestObject(this, (Proxy) hostValue);
@@ -257,6 +277,14 @@ final class HostContext {
         } else {
             return HostInteropReflect.asTruffleViaReflection(hostValue, this);
         }
+    }
+
+    static boolean isGuestPrimitive(Object receiver) {
+        return receiver instanceof Integer || receiver instanceof Double //
+                        || receiver instanceof Long || receiver instanceof Float //
+                        || receiver instanceof Boolean || receiver instanceof Character //
+                        || receiver instanceof Byte || receiver instanceof Short //
+                        || receiver instanceof String;
     }
 
     @GenerateUncached

@@ -63,7 +63,6 @@ import java.util.function.Function;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
@@ -75,8 +74,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.polyglot.HostToTypeNodeGen;
-import com.oracle.truffle.polyglot.PolyglotEngineException;
 
 @GenerateUncached
 abstract class HostToTypeNode extends Node {
@@ -148,43 +145,6 @@ abstract class HostToTypeNode extends Node {
                         BranchProfile.getUncached());
     }
 
-    static Object convertLossLess(Object value, Class<?> requestedType, InteropLibrary interop) {
-        try {
-            if (interop.isNumber(value)) {
-                if (requestedType == byte.class || requestedType == Byte.class) {
-                    return interop.asByte(value);
-                } else if (requestedType == short.class || requestedType == Short.class) {
-                    return interop.asShort(value);
-                } else if (requestedType == int.class || requestedType == Integer.class) {
-                    return interop.asInt(value);
-                } else if (requestedType == long.class || requestedType == Long.class) {
-                    return interop.asLong(value);
-                } else if (requestedType == float.class || requestedType == Float.class) {
-                    return interop.asFloat(value);
-                } else if (requestedType == double.class || requestedType == Double.class) {
-                    return interop.asDouble(value);
-                } else if (requestedType == Number.class) {
-                    return convertToNumber(value, interop);
-                }
-            } else if (interop.isBoolean(value)) {
-                if (requestedType == boolean.class || requestedType == Boolean.class) {
-                    return interop.asBoolean(value);
-                }
-            } else if (interop.isString(value)) {
-                if (requestedType == char.class || requestedType == Character.class) {
-                    String str = interop.asString(value);
-                    if (str.length() == 1) {
-                        return str.charAt(0);
-                    }
-                } else if (requestedType == String.class || requestedType == CharSequence.class) {
-                    return interop.asString(value);
-                }
-            }
-        } catch (UnsupportedMessageException e) {
-        }
-        return null;
-    }
-
     @TruffleBoundary
     private static String toString(Object value) {
         return value.toString();
@@ -200,7 +160,7 @@ abstract class HostToTypeNode extends Node {
         }
         Object convertedValue;
         if (primitiveTargetType) {
-            convertedValue = convertLossLess(value, targetType, interop);
+            convertedValue = HostUtil.convertLossLess(value, targetType, interop);
             if (convertedValue != null) {
                 return convertedValue;
             }
@@ -217,7 +177,7 @@ abstract class HostToTypeNode extends Node {
         }
 
         if (primitiveTargetType) {
-            convertedValue = convertLossy(value, targetType, interop);
+            convertedValue = HostUtil.convertLossy(value, targetType, interop);
             if (convertedValue != null) {
                 return convertedValue;
             }
@@ -252,22 +212,6 @@ abstract class HostToTypeNode extends Node {
         return targetType.cast(convertedValue);
     }
 
-    private static Object convertLossy(Object value, Class<?> targetType, InteropLibrary interop) {
-        if (targetType == char.class || targetType == Character.class) {
-            if (interop.fitsInInt(value)) {
-                try {
-                    int v = interop.asInt(value);
-                    if (v >= 0 && v < 65536) {
-                        return (char) v;
-                    }
-                } catch (UnsupportedMessageException e) {
-                    CompilerDirectives.shouldNotReachHere(e);
-                }
-            }
-        }
-        return null;
-    }
-
     @SuppressWarnings({"unused"})
     static boolean canConvert(Object value, Class<?> targetType, Type genericType, Boolean allowsImplementation,
                     HostContext hostContext, int priority,
@@ -294,7 +238,7 @@ abstract class HostToTypeNode extends Node {
         } else if (targetType == Value.class && hostContext != null) {
             return true;
         } else if (isPrimitiveTarget(targetType)) {
-            Object convertedValue = convertLossLess(value, targetType, interop);
+            Object convertedValue = HostUtil.convertLossLess(value, targetType, interop);
             if (convertedValue != null) {
                 return true;
             }
@@ -340,7 +284,7 @@ abstract class HostToTypeNode extends Node {
         if (targetType.isArray()) {
             return interop.hasArrayElements(value);
         } else if (isPrimitiveTarget(targetType)) {
-            Object convertedValue = convertLossy(value, targetType, interop);
+            Object convertedValue = HostUtil.convertLossy(value, targetType, interop);
             if (convertedValue != null) {
                 return true;
             }
@@ -402,7 +346,7 @@ abstract class HostToTypeNode extends Node {
             } else if (interop.isBoolean(value)) {
                 return interop.asBoolean(value);
             } else if (interop.isNumber(value)) {
-                Object result = convertToNumber(value, interop);
+                Object result = HostUtil.convertToNumber(value, interop);
                 if (result != null) {
                     return result;
                 }
@@ -422,28 +366,6 @@ abstract class HostToTypeNode extends Node {
         } catch (UnsupportedMessageException e) {
             throw shouldNotReachHere(e);
         }
-    }
-
-    private static Object convertToNumber(Object value, InteropLibrary interop) {
-        try {
-            if (value instanceof Number) {
-                return value;
-            } else if (interop.fitsInByte(value)) {
-                return interop.asByte(value);
-            } else if (interop.fitsInShort(value)) {
-                return interop.asShort(value);
-            } else if (interop.fitsInInt(value)) {
-                return interop.asInt(value);
-            } else if (interop.fitsInLong(value)) {
-                return interop.asLong(value);
-            } else if (interop.fitsInFloat(value)) {
-                return interop.asFloat(value);
-            } else if (interop.fitsInDouble(value)) {
-                return interop.asDouble(value);
-            }
-        } catch (UnsupportedMessageException e) {
-        }
-        return null;
     }
 
     @TruffleBoundary
@@ -468,7 +390,7 @@ abstract class HostToTypeNode extends Node {
             TypeAndClass<?> valueType = getGenericParameterType(genericType, 1);
             boolean hasHashEntries = interop.hasHashEntries(value);
             if (!hasHashEntries && !isSupportedMapKeyType(keyType.clazz)) {
-                throw newInvalidKeyTypeException(keyType.clazz);
+                throw newInvalidKeyTypeException(keyType.clazz, hostContext);
             }
             boolean hasSize = (Number.class.isAssignableFrom(keyType.clazz)) && interop.hasArrayElements(value);
             boolean hasKeys = (keyType.clazz == Object.class || keyType.clazz == String.class) && interop.hasMembers(value);
@@ -672,9 +594,9 @@ abstract class HostToTypeNode extends Node {
     }
 
     @TruffleBoundary
-    private static RuntimeException newInvalidKeyTypeException(Type targetType) {
+    private static RuntimeException newInvalidKeyTypeException(Type targetType, HostContext context) {
         String message = "Unsupported Map key type: " + targetType;
-        return PolyglotEngineException.classCast(message);
+        return HostEngineException.classCast(context.language, message);
     }
 
     private static TypeAndClass<?> getGenericParameterType(Type genericType, int index) {

@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.polyglot.host;
 
-import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Proxy;
@@ -54,10 +53,6 @@ import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.polyglot.HostExecuteNodeGen;
-import com.oracle.truffle.polyglot.PolyglotEngineException;
-import com.oracle.truffle.polyglot.PolyglotFunctionProxyHandler;
-import com.oracle.truffle.polyglot.PolyglotObjectProxyHandler;
 import com.oracle.truffle.polyglot.host.HostAdapterFactory.AdapterResult;
 
 final class HostInteropReflect {
@@ -240,13 +235,9 @@ final class HostInteropReflect {
 
     @CompilerDirectives.TruffleBoundary
     private static Object asTruffleObjectProxy(Object obj, HostContext context) {
-        if (Proxy.isProxyClass(obj.getClass())) {
-            InvocationHandler h = Proxy.getInvocationHandler(obj);
-            if (h instanceof PolyglotFunctionProxyHandler) {
-                return ((PolyglotFunctionProxyHandler) h).functionObj;
-            } else if (h instanceof PolyglotObjectProxyHandler) {
-                return ((PolyglotObjectProxyHandler) h).obj;
-            }
+        Object unboxed = context.language.access.toGuestValue(context.internalContext, null, obj);
+        if (unboxed != null) {
+            return unboxed;
         }
         return HostObject.forObject(obj, context);
     }
@@ -254,12 +245,12 @@ final class HostInteropReflect {
     @TruffleBoundary
     static Object newAdapterInstance(HostContext hostContext, Class<?> clazz, Object obj) throws IllegalArgumentException {
         if (TruffleOptions.AOT) {
-            throw PolyglotEngineException.unsupported("Unsupported target type.");
+            throw HostEngineException.unsupported(hostContext.language, "Unsupported target type.");
         }
         HostClassDesc classDesc = HostClassDesc.forClass(hostContext, clazz);
         AdapterResult adapter = classDesc.getAdapter(hostContext);
         if (!adapter.isAutoConvertible()) {
-            throw PolyglotEngineException.illegalArgument("Cannot convert to " + clazz);
+            throw HostEngineException.illegalArgument(hostContext.language, "Cannot convert to " + clazz);
         }
         HostMethodDesc.SingleMethod adapterConstructor = adapter.getValueConstructor();
         Object[] arguments = new Object[]{obj};

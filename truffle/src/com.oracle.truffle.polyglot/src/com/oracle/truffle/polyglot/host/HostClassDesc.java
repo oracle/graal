@@ -63,7 +63,6 @@ import org.graalvm.collections.UnmodifiableEconomicMap;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.polyglot.EngineAccessor;
 import com.oracle.truffle.polyglot.host.HostAdapterFactory.AdapterResult;
 import com.oracle.truffle.polyglot.host.HostMethodDesc.OverloadedMethod;
 import com.oracle.truffle.polyglot.host.HostMethodDesc.SingleMethod;
@@ -164,7 +163,7 @@ final class HostClassDesc {
         }
 
         private static boolean isClassAccessible(Class<?> declaringClass, HostClassCache hostAccess) {
-            return Modifier.isPublic(declaringClass.getModifiers()) && EngineAccessor.JDKSERVICES.verifyModuleVisibility(hostAccess.getUnnamedModule(), declaringClass);
+            return Modifier.isPublic(declaringClass.getModifiers()) && HostAccessor.JDKSERVICES.verifyModuleVisibility(hostAccess.getUnnamedModule(), declaringClass);
         }
 
         private static HostMethodDesc collectPublicConstructors(HostClassCache hostAccess, Class<?> type) {

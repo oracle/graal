@@ -56,10 +56,10 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToGuestValueNode;
 import com.oracle.truffle.polyglot.PolyglotListFactory.CacheFactory.RemoveNodeGen;
 import com.oracle.truffle.polyglot.PolyglotListFactory.CacheFactory.SetNodeGen;
 import com.oracle.truffle.polyglot.PolyglotListFactory.CacheFactory.SizeNodeGen;
-import com.oracle.truffle.polyglot.host.HostContext.ToGuestValueNode;
 
 class PolyglotList<T> extends AbstractList<T> implements PolyglotWrapper {
 
@@ -316,7 +316,7 @@ class PolyglotList<T> extends AbstractList<T> implements PolyglotWrapper {
                 Object key = args[ARGUMENT_OFFSET];
                 assert key instanceof Integer;
                 int index = (int) key;
-                Object value = toGuest.execute(languageContext.context.getHostContextImpl(), args[ARGUMENT_OFFSET + 1]);
+                Object value = toGuest.execute(languageContext, args[ARGUMENT_OFFSET + 1]);
                 try {
                     interop.writeArrayElement(receiver, index, value);
                 } catch (InvalidArrayIndexException e) {

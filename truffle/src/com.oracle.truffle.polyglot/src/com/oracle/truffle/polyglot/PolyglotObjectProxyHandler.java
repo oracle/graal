@@ -52,7 +52,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -68,6 +67,8 @@ import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToGuestValuesNode;
 import com.oracle.truffle.polyglot.PolyglotObjectProxyHandlerFactory.ProxyInvokeNodeGen;
 
 final class PolyglotObjectProxyHandler implements InvocationHandler, PolyglotWrapper {
+
+    static final Object[] EMPTY = {};
 
     final Object obj;
     final PolyglotLanguageContext languageContext;
@@ -97,7 +98,7 @@ final class PolyglotObjectProxyHandler implements InvocationHandler, PolyglotWra
     @Override
     public Object invoke(Object proxy, Method method, Object[] arguments) throws Throwable {
         CompilerAsserts.neverPartOfCompilation();
-        Object[] resolvedArguments = arguments == null ? HostInteropReflect.EMPTY : arguments;
+        Object[] resolvedArguments = arguments == null ? EMPTY : arguments;
         try {
             return invoke.call(languageContext, obj, method, resolvedArguments);
         } catch (UnsupportedOperationException e) {
@@ -142,7 +143,7 @@ final class PolyglotObjectProxyHandler implements InvocationHandler, PolyglotWra
         @Override
         protected Object executeImpl(PolyglotLanguageContext languageContext, Object receiver, Object[] args) {
             Method method = (Method) args[ARGUMENT_OFFSET];
-            Object[] arguments = toGuests.apply(languageContext.context.getHostContextImpl(), (Object[]) args[ARGUMENT_OFFSET + 1]);
+            Object[] arguments = toGuests.apply(languageContext, (Object[]) args[ARGUMENT_OFFSET + 1]);
             return proxyInvoke.execute(languageContext, receiver, method, arguments);
         }
 
@@ -173,7 +174,6 @@ final class PolyglotObjectProxyHandler implements InvocationHandler, PolyglotWra
         }
     }
 
-    @ImportStatic({HostInteropReflect.class})
     abstract static class ProxyInvokeNode extends Node {
 
         public abstract Object execute(PolyglotLanguageContext languageContext, Object receiver, Method method, Object[] arguments);
@@ -204,6 +204,20 @@ final class PolyglotObjectProxyHandler implements InvocationHandler, PolyglotWra
                         @Cached BranchProfile error) {
             Object result = invokeOrExecute(languageContext, receiver, arguments, name, receivers, members, branchProfile, error);
             return toHost.execute(languageContext, result, returnClass, returnType);
+        }
+
+        static Class<?> getMethodReturnType(Method method) {
+            if (method == null || method.getReturnType() == void.class) {
+                return Object.class;
+            }
+            return method.getReturnType();
+        }
+
+        static Type getMethodGenericReturnType(Method method) {
+            if (method == null || method.getReturnType() == void.class) {
+                return Object.class;
+            }
+            return method.getGenericReturnType();
         }
 
         @TruffleBoundary

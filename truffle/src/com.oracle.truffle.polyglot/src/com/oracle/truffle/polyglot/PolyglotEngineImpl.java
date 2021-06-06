@@ -128,7 +128,6 @@ import com.oracle.truffle.polyglot.PolyglotLocals.AbstractContextLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.AbstractContextThreadLocal;
 import com.oracle.truffle.polyglot.PolyglotLocals.LocalLocation;
 import com.oracle.truffle.polyglot.PolyglotLoggers.EngineLoggerProvider;
-import com.oracle.truffle.polyglot.host.HostLanguage;
 
 final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
 
@@ -222,14 +221,14 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
      */
     @CompilationFinal private volatile Node noLocation;
 
-    final AbstractHostLanguage<Object> host;
+    @CompilationFinal AbstractHostLanguage<Object> host; // effectively final
 
     @SuppressWarnings("unchecked")
     PolyglotEngineImpl(PolyglotImpl impl, DispatchOutputStream out, DispatchOutputStream err, InputStream in, OptionValuesImpl engineOptions,
                     Map<String, Level> logLevels,
                     EngineLoggerProvider engineLogger, Map<String, String> options,
-                    boolean allowExperimentalOptions, AbstractHostLanguage<?> hostLanguage, boolean boundEngine, boolean preInitialization,
-                    MessageTransport messageInterceptor, Handler logHandler) {
+                    boolean allowExperimentalOptions, boolean boundEngine, boolean preInitialization,
+                    MessageTransport messageInterceptor, Handler logHandler, AbstractHostLanguage<Object> host) {
         this.messageInterceptor = messageInterceptor;
         this.impl = impl;
         this.out = out;
@@ -239,7 +238,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         this.logLevels = logLevels;
         this.boundEngine = boundEngine;
         this.storeEngine = RUNTIME.isStoreEnabled(engineOptions);
-        this.host = (AbstractHostLanguage<Object>) hostLanguage;
+        this.host = host;
 
         Map<String, LanguageInfo> languageInfos = new LinkedHashMap<>();
         this.idToLanguage = Collections.unmodifiableMap(initializeLanguages(languageInfos));
@@ -1001,7 +1000,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     <T extends TruffleLanguage<?>> PolyglotLanguage getLanguage(Class<T> languageClass, boolean fail) {
         PolyglotLanguage foundLanguage = classToLanguage.get(languageClass.getName());
         if (foundLanguage == null) {
-            if (languageClass == HostLanguage.class) {
+            if (languageClass == host.getClass()) {
                 return hostLanguage;
             }
             if (fail) {
