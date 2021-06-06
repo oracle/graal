@@ -219,7 +219,7 @@ final class PolyglotExceptionImpl {
     private static Error getResourceLimitError(PolyglotEngineImpl engine, Throwable e) {
         if (e instanceof CancelExecution) {
             return ((CancelExecution) e).isResourceLimit() ? (Error) e : null;
-        } else if (engine != null && engine.host.isHostException(e)) {
+        } else if (engine != null && engine.host != null && engine.host.isHostException(e)) {
             Throwable toCheck = engine.host.toHostResourceError(e);
             assert toCheck == null || toCheck instanceof StackOverflowError || toCheck instanceof OutOfMemoryError;
             return (Error) toCheck;
@@ -316,7 +316,7 @@ final class PolyglotExceptionImpl {
     }
 
     public boolean isHostException() {
-        if (engine == null) {
+        if (engine == null || engine.host == null) {
             return false;
         }
         return engine.host.isHostException(exception);
@@ -603,13 +603,13 @@ final class PolyglotExceptionImpl {
 
     private static Throwable findCause(PolyglotEngineImpl engine, Throwable throwable) {
         Throwable cause = throwable;
-        if (engine != null && engine.host.isHostException(cause)) {
+        if (engine != null && engine.host != null && engine.host.isHostException(cause)) {
             return findCause(engine, engine.host.unboxHostException(cause));
         } else if (EngineAccessor.EXCEPTION.isException(cause)) {
             return EngineAccessor.EXCEPTION.getLazyStackTrace(cause);
         } else {
             while (cause.getCause() != null && cause.getStackTrace().length == 0) {
-                if (engine != null && engine.host.isHostException(cause)) {
+                if (engine != null && engine.host != null && engine.host.isHostException(cause)) {
                     cause = engine.host.unboxHostException(cause);
                 } else {
                     cause = cause.getCause();
@@ -768,7 +768,7 @@ final class PolyglotExceptionImpl {
             if (isLazyStackTraceElement(firstElement)) {
                 return -1;
             }
-            if (engine == null) {
+            if (engine == null || engine.host == null) {
                 return -1;
             }
             return engine.host.findNextGuestToHostStackTraceElement(firstElement, hostStack, nextElementIndex);

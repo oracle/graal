@@ -92,6 +92,7 @@ import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostService;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
 import org.graalvm.polyglot.io.ProcessHandler;
@@ -186,7 +187,6 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     final ReferenceQueue<PolyglotContextImpl> contextsReferenceQueue = new ReferenceQueue<>();
     private final AtomicReference<PolyglotContextImpl> preInitializedContext = new AtomicReference<>();
 
-    PolyglotLanguage hostLanguage;
     @CompilationFinal Assumption singleContext = Truffle.getRuntime().createAssumption("Single context per engine.");
     final Assumption singleThreadPerContext = Truffle.getRuntime().createAssumption("Single thread per context of an engine.");
     final Assumption noInnerContexts = Truffle.getRuntime().createAssumption("No inner contexts.");
@@ -221,14 +221,15 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
      */
     @CompilationFinal private volatile Node noLocation;
 
-    @CompilationFinal AbstractHostLanguage<Object> host; // effectively final
+    final PolyglotLanguageInstance hostLanguageInstance;
+    @CompilationFinal AbstractHostService host; // effectively final
 
     @SuppressWarnings("unchecked")
     PolyglotEngineImpl(PolyglotImpl impl, DispatchOutputStream out, DispatchOutputStream err, InputStream in, OptionValuesImpl engineOptions,
                     Map<String, Level> logLevels,
                     EngineLoggerProvider engineLogger, Map<String, String> options,
                     boolean allowExperimentalOptions, boolean boundEngine, boolean preInitialization,
-                    MessageTransport messageInterceptor, Handler logHandler, AbstractHostLanguage<Object> host) {
+                    MessageTransport messageInterceptor, Handler logHandler, TruffleLanguage<Object> hostImpl) {
         this.messageInterceptor = messageInterceptor;
         this.impl = impl;
         this.out = out;
@@ -238,7 +239,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         this.logLevels = logLevels;
         this.boundEngine = boundEngine;
         this.storeEngine = RUNTIME.isStoreEnabled(engineOptions);
-        this.host = host;
+        this.hostLanguageInstance = createHostLanguageInstance(hostImpl);
 
         Map<String, LanguageInfo> languageInfos = new LinkedHashMap<>();
         this.idToLanguage = Collections.unmodifiableMap(initializeLanguages(languageInfos));
@@ -315,6 +316,11 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         }
     }
 
+    private PolyglotLanguageInstance createHostLanguageInstance(TruffleLanguage<Object> hostImpl) {
+        PolyglotLanguage language = createLanguage(LanguageCache.createHostLanguageCache(hostImpl), HOST_LANGUAGE_INDEX, null);
+        return language.allocateInstance(new OptionValuesImpl(this, language.getOptionsInternal(), false));
+    }
+
     Node getUncachedLocation() {
         Node location = this.noLocation;
         if (location == null) {
@@ -348,6 +354,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         this.engineLoggerSupplier = prototype.engineLoggerSupplier;
 
         Map<String, LanguageInfo> languageInfos = new LinkedHashMap<>();
+        this.hostLanguageInstance = createHostLanguageInstance(prototype.hostLanguageInstance.spi);
         this.idToLanguage = Collections.unmodifiableMap(initializeLanguages(languageInfos));
         this.idToInternalLanguageInfo = Collections.unmodifiableMap(languageInfos);
         this.contextLength = idToLanguage.size() + 1 /* +1 for host language */;
@@ -778,7 +785,6 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                 visitLanguage(initErrors, cachedLanguages, serializedLanguages, language);
             }
         }
-        this.hostLanguage = createLanguage(LanguageCache.createHostLanguageCache(this.host), HOST_LANGUAGE_INDEX, null);
 
         int index = 1;
         for (LanguageCache cache : serializedLanguages) {
@@ -1000,8 +1006,8 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     <T extends TruffleLanguage<?>> PolyglotLanguage getLanguage(Class<T> languageClass, boolean fail) {
         PolyglotLanguage foundLanguage = classToLanguage.get(languageClass.getName());
         if (foundLanguage == null) {
-            if (languageClass == host.getClass()) {
-                return hostLanguage;
+            if (languageClass == hostLanguageInstance.spi.getClass()) {
+                return hostLanguageInstance.language;
             }
             if (fail) {
                 Set<String> languageNames = classToLanguage.keySet();

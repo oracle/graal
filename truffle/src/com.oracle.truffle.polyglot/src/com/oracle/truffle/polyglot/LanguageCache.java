@@ -133,7 +133,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
         }
     }
 
-    static LanguageCache createHostLanguageCache(AbstractHostLanguage<Object> languageInstance, String... services) {
+    static LanguageCache createHostLanguageCache(TruffleLanguage<Object> languageInstance, String... services) {
         Set<String> servicesClassNames;
         if (services.length == 0) {
             servicesClassNames = Collections.emptySet();

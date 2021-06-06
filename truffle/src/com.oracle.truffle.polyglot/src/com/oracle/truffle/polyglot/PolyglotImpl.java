@@ -68,6 +68,7 @@ import org.graalvm.polyglot.io.MessageTransport;
 import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -236,7 +237,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             }
 
             if (impl != null) {
-                if (hostLanguage.getClass() != impl.host.getClass()) {
+                if (hostLanguage.getClass() != impl.hostLanguageInstance.spi.getClass()) {
                     throw new AssertionError("Patching engine with different host language is not supported.");
                 }
                 impl.patch(dispatchOut,
@@ -263,7 +264,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                                 boundEngine, false,
                                 messageInterceptor,
                                 logHandler,
-                                (AbstractHostLanguage<Object>) hostLanguage);
+                                (TruffleLanguage<Object>) hostLanguage);
             }
             return getAPIAccess().newEngine(engineDispatch, impl);
         } catch (Throwable t) {
@@ -315,7 +316,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         DispatchOutputStream err = INSTRUMENT.createDispatchOutput(System.err);
         Handler logHandler = PolyglotEngineImpl.createLogHandler(logConfig, err);
         EngineLoggerProvider loggerProvider = new PolyglotLoggers.EngineLoggerProvider(logHandler, logConfig.logLevels);
-        AbstractHostLanguage<Object> host = createHostLanguage(createHostAccess());
+        TruffleLanguage<Object> host = createHostLanguage(createHostAccess());
         final PolyglotEngineImpl engine = new PolyglotEngineImpl(this, out, err, System.in, engineOptions, logConfig.logLevels, loggerProvider, options, true,
                         true, true, null, logHandler, host);
         return engine;
@@ -323,8 +324,8 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
     @SuppressWarnings("unchecked")
     @Override
-    public AbstractHostLanguage<Object> createHostLanguage(HostLanguageAccess access) {
-        return (AbstractHostLanguage<Object>) EngineAccessor.HOST.createDefaultHostLanguage(this, access);
+    public TruffleLanguage<Object> createHostLanguage(AbstractHostAccess access) {
+        return (TruffleLanguage<Object>) EngineAccessor.HOST.createDefaultHostLanguage(this, access);
     }
 
     /**
@@ -427,7 +428,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     }
 
     @Override
-    public HostLanguageAccess createHostAccess() {
+    public AbstractHostAccess createHostAccess() {
         return new PolyglotHostEngine(this);
     }
 

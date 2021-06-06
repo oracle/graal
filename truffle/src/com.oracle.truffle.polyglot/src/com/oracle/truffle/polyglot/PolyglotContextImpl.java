@@ -78,6 +78,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostService;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
@@ -283,7 +284,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         this.currentTruffleContext = EngineAccessor.LANGUAGE.createTruffleContext(this, false);
         this.weakReference = new ContextWeakReference(this);
         this.contextImpls = new Object[engine.contextLength];
-        this.contexts = createContextArray();
+        this.contexts = createContextArray(engine.hostLanguageInstance);
         this.subProcesses = new HashSet<>();
         this.statementLimit = config.limits != null && config.limits.statementLimit != 0 ? config.limits.statementLimit : Long.MAX_VALUE - 1;
         this.statementCounter = statementLimit;
@@ -331,7 +332,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             EngineAccessor.LANGUAGE.configureLoggers(this, parent.config.logLevels, getAllLoggers());
         }
         this.contextImpls = new Object[engine.contextLength];
-        this.contexts = createContextArray();
+        this.contexts = createContextArray(engine.hostLanguageInstance);
         this.subProcesses = new HashSet<>();
         // notifyContextCreated() is called after spiContext.impl is set to this.
         this.engine.noInnerContexts.invalidate();
@@ -367,16 +368,18 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         }
     }
 
-    private PolyglotLanguageContext[] createContextArray() {
+    private PolyglotLanguageContext[] createContextArray(PolyglotLanguageInstance hostLanguageInstance) {
         Collection<PolyglotLanguage> languages = engine.idToLanguage.values();
         PolyglotLanguageContext[] newContexts = new PolyglotLanguageContext[engine.contextLength];
         Iterator<PolyglotLanguage> languageIterator = languages.iterator();
-        PolyglotLanguageContext hostContext = new PolyglotLanguageContext(this, engine.hostLanguage);
-        newContexts[PolyglotEngineImpl.HOST_LANGUAGE_INDEX] = hostContext;
         for (int i = (PolyglotEngineImpl.HOST_LANGUAGE_INDEX + 1); i < engine.contextLength; i++) {
             PolyglotLanguage language = languageIterator.next();
             newContexts[i] = new PolyglotLanguageContext(this, language);
         }
+        PolyglotLanguage hostLanguage = hostLanguageInstance.language;
+        PolyglotLanguageContext hostContext = new PolyglotLanguageContext(this, hostLanguage);
+        newContexts[PolyglotEngineImpl.HOST_LANGUAGE_INDEX] = hostContext;
+        hostContext.ensureCreated(hostLanguage, hostLanguageInstance);
         hostContext.ensureInitialized(null);
         return newContexts;
     }
@@ -2115,7 +2118,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             for (int i = 1; i < this.contexts.length; i++) {
                 final PolyglotLanguageContext context = this.contexts[i];
                 if (context.language.isHost()) {
-                    initializeHostContext(this.contextImpls[i], newConfig);
+                    initializeHostContext(context, newConfig);
                 }
                 if (!context.patch(newConfig)) {
                     return false;
@@ -2127,9 +2130,25 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         return true;
     }
 
-    void initializeHostContext(Object hostContext, PolyglotContextConfig newConfig) {
+    void initializeHostContext(PolyglotLanguageContext context, PolyglotContextConfig newConfig) {
         try {
-            engine.host.initializeHostContext(this, hostContext, newConfig.hostAccess, newConfig.hostClassLoader, newConfig.classFilter, newConfig.hostClassLoadingAllowed,
+            Object contextImpl = this.contextImpls[context.language.index];
+            if (contextImpl == null) {
+                throw new AssertionError("Host context not initialized.");
+            }
+
+            AbstractHostService currentHost = engine.host;
+            @SuppressWarnings("unchecked")
+            AbstractHostService newHost = context.lookupService(AbstractHostService.class);
+            if (newHost == null) {
+                throw new AssertionError("The engine host language must provide register a service of type:" + AbstractHostService.class);
+            }
+            if (currentHost == null) {
+                engine.host = newHost;
+            } else if (currentHost != newHost) {
+                throw new AssertionError("Host service must not change per engine.");
+            }
+            newHost.initializeHostContext(this, contextImpl, newConfig.hostAccess, newConfig.hostClassLoader, newConfig.classFilter, newConfig.hostClassLoadingAllowed,
                             newConfig.hostLookupAllowed);
         } catch (IllegalStateException e) {
             throw PolyglotEngineException.illegalState(e.getMessage());

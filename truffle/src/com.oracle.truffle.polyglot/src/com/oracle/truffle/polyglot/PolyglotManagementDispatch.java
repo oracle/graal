@@ -356,7 +356,7 @@ final class PolyglotManagementDispatch extends AbstractManagementDispatch {
             if (languageToUse == null) {
                 // should not happen but just in case fallback to host language
                 assert false;
-                languageToUse = config.engine.hostLanguage;
+                languageToUse = config.engine.hostLanguageInstance.language;
             }
             this.language = languageToUse;
         }

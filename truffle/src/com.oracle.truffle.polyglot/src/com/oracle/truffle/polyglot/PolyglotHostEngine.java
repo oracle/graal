@@ -53,12 +53,12 @@ import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.HostLanguageAccess;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
 
-final class PolyglotHostEngine extends HostLanguageAccess {
+final class PolyglotHostEngine extends AbstractHostAccess {
 
     final AbstractPolyglotImpl polyglot;
 

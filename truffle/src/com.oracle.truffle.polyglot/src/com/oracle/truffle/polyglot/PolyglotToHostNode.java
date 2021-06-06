@@ -42,6 +42,8 @@ package com.oracle.truffle.polyglot;
 
 import java.lang.reflect.Type;
 
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostService;
+
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
@@ -52,13 +54,13 @@ abstract class PolyglotToHostNode extends Node {
 
     @Specialization
     static Object doDefault(PolyglotLanguageContext languageContext, Object value, Class<?> targetType, Type genericType,
-                    @Cached("languageContext.context.engine.host") AbstractHostLanguage<?> host,
+                    @Cached("languageContext.context.engine.host") AbstractHostService host,
                     @Cached("createToHostNode(host)") Node toHostNode) {
         return host.toHostType(toHostNode, languageContext.context.getHostContextImpl(), value, targetType, genericType);
     }
 
-    static Node createToHostNode(AbstractHostLanguage<?> host) {
-        return host.createToHostTypeNode();
+    static Node createToHostNode(AbstractHostService host) {
+        return (Node) host.createToHostTypeNode();
     }
 
 }

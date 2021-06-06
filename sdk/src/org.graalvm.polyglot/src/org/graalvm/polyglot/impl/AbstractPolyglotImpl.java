@@ -275,7 +275,7 @@ public abstract class AbstractPolyglotImpl {
 
     public abstract void preInitializeEngine();
 
-    public abstract Object createHostLanguage(HostLanguageAccess access);
+    public abstract Object createHostLanguage(AbstractHostAccess access);
 
     public abstract void resetPreInitializedEngine();
 
@@ -288,7 +288,7 @@ public abstract class AbstractPolyglotImpl {
     /**
      * Returns the default host dispatch of this polyglot abstraction.
      */
-    public abstract HostLanguageAccess createHostAccess();
+    public abstract AbstractHostAccess createHostAccess();
 
     public abstract static class AbstractManagementDispatch {
 
@@ -616,9 +616,9 @@ public abstract class AbstractPolyglotImpl {
         public abstract String getDefaultMimeType(Object receiver);
     }
 
-    public abstract static class HostLanguageAccess {
+    public abstract static class AbstractHostAccess {
 
-        protected HostLanguageAccess(AbstractPolyglotImpl impl) {
+        protected AbstractHostAccess(AbstractPolyglotImpl impl) {
             Objects.requireNonNull(impl);
         }
 
@@ -658,6 +658,65 @@ public abstract class AbstractPolyglotImpl {
         public abstract boolean isEngineException(RuntimeException e);
 
         public abstract RuntimeException unboxEngineException(RuntimeException e);
+
+    }
+
+    public abstract static class AbstractHostService {
+
+        protected AbstractHostService(AbstractPolyglotImpl polyglot) {
+            Objects.requireNonNull(polyglot);
+        }
+
+        public abstract void initializeHostContext(Object internalContext, Object context, HostAccess access, ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed,
+                        boolean hostLookupAllowed);
+
+        public abstract void addToHostClassPath(Object context, Object truffleFile);
+
+        public abstract Object toGuestValue(Object context, Object hostValue);
+
+        public abstract Object asHostDynamicClass(Object context, Class<?> value);
+
+        public abstract Object asHostStaticClass(Object context, Class<?> value);
+
+        public abstract Object findDynamicClass(Object context, String classValue);
+
+        public abstract Object findStaticClass(Object context, String classValue);
+
+        public abstract Object createToHostTypeNode();
+
+        public abstract <T> T toHostType(Object hostNode, Object hostContext, Object value, Class<T> targetType, Type genericType);
+
+        public abstract boolean isHostValue(Object value);
+
+        public abstract Object unboxHostObject(Object hostValue);
+
+        public abstract Object unboxProxyObject(Object hostValue);
+
+        public abstract Throwable unboxHostException(Throwable hostValue);
+
+        public abstract Object toHostObject(Object context, Object value);
+
+        public abstract RuntimeException toHostException(Object hostContext, Throwable exception);
+
+        public abstract boolean isHostException(Throwable exception);
+
+        public abstract boolean isHostFunction(Object obj);
+
+        public abstract boolean isHostObject(Object obj);
+
+        public abstract boolean isHostSymbol(Object obj);
+
+        public abstract Object createHostAdapter(Object hostContextObject, Class<?>[] types, Object classOverrides);
+
+        public abstract boolean isHostProxy(Object value);
+
+        public abstract Object migrateHostObject(Object newContext, Object value);
+
+        public abstract Object migrateHostProxy(Object newContext, Object value);
+
+        public abstract Error toHostResourceError(Throwable hostException);
+
+        public abstract int findNextGuestToHostStackTraceElement(StackTraceElement firstElement, StackTraceElement[] hostStack, int nextElementIndex);
 
     }
 

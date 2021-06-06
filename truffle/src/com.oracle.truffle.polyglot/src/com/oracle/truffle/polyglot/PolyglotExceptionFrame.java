@@ -172,7 +172,7 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
     }
 
     static PolyglotExceptionFrame createHost(PolyglotExceptionImpl exception, StackTraceElement hostStack) {
-        PolyglotLanguage language = exception.engine != null ? exception.engine.hostLanguage : null;
+        PolyglotLanguage language = exception.engine != null ? exception.engine.hostLanguageInstance.language : null;
 
         // source section for the host language is currently null
         // we should potentially in the future create a source section for the host language

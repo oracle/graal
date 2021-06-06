@@ -59,7 +59,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.HostLanguageAccess;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -197,7 +197,7 @@ final class HostObject implements TruffleObject {
     }
 
     private static RuntimeException unboxEngineException(HostObject receiver, RuntimeException e) {
-        HostLanguageAccess access = receiver.context.language.access;
+        AbstractHostAccess access = receiver.context.language.access;
         if (access.isEngineException(e)) {
             return access.unboxEngineException(e);
         }

@@ -871,7 +871,7 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public Object createHostLanguage(HostLanguageAccess access) {
+        public Object createHostLanguage(AbstractHostAccess access) {
             throw noPolyglotImplementationFound();
         }
 
@@ -881,7 +881,7 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public HostLanguageAccess createHostAccess() {
+        public AbstractHostAccess createHostAccess() {
             throw noPolyglotImplementationFound();
         }
 

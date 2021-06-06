@@ -1201,7 +1201,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         if (context == null) {
             return PolyglotImpl.getInstance().asValue(PolyglotContextImpl.currentNotEntered(), value);
         } else {
-            return ((PolyglotLanguageContext) context).asValue(value);
+            return context.asValue(value);
         }
     }
 
@@ -1265,7 +1265,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         PolyglotLanguage displayLanguage = EngineAccessor.EngineImpl.findObjectLanguage(context.engine, receiver);
         Object view;
         if (displayLanguage == null) {
-            displayLanguage = context.engine.hostLanguage;
+            displayLanguage = context.engine.hostLanguageInstance.language;
             view = context.getHostContext().getLanguageView(receiver);
         } else {
             view = receiver;
