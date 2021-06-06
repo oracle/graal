@@ -46,7 +46,7 @@ import java.util.stream.Collectors;
 import com.oracle.truffle.espresso.impl.ClassRegistries;
 import com.oracle.truffle.espresso.impl.EspressoLanguageCache;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.impl.ParserKlassCacheListProvider;
+import com.oracle.truffle.espresso.impl.ParserKlassCacheListSupport;
 import com.oracle.truffle.espresso.impl.Klass;
 import org.graalvm.options.OptionMap;
 import org.graalvm.polyglot.Engine;
@@ -449,6 +449,7 @@ public final class EspressoContext {
         return nativeAccess;
     }
 
+    @SuppressWarnings("try")
     public void preInitialize() {
         long initStartTimeNanos = System.nanoTime();
         initVmProperties();
@@ -463,13 +464,18 @@ public final class EspressoContext {
         }
 
         try (DebugCloseable cacheInit = KNOWN_CLASS_INIT.scope(timers)) {
-            // TODO use options to provide class list
-            for (Symbol<Type> type : new ParserKlassCacheListProvider().DefaultClassList) {
-                ClasspathFile cpFile = getBootClasspath().readClassFile(type);
-                if (cpFile != null) {
-                    getCache().getOrCreateParserKlass(type.toString(), cpFile.contents, this);
-                } else {
-                    getLogger().log(Level.WARNING, "Pre-initialization failed to read class: {0}", type);
+            if (getEnv().getOptions().get(EspressoOptions.UseParserKlassCache)) {
+                Path classListPath = getEnv().getOptions().get(EspressoOptions.ParserKlassCacheList);
+                ParserKlassCacheListSupport parserKlassCacheSupport = new ParserKlassCacheListSupport(getTypes());
+                parserKlassCacheSupport.processFile(classListPath);
+                for (Symbol<Type> type : parserKlassCacheSupport.getTypeList(getJavaVersion())) {
+                    getLogger().log(Level.FINE, "ParserKlassCacheList: Attempting to read class: {0}", type.toString());
+                    ClasspathFile cpFile = getBootClasspath().readClassFile(type);
+                    if (cpFile != null) {
+                        getCache().getOrCreateParserKlass(type.toString(), cpFile.contents, this);
+                    } else {
+                        getLogger().log(Level.WARNING, "Pre-initialization failed to read class: {0}", type.toString());
+                    }
                 }
             }
         }
