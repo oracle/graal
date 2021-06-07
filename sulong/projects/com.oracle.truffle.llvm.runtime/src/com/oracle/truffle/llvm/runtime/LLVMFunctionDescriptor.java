@@ -51,6 +51,7 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.IDGenerater.BitcodeID;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMNativeLibrary;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHandleMemoryBase;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
@@ -62,6 +63,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
  */
 @ExportLibrary(InteropLibrary.class)
 @ExportLibrary(value = LLVMNativeLibrary.class, useForAOT = true, useForAOTPriority = 1)
+@ExportLibrary(value = LLVMAsForeignLibrary.class, useForAOT = true, useForAOTPriority = 1)
 @SuppressWarnings("static-method")
 public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject implements Comparable<LLVMFunctionDescriptor> {
     private static final long SULONG_FUNCTION_POINTER_TAG = 0xBADE_FACE_0000_0000L;
@@ -297,6 +299,11 @@ public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject impl
             return llvmFunction.getSourceLocation().getSourceSection();
         }
         throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    public static boolean isForeign(@SuppressWarnings("unused") LLVMFunctionDescriptor receiver) {
+        return false;
     }
 
 }

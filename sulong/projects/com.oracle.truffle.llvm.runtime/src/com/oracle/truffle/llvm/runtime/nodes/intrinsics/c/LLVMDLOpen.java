@@ -75,7 +75,7 @@ public abstract class LLVMDLOpen extends LLVMIntrinsic {
         }
     }
 
-    @ExportLibrary(LLVMAsForeignLibrary.class)
+    @ExportLibrary(value = LLVMAsForeignLibrary.class, useForAOT = true, useForAOTPriority = 1)
     protected static final class LLVMDLHandler {
         final Object library;
 

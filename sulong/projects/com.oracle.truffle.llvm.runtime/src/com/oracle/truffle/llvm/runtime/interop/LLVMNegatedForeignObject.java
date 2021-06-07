@@ -35,9 +35,11 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 
 @ValueType
 @ExportLibrary(InteropLibrary.class)
+@ExportLibrary(value = LLVMAsForeignLibrary.class, useForAOT = true, useForAOTPriority = 1)
 public final class LLVMNegatedForeignObject extends LLVMInternalTruffleObject {
 
     final Object foreign;
@@ -90,6 +92,11 @@ public final class LLVMNegatedForeignObject extends LLVMInternalTruffleObject {
     @ExportMessage
     void toNative(@CachedLibrary("this.foreign") InteropLibrary interop) {
         interop.toNative(getForeign());
+    }
+
+    @ExportMessage
+    public static boolean isForeign(@SuppressWarnings("unused") LLVMNegatedForeignObject receiver) {
+        return false;
     }
 
 }

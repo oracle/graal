@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.runtime.interop;
 
 import com.oracle.truffle.api.dsl.Fallback;
-import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -68,7 +67,6 @@ public abstract class LLVMAsForeignNode extends LLVMNode {
     }
 
     @Specialization(guards = "foreigns.isForeign(pointer)")
-    @GenerateAOT.Exclude
     Object doForeign(Object pointer,
                     @CachedLibrary(limit = "3") LLVMAsForeignLibrary foreigns) {
         return foreigns.asForeign(pointer);

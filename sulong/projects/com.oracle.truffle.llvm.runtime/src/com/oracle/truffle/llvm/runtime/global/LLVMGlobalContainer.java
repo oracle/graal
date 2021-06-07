@@ -46,6 +46,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMNativeLibrary;
@@ -58,6 +59,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 @ExportLibrary(InteropLibrary.class)
 @ExportLibrary(value = LLVMManagedReadLibrary.class, useForAOT = true, useForAOTPriority = 1)
 @ExportLibrary(value = LLVMManagedWriteLibrary.class, useForAOT = true, useForAOTPriority = 2)
+@ExportLibrary(value = LLVMAsForeignLibrary.class, useForAOT = true, useForAOTPriority = 3)
 public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
     /**
      * The number of writes that will invalidate the assumption.
@@ -568,6 +570,11 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
             memory.free(null, address);
             address = 0;
         }
+    }
+
+    @ExportMessage
+    public static boolean isForeign(@SuppressWarnings("unused") LLVMGlobalContainer receiver) {
+        return false;
     }
 
     @Override

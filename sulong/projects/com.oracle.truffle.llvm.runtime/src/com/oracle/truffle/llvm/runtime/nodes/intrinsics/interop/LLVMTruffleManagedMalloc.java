@@ -44,6 +44,7 @@ import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.ValueKind;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -61,6 +62,7 @@ public abstract class LLVMTruffleManagedMalloc extends LLVMIntrinsic {
     @ExportLibrary(value = LLVMManagedReadLibrary.class, useForAOT = true, useForAOTPriority = 1)
     @ExportLibrary(value = LLVMManagedWriteLibrary.class, useForAOT = true, useForAOTPriority = 2)
     @ExportLibrary(value = NativeTypeLibrary.class, useForAOT = true, useForAOTPriority = 3)
+    @ExportLibrary(value = LLVMAsForeignLibrary.class, useForAOT = true, useForAOTPriority = 4)
     public static final class ManagedMallocObject extends LLVMInternalTruffleObject {
 
         private final LLVMPointer[] contents;
@@ -226,6 +228,11 @@ public abstract class LLVMTruffleManagedMalloc extends LLVMIntrinsic {
                         @Cached LLVMToPointerNode toPointer,
                         @CachedLibrary("this") LLVMManagedWriteLibrary write) {
             write.writePointer(this, offset, toPointer.executeWithTarget(value));
+        }
+
+        @ExportMessage
+        public static boolean isForeign(@SuppressWarnings("unused") ManagedMallocObject receiver) {
+            return false;
         }
 
     }
