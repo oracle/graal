@@ -204,8 +204,7 @@ final class SafepointStack {
                 CallTarget target = targets[i];
                 RootNode root = ((RootCallTarget) target).getRootNode();
                 SourceSection sourceSection = root.getSourceSection();
-                // TODO: Figure out how to filter source sections with only a root node.
-                if (sourceSection != null /* && filter.includes(root, sourceSection) */) {
+                if (sourceSection != null && filter.includes(root, sourceSection)) {
                     entries.add(new StackTraceEntry(TAGS, sourceSection, root, root, states[i]));
                 }
             }
