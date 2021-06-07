@@ -206,10 +206,9 @@ public class LLVMVaListStorage implements TruffleObject {
         return ((ArrayType) type).getElementType();
     }
 
-    protected static DataLayout getDataLayout() {
+    protected static DataLayout findDataLayoutFromCurrentFrame() {
         RootCallTarget rootCallTarget = (RootCallTarget) Truffle.getRuntime().getCurrentFrame().getCallTarget();
-        DataLayout dataLayout = (((LLVMHasDatalayoutNode) rootCallTarget.getRootNode())).getDatalayout();
-        return dataLayout;
+        return (((LLVMHasDatalayoutNode) rootCallTarget.getRootNode())).getDatalayout();
     }
 
     public static long storeArgument(LLVMPointer ptr, long offset, LLVMMemMoveNode memmove, LLVMI64OffsetStoreNode storeI64Node,
@@ -461,8 +460,8 @@ public class LLVMVaListStorage implements TruffleObject {
         }
 
         @SuppressWarnings("static-method")
-        static VarargsAreaStackAllocationNode createVarargsAreaStackAllocationNode(LLVMLanguage lang) {
-            DataLayout dataLayout = LLVMVaListStorage.getDataLayout();
+        VarargsAreaStackAllocationNode createVarargsAreaStackAllocationNode(LLVMLanguage lang) {
+            DataLayout dataLayout = getDataLayout();
             return lang.getActiveConfiguration().createNodeFactory(lang, dataLayout).createVarargsAreaStackAllocation();
         }
 

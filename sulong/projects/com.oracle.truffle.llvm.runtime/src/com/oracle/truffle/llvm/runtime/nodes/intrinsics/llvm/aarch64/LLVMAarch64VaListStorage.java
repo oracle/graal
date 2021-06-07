@@ -287,7 +287,7 @@ public final class LLVMAarch64VaListStorage extends LLVMVaListStorage {
     @TruffleBoundary
     Object getNativeType(@CachedLanguage LLVMLanguage language) {
         // This method should never be invoked
-        return language.getInteropType(LLVMSourceTypeFactory.resolveType(VA_LIST_TYPE, getDataLayout()));
+        return language.getInteropType(LLVMSourceTypeFactory.resolveType(VA_LIST_TYPE, findDataLayoutFromCurrentFrame()));
     }
 
     // LLVMManagedReadLibrary implementation
@@ -609,9 +609,9 @@ public final class LLVMAarch64VaListStorage extends LLVMVaListStorage {
 
     }
 
-    static long getVAListTypeSize() {
+    static long getVAListTypeSize(LLVMNode node) {
         try {
-            return VA_LIST_TYPE.getSize(getDataLayout());
+            return VA_LIST_TYPE.getSize(node.getDataLayout());
         } catch (TypeOverflowException e) {
             CompilerDirectives.transferToInterpreter();
             throw new UnsupportedOperationException("Should not get here");
@@ -620,12 +620,12 @@ public final class LLVMAarch64VaListStorage extends LLVMVaListStorage {
 
     @SuppressWarnings("static-method")
     LLVMExpressionNode createAllocaNode(LLVMLanguage language) {
-        DataLayout dataLayout = getDataLayout();
+        DataLayout dataLayout = findDataLayoutFromCurrentFrame();
         return language.getActiveConfiguration().createNodeFactory(language, dataLayout).createAlloca(VA_LIST_TYPE, 16);
     }
 
     LLVMExpressionNode createAllocaNodeUncached(LLVMLanguage language) {
-        DataLayout dataLayout = getDataLayout();
+        DataLayout dataLayout = findDataLayoutFromCurrentFrame();
         LLVMExpressionNode alloca = language.getActiveConfiguration().createNodeFactory(language, dataLayout).createAlloca(VA_LIST_TYPE, 16);
         if (alloca instanceof LLVMGetStackSpaceInstruction) {
             ((LLVMGetStackSpaceInstruction) alloca).setStackAccess(rootNode.getStackAccess());
@@ -1117,7 +1117,7 @@ public final class LLVMAarch64VaListStorage extends LLVMVaListStorage {
             static void copyToManagedObject(NativeVAListWrapper source, LLVMAarch64VaListStorage dest,
                             @Shared("allocaNode") @Cached StackAllocationNode allocaNode,
                             @CachedLibrary(limit = "1") LLVMVaListLibrary vaListLibrary,
-                            @Cached(value = "getVAListTypeSize()", allowUncached = true) long vaListTypeSize) {
+                            @Cached(value = "getVAListTypeSize(allocaNode)", allowUncached = true) long vaListTypeSize) {
                 LLVMPointer nativeDestPtr = allocaNode.executeWithTarget(vaListTypeSize);
                 dest.nativized = nativeDestPtr;
 
