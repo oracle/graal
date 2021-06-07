@@ -30,10 +30,12 @@ import static com.oracle.svm.core.util.VMError.unimplemented;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Type;
+import java.util.Collections;
+import java.util.List;
 
+import org.graalvm.collections.Pair;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.JavaMethodContext;
-import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.nodes.StructuredGraph;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
@@ -77,6 +79,7 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
     protected StaticAnalysisResults staticAnalysisResults;
     private final boolean hasNeverInlineDirective;
     protected int vtableIndex = -1;
+    private SpecializationReason specializationReason;
 
     /**
      * The address offset of the compiled code relative to the code of the first method in the
@@ -102,6 +105,7 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
         this.constantPool = constantPool;
         this.handlers = handlers;
         this.compilationInfo = new CompilationInfo(this);
+        this.specializationReason = SpecializationReason.create();
 
         LocalVariableTable newLocalVariableTable = null;
         if (wrapped.getLocalVariableTable() != null) {
@@ -126,7 +130,7 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
         hasNeverInlineDirective = SubstrateUtil.NativeImageLoadingShield.isNeverInline(wrapped);
     }
 
-    public HostedMethod cloneSpecialized(HostedUniverse universe) {
+    public HostedMethod cloneSpecialized(HostedUniverse universe, List<Pair<HostedMethod, Integer>> context) {
         StaticAnalysisResults profilingInfo = getProfilingInfo();
         StaticAnalysisResults profilingInfoCopy = new StaticAnalysisResults(profilingInfo.getCodeSize(), profilingInfo.getParameterTypeProfiles(), profilingInfo.getResultTypeProfile(),
                         profilingInfo.firstBytecodeEntry());
@@ -135,6 +139,7 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
         StructuredGraph graph = this.compilationInfo.getGraph();
         StructuredGraph graphCopy = graph.cloneSpecialized(copy);
         copy.compilationInfo.setGraph(graphCopy);
+        copy.specializationReason = SpecializationReason.create(context);
         assert copy.vtableIndex == -1;
         // isParsed will be set as false but doesnt seem to have any impact since we are already
         // past that point in the compilation pipeline
@@ -494,6 +499,9 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
         if (result == 0) {
             result = ((HostedType) this.getSignature().getReturnType(null)).compareTo((HostedType) other.getSignature().getReturnType(null));
         }
+        if (result == 0) {
+            result = this.specializationReason.compareTo(other.specializationReason);
+        }
         assert result != 0;
         return result;
     }
@@ -501,5 +509,52 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
     @Override
     public Executable getJavaMethod() {
         return OriginalMethodProvider.getJavaMethod(getDeclaringClass().universe.getSnippetReflection(), wrapped);
+    }
+
+    static class SpecializationReason implements Comparable<SpecializationReason> {
+        List<Pair<HostedMethod, Integer>> context;
+        Reason reason;
+
+        private SpecializationReason(List<Pair<HostedMethod, Integer>> context, Reason reason) {
+            this.context = context;
+            this.reason = reason;
+        }
+
+        public static SpecializationReason create() {
+            return new SpecializationReason(Collections.emptyList(), Reason.NONE);
+        }
+
+        public static SpecializationReason create(List<Pair<HostedMethod, Integer>> context) {
+            assert context != null;
+            return new SpecializationReason(context, Reason.HOT_METHOD);
+        }
+
+        @Override
+        public int compareTo(SpecializationReason o) {
+            int result = Math.max(Math.min(context.size() - o.context.size(), 1), -1);
+            if (result != 0) {
+                return result;
+            }
+            for (int i = 0; i < context.size(); i++) {
+                int bci1 = context.get(i).getRight();
+                int bci2 = o.context.get(i).getRight();
+                result = Math.max(Math.min(bci1 - bci2, 1), -1);
+                if (result == 0) {
+                    HostedMethod m1 = context.get(i).getLeft();
+                    HostedMethod m2 = o.context.get(i).getLeft();
+                    result = m1.compareTo(m2);
+                }
+                if (result != 0) {
+                    break;
+                }
+            }
+            assert result != 0;
+            return result;
+        }
+
+        enum Reason {
+            NONE,
+            HOT_METHOD
+        }
     }
 }
