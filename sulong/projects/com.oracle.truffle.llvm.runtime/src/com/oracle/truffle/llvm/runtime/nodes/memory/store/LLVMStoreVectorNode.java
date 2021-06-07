@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.runtime.nodes.memory.store;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedLanguage;
-import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -57,6 +56,16 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMPointerVector;
 @NodeField(name = "vectorLength", type = int.class)
 public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
 
+    protected final boolean isRecursive;
+
+    protected LLVMStoreVectorNode() {
+        this(false);
+    }
+
+    protected LLVMStoreVectorNode(boolean isRecursive) {
+        this.isRecursive = isRecursive;
+    }
+
     public abstract int getVectorLength();
 
     public abstract void executeWithTarget(LLVMPointer address, Object value);
@@ -75,10 +84,10 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNode {
     }
 
     LLVMStoreVectorNode createRecursive() {
-        return LLVMStoreVectorNodeGen.create(null, null, getVectorLength());
+        return LLVMStoreVectorNodeGen.create(true, null, null, getVectorLength());
     }
 
-    @Specialization(guards = "isAutoDerefHandle(language, address)")
+    @Specialization(guards = {"!isRecursive", "isAutoDerefHandle(language, address)"})
     protected void writeVectorDerefHandle(LLVMNativePointer address, Object value,
                     @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                     @Cached LLVMDerefHandleGetReceiverNode getReceiver,

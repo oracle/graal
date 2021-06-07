@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.runtime.nodes.memory.load;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedLanguage;
-import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -45,8 +44,22 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 public abstract class LLVM80BitFloatLoadNode extends LLVMLoadNode {
 
+    protected final boolean isRecursive;
+
+    protected LLVM80BitFloatLoadNode() {
+        this(false);
+    }
+
+    protected LLVM80BitFloatLoadNode(boolean isRecursive) {
+        this.isRecursive = isRecursive;
+    }
+
     static LLVM80BitFloatLoadNode create() {
         return LLVM80BitFloatLoadNodeGen.create((LLVMExpressionNode) null);
+    }
+
+    static LLVM80BitFloatLoadNode createRecursive() {
+        return LLVM80BitFloatLoadNodeGen.create(true, (LLVMExpressionNode) null);
     }
 
     public abstract LLVM80BitFloat executeWithTarget(LLVMManagedPointer addr);
@@ -57,11 +70,11 @@ public abstract class LLVM80BitFloatLoadNode extends LLVMLoadNode {
         return language.getLLVMMemory().get80BitFloat(this, addr);
     }
 
-    @Specialization(guards = "isAutoDerefHandle(language, addr)")
+    @Specialization(guards = {"!isRecursive", "isAutoDerefHandle(language, addr)"})
     protected LLVM80BitFloat do80BitFloatDerefHandle(LLVMNativePointer addr,
                     @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                     @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
-                    @Cached LLVM80BitFloatLoadNode load) {
+                    @Cached("createRecursive()") LLVM80BitFloatLoadNode load) {
         return load.executeWithTarget(getReceiver.execute(addr));
     }
 
