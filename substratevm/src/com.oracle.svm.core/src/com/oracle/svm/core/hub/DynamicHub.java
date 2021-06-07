@@ -1305,7 +1305,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Substitute //
     @TargetElement(onlyWith = JDK11OrLater.class) //
-    public static Class<?> forName(@SuppressWarnings("unused") Target_java_lang_Module module, String className) throws ClassNotFoundException {
+    public static Class<?> forName(@SuppressWarnings("unused") Target_java_lang_Module module, String className) {
         /*
          * The module system is not supported for now, therefore the module parameter is ignored and
          * we use the class loader of the caller class instead of the module's loader.

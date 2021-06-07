@@ -83,9 +83,9 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
         javaLangClassLoader = newClassGlobalRef(env, "java/lang/ClassLoader");
         javaLangClassLoaderGetResource = getMethodId(env, javaLangClassLoader, "getResource", "(Ljava/lang/String;)Ljava/net/URL;", false);
 
-        JNIObjectHandle reflectLoader = findClassOptional(env, "jdk/internal/reflect/DelegatingClassLoader");
+        JNIObjectHandle reflectLoader = findClassOptional(env, "jdk/internal/reflect/DelegatingClassLoader"); // JDK11+
         if (reflectLoader.equal(nullHandle())) {
-            reflectLoader = findClass(env, "sun/reflect/DelegatingClassLoader");
+            reflectLoader = findClass(env, "sun/reflect/DelegatingClassLoader"); // JDK 8
         }
         jdkInternalReflectDelegatingClassLoader = newTrackedGlobalRef(env, reflectLoader);
 

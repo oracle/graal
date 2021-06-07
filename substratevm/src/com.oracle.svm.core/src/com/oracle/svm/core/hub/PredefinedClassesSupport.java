@@ -38,10 +38,8 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
 
@@ -159,13 +157,5 @@ public final class PredefinedClassesSupport {
         public static UnmodifiableEconomicMap<String, Class<?>> getPredefinedClasses() {
             return singleton().predefinedClassesByName;
         }
-    }
-}
-
-@AutomaticFeature
-final class ClassDefinitionFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(PredefinedClassesSupport.class, new PredefinedClassesSupport());
     }
 }

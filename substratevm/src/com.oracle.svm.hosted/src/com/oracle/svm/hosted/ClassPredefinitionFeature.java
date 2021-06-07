@@ -57,6 +57,8 @@ public class ClassPredefinitionFeature implements Feature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess arg) {
+        ImageSingletons.add(PredefinedClassesSupport.class, new PredefinedClassesSupport());
+
         AfterRegistrationAccessImpl access = (AfterRegistrationAccessImpl) arg;
         PredefinedClassesRegistry registry = new PredefinedClassesRegistryImpl();
         ImageSingletons.add(PredefinedClassesRegistry.class, registry);

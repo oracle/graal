@@ -96,10 +96,7 @@ public abstract class ConfigurationParser {
     }
 
     protected static String asNullableString(Object value, String propertyName) {
-        if (value == null || value instanceof String) {
-            return (String) value;
-        }
-        throw new JSONParserException("Invalid string value \"" + value + "\" for element '" + propertyName + "'");
+        return (value == null) ? null : asString(value, propertyName);
     }
 
     protected static boolean asBoolean(Object value, String propertyName) {
