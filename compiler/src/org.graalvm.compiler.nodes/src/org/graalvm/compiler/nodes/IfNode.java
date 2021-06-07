@@ -54,8 +54,6 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
-import org.graalvm.compiler.nodes.spi.Simplifiable;
-import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
@@ -79,6 +77,8 @@ import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+import org.graalvm.compiler.nodes.spi.Simplifiable;
+import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodes.spi.SwitchFoldable;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 
@@ -1445,9 +1445,6 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         assert !ends.hasNext();
         assert falseEnds.size() + trueEnds.size() == xs.length;
 
-        connectEnds(falseEnds, phi, phiValues, oldFalseSuccessor, merge, tool);
-        connectEnds(trueEnds, phi, phiValues, oldTrueSuccessor, merge, tool);
-
         if (this.getTrueSuccessorProbability() == 0.0) {
             for (AbstractEndNode endNode : trueEnds) {
                 propagateZeroProbability(endNode);
@@ -1459,6 +1456,13 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 propagateZeroProbability(endNode);
             }
         }
+
+        if (this.getProfileData().getProfileSource() == ProfileSource.INJECTED && trueEnds.size() == 1 && falseEnds.size() == 1) {
+            propagateInjectedProfile(this.getProfileData(), trueEnds.get(0), falseEnds.get(0));
+        }
+
+        connectEnds(falseEnds, phi, phiValues, oldFalseSuccessor, merge, tool);
+        connectEnds(trueEnds, phi, phiValues, oldTrueSuccessor, merge, tool);
 
         /*
          * Remove obsolete ends only after processing all ends, otherwise oldTrueSuccessor or
@@ -1510,6 +1514,41 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 for (AbstractEndNode endNode : ((AbstractMergeNode) node).cfgPredecessors()) {
                     propagateZeroProbability(endNode);
                 }
+                return;
+            }
+            prev = node;
+        }
+    }
+
+    private static IfNode predecessorIf(FixedNode end) {
+        for (FixedNode node : GraphUtil.predecessorIterable(end)) {
+            if (node instanceof IfNode) {
+                return (IfNode) node;
+            } else if (node instanceof AbstractMergeNode) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    private static void propagateInjectedProfile(BranchProbabilityData profile, EndNode trueEnd, EndNode falseEnd) {
+        Node prev = null;
+        for (FixedNode node : GraphUtil.predecessorIterable(trueEnd)) {
+            if (node instanceof IfNode) {
+                IfNode ifNode = (IfNode) node;
+                if (!ProfileSource.isTrusted(ifNode.getProfileData().getProfileSource())) {
+                    if (ifNode == predecessorIf(falseEnd)) {
+                        if (ifNode.trueSuccessor() == prev) {
+                            ifNode.setTrueSuccessorProbability(profile);
+                        } else if (ifNode.falseSuccessor() == prev) {
+                            ifNode.setTrueSuccessorProbability(profile.negated());
+                        } else {
+                            throw new GraalError("Illegal state");
+                        }
+                    }
+                }
+                return;
+            } else if (node instanceof AbstractMergeNode) {
                 return;
             }
             prev = node;
