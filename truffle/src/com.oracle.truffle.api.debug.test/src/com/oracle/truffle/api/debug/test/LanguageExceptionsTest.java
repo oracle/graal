@@ -158,7 +158,7 @@ public class LanguageExceptionsTest extends AbstractDebugTest {
         testBuggyLanguageCalls(new TestDebugBuggyLanguage(),
                         (SuspendedEvent event) -> {
                             DebugValue value = event.getTopStackFrame().getScope().getDeclaredValue("o");
-                            value.getProperty("A").set(10);
+                            value.getProperty("A").set(event.getSession().createPrimitiveValue(10, null));
                         }, "WRITE");
     }
 
