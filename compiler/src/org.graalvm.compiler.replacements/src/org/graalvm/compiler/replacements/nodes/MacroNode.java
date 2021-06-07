@@ -28,7 +28,6 @@ import static jdk.vm.ci.code.BytecodeFrame.isPlaceholderBci;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_UNKNOWN;
 
-import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
@@ -48,7 +47,6 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
-import org.graalvm.compiler.phases.common.LoweringPhase;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.word.LocationIdentity;
 
@@ -56,18 +54,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
- * Macro nodes can be used to temporarily replace an invoke. They can, for example, be used to
- * implement constant folding for known JDK functions like {@link Class#isInterface()}.<br/>
- * <br/>
- * During lowering, multiple sources are queried in order to look for a replacement:
- * <ul>
- * <li>If {@link #getLoweredSnippetGraph(LoweringTool)} returns a non-null result, this graph is
- * used as a replacement.</li>
- * <li>If a {@link MethodSubstitution} for the target method is found, this substitution is used as
- * a replacement.</li>
- * <li>Otherwise, the macro node is replaced with an {@link InvokeNode}. Note that this is only
- * possible if the macro node is a {@link MacroStateSplitNode}.</li>
- * </ul>
+ * @see MacroInvokable
  */
 //@formatter:off
 @NodeInfo(cycles = CYCLES_UNKNOWN,

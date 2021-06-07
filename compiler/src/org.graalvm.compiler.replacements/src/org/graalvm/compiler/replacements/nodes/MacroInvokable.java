@@ -24,10 +24,12 @@
  */
 package org.graalvm.compiler.replacements.nodes;
 
+import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.Invokable;
+import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
@@ -40,9 +42,18 @@ import org.graalvm.compiler.phases.common.RemoveValueProxyPhase;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
- * Marker interface for macro nodes can be used to temporarily replace an invoke.
- * 
- * @see MacroNode
+ * Macro invokable nodes can be used to temporarily replace an invoke. They can, for example, be
+ * used to implement constant folding for known JDK functions like {@link Class#isInterface()}.<br/>
+ * <br/>
+ * During lowering, multiple sources are queried in order to look for a replacement:
+ * <ul>
+ * <li>If {@link #getLoweredSnippetGraph(LoweringTool)} returns a non-null result, this graph is
+ * used as a replacement.</li>
+ * <li>If a {@link MethodSubstitution} for the target method is found, this substitution is used as
+ * a replacement.</li>
+ * <li>Otherwise, the macro node is replaced with an {@link InvokeNode}. Note that this is only
+ * possible if the macro node is a {@link MacroStateSplitNode}.</li>
+ * </ul>
  */
 public interface MacroInvokable extends Invokable {
 
@@ -76,7 +87,9 @@ public interface MacroInvokable extends Invokable {
 
     /**
      * Gets a snippet to be used for lowering this macro node. The returned graph (if non-null) must
-     * have been {@linkplain MacroInvokable#lowerReplacement(StructuredGraph, StructuredGraph, LoweringTool) lowered}.
+     * have been
+     * {@linkplain MacroInvokable#lowerReplacement(StructuredGraph, StructuredGraph, LoweringTool)
+     * lowered}.
      */
     @SuppressWarnings("unused")
     default StructuredGraph getLoweredSnippetGraph(LoweringTool tool) {
