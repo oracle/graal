@@ -631,7 +631,7 @@ public abstract class AbstractPolyglotImpl {
         public abstract <K, V> Map.Entry<K, V> toMapEntry(Object internalContext, Object foreignObject, boolean implementsFunction,
                         Class<K> keyClass, Type keyType, Class<V> valueClass, Type valueType);
 
-        public abstract <T> Function<?, ?> toFunction(Object internalContext, Object function, Class<?> returnClass, Type returnType);
+        public abstract <T> Function<?, ?> toFunction(Object internalContext, Object function, Class<?> returnClass, Type returnType, Class<?> paramClass, Type paramType);
 
         public abstract Object toObjectProxy(Object internalContext, Class<?> clazz, Object obj) throws IllegalArgumentException;
 

@@ -120,9 +120,9 @@ final class PolyglotHostEngine extends AbstractHostAccess {
     }
 
     @Override
-    public <T> Function<?, ?> toFunction(Object internalContext, Object function, Class<?> returnClass, Type returnType) {
+    public <T> Function<?, ?> toFunction(Object internalContext, Object function, Class<?> returnClass, Type returnType, Class<?> paramClass, Type paramType) {
         PolyglotContextImpl context = (PolyglotContextImpl) internalContext;
-        return PolyglotFunction.create(context.getHostContext(), function, returnClass, returnType);
+        return PolyglotFunction.create(context.getHostContext(), function, returnClass, returnType, paramClass, paramType);
     }
 
     @Override
