@@ -152,31 +152,6 @@ gateWindowsAMD64 : ${windows-amd64} ${gateCommon}
 
 gateLinuxAArch64 : ${linux-aarch64} ${gateCommon}
 
-# This task listens to the hotspot math stubs changes. In case of failure, please check if the hotspot changes affect the
-# emitted stub code in C2, and update corresponding recasts in the org.graalvm.compiler.lir.amd64 package accordingly.
-gateMathStubsListener: ${linux-amd64} {
-  run: [
-    [wget, https://raw.githubusercontent.com/openjdk/jdk/master/src/hotspot/cpu/x86/macroAssembler_x86_cos.cpp]
-    [wget, https://raw.githubusercontent.com/openjdk/jdk/master/src/hotspot/cpu/x86/macroAssembler_x86_exp.cpp]
-    [wget, https://raw.githubusercontent.com/openjdk/jdk/master/src/hotspot/cpu/x86/macroAssembler_x86_log10.cpp]
-    [wget, https://raw.githubusercontent.com/openjdk/jdk/master/src/hotspot/cpu/x86/macroAssembler_x86_log.cpp]
-    [wget, https://raw.githubusercontent.com/openjdk/jdk/master/src/hotspot/cpu/x86/macroAssembler_x86_pow.cpp]
-    [wget, https://raw.githubusercontent.com/openjdk/jdk/master/src/hotspot/cpu/x86/macroAssembler_x86_sin.cpp]
-    [wget, https://raw.githubusercontent.com/openjdk/jdk/master/src/hotspot/cpu/x86/macroAssembler_x86_tan.cpp]
-    [echo, -e, "f801a757f3d5473368dce85993618e04  macroAssembler_x86_cos.cpp", |, md5sum, -c]
-    [echo, -e, "1e3fde26e031a061bbe3700eb77b2961  macroAssembler_x86_exp.cpp", |, md5sum, -c]
-    [echo, -e, "5ede616384ebf2d7eb26cb889aca6cf0  macroAssembler_x86_log10.cpp", |, md5sum, -c]
-    [echo, -e, "e986e7e26aac8dc080f373594c2502dc  macroAssembler_x86_log.cpp", |, md5sum, -c]
-    [echo, -e, "426d5dba57086bf40a67a1c1631b8288  macroAssembler_x86_pow.cpp", |, md5sum, -c]
-    [echo, -e, "612e6870fff00bd5e44452123170b16d  macroAssembler_x86_sin.cpp", |, md5sum, -c]
-    [echo, -e, "41e14dedcaddfbcc7a3042f7b926d474  macroAssembler_x86_tan.cpp", |, md5sum, -c]
-  ]
-  targets: [daily]
-  notify_emails: [
-    "yudi.zheng@oracle.com"
-  ]
-}
-
 gateLinuxAMD64AVX3 : ${gateLinuxAMD64} {
   capabilities : ["linux", "amd64", "x82"]
   environment : {
