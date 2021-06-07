@@ -281,6 +281,11 @@ public final class Meta implements ContextAccess {
         java_io_InputStream_close = java_io_InputStream.requireDeclaredMethod(Name.close, Signature._void);
         java_io_PrintStream = knownKlass(Type.java_io_PrintStream);
         java_io_PrintStream_println = java_io_PrintStream.requireDeclaredMethod(Name.println, Signature._void_String);
+        java_io_File = knownKlass(Type.java_io_File);
+        java_io_File_init = java_io_File.requireDeclaredMethod(Name._init_, Signature._void_String);
+        java_io_File_toURI = java_io_File.requireDeclaredMethod(Name.toURI, Signature.URI);
+        java_nio_file_Paths = knownKlass(Type.java_nio_file_Paths);
+        java_nio_file_Paths_get = java_nio_file_Paths.requireDeclaredMethod(Name.get, Signature.Path_URI);
 
         sun_launcher_LauncherHelper = knownKlass(Type.sun_launcher_LauncherHelper);
         sun_launcher_LauncherHelper_printHelpMessage = sun_launcher_LauncherHelper.requireDeclaredMethod(Name.printHelpMessage, Signature._void_boolean);
@@ -633,6 +638,10 @@ public final class Meta implements ContextAccess {
         java_util_List_size = java_util_List.requireDeclaredMethod(Name.size, Signature._int);
         assert java_util_List.isInterface();
 
+        java_util_Set = knownKlass(Type.java_util_Set);
+        java_util_Set_add = java_util_Set.requireDeclaredMethod(Name.add, Signature._boolean_Object);
+        assert java_util_Set.isInterface();
+
         java_lang_Iterable = knownKlass(Type.java_lang_Iterable);
         java_lang_Iterable_iterator = java_lang_Iterable.requireDeclaredMethod(Name.iterator, Signature.java_util_Iterator);
         assert java_lang_Iterable.isInterface();
@@ -671,6 +680,23 @@ public final class Meta implements ContextAccess {
 
             java_lang_reflect_ProxyGenerator = knownKlass(Type.java_lang_reflect_ProxyGenerator);
             java_lang_reflect_ProxyGenerator_generateProxyClass = java_lang_reflect_ProxyGenerator.requireDeclaredMethod(Name.generateProxyClass, Signature._byte_array_String_Class_array_int);
+        }
+
+        if (getJavaVersion().java9OrLater()) {
+            jdk_internal_module_ModuleLoaderMap = knownKlass(Type.jdk_internal_module_ModuleLoaderMap);
+            jdk_internal_module_ModuleLoaderMap_platformModules = jdk_internal_module_ModuleLoaderMap.requireDeclaredMethod(Name.platformModules, Signature.java_util_Set);
+            jdk_internal_module_ModuleReferences = knownKlass(Type.jdk_internal_module_ModuleReferences);
+            jdk_internal_module_ModuleReferences_newJarModule = jdk_internal_module_ModuleReferences.requireDeclaredMethod(Name.newJarModule, Signature.Attributes_ModulePatcher_Path);
+            jdk_internal_module_ModuleReferences_newJModModule = jdk_internal_module_ModuleReferences.requireDeclaredMethod(Name.newJModModule, Signature.Attributes_Path);
+            jdk_internal_module_ModuleReferences_newExplodedModule = jdk_internal_module_ModuleReferences.requireDeclaredMethod(Name.newExplodedModule, Signature.Attributes_ModulePatcher_Path);
+        } else {
+            jdk_internal_module_ModuleLoaderMap = null;
+            jdk_internal_module_ModuleLoaderMap_platformModules = null;
+            jdk_internal_module_ModuleReferences = null;
+            jdk_internal_module_ModuleReferences_newJarModule = null;
+            jdk_internal_module_ModuleReferences_newJModModule = null;
+            jdk_internal_module_ModuleReferences_newExplodedModule = null;
+
         }
     }
 
@@ -984,6 +1010,13 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass java_io_PrintStream;
     public final Method java_io_PrintStream_println;
 
+    public final ObjectKlass java_io_File;
+    public final Method java_io_File_init;
+    public final Method java_io_File_toURI;
+
+    public final ObjectKlass java_nio_file_Paths;
+    public final Method java_nio_file_Paths_get;
+
     // Array support.
     public final ObjectKlass java_lang_Cloneable;
     public final ObjectKlass java_io_Serializable;
@@ -1145,6 +1178,14 @@ public final class Meta implements ContextAccess {
     public final Field java_lang_StackFrameInfo_memberName;
     public final Field java_lang_StackFrameInfo_bci;
 
+    // Module system
+    public final ObjectKlass jdk_internal_module_ModuleLoaderMap;
+    public final Method jdk_internal_module_ModuleLoaderMap_platformModules;
+    public final ObjectKlass jdk_internal_module_ModuleReferences;
+    public final Method jdk_internal_module_ModuleReferences_newJarModule;
+    public final Method jdk_internal_module_ModuleReferences_newJModModule;
+    public final Method jdk_internal_module_ModuleReferences_newExplodedModule;
+
     // Interop conversions.
     public final ObjectKlass java_time_Duration;
     public final Field java_time_Duration_seconds;
@@ -1198,6 +1239,9 @@ public final class Meta implements ContextAccess {
     public final Method java_util_List_get;
     public final Method java_util_List_set;
     public final Method java_util_List_size;
+
+    public final ObjectKlass java_util_Set;
+    public final Method java_util_Set_add;
 
     public final ObjectKlass java_lang_Iterable;
     public final Method java_lang_Iterable_iterator;
