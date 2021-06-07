@@ -206,6 +206,7 @@ public class JfrThreadLocal implements ThreadListener {
 
         if (uncommitted.aboveThan(0)) {
             // Copy all uncommitted memory to the start of the thread local buffer.
+            assert JfrBufferAccess.getDataStart(threadLocalBuffer).add(uncommitted).belowOrEqual(JfrBufferAccess.getDataEnd(threadLocalBuffer));
             UnmanagedMemoryUtil.copy(threadLocalBuffer.getPos(), JfrBufferAccess.getDataStart(threadLocalBuffer), uncommitted);
         }
         JfrBufferAccess.reinitialize(threadLocalBuffer);

@@ -329,6 +329,8 @@ public final class JfrNativeEventWriter {
 
     @Uninterruptible(reason = "Accesses a native JFR buffer.", callerMustBe = true)
     private static void putUncheckedByte(JfrNativeEventWriterData data, byte i) {
+        // This method is only called if ensureSize() succeeded earlier.
+        assert getAvailableSize(data).aboveOrEqual(Byte.BYTES);
         data.getCurrentPos().writeByte(0, i);
         increaseCurrentPos(data, Byte.BYTES);
     }
