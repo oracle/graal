@@ -58,6 +58,7 @@ import com.oracle.truffle.regex.result.LazyResult;
 import com.oracle.truffle.regex.result.NoMatchResult;
 import com.oracle.truffle.regex.result.PreCalculatedResultFactory;
 import com.oracle.truffle.regex.result.RegexResult;
+import com.oracle.truffle.regex.result.RegexResultGetStartNode;
 import com.oracle.truffle.regex.result.SingleIndexArrayResult;
 import com.oracle.truffle.regex.result.SingleResult;
 import com.oracle.truffle.regex.result.SingleResultLazyStart;
@@ -90,6 +91,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
     private final ConditionProfile inputProfile = ConditionProfile.createBinaryProfile();
 
     @Child private RunRegexSearchNode runnerNode;
+    @Child private RegexResultGetStartNode stickyCheckNode;
 
     public TRegexExecNode(RegexAST ast, TRegexExecutorNode nfaExecutor) {
         super(ast.getLanguage(), ast.getSource(), ast.getFlags().isUnicode());
@@ -99,6 +101,9 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
         this.backtrackingMode = nfaExecutor instanceof TRegexBacktrackingNFAExecutorNode;
         this.regressionTestMode = !backtrackingMode && ast.getSource().getOptions().isRegressionTestMode();
         this.runnerNode = nfaNode;
+        if (ast.getFlags().isSticky() && ast.getWrappedPrefixLength() > 0) {
+            this.stickyCheckNode = RegexResultGetStartNode.create();
+        }
         if (this.regressionTestMode) {
             regressTestBacktrackingNode = new NFARegexSearchNode(
                             createEntryNode(TRegexCompiler.compileBacktrackingExecutor(getRegexLanguage(), ((TRegexNFAExecutorNode) nfaNode.getExecutor()).getNFA())));
@@ -127,7 +132,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
             }
         }
 
-        final RegexResult result = runnerNode.run(input, fromIndex, inputLength);
+        final RegexResult result = runnerNode.run(input, fromIndex, inputLength, stickyCheckNode);
         assert !regressionTestMode || backtrackerProducesSameResult(input, fromIndex, result);
         assert !regressionTestMode || nfaProducesSameResult(input, fromIndex, result);
         assert !regressionTestMode || noSimpleCGLazyDFAProducesSameResult(input, fromIndex, result);
@@ -189,7 +194,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
     }
 
     private boolean backtrackerProducesSameResult(Object input, int fromIndex, RegexResult result) {
-        RegexResult btResult = regressTestBacktrackingNode.run(input, fromIndex, inputLength(input));
+        RegexResult btResult = regressTestBacktrackingNode.run(input, fromIndex, inputLength(input), stickyCheckNode);
         if (resultsEqual(result, btResult, getNumberOfCaptureGroups())) {
             return true;
         }
@@ -203,7 +208,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
             return true;
         }
         assert !(runnerNode instanceof NFARegexSearchNode);
-        RegexResult btResult = nfaNode.run(input, fromIndex, inputLength(input));
+        RegexResult btResult = nfaNode.run(input, fromIndex, inputLength(input), stickyCheckNode);
         if (resultsEqual(result, btResult, getNumberOfCaptureGroups())) {
             return true;
         }
@@ -217,7 +222,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
             return true;
         }
         assert !regressTestNoSimpleCGLazyDFANode.isSimpleCG();
-        RegexResult noSimpleCGResult = regressTestNoSimpleCGLazyDFANode.run(input, fromIndex, inputLength(input));
+        RegexResult noSimpleCGResult = regressTestNoSimpleCGLazyDFANode.run(input, fromIndex, inputLength(input), stickyCheckNode);
         if (resultsEqual(result, noSimpleCGResult, getNumberOfCaptureGroups())) {
             return true;
         }
@@ -235,9 +240,9 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
         RegexResult eagerResult;
         if (runnerNode == lazyDFANode) {
             lazyResult = resultOfCurrentSearchNode;
-            eagerResult = eagerDFANode.run(input, fromIndex, inputLength(input));
+            eagerResult = eagerDFANode.run(input, fromIndex, inputLength(input), stickyCheckNode);
         } else {
-            lazyResult = lazyDFANode.run(input, fromIndex, inputLength(input));
+            lazyResult = lazyDFANode.run(input, fromIndex, inputLength(input), stickyCheckNode);
             eagerResult = resultOfCurrentSearchNode;
         }
         boolean equal = resultsEqual(lazyResult, eagerResult, getNumberOfCaptureGroups());
@@ -349,9 +354,20 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
         return "TRegex fwd";
     }
 
-    abstract static class RunRegexSearchNode extends Node {
+    public abstract static class RunRegexSearchNode extends Node {
 
-        abstract RegexResult run(Object input, int fromIndexArg, int inputLength);
+        public RegexResult run(Object input, int fromIndexArg, int inputLength, RegexResultGetStartNode stickyCheckNode) {
+            RegexResult result = runInternal(input, fromIndexArg, inputLength);
+            if (stickyCheckNode != null) {
+                int start = stickyCheckNode.execute(result, 0);
+                if (start != fromIndexArg) {
+                    return NoMatchResult.getInstance();
+                }
+            }
+            return result;
+        }
+
+        protected abstract RegexResult runInternal(Object input, int fromIndexArg, int inputLength);
     }
 
     public static final class LazyCaptureGroupRegexSearchNode extends RunRegexSearchNode {
@@ -413,7 +429,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
         }
 
         @Override
-        RegexResult run(Object input, int fromIndexArg, int inputLength) {
+        protected RegexResult runInternal(Object input, int fromIndexArg, int inputLength) {
             if (backwardEntryNode != null && getBackwardExecutor().isAnchored()) {
                 return executeBackwardAnchored(input, fromIndexArg, inputLength);
             } else {
@@ -463,16 +479,9 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
                 return NoMatchResult.getInstance();
             }
             if (multiplePreCalcResults()) { // traceFinder
-                RegexResult preCalcResult = preCalculatedResults[backwardResult].createFromEnd(inputLength);
-                if (flags.isSticky() && preCalcResult.getStart(0) != fromIndexArg) {
-                    return NoMatchResult.getInstance();
-                }
-                return preCalcResult;
+                return preCalculatedResults[backwardResult].createFromEnd(inputLength);
             }
             final int start = backwardResult;
-            if (flags.isSticky() && start != fromIndexArg) {
-                return NoMatchResult.getInstance();
-            }
             if (singlePreCalcResult()) {
                 return preCalculatedResults[0].createFromStart(start);
             }
@@ -505,7 +514,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
         }
 
         @Override
-        RegexResult run(Object input, int fromIndexArg, int inputLength) {
+        protected RegexResult runInternal(Object input, int fromIndexArg, int inputLength) {
             final int[] resultArray = (int[]) entryNode.execute(input, fromIndexArg, fromIndexArg, inputLength);
             if (resultArray == null) {
                 return NoMatchResult.getInstance();
@@ -527,7 +536,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
         }
 
         @Override
-        RegexResult run(Object input, int fromIndexArg, int inputLength) {
+        protected RegexResult runInternal(Object input, int fromIndexArg, int inputLength) {
             final int[] resultArray = (int[]) entryNode.execute(input, fromIndexArg, fromIndexArg, inputLength);
             if (resultArray == null) {
                 return NoMatchResult.getInstance();

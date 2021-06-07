@@ -621,12 +621,10 @@ class ScalaDaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.ScalaDaCapoBenchma
                 cp += ':' +  super(ScalaDaCapoNativeImageBenchmarkSuite, self).additional_lib(lib)
         return cp
 
-
     def successPatterns(self):
         return super(ScalaDaCapoNativeImageBenchmarkSuite, self).successPatterns() + [
             _successful_stage_pattern
         ]
-
 
     @staticmethod
     def substitution_path():

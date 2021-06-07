@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,10 +22,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package hello.privateLib2;
 
-/*
- * This package is intentionally not annotated as HOSTED_ONLY. It contains
- * the server message classes that are used by the driver, i.e., by code
- * distributed as a native image.
- */
-package com.oracle.svm.hosted.server;
+public class PrivateGreeter {
+    private static void greet() {
+        System.out.println("Seeing this requires --add-opens");
+    }
+}

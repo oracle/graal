@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,26 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.pointsto.flow;
 
-import org.graalvm.compiler.graph.Node;
+package com.oracle.svm.driver;
 
-import com.oracle.graal.pointsto.nodes.ConvertUnknownValueNode;
+import java.nio.file.Path;
+import java.util.List;
 
-/**
- * Converts an unknown value, i.e., a value resulted from a low level memory read, i.e.,
- * word-to-object reads, to proper objects to be used by the analysis. If a precise type is
- * avaialable it is used to reduce the *all-instantiated* type flow. See
- * {@link ConvertUnknownValueNode} for details.
- */
-public class ConvertUnknownValueTypeFlow extends ProxyTypeFlow {
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
-    public ConvertUnknownValueTypeFlow(Node source, TypeFlow<?> input) {
-        super(source, input);
-    }
-
-    @Override
-    public String toString() {
-        return "ConvertUnknownValueTypeFlow<" + input + ">";
+public class ModuleAccess {
+    @SuppressWarnings("unused")
+    public static List<String> getModuleNames(Path... modulePathEntries) {
+        assert JavaVersionUtil.JAVA_SPEC <= 8;
+        /* For Java 8 this method does not have any effect */
+        return null;
     }
 }

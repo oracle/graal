@@ -43,6 +43,7 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.phases.common.BoxNodeIdentityPhase;
 import org.graalvm.compiler.phases.common.BoxNodeOptimizationPhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
@@ -104,6 +105,10 @@ public class HighTier extends BaseTier<HighTierContext> {
         if (LoopUnswitch.getValue(options)) {
             appendPhase(new IncrementalCanonicalizerPhase<>(canonicalizer, new LoopUnswitchingPhase(loopPolicies)));
         }
+
+        // Must precede all phases that otherwise ignore the identity of boxes (e.g.
+        // PartialEscapePhase and BoxNodeOptimizationPhase).
+        appendPhase(new BoxNodeIdentityPhase());
 
         if (PartialEscapeAnalysis.getValue(options)) {
             appendPhase(new PartialEscapePhase(true, canonicalizer, options).setFinalPEA());

@@ -141,7 +141,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
         } else {
             objectValue = ((Pointer) pointerBits).toObject();
         }
-        return KnownIntrinsics.convertUnknownValue(objectValue, DynamicHub.class);
+        return (DynamicHub) objectValue;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

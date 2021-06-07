@@ -28,6 +28,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 
 abstract class AbstractContextObject implements TruffleObject {
@@ -49,9 +50,10 @@ abstract class AbstractContextObject implements TruffleObject {
             case "name":
                 if (name == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    name = getInstrumentedNode().getRootNode().getName();
+                    final RootNode node = getInstrumentedNode().getRootNode();
+                    name = node.getQualifiedName();
                 }
-                return name;
+                return NullObject.nullCheck(name);
             case "characters": {
                 CompilerDirectives.transferToInterpreter();
                 final SourceSection ss = getInstrumentedSourceSection();

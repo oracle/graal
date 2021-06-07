@@ -301,21 +301,6 @@ class TestProtectedAssembler extends AArch64Assembler {
     }
 
     @Override
-    protected void asr(int size, Register dst, Register src1, Register src2) {
-        super.asr(size, dst, src1, src2);
-    }
-
-    @Override
-    protected void lsl(int size, Register dst, Register src1, Register src2) {
-        super.lsl(size, dst, src1, src2);
-    }
-
-    @Override
-    protected void lsr(int size, Register dst, Register src1, Register src2) {
-        super.lsr(size, dst, src1, src2);
-    }
-
-    @Override
     protected void rorv(int size, Register dst, Register src1, Register src2) {
         super.rorv(size, dst, src1, src2);
     }

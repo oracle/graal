@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,17 +22,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.server;
+package com.oracle.svm.core.jdk;
 
-import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.ForkJoinWorkerThread;
+import org.graalvm.nativeimage.ImageSingletons;
 
-public class NativeImageThreadFactory implements ForkJoinPool.ForkJoinWorkerThreadFactory {
-    @Override
-    public ForkJoinWorkerThread newThread(ForkJoinPool pool) {
-        ForkJoinWorkerThread thread = new ForkJoinWorkerThread(pool) {
-        };
-        thread.setContextClassLoader(NativeImageBuildServer.class.getClassLoader());
-        return thread;
+// Checkstyle: stop
+import sun.security.jca.ProviderList;
+// Checkstyle: resume
+
+public interface SecurityProvidersFilter {
+
+    static SecurityProvidersFilter instance() {
+        return ImageSingletons.lookup(SecurityProvidersFilter.class);
     }
+
+    Object cleanVerificationCache(Object cache);
+
+    ProviderList cleanUnregisteredProviders(ProviderList providerList);
+
 }

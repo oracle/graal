@@ -935,8 +935,13 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     @Override
     public void add(int size, Register dst, Register src1, Register src2, ShiftType shiftType, int shiftAmt) {
-        int shift = clampShiftAmt(size, shiftAmt);
-        super.add(size, dst, src1, src2, shiftType, shift);
+        int clampedShift = clampShiftAmt(size, shiftAmt);
+        if (clampedShift == 0) {
+            /* Make explicit no shift is being performed. */
+            add(size, dst, src1, src2);
+        } else {
+            super.add(size, dst, src1, src2, shiftType, clampedShift);
+        }
     }
 
     /**
@@ -951,8 +956,13 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     @Override
     public void sub(int size, Register dst, Register src1, Register src2, ShiftType shiftType, int shiftAmt) {
-        int shift = clampShiftAmt(size, shiftAmt);
-        super.sub(size, dst, src1, src2, shiftType, shift);
+        int clampedShift = clampShiftAmt(size, shiftAmt);
+        if (clampedShift == 0) {
+            /* Make explicit no shift is being performed. */
+            sub(size, dst, src1, src2);
+        } else {
+            super.sub(size, dst, src1, src2, shiftType, clampedShift);
+        }
     }
 
     /**
@@ -1200,7 +1210,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             // xDst = wSrc1 * wSrc2
             super.umaddl(dst, src1, src2, zr);
             // xDst = xDst >> 32
-            lshr(64, dst, dst, 32);
+            lsr(64, dst, dst, 32);
         }
     }
 
@@ -1221,7 +1231,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             // xDst = wSrc1 * wSrc2
             super.smaddl(dst, src1, src2, zr);
             // xDst = xDst >> 32
-            lshr(64, dst, dst, 32);
+            lsr(64, dst, dst, 32);
         }
     }
 
@@ -1372,21 +1382,12 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param src general purpose register. May not be null, stackpointer or zero-register.
      * @param shiftAmt amount by which src is shifted.
      */
-    public void shl(int size, Register dst, Register src, long shiftAmt) {
-        int shift = clampShiftAmt(size, shiftAmt);
-        super.ubfm(size, dst, src, (size - shift) & (size - 1), size - 1 - shift);
-    }
-
-    /**
-     * dst = src1 << (src2 & (size - 1)).
-     *
-     * @param size register size. Has to be 32 or 64.
-     * @param dst general purpose register. May not be null or stackpointer.
-     * @param src general purpose register. May not be null or stackpointer.
-     * @param shift general purpose register. May not be null or stackpointer.
-     */
-    public void shl(int size, Register dst, Register src, Register shift) {
-        super.lsl(size, dst, src, shift);
+    public void lsl(int size, Register dst, Register src, long shiftAmt) {
+        int clampedShift = clampShiftAmt(size, shiftAmt);
+        if (clampedShift != 0) {
+            int remainingBits = size - clampedShift;
+            super.ubfm(size, dst, src, remainingBits, remainingBits - 1);
+        }
     }
 
     /**
@@ -1397,21 +1398,11 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param src general purpose register. May not be null, stackpointer or zero-register.
      * @param shiftAmt amount by which src is shifted.
      */
-    public void lshr(int size, Register dst, Register src, long shiftAmt) {
-        int shift = clampShiftAmt(size, shiftAmt);
-        super.ubfm(size, dst, src, shift, size - 1);
-    }
-
-    /**
-     * dst = src1 >>> (src2 & (size - 1)).
-     *
-     * @param size register size. Has to be 32 or 64.
-     * @param dst general purpose register. May not be null or stackpointer.
-     * @param src general purpose register. May not be null or stackpointer.
-     * @param shift general purpose register. May not be null or stackpointer.
-     */
-    public void lshr(int size, Register dst, Register src, Register shift) {
-        super.lsr(size, dst, src, shift);
+    public void lsr(int size, Register dst, Register src, long shiftAmt) {
+        int clampedShift = clampShiftAmt(size, shiftAmt);
+        if (clampedShift != 0) {
+            super.ubfm(size, dst, src, clampedShift, size - 1);
+        }
     }
 
     /**
@@ -1422,21 +1413,11 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param src general purpose register. May not be null, stackpointer or zero-register.
      * @param shiftAmt amount by which src is shifted.
      */
-    public void ashr(int size, Register dst, Register src, long shiftAmt) {
-        int shift = clampShiftAmt(size, shiftAmt);
-        super.sbfm(size, dst, src, shift, size - 1);
-    }
-
-    /**
-     * dst = src1 >> (src2 & log2(size)).
-     *
-     * @param size register size. Has to be 32 or 64.
-     * @param dst general purpose register. May not be null or stackpointer.
-     * @param src general purpose register. May not be null or stackpointer.
-     * @param shift general purpose register. May not be null or stackpointer.
-     */
-    public void ashr(int size, Register dst, Register src, Register shift) {
-        super.asr(size, dst, src, shift);
+    public void asr(int size, Register dst, Register src, long shiftAmt) {
+        int clampedShift = clampShiftAmt(size, shiftAmt);
+        if (clampedShift != 0) {
+            super.sbfm(size, dst, src, clampedShift, size - 1);
+        }
     }
 
     /**
@@ -1470,12 +1451,13 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     /**
      * Clamps shiftAmt into range 0 <= shiftamt < size according to JLS.
      *
-     * @param size size of operation.
+     * @param size size of operation. Must be 32 or 64.
      * @param shiftAmt arbitrary shift amount.
      * @return value between 0 and size - 1 inclusive that is equivalent to shiftAmt according to
      *         JLS.
      */
-    private static int clampShiftAmt(int size, long shiftAmt) {
+    public static int clampShiftAmt(int size, long shiftAmt) {
+        assert size == 32 || size == 64;
         return (int) (shiftAmt & (size - 1));
     }
 
@@ -2286,9 +2268,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     public void cacheWriteback(AArch64Address line) {
-        assert line.getAddressingMode() == AddressingMode.REGISTER_OFFSET : line;
-        assert line.getOffset().equals(Register.None) : line;
-        assert line.getImmediate() == 0 : line;
+        assert line.getAddressingMode() == AddressingMode.BASE_REGISTER_ONLY : line;
         // writeback using clear virtual address to point of persistence
         dc(DataCacheOperationType.CVAP, line.getBase());
     }

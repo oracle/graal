@@ -578,6 +578,11 @@ class FieldDescriptor extends ElementDescriptor {
         public boolean isFinal() {
             return get("isFinal", false);
         }
+
+        @Override
+        public boolean disableCaching() {
+            return get("disableCaching", false);
+        }
     }
 
     @SuppressWarnings("all")

@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.hub;
 
-import com.oracle.svm.core.heap.StoredContinuation;
-import com.oracle.svm.core.heap.StoredContinuationImpl;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.calc.UnsignedMath;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
@@ -40,6 +38,8 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.annotate.DuplicatedInNativeCode;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.heap.StoredContinuation;
+import com.oracle.svm.core.heap.StoredContinuationImpl;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
@@ -208,7 +208,7 @@ public class LayoutEncoding {
         if (isArray(encoding)) {
             return getArraySize(encoding, ArrayLengthNode.arrayLength(obj));
         } else if (isStoredContinuation(encoding)) {
-            return WordFactory.unsigned(StoredContinuationImpl.readSize(KnownIntrinsics.convertUnknownValue(obj, StoredContinuation.class)));
+            return WordFactory.unsigned(StoredContinuationImpl.readSize((StoredContinuation) obj));
         } else {
             return getInstanceSize(encoding);
         }

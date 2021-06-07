@@ -26,7 +26,6 @@ package com.oracle.svm.truffle.nfi;
 
 import static com.oracle.svm.truffle.nfi.NativeSignature.ExecuteHelper;
 
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.StackValue;
@@ -226,7 +225,7 @@ final class Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContext {
         } else {
             Target_com_oracle_truffle_nfi_backend_libffi_LibFFISymbol ret = Target_com_oracle_truffle_nfi_backend_libffi_LibFFISymbol.create(language, library, name,
                             lookup(nativeContext, library.handle, name));
-            return KnownIntrinsics.convertUnknownValue(ret, TruffleObject.class);
+            return ret;
         }
     }
 

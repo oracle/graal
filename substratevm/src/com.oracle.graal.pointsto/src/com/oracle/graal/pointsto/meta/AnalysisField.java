@@ -31,6 +31,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.util.GuardedAnnotationAccess;
@@ -43,6 +44,7 @@ import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.typestate.TypeState;
+import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
 import com.oracle.svm.util.UnsafePartitionKind;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -50,6 +52,10 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
+
+    @SuppressWarnings("rawtypes")//
+    private static final AtomicReferenceFieldUpdater<AnalysisField, Object> OBSERVERS_UPDATER = //
+                    AtomicReferenceFieldUpdater.newUpdater(AnalysisField.class, Object.class, "observers");
 
     private final int id;
 
@@ -70,9 +76,11 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
     private boolean isAccessed;
     private boolean isRead;
     private boolean isWritten;
+    private boolean isJNIAccessed;
     private boolean isUsedInComparison;
     private AtomicBoolean isUnsafeAccessed;
     private AtomicBoolean unsafeFrozenTypeState;
+    @SuppressWarnings("unused") private volatile Object observers;
 
     /**
      * By default all instance fields are null before are initialized. It can be specified by
@@ -141,6 +149,23 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
         this.canBeNull = other.canBeNull;
         this.isWritten = other.isWritten;
         this.isRead = other.isRead;
+        notifyUpdateAccessInfo();
+    }
+
+    public void intersectAccessInfos(AnalysisField other) {
+        this.isAccessed = this.isAccessed && other.isAccessed;
+        this.canBeNull = this.canBeNull && other.canBeNull;
+        this.isWritten = this.isWritten && other.isWritten;
+        this.isRead = this.isRead && other.isRead;
+        notifyUpdateAccessInfo();
+    }
+
+    public void clearAccessInfos() {
+        this.isAccessed = false;
+        this.canBeNull = true;
+        this.isWritten = false;
+        this.isRead = false;
+        notifyUpdateAccessInfo();
     }
 
     public int getId() {
@@ -165,14 +190,14 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
         if (getType().getStorageKind() != JavaKind.Object) {
             return null;
         } else if (isStatic()) {
-            return staticFieldFlow.getState();
+            return interceptTypeState(staticFieldFlow.getState());
         } else {
             return getInstanceFieldTypeState();
         }
     }
 
     public TypeState getInstanceFieldTypeState() {
-        return instanceFieldFlow.getState();
+        return interceptTypeState(instanceFieldFlow.getState());
     }
 
     // @formatter:off
@@ -234,10 +259,12 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
 
     public void registerAsAccessed() {
         isAccessed = true;
+        notifyUpdateAccessInfo();
     }
 
     public void registerAsRead(MethodTypeFlow method) {
         isRead = true;
+        notifyUpdateAccessInfo();
         if (readBy != null && method != null) {
             readBy.put(method, Boolean.TRUE);
         }
@@ -251,6 +278,7 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
      */
     public void registerAsWritten(MethodTypeFlow method) {
         isWritten = true;
+        notifyUpdateAccessInfo();
         if (writtenBy != null && method != null) {
             writtenBy.put(method, Boolean.TRUE);
         }
@@ -261,7 +289,6 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
     }
 
     public void registerAsUnsafeAccessed(AnalysisUniverse universe, UnsafePartitionKind partitionKind) {
-
         /*
          * A field can potentially be registered as unsafe accessed multiple times. This is
          * especially true for the Graal nodes because FieldsOffsetsFeature.registerFields iterates
@@ -291,11 +318,19 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
                 declaringType.registerUnsafeAccessedField(this, partitionKind);
             }
         }
-
+        notifyUpdateAccessInfo();
     }
 
     public boolean isUnsafeAccessed() {
         return isUnsafeAccessed.get();
+    }
+
+    public void registerAsJNIAccessed() {
+        isJNIAccessed = true;
+    }
+
+    public boolean isJNIAccessed() {
+        return isJNIAccessed;
     }
 
     public void setUnsafeFrozenTypeState(boolean value) {
@@ -347,6 +382,7 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
 
     public void setCanBeNull(boolean canBeNull) {
         this.canBeNull = canBeNull;
+        notifyUpdateAccessInfo();
     }
 
     public boolean canBeNull() {
@@ -359,7 +395,6 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
     }
 
     public void setPosition(int newPosition) {
-        assert position == -1 || position == newPosition;
         this.position = newPosition;
     }
 
@@ -439,5 +474,33 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
     @Override
     public Field getJavaField() {
         return OriginalFieldProvider.getJavaField(getDeclaringClass().universe.getOriginalSnippetReflection(), wrapped);
+    }
+
+    public void addAnalysisFieldObserver(AnalysisFieldObserver observer) {
+        ConcurrentLightHashSet.addElement(this, OBSERVERS_UPDATER, observer);
+    }
+
+    public void removeAnalysisFieldObserver(AnalysisFieldObserver observer) {
+        ConcurrentLightHashSet.removeElement(this, OBSERVERS_UPDATER, observer);
+    }
+
+    private void notifyUpdateAccessInfo() {
+        for (Object observer : ConcurrentLightHashSet.getElements(this, OBSERVERS_UPDATER)) {
+            ((AnalysisFieldObserver) observer).notifyUpdateAccessInfo(this);
+        }
+    }
+
+    private TypeState interceptTypeState(TypeState typestate) {
+        TypeState result = typestate;
+        for (Object observer : ConcurrentLightHashSet.getElements(this, OBSERVERS_UPDATER)) {
+            result = ((AnalysisFieldObserver) observer).interceptTypeState(this, typestate);
+        }
+        return result;
+    }
+
+    public interface AnalysisFieldObserver {
+        void notifyUpdateAccessInfo(AnalysisField field);
+
+        TypeState interceptTypeState(AnalysisField field, TypeState typestate);
     }
 }

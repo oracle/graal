@@ -240,12 +240,14 @@ meth public int hashCode()
 meth public java.lang.Object enter()
  anno 0 java.lang.Deprecated()
 meth public java.lang.Object enter(com.oracle.truffle.api.nodes.Node)
+meth public java.util.concurrent.Future<java.lang.Void> pause()
 meth public void close()
 meth public void closeCancelled(com.oracle.truffle.api.nodes.Node,java.lang.String)
 meth public void closeResourceExhausted(com.oracle.truffle.api.nodes.Node,java.lang.String)
 meth public void leave(com.oracle.truffle.api.nodes.Node,java.lang.Object)
 meth public void leave(java.lang.Object)
  anno 0 java.lang.Deprecated()
+meth public void resume(java.util.concurrent.Future<java.lang.Void>)
 supr java.lang.Object
 hfds CONTEXT_ASSERT_STACK,EMPTY,closeable,polyglotContext
 

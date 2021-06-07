@@ -172,7 +172,7 @@ class TemporaryWorkdirMixin(mx_benchmark.VmBenchmarkSuite):
         return super(TemporaryWorkdirMixin, self).parserNames() + ["temporary_workdir_parser"]
 
 
-class BasePetClinicBenchmarkSuite(object):
+class BaseMicroserviceBenchmarkSuite(object):
     def group(self):
         return "Graal"
 
@@ -180,46 +180,43 @@ class BasePetClinicBenchmarkSuite(object):
         return "graal-compiler"
 
     def version(self):
-        return "0.1.5"
+        raise NotImplementedError()
 
     def validateReturnCode(self, retcode):
         return retcode == 143
 
     def applicationDist(self):
-        return mx.library("PETCLINIC_" + self.version(), True).get_path(True)
+        raise NotImplementedError()
 
     def applicationPath(self):
         raise NotImplementedError()
 
-    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
-        lib = self.applicationDist()
-        classpath = os.path.join(lib, "BOOT-INF/classes")
-        for filename in os.listdir(os.path.join(lib, "BOOT-INF/lib")):
-            if filename.endswith(".jar"):
-                classpath = classpath + ":" + os.path.join(lib, "BOOT-INF/lib", filename)
-        mainclass = "org.springframework.samples.petclinic.PetClinicApplication"
-        return self.vmArgs(bmSuiteArgs) + ["-cp", classpath, mainclass]
-
     def applicationStartupRule(self, benchSuiteName, benchmark):
-        # Example of SpringBoot startup log:
-        # "2021-03-08 15:49:36.155  INFO 21174 --- [           main] o.s.s.petclinic.PetClinicApplication     : Started PetClinicApplication in 4.367 seconds (JVM running for 4.812)"
         return [
+            # Example of Micronaut startup log:
+            # "[main] INFO io.micronaut.runtime.Micronaut - Startup completed in 328ms. Server Running: <url>"
             mx_benchmark.StdOutRule(
-                r"Started PetClinicApplication in (?P<appstartup>\d*[.,]?\d*) seconds \(JVM running for (?P<startup>\d*[.,]?\d*)\)$",
+                self.get_application_startup_regex(),
                 {
                     "benchmark": benchmark,
                     "bench-suite": benchSuiteName,
                     "metric.name": "app-startup",
                     "metric.value": ("<startup>", float),
-                    "metric.unit": "s",
+                    "metric.unit": self.get_application_startup_units(),
                     "metric.better": "lower",
                 }
             )
         ]
 
+    def get_application_startup_regex(self):
+        raise NotImplementedError()
+
+    def get_application_startup_units(self):
+        raise NotImplementedError
+
     def skip_agent_assertions(self, benchmark, args):
         # This method overrides NativeImageMixin.skip_agent_assertions
-        user_args = super(BasePetClinicBenchmarkSuite, self).skip_agent_assertions(benchmark, args)
+        user_args = super(BaseMicroserviceBenchmarkSuite, self).skip_agent_assertions(benchmark, args)
         if user_args is not None:
             return user_args
         else:
@@ -228,8 +225,47 @@ class BasePetClinicBenchmarkSuite(object):
     def stages(self, args):
         # This method overrides NativeImageMixin.stages
         parsed_arg = mx_sdk_benchmark.parse_prefixed_arg('-Dnative-image.benchmark.stages=', args, 'Native Image benchmark stages should only be specified once.')
-        return parsed_arg.split(',') if parsed_arg else ['instrument-image', 'instrument-run', 'image', 'run']
+        return parsed_arg.split(',') if parsed_arg else self.default_stages()
 
+    def default_stages(self):
+        raise NotImplementedError()
+
+
+class BaseSpringBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
+    def mainClass(self):
+        raise NotImplementedError()
+
+    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
+        lib = self.applicationDist()
+        classpath = os.path.join(lib, "BOOT-INF/classes")
+        for filename in os.listdir(os.path.join(lib, "BOOT-INF/lib")):
+            if filename.endswith(".jar"):
+                classpath = classpath + ":" + os.path.join(lib, "BOOT-INF/lib", filename)
+        mainclass = self.mainClass()
+        return self.vmArgs(bmSuiteArgs) + ["-cp", classpath, mainclass]
+
+    def get_application_startup_regex(self):
+        # Example of SpringBoot startup log:
+        # "2021-03-08 15:49:36.155  INFO 21174 --- [           main] o.s.s.petclinic.PetClinicApplication     : Started PetClinicApplication in 4.367 seconds (JVM running for 4.812)"
+        return r"Started [^ ]+ in (?P<appstartup>\d*[.,]?\d*) seconds \(JVM running for (?P<startup>\d*[.,]?\d*)\)$"
+
+    def get_application_startup_units(self):
+        return 's'
+
+    def default_stages(self):
+        # This method overrides NativeImageMixin.stages
+        return ['instrument-image', 'instrument-run', 'image', 'run']
+
+
+class BasePetClinicBenchmarkSuite(BaseSpringBenchmarkSuite):
+    def version(self):
+        return "0.1.5"
+
+    def applicationDist(self):
+        return mx.library("PETCLINIC_" + self.version(), True).get_path(True)
+
+    def mainClass(self):
+        return "org.springframework.samples.petclinic.PetClinicApplication"
 
 
 class PetClinicJMeterBenchmarkSuite(BasePetClinicBenchmarkSuite, mx_sdk_benchmark.BaseJMeterBenchmarkSuite):
@@ -266,57 +302,52 @@ class PetClinicWrkBenchmarkSuite(BasePetClinicBenchmarkSuite, mx_sdk_benchmark.B
 mx_benchmark.add_bm_suite(PetClinicWrkBenchmarkSuite())
 
 
-class BaseTikaBenchmarkSuite(object):
-    def group(self):
-        return "Graal"
-
-    def subgroup(self):
-        return "graal-compiler"
-
+class BaseSpringHelloWorldBenchmarkSuite(BaseSpringBenchmarkSuite):
     def version(self):
-        return "1.0.5"
-
-    def validateReturnCode(self, retcode):
-        return retcode == 143
+        return "1.0.0"
 
     def applicationDist(self):
-        return mx.library("TIKA_" + self.version(), True).get_path(True)
+        return mx.library("SPRING_HW_" + self.version(), True).get_path(True)
 
-    def applicationPath(self):
-        return os.path.join(self.applicationDist(), "tika-quickstart-" + self.version() + "-SNAPSHOT-runner.jar")
+    def mainClass(self):
+        return "com.example.webmvc.WebmvcApplication"
+
+
+class SpringHelloWorldWrkBenchmarkSuite(BaseSpringHelloWorldBenchmarkSuite, mx_sdk_benchmark.BaseWrkBenchmarkSuite):
+    def name(self):
+        return "spring-helloworld-wrk"
+
+    def benchmarkList(self, bmSuiteArgs):
+        return ["helloworld"]
 
     def serviceEndpoint(self):
-        return 'parse'
+        return 'hello'
 
-    def applicationStartupRule(self, benchSuiteName, benchmark):
-        # Example of Micronaut startup log:
+    def defaultWorkloadPath(self, benchmark):
+        return os.path.join(self.applicationDist(), "workloads", benchmark + ".wrk")
+
+    def rules(self, out, benchmarks, bmSuiteArgs):
+        return self.applicationStartupRule(self.benchSuiteName(), benchmarks[0]) + super(SpringHelloWorldWrkBenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
+
+    def getScriptPath(self, config):
+        return os.path.join(self.applicationDist(), "workloads", config["script"])
+
+
+mx_benchmark.add_bm_suite(SpringHelloWorldWrkBenchmarkSuite())
+
+
+class BaseQuarkusBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
+
+    def get_application_startup_regex(self):
+        # Example of Quarkus startup log:
         # "2021-03-17 20:03:33,893 INFO  [io.quarkus] (main) tika-quickstart 1.0.0-SNAPSHOT on JVM (powered by Quarkus 1.12.1.Final) started in 1.210s. Listening on: <url>"
-        return [
-            mx_benchmark.StdOutRule(
-                r"started in (?P<startup>\d*[.,]?\d*)s.",
-                {
-                    "benchmark": benchmark,
-                    "bench-suite": benchSuiteName,
-                    "metric.name": "app-startup",
-                    "metric.value": ("<startup>", float),
-                    "metric.unit": "s",
-                    "metric.better": "lower",
-                }
-            )
-        ]
+        return r"started in (?P<startup>\d*[.,]?\d*)s."
 
-    def skip_agent_assertions(self, benchmark, args):
-        # This method overrides NativeImageMixin.skip_agent_assertions
-        user_args = super(BaseTikaBenchmarkSuite, self).skip_agent_assertions(benchmark, args)
-        if user_args is not None:
-            return user_args
-        else:
-            return []
+    def get_application_startup_units(self):
+        return 's'
 
-    def stages(self, args):
-        # This method overrides NativeImageMixin.stages
-        parsed_arg = mx_sdk_benchmark.parse_prefixed_arg('-Dnative-image.benchmark.stages=', args, 'Native Image benchmark stages should only be specified once.')
-        return parsed_arg.split(',') if parsed_arg else ['image', 'run']
+    def default_stages(self):
+        return ['image', 'run']
 
     def extra_image_build_argument(self, benchmark, args):
         return ['-J-Djava.util.logging.manager=org.jboss.logmanager.LogManager',
@@ -337,7 +368,21 @@ class BaseTikaBenchmarkSuite(object):
                 '-H:EnableURLProtocols=http',
                 '-H:NativeLinkerOption=-no-pie',
                 '-H:-UseServiceLoaderFeature',
-                '-H:+StackTrace'] + super(BaseTikaBenchmarkSuite, self).extra_image_build_argument(benchmark, args)
+                '-H:+StackTrace'] + super(BaseQuarkusBenchmarkSuite, self).extra_image_build_argument(benchmark, args)
+
+
+class BaseTikaBenchmarkSuite(BaseQuarkusBenchmarkSuite):
+    def version(self):
+        return "1.0.5"
+
+    def applicationDist(self):
+        return mx.library("TIKA_" + self.version(), True).get_path(True)
+
+    def applicationPath(self):
+        return os.path.join(self.applicationDist(), "tika-quickstart-" + self.version() + "-SNAPSHOT-runner.jar")
+
+    def serviceEndpoint(self):
+        return 'parse'
 
 
 class TikaWrkBenchmarkSuite(BaseTikaBenchmarkSuite, mx_sdk_benchmark.BaseWrkBenchmarkSuite):
@@ -355,18 +400,62 @@ class TikaWrkBenchmarkSuite(BaseTikaBenchmarkSuite, mx_sdk_benchmark.BaseWrkBenc
 mx_benchmark.add_bm_suite(TikaWrkBenchmarkSuite())
 
 
-class BaseShopCartBenchmarkSuite(object):
-    def group(self):
-        return "Graal"
+class BaseQuarkusHelloWorldBenchmarkSuite(BaseQuarkusBenchmarkSuite):
+    def version(self):
+        return "1.0.0"
 
-    def subgroup(self):
-        return "graal-compiler"
+    def applicationDist(self):
+        return mx.library("QUARKUS_HW_" + self.version(), True).get_path(True)
 
+    def applicationPath(self):
+        return os.path.join(self.applicationDist(), "quarkus-hello-world-" + self.version() + "-SNAPSHOT-runner.jar")
+
+    def serviceEndpoint(self):
+        return 'hello'
+
+
+class QuarkusHelloWorldWrkBenchmarkSuite(BaseQuarkusHelloWorldBenchmarkSuite, mx_sdk_benchmark.BaseWrkBenchmarkSuite):
+    """Quarkus benchmark suite that measures latency using Wrk2."""
+
+    def name(self):
+        return "quarkus-helloworld-wrk"
+
+    def benchmarkList(self, bmSuiteArgs):
+        return ["helloworld"]
+
+    def defaultWorkloadPath(self, benchmark):
+        return os.path.join(self.applicationDist(), "workloads", benchmark + ".wrk")
+
+    def rules(self, out, benchmarks, bmSuiteArgs):
+        return self.applicationStartupRule(self.benchSuiteName(), benchmarks[0]) + super(QuarkusHelloWorldWrkBenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
+
+    def getScriptPath(self, config):
+        return os.path.join(self.applicationDist(), "workloads", config["script"])
+
+
+mx_benchmark.add_bm_suite(QuarkusHelloWorldWrkBenchmarkSuite())
+
+
+class BaseMicronautBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
+    def get_application_startup_regex(self):
+        # Example of Micronaut startup log:
+        # "[main] INFO io.micronaut.runtime.Micronaut - Startup completed in 328ms. Server Running: <url>"
+        return r"^\[main\] INFO io.micronaut.runtime.Micronaut - Startup completed in (?P<startup>\d+)ms."
+
+    def get_application_startup_units(self):
+        return 'ms'
+
+    def skip_build_assertions(self, benchmark):
+        # This method overrides NativeImageMixin.skip_build_assertions
+        return True  # We are skipping build assertions due to some failed asserts while building Micronaut apps.
+
+    def default_stages(self):
+        return ['instrument-image', 'instrument-run', 'image', 'run']
+
+
+class BaseShopCartBenchmarkSuite(BaseMicronautBenchmarkSuite):
     def version(self):
         return "0.3.4"
-
-    def validateReturnCode(self, retcode):
-        return retcode == 143
 
     def applicationDist(self):
         shopcartCache = mx.library("SHOPCART_" + self.version(), True).get_path(True)
@@ -377,40 +466,6 @@ class BaseShopCartBenchmarkSuite(object):
 
     def serviceEndpoint(self):
         return 'clients'
-
-    def applicationStartupRule(self, benchSuiteName, benchmark):
-        # Example of Micronaut startup log:
-        # "[main] INFO io.micronaut.runtime.Micronaut - Startup completed in 328ms. Server Running: <url>"
-        return [
-            mx_benchmark.StdOutRule(
-                r"^\[main\] INFO io.micronaut.runtime.Micronaut - Startup completed in (?P<startup>\d+)ms.",
-                {
-                    "benchmark": benchmark,
-                    "bench-suite": benchSuiteName,
-                    "metric.name": "app-startup",
-                    "metric.value": ("<startup>", float),
-                    "metric.unit": "ms",
-                    "metric.better": "lower",
-                }
-            )
-        ]
-
-    def skip_agent_assertions(self, benchmark, args):
-        # This method overrides NativeImageMixin.skip_agent_assertions
-        user_args = super(BaseShopCartBenchmarkSuite, self).skip_agent_assertions(benchmark, args)
-        if user_args is not None:
-            return user_args
-        else:
-            return []
-
-    def skip_build_assertions(self, benchmark):
-        # This method overrides NativeImageMixin.skip_build_assertions
-        return True  # We are skipping build assertions due to some failed asserts while building Micronaut apps.
-
-    def stages(self, args):
-        # This method overrides NativeImageMixin.stages
-        parsed_arg = mx_sdk_benchmark.parse_prefixed_arg('-Dnative-image.benchmark.stages=', args, 'Native Image benchmark stages should only be specified once.')
-        return parsed_arg.split(',') if parsed_arg else ['instrument-image', 'instrument-run', 'image', 'run']
 
 
 class ShopCartJMeterBenchmarkSuite(BaseShopCartBenchmarkSuite, mx_sdk_benchmark.BaseJMeterBenchmarkSuite):
@@ -445,6 +500,40 @@ class ShopCartWrkBenchmarkSuite(BaseShopCartBenchmarkSuite, mx_sdk_benchmark.Bas
         return self.applicationStartupRule(self.benchSuiteName(), benchmarks[0]) + super(ShopCartWrkBenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
 
 mx_benchmark.add_bm_suite(ShopCartWrkBenchmarkSuite())
+
+
+class BaseMicronautHelloWorldBenchmarkSuite(BaseMicronautBenchmarkSuite):
+    def version(self):
+        return "1.0.0"
+
+    def applicationDist(self):
+        return mx.library("MICRONAUT_HW_" + self.version(), True).get_path(True)
+
+    def applicationPath(self):
+        return os.path.join(self.applicationDist(), "micronaut-hello-world-" + self.version() + ".jar")
+
+    def serviceEndpoint(self):
+        return 'hello'
+
+
+class MicronautHelloWorldWrkBenchmarkSuite(BaseMicronautHelloWorldBenchmarkSuite, mx_sdk_benchmark.BaseWrkBenchmarkSuite):
+    def name(self):
+        return "micronaut-helloworld-wrk"
+
+    def benchmarkList(self, bmSuiteArgs):
+        return ["helloworld"]
+
+    def defaultWorkloadPath(self, benchmark):
+        return os.path.join(self.applicationDist(), "workloads", benchmark + ".wrk")
+
+    def rules(self, out, benchmarks, bmSuiteArgs):
+        return self.applicationStartupRule(self.benchSuiteName(), benchmarks[0]) + super(MicronautHelloWorldWrkBenchmarkSuite, self).rules(out, benchmarks, bmSuiteArgs)
+
+    def getScriptPath(self, config):
+        return os.path.join(self.applicationDist(), "workloads", config["script"])
+
+
+mx_benchmark.add_bm_suite(MicronautHelloWorldWrkBenchmarkSuite())
 
 
 class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin, mx_benchmark.TemporaryWorkdirMixin):

@@ -1,4 +1,6 @@
 > cp iterateFrames.js ${TMP_DIR}/iterateFrames.js
+> cp iterateFramesSieve.js ${TMP_DIR}/iterateFramesSieve.js
+> cp ../../../benchmarks/agentscript/sieve.js ${TMP_DIR}/sieve.js
 > cp agent-fib-main.js ${TMP_DIR}/fib.js
 > cd ${TMP_DIR}
 >[0] js --insight=iterateFrames.js fib.js
@@ -58,3 +60,31 @@ TypeError: invokeMember.*iterateFrames.*on :program.*Cannot execute null
 TypeError: invokeMember.*iterateFrames.*on :program.*Cannot execute {}
 .*at.*js.*err2.js.*
 .*at.*js.*program.*
+>[7] js --insight=iterateFramesSieve.js -e "count=0" sieve.js
+Computed 97 primes in [0-9]+ ms. Last one is 509
+Computed 194 primes in [0-9]+ ms. Last one is 1181
+Computed 388 primes in [0-9]+ ms. Last one is 2677
+Computed 776 primes in [0-9]+ ms. Last one is 5897
+Computed 1552 primes in [0-9]+ ms. Last one is 13033
+Computed 3104 primes in [0-9]+ ms. Last one is 28541
+Computed 6208 primes in [0-9]+ ms. Last one is 61687
+Computed 12416 primes in [0-9]+ ms. Last one is 133033
+Computed 24832 primes in [0-9]+ ms. Last one is 284831
+Computed 49664 primes in [0-9]+ ms. Last one is 607417
+Iterating the Filter with 1289513 stack from Insight
+.*at.*js.*Filter.*sieve.js.*1413.
+.*at.*js.*Filter.acceptAndAdd.*sieve.js.*1712.
+.*at.*js.*Primes.next.*sieve.js.*2106.
+.*at.*js.*measure.*sieve.js.*2346.
+.*at.*js.*oneRound.*sieve.js.*3373.
+.*at.*js.*setTimeout.*sieve.js.*3216.
+.*at.*js.*program.*sieve.js.*3473.
+Is the printed stack comparable with thrown exception?
+.*at.*js.*dumpStack.*iterateFramesSieve.js.*476.
+.*at.*js.*Filter.*sieve.js.*1413.
+.*at.*js.*Filter.acceptAndAdd.*sieve.js.*1712.
+.*at.*js.*Primes.next.*sieve.js.*2106.
+.*at.*js.*measure.*sieve.js.*2346.
+.*at.*js.*oneRound.*sieve.js.*3373.
+.*at.*js.*setTimeout.*sieve.js.*3216.
+.*at.*js.*program.*sieve.js.*3473.

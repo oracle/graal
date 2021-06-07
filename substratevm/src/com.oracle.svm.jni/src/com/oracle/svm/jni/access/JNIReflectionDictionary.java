@@ -48,7 +48,6 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.jni.nativeapi.JNIFieldId;
 import com.oracle.svm.jni.nativeapi.JNIMethodId;
 
@@ -253,7 +252,7 @@ public final class JNIReflectionDictionary {
             }
             obj = p.toObject();
         }
-        return KnownIntrinsics.convertUnknownValue(obj, JNIAccessibleMethod.class);
+        return (JNIAccessibleMethod) obj;
     }
 
     private JNIAccessibleField getDeclaredField(Class<?> classObject, String name, boolean isStatic, String dumpLabel) {

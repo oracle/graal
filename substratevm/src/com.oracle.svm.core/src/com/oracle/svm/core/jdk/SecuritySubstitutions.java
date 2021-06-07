@@ -46,6 +46,8 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
@@ -63,6 +65,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
 // Checkstyle: stop
+import sun.security.jca.ProviderList;
 import sun.security.util.SecurityConstants;
 // Checkstyle: resume
 
@@ -277,6 +280,7 @@ final class Target_javax_crypto_JceSecurity {
     // value == PROVIDER_VERIFIED is successfully verified
     // value is failure cause Exception in error case
     @Alias //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = VerificationCacheTransformer.class, disableCaching = true) //
     private static Map<Object, Object> verificationResults;
 
     @Substitute
@@ -316,6 +320,12 @@ final class Target_javax_crypto_JceSecurity {
                         "All providers must be registered and verified in the Native Image builder. ");
     }
 
+    private static class VerificationCacheTransformer implements RecomputeFieldValue.CustomFieldValueTransformer {
+        @Override
+        public Object transform(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver, Object originalValue) {
+            return SecurityProvidersFilter.instance().cleanVerificationCache(originalValue);
+        }
+    }
 }
 
 @TargetClass(className = "javax.crypto.JceSecurity", innerClass = "IdentityWrapper", onlyWith = JDK16OrLater.class)
@@ -584,6 +594,21 @@ final class Target_sun_security_ssl_SunJSSE {
     private Target_sun_security_ssl_SunJSSE(java.security.Provider cryptoProvider, String providerName) {
         throw VMError.unsupportedFeature("Experimental FIPS mode in the SunJSSE Provider is deprecated (JDK-8217835)." +
                         " To register a FIPS provider use the supported java.security.Security.addProvider() API.");
+    }
+}
+
+@TargetClass(className = "sun.security.jca.Providers")
+final class Target_sun_security_jca_Providers {
+    @Alias//
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ProviderListTransformer.class, disableCaching = true)//
+    private static ProviderList providerList;
+
+    private static class ProviderListTransformer implements RecomputeFieldValue.CustomFieldValueTransformer {
+        @Override
+        public Object transform(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver, Object originalValue) {
+            ProviderList originalProviderList = (ProviderList) originalValue;
+            return SecurityProvidersFilter.instance().cleanUnregisteredProviders(originalProviderList);
+        }
     }
 }
 

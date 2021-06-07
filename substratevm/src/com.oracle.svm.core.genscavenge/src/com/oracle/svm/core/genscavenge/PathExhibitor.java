@@ -87,7 +87,7 @@ public final class PathExhibitor {
         if (edge.isFilled()) {
             path.add(edge.getTo());
             path.add(edge.getFrom());
-            Object fromObj = KnownIntrinsics.convertUnknownValue(edge.getFrom().getObject(), Object.class);
+            Object fromObj = edge.getFrom().getObject();
 
             // Add the rest of the path
             findPathToRoot(fromObj, edge, KnownIntrinsics.readCallerStackPointer());
@@ -123,7 +123,7 @@ public final class PathExhibitor {
                 // No pointer to current object: The path ends here.
                 break;
             }
-            currentTargetObj = KnownIntrinsics.convertUnknownValue(currentElement.getObject(), Object.class);
+            currentTargetObj = currentElement.getObject();
             if (currentTargetObj == null) {
                 // Current element is a root: Add element to path and stop.
                 path.add(currentElement);
