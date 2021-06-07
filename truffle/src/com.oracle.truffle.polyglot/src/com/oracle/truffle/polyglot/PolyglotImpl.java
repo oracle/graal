@@ -206,7 +206,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     @SuppressWarnings("unchecked")
     @Override
     public Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> originalOptions, boolean useSystemProperties, final boolean allowExperimentalOptions,
-                    boolean boundEngine, MessageTransport messageInterceptor, Object logHandlerOrStream, Object hostLanguage) {
+                    boolean boundEngine, MessageTransport messageInterceptor, Object logHandlerOrStream, Object hostLanguage, boolean hostLanguageOnly) {
         PolyglotEngineImpl impl = null;
         try {
             if (TruffleOptions.AOT) {
@@ -232,7 +232,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             EngineLoggerProvider loggerProvider = new PolyglotLoggers.EngineLoggerProvider(logHandler, logConfig.logLevels);
 
             impl = (PolyglotEngineImpl) EngineAccessor.RUNTIME.tryLoadCachedEngine(engineOptions, loggerProvider);
-            if (impl == null && boundEngine && !EngineAccessor.RUNTIME.isStoreEnabled(engineOptions)) {
+            if (impl == null && boundEngine && !hostLanguageOnly && !EngineAccessor.RUNTIME.isStoreEnabled(engineOptions)) {
                 impl = preInitializedEngineRef.getAndSet(null);
             }
 
@@ -264,7 +264,8 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                                 boundEngine, false,
                                 messageInterceptor,
                                 logHandler,
-                                (TruffleLanguage<Object>) hostLanguage);
+                                (TruffleLanguage<Object>) hostLanguage,
+                                hostLanguageOnly);
             }
             return getAPIAccess().newEngine(engineDispatch, impl);
         } catch (Throwable t) {
@@ -318,7 +319,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         EngineLoggerProvider loggerProvider = new PolyglotLoggers.EngineLoggerProvider(logHandler, logConfig.logLevels);
         TruffleLanguage<Object> host = createHostLanguage(createHostAccess());
         final PolyglotEngineImpl engine = new PolyglotEngineImpl(this, out, err, System.in, engineOptions, logConfig.logLevels, loggerProvider, options, true,
-                        true, true, null, logHandler, host);
+                        true, true, null, logHandler, host, false);
         return engine;
     }
 

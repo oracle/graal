@@ -223,13 +223,15 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
     final PolyglotLanguageInstance hostLanguageInstance;
     @CompilationFinal AbstractHostService host; // effectively final
+    final boolean hostLanguageOnly;
 
     @SuppressWarnings("unchecked")
     PolyglotEngineImpl(PolyglotImpl impl, DispatchOutputStream out, DispatchOutputStream err, InputStream in, OptionValuesImpl engineOptions,
                     Map<String, Level> logLevels,
                     EngineLoggerProvider engineLogger, Map<String, String> options,
                     boolean allowExperimentalOptions, boolean boundEngine, boolean preInitialization,
-                    MessageTransport messageInterceptor, Handler logHandler, TruffleLanguage<Object> hostImpl) {
+                    MessageTransport messageInterceptor, Handler logHandler,
+                    TruffleLanguage<Object> hostImpl, boolean hostLanguageOnly) {
         this.messageInterceptor = messageInterceptor;
         this.impl = impl;
         this.out = out;
@@ -239,6 +241,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         this.logLevels = logLevels;
         this.boundEngine = boundEngine;
         this.storeEngine = RUNTIME.isStoreEnabled(engineOptions);
+        this.hostLanguageOnly = hostLanguageOnly;
         this.hostLanguageInstance = createHostLanguageInstance(hostImpl);
 
         Map<String, LanguageInfo> languageInfos = new LinkedHashMap<>();
@@ -354,6 +357,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         this.engineLoggerSupplier = prototype.engineLoggerSupplier;
 
         Map<String, LanguageInfo> languageInfos = new LinkedHashMap<>();
+        this.hostLanguageOnly = prototype.hostLanguageOnly;
         this.hostLanguageInstance = createHostLanguageInstance(prototype.hostLanguageInstance.spi);
         this.idToLanguage = Collections.unmodifiableMap(initializeLanguages(languageInfos));
         this.idToInternalLanguageInfo = Collections.unmodifiableMap(languageInfos);
@@ -732,6 +736,9 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     }
 
     private Map<String, PolyglotInstrument> initializeInstruments(Map<String, InstrumentInfo> infos) {
+        if (hostLanguageOnly) {
+            return Collections.emptyMap();
+        }
         Map<String, PolyglotInstrument> instruments = new LinkedHashMap<>();
         List<InstrumentCache> cachedInstruments = InstrumentCache.load();
         for (InstrumentCache instrumentCache : cachedInstruments) {
@@ -752,6 +759,9 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     }
 
     private Map<String, PolyglotLanguage> initializeLanguages(Map<String, LanguageInfo> infos) {
+        if (hostLanguageOnly) {
+            return Collections.emptyMap();
+        }
         Map<String, PolyglotLanguage> polyglotLanguages = new LinkedHashMap<>();
         Map<String, LanguageCache> cachedLanguages = new HashMap<>();
         List<LanguageCache> sortedLanguages = new ArrayList<>();
