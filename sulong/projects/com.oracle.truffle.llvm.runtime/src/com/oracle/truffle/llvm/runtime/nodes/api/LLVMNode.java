@@ -29,15 +29,10 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.api;
 
-import java.io.PrintStream;
-import java.lang.reflect.Field;
-import java.util.Arrays;
-import java.util.WeakHashMap;
-import java.util.concurrent.atomic.AtomicLong;
-
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
@@ -52,6 +47,12 @@ import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHandleMemoryBase;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+
+import java.io.PrintStream;
+import java.lang.reflect.Field;
+import java.util.Arrays;
+import java.util.WeakHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 @TypeSystemReference(LLVMTypes.class)
 @GenerateAOT
@@ -224,5 +225,19 @@ public abstract class LLVMNode extends Node {
 
     public static Assumption singleContextAssumption() {
         return LLVMLanguage.getLanguage().singleContextAssumption;
+    }
+
+    public static final class AOTInitHelper extends Node implements GenerateAOT.Provider {
+
+        private final GenerateAOT.Provider delegate;
+
+        public AOTInitHelper(GenerateAOT.Provider delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public void prepareForAOT(TruffleLanguage<?> language, RootNode root) {
+            delegate.prepareForAOT(language, root);
+        }
     }
 }
