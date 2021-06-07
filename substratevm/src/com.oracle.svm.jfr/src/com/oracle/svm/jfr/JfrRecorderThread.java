@@ -110,7 +110,7 @@ public class JfrRecorderThread extends Thread {
     }
 
     @Uninterruptible(reason = "Epoch must not change while in this method.")
-    private boolean persistBuffer(JfrChunkWriter chunkWriter, JfrBuffer buffer) {
+    private static boolean persistBuffer(JfrChunkWriter chunkWriter, JfrBuffer buffer) {
         if (JfrBufferAccess.acquire(buffer)) {
             try {
                 boolean shouldNotify = chunkWriter.write(buffer);

@@ -43,18 +43,18 @@ import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.thread.ThreadListenerFeature;
 import com.oracle.svm.core.thread.ThreadListenerSupport;
 import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.jfr.events.ClassLoadingStatistics;
 import com.oracle.svm.jfr.traceid.JfrTraceId;
 import com.oracle.svm.jfr.traceid.JfrTraceIdEpoch;
 import com.oracle.svm.jfr.traceid.JfrTraceIdMap;
 import com.oracle.svm.util.ModuleSupport;
-import com.oracle.svm.jfr.events.ClassLoadingStatistics;
 
 import jdk.jfr.Configuration;
 import jdk.jfr.Event;
+import jdk.jfr.internal.EventWriter;
 import jdk.jfr.internal.JVM;
 import jdk.jfr.internal.jfc.JFC;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.jfr.internal.EventWriter;
 
 /**
  * Provides basic JFR support. As this support is both platform-dependent and JDK-specific, the
@@ -111,6 +111,7 @@ public class JfrFeature implements Feature {
     public void afterRegistration(AfterRegistrationAccess access) {
         ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.jfr", false);
         ModuleSupport.exportAndOpenAllPackagesToUnnamed("java.base", false);
+        ModuleSupport.exportAndOpenPackageToClass("jdk.internal.vm.ci", "jdk.vm.ci.hotspot", false, JfrEventSubstitution.class);
 
         // Initialize some parts of JFR/JFC at image build time.
         List<Configuration> knownConfigurations = JFC.getConfigurations();

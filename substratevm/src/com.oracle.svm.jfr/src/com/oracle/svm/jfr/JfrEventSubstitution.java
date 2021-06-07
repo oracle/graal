@@ -87,6 +87,11 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
         }
     }
 
+    /**
+     * The method EventWriter.reset() is private but it is called by the EventHandler classes, which
+     * are generated automatically. To prevent bytecode parsing issues, we patch the visibility of
+     * that method using the hacky way below.
+     */
     private static void changeWriterResetMethod(ResolvedJavaType eventWriterType) {
         for (ResolvedJavaMethod m : eventWriterType.getDeclaredMethods()) {
             if (m.getName().equals("reset")) {
