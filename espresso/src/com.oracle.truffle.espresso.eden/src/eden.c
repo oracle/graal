@@ -60,31 +60,19 @@ static void *get_libdl() {
         LOG("__libc_dlopen_mode(libdl.so, RTLD_LAZY)\n");
         libdl = __libc_dlopen_mode("libdl.so", RTLD_LAZY);
     }
-    LOG("get_libc(libdl.so) => %p\n", libdl);
+    LOG("get_libdl(libdl.so) => %p\n", libdl);
     return libdl;
 }
 
 static void *get_libeden() {
     static void *libeden = NULL;
     if (libeden == NULL) {
-        LOG("__libc_dlopen_mode(libeden.so, RTLD_LAZY)\n");
-        libeden = __libc_dlopen_mode("libeden.so", RTLD_LAZY);
+        // Use RTLD_NOW to avoid crashes with older glibc (<= 2.17).
+        LOG("__libc_dlopen_mode(libeden.so, RTLD_NOW)\n");
+        libeden = __libc_dlopen_mode("libeden.so", RTLD_NOW);
     }
     LOG("get_libeden(libeden.so) => %p\n", libeden);
     return libeden;
-}
-
-static void *real_dlmopen(Lmid_t lmid, const char *filename, int flags) {
-    LOG("real_dlmopen(%ld, %s, %d)\n", lmid, filename, flags);
-    static void *(*the_real_dlmopen)(Lmid_t, const char *, int) = NULL;
-    if (the_real_dlmopen == NULL) {
-        LOG("__libc_dlsym(get_libdl(), dlmopen)\n");
-        the_real_dlmopen = __libc_dlsym(get_libdl(), "dlmopen");
-        LOG("__libc_dlsym(get_libdl(), dlmopen) => %p\n", the_real_dlmopen);
-    }
-    void *result = the_real_dlmopen(lmid, filename, flags);
-    LOG("real_dlmopen(%ld, %s, %d) => %p\n", lmid, filename, flags, result);
-    return result;
 }
 
 static void *real_dlopen(const char *filename, int flags) {
@@ -97,6 +85,19 @@ static void *real_dlopen(const char *filename, int flags) {
     }
     void *result = the_real_dlopen(filename, flags);
     LOG("real_dlopen(%s, %d) => %p\n", filename, flags, result);
+    return result;
+}
+
+static void *real_dlmopen(Lmid_t lmid, const char *filename, int flags) {
+    LOG("real_dlmopen(%ld, %s, %d)\n", lmid, filename, flags);
+    static void *(*the_real_dlmopen)(Lmid_t, const char *, int) = NULL;
+    if (the_real_dlmopen == NULL) {
+        LOG("__libc_dlsym(get_libdl(), dlmopen)\n");
+        the_real_dlmopen = __libc_dlsym(get_libdl(), "dlmopen");
+        LOG("__libc_dlsym(get_libdl(), dlmopen) => %p\n", the_real_dlmopen);
+    }
+    void *result = the_real_dlmopen(lmid, filename, flags);
+    LOG("real_dlmopen(%ld, %s, %d) => %p\n", lmid, filename, flags, result);
     return result;
 }
 
@@ -126,15 +127,15 @@ static void *real_dlsym(void *handle, const char *symbol) {
     return result;
 }
 
+static int is_absolute_path(const char *path) {
+    return path != NULL && path[0] == '/';
+}
+
 void *dlmopen(Lmid_t lmid, const char *filename, int flags) {
     LOG("dlmopen(%ld, %s, %d)\n", lmid, filename, flags);
     void *result = real_dlmopen(lmid, filename, flags);
     LOG("dlmopen(%ld, %s, %d) => %p\n", lmid, filename, flags, result);
     return result;
-}
-
-static int is_absolute_path(const char *path) {
-    return path != NULL && path[0] == '/';
 }
 
 void *dlopen(const char *filename, int flags) {
@@ -209,7 +210,7 @@ void eden_ctypeInit(void) {
     LOG("__libc_dlsym(get_libc(), __ctype_init) => %p\n", __ctype_init);
     // Older versions of glibc do not have __ctype_init since they do not use TLS.
     if (__ctype_init != NULL) {
-        LOG("calling __ctype_init");
+        LOG("calling __ctype_init()\n");
         __ctype_init();
     }
 }
