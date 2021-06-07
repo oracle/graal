@@ -46,10 +46,14 @@ public class Target_jdk_internal_module_ModuleLoaderMap {
         // fetch original platform modules set
         @Host(Set.class)
         StaticObject originalResult = (StaticObject) original.call();
-        // inject our platform modules
+        // inject our platform modules if options are enabled
         Method add = ((ObjectKlass) originalResult.getKlass()).itableLookup(meta.java_util_Set, meta.java_util_Set_add.getITableIndex());
-        add.invokeDirect(originalResult, meta.toGuestString(HOTSWAP_MODULE_NAME));
-        add.invokeDirect(originalResult, meta.toGuestString(POLYGLOT_MODULE_NAME));
+        if (meta.getContext().JDWPOptions != null) {
+            add.invokeDirect(originalResult, meta.toGuestString(HOTSWAP_MODULE_NAME));
+        }
+        if (meta.getContext().Polyglot) {
+            add.invokeDirect(originalResult, meta.toGuestString(POLYGLOT_MODULE_NAME));
+        }
         return originalResult;
     }
 }
