@@ -29,8 +29,9 @@
 #include <unistd.h>
 #include <dlfcn.h>
 
+#include <gnu/libc-version.h>
+
 #define UNINITIALIZED ((void*) ~0)
-#define NOT_USED(x) ((void)(x))
 
 extern void *__libc_dlsym(void *handle, const char *symbol);
 extern void *__libc_dlopen_mode(const char *filename, int flags);
@@ -43,6 +44,7 @@ static Lmid_t namespace_id = 0;
 static int eden_debug = 0;
 
 #define LOG(fmt, ...) do { if (eden_debug) fprintf(stderr, "[eden #%ld] " fmt, namespace_id, ##__VA_ARGS__); } while (0)
+#define FATAL(fmt, ...) do { fprintf(stderr, "[eden #%ld] FATAL ERROR " fmt, namespace_id, ##__VA_ARGS__); exit(-1); } while (0)
 
 static void *get_libc() {
     static void *libc = NULL;
@@ -64,7 +66,6 @@ static void *get_libdl() {
     return libdl;
 }
 
-
 static void *real_dlopen(const char *filename, int flags) {
     LOG("real_dlopen(%s, %d)\n", filename, flags);
     static void *(*the_real_dlopen)(const char *, int) = NULL;
@@ -80,14 +81,18 @@ static void *real_dlopen(const char *filename, int flags) {
 
 static void *get_libeden() {
     static void *libeden = NULL;
-    if (libeden == NULL) {        
-        LOG("__libc_dlopen_mode(libeden.so, RTLD_NOW)\n");
-        libeden = __libc_dlopen_mode("libeden.so", RTLD_NOW);
+    if (libeden == NULL) {
+        if (strcmp(gnu_get_libc_version(), "2.17") < 0) { // glibc version < 2.17
+            LOG("real_dlopen(libeden.so, RTLD_LAZY)\n");
+            libeden = real_dlopen("libeden.so", RTLD_LAZY);
+        } else {
+            LOG("__libc_dlopen_mode(libeden.so, RTLD_NOW)\n");
+            libeden = __libc_dlopen_mode("libeden.so", RTLD_NOW);
+        }
     }
     LOG("get_libeden(libeden.so) => %p\n", libeden);
     return libeden;
 }
-
 
 static void *real_dlmopen(Lmid_t lmid, const char *filename, int flags) {
     LOG("real_dlmopen(%ld, %s, %d)\n", lmid, filename, flags);
@@ -140,10 +145,6 @@ void *dlmopen(Lmid_t lmid, const char *filename, int flags) {
 }
 
 void *dlopen(const char *filename, int flags) {
-
-    // real_dlopen is never used inside the namespace.
-    NOT_USED(real_dlopen);
-
     LOG("dlopen(%s, %d)\n", filename, flags);
     if (flags & RTLD_GLOBAL) {
         // dlmopen does not support RTLD_GLOBAL.
@@ -182,14 +183,14 @@ void *dlsym(void *handle, const char *symbol) {
     return result;
 }
 
-void eden_ctypeInit(void) {    
+void eden_ctypeInit(void) {
     static void (*the_real__ctype_init)(void) = UNINITIALIZED;
     LOG("eden_ctypeInit() with __ctype_init = %p\n", the_real__ctype_init);
     if (the_real__ctype_init == UNINITIALIZED) {
         // __libc_dlsym is used here instead of the hooked dlsym to avoid crashes on glibc 2.17.
         LOG("__libc_dlsym(get_libc(), __ctype_init)\n");
         the_real__ctype_init = __libc_dlsym(get_libc(), "__ctype_init");
-    }    
+    }
     // Older versions of glibc do not have __ctype_init since they do not use TLS.
     if (the_real__ctype_init != NULL) {
         LOG("calling __ctype_init()\n");
@@ -197,33 +198,25 @@ void eden_ctypeInit(void) {
     }
 }
 
+void* eden_RTLD_DEFAULT(void) {
+    LOG("eden_RTLD_DEFAULT()\n");
+    return RTLD_DEFAULT;
+}
+
 static __attribute__((constructor)) void initialize(void) {
-    LOG("initialize()\n");
     const char * mode = getenv("EDEN_DEBUG");
     if (mode != NULL) {
         eden_debug = (strcmp("true", mode) == 0) || (strcmp("1", mode) == 0);
     }
 
-    // Eagerly load handles.
-    get_libc();
-    get_libdl();
-    get_libeden();
-
+    LOG("initialize() GNU libc version %s\n", gnu_get_libc_version());
     if (dlinfo(get_libeden(), RTLD_DI_LMID, &namespace_id) != 0) {
-        LOG("init Error obtaining namespace (dlinfo): %s\n", dlerror());
+        FATAL("initialize Error obtaining namespace (dlinfo): %s\n", dlerror());
     }
     if (!namespace_id) {
-        LOG("init libeden.so should't be loaded in the default namespace\n");
+        FATAL("initialize libeden.so should't be loaded in the default namespace\n");
     }
     LOG("initialize &__ctype_b_loc: %p\n", &__ctype_b_loc);
     LOG("initialize *__ctype_b_loc() = %p\n", *__ctype_b_loc());
     LOG("Current locale: %s\n", setlocale(LC_ALL, NULL));
-
-    // Eargerly initialize ctype TLS.
-    eden_ctypeInit();
-}
-
-void* eden_RTLD_DEFAULT(void) {
-    LOG("eden_RTLD_DEFAULT()\n");
-    return RTLD_DEFAULT;
 }
