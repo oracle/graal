@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,30 +22,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.pointsto.flow;
+package com.oracle.svm.core.jdk;
 
-import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.typestate.TypeState;
+import org.graalvm.nativeimage.ImageSingletons;
 
-public final class UnknownTypeFlow extends TypeFlow<AnalysisType> {
+// Checkstyle: stop
+import sun.security.jca.ProviderList;
+// Checkstyle: resume
 
-    public UnknownTypeFlow() {
-        super(TypeState.forUnknown());
+public interface SecurityProvidersFilter {
+
+    static SecurityProvidersFilter instance() {
+        return ImageSingletons.lookup(SecurityProvidersFilter.class);
     }
 
-    @Override
-    public TypeFlow<AnalysisType> copy(BigBang bb, MethodFlowsGraph methodFlows) {
-        return this;
-    }
+    Object cleanVerificationCache(Object cache);
 
-    @Override
-    public boolean canSaturate() {
-        return false;
-    }
+    ProviderList cleanUnregisteredProviders(ProviderList providerList);
 
-    @Override
-    public String toString() {
-        return "Unknown" + super.toString();
-    }
 }

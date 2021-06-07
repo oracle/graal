@@ -47,7 +47,6 @@ import org.graalvm.nativeimage.hosted.Feature;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.graal.GraalSupport;
 import com.oracle.svm.graal.hosted.GraalFeature;
 import com.oracle.svm.truffle.api.SubstrateOptimizedCallTarget;
@@ -112,7 +111,7 @@ public class TruffleSupport {
             return IsolatedTruffleRuntimeSupport.registerOptimizedAssumptionDependency(optimizedAssumptionConstant);
         }
         Object target = SubstrateObjectConstant.asObject(optimizedAssumptionConstant);
-        OptimizedAssumption assumption = (OptimizedAssumption) KnownIntrinsics.convertUnknownValue(target, Object.class);
+        OptimizedAssumption assumption = (OptimizedAssumption) target;
         return assumption.registerDependency();
     }
 
@@ -121,7 +120,7 @@ public class TruffleSupport {
             return IsolatedTruffleRuntimeSupport.getCallTargetForCallNode(callNodeConstant);
         }
         Object target = SubstrateObjectConstant.asObject(callNodeConstant);
-        OptimizedDirectCallNode callNode = (OptimizedDirectCallNode) KnownIntrinsics.convertUnknownValue(target, Object.class);
+        OptimizedDirectCallNode callNode = (OptimizedDirectCallNode) target;
         OptimizedCallTarget callTarget = callNode.getCallTarget();
         return SubstrateObjectConstant.forObject(callTarget);
     }
@@ -134,7 +133,7 @@ public class TruffleSupport {
         if (isIsolatedCompilation()) {
             return IsolatedTruffleRuntimeSupport.asCompilableTruffleAST(constant);
         }
-        return (CompilableTruffleAST) KnownIntrinsics.convertUnknownValue(SubstrateObjectConstant.asObject(OptimizedCallTarget.class, constant), Object.class);
+        return SubstrateObjectConstant.asObject(OptimizedCallTarget.class, constant);
     }
 
     @SuppressWarnings("unused")

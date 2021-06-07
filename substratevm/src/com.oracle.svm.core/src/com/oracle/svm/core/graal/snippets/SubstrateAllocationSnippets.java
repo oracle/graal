@@ -32,7 +32,6 @@ import static org.graalvm.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER
 
 import java.util.Map;
 
-import com.oracle.svm.core.graal.nodes.NewStoredContinuationNode;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
@@ -80,6 +79,7 @@ import com.oracle.svm.core.allocationprofile.AllocationCounter;
 import com.oracle.svm.core.allocationprofile.AllocationSite;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
+import com.oracle.svm.core.graal.nodes.NewStoredContinuationNode;
 import com.oracle.svm.core.graal.nodes.SubstrateNewHybridInstanceNode;
 import com.oracle.svm.core.graal.nodes.UnreachableNode;
 import com.oracle.svm.core.heap.Heap;
@@ -89,7 +89,6 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.HostedOptionValues;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
@@ -208,7 +207,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
         }
         // newMultiArray does not have a fast path, so there is no need to encode the hub as an
         // object header.
-        DynamicHub hub = KnownIntrinsics.convertUnknownValue(dynamicHub.toObject(), DynamicHub.class);
+        DynamicHub hub = (DynamicHub) dynamicHub.toObject();
         return newMultiArrayRecursion(hub, rank, dimensionsStackValue);
     }
 

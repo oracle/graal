@@ -1602,17 +1602,16 @@ public abstract class AArch64ASIMDAssembler {
      * <code>for i in 0..n-1 do dst[i] += int_multiply(src1[i], src2[i])</code>
      *
      * @param size register size.
-     * @param eSize element size.
+     * @param eSize element size. Cannot be ElementSize.DoubleWord.
      * @param dst SIMD register.
      * @param src1 SIMD register.
      * @param src2 SIMD register.
      */
     public void mlaVVV(ASIMDSize size, ElementSize eSize, Register dst, Register src1, Register src2) {
-        assert usesMultipleLanes(size, eSize);
-
         assert dst.getRegisterCategory().equals(SIMD);
         assert src1.getRegisterCategory().equals(SIMD);
         assert src2.getRegisterCategory().equals(SIMD);
+        assert eSize != ElementSize.DoubleWord;
 
         threeSameEncoding(ASIMDInstruction.MLA, size, elemSizeXX(eSize), dst, src1, src2);
     }
@@ -1623,17 +1622,16 @@ public abstract class AArch64ASIMDAssembler {
      * <code>for i in 0..n-1 do dst[i] -= int_multiply(src1[i], src2[i])</code>
      *
      * @param size register size.
-     * @param eSize element size.
+     * @param eSize element size. Cannot be ElementSize.DoubleWord.
      * @param dst SIMD register.
      * @param src1 SIMD register.
      * @param src2 SIMD register.
      */
     public void mlsVVV(ASIMDSize size, ElementSize eSize, Register dst, Register src1, Register src2) {
-        assert usesMultipleLanes(size, eSize);
-
         assert dst.getRegisterCategory().equals(SIMD);
         assert src1.getRegisterCategory().equals(SIMD);
         assert src2.getRegisterCategory().equals(SIMD);
+        assert eSize != ElementSize.DoubleWord;
 
         threeSameEncoding(ASIMDInstruction.MLS, size, elemSizeXX(eSize), dst, src1, src2);
     }
@@ -1657,7 +1655,7 @@ public abstract class AArch64ASIMDAssembler {
      * <code>for i in 0..n-1 do dst[i] = int_mul(src1[i], src2[i])</code>
      *
      * @param size register size.
-     * @param eSize element size.
+     * @param eSize element size. Cannot be ElementSize.DoubleWord.
      * @param dst SIMD register.
      * @param src1 SIMD register.
      * @param src2 SIMD register.
@@ -1666,6 +1664,7 @@ public abstract class AArch64ASIMDAssembler {
         assert dst.getRegisterCategory().equals(SIMD);
         assert src1.getRegisterCategory().equals(SIMD);
         assert src2.getRegisterCategory().equals(SIMD);
+        assert eSize != ElementSize.DoubleWord;
 
         threeSameEncoding(ASIMDInstruction.MUL, size, elemSizeXX(eSize), dst, src1, src2);
     }
@@ -2222,16 +2221,16 @@ public abstract class AArch64ASIMDAssembler {
      * From the manual: "This instruction reads each vector element from the source SIMD&FP
      * register, narrows each value to half the original width, and writes the register..."
      *
-     * @param srcESize source element size. Cannot be ElementSize.Byte. The destination element size
-     *            will be half this width.
+     * @param dstESize destination element size. Cannot be ElementSize.DoubleWord. The source
+     *            element size is twice this width.
      * @param dst SIMD register.
      * @param src SIMD register.
      */
-    public void xtnVV(ElementSize srcESize, Register dst, Register src) {
+    public void xtnVV(ElementSize dstESize, Register dst, Register src) {
         assert dst.getRegisterCategory().equals(SIMD);
         assert src.getRegisterCategory().equals(SIMD);
-        assert srcESize != ElementSize.Byte;
+        assert dstESize != ElementSize.DoubleWord;
 
-        twoRegMiscEncoding(ASIMDInstruction.XTN, false, elemSizeXX(srcESize), dst, src);
+        twoRegMiscEncoding(ASIMDInstruction.XTN, false, elemSizeXX(dstESize), dst, src);
     }
 }

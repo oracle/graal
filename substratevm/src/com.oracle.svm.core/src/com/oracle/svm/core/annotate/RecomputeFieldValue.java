@@ -131,7 +131,7 @@ public @interface RecomputeFieldValue {
     /**
      * Custom recomputation of field values. A class implementing this interface must have a
      * no-argument constructor, which is used to instantiate it before invoking {@link #transform}.
-     * 
+     *
      * In contrast to {@link CustomFieldValueComputer}, the {@link #transform} method also has the
      * original field value as a parameter. This is convenient if the new value depends on the
      * original value, but also requires the original field to be present, e.g., it cannot be use
@@ -148,7 +148,6 @@ public @interface RecomputeFieldValue {
          * @param annotated The field annotated with {@link RecomputeFieldValue}.
          * @param receiver The original object for instance fields, or {@code null} for static
          *            fields.
-         * @param originalValue The original value of the field.
          * @return The new field value.
          */
         Object transform(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver, Object originalValue);
@@ -184,4 +183,9 @@ public @interface RecomputeFieldValue {
      * Treat the value as final, to enforce constant folding already during static analysis.
      */
     boolean isFinal() default false;
+
+    /**
+     * If true, ignores previously computed values and calculates the value for every field read.
+     */
+    boolean disableCaching() default false;
 }

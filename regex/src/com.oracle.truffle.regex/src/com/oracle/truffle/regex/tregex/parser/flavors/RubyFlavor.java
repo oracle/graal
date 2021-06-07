@@ -250,11 +250,12 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.NFATraversalRegexASTV
  * respectively), so that at runtime, only one of the two transitions will be admissible.</li>
  * </ul>
  */
-public final class RubyFlavor implements RegexFlavor {
+public final class RubyFlavor extends RegexFlavor {
 
     public static final RubyFlavor INSTANCE = new RubyFlavor();
 
     private RubyFlavor() {
+        super(BACKREFERENCES_TO_UNMATCHED_GROUPS_FAIL | EMPTY_CHECKS_MONITOR_CAPTURE_GROUPS | NESTED_CAPTURE_GROUPS_KEPT_ON_LOOP_REENTRY | FAILING_EMPTY_CHECKS_DONT_BACKTRACK);
     }
 
     @Override

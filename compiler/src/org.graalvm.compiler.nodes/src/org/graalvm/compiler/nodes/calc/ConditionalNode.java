@@ -71,7 +71,7 @@ public final class ConditionalNode extends FloatingNode implements Canonicalizab
     }
 
     public ConditionalNode(LogicNode condition, ValueNode trueValue, ValueNode falseValue) {
-        super(TYPE, trueValue.stamp(NodeView.DEFAULT).meet(falseValue.stamp(NodeView.DEFAULT)));
+        super(TYPE, combineStamps(condition, trueValue, falseValue, NodeView.DEFAULT));
         assert trueValue.stamp(NodeView.DEFAULT).isCompatible(falseValue.stamp(NodeView.DEFAULT));
         this.condition = condition;
         this.trueValue = trueValue;
@@ -87,7 +87,7 @@ public final class ConditionalNode extends FloatingNode implements Canonicalizab
         if (synonym != null) {
             return synonym;
         }
-        ValueNode result = canonicalizeConditional(condition, trueValue, falseValue, trueValue.stamp(view).meet(falseValue.stamp(view)), view, null);
+        ValueNode result = canonicalizeConditional(condition, trueValue, falseValue, combineStamps(condition, trueValue, falseValue, view), view, null);
         if (result != null) {
             return result;
         }
@@ -96,7 +96,11 @@ public final class ConditionalNode extends FloatingNode implements Canonicalizab
 
     @Override
     public boolean inferStamp() {
-        Stamp valueStamp = trueValue.stamp(NodeView.DEFAULT).meet(falseValue.stamp(NodeView.DEFAULT));
+        return updateStamp(combineStamps(condition, trueValue, falseValue, NodeView.DEFAULT));
+    }
+
+    private static Stamp combineStamps(LogicNode condition, ValueNode trueValue, ValueNode falseValue, NodeView view) {
+        Stamp valueStamp = trueValue.stamp(view).meet(falseValue.stamp(view));
         if (condition instanceof IntegerLessThanNode) {
             IntegerLessThanNode lessThan = (IntegerLessThanNode) condition;
             if (lessThan.getX() == trueValue && lessThan.getY() == falseValue) {
@@ -121,7 +125,7 @@ public final class ConditionalNode extends FloatingNode implements Canonicalizab
                 }
             }
         }
-        return updateStamp(valueStamp);
+        return valueStamp;
     }
 
     public ValueNode trueValue() {

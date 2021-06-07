@@ -448,10 +448,6 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
             }
 
             TypeState nodeTypeState = methodFlow.foldTypeFlow(bb, nodeFlow);
-            if (nodeTypeState.isUnknown()) {
-                return null;
-            }
-
             node.inferStamp();
             ObjectStamp oldStamp = (ObjectStamp) node.stamp(NodeView.DEFAULT);
             AnalysisType oldType = (AnalysisType) oldStamp.type();

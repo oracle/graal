@@ -33,9 +33,9 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.windows.WindowsUtils;
 import com.oracle.svm.core.windows.headers.LibC;
 import com.oracle.svm.core.windows.headers.LibLoaderAPI;
@@ -43,6 +43,7 @@ import com.oracle.svm.core.windows.headers.WinBase.HMODULE;
 import com.oracle.svm.truffle.nfi.Target_com_oracle_truffle_nfi_backend_libffi_NFIUnsatisfiedLinkError;
 import com.oracle.svm.truffle.nfi.TruffleNFISupport;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 
 @AutomaticFeature
 @Platforms(Platform.WINDOWS.class)
@@ -80,7 +81,7 @@ final class WindowsTruffleNFISupport extends TruffleNFISupport {
         HMODULE dlhandle = LibLoaderAPI.LoadLibraryA(dllPathPtr);
         if (dlhandle.isNull()) {
             CompilerDirectives.transferToInterpreter();
-            throw KnownIntrinsics.convertUnknownValue(new Target_com_oracle_truffle_nfi_backend_libffi_NFIUnsatisfiedLinkError(WindowsUtils.lastErrorString(dllPath)), RuntimeException.class);
+            throw SubstrateUtil.cast(new Target_com_oracle_truffle_nfi_backend_libffi_NFIUnsatisfiedLinkError(WindowsUtils.lastErrorString(dllPath)), AbstractTruffleException.class);
         }
         return dlhandle.rawValue();
     }
@@ -107,7 +108,7 @@ final class WindowsTruffleNFISupport extends TruffleNFISupport {
 
         if (ret.isNull()) {
             CompilerDirectives.transferToInterpreter();
-            throw KnownIntrinsics.convertUnknownValue(new Target_com_oracle_truffle_nfi_backend_libffi_NFIUnsatisfiedLinkError(WindowsUtils.lastErrorString(name)), RuntimeException.class);
+            throw SubstrateUtil.cast(new Target_com_oracle_truffle_nfi_backend_libffi_NFIUnsatisfiedLinkError(WindowsUtils.lastErrorString(name)), AbstractTruffleException.class);
         }
         return ret.rawValue();
     }

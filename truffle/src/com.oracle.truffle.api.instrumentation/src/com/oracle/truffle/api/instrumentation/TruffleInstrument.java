@@ -1387,7 +1387,8 @@ public abstract class TruffleInstrument {
          * {@link TruffleSafepoint#setBlocked(Node, Interrupter, Interruptible, Object, Runnable, Runnable)
          * blocking API} can be used to allow other thread local actions to be processed while the
          * current thread is waiting. The returned {@link Future#get()} method can be used as
-         * {@link Interruptible}.
+         * {@link Interruptible}. If the supplied context is already closed, the method returns a
+         * completed {@link Future}.
          *
          * @param context the context in which the action should be performed. Non <code>null</code>
          *            .

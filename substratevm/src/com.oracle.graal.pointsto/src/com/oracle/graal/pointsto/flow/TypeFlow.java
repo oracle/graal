@@ -523,9 +523,6 @@ public abstract class TypeFlow<T> {
             /* If the declared type is Object type there is no need to filter. */
             return newState;
         }
-        if (newState.isUnknown()) {
-            return newState;
-        }
         /* By default filter all type flows with the declared type. */
         return TypeState.forIntersection(bb, newState, declaredType.getTypeFlow(bb, true).getState());
     }
@@ -556,9 +553,6 @@ public abstract class TypeFlow<T> {
         }
         if (!canSaturate()) {
             /* This type flow needs to track all its individual types. */
-            return false;
-        }
-        if (this.state.isUnknown()) {
             return false;
         }
         return typeState.typesCount() > bb.analysisPolicy().typeFlowSaturationCutoff();

@@ -105,7 +105,11 @@ public abstract class DebugValue {
      * @param primitiveValue a primitive value to set
      * @throws DebugException when guest language code throws an exception
      * @since 19.0
+     * @deprecated in 21.2. Use {@link #set(DebugValue)
+     *             set}({@link #getSession()}{@link DebuggerSession#createPrimitiveValue(Object, Languageinfo)
+     *             .createPrimitiveValue(primitiveValue, null)}) instead.
      */
+    @Deprecated
     public abstract void set(Object primitiveValue) throws DebugException;
 
     /**
@@ -1377,7 +1381,12 @@ public abstract class DebugValue {
 
     abstract DebugValue createAsInLanguage(LanguageInfo language);
 
-    abstract DebuggerSession getSession();
+    /**
+     * Get the debugger session associated with this value.
+     *
+     * @since 21.2
+     */
+    public abstract DebuggerSession getSession();
 
     final Debugger getDebugger() {
         return getSession().getDebugger();
@@ -1439,7 +1448,7 @@ public abstract class DebugValue {
         }
 
         @Override
-        final DebuggerSession getSession() {
+        public final DebuggerSession getSession() {
             return session;
         }
     }
@@ -1447,7 +1456,7 @@ public abstract class DebugValue {
     static class HeapValue extends AbstractDebugValue {
 
         private final String name;
-        private Object value;
+        private final Object value;
 
         HeapValue(DebuggerSession session, String name, Object value) {
             this(session, null, name, value);
@@ -1467,13 +1476,13 @@ public abstract class DebugValue {
 
         @Override
         public void set(DebugValue expression) {
-            value = expression.get();
+            throw DebugException.create(getSession(), "Can not modify read-only value.");
         }
 
         @Override
+        @SuppressWarnings("deprecation")
         public void set(Object primitiveValue) {
-            checkPrimitive(primitiveValue);
-            value = primitiveValue;
+            throw DebugException.create(getSession(), "Can not modify read-only value.");
         }
 
         @Override
@@ -1488,7 +1497,7 @@ public abstract class DebugValue {
 
         @Override
         public boolean isWritable() {
-            return true;
+            return false;
         }
 
         @Override
@@ -1634,6 +1643,7 @@ public abstract class DebugValue {
         }
 
         @Override
+        @SuppressWarnings("deprecation")
         public void set(Object primitiveValue) {
             checkValid();
             checkPrimitive(primitiveValue);
@@ -1755,6 +1765,7 @@ public abstract class DebugValue {
         }
 
         @Override
+        @SuppressWarnings("deprecation")
         public void set(Object primitiveValue) {
             checkValid();
             checkPrimitive(primitiveValue);
@@ -1795,7 +1806,7 @@ public abstract class DebugValue {
         }
     }
 
-    private static void checkPrimitive(Object value) {
+    static void checkPrimitive(Object value) {
         Class<?> clazz;
         if (value == null || !((clazz = value.getClass()) == Byte.class ||
                         clazz == Short.class ||
