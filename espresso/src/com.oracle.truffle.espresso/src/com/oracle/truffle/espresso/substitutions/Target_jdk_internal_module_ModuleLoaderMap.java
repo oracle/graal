@@ -23,13 +23,13 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-
-import java.util.Set;
 
 @EspressoSubstitutions
 public class Target_jdk_internal_module_ModuleLoaderMap {
@@ -39,12 +39,13 @@ public class Target_jdk_internal_module_ModuleLoaderMap {
 
     @Substitution
     public static @Host(Set.class) StaticObject platformModules(
-            // Checkstyle: stop
-            @GuestCall(target = "jdk_internal_module_ModuleLoaderMap_platformModules", original = true) DirectCallNode original,
-            // Checkstyle: resume
-            @InjectMeta Meta meta) {
+                    // Checkstyle: stop
+                    @GuestCall(target = "jdk_internal_module_ModuleLoaderMap_platformModules", original = true) DirectCallNode original,
+                    // Checkstyle: resume
+                    @InjectMeta Meta meta) {
         // fetch original platform modules set
-        @Host(Set.class) StaticObject originalResult = (StaticObject) original.call();
+        @Host(Set.class)
+        StaticObject originalResult = (StaticObject) original.call();
         // inject our platform modules
         Method add = ((ObjectKlass) originalResult.getKlass()).itableLookup(meta.java_util_Set, meta.java_util_Set_add.getITableIndex());
         add.invokeDirect(originalResult, meta.toGuestString(HOTSWAP_MODULE_NAME));
