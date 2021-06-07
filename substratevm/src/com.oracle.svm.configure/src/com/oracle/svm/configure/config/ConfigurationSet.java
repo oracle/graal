@@ -104,8 +104,8 @@ public class ConfigurationSet {
         return proxyConfiguration;
     }
 
-    public PredefinedClassesConfiguration loadPredefinedClassesConfig(Path classDestinationDir, Function<IOException, Exception> exceptionHandler) throws Exception {
-        PredefinedClassesConfiguration predefinedClassesConfiguration = new PredefinedClassesConfiguration(classDestinationDir);
+    public PredefinedClassesConfiguration loadPredefinedClassesConfig(Path[] classDestinationDirs, Function<IOException, Exception> exceptionHandler) throws Exception {
+        PredefinedClassesConfiguration predefinedClassesConfiguration = new PredefinedClassesConfiguration(classDestinationDirs);
         loadConfig(predefinedClassesConfigPaths, new PredefinedClassesConfigurationParser(predefinedClassesConfiguration::add), exceptionHandler);
         return predefinedClassesConfiguration;
     }

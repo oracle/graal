@@ -50,6 +50,7 @@ import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.configure.trace.AccessAdvisor;
 import com.oracle.svm.configure.trace.TraceProcessor;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.util.VMError;
 
 public class ConfigurationTool {
@@ -259,10 +260,14 @@ public class ConfigurationTool {
         }
         TraceProcessor p;
         try {
+            List<Path> predefinedClassDestDirs = new ArrayList<>();
+            for (URI pathUri : outputSet.getPredefinedClassesConfigPaths()) {
+                predefinedClassDestDirs.add(Paths.get(pathUri).getParent().resolve(ConfigurationFiles.PREDEFINED_CLASSES_AGENT_EXTRACTED_SUBDIR));
+            }
             p = new TraceProcessor(advisor, inputSet.loadJniConfig(ConfigurationSet.FAIL_ON_EXCEPTION), inputSet.loadReflectConfig(ConfigurationSet.FAIL_ON_EXCEPTION),
                             inputSet.loadProxyConfig(ConfigurationSet.FAIL_ON_EXCEPTION), inputSet.loadResourceConfig(ConfigurationSet.FAIL_ON_EXCEPTION),
                             inputSet.loadSerializationConfig(ConfigurationSet.FAIL_ON_EXCEPTION),
-                            inputSet.loadPredefinedClassesConfig(null, ConfigurationSet.FAIL_ON_EXCEPTION));
+                            inputSet.loadPredefinedClassesConfig(predefinedClassDestDirs.toArray(new Path[0]), ConfigurationSet.FAIL_ON_EXCEPTION));
         } catch (IOException e) {
             throw e;
         } catch (Throwable t) {

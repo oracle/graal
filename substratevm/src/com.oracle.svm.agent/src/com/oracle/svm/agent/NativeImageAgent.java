@@ -214,13 +214,11 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                     }
                     return e; // rethrow
                 };
-                // Note that we cannot share use the same advisor for generating the configuration
-                // from parsing events and for enforcing restrictions because they are stateful.
-                // They should use the same filter sets, however.
                 AccessAdvisor advisor = createAccessAdvisor(builtinHeuristicFilter, callerFilter, accessFilter);
+                Path[] predefinedClassDestinationDirs = {configOutputDirPath.resolve(ConfigurationFiles.PREDEFINED_CLASSES_AGENT_EXTRACTED_SUBDIR)};
                 TraceProcessor processor = new TraceProcessor(advisor, mergeConfigs.loadJniConfig(handler), mergeConfigs.loadReflectConfig(handler),
                                 mergeConfigs.loadProxyConfig(handler), mergeConfigs.loadResourceConfig(handler), mergeConfigs.loadSerializationConfig(handler),
-                                mergeConfigs.loadPredefinedClassesConfig(configOutputDirPath.resolve(ConfigurationFiles.PREDEFINED_CLASSES_AGENT_EXTRACTED_SUBDIR), handler));
+                                mergeConfigs.loadPredefinedClassesConfig(predefinedClassDestinationDirs, handler));
                 traceWriter = new TraceProcessorWriterAdapter(processor);
             } catch (Throwable t) {
                 return error(2, t.toString());

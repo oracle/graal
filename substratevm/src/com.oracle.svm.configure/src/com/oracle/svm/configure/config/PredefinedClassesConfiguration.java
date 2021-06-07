@@ -28,6 +28,7 @@ package com.oracle.svm.configure.config;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.svm.configure.json.JsonPrintable;
@@ -37,30 +38,20 @@ import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.util.VMError;
 
 public class PredefinedClassesConfiguration implements JsonPrintable {
-    private final Path classDestinationDir;
+    private final Path[] classDestinationDirs;
     private final ConcurrentHashMap<String, ConfigurationPredefinedClass> classes = new ConcurrentHashMap<>();
 
-    PredefinedClassesConfiguration(Path classDestinationDir) {
-        this.classDestinationDir = classDestinationDir;
+    PredefinedClassesConfiguration(Path[] classDestinationDirs) {
+        this.classDestinationDirs = classDestinationDirs;
     }
 
     public void add(String nameInfo, byte[] classData) {
-        ensureDirectoryExists();
+        VMError.guarantee(classDestinationDirs != null && classDestinationDirs.length > 0, "Must have at least one destination directory");
+        ensureDestinationDirsExist();
         String hash = PredefinedClassesSupport.hash(classData, 0, classData.length);
-        try {
-            Files.write(classDestinationDir.resolve(getFileName(hash)), classData);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        add(nameInfo, hash, classDestinationDir);
-    }
-
-    public void add(String nameInfo, String hash, Path directory) {
-        if (classDestinationDir != null) {
-            ensureDirectoryExists();
+        for (Path dir : classDestinationDirs) {
             try {
-                String fileName = getFileName(hash);
-                Files.copy(directory.resolve(fileName), classDestinationDir.resolve(fileName));
+                Files.write(dir.resolve(getFileName(hash)), classData);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -69,21 +60,42 @@ public class PredefinedClassesConfiguration implements JsonPrintable {
         classes.put(hash, clazz);
     }
 
-    private static String getFileName(String hash) {
-        return hash + ConfigurationFiles.PREDEFINED_CLASSES_AGENT_EXTRACTED_NAME_SUFFIX;
-    }
-
-    private void ensureDirectoryExists() {
-        VMError.guarantee(classDestinationDir != null, "Must have a destination directory");
-        if (!Files.isDirectory(classDestinationDir)) {
-            try {
-                Files.createDirectory(classDestinationDir);
-            } catch (IOException e) {
-                if (!Files.isDirectory(classDestinationDir)) { // potential race
-                    throw new RuntimeException(e);
+    public void add(String nameInfo, String hash, Path directory) {
+        if (classDestinationDirs != null) {
+            ensureDestinationDirsExist();
+            for (Path dir : classDestinationDirs) {
+                if (!dir.equals(directory)) {
+                    try {
+                        String fileName = getFileName(hash);
+                        Files.copy(directory.resolve(fileName), dir.resolve(fileName), StandardCopyOption.REPLACE_EXISTING);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
                 }
             }
         }
+        ConfigurationPredefinedClass clazz = new ConfigurationPredefinedClass(nameInfo, hash);
+        classes.put(hash, clazz);
+    }
+
+    private void ensureDestinationDirsExist() {
+        if (classDestinationDirs != null) {
+            for (Path dir : classDestinationDirs) {
+                if (!Files.isDirectory(dir)) {
+                    try {
+                        Files.createDirectory(dir);
+                    } catch (IOException e) {
+                        if (!Files.isDirectory(dir)) { // potential race
+                            throw new RuntimeException(e);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private static String getFileName(String hash) {
+        return hash + ConfigurationFiles.PREDEFINED_CLASSES_AGENT_EXTRACTED_NAME_SUFFIX;
     }
 
     @Override
