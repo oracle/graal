@@ -56,21 +56,24 @@ import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractEngineDispatch;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.ProcessHandler;
 
-public class RemoteEngineDispatch extends AbstractEngineDispatch {
+public class HostEngineDispatch extends AbstractEngineDispatch {
 
-    final RemotePolyglotDispatch dispatch;
-    final HostToGuest hostToGuest;
-    final RemoteContextDispatch remoteContext;
+    final APIAccess api;
+    final HostPolyglotDispatch polyglot;
+    final HostEntryPoint hostToGuest;
+    final HostContextDispatch remoteContext;
 
-    protected RemoteEngineDispatch(RemotePolyglotDispatch impl) {
-        super(impl);
-        this.dispatch = impl;
-        this.hostToGuest = impl.getHostToGuest();
-        this.remoteContext = new RemoteContextDispatch(dispatch);
+    protected HostEngineDispatch(HostPolyglotDispatch polyglot) {
+        super(polyglot);
+        this.api = polyglot.getAPIAccess();
+        this.polyglot = polyglot;
+        this.hostToGuest = polyglot.getHostToGuest();
+        this.remoteContext = new HostContextDispatch(polyglot);
     }
 
     @Override
@@ -79,16 +82,22 @@ public class RemoteEngineDispatch extends AbstractEngineDispatch {
                     Map<String, String> options, Map<String, String[]> arguments, String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream, boolean allowCreateProcess,
                     ProcessHandler processHandler, EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory,
                     ClassLoader hostClassLoader) {
-        RemoteEngine engine = ((RemoteEngine) receiver);
-        Object hostContext = engine.hostAccess.createHostContext(hostAccess, hostClassLoader, classFilter, allowHostClassLoading, allowHostAccess);
-        long contextId = hostToGuest.remoteCreateContext(engine.id);
-        RemoteContext context = new RemoteContext(engine, contextId, hostContext);
-        return dispatch.getAPIAccess().newContext(remoteContext, context, engine.api);
+        HostEngine engine = (HostEngine) receiver;
+        Engine localEngine = engine.localEngine;
+        AbstractEngineDispatch dispatch = api.getDispatch(localEngine);
+        Object engineReceiver = api.getReceiver(localEngine);
+        Context localContext = dispatch.createContext(engineReceiver, out, err, in, allowHostAccess, hostAccess, polyglotAccess, allowNativeAccess, allowCreateThread, allowHostIO,
+                        allowHostClassLoading, allowExperimentalOptions, classFilter, options, arguments, onlyLanguages, fileSystem, logHandlerOrStream, allowCreateProcess, processHandler,
+                        environmentAccess, environment, zone, limitsImpl, currentWorkingDirectory, hostClassLoader);
+        long guestContextId = hostToGuest.remoteCreateContext(engine.remoteEngine);
+        HostContext context = new HostContext(engine, guestContextId, localContext);
+        hostToGuest.registerHostContext(guestContextId, context);
+        return polyglot.getAPIAccess().newContext(remoteContext, context, engine.api);
     }
 
     @Override
     public void setAPI(Object receiver, Engine key) {
-        ((RemoteEngine) receiver).setApi(key);
+        ((HostEngine) receiver).setApi(key);
     }
 
     @Override

@@ -58,32 +58,45 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
 
-public class RemotePolyglotDispatch extends AbstractPolyglotImpl {
+public class HostPolyglotDispatch extends AbstractPolyglotImpl {
 
-    private HostToGuest hostToGuest;
+    private HostEntryPoint hostToGuest;
 
-    public HostToGuest getHostToGuest() {
+    public HostEntryPoint getHostToGuest() {
         if (hostToGuest == null) {
-            hostToGuest = new HostToGuest(getNext());
+            hostToGuest = new HostEntryPoint(getNext());
         }
         return hostToGuest;
     }
 
     @Override
     public Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> options, boolean useSystemProperties, boolean allowExperimentalOptions, boolean boundEngine,
-                    MessageTransport messageInterceptor, Object logHandlerOrStream, EngineHostAccess conf) {
+                    MessageTransport messageInterceptor, Object logHandlerOrStream, Object hostLanguage, boolean hostLanguageOnly) {
         String option = options.get("engine.SpawnRemote");
         if (option != null && Boolean.parseBoolean(option)) {
-            RemoteEngine engine = new RemoteEngine(getHostToGuest().remoteCreateEngine(), createHostAccess());
-            return getAPIAccess().newEngine(new RemoteEngineDispatch(this), engine);
+            options.remove("engine.SpawnRemote");
+            /*
+             * indicates that the local engine ignores languages potentially on the class path.
+             */
+            boolean onlyHostLanguage = true;
+            Engine localEngine = getNext().buildEngine(out, err, in, options, useSystemProperties, allowExperimentalOptions, boundEngine, messageInterceptor, logHandlerOrStream, hostLanguage,
+                            onlyHostLanguage);
+            long remoteEngine = getHostToGuest().remoteCreateEngine();
+            HostEngine engine = new HostEngine(remoteEngine, localEngine);
+            return getAPIAccess().newEngine(new HostEngineDispatch(this), engine);
         } else {
-            return getNext().buildEngine(out, err, in, options, useSystemProperties, allowExperimentalOptions, boundEngine, messageInterceptor, logHandlerOrStream, conf);
+            return getNext().buildEngine(out, err, in, options, useSystemProperties, allowExperimentalOptions, boundEngine, messageInterceptor, logHandlerOrStream, hostLanguage, false);
         }
     }
 
     @Override
-    public EngineHostAccess createHostAccess() {
+    public AbstractHostAccess createHostAccess() {
         return getNext().createHostAccess();
+    }
+
+    @Override
+    public Object createHostLanguage(AbstractHostAccess access) {
+        return getNext().createHostLanguage(access);
     }
 
     @Override

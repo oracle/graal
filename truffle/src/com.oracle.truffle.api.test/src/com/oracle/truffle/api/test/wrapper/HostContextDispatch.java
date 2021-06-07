@@ -46,15 +46,16 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextDispatch;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueDispatch;
 
-public class RemoteContextDispatch extends AbstractContextDispatch {
+import com.oracle.truffle.api.interop.TruffleObject;
+
+public class HostContextDispatch extends AbstractContextDispatch {
 
     final APIAccess api;
-    final RemotePolyglotDispatch polyglot;
-    final HostToGuest hostToGuest;
+    final HostPolyglotDispatch polyglot;
+    final HostEntryPoint hostToGuest;
 
-    protected RemoteContextDispatch(RemotePolyglotDispatch impl) {
+    protected HostContextDispatch(HostPolyglotDispatch impl) {
         super(impl);
         this.polyglot = impl;
         this.api = polyglot.getAPIAccess();
@@ -63,24 +64,6 @@ public class RemoteContextDispatch extends AbstractContextDispatch {
 
     @Override
     public void setAPI(Object receiver, Context key) {
-        ((RemoteContext) receiver).api = key;
-    }
-
-    @Override
-    public Value asValue(Object receiver, Object hostValue) {
-        RemoteContext context = ((RemoteContext) receiver);
-        // TODO handle host wrappers
-        if (hostValue instanceof Value) {
-            if (api.getValueContext(hostValue) != context.hostContext) {
-                // TODO support context migration
-                throw new UnsupportedOperationException();
-            } else {
-                return (Value) hostValue;
-            }
-        }
-        Object guestValue = context.toGuestValue(hostValue);
-        AbstractValueDispatch dispatch = context.engine.hostAccess.lookupValueDispatch(guestValue);
-        return api.newValue(dispatch, context.hostContext, guestValue);
     }
 
     @Override
@@ -95,7 +78,30 @@ public class RemoteContextDispatch extends AbstractContextDispatch {
 
     @Override
     public Value eval(Object receiver, String language, Object sourceImpl) {
-        throw new UnsupportedOperationException();
+        HostContext context = (HostContext) receiver;
+
+        String languageId = polyglot.getSourceDispatch().getLanguage(sourceImpl);
+        String characters = polyglot.getSourceDispatch().getCharacters(sourceImpl).toString();
+
+        long remoteValue = hostToGuest.remoteEval(context.remoteContext, languageId, characters);
+        return context.localContext.asValue(new HostGuestValue(hostToGuest, context.remoteContext, remoteValue));
+    }
+
+    @Override
+    public Value asValue(Object receiver, Object hostValue) {
+        HostContext context = ((HostContext) receiver);
+        if (hostValue instanceof TruffleObject) {
+            throw new UnsupportedOperationException("TruffleObject not supported for remote contexts.");
+        }
+        Value localValue = context.localContext.asValue(hostValue);
+        return localValue;
+    }
+
+    @Override
+    public Value getBindings(Object receiver, String language) {
+        HostContext context = ((HostContext) receiver);
+        long valueId = hostToGuest.remoteGetBindings(context.remoteContext, language);
+        return context.localContext.asValue(new HostGuestValue(hostToGuest, context.remoteContext, valueId));
     }
 
     @Override
@@ -115,11 +121,6 @@ public class RemoteContextDispatch extends AbstractContextDispatch {
 
     @Override
     public void explicitLeave(Object receiver) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public Value getBindings(Object receiver, String language) {
         throw new UnsupportedOperationException();
     }
 

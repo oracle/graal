@@ -40,30 +40,24 @@
  */
 package com.oracle.truffle.api.test.wrapper;
 
-import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.lang.reflect.Field;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
-
-import sun.misc.Unsafe;
+import com.oracle.truffle.api.test.ReflectionUtils;
 
 /**
  * This test shows how the polyglot API can be intercepted such that its implementation can be
@@ -74,113 +68,107 @@ import sun.misc.Unsafe;
  * should not install a polyglot wrapper for all the tests and at the same time the impl field
  * should stay a static final.
  */
-public class RemotePolyglotTest {
+public class RemoteSLTest {
 
-    private static AbstractPolyglotImpl previousPolyglot;
+    private AbstractPolyglotImpl previousPolyglot;
 
-    @BeforeClass
-    public static void setupClass() throws Throwable {
+    @Before
+    public void setup() throws Throwable {
         // ensure polyglot initialized
         Engine.create().close();
 
         previousPolyglot = getPolylgotImpl();
-        RemotePolyglotDispatch dispatch = new RemotePolyglotDispatch();
+        HostPolyglotDispatch dispatch = new HostPolyglotDispatch();
         dispatch.setConstructors(previousPolyglot.getAPIAccess());
         dispatch.setNext(previousPolyglot);
         setPolylgotImpl(dispatch);
-
-        ProxyLanguage.setDelegate(new ProxyLanguage() {
-            @Override
-            protected CallTarget parse(ParsingRequest request) throws Exception {
-                return Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
-
-                    @Override
-                    public Object execute(VirtualFrame frame) {
-                        return new TestGuestFunction();
-                    }
-                });
-            }
-        });
     }
 
-    @AfterClass
-    public static void tearDownClass() throws Throwable {
+    @After
+    public void tearDown() throws Throwable {
         setPolylgotImpl(previousPolyglot);
-        ProxyLanguage.setDelegate(null);
     }
 
     public Object testFunction(Object v) {
         return v;
     }
 
-    @ExportLibrary(InteropLibrary.class)
-    @SuppressWarnings("static-method")
-    static class TestGuestFunction implements TruffleObject {
-
-        @ExportMessage
-        final boolean isExecutable() {
-            return true;
-        }
-
-        @ExportMessage
-        final Object execute(Object[] args) {
-            return args[0];
-        }
-
+    public Object triggerHostError() {
+        throw new RuntimeException("test message");
     }
 
     @Test
     public void test() {
-        try (Context context = Context.newBuilder().option("engine.SpawnRemote", "true").allowHostAccess(HostAccess.ALL).build()) {
-            // basic test. Needs more
-            assertNotNull(context);
-            Value directHostValue = context.asValue(this);
+        try (Context context = Context.newBuilder().logHandler(System.err).option("engine.SpawnRemote", "true").allowHostAccess(HostAccess.ALL).build()) {
+            Value guestFunction = context.eval("sl", "" + //
+                            "function error() {eval(\"sl\", \"asdf(\");}\n" + //
+                            "function identity(v) {return v;}\n" + //
+                            "function call(v) {return v();}\n" + //
+                            "function main() {\n" + //
+                            "  return identity;\n" + //
+                            "}");
 
-            // invoke host directly
-            Value hostFunction = directHostValue.getMember("testFunction");
-            Value guestfunction = context.eval(ProxyLanguage.ID, "");
-            Value guestToGuestValue = guestfunction.execute(guestfunction);
-            Value guestToHostValue = guestfunction.execute(hostFunction);
-            Value hostToGuestValue = guestfunction.execute(guestfunction);
-            Value hostToHostValue = guestfunction.execute(hostFunction);
+            Value thisValue = context.asValue(this);
+            Value hostFunction = thisValue.getMember("testFunction");
 
-            assertNotNull(guestToGuestValue);
-            assertNotNull(guestToHostValue);
-            assertNotNull(hostToGuestValue);
-            assertNotNull(hostToHostValue);
+            assertEquals(guestFunction, guestFunction.execute(guestFunction));
+            assertEquals(hostFunction, guestFunction.execute(hostFunction));
+            assertEquals(guestFunction, hostFunction.execute(guestFunction));
+            assertEquals(hostFunction, hostFunction.execute(hostFunction));
 
-            // TODO exceptions!?
+            // host to guest error
+            Value guestErrorExecutable = context.getBindings("sl").getMember("error");
+            try {
+                guestErrorExecutable.execute();
+                fail();
+            } catch (PolyglotException e) {
+                assertTrue(e.isGuestException());
+                assertFalse(e.isInternalError());
+                assertTrue(e.getMessage(), e.getMessage().startsWith("Error(s) parsing script"));
+            }
+
+            // host to host error
+            Value hostErrorExecutable = thisValue.getMember("triggerHostError");
+            try {
+                hostErrorExecutable.execute();
+                fail();
+            } catch (PolyglotException e) {
+                assertTrue(e.isHostException());
+                assertFalse(e.isInternalError());
+                assertTrue(e.getMessage(), e.getMessage().startsWith("test message"));
+            }
+
+            // host to guest to host error
+            // not yet supported (GR-22699)
+            // testGuestHostGuestError(context, hostErrorExecutable);
         }
     }
 
-    private static final Unsafe UNSAFE;
+    static void testGuestHostGuestError(Context context, Value hostErrorExecutable) {
+        Value guestCallFunction = context.getBindings("sl").getMember("call");
+        try {
+            // not yet supported.
+            guestCallFunction.execute(hostErrorExecutable);
+            fail();
+        } catch (PolyglotException e) {
+            assertTrue(e.isHostException());
+            assertFalse(e.isInternalError());
+            assertTrue(e.getMessage(), e.getMessage().startsWith("test message"));
+        }
+    }
 
     private static AbstractPolyglotImpl getPolylgotImpl() throws Throwable {
         Class<?> implHolder = Class.forName(Engine.class.getName() + "$ImplHolder");
         Field f = implHolder.getDeclaredField("IMPL");
-        return (AbstractPolyglotImpl) UNSAFE.getObject(UNSAFE.staticFieldBase(f), UNSAFE.staticFieldOffset(f));
+        ReflectionUtils.setAccessible(f, true);
+        return (AbstractPolyglotImpl) f.get(null);
     }
 
     private static void setPolylgotImpl(AbstractPolyglotImpl impl) throws Throwable {
         Class<?> implHolder = Class.forName(Engine.class.getName() + "$ImplHolder");
         Field f = implHolder.getDeclaredField("IMPL");
-        UNSAFE.putObject(UNSAFE.staticFieldBase(f), UNSAFE.staticFieldOffset(f), impl);
-    }
-
-    static {
-        Unsafe unsafe;
-        try {
-            unsafe = Unsafe.getUnsafe();
-        } catch (SecurityException e) {
-            try {
-                Field theUnsafeInstance = Unsafe.class.getDeclaredField("theUnsafe");
-                theUnsafeInstance.setAccessible(true);
-                unsafe = (Unsafe) theUnsafeInstance.get(Unsafe.class);
-            } catch (Exception e2) {
-                throw new RuntimeException("exception while trying to get Unsafe.theUnsafe via reflection:", e2);
-            }
-        }
-        UNSAFE = unsafe;
+        ReflectionUtils.setAccessible(f, true);
+        f.set(null, impl);
     }
 
 }

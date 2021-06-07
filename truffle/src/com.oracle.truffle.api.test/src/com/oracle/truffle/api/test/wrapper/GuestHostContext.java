@@ -40,22 +40,6 @@
  */
 package com.oracle.truffle.api.test.wrapper;
 
-import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.EngineHostAccess;
-
-public final class RemoteEngine {
-
-    final EngineHostAccess hostAccess;
-    final long id;
-    Engine api;
-
-    RemoteEngine(long id, EngineHostAccess hostAccess) {
-        this.id = id;
-        this.hostAccess = hostAccess;
-    }
-
-    void setApi(Engine api) {
-        this.api = api;
-    }
+public class GuestHostContext {
 
 }

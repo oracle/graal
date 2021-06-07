@@ -40,14 +40,21 @@
  */
 package com.oracle.truffle.api.test.wrapper;
 
-import com.oracle.truffle.api.interop.TruffleObject;
+import org.graalvm.polyglot.Engine;
 
-class RemoteValue implements TruffleObject {
+public final class HostEngine {
 
-    final long id;
+    final long remoteEngine;
+    Engine localEngine;
+    Engine api;
 
-    RemoteValue(int id) {
-        this.id = id;
+    HostEngine(long id, Engine localEngine) {
+        this.remoteEngine = id;
+        this.localEngine = localEngine;
+    }
+
+    void setApi(Engine api) {
+        this.api = api;
     }
 
 }

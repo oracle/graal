@@ -40,60 +40,18 @@
  */
 package com.oracle.truffle.api.test.wrapper;
 
-import java.util.HashMap;
-import java.util.IdentityHashMap;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
-
 import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.EnvironmentAccess;
-import org.graalvm.polyglot.PolyglotAccess;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractEngineDispatch;
 
-public class HostToGuest {
+public final class HostContext {
 
-    private final AbstractPolyglotImpl guest;
+    final HostEngine engine;
+    final long remoteContext;
+    final Context localContext;
 
-    private final AtomicLong nextId = new AtomicLong();
-    private final Map<Long, Object> idToGuestObject = new IdentityHashMap<>();
-    private final Map<Object, Long> guestObjectToId = new IdentityHashMap<>();
-
-    HostToGuest(AbstractPolyglotImpl guest) {
-        this.guest = guest;
-    }
-
-    public long remoteCreateEngine() {
-        // host access needs to be replaced
-        return guestToHost(guest.buildEngine(null, null, null, new HashMap<>(), false, false, false, null, null, guest.createHostAccess()));
-    }
-
-    private long guestToHost(Object value) {
-        Long id = guestObjectToId.get(value);
-        if (id == null) {
-            id = nextId.getAndIncrement();
-            guestObjectToId.put(value, id);
-            idToGuestObject.put(id, value);
-        }
-        return id;
-    }
-
-    private <T> T get(Class<T> type, long id) {
-        return type.cast(idToGuestObject.get(id));
-    }
-
-    public long remoteCreateContext(long engineId) {
-        Engine engine = get(Engine.class, engineId);
-        Object receiver = guest.getAPIAccess().getReceiver(engine);
-        AbstractEngineDispatch dispatch = guest.getAPIAccess().getDispatch(engine);
-        Context remoteContext = dispatch.createContext(receiver, null, null, null, false, null, PolyglotAccess.NONE,
-                        false, false, false, false, false, null, new HashMap<>(), new HashMap<>(),
-                        new String[0],
-                        null, null,
-                        false, null, EnvironmentAccess.NONE,
-                        null, null, null, null, null);
-        return guestToHost(remoteContext);
+    HostContext(HostEngine engine, long id, Context localContext) {
+        this.engine = engine;
+        this.remoteContext = id;
+        this.localContext = localContext;
     }
 
 }

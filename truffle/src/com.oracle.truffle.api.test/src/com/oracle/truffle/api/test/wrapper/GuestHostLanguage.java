@@ -40,23 +40,36 @@
  */
 package com.oracle.truffle.api.test.wrapper;
 
-import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
 
-public final class RemoteContext {
+import com.oracle.truffle.api.TruffleLanguage;
 
-    final RemoteEngine engine;
-    final long id;
-    Context api;
-    final Object hostContext;
+final class GuestHostLanguage extends TruffleLanguage<GuestHostContext> {
 
-    RemoteContext(RemoteEngine engine, long id, Object hostContext) {
-        this.engine = engine;
-        this.id = id;
-        this.hostContext = hostContext;
+    // not yet needed - but will be in the future
+    @SuppressWarnings("unused") private final AbstractHostAccess access;
+    private final GuestToHostService service;
+
+    GuestHostLanguage(AbstractPolyglotImpl polyglot, AbstractHostAccess access) {
+        this.access = access;
+        this.service = new GuestToHostService(polyglot);
     }
 
-    public Object toGuestValue(Object guest) {
-        return engine.hostAccess.toGuestValue(hostContext, guest);
+    @Override
+    protected GuestHostContext createContext(Env env) {
+        env.registerService(service);
+        return new GuestHostContext();
+    }
+
+    @Override
+    protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
+        return true;
+    }
+
+    @Override
+    protected boolean patchContext(GuestHostContext context, Env newEnv) {
+        return true;
     }
 
 }

@@ -40,6 +40,38 @@
  */
 package com.oracle.truffle.api.test.wrapper;
 
-public class GuestToHost {
+import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.library.Message;
+import com.oracle.truffle.api.library.ReflectionLibrary;
+
+@SuppressWarnings("serial")
+@ExportLibrary(ReflectionLibrary.class)
+class HostGuestException extends AbstractTruffleException {
+
+    static final Object DEFAULT = new Object();
+    static final ReflectionLibrary REFLECTION = ReflectionLibrary.getFactory().getUncached(DEFAULT);
+    final long contextId;
+    final long id;
+    final HostEntryPoint hostToGuest;
+
+    HostGuestException(HostEntryPoint hostToGuest, long contextId, long id, String message) {
+        super(message);
+        this.hostToGuest = hostToGuest;
+        this.contextId = contextId;
+        this.id = id;
+    }
+
+    @ExportMessage
+    final Object send(Message message, Object... args) throws Exception {
+        if (message.getLibraryClass() == InteropLibrary.class) {
+            return hostToGuest.remoteMessage(contextId, id, message, HostGuestValue.marshalToRemote(hostToGuest, args));
+        } else {
+            // we only support remoting interop calls
+            return REFLECTION.send(DEFAULT, message, args);
+        }
+    }
 
 }
