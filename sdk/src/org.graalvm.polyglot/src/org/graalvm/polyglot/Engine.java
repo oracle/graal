@@ -130,7 +130,7 @@ public final class Engine implements AutoCloseable {
     }
 
     private static final class ImplHolder {
-        private static final AbstractPolyglotImpl IMPL = initEngineImpl();
+        private static AbstractPolyglotImpl IMPL = initEngineImpl();
 
         /**
          * Performs context pre-initialization.
@@ -561,7 +561,7 @@ public final class Engine implements AutoCloseable {
                 throw new IllegalStateException("The Polyglot API implementation failed to load.");
             }
             Engine engine = polyglot.buildEngine(out, err, in, options, useSystemProperties, allowExperimentalOptions,
-                            boundEngine, messageTransport, customLogHandler, polyglot.createHostLanguage(polyglot.createHostAccess()));
+                            boundEngine, messageTransport, customLogHandler, polyglot.createHostLanguage(polyglot.createHostAccess()), false);
             return engine;
         }
 
@@ -866,7 +866,7 @@ public final class Engine implements AutoCloseable {
 
         @Override
         public Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, boolean useSystemProperties, boolean allowExperimentalOptions, boolean boundEngine,
-                        MessageTransport messageInterceptor, Object logHandlerOrStream, Object hostLanguage) {
+                        MessageTransport messageInterceptor, Object logHandlerOrStream, Object hostLanguage, boolean hostLanguageOnly) {
             throw noPolyglotImplementationFound();
         }
 
