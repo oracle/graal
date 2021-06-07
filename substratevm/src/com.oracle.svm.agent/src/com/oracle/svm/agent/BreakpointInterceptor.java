@@ -130,6 +130,9 @@ final class BreakpointInterceptor {
     /** Enables experimental support for instrumenting class lookups via {@code ClassLoader}. */
     private static boolean experimentalClassLoaderSupport = false;
 
+    /** Enables experimental support for class definitions via {@code ClassLoader.defineClass}. */
+    private static boolean experimentalClassDefineSupport = false;
+
     /**
      * Locations in methods where explicit calls to {@code ClassLoader.loadClass} have been found.
      */
@@ -1009,11 +1012,12 @@ final class BreakpointInterceptor {
                     CCharPointerPointer.class);
 
     public static void onLoad(JvmtiEnv jvmti, JvmtiEventCallbacks callbacks, TraceWriter writer, NativeImageAgent nativeImageTracingAgent,
-                    boolean exptlClassLoaderSupport) {
+                    boolean exptlClassLoaderSupport, boolean exptlClassDefineSupport) {
 
         BreakpointInterceptor.traceWriter = writer;
         BreakpointInterceptor.agent = nativeImageTracingAgent;
         BreakpointInterceptor.experimentalClassLoaderSupport = exptlClassLoaderSupport;
+        BreakpointInterceptor.experimentalClassDefineSupport = exptlClassDefineSupport;
 
         JvmtiCapabilities capabilities = UnmanagedMemory.calloc(SizeOf.get(JvmtiCapabilities.class));
         check(jvmti.getFunctions().GetCapabilities().invoke(jvmti, capabilities));
@@ -1031,7 +1035,9 @@ final class BreakpointInterceptor {
         UnmanagedMemory.free(capabilities);
 
         callbacks.setBreakpoint(onBreakpointLiteral.getFunctionPointer());
-        callbacks.setClassFileLoadHook(onClassFileLoadHookLiteral.getFunctionPointer());
+        if (exptlClassDefineSupport) {
+            callbacks.setClassFileLoadHook(onClassFileLoadHookLiteral.getFunctionPointer());
+        }
         if (exptlClassLoaderSupport) {
             callbacks.setClassPrepare(onClassPrepareLiteral.getFunctionPointer());
         }
@@ -1073,7 +1079,9 @@ final class BreakpointInterceptor {
         }
         installedBreakpoints = breakpoints;
 
-        setupClassLoadEvent(jvmti, jni);
+        if (experimentalClassDefineSupport) {
+            setupClassLoadEvent(jvmti, jni);
+        }
 
         check(jvmti.getFunctions().SetEventNotificationMode().invoke(jvmti, JvmtiEventMode.JVMTI_ENABLE, JVMTI_EVENT_BREAKPOINT, nullHandle()));
         if (experimentalClassLoaderSupport) {
