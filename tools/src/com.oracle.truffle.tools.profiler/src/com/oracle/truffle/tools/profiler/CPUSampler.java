@@ -332,8 +332,9 @@ public final class CPUSampler implements Closeable {
      * @since 0.30
      */
     @SuppressWarnings("unused")
+    @Deprecated
     public synchronized void setMode(Mode mode) {
-        // TODO: Deprecate
+        // Deprecated, a noop.
     }
 
     /**

@@ -119,7 +119,6 @@ public final class InspectorProfiler extends ProfilerDomain {
         synchronized (sampler) {
             oldGatherSelfHitTimes = sampler.isGatherSelfHitTimes();
             sampler.setGatherSelfHitTimes(true);
-            sampler.setMode(CPUSampler.Mode.ROOTS);
             sampler.setFilter(SourceSectionFilter.newBuilder().includeInternal(context.isInspectInternal()).build());
             sampler.setCollecting(true);
         }

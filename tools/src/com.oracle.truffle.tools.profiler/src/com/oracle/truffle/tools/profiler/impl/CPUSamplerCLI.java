@@ -86,9 +86,7 @@ class CPUSamplerCLI extends ProfilerCLI {
     static final OptionKey<Boolean> ENABLED = new OptionKey<>(false);
 
     // @formatter:off
-    @Option(name = "Mode",
-            help = "Describe level of sampling detail. NOTE: Increased detail can lead to reduced accuracy. Modes: 'exclude_inlined_roots' - sample roots excluding inlined functions (default), " +
-                    "'roots' - sample roots including inlined functions, 'statements' - sample all statements.", category = OptionCategory.USER, stability = OptionStability.STABLE)
+    @Option(name = "Mode", help = "Deprecated. Has no effect.", category = OptionCategory.USER, stability = OptionStability.STABLE)
     static final OptionKey<CPUSampler.Mode> MODE = new OptionKey<>(CPUSampler.Mode.EXCLUDE_INLINED_ROOTS, CLI_MODE_TYPE);
     // @formatter:om
     @Option(name = "Period", help = "Period in milliseconds to sample the stack.", category = OptionCategory.USER, stability = OptionStability.STABLE) //

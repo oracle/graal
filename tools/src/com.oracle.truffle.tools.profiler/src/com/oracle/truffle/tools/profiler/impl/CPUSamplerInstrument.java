@@ -112,7 +112,6 @@ public class CPUSamplerInstrument extends TruffleInstrument {
             sampler.setStackLimit(env.getOptions().get(CPUSamplerCLI.STACK_LIMIT));
             sampler.setFilter(getSourceSectionFilter(env));
             sampler.setGatherSelfHitTimes(env.getOptions().get(GATHER_HIT_TIMES));
-            sampler.setMode(env.getOptions().get(CPUSamplerCLI.MODE));
             sampler.setCollecting(true);
         }
         env.registerService(sampler);
