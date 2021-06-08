@@ -69,7 +69,7 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
         this.host = isHost;
         this.stackTrace = stackTrace;
         if (!isHostFrame()) {
-            this.formattedSource = formatSource(sourceLocation, source.getFileSystemContext(language));
+            this.formattedSource = formatSource(sourceLocation, language != null ? source.getFileSystemContext(language) : null);
         } else {
             this.formattedSource = null;
         }
