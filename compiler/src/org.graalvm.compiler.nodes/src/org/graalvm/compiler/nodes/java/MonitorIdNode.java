@@ -52,28 +52,30 @@ public class MonitorIdNode extends ValueNode implements IterableNodeType, LIRLow
     /**
      * We use the BCI as an identity for balanced locking.
      */
-    protected int bci;
+    protected final int bci;
 
+    /**
+     * Specifies if this is a monitor that was entered on disjoint control flow paths.
+     */
     protected boolean multipleEntry;
 
     public MonitorIdNode(int lockDepth, int bci) {
-        this(TYPE, lockDepth);
-        this.bci = bci;
+        this(TYPE, lockDepth, bci);
     }
 
     public MonitorIdNode(int lockDepth, int bci, boolean multipleEntry) {
-        this(TYPE, lockDepth);
-        this.bci = bci;
+        this(TYPE, lockDepth, bci);
         this.multipleEntry = multipleEntry;
     }
 
     public MonitorIdNode(int lockDepth) {
-        this(TYPE, lockDepth);
+        this(TYPE, lockDepth, -1);
     }
 
-    protected MonitorIdNode(NodeClass<? extends MonitorIdNode> c, int lockDepth) {
+    protected MonitorIdNode(NodeClass<? extends MonitorIdNode> c, int lockDepth, int bci) {
         super(c, StampFactory.forVoid());
         this.lockDepth = lockDepth;
+        this.bci = bci;
     }
 
     public int getBci() {
@@ -85,9 +87,9 @@ public class MonitorIdNode extends ValueNode implements IterableNodeType, LIRLow
     }
 
     /**
-     * Indicates that this monitor corresponds to a monitor operations that has multiple distinct
-     * monitorenter bytecodes for different objects. This violates some assumptions about well
-     * formed monitor operations and may inhibit some high level lock optimizations.
+     * Indicates that the associated monitor operations might have multiple distinct monitorenter
+     * bytecodes for different objects. This violates some assumptions about well formed monitor
+     * operations and may inhibit some high level lock optimizations.
      */
     public boolean isMultipleEntry() {
         return multipleEntry;
