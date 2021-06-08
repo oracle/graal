@@ -284,6 +284,7 @@ public final class Meta implements ContextAccess {
         java_io_File = knownKlass(Type.java_io_File);
         java_io_File_init = java_io_File.requireDeclaredMethod(Name._init_, Signature._void_String);
         java_io_File_toURI = java_io_File.requireDeclaredMethod(Name.toURI, Signature.URI);
+        java_nio_file_Path = knownKlass(Type.java_nio_file_Path);
         java_nio_file_Paths = knownKlass(Type.java_nio_file_Paths);
         java_nio_file_Paths_get = java_nio_file_Paths.requireDeclaredMethod(Name.get, Signature.Path_URI);
 
@@ -685,18 +686,23 @@ public final class Meta implements ContextAccess {
         if (getJavaVersion().java9OrLater()) {
             jdk_internal_module_ModuleLoaderMap = knownKlass(Type.jdk_internal_module_ModuleLoaderMap);
             jdk_internal_module_ModuleLoaderMap_platformModules = jdk_internal_module_ModuleLoaderMap.requireDeclaredMethod(Name.platformModules, Signature.java_util_Set);
-            jdk_internal_module_ModuleReferences = knownKlass(Type.jdk_internal_module_ModuleReferences);
-            jdk_internal_module_ModuleReferences_newJarModule = jdk_internal_module_ModuleReferences.requireDeclaredMethod(Name.newJarModule, Signature.Attributes_ModulePatcher_Path);
-            jdk_internal_module_ModuleReferences_newJModModule = jdk_internal_module_ModuleReferences.requireDeclaredMethod(Name.newJModModule, Signature.Attributes_Path);
-            jdk_internal_module_ModuleReferences_newExplodedModule = jdk_internal_module_ModuleReferences.requireDeclaredMethod(Name.newExplodedModule, Signature.Attributes_ModulePatcher_Path);
+            jdk_internal_module_SystemModuleFinders = knownKlass(Type.jdk_internal_module_SystemModuleFinders);
+            jdk_internal_module_SystemModuleFinders_of = jdk_internal_module_SystemModuleFinders.requireDeclaredMethod(Name.of, Signature.ModuleFinder_SystemModules);
+            jdk_internal_module_SystemModuleFinders_ofSystem = jdk_internal_module_SystemModuleFinders.requireDeclaredMethod(Name.ofSystem, Signature.ModuleFinder);
+            jdk_internal_module_ModulePath = knownKlass(Type.jdk_internal_module_ModulePath);
+            jdk_internal_module_ModulePath_of = jdk_internal_module_ModulePath.requireDeclaredMethod(Name.of, Signature.ModuleFinder_Path_array);
+            java_lang_module_ModuleFinder = knownKlass(Type.java_lang_module_ModuleFinder);
+            java_lang_module_ModuleFinder_compose = java_lang_module_ModuleFinder.requireDeclaredMethod(Name.compose, Signature.ModuleFinder_ModuleFinder_array);
         } else {
             jdk_internal_module_ModuleLoaderMap = null;
             jdk_internal_module_ModuleLoaderMap_platformModules = null;
-            jdk_internal_module_ModuleReferences = null;
-            jdk_internal_module_ModuleReferences_newJarModule = null;
-            jdk_internal_module_ModuleReferences_newJModModule = null;
-            jdk_internal_module_ModuleReferences_newExplodedModule = null;
-
+            jdk_internal_module_SystemModuleFinders = null;
+            jdk_internal_module_SystemModuleFinders_of = null;
+            jdk_internal_module_SystemModuleFinders_ofSystem = null;
+            jdk_internal_module_ModulePath = null;
+            jdk_internal_module_ModulePath_of = null;
+            java_lang_module_ModuleFinder = null;
+            java_lang_module_ModuleFinder_compose = null;
         }
     }
 
@@ -1014,6 +1020,7 @@ public final class Meta implements ContextAccess {
     public final Method java_io_File_init;
     public final Method java_io_File_toURI;
 
+    public final ObjectKlass java_nio_file_Path;
     public final ObjectKlass java_nio_file_Paths;
     public final Method java_nio_file_Paths_get;
 
@@ -1181,10 +1188,14 @@ public final class Meta implements ContextAccess {
     // Module system
     public final ObjectKlass jdk_internal_module_ModuleLoaderMap;
     public final Method jdk_internal_module_ModuleLoaderMap_platformModules;
-    public final ObjectKlass jdk_internal_module_ModuleReferences;
-    public final Method jdk_internal_module_ModuleReferences_newJarModule;
-    public final Method jdk_internal_module_ModuleReferences_newJModModule;
-    public final Method jdk_internal_module_ModuleReferences_newExplodedModule;
+    public final ObjectKlass jdk_internal_module_SystemModuleFinders;
+    public final Method jdk_internal_module_SystemModuleFinders_of;
+    public final Method jdk_internal_module_SystemModuleFinders_ofSystem;
+    public final ObjectKlass jdk_internal_module_ModulePath;
+    public final Method jdk_internal_module_ModulePath_of;
+    public final ObjectKlass java_lang_module_ModuleFinder;
+    public final Method java_lang_module_ModuleFinder_compose;
+
 
     // Interop conversions.
     public final ObjectKlass java_time_Duration;
