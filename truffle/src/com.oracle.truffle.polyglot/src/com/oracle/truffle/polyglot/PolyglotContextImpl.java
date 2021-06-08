@@ -2130,6 +2130,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         return true;
     }
 
+    @SuppressWarnings("unchecked")
     void initializeHostContext(PolyglotLanguageContext context, PolyglotContextConfig newConfig) {
         try {
             Object contextImpl = this.contextImpls[context.language.index];
@@ -2138,7 +2139,6 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             }
 
             AbstractHostService currentHost = engine.host;
-            @SuppressWarnings("unchecked")
             AbstractHostService newHost = context.lookupService(AbstractHostService.class);
             if (newHost == null) {
                 throw new AssertionError("The engine host language must provide register a service of type:" + AbstractHostService.class);

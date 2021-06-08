@@ -659,7 +659,7 @@ final class EngineAccessor extends Accessor {
         @Override
         public Object toGuestValue(Object obj, Object languageContext) {
             PolyglotContextImpl context = ((PolyglotLanguageContext) languageContext).context;
-            return context.engine.host.toGuestValue(context.getHostContextImpl(), obj);
+            return context.toGuestValue(null, obj);
         }
 
         @Override
