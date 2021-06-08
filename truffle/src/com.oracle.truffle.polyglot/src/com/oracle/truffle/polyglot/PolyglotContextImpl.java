@@ -2115,7 +2115,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         }
         final PolyglotContextImpl prev = engine.enter(this, engine.getUncachedLocation(), true);
         try {
-            for (int i = 1; i < this.contexts.length; i++) {
+            for (int i = 0; i < this.contexts.length; i++) {
                 final PolyglotLanguageContext context = this.contexts[i];
                 if (context.language.isHost()) {
                     initializeHostContext(context, newConfig);
