@@ -22,6 +22,17 @@
  */
 package com.oracle.truffle.espresso.staticobject;
 
+/**
+ * A trivial static object factory that allocates static objects of type {@link Object}.
+ *
+ * @see StaticShape.Builder#build()
+ */
 public interface DefaultStaticObjectFactory {
+    /**
+     * Creates a static object of type {@link Object} that have a visible constructor that accepts
+     * no arguments.
+     *
+     * @return the new static object instance
+     */
     Object create();
 }

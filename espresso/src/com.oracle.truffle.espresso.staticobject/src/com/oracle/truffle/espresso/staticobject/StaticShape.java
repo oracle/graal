@@ -33,6 +33,28 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Objects;
 
+/**
+ * A StaticShape is an immutable descriptor of the layout of a static object. On field access, when
+ * required, it allows {@linkplain StaticProperty static properties} to check that the receiver
+ * object matches the expected shape.
+ *
+ * <p>
+ * The constructor of StaticShape allows only known implementations to subclass it. Instances are
+ * created via {@link StaticShape#newBuilder(ClassLoaderCache)} and allow users to
+ * {@linkplain StaticShape#getFactory() retrieve} an instance of the {@linkplain Builder#build()
+ * default} or the {@linkplain StaticShape.Builder#build(Class, Class) user-defined} factory
+ * interface that must be used to allocate static objects with the current shape. Static shapes do
+ * not store the list of {@linkplain StaticProperty static properties} associated to them. It is up
+ * to the user to store this information when required, for example in a class that contains
+ * references to the static shape and the list of {@linkplain StaticProperty static properties}.
+ *
+ * @see StaticShape#newBuilder(ClassLoaderCache)
+ * @see StaticShape.Builder
+ * @see StaticProperty
+ * @param <T> the {@linkplain Builder#build() default} or the
+ *            {@linkplain StaticShape.Builder#build(Class, Class)} user-defined} factory interface
+ *            to allocate static objects
+ */
 public abstract class StaticShape<T> {
     protected static final Unsafe UNSAFE = getUnsafe();
     protected final Class<?> storageClass;
@@ -46,15 +68,51 @@ public abstract class StaticShape<T> {
         }
     }
 
+    /**
+     * Creates a new static shape builder.
+     *
+     * The builder instance is not thread-safe and must not be used from multiple threads at the
+     * same time. Users of the Static Object Model are expected to define custom subtypes of
+     * {@link StaticProperty} or use {@link DefaultStaticProperty}, a trivial default
+     * implementation. In both cases, static properties must be registered to a static shape builder
+     * using {@link StaticShape.Builder#property(StaticProperty)}. Then, after allocating a
+     * {@link StaticShape} instance with one of the {@link StaticShape.Builder#build()} methods and
+     * allocating a static object using the factory class provided by
+     * {@link StaticShape#getFactory()}, users can call the accessor methods defined in
+     * {@link StaticProperty} to get and set property values stored in a static object instance.
+     *
+     * @param clc a class that can be used to cache the class loader instance used to load classes
+     *            that extend the static object {@linkplain StaticShape.Builder#build(Class, Class)
+     *            super class} and implement the corresponding {@linkplain Builder#build() default}
+     *            or {@linkplain StaticShape.Builder#build(Class, Class) user-defined} factory
+     *            interface. This argument will be removed once the code of the Static Object Model
+     *            is moved to Truffle
+     * @return a new static shape builder
+     * 
+     * @see StaticShape
+     * @see StaticProperty
+     * @see DefaultStaticProperty
+     * @see DefaultStaticObjectFactory
+     * @see ClassLoaderCache
+     */
     public static Builder newBuilder(ClassLoaderCache clc) {
         return new Builder(clc);
     }
 
-    protected final void setFactory(T factory) {
+    final void setFactory(T factory) {
         assert this.factory == null;
         this.factory = factory;
     }
 
+    /**
+     * Returns an instance of the {@linkplain Builder#build() default} or the
+     * {@linkplain StaticShape.Builder#build(Class, Class)} user-defined} factory interface that
+     * must be used to allocate static objects with the current shape.
+     *
+     * @see StaticShape.Builder#build()
+     * @see StaticShape.Builder#build(StaticShape)
+     * @see StaticShape.Builder#build(Class, Class)
+     */
     public final T getFactory() {
         return factory;
     }
@@ -90,6 +148,12 @@ public abstract class StaticShape<T> {
         }
     }
 
+    /**
+     * Builder class to construct {@link StaticShape} instances. The builder instance is not
+     * thread-safe and must not be used from multiple threads at the same time.
+     *
+     * @see StaticShape#newBuilder(ClassLoaderCache)
+     */
     public static final class Builder {
         private static final char[] FORBIDDEN_CHARS = new char[]{'.', ';', '[', '/'};
         private final HashMap<String, StaticProperty> staticProperties = new LinkedHashMap<>();
@@ -99,6 +163,18 @@ public abstract class StaticShape<T> {
             this.clc = clc;
         }
 
+        /**
+         * Adds a {@link StaticProperty} to the static shape to be constructed. The
+         * {@linkplain StaticProperty#getId() property id} cannot be an empty String, or contain
+         * characters that are illegal for field names. It is not allowed to add two
+         * {@linkplain StaticProperty properties} with the same {@linkplain StaticProperty#getId()
+         * id} to the same Builder, or to add the same {@linkplain StaticProperty property} to more
+         * than one Builder.
+         *
+         * @see DefaultStaticProperty
+         * @param property the {@link StaticProperty} to be added
+         * @return the Builder instance
+         */
         public Builder property(StaticProperty property) {
             CompilerAsserts.neverPartOfCompilation();
             validatePropertyId(property.getId());
@@ -106,10 +182,35 @@ public abstract class StaticShape<T> {
             return this;
         }
 
+        /**
+         * Builds a new {@linkplain StaticShape static shape} using the configuration of this
+         * builder. The factory class returned by {@link StaticShape#getFactory()} will be a subtype
+         * of {@link DefaultStaticObjectFactory}, and static objects will be subtypes of
+         * {@link Object}.
+         *
+         * @see DefaultStaticObjectFactory
+         * @see StaticShape.Builder#build(StaticShape)
+         * @see StaticShape.Builder#build(Class, Class)
+         * @return the new {@link StaticShape}
+         */
         public StaticShape<DefaultStaticObjectFactory> build() {
             return build(Object.class, DefaultStaticObjectFactory.class);
         }
 
+        /**
+         * Builds a new {@linkplain StaticShape static shape} that extends the provided parent
+         * {@link StaticShape}. {@linkplain StaticProperty Static properties} of the parent shape
+         * can be used to access field values of static objects with the child shape. The factory
+         * class returned by {@link StaticShape#getFactory()} will be a subtype of the factory
+         * interface of the parent shape, and static objects will be subtypes of those allocated by
+         * the factory class of the parent shape.
+         *
+         * @see StaticShape.Builder#build()
+         * @see StaticShape.Builder#build(Class, Class)
+         * @param parentShape the parent {@linkplain StaticShape shape}
+         * @param <T> the generic type of the parent {@linkplain StaticShape shape}
+         * @return the new {@link StaticShape}
+         */
         public <T> StaticShape<T> build(StaticShape<T> parentShape) {
             Objects.requireNonNull(parentShape);
             GeneratorClassLoader gcl = getOrCreateClassLoader(parentShape.getFactoryInterface());
@@ -117,6 +218,30 @@ public abstract class StaticShape<T> {
             return build(sg, parentShape);
         }
 
+        /**
+         * Builds a new {@linkplain StaticShape static shape} using the configuration of this
+         * builder. The factory class returned by {@link StaticShape#getFactory()} will be a subtype
+         * of the provided factory interface, and static objects will be subtypes of the provided
+         * super class.
+         *
+         * <p>
+         * The implementation checks that the following constraints are respected:
+         * <ul>
+         * <li>if the provided super class is {@link Cloneable}, {@link Object#clone()} cannot be
+         * final
+         * <li>the factoryInterface class is an interface
+         * <li>the arguments of every method in the factory interface must match those of a visible
+         * constructor of the super class
+         * </ul>
+         *
+         * @see StaticShape.Builder#build()
+         * @see StaticShape.Builder#build(StaticShape)
+         * @param superClass the class that static objects must extend
+         * @param factoryInterface the factory interface that the factory class returned by
+         *            {@link StaticShape#getFactory()} must implement
+         * @param <T> the class of the factory interface
+         * @return the new {@link StaticShape}
+         */
         public <T> StaticShape<T> build(Class<?> superClass, Class<T> factoryInterface) {
             validateClasses(factoryInterface, superClass);
             GeneratorClassLoader gcl = getOrCreateClassLoader(factoryInterface);
