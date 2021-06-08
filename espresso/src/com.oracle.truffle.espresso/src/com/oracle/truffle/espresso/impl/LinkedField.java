@@ -33,8 +33,8 @@ final class LinkedField extends StaticProperty {
     private final ParserField parserField;
     private final int slot;
 
-    LinkedField(ParserField parserField, int slot) {
-        super(parserField.getPropertyKind(), parserField.isFinal());
+    LinkedField(ParserField parserField, int slot, boolean storeAsFinal) {
+        super(parserField.getPropertyKind(), storeAsFinal);
         this.parserField = parserField;
         this.slot = slot;
     }
