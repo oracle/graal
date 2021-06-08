@@ -82,7 +82,14 @@ static void *real_dlopen(const char *filename, int flags) {
 static void *get_libeden() {
     static void *libeden = NULL;
     if (libeden == NULL) {
-        if (strcmp(gnu_get_libc_version(), "2.17") < 0) { // glibc version < 2.17
+        int major = 0;
+        int minor = 0;
+        sscanf(gnu_get_libc_version(), "%d.%d", &major, &minor);
+        LOG("glibc version parsed as %d.%d\n", major, minor);
+        if (major != 2) {
+            FATAL("Incorrect glibc major version: %d.%d\n", major, minor);
+        }
+        if (minor < 17) { // glibc version < 2.17
             LOG("real_dlopen(libeden.so, RTLD_LAZY)\n");
             libeden = real_dlopen("libeden.so", RTLD_LAZY);
         } else {
