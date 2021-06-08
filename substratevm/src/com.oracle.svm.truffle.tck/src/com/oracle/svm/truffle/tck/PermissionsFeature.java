@@ -131,6 +131,7 @@ public class PermissionsFeature implements Feature {
         compilerPackages.add("com.oracle.graalvm.");
         compilerPackages.add("com.oracle.truffle.api.");
         compilerPackages.add("com.oracle.truffle.polyglot.");
+        compilerPackages.add("com.oracle.truffle.host.");
         compilerPackages.add("com.oracle.truffle.nfi.");
         compilerPackages.add("com.oracle.truffle.object.");
     }
