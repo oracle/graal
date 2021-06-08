@@ -32,13 +32,13 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-import com.oracle.truffle.espresso.jdwp.impl.JDWP;
 import org.graalvm.home.HomeFinder;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
+import com.oracle.truffle.espresso.jdwp.impl.JDWP;
 import com.oracle.truffle.espresso.meta.EspressoError;
 
 /**
@@ -290,7 +290,7 @@ public interface EspressoProperties {
         }
 
         // Inject polyglot.jar on JDK 8.
-        if (options.get(EspressoOptions.Polyglot) ) {
+        if (options.get(EspressoOptions.Polyglot)) {
             Path polyglotJar = espressoHome.resolve("lib").resolve("polyglot.jar");
             if (Files.isReadable(polyglotJar)) {
                 TruffleLogger.getLogger(EspressoLanguage.ID).fine("Adding Polyglot API to the boot classpath: " + polyglotJar);
