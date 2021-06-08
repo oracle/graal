@@ -1801,11 +1801,9 @@ public final class BytecodeNode extends EspressoMethodNode implements ReplaceObs
         atomic(() -> {
             OptimizedCallTarget target = osrTargets[bci];
             if (target != null) {
-                // TODO: unconditionally disable compilation here. we can get into a compile->execute->deopt loop and
-                //  for some reason the deoptimization listener does not get hit.
-                //if (target.isCompilationFailed()) {
+                if (target.isCompilationFailed()) {
                     canCompile = false;
-                //}
+                }
                 target.invalidate(reason);
             }
             osrTargets[bci] = null;
