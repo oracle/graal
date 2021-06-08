@@ -220,11 +220,6 @@ final class PolyglotObjectProxyHandler implements InvocationHandler, PolyglotWra
             return method.getGenericReturnType();
         }
 
-        @TruffleBoundary
-        private static boolean guardReturnType(Method method, Type returnType) {
-            return method.getGenericReturnType().equals(returnType);
-        }
-
         private Object invokeOrExecute(PolyglotLanguageContext polyglotContext, Object receiver, Object[] arguments, String member, InteropLibrary receivers,
                         InteropLibrary members,
                         ConditionProfile invokeProfile, BranchProfile error) {
