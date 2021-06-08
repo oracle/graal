@@ -115,7 +115,7 @@ final class HostLanguage extends TruffleLanguage<HostContext> {
             return;
         }
 
-        HostClassCache cache = HostClassCache.findOrInitialize(this, policy, cl);
+        HostClassCache cache = HostClassCache.findOrInitialize(access, api, policy, cl);
         if (this.hostClassCache != null) {
             if (this.hostClassCache.hostAccess.equals(cache.hostAccess)) {
                 /*

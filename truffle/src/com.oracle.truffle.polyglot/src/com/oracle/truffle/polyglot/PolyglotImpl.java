@@ -430,7 +430,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
     @Override
     public AbstractHostAccess createHostAccess() {
-        return new PolyglotHostEngine(this);
+        return new PolyglotHostAccess(this);
     }
 
     static org.graalvm.polyglot.Source getOrCreatePolyglotSource(AbstractPolyglotImpl polyglot, Source source) {

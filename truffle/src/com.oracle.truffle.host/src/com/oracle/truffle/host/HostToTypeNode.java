@@ -596,7 +596,7 @@ abstract class HostToTypeNode extends Node {
     @TruffleBoundary
     private static RuntimeException newInvalidKeyTypeException(Type targetType, HostContext context) {
         String message = "Unsupported Map key type: " + targetType;
-        return HostEngineException.classCast(context.language, message);
+        return HostEngineException.classCast(context.access, message);
     }
 
     private static TypeAndClass<?> getGenericParameterType(Type genericType, int index) {

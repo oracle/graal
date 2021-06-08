@@ -55,6 +55,7 @@ import java.util.Map.Entry;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleOptions;
@@ -65,7 +66,7 @@ final class HostClassCache {
 
     private final APIAccess apiAccess;
     final HostAccess hostAccess;
-    final HostLanguage language;
+    final AbstractHostAccess polyglotHostAccess;
     private final boolean arrayAccess;
     private final boolean listAccess;
     private final boolean bufferAccess;
@@ -88,10 +89,10 @@ final class HostClassCache {
         }
     };
 
-    private HostClassCache(HostLanguage language, HostAccess conf, ClassLoader classLoader) {
-        this.language = language;
+    private HostClassCache(AbstractHostAccess polyglotAccess, APIAccess apiAccess, HostAccess conf, ClassLoader classLoader) {
+        this.polyglotHostAccess = polyglotAccess;
         this.hostAccess = conf;
-        this.apiAccess = language.api;
+        this.apiAccess = apiAccess;
         this.arrayAccess = apiAccess.isArrayAccessible(hostAccess);
         this.listAccess = apiAccess.isListAccessible(hostAccess);
         this.bufferAccess = apiAccess.isBufferAccessible(hostAccess);
@@ -174,21 +175,21 @@ final class HostClassCache {
         return localMappings;
     }
 
-    public static HostClassCache findOrInitialize(HostLanguage hostLanguage, HostAccess conf, ClassLoader classLoader) {
-        HostClassCache cache = (HostClassCache) hostLanguage.api.getHostAccessImpl(conf);
+    public static HostClassCache findOrInitialize(AbstractHostAccess hostLanguage, APIAccess apiAccess, HostAccess conf, ClassLoader classLoader) {
+        HostClassCache cache = (HostClassCache) apiAccess.getHostAccessImpl(conf);
         if (cache == null) {
-            cache = initializeHostCache(hostLanguage, conf, classLoader);
+            cache = initializeHostCache(hostLanguage, apiAccess, conf, classLoader);
         }
         return cache;
     }
 
-    private static HostClassCache initializeHostCache(HostLanguage hostLanguage, HostAccess conf, ClassLoader classLoader) {
+    private static HostClassCache initializeHostCache(AbstractHostAccess polyglotAccess, APIAccess apiAccess, HostAccess conf, ClassLoader classLoader) {
         HostClassCache cache;
         synchronized (conf) {
-            cache = (HostClassCache) hostLanguage.api.getHostAccessImpl(conf);
+            cache = (HostClassCache) apiAccess.getHostAccessImpl(conf);
             if (cache == null) {
-                cache = new HostClassCache(hostLanguage, conf, classLoader);
-                hostLanguage.api.setHostAccessImpl(conf, cache);
+                cache = new HostClassCache(polyglotAccess, apiAccess, conf, classLoader);
+                apiAccess.setHostAccessImpl(conf, cache);
             }
         }
         return cache;

@@ -48,6 +48,7 @@ import java.util.Map;
 import java.util.Objects;
 
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -99,32 +100,32 @@ final class HostAdapterFactory {
         assert types.length > 0;
         CompilerAsserts.neverPartOfCompilation();
 
-        HostLanguage language = hostClassCache.language;
+        AbstractHostAccess polyglotAccess = hostClassCache.polyglotHostAccess;
         Class<?> superClass = null;
         final List<Class<?>> interfaces = new ArrayList<>();
         for (final Class<?> t : types) {
             if (!t.isInterface()) {
                 if (superClass != null) {
-                    throw HostEngineException.illegalArgument(language,
+                    throw HostEngineException.illegalArgument(polyglotAccess,
                                     String.format("Can not extend multiple classes %s and %s. At most one of the specified types can be a class, the rest must all be interfaces.",
                                                     t.getCanonicalName(), superClass.getCanonicalName()));
                 } else if (Modifier.isFinal(t.getModifiers())) {
-                    throw HostEngineException.illegalArgument(language, String.format("Can not extend final class %s.", t.getCanonicalName()));
+                    throw HostEngineException.illegalArgument(polyglotAccess, String.format("Can not extend final class %s.", t.getCanonicalName()));
                 } else {
                     superClass = t;
                 }
             } else {
                 if (interfaces.size() >= 65535) {
-                    throw HostEngineException.illegalArgument(language, "interface limit exceeded");
+                    throw HostEngineException.illegalArgument(polyglotAccess, "interface limit exceeded");
                 }
 
                 interfaces.add(t);
             }
             if (!Modifier.isPublic(t.getModifiers())) {
-                throw HostEngineException.illegalArgument(language, String.format("Class not public: %s.", t.getCanonicalName()));
+                throw HostEngineException.illegalArgument(polyglotAccess, String.format("Class not public: %s.", t.getCanonicalName()));
             }
             if (!HostInteropReflect.isExtensibleType(t) || !hostClassCache.allowsImplementation(t)) {
-                throw HostEngineException.illegalArgument(language, "Implementation not allowed for " + t);
+                throw HostEngineException.illegalArgument(polyglotAccess, "Implementation not allowed for " + t);
             }
         }
         superClass = superClass != null ? superClass : Object.class;
@@ -134,16 +135,16 @@ final class HostAdapterFactory {
 
         // Fail early if the class loader cannot load all supertypes.
         if (!classLoaderCanSee(commonLoader, types)) {
-            throw HostEngineException.illegalArgument(language, "Could not determine a class loader that can see all types: " + Arrays.toString(types));
+            throw HostEngineException.illegalArgument(polyglotAccess, "Could not determine a class loader that can see all types: " + Arrays.toString(types));
         }
 
         Class<?> adapterClass;
         try {
             adapterClass = generateAdapterClassFor(superClass, interfaces, commonLoader, hostClassCache, classOverrides);
         } catch (IllegalArgumentException ex) {
-            return new AdapterResult(HostEngineException.illegalArgument(language, ex));
+            return new AdapterResult(HostEngineException.illegalArgument(polyglotAccess, ex));
         } catch (RuntimeException ex) {
-            if (language.access.isEngineException(ex)) {
+            if (polyglotAccess.isEngineException(ex)) {
                 return new AdapterResult(ex);
             }
             throw ex;
@@ -161,7 +162,7 @@ final class HostAdapterFactory {
             }
             return new AdapterResult(adapterClass, constructor, valueConstructor);
         } else {
-            return new AdapterResult(HostEngineException.illegalArgument(language, "No accessible constructor: " + superClass.getCanonicalName()));
+            return new AdapterResult(HostEngineException.illegalArgument(polyglotAccess, "No accessible constructor: " + superClass.getCanonicalName()));
         }
     }
 

@@ -53,7 +53,7 @@ final class HostInteropErrors {
 
     @TruffleBoundary
     static RuntimeException nullCoercion(HostContext context, Object nullValue, Type targetType) {
-        throw HostEngineException.nullPointer(context.language, String.format("Cannot convert null value %s to Java type '%s'.",
+        throw HostEngineException.nullPointer(context.access, String.format("Cannot convert null value %s to Java type '%s'.",
                         getValueInfo(context, nullValue),
                         targetType.getTypeName()));
     }
@@ -66,7 +66,7 @@ final class HostInteropErrors {
         } else {
             reason = "Unsupported target type.";
         }
-        return HostEngineException.classCast(context.language, String.format("Cannot convert %s to Java type '%s': %s",
+        return HostEngineException.classCast(context.access, String.format("Cannot convert %s to Java type '%s': %s",
                         getValueInfo(context, value),
                         targetType.getTypeName(),
                         reason));
@@ -74,7 +74,7 @@ final class HostInteropErrors {
 
     @TruffleBoundary
     static RuntimeException cannotConvert(HostContext context, Object value, Type targetType, String reason) {
-        return HostEngineException.classCast(context.language, String.format("Cannot convert %s to Java type '%s': %s",
+        return HostEngineException.classCast(context.access, String.format("Cannot convert %s to Java type '%s': %s",
                         getValueInfo(context, value),
                         targetType.getTypeName(),
                         reason));
@@ -83,7 +83,7 @@ final class HostInteropErrors {
     @TruffleBoundary
     static RuntimeException invalidArrayIndex(HostContext context, Object receiver, Type componentType, int index) {
         String message = String.format("Invalid array index %s for %s[] %s.", index, formatComponentType(componentType), getValueInfo(context, receiver));
-        throw HostEngineException.arrayIndexOutOfBounds(context.language, message);
+        throw HostEngineException.arrayIndexOutOfBounds(context.access, message);
     }
 
     private static Object formatComponentType(Type componentType) {
@@ -93,14 +93,14 @@ final class HostInteropErrors {
     @TruffleBoundary
     static RuntimeException arrayReadUnsupported(HostContext context, Object receiver, Type componentType) {
         String message = String.format("Unsupported array read operation for %s[] %s.", formatComponentType(componentType), getValueInfo(context, receiver));
-        throw HostEngineException.unsupported(context.language, message);
+        throw HostEngineException.unsupported(context.access, message);
     }
 
     @TruffleBoundary
     static RuntimeException invalidExecuteArgumentType(HostContext context, Object receiver, Object[] arguments) {
         String[] formattedArgs = formatArgs(context, arguments);
         String message = String.format("Invalid argument when executing %s with arguments %s.", getValueInfo(context, receiver), Arrays.asList(formattedArgs));
-        throw HostEngineException.illegalArgument(context.language, message);
+        throw HostEngineException.illegalArgument(context.access, message);
     }
 
     @TruffleBoundary
@@ -108,7 +108,7 @@ final class HostInteropErrors {
         String[] formattedArgs = formatArgs(context, arguments);
         String message = String.format("Invalid argument count when executing %s with arguments %s. %s",
                         getValueInfo(context, receiver), Arrays.asList(formattedArgs), formatExpectedArguments(minArity, maxArity, actual));
-        throw HostEngineException.illegalArgument(context.language, message);
+        throw HostEngineException.illegalArgument(context.access, message);
     }
 
     private static String[] formatArgs(HostContext context, Object[] arguments) {

@@ -58,11 +58,11 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
 
-final class PolyglotHostEngine extends AbstractHostAccess {
+final class PolyglotHostAccess extends AbstractHostAccess {
 
     final AbstractPolyglotImpl polyglot;
 
-    protected PolyglotHostEngine(AbstractPolyglotImpl polyglot) {
+    protected PolyglotHostAccess(AbstractPolyglotImpl polyglot) {
         super(polyglot);
         this.polyglot = polyglot;
     }

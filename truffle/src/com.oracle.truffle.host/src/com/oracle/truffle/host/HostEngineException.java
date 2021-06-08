@@ -40,35 +40,37 @@
  */
 package com.oracle.truffle.host;
 
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
+
 @SuppressWarnings("serial")
 final class HostEngineException {
 
-    static RuntimeException illegalArgument(HostLanguage language, IllegalArgumentException e) {
-        return toEngineException(language, e);
+    static RuntimeException illegalArgument(AbstractHostAccess polyglot, IllegalArgumentException e) {
+        return toEngineException(polyglot, e);
     }
 
-    static RuntimeException illegalArgument(HostLanguage language, String message) {
-        return toEngineException(language, new IllegalArgumentException(message));
+    static RuntimeException illegalArgument(AbstractHostAccess polyglot, String message) {
+        return toEngineException(polyglot, new IllegalArgumentException(message));
     }
 
-    static RuntimeException nullPointer(HostLanguage language, String message) {
-        return toEngineException(language, new NullPointerException(message));
+    static RuntimeException nullPointer(AbstractHostAccess polyglot, String message) {
+        return toEngineException(polyglot, new NullPointerException(message));
     }
 
-    static RuntimeException unsupported(HostLanguage language, String message) {
-        return toEngineException(language, new UnsupportedOperationException(message));
+    static RuntimeException unsupported(AbstractHostAccess polyglot, String message) {
+        return toEngineException(polyglot, new UnsupportedOperationException(message));
     }
 
-    static RuntimeException classCast(HostLanguage language, String message) {
-        return toEngineException(language, new ClassCastException(message));
+    static RuntimeException classCast(AbstractHostAccess polyglot, String message) {
+        return toEngineException(polyglot, new ClassCastException(message));
     }
 
-    static RuntimeException arrayIndexOutOfBounds(HostLanguage language, String message) {
-        return toEngineException(language, new ArrayIndexOutOfBoundsException(message));
+    static RuntimeException arrayIndexOutOfBounds(AbstractHostAccess polyglot, String message) {
+        return toEngineException(polyglot, new ArrayIndexOutOfBoundsException(message));
     }
 
-    static RuntimeException toEngineException(HostLanguage language, RuntimeException e) {
-        return language.access.toEngineException(e);
+    static RuntimeException toEngineException(AbstractHostAccess access, RuntimeException e) {
+        return access.toEngineException(e);
     }
 
 }

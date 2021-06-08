@@ -181,7 +181,7 @@ abstract class HostTargetMappingNode extends Node {
                 return converter.apply(value);
             } catch (ClassCastException t) {
                 // we allow class cast exceptions
-                throw HostEngineException.classCast(context.language, t.getMessage());
+                throw HostEngineException.classCast(context.access, t.getMessage());
             } catch (Throwable t) {
                 throw context.hostToGuestException(t);
             }
