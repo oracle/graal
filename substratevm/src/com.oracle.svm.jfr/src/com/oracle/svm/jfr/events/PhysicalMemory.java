@@ -50,6 +50,7 @@ public class PhysicalMemory extends Event {
         PhysicalMemory pmInfo = new PhysicalMemory();
 
         pmInfo.totalSize = com.oracle.svm.core.heap.PhysicalMemory.size().rawValue();
+        // usedSize is not implemented at the moment.
         pmInfo.commit();
     }
 }

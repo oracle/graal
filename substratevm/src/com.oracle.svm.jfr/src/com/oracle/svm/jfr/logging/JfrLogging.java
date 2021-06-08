@@ -25,15 +25,14 @@
  */
 package com.oracle.svm.jfr.logging;
 
-import com.oracle.svm.core.log.Log;
-
-import com.oracle.svm.util.ReflectionUtil;
-import jdk.jfr.internal.LogLevel;
-import jdk.jfr.internal.LogTag;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import java.util.Arrays;
+import com.oracle.svm.core.log.Log;
+import com.oracle.svm.util.ReflectionUtil;
+
+import jdk.jfr.internal.LogLevel;
+import jdk.jfr.internal.LogTag;
 
 public class JfrLogging {
     private final JfrLogConfiguration configuration;
@@ -76,12 +75,19 @@ public class JfrLogging {
     @Platforms(Platform.HOSTED_ONLY.class)
     private static String[] createLogLevels() {
         LogLevel[] values = LogLevel.values();
-        String[] result = new String[values.length];
+        int maxLevel = getMaxLogLevel(values);
+        String[] result = new String[maxLevel + 1];
         for (LogLevel logLevel : values) {
-            if (getLevel(logLevel) >= result.length) {
-                result = Arrays.copyOf(result, getLevel(logLevel) + 1);
-            }
             result[getLevel(logLevel)] = logLevel.toString().toLowerCase();
+        }
+        return result;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private static int getMaxLogLevel(LogLevel[] values) {
+        int result = 0;
+        for (LogLevel logLevel : values) {
+            result = Math.max(result, getLevel(logLevel));
         }
         return result;
     }

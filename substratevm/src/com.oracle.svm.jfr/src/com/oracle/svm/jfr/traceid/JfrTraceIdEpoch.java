@@ -84,13 +84,17 @@ public class JfrTraceIdEpoch {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void changeEpoch() {
         assert VMOperation.isInProgressAtSafepoint();
-        JfrTraceIdLoadBarrier.clear(epoch);
         epoch = !epoch;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     long thisEpochBit() {
         return epoch ? EPOCH_1_BIT : EPOCH_0_BIT;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    long previousEpochBit() {
+        return epoch ? EPOCH_0_BIT : EPOCH_1_BIT;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

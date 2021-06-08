@@ -33,9 +33,8 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.jfr.traceid.JfrTraceId;
-import com.oracle.svm.jfr.traceid.JfrTraceIdEpoch;
-import com.oracle.svm.jfr.traceid.JfrTraceIdLoadBarrier;
 
 /**
  * Repository that collects and writes used classes, packages, modules, and classloaders.
@@ -54,9 +53,7 @@ public class JfrTypeRepository implements JfrConstantPool {
     public int write(JfrChunkWriter writer) {
         // Visit all used classes, and collect their packages, modules, classloaders and possibly
         // referenced classes.
-        TypeInfo typeInfo = new TypeInfo();
-        JfrTraceIdLoadBarrier.ClassConsumer classVisitor = aClass -> visitClass(typeInfo, aClass);
-        JfrTraceIdLoadBarrier.doClasses(classVisitor, JfrTraceIdEpoch.getInstance().previousEpoch());
+        TypeInfo typeInfo = collectTypeInfo();
 
         // The order of writing matters as following types can be tagged during the write process
         int count = writeClasses(writer, typeInfo);
@@ -64,6 +61,17 @@ public class JfrTypeRepository implements JfrConstantPool {
         count += writeModules(writer, typeInfo);
         count += writeClassLoaders(writer, typeInfo);
         return count;
+    }
+
+    private TypeInfo collectTypeInfo() {
+        TypeInfo typeInfo = new TypeInfo();
+        for (Class<?> clazz : Heap.getHeap().getClassList()) {
+            if (JfrTraceId.isUsedPreviousEpoch(clazz)) {
+                JfrTraceId.clearUsedPreviousEpoch(clazz);
+                visitClass(typeInfo, clazz);
+            }
+        }
+        return typeInfo;
     }
 
     private void visitClass(TypeInfo typeInfo, Class<?> clazz) {

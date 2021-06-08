@@ -38,32 +38,13 @@ import jdk.jfr.internal.Type;
  * current JFR epoch.
  */
 public class JfrTraceId {
-
     public static final long BIT = 1;
     public static final long META_SHIFT = 8;
-    public static final long TRANSIENT_META_BIT = (BIT << 3);
-    public static final long TRANSIENT_BIT = (TRANSIENT_META_BIT << META_SHIFT);
-    public static final long SERIALIZED_META_BIT = (BIT << 4);
-    public static final long SERIALIZED_BIT = (SERIALIZED_META_BIT << META_SHIFT);
 
     private static final int TRACE_ID_SHIFT = 16;
 
     private static final long JDK_JFR_EVENT_SUBCLASS = 16;
     private static final long JDK_JFR_EVENT_CLASS = 32;
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void tag(Class<?> clazz, long bits) {
-        JfrTraceIdMap map = JfrTraceIdMap.singleton();
-        long id = map.getId(clazz);
-        map.setId(clazz, id | (bits & 0xff));
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static boolean predicate(Class<?> clazz, long bits) {
-        JfrTraceIdMap map = JfrTraceIdMap.singleton();
-        long id = map.getId(clazz);
-        return (id & bits) != 0;
-    }
 
     @Uninterruptible(reason = "Epoch must not change.")
     public static void setUsedThisEpoch(Class<?> clazz) {
@@ -71,8 +52,14 @@ public class JfrTraceId {
     }
 
     @Uninterruptible(reason = "Epoch must not change.")
-    public static boolean isUsedThisEpoch(Class<?> clazz) {
-        return predicate(clazz, TRANSIENT_BIT | JfrTraceIdEpoch.getInstance().thisEpochBit());
+    public static void clearUsedPreviousEpoch(Class<?> clazz) {
+        clear(clazz, JfrTraceIdEpoch.getInstance().previousEpochBit());
+    }
+
+    @Uninterruptible(reason = "Epoch must not change.")
+    public static boolean isUsedPreviousEpoch(Class<?> clazz) {
+        long predicate = JfrTraceIdEpoch.getInstance().previousEpochBit();
+        return predicate(clazz, predicate);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -88,7 +75,30 @@ public class JfrTraceId {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long load(Class<?> clazz) {
-        return JfrTraceIdLoadBarrier.load(clazz);
+        assert clazz != null;
+        JfrTraceId.setUsedThisEpoch(clazz);
+        return JfrTraceId.getTraceId(clazz);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private static void tag(Class<?> clazz, long bits) {
+        JfrTraceIdMap map = JfrTraceIdMap.singleton();
+        long id = map.getId(clazz);
+        map.setId(clazz, id | (bits & 0xff));
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private static void clear(Class<?> clazz, long bits) {
+        JfrTraceIdMap map = JfrTraceIdMap.singleton();
+        long id = map.getId(clazz);
+        map.setId(clazz, id & ~bits);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private static boolean predicate(Class<?> clazz, long bits) {
+        JfrTraceIdMap map = JfrTraceIdMap.singleton();
+        long id = map.getId(clazz);
+        return (id & bits) != 0;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -117,6 +127,7 @@ public class JfrTraceId {
         }
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     private static long getTypeId(Class<?> clazz) {
         /*
          * We are picking up the host trace-ID here. This is important because host JFR will build
