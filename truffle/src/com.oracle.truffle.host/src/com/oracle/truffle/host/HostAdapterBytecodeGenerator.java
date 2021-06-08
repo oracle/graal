@@ -166,7 +166,7 @@ final class HostAdapterBytecodeGenerator {
     private static final Type RUNTIME_EXCEPTION_TYPE = Type.getType(RuntimeException.class);
     private static final Type THROWABLE_TYPE = Type.getType(Throwable.class);
     private static final Type UNSUPPORTED_OPERATION_TYPE = Type.getType(UnsupportedOperationException.class);
-    /** @see HostAdapterServices#unsupported(HostLanguage, String) */
+    /** @see HostAdapterServices#unsupported(String) */
     private static final String UNSUPPORTED_METHOD_NAME = "unsupported";
     private static final String UNSUPPORTED_METHOD_DESCRIPTOR = Type.getMethodDescriptor(UNSUPPORTED_OPERATION_TYPE, STRING_TYPE);
     /** @see HostAdapterServices#wrapThrowable(Throwable) */
