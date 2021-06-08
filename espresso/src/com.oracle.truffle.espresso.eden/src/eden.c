@@ -59,10 +59,10 @@ static void *get_libc() {
 static void *get_libdl() {
     static void *libdl = NULL;
     if (libdl == NULL) {
-        LOG("__libc_dlopen_mode(libdl.so, RTLD_LAZY)\n");
-        libdl = __libc_dlopen_mode("libdl.so", RTLD_LAZY);
+        LOG("__libc_dlopen_mode(libdl.so.2, RTLD_LAZY)\n");        
+        libdl = __libc_dlopen_mode("libdl.so.2", RTLD_LAZY);
     }
-    LOG("get_libdl(libdl.so) => %p\n", libdl);
+    LOG("get_libdl(libdl.so.2) => %p\n", libdl);
     return libdl;
 }
 
@@ -155,6 +155,14 @@ void *dlmopen(Lmid_t lmid, const char *filename, int flags) {
 
 void *dlopen(const char *filename, int flags) {
     LOG("dlopen(%s, %d)\n", filename, flags);
+
+    // dlopen man page: If filename is NULL, then the returned handle is for the main program.
+    // RTLD_DEFAULT is returned here as the namespace handle since it can be later passed to dlsym
+    // to lookup symbols in the namespace.
+    if (filename == NULL) {
+        return RTLD_DEFAULT;
+    }
+
     if (flags & RTLD_GLOBAL) {
         // dlmopen does not support RTLD_GLOBAL.
         // See https://patchwork.ozlabs.org/project/glibc/patch/55A73673.3060104@redhat.com/
