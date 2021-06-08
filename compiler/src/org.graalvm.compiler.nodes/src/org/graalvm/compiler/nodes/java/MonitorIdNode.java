@@ -54,17 +54,17 @@ public class MonitorIdNode extends ValueNode implements IterableNodeType, LIRLow
      */
     protected int bci;
 
-    protected boolean identityMerged;
+    protected boolean multipleEntry;
 
     public MonitorIdNode(int lockDepth, int bci) {
         this(TYPE, lockDepth);
         this.bci = bci;
     }
 
-    public MonitorIdNode(int lockDepth, int bci, boolean merged) {
+    public MonitorIdNode(int lockDepth, int bci, boolean multipleEntry) {
         this(TYPE, lockDepth);
         this.bci = bci;
-        this.identityMerged = merged;
+        this.multipleEntry = multipleEntry;
     }
 
     public MonitorIdNode(int lockDepth) {
@@ -80,12 +80,17 @@ public class MonitorIdNode extends ValueNode implements IterableNodeType, LIRLow
         return bci;
     }
 
+    public void setMultipleEntry() {
+        this.multipleEntry = true;
+    }
+
     /**
-     * Determines if this monitor ID node is the result of merging two monitor operations that have
-     * been duplicated as a result of e.g. bytecode duplication because of irrecudible loops.
+     * Indicates that this monitor corresponds to a monitor operations that has multiple distinct
+     * monitorenter bytecodes for different objects. This violates some assumptions about well
+     * formed monitor operations and may inhibit some high level lock optimizations.
      */
-    public boolean isIdentityMerged() {
-        return identityMerged;
+    public boolean isMultipleEntry() {
+        return multipleEntry;
     }
 
     public int getLockDepth() {

@@ -74,6 +74,7 @@ public class LockEliminationPhase extends Phase {
          */
         ValueNode object1 = GraphUtil.unproxify(lock1.object());
         ValueNode object2 = GraphUtil.unproxify(lock2.object());
-        return object1 == object2 && lock1.getMonitorId().getLockDepth() == lock2.getMonitorId().getLockDepth();
+        return object1 == object2 && lock1.getMonitorId().getLockDepth() == lock2.getMonitorId().getLockDepth() &&
+                        lock1.getMonitorId().isMultipleEntry() == lock2.getMonitorId().isMultipleEntry();
     }
 }

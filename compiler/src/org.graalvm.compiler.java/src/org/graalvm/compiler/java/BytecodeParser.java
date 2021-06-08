@@ -2811,7 +2811,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         MonitorIdNode monitorId = frameState.peekMonitorId();
         ValueNode lockedObject = frameState.popLock();
         // if we merged two monitor ids we trust the merging logic checked the correct enter bcis
-        if (!monitorId.isIdentityMerged()) {
+        if (!monitorId.isMultipleEntry()) {
             ValueNode originalLockedObject = GraphUtil.originalValue(lockedObject, false);
             ValueNode originalX = GraphUtil.originalValue(x, false);
             if (originalLockedObject != originalX) {
