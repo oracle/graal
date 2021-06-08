@@ -58,6 +58,7 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
     private JNIMethodId javaLangInvokeMethodTypeParameterArray = WordFactory.nullPointer();
     private JNIMethodId javaLangInvokeMethodTypeReturnType = WordFactory.nullPointer();
     final JNIObjectHandle javaLangIllegalAccessException;
+    final JNIObjectHandle javaLangIllegalAccessError;
     final JNIObjectHandle javaLangInvokeWrongMethodTypeException;
     final JNIObjectHandle javaLangIllegalArgumentException;
 
@@ -104,6 +105,7 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
         javaLangStackOverflowError = newClassGlobalRef(env, "java/lang/StackOverflowError");
 
         javaLangIllegalAccessException = newClassGlobalRef(env, "java/lang/IllegalAccessException");
+        javaLangIllegalAccessError = newClassGlobalRef(env, "java/lang/IllegalAccessError");
         javaLangInvokeWrongMethodTypeException = newClassGlobalRef(env, "java/lang/invoke/WrongMethodTypeException");
         javaLangIllegalArgumentException = newClassGlobalRef(env, "java/lang/IllegalArgumentException");
     }

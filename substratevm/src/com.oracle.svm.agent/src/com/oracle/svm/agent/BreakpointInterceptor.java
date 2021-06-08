@@ -975,15 +975,20 @@ final class BreakpointInterceptor {
         return true;
     }
 
-    private static boolean constantBootstrapGetStaticFinal(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {
+    private static boolean constantBootstrapGetStaticFinal(JNIEnvironment jni, Breakpoint bp, InterceptedState state, boolean hasDeclaringClass) {
         JNIObjectHandle callerClass = state.getDirectCallerClass();
         JNIObjectHandle lookup = getObjectArgument(0);
         JNIObjectHandle fieldName = getObjectArgument(1);
         JNIObjectHandle type = getObjectArgument(2);
-        JNIObjectHandle declaringClass = getObjectArgument(3);
+        JNIObjectHandle declaringClass = hasDeclaringClass ? getObjectArgument(3) : type;
 
-        JNIObjectHandle result = Support.callStaticObjectMethodLLLL(jni, bp.clazz, bp.method, lookup, fieldName, type, declaringClass);
-        result = shouldIncludeMethod(jni, result, agent.handles().javaLangIllegalAccessException);
+        JNIObjectHandle result;
+        if (hasDeclaringClass) {
+            result = Support.callStaticObjectMethodLLLL(jni, bp.clazz, bp.method, lookup, fieldName, type, declaringClass);
+        } else {
+            result = Support.callStaticObjectMethodLLL(jni, bp.clazz, bp.method, lookup, fieldName, type);
+        }
+        result = shouldIncludeMethod(jni, result, agent.handles().javaLangIllegalAccessError);
 
         String name = fromJniString(jni, fieldName);
         traceBreakpoint(jni, declaringClass, nullHandle(), callerClass, "findFieldHandle", result.notEqual(nullHandle()), state.getFullStackTraceOrNull(), name);
@@ -1517,7 +1522,10 @@ final class BreakpointInterceptor {
                                     BreakpointInterceptor::asInterfaceInstance),
                     optionalBrk("java/lang/invoke/ConstantBootstraps", "getStaticFinal",
                                     "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/Class;Ljava/lang/Class;)Ljava/lang/Object;",
-                                    BreakpointInterceptor::constantBootstrapGetStaticFinal),
+                                    (jni, bp, state) -> BreakpointInterceptor.constantBootstrapGetStaticFinal(jni, bp, state, true)),
+                    optionalBrk("java/lang/invoke/ConstantBootstraps", "getStaticFinal",
+                                    "(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/Class;)Ljava/lang/Object;",
+                                    (jni, bp, state) -> BreakpointInterceptor.constantBootstrapGetStaticFinal(jni, bp, state, false)),
                     optionalBrk("java/lang/invoke/MethodType", "fromMethodDescriptorString",
                                     "(Ljava/lang/String;Ljava/lang/ClassLoader;)Ljava/lang/invoke/MethodType;",
                                     BreakpointInterceptor::methodTypeFromDescriptor)
