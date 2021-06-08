@@ -95,14 +95,16 @@ public final class LLVMPThreadContext {
 
     @TruffleBoundary
     public void joinAllThreads() {
-        final Collection<WeakReference<Thread>> threadsToJoin;
+        final Collection<WeakReference<Thread>> threads;
+
         synchronized (threadLock) {
             this.isCreateThreadAllowed = false;
-            threadsToJoin = threadStorage.values();
+            threads = threadStorage.values();
         }
-        for (WeakReference<Thread> createdThread : threadsToJoin) {
+
+        for (WeakReference<Thread> thread : threads) {
             try {
-                Thread t = createdThread.get();
+                Thread t = thread.get();
                 if (t != null) {
                     t.join();
                 }
