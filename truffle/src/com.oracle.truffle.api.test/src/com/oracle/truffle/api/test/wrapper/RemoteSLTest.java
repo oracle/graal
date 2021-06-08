@@ -77,16 +77,16 @@ public class RemoteSLTest {
         // ensure polyglot initialized
         Engine.create().close();
 
-        previousPolyglot = getPolylgotImpl();
+        previousPolyglot = getPolyglotImpl();
         HostPolyglotDispatch dispatch = new HostPolyglotDispatch();
         dispatch.setConstructors(previousPolyglot.getAPIAccess());
         dispatch.setNext(previousPolyglot);
-        setPolylgotImpl(dispatch);
+        setPolyglotImpl(dispatch);
     }
 
     @After
     public void tearDown() throws Throwable {
-        setPolylgotImpl(previousPolyglot);
+        setPolyglotImpl(previousPolyglot);
     }
 
     public Object testFunction(Object v) {
@@ -157,14 +157,14 @@ public class RemoteSLTest {
         }
     }
 
-    private static AbstractPolyglotImpl getPolylgotImpl() throws Throwable {
+    private static AbstractPolyglotImpl getPolyglotImpl() throws Throwable {
         Class<?> implHolder = Class.forName(Engine.class.getName() + "$ImplHolder");
         Field f = implHolder.getDeclaredField("IMPL");
         ReflectionUtils.setAccessible(f, true);
         return (AbstractPolyglotImpl) f.get(null);
     }
 
-    private static void setPolylgotImpl(AbstractPolyglotImpl impl) throws Throwable {
+    private static void setPolyglotImpl(AbstractPolyglotImpl impl) throws Throwable {
         Class<?> implHolder = Class.forName(Engine.class.getName() + "$ImplHolder");
         Field f = implHolder.getDeclaredField("IMPL");
         ReflectionUtils.setAccessible(f, true);
