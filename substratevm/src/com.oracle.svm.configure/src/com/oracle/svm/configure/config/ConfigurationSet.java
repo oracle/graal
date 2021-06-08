@@ -25,9 +25,7 @@
 package com.oracle.svm.configure.config;
 
 import java.io.IOException;
-import java.io.Reader;
 import java.net.URI;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
@@ -38,6 +36,7 @@ import java.util.function.Function;
 
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.ConfigurationParser;
+import com.oracle.svm.core.configure.PredefinedClassesConfigurationParser;
 import com.oracle.svm.core.configure.ProxyConfigurationParser;
 import com.oracle.svm.core.configure.ReflectionConfigurationParser;
 import com.oracle.svm.core.configure.ResourceConfigurationParser;
@@ -51,6 +50,7 @@ public class ConfigurationSet {
     private final Set<URI> proxyConfigPaths = new LinkedHashSet<>();
     private final Set<URI> resourceConfigPaths = new LinkedHashSet<>();
     private final Set<URI> serializationConfigPaths = new LinkedHashSet<>();
+    private final Set<URI> predefinedClassesConfigPaths = new LinkedHashSet<>();
 
     public void addDirectory(Path path) {
         jniConfigPaths.add(path.resolve(ConfigurationFiles.JNI_NAME).toUri());
@@ -58,10 +58,12 @@ public class ConfigurationSet {
         proxyConfigPaths.add(path.resolve(ConfigurationFiles.DYNAMIC_PROXY_NAME).toUri());
         resourceConfigPaths.add(path.resolve(ConfigurationFiles.RESOURCES_NAME).toUri());
         serializationConfigPaths.add(path.resolve(ConfigurationFiles.SERIALIZATION_NAME).toUri());
+        predefinedClassesConfigPaths.add(path.resolve(ConfigurationFiles.PREDEFINED_CLASSES_NAME).toUri());
     }
 
     public boolean isEmpty() {
-        return jniConfigPaths.isEmpty() && reflectConfigPaths.isEmpty() && proxyConfigPaths.isEmpty() && resourceConfigPaths.isEmpty() && serializationConfigPaths.isEmpty();
+        return jniConfigPaths.isEmpty() && reflectConfigPaths.isEmpty() && proxyConfigPaths.isEmpty() &&
+                        resourceConfigPaths.isEmpty() && serializationConfigPaths.isEmpty() && predefinedClassesConfigPaths.isEmpty();
     }
 
     public Set<URI> getJniConfigPaths() {
@@ -84,6 +86,10 @@ public class ConfigurationSet {
         return serializationConfigPaths;
     }
 
+    public Set<URI> getPredefinedClassesConfigPaths() {
+        return predefinedClassesConfigPaths;
+    }
+
     public TypeConfiguration loadJniConfig(Function<IOException, Exception> exceptionHandler) throws Exception {
         return loadTypeConfig(jniConfigPaths, exceptionHandler);
     }
@@ -98,6 +104,12 @@ public class ConfigurationSet {
         return proxyConfiguration;
     }
 
+    public PredefinedClassesConfiguration loadPredefinedClassesConfig(Path[] classDestinationDirs, Function<IOException, Exception> exceptionHandler) throws Exception {
+        PredefinedClassesConfiguration predefinedClassesConfiguration = new PredefinedClassesConfiguration(classDestinationDirs);
+        loadConfig(predefinedClassesConfigPaths, new PredefinedClassesConfigurationParser(predefinedClassesConfiguration::add), exceptionHandler);
+        return predefinedClassesConfiguration;
+    }
+
     public ResourceConfiguration loadResourceConfig(Function<IOException, Exception> exceptionHandler) throws Exception {
         ResourceConfiguration resourceConfiguration = new ResourceConfiguration();
         loadConfig(resourceConfigPaths, new ResourceConfigurationParser(new ResourceConfiguration.ParserAdapter(resourceConfiguration)), exceptionHandler);
@@ -106,9 +118,7 @@ public class ConfigurationSet {
 
     public SerializationConfiguration loadSerializationConfig(Function<IOException, Exception> exceptionHandler) throws Exception {
         SerializationConfiguration serializationConfiguration = new SerializationConfiguration();
-        loadConfig(serializationConfigPaths, new SerializationConfigurationParser(
-                        (targetSerializationClass, customTargetConstructorClass) -> serializationConfiguration.add(targetSerializationClass, customTargetConstructorClass)),
-                        exceptionHandler);
+        loadConfig(serializationConfigPaths, new SerializationConfigurationParser(serializationConfiguration::add), exceptionHandler);
         return serializationConfiguration;
     }
 
@@ -119,9 +129,10 @@ public class ConfigurationSet {
     }
 
     private static void loadConfig(Collection<URI> configPaths, ConfigurationParser configurationParser, Function<IOException, Exception> exceptionHandler) throws Exception {
-        for (URI path : configPaths) {
-            try (Reader reader = Files.newBufferedReader(Paths.get(path))) {
-                configurationParser.parseAndRegister(reader);
+        for (URI uri : configPaths) {
+            Path path = Paths.get(uri);
+            try {
+                configurationParser.parseAndRegister(path);
             } catch (IOException ioe) {
                 Exception e = ioe;
                 if (exceptionHandler != null) {

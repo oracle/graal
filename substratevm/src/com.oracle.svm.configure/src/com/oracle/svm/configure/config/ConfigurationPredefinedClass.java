@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Alibaba Group Holding Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,42 +23,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.configure.trace;
+package com.oracle.svm.configure.config;
 
-import java.util.Base64;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.io.IOException;
 
-public abstract class AbstractProcessor {
-    AbstractProcessor() {
+import com.oracle.svm.configure.json.JsonPrintable;
+import com.oracle.svm.configure.json.JsonWriter;
+
+public final class ConfigurationPredefinedClass implements JsonPrintable {
+
+    private final String nameInfo;
+    private final String hash;
+
+    public ConfigurationPredefinedClass(String nameInfo, String hash) {
+        this.nameInfo = nameInfo;
+        this.hash = hash;
     }
 
-    abstract void processEntry(Map<String, ?> entry);
-
-    void setInLivePhase(@SuppressWarnings("unused") boolean live) {
-    }
-
-    static void logWarning(String warning) {
-        System.err.println("WARNING: " + warning);
-    }
-
-    @SuppressWarnings("unchecked")
-    static <T> T singleElement(List<?> list) {
-        expectSize(list, 1);
-        return (T) list.get(0);
-    }
-
-    static void expectSize(Collection<?> collection, int size) {
-        if (collection.size() != size) {
-            throw new IllegalArgumentException("List must have exactly " + size + " element(s)");
+    @Override
+    public void printJson(JsonWriter writer) throws IOException {
+        writer.append("{ ");
+        if (nameInfo != null) {
+            writer.quote("nameInfo").append(':').quote(nameInfo).append(", ");
         }
-    }
-
-    static byte[] asBinary(Object obj) {
-        if (obj instanceof byte[]) {
-            return (byte[]) obj;
-        }
-        return Base64.getDecoder().decode((String) obj);
+        writer.quote("hash").append(':').quote(hash);
+        writer.append(" }");
     }
 }

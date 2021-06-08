@@ -47,6 +47,7 @@ import static com.oracle.svm.jvmtiagentbase.Support.newObjectL;
 import static com.oracle.svm.jvmtiagentbase.Support.testException;
 import static com.oracle.svm.jvmtiagentbase.Support.toCString;
 import static com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEvent.JVMTI_EVENT_BREAKPOINT;
+import static com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEvent.JVMTI_EVENT_CLASS_FILE_LOAD_HOOK;
 import static com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEvent.JVMTI_EVENT_CLASS_PREPARE;
 import static org.graalvm.word.WordFactory.nullPointer;
 
@@ -129,12 +130,18 @@ final class BreakpointInterceptor {
     /** Enables experimental support for instrumenting class lookups via {@code ClassLoader}. */
     private static boolean experimentalClassLoaderSupport = false;
 
+    /** Enables experimental support for class definitions via {@code ClassLoader.defineClass}. */
+    private static boolean experimentalClassDefineSupport = false;
+
     /**
      * Locations in methods where explicit calls to {@code ClassLoader.loadClass} have been found.
      */
     private static ConcurrentMap<MethodLocation, Boolean> observedExplicitLoadClassCallSites;
 
     private static final ThreadLocal<Boolean> recursive = ThreadLocal.withInitial(() -> Boolean.FALSE);
+
+    /* Classes from these class loaders are assumed to not be dynamically loaded. */
+    private static JNIObjectHandle[] builtinClassLoaders;
 
     private static void traceBreakpoint(JNIEnvironment env, JNIObjectHandle clazz, JNIObjectHandle declaringClass, JNIObjectHandle callerClass, String function, Object result, Object... args) {
         if (traceWriter != null) {
@@ -972,18 +979,45 @@ final class BreakpointInterceptor {
         }
     }
 
+    @CEntryPoint
+    @CEntryPointOptions(prologue = AgentIsolate.Prologue.class)
+    private static void onClassFileLoadHook(@SuppressWarnings("unused") JvmtiEnv jvmti, JNIEnvironment jni, @SuppressWarnings("unused") JNIObjectHandle classBeingRedefined,
+                    JNIObjectHandle loader, CCharPointer name, @SuppressWarnings("unused") JNIObjectHandle protectionDomain, int classDataLen, CCharPointer classData,
+                    @SuppressWarnings("unused") CIntPointer newClassDataLen, @SuppressWarnings("unused") CCharPointerPointer newClassData) {
+
+        if (loader.equal(nullHandle())) { // boot class loader
+            return;
+        }
+        for (JNIObjectHandle builtinLoader : builtinClassLoaders) {
+            if (jniFunctions().getIsSameObject().invoke(jni, loader, builtinLoader)) {
+                return;
+            }
+        }
+        if (jniFunctions().getIsInstanceOf().invoke(jni, loader, agent.handles().jdkInternalReflectDelegatingClassLoader)) {
+            return;
+        }
+        byte[] data = new byte[classDataLen];
+        CTypeConversion.asByteBuffer(classData, classDataLen).get(data);
+        traceWriter.traceCall("classloading", "onClassFileLoadHook", null, null, null, null, fromCString(name), data);
+    }
+
     private static final CEntryPointLiteral<CFunctionPointer> onBreakpointLiteral = CEntryPointLiteral.create(BreakpointInterceptor.class, "onBreakpoint",
                     JvmtiEnv.class, JNIEnvironment.class, JNIObjectHandle.class, JNIMethodId.class, long.class);
 
     private static final CEntryPointLiteral<CFunctionPointer> onClassPrepareLiteral = CEntryPointLiteral.create(BreakpointInterceptor.class, "onClassPrepare",
                     JvmtiEnv.class, JNIEnvironment.class, JNIObjectHandle.class, JNIObjectHandle.class);
 
+    private static final CEntryPointLiteral<CFunctionPointer> onClassFileLoadHookLiteral = CEntryPointLiteral.create(BreakpointInterceptor.class, "onClassFileLoadHook",
+                    JvmtiEnv.class, JNIEnvironment.class, JNIObjectHandle.class, JNIObjectHandle.class, CCharPointer.class, JNIObjectHandle.class, int.class, CCharPointer.class, CIntPointer.class,
+                    CCharPointerPointer.class);
+
     public static void onLoad(JvmtiEnv jvmti, JvmtiEventCallbacks callbacks, TraceWriter writer, NativeImageAgent nativeImageTracingAgent,
-                    boolean exptlClassLoaderSupport) {
+                    boolean exptlClassLoaderSupport, boolean exptlClassDefineSupport) {
 
         BreakpointInterceptor.traceWriter = writer;
         BreakpointInterceptor.agent = nativeImageTracingAgent;
         BreakpointInterceptor.experimentalClassLoaderSupport = exptlClassLoaderSupport;
+        BreakpointInterceptor.experimentalClassDefineSupport = exptlClassDefineSupport;
 
         JvmtiCapabilities capabilities = UnmanagedMemory.calloc(SizeOf.get(JvmtiCapabilities.class));
         check(jvmti.getFunctions().GetCapabilities().invoke(jvmti, capabilities));
@@ -1001,6 +1035,9 @@ final class BreakpointInterceptor {
         UnmanagedMemory.free(capabilities);
 
         callbacks.setBreakpoint(onBreakpointLiteral.getFunctionPointer());
+        if (exptlClassDefineSupport) {
+            callbacks.setClassFileLoadHook(onClassFileLoadHookLiteral.getFunctionPointer());
+        }
         if (exptlClassLoaderSupport) {
             callbacks.setClassPrepare(onClassPrepareLiteral.getFunctionPointer());
         }
@@ -1042,10 +1079,47 @@ final class BreakpointInterceptor {
         }
         installedBreakpoints = breakpoints;
 
-        Support.check(jvmti.getFunctions().SetEventNotificationMode().invoke(jvmti, JvmtiEventMode.JVMTI_ENABLE, JVMTI_EVENT_BREAKPOINT, nullHandle()));
-        if (experimentalClassLoaderSupport) {
-            Support.check(jvmti.getFunctions().SetEventNotificationMode().invoke(jvmti, JvmtiEventMode.JVMTI_ENABLE, JVMTI_EVENT_CLASS_PREPARE, nullHandle()));
+        if (experimentalClassDefineSupport) {
+            setupClassLoadEvent(jvmti, jni);
         }
+
+        check(jvmti.getFunctions().SetEventNotificationMode().invoke(jvmti, JvmtiEventMode.JVMTI_ENABLE, JVMTI_EVENT_BREAKPOINT, nullHandle()));
+        if (experimentalClassLoaderSupport) {
+            check(jvmti.getFunctions().SetEventNotificationMode().invoke(jvmti, JvmtiEventMode.JVMTI_ENABLE, JVMTI_EVENT_CLASS_PREPARE, nullHandle()));
+        }
+    }
+
+    private static void setupClassLoadEvent(JvmtiEnv jvmti, JNIEnvironment jni) {
+        JNIObjectHandle classLoader = agent.handles().javaLangClassLoader;
+
+        JNIMethodId getSystemClassLoader = agent.handles().getMethodId(jni, classLoader, "getSystemClassLoader", "()Ljava/lang/ClassLoader;", true);
+        JNIObjectHandle systemLoader = Support.callStaticObjectMethod(jni, classLoader, getSystemClassLoader);
+        checkNoException(jni);
+        guarantee(systemLoader.notEqual(nullHandle()));
+
+        JNIMethodId getPlatformLoader = agent.handles().getMethodIdOptional(jni, classLoader, "getPlatformClassLoader", "()Ljava/lang/ClassLoader;", true);
+        JNIMethodId getAppLoader = agent.handles().getMethodIdOptional(jni, classLoader, "getBuiltinAppClassLoader", "()Ljava/lang/ClassLoader;", true);
+        if (getPlatformLoader.isNonNull() && getAppLoader.isNonNull()) { // only on JDK 9 and later
+            JNIObjectHandle platformLoader = callObjectMethod(jni, classLoader, getPlatformLoader);
+            checkNoException(jni);
+            JNIObjectHandle appLoader = callObjectMethod(jni, classLoader, getAppLoader);
+            checkNoException(jni);
+            guarantee(platformLoader.notEqual(nullHandle()) && appLoader.notEqual(nullHandle()));
+
+            if (!jniFunctions().getIsSameObject().invoke(jni, systemLoader, appLoader)) {
+                builtinClassLoaders = new JNIObjectHandle[3];
+                builtinClassLoaders[2] = agent.handles().newTrackedGlobalRef(jni, appLoader);
+            } else {
+                builtinClassLoaders = new JNIObjectHandle[2];
+            }
+            builtinClassLoaders[1] = agent.handles().newTrackedGlobalRef(jni, platformLoader);
+        } else {
+            guarantee(getPlatformLoader.isNull() && getAppLoader.isNull());
+            builtinClassLoaders = new JNIObjectHandle[1];
+        }
+        builtinClassLoaders[0] = agent.handles().newTrackedGlobalRef(jni, systemLoader);
+
+        check(jvmti.getFunctions().SetEventNotificationMode().invoke(jvmti, JvmtiEventMode.JVMTI_ENABLE, JVMTI_EVENT_CLASS_FILE_LOAD_HOOK, nullHandle()));
     }
 
     private static Breakpoint installBreakpoint(JNIEnvironment jni, BreakpointSpecification br, Map<Long, Breakpoint> map, JNIObjectHandle knownClass) {
@@ -1100,6 +1174,7 @@ final class BreakpointInterceptor {
     }
 
     public static void onUnload() {
+        builtinClassLoaders = null;
         installedBreakpoints = null;
         observedExplicitLoadClassCallSites = null;
         traceWriter = null;

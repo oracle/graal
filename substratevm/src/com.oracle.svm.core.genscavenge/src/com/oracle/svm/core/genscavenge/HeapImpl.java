@@ -26,7 +26,6 @@ package com.oracle.svm.core.genscavenge;
 
 import java.lang.ref.Reference;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import org.graalvm.compiler.api.replacements.Fold;
@@ -321,12 +320,13 @@ public final class HeapImpl extends Heap {
     }
 
     @Override
-    public List<Class<?>> getClassList() {
+    protected List<Class<?>> getAllClasses() {
         /* Two threads might race to set classList, but they compute the same result. */
         if (classList == null) {
-            List<Class<?>> list = new ArrayList<>(1024);
+            ArrayList<Class<?>> list = new ArrayList<>(1024);
             ImageHeapWalker.walkRegions(imageHeapInfo, new ClassListBuilderVisitor(list));
-            classList = Collections.unmodifiableList(list);
+            list.trimToSize();
+            classList = list;
         }
         assert classList.size() == imageHeapInfo.dynamicHubCount;
         return classList;

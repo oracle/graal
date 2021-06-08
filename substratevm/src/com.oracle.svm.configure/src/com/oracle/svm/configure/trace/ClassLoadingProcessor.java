@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Alibaba Group Holding Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,40 +25,36 @@
  */
 package com.oracle.svm.configure.trace;
 
-import java.util.Base64;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
-public abstract class AbstractProcessor {
-    AbstractProcessor() {
+import com.oracle.svm.configure.config.PredefinedClassesConfiguration;
+
+public class ClassLoadingProcessor extends AbstractProcessor {
+    private final PredefinedClassesConfiguration configuration;
+
+    public ClassLoadingProcessor(PredefinedClassesConfiguration configuration) {
+        this.configuration = configuration;
     }
 
-    abstract void processEntry(Map<String, ?> entry);
-
-    void setInLivePhase(@SuppressWarnings("unused") boolean live) {
+    public PredefinedClassesConfiguration getPredefinedClassesConfiguration() {
+        return configuration;
     }
 
-    static void logWarning(String warning) {
-        System.err.println("WARNING: " + warning);
-    }
-
-    @SuppressWarnings("unchecked")
-    static <T> T singleElement(List<?> list) {
-        expectSize(list, 1);
-        return (T) list.get(0);
-    }
-
-    static void expectSize(Collection<?> collection, int size) {
-        if (collection.size() != size) {
-            throw new IllegalArgumentException("List must have exactly " + size + " element(s)");
+    @Override
+    void processEntry(Map<String, ?> entry) {
+        boolean invalidResult = Boolean.FALSE.equals(entry.get("result"));
+        if (invalidResult) {
+            return;
         }
-    }
 
-    static byte[] asBinary(Object obj) {
-        if (obj instanceof byte[]) {
-            return (byte[]) obj;
+        String function = (String) entry.get("function");
+        List<?> args = (List<?>) entry.get("args");
+        if ("onClassFileLoadHook".equals(function)) {
+            expectSize(args, 2);
+            String nameInfo = (String) args.get(0);
+            byte[] classData = asBinary(args.get(1));
+            configuration.add(nameInfo, classData);
         }
-        return Base64.getDecoder().decode((String) obj);
     }
 }

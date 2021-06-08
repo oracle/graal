@@ -42,6 +42,7 @@ import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -51,6 +52,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -292,7 +294,7 @@ final class Target_java_lang_ClassLoader {
              */
             throw new ClassNotFoundException(name);
         }
-        return ClassForNameSupport.forName(name, false);
+        return ClassForNameSupport.forName(name, false, SubstrateUtil.cast(this, ClassLoader.class));
     }
 
     @Alias
@@ -316,7 +318,8 @@ final class Target_java_lang_ClassLoader {
     @TargetElement(onlyWith = JDK11OrLater.class) //
     @SuppressWarnings({"unused"})
     Class<?> loadClass(Target_java_lang_Module module, String name) {
-        return ClassForNameSupport.forNameOrNull(name, false);
+        /* The module system is not supported for now, therefore the module parameter is ignored. */
+        return ClassForNameSupport.forNameOrNull(name, false, SubstrateUtil.cast(this, ClassLoader.class));
     }
 
     /**
@@ -354,7 +357,7 @@ final class Target_java_lang_ClassLoader {
         if (name == null) {
             return null;
         }
-        return ClassForNameSupport.forNameOrNull(name, false);
+        return ClassForNameSupport.forNameOrNull(name, false, SubstrateUtil.cast(this, ClassLoader.class));
     }
 
     @Substitute
@@ -408,20 +411,37 @@ final class Target_java_lang_ClassLoader {
 
     @Substitute
     @SuppressWarnings({"unused", "static-method"})
-    private Class<?> defineClass(String name, byte[] b, int off, int len) {
-        throw VMError.unsupportedFeature("Defining classes from new bytecodes run time.");
+    Class<?> defineClass(byte[] b, int off, int len) throws ClassFormatError {
+        return PredefinedClassesSupport.loadClass(SubstrateUtil.cast(this, ClassLoader.class), null, b, off, len, null);
+    }
+
+    @Substitute
+    @SuppressWarnings({"unused", "static-method"})
+    Class<?> defineClass(String name, byte[] b, int off, int len) throws ClassFormatError {
+        return PredefinedClassesSupport.loadClass(SubstrateUtil.cast(this, ClassLoader.class), name, b, off, len, null);
     }
 
     @Substitute
     @SuppressWarnings({"unused", "static-method"})
     private Class<?> defineClass(String name, byte[] b, int off, int len, ProtectionDomain protectionDomain) {
-        throw VMError.unsupportedFeature("Defining classes from new bytecodes run time.");
+        return PredefinedClassesSupport.loadClass(SubstrateUtil.cast(this, ClassLoader.class), name, b, off, len, protectionDomain);
     }
 
     @Substitute
     @SuppressWarnings({"unused", "static-method"})
     private Class<?> defineClass(String name, java.nio.ByteBuffer b, ProtectionDomain protectionDomain) {
-        throw VMError.unsupportedFeature("Defining classes from new bytecodes run time.");
+        byte[] array;
+        int off;
+        int len = b.remaining();
+        if (b.hasArray()) {
+            array = b.array();
+            off = b.position() + b.arrayOffset();
+        } else {
+            array = new byte[len];
+            b.get(array);
+            off = 0;
+        }
+        return PredefinedClassesSupport.loadClass(SubstrateUtil.cast(this, ClassLoader.class), name, array, off, len, null);
     }
 
     @Delete

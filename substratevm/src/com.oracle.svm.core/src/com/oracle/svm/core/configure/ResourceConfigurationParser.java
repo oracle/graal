@@ -57,7 +57,7 @@ public class ResourceConfigurationParser extends ConfigurationParser {
             } else if ("bundles".equals(pair.getKey())) {
                 bundlesObject = pair.getValue();
             } else {
-                throw new JSONParserException("Unknown attribute '" + pair.getKey() + "' (supported attributes: name) in resource definition");
+                throw new JSONParserException("Unknown attribute '" + pair.getKey() + "' (supported attributes: resources, bundles) in resource definition");
             }
         }
         if (resourcesObject != null) {
@@ -70,7 +70,7 @@ public class ResourceConfigurationParser extends ConfigurationParser {
                     } else if ("excludes".equals(pair.getKey())) {
                         excludesObject = pair.getValue();
                     } else {
-                        throw new JSONParserException("Unknown attribute '" + pair.getKey() + "' (supported attributes: name) in resource definition");
+                        throw new JSONParserException("Unknown attribute '" + pair.getKey() + "' (supported attributes: includes, excludes) in resource definition");
                     }
                 }
 
