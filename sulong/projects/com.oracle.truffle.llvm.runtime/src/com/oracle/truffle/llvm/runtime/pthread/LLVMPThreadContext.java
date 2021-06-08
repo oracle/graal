@@ -210,8 +210,8 @@ public final class LLVMPThreadContext {
     }
 
     @TruffleBoundary
-    public void clearThreadID() {
-        threadStorage.remove(Thread.currentThread().getId());
+    public void clearThreadID(long threadID) {
+        threadStorage.remove(threadID);
     }
 
     @TruffleBoundary

@@ -107,6 +107,7 @@ public final class LLVMPThreadThreadIntrinsics {
             LLVMPThreadContext pthreadContext = context.getpThreadContext();
             Object threadReturnValue = pthreadContext.getThreadReturnValue(threadID);
             pthreadContext.clearThreadReturnValue(threadID);
+            pthreadContext.clearThreadID(threadID);
             return threadReturnValue;
         }
     }
