@@ -404,48 +404,6 @@ public class CPUSamplerTest extends AbstractProfilerTest {
     }
 
     @Test
-    @Ignore("Not needed since we don't recreate the shadow stack")
-    public void testCorrectInitShadowStackStatements() {
-        sampler.setFilter(NO_INTERNAL_STATEMENT_TAG_FILTER);
-        Source test = Source.newBuilder(RecreateShadowStackTestLanguage.ID, "Statement Root", "test").buildLiteral();
-        context.eval(test);
-        Collection<ProfilerNode<CPUSampler.Payload>> rootNodes = sampler.getRootNodes();
-
-        ProfilerNode<CPUSampler.Payload> current = rootNodes.iterator().next();
-        current = checkStackState(current, "Statement", false);
-        current = checkStackState(current, "Statement", false);
-        current = checkStackState(current, "Statement", false);
-        current = checkStackState(current, "Statement", false);
-        checkStackState(current, "Statement", true);
-    }
-
-    private static ProfilerNode<CPUSampler.Payload> checkStackState(ProfilerNode<CPUSampler.Payload> current, String expectedSource, boolean top) {
-        Assert.assertEquals("Stack not correct", expectedSource, current.getSourceSection().getCharacters().toString());
-        if (top) {
-            Assert.assertFalse("Stack too deep", current.getChildren().iterator().hasNext());
-            return null;
-        } else {
-            Assert.assertTrue("Stack not deep enough", current.getChildren().iterator().hasNext());
-            return current.getChildren().iterator().next();
-        }
-
-    }
-
-    @Test
-    @Ignore("Not needed since we don't recreate the shadow stack")
-    public void testCorrectInitShadowStackRoots() {
-        sampler.setFilter(NO_INTERNAL_ROOT_TAG_FILTER);
-        Source test = Source.newBuilder(RecreateShadowStackTestLanguage.ID, "Root Root", "test").buildLiteral();
-        context.eval(test);
-        Collection<ProfilerNode<CPUSampler.Payload>> rootNodes = sampler.getRootNodes();
-
-        ProfilerNode<CPUSampler.Payload> current = rootNodes.iterator().next();
-        current = checkStackState(current, "Root", false);
-        current = checkStackState(current, "Root", false);
-        checkStackState(current, "Root", true);
-    }
-
-    @Test
     public void testMultiThreadedRecursive() {
         sampler.setFilter(NO_INTERNAL_ROOT_TAG_FILTER);
         sampler.setCollecting(true);
@@ -556,7 +514,6 @@ public class CPUSamplerTest extends AbstractProfilerTest {
     }
 
     @Test
-    @Ignore("Should be rewritten with contexts")
     public void testThreadSafe() throws InterruptedException {
         sampler.setFilter(NO_INTERNAL_ROOT_TAG_FILTER);
         sampler.setCollecting(true);
