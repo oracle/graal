@@ -46,6 +46,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.polyglot.PolyglotEngineImpl.CancelExecution;
 
 final class PolyglotThread extends Thread {
 
@@ -126,6 +127,12 @@ final class PolyglotThread extends Thread {
             assert prev == null; // is this assertion correct?
             try {
                 run.execute();
+            } catch (CancelExecution cancel) {
+                if (PolyglotEngineOptions.TriggerUncaughtExceptionHandlerForCancel.getValue(languageContext.context.engine.getEngineOptionValues())) {
+                    throw cancel;
+                } else {
+                    return null;
+                }
             } finally {
                 languageContext.leaveAndDisposePolyglotThread(prev, thread);
             }
