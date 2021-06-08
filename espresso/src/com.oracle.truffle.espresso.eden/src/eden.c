@@ -84,7 +84,9 @@ static void *get_libeden() {
     if (libeden == NULL) {
         int major = 0;
         int minor = 0;
-        sscanf(gnu_get_libc_version(), "%d.%d", &major, &minor);
+        if (sscanf(gnu_get_libc_version(), "%d.%d", &major, &minor) != 2) {
+            FATAL("couldn't parse glibc version\n");
+        }
         LOG("glibc version parsed as %d.%d\n", major, minor);
         if (major != 2) {
             FATAL("Incorrect glibc major version: %d.%d\n", major, minor);
