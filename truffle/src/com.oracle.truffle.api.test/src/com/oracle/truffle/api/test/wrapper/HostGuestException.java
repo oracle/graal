@@ -69,7 +69,7 @@ class HostGuestException extends AbstractTruffleException {
     @TruffleBoundary
     final Object send(Message message, Object... args) throws Exception {
         if (message.getLibraryClass() == InteropLibrary.class) {
-            return hostToGuest.remoteMessage(contextId, id, message, HostGuestValue.marshalToRemote(hostToGuest, args));
+            return HostGuestValue.sendImpl(hostToGuest, contextId, id, message, args);
         } else {
             // we only support remoting interop calls
             return REFLECTION.send(DEFAULT, message, args);

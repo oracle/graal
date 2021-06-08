@@ -153,19 +153,38 @@ final class HostEntryPoint {
                 // probably needs to support TruffleException too, but this is just a sketch
                 if (e instanceof AbstractTruffleException) {
                     // also send over stack traces and messages
-                    throw new HostGuestException(this, contextId, guestToHost(e), e.getMessage());
+                    return new GuestExceptionPointer(guestToHost(e), e.getMessage());
                 } else {
                     throw new RuntimeException("Internal error thrown by remote message.", e);
                 }
             }
-            if (result instanceof TruffleObject) {
-                return new HostGuestValue(this, contextId, guestToHost(result));
-            } else {
-                // send primitives directly
-                return result;
-            }
+            return marshallAtGuest(result);
         } finally {
             c.leave();
+        }
+    }
+
+    static class GuestExceptionPointer {
+
+        final long id;
+        final String message;
+
+        GuestExceptionPointer(long id, String message) {
+            this.id = id;
+            this.message = message;
+        }
+
+    }
+
+    private Object marshallAtGuest(Object result) {
+        if (result instanceof GuestHostValue) {
+            return new HostValuePointer(((GuestHostValue) result).id);
+        } else if (HostGuestValue.isGuestPrimitive(result)) {
+            return result;
+        } else if (result instanceof TruffleObject) {
+            return guestToHost(result);
+        } else {
+            throw new UnsupportedOperationException(result.getClass().getName());
         }
     }
 
@@ -181,7 +200,7 @@ final class HostEntryPoint {
                 newArgs[i] = new GuestHostValue(guestEntry, contextId, ((HostValuePointer) arg).id);
             } else if (arg == null) { // null is currently reserved for interop library
                 newArgs[i] = InteropLibrary.getUncached();
-            } else if (arg instanceof String) {
+            } else if (HostGuestValue.isGuestPrimitive(arg)) {
                 newArgs[i] = arg;
             } else {
                 throw new UnsupportedOperationException();
@@ -192,6 +211,10 @@ final class HostEntryPoint {
 
     public void registerHostContext(long guestContextId, HostContext context) {
         guestEntry.registerHostContext(guestContextId, context);
+    }
+
+    public Object unmarshallHost(Class<?> type, long id) {
+        return guestEntry.unmarshall(type, id);
     }
 
 }

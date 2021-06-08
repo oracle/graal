@@ -41,13 +41,18 @@
 package com.oracle.truffle.api.test.wrapper;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.Message;
 import com.oracle.truffle.api.library.ReflectionLibrary;
+import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.test.wrapper.HostEntryPoint.GuestExceptionPointer;
 import com.oracle.truffle.api.test.wrapper.HostEntryPoint.HostValuePointer;
+import com.oracle.truffle.api.utilities.TriState;
 
 @ExportLibrary(ReflectionLibrary.class)
 class HostGuestValue implements TruffleObject {
@@ -68,11 +73,35 @@ class HostGuestValue implements TruffleObject {
     @TruffleBoundary
     final Object send(Message message, Object... args) throws Exception {
         if (message.getLibraryClass() == InteropLibrary.class) {
-            return hostToGuest.remoteMessage(contextId, id, message, marshalToRemote(hostToGuest, args));
+            return sendImpl(hostToGuest, contextId, id, message, args);
         } else {
             // we only support remoting interop calls
             return REFLECTION.send(DEFAULT, message, args);
         }
+    }
+
+    static Object sendImpl(HostEntryPoint hostToGuest, long contextId, long guestId, Message message, Object... args) throws AbstractTruffleException {
+        Object[] marshalledArgs = marshalToRemote(hostToGuest, args);
+        Object result = hostToGuest.remoteMessage(contextId, guestId, message, marshalledArgs);
+        return unmarshallAtHost(hostToGuest, contextId, result);
+    }
+
+    static Object unmarshallAtHost(HostEntryPoint hostToGuest, long contextId, Object result) throws AbstractTruffleException {
+        if (result instanceof HostValuePointer) {
+            return hostToGuest.unmarshallHost(Object.class, ((HostValuePointer) result).id);
+        } else if (result instanceof GuestExceptionPointer) {
+            throw new HostGuestException(hostToGuest, contextId, ((GuestExceptionPointer) result).id, ((GuestExceptionPointer) result).message);
+        } else if (result instanceof Long) {
+            return new HostGuestValue(hostToGuest, contextId, (long) result);
+        } else if (isGuestPrimitive(result)) {
+            return result;
+        } else {
+            throw new UnsupportedOperationException(result.getClass().getName());
+        }
+    }
+
+    static boolean isGuestPrimitive(Object result) {
+        return result instanceof String || result instanceof Boolean || result instanceof Integer || result instanceof TriState || result instanceof ExceptionType || result instanceof SourceSection;
     }
 
     static Object[] marshalToRemote(HostEntryPoint hostToGuest, Object[] args) {
