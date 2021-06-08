@@ -653,7 +653,9 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                 if (newEnv != null) {
                     env = newEnv;
                     lazy.languageInstance.patchFirstOptions(newOptionValues);
-                    LOG.log(Level.FINE, "Successfully patched context of language: {0}", this.language.getId());
+                    if (!this.language.isHost()) {
+                        LOG.log(Level.FINE, "Successfully patched context of language: {0}", this.language.getId());
+                    }
                     return true;
                 }
                 LOG.log(Level.FINE, "Failed to patch context of language: {0}", this.language.getId());

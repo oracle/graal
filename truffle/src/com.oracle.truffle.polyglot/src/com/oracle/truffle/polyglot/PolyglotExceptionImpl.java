@@ -141,7 +141,7 @@ final class PolyglotExceptionImpl {
                 }
                 Object exceptionObject;
                 if (entered && languageContext != null && languageContext.isCreated() &&
-                                !engine.host.isHostException(exception) && (exceptionObject = ((com.oracle.truffle.api.TruffleException) exception).getExceptionObject()) != null) {
+                                !isHostException(engine, exception) && (exceptionObject = ((com.oracle.truffle.api.TruffleException) exception).getExceptionObject()) != null) {
                     /*
                      * Allow proxies in guest language objects. This is for legacy support. Ideally
                      * we should get rid of this if it is no longer relied upon.
@@ -219,7 +219,7 @@ final class PolyglotExceptionImpl {
     private static Error getResourceLimitError(PolyglotEngineImpl engine, Throwable e) {
         if (e instanceof CancelExecution) {
             return ((CancelExecution) e).isResourceLimit() ? (Error) e : null;
-        } else if (engine != null && engine.host != null && engine.host.isHostException(e)) {
+        } else if (isHostException(engine, e)) {
             Throwable toCheck = engine.host.toHostResourceError(e);
             assert toCheck == null || toCheck instanceof StackOverflowError || toCheck instanceof OutOfMemoryError;
             return (Error) toCheck;
@@ -316,10 +316,7 @@ final class PolyglotExceptionImpl {
     }
 
     public boolean isHostException() {
-        if (engine == null || engine.host == null) {
-            return false;
-        }
-        return engine.host.isHostException(exception);
+        return isHostException(engine, exception);
     }
 
     public Throwable asHostException() {
@@ -603,13 +600,13 @@ final class PolyglotExceptionImpl {
 
     private static Throwable findCause(PolyglotEngineImpl engine, Throwable throwable) {
         Throwable cause = throwable;
-        if (engine != null && engine.host != null && engine.host.isHostException(cause)) {
+        if (isHostException(engine, cause)) {
             return findCause(engine, engine.host.unboxHostException(cause));
         } else if (EngineAccessor.EXCEPTION.isException(cause)) {
             return EngineAccessor.EXCEPTION.getLazyStackTrace(cause);
         } else {
             while (cause.getCause() != null && cause.getStackTrace().length == 0) {
-                if (engine != null && engine.host != null && engine.host.isHostException(cause)) {
+                if (isHostException(engine, cause)) {
                     cause = engine.host.unboxHostException(cause);
                 } else {
                     cause = cause.getCause();
@@ -617,6 +614,13 @@ final class PolyglotExceptionImpl {
             }
             return cause;
         }
+    }
+
+    private static boolean isHostException(PolyglotEngineImpl engine, Throwable cause) {
+        /*
+         * Note that engine.host can be null if the error happens during initialization.
+         */
+        return engine != null && engine.host != null && engine.host.isHostException(cause);
     }
 
     static class MergedHostGuestIterator<T, G> implements Iterator<T> {

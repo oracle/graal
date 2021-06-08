@@ -2141,7 +2141,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             AbstractHostService currentHost = engine.host;
             AbstractHostService newHost = context.lookupService(AbstractHostService.class);
             if (newHost == null) {
-                throw new AssertionError("The engine host language must provide register a service of type:" + AbstractHostService.class);
+                throw new AssertionError("The engine host language must register a service of type:" + AbstractHostService.class);
             }
             if (currentHost == null) {
                 engine.host = newHost;

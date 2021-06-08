@@ -2697,7 +2697,6 @@ final class HostObject implements TruffleObject {
                 if (ee != null) {
                     return false;
                 }
-                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw e;
             }
             try {

@@ -106,22 +106,28 @@ final class HostContext {
         this.language = hostLanguage;
     }
 
+    /*
+     * This method is invoked once during normal creation and then again after context
+     * preinitialization.
+     */
     @SuppressWarnings("hiding")
     void initialize(Object internalContext, ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed, boolean hostLookupAllowed) {
+        if (classloader != null && this.classFilter != null || this.hostClassLoadingAllowed || this.hostLookupAllowed) {
+            throw new AssertionError("must not be used during context preinitialization");
+        }
         this.internalContext = internalContext;
-        assert classloader == null : "must not be used during context preinitialization";
-        // if assertions are not enabled. dispose the previous class loader to be on the safe side
-        disposeClassLoader();
-        this.contextClassLoader = cl;
-
-        assert this.classFilter == null : "must not be used during context preinitialization";
+        this.contextClassLoader = resolveClassLoader(cl);
         this.classFilter = clFilter;
-
-        assert !this.hostClassLoadingAllowed : "must not be used during context preinitialization";
         this.hostClassLoadingAllowed = hostCLAllowed;
-
-        assert !this.hostLookupAllowed : "must not be used during context preinitialization";
         this.hostLookupAllowed = hostLookupAllowed;
+    }
+
+    private static ClassLoader resolveClassLoader(ClassLoader cl) {
+        ClassLoader useCl = cl;
+        if (useCl == null) {
+            useCl = TruffleOptions.AOT ? null : Thread.currentThread().getContextClassLoader();
+        }
+        return useCl;
     }
 
     public HostClassCache getHostClassCache() {

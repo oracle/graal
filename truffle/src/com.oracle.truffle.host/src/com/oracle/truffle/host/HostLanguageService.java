@@ -49,7 +49,6 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostService;
 import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.host.HostAdapterFactory.AdapterResult;
 import com.oracle.truffle.host.HostMethodDesc.SingleMethod;
@@ -67,23 +66,14 @@ public class HostLanguageService extends AbstractHostService {
     @Override
     public void initializeHostContext(Object internalContext, Object receiver, HostAccess hostAccess, ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed, boolean hostLookupAllowed) {
         HostContext context = (HostContext) receiver;
-        ClassLoader useCl = resolveClassLoader(cl);
-        language.initializeHostAccess(hostAccess, useCl);
-        context.initialize(internalContext, useCl, clFilter, hostCLAllowed, hostLookupAllowed);
+        language.initializeHostAccess(hostAccess, cl);
+        context.initialize(internalContext, cl, clFilter, hostCLAllowed, hostLookupAllowed);
     }
 
     @Override
     public void addToHostClassPath(Object receiver, Object truffleFile) {
         HostContext context = (HostContext) receiver;
         context.addToHostClasspath((TruffleFile) truffleFile);
-    }
-
-    private static ClassLoader resolveClassLoader(ClassLoader cl) {
-        ClassLoader useCl = cl;
-        if (useCl == null) {
-            useCl = TruffleOptions.AOT ? null : Thread.currentThread().getContextClassLoader();
-        }
-        return useCl;
     }
 
     @Override
