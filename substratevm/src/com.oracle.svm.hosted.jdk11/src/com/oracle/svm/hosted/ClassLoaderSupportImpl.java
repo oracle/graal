@@ -88,7 +88,6 @@ public final class ClassLoaderSupportImpl extends ClassLoaderSupport {
         for (Module module : modules) {
             Module exportTargetModule = ClassLoaderSupportImpl.class.getModule();
             if (!module.isExported(packageName, exportTargetModule)) {
-                System.out.printf("!!! Open for ResourceBundle access: %s:%s%n", module.getName(), packageName);
                 Modules.addOpens(module, packageName, exportTargetModule);
             }
             resourceBundles.add(ResourceBundle.getBundle(bundleName, locale, module));
@@ -113,7 +112,6 @@ public final class ClassLoaderSupportImpl extends ClassLoaderSupport {
                 }
             }
         }
-        dumpPackageNameModulesMapping();
     }
 
     private static List<ModuleLayer> allLayers(ModuleLayer moduleLayer) {
@@ -155,14 +153,5 @@ public final class ClassLoaderSupportImpl extends ClassLoaderSupport {
             /* Add to exiting HashSet - happens rarely */
             prevValue.add(moduleName);
         }
-    }
-
-    public void dumpPackageNameModulesMapping() {
-        packageToModules.entrySet().stream()
-                        .sorted(Map.Entry.comparingByKey())
-                        .map(e -> e.getKey() + " -> " + e.getValue().stream()
-                                        .map(Module::getName)
-                                        .collect(Collectors.joining(", ")))
-                        .forEach(System.out::println);
     }
 }
