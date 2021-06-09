@@ -23,6 +23,9 @@
 package com.oracle.truffle.espresso.meta;
 
 import static com.oracle.truffle.espresso.EspressoOptions.SpecCompliancyMode.HOTSPOT;
+import static com.oracle.truffle.espresso.descriptors.Symbol.Name.platformClassLoader;
+
+import java.util.function.Function;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -58,6 +61,7 @@ public final class Meta implements ContextAccess {
     private final ExceptionDispatch dispatch;
     private final StringConversion stringConversion;
     private final InteropKlassesDispatch interopDispatch;
+    private StaticObject cachedPlatformClassLoader;
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     public Meta(EspressoContext context) {
@@ -471,6 +475,8 @@ public final class Meta implements ContextAccess {
 
         if (getJavaVersion().java9OrLater()) {
             java_lang_System_initializeSystemClass = null;
+            jdk_internal_loader_ClassLoaders = knownKlass(Type.jdk_internal_loader_ClassLoaders);
+            jdk_internal_loader_ClassLoaders_platformClassLoader = jdk_internal_loader_ClassLoaders.requireDeclaredMethod(platformClassLoader, Signature.ClassLoader);
             jdk_internal_loader_ClassLoaders$PlatformClassLoader = knownKlass(Type.jdk_internal_loader_ClassLoaders$PlatformClassLoader);
             java_lang_StackWalker = knownKlass(Type.java_lang_StackWalker);
             java_lang_AbstractStackWalker = knownKlass(Type.java_lang_AbstractStackWalker);
@@ -487,6 +493,8 @@ public final class Meta implements ContextAccess {
             java_lang_System_initPhase3 = java_lang_System.requireDeclaredMethod(Name.initPhase3, Signature._void);
         } else {
             java_lang_System_initializeSystemClass = java_lang_System.requireDeclaredMethod(Name.initializeSystemClass, Signature._void);
+            jdk_internal_loader_ClassLoaders = null;
+            jdk_internal_loader_ClassLoaders_platformClassLoader = null;
             jdk_internal_loader_ClassLoaders$PlatformClassLoader = null;
             java_lang_StackWalker = null;
             java_lang_AbstractStackWalker = null;
@@ -890,6 +898,8 @@ public final class Meta implements ContextAccess {
     public final Method sun_launcher_LauncherHelper_printHelpMessage;
     public final Field sun_launcher_LauncherHelper_ostream;
 
+    public final ObjectKlass jdk_internal_loader_ClassLoaders;
+    public final Method jdk_internal_loader_ClassLoaders_platformClassLoader;
     public final ObjectKlass jdk_internal_loader_ClassLoaders$PlatformClassLoader;
 
     public final ObjectKlass java_lang_Module;
@@ -1189,7 +1199,6 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass java_lang_module_ModuleFinder;
     public final Method java_lang_module_ModuleFinder_compose;
 
-
     // Interop conversions.
     public final ObjectKlass java_time_Duration;
     public final Field java_time_Duration_seconds;
@@ -1295,31 +1304,39 @@ public final class Meta implements ContextAccess {
         private PolyglotSupport() {
             boolean polyglotSupport = getContext().getEnv().getOptions().get(EspressoOptions.Polyglot);
             EspressoError.guarantee(polyglotSupport, "--java.Polyglot must be enabled");
-            EspressoError.guarantee(loadKlassWithBootClassLoader(Type.com_oracle_truffle_espresso_polyglot_Polyglot) != null,
-                            "polyglot.jar (Polyglot API) is not accessible");
-            ArityException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_ArityException);
+            // polyglot.jar is either on boot class path (JDK 8) or defined by a platform module
+            // (JDK 11+)
+            if (getJavaVersion().java8OrEarlier()) {
+                EspressoError.guarantee(loadKlassWithBootClassLoader(Type.com_oracle_truffle_espresso_polyglot_Polyglot) != null,
+                                "polyglot.jar (Polyglot API) is not accessible");
+            } else {
+                EspressoError.guarantee(loadKlassWithPlatformClassLoader(Type.com_oracle_truffle_espresso_polyglot_Polyglot) != null,
+                                "polyglot.jar (Polyglot API) is not accessible");
+            }
+
+            ArityException = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_ArityException);
             ArityException_create_int_int = ArityException.requireDeclaredMethod(Name.create, Signature.ArityException_int_int);
             ArityException_create_int_int_Throwable = ArityException.requireDeclaredMethod(Name.create, Signature.ArityException_int_int_Throwable);
 
-            UnknownIdentifierException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_UnknownIdentifierException);
+            UnknownIdentifierException = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_UnknownIdentifierException);
             UnknownIdentifierException_create_String = UnknownIdentifierException.requireDeclaredMethod(Name.create, Signature.UnknownIdentifierException_String);
             UnknownIdentifierException_create_String_Throwable = UnknownIdentifierException.requireDeclaredMethod(Name.create, Signature.UnknownIdentifierException_String_Throwable);
 
-            UnsupportedMessageException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_UnsupportedMessageException);
+            UnsupportedMessageException = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_UnsupportedMessageException);
             UnsupportedMessageException_create = UnsupportedMessageException.requireDeclaredMethod(Name.create, Signature.UnsupportedMessageException);
             UnsupportedMessageException_create_Throwable = UnsupportedMessageException.requireDeclaredMethod(Name.create, Signature.UnsupportedMessageException_Throwable);
 
-            UnsupportedTypeException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_UnsupportedTypeException);
+            UnsupportedTypeException = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_UnsupportedTypeException);
             UnsupportedTypeException_create_Object_array_String = UnsupportedTypeException.requireDeclaredMethod(Name.create, Signature.UnsupportedTypeException_Object_array_String);
             UnsupportedTypeException_create_Object_array_String_Throwable = UnsupportedTypeException.requireDeclaredMethod(Name.create,
                             Signature.UnsupportedTypeException_Object_array_String_Throwable);
 
-            InvalidArrayIndexException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_InvalidArrayIndexException);
+            InvalidArrayIndexException = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_InvalidArrayIndexException);
             InvalidArrayIndexException_create_long = InvalidArrayIndexException.requireDeclaredMethod(Name.create, Signature.InvalidArrayIndexException_long);
             InvalidArrayIndexException_create_long_Throwable = InvalidArrayIndexException.requireDeclaredMethod(Name.create, Signature.InvalidArrayIndexException_long_Throwable);
 
-            ForeignException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_ForeignException);
-            ExceptionType = knownKlass(Type.com_oracle_truffle_espresso_polyglot_ExceptionType);
+            ForeignException = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_ForeignException);
+            ExceptionType = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_ExceptionType);
 
             ExceptionType_EXIT = ExceptionType.requireDeclaredField(Name.EXIT,
                             Type.com_oracle_truffle_espresso_polyglot_ExceptionType);
@@ -1517,10 +1534,18 @@ public final class Meta implements ContextAccess {
     // endregion Guest exception handling (throw)
 
     private ObjectKlass knownKlass(Symbol<Type> type) {
+        return knownKlass(type, this::loadKlassWithBootClassLoader);
+    }
+
+    private ObjectKlass knownPlatformKlass(Symbol<Type> type) {
+        return knownKlass(type, this::loadKlassWithPlatformClassLoader);
+    }
+
+    private ObjectKlass knownKlass(Symbol<Type> type, Function<Symbol<Type>, ObjectKlass> f) {
         CompilerAsserts.neverPartOfCompilation();
         assert !Types.isArray(type);
         assert !Types.isPrimitive(type);
-        ObjectKlass k = loadKlassWithBootClassLoader(type);
+        ObjectKlass k = f.apply(type);
         if (k == null) {
             throw EspressoError.shouldNotReachHere("Failed loading known class: ", type, ", discovered java version: ", getJavaVersion());
         }
@@ -1567,6 +1592,19 @@ public final class Meta implements ContextAccess {
     @TruffleBoundary
     private ObjectKlass loadKlassWithBootClassLoader(Symbol<Type> type) {
         return (ObjectKlass) getRegistries().loadKlass(type, StaticObject.NULL, StaticObject.NULL);
+    }
+
+    @TruffleBoundary
+    private ObjectKlass loadKlassWithPlatformClassLoader(Symbol<Type> type) {
+        assert getJavaVersion().java9OrLater();
+        return (ObjectKlass) getRegistries().loadKlass(type, getPlatformClassLoader(), StaticObject.NULL);
+    }
+
+    private StaticObject getPlatformClassLoader() {
+        if (cachedPlatformClassLoader == null) {
+            cachedPlatformClassLoader = (StaticObject) jdk_internal_loader_ClassLoaders_platformClassLoader.invokeDirect(StaticObject.NULL);
+        }
+        return cachedPlatformClassLoader;
     }
 
     public Klass resolvePrimitive(Symbol<Type> type) {

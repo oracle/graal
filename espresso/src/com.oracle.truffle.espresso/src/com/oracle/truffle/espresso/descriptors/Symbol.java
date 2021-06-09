@@ -508,6 +508,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> generateProxyClass = StaticSymbols.putName("generateProxyClass");
         public static final Symbol<Name> removeBeanInfo = StaticSymbols.putName("removeBeanInfo");
 
+        public static final Symbol<Name> platformClassLoader = StaticSymbols.putName("platformClassLoader");
         public static final Symbol<Name> platformModules = StaticSymbols.putName("platformModules");
         public static final Symbol<Name> descriptor = StaticSymbols.putName("descriptor");
         public static final Symbol<Name> ofSystem = StaticSymbols.putName("ofSystem");
@@ -561,6 +562,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> java_nio_file_Path_array = StaticSymbols.putType("[Ljava/nio/file/Path;");
         public static final Symbol<Type> java_nio_file_Paths = StaticSymbols.putType("Ljava/nio/file/Paths;");
 
+        public static final Symbol<Type> jdk_internal_loader_ClassLoaders = StaticSymbols.putType("Ljdk/internal/loader/ClassLoaders;");
         public static final Symbol<Type> jdk_internal_loader_ClassLoaders$PlatformClassLoader = StaticSymbols.putType("Ljdk/internal/loader/ClassLoaders$PlatformClassLoader;");
         public static final Symbol<Type> jdk_internal_module_ModuleLoaderMap = StaticSymbols.putType("Ljdk/internal/module/ModuleLoaderMap;");
         public static final Symbol<Type> jdk_internal_module_SystemModuleFinders = StaticSymbols.putType("Ljdk/internal/module/SystemModuleFinders;");

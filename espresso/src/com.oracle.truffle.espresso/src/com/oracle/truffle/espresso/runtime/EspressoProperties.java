@@ -288,8 +288,8 @@ public interface EspressoProperties {
             JDWP.LOGGER.fine(() -> "Espresso HotSwap Plugin support is disabled. HotSwap is only supported in debug mode.");
         }
 
-        // Inject polyglot.jar
-        if (options.get(EspressoOptions.Polyglot)) {
+        // Inject polyglot.jar on Java 8
+        if (options.get(EspressoOptions.Polyglot) && Files.isDirectory(java8Home)) {
             Path polyglotJar = espressoHome.resolve("lib").resolve("polyglot.jar");
             if (Files.isReadable(polyglotJar)) {
                 TruffleLogger.getLogger(EspressoLanguage.ID).fine("Adding Polyglot API to the boot classpath: " + polyglotJar);
