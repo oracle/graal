@@ -43,6 +43,7 @@ import com.oracle.truffle.api.dsl.test.AOTSupportTestFactory.AOTAutoLibraryNodeG
 import com.oracle.truffle.api.dsl.test.AOTSupportTestFactory.AOTManualLibraryNodeGen;
 import com.oracle.truffle.api.dsl.test.AOTSupportTestFactory.AOTManualLibrarySingleLimitNodeGen;
 import com.oracle.truffle.api.dsl.test.AOTSupportTestFactory.TestNodeGen;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
 public class AOTSupportCompilationTest extends PartialEvaluationTest {
 
@@ -68,6 +69,8 @@ public class AOTSupportCompilationTest extends PartialEvaluationTest {
     private void assertValidCompilation(BaseNode node, Object receiver) {
         TestRootNode root = setup(node, receiver);
         OptimizedCallTarget target = (OptimizedCallTarget) root.getCallTarget();
+        target.prepareForAOT();
+
         context.enter();
         target.compile(true);
         assertTrue(target.isValidLastTier());
@@ -109,6 +112,7 @@ public class AOTSupportCompilationTest extends PartialEvaluationTest {
                         .option("engine.CompileImmediately", "true") //
                         .option("engine.BackgroundCompilation", "false").build();
         context.initialize(AOTSupportTest.LANGUAGE_ID);
+        context.initialize(ProxyLanguage.ID);
         context.enter();
         TestRootNode root = new TestRootNode(TestLanguage.getCurrentLanguage(), node, receiver);
         GraalTruffleRuntime.getRuntime().createCallTarget(root);
