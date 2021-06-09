@@ -60,6 +60,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.logging.Handler;
 import java.util.logging.Level;
@@ -69,10 +70,14 @@ import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
+import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
 import org.graalvm.polyglot.io.ProcessHandler;
+import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -238,6 +243,42 @@ public abstract class Accessor {
 
     }
 
+    public abstract static class HostSupport extends Support {
+
+        static final String IMPL_CLASS_NAME = "com.oracle.truffle.host.HostAccessor$HostImpl";
+
+        protected HostSupport() {
+            super(IMPL_CLASS_NAME);
+        }
+
+        public abstract TruffleLanguage<?> createDefaultHostLanguage(AbstractPolyglotImpl polyglot, AbstractHostAccess access);
+
+        public abstract boolean isHostBoundaryValue(Object value);
+
+        public abstract Object convertPrimitiveLossLess(Object value, Class<?> requestedType);
+
+        public abstract Object convertPrimitiveLossy(Object value, Class<?> requestedType);
+
+        public abstract boolean isDisconnectedHostProxy(Object value);
+
+        public abstract boolean isDisconnectedHostObject(Object obj);
+
+        public abstract Object unboxDisconnectedHostObject(Object hostValue);
+
+        public abstract Object unboxDisconnectedHostProxy(Object hostValue);
+
+        public abstract Object toDisconnectedHostObject(Object hostValue);
+
+        public abstract Object toDisconnectedHostProxy(Proxy hostValue);
+
+        public abstract <S, T> Object newTargetTypeMapping(Class<S> sourceType, Class<T> targetType, Predicate<S> acceptsValue, Function<S, T> convertValue, TargetMappingPrecedence precedence);
+
+        public abstract Object getHostNull();
+
+        public abstract boolean isPrimitiveTarget(Class<?> c);
+
+    }
+
     public abstract static class EngineSupport extends Support {
 
         static final String IMPL_CLASS_NAME = "com.oracle.truffle.polyglot.EngineAccessor$EngineImpl";
@@ -364,9 +405,9 @@ public abstract class Accessor {
 
         public abstract RuntimeException wrapHostException(Node callNode, Object languageContext, Throwable exception);
 
-        public abstract boolean isHostException(Throwable exception);
+        public abstract boolean isHostException(Object polyglotLanguageContext, Throwable exception);
 
-        public abstract Throwable asHostException(Throwable exception);
+        public abstract Throwable asHostException(Object polyglotLanguageContext, Throwable exception);
 
         public abstract Object getCurrentHostContext();
 
@@ -414,17 +455,15 @@ public abstract class Accessor {
 
         public abstract Set<String> getValidMimeTypes(Object engineObject, String language);
 
-        public abstract Object asHostObject(Object value);
+        public abstract Object asHostObject(Object languageContext, Object value);
 
-        public abstract boolean isHostObject(Object value);
+        public abstract boolean isHostObject(Object languageContext, Object value);
 
-        public abstract boolean isHostFunction(Object value);
+        public abstract boolean isHostFunction(Object languageContext, Object value);
 
-        public abstract boolean isHostSymbol(Object guestObject);
+        public abstract boolean isHostSymbol(Object languageContext, Object guestObject);
 
         public abstract <S> S lookupService(Object polyglotLanguageContext, LanguageInfo language, LanguageInfo accessingLanguage, Class<S> type);
-
-        public abstract Object convertPrimitive(Object value, Class<?> requestedType);
 
         public abstract <T extends TruffleLanguage<?>> LanguageReference<T> lookupLanguageReference(Object polyglotEngine, TruffleLanguage<?> sourceLanguage, Class<T> targetLanguageClass);
 
@@ -503,7 +542,7 @@ public abstract class Accessor {
 
         public abstract Map<String, Collection<? extends FileTypeDetector>> getEngineFileTypeDetectors(Object engineFileSystemContext);
 
-        public abstract boolean isHostToGuestRootNode(RootNode rootNode);
+        public abstract boolean skipEngineValidation(RootNode rootNode);
 
         public abstract AssertionError invalidSharingError(Object polyglotEngine) throws AssertionError;
 
@@ -535,7 +574,8 @@ public abstract class Accessor {
 
         public abstract void resume(Object polyglotContext, Future<Void> pauseFuture);
 
-        public abstract <T, G> Iterator<T> mergeHostGuestFrames(StackTraceElement[] hostStack, Iterator<G> guestFrames, boolean inHostLanguage, Function<StackTraceElement, T> hostFrameConvertor,
+        public abstract <T, G> Iterator<T> mergeHostGuestFrames(Object instrumentEnv, StackTraceElement[] hostStack, Iterator<G> guestFrames, boolean inHostLanguage,
+                        Function<StackTraceElement, T> hostFrameConvertor,
                         Function<G, T> guestFrameConvertor);
 
         public abstract Object createHostAdapterClass(Object polyglotLanguageContext, Class<?>[] types, Object classOverrides);
@@ -815,6 +855,8 @@ public abstract class Accessor {
 
         public abstract Collection<CallTarget> getLoadedCallTargets(Object instrumentationHandler);
 
+        public abstract Object getPolyglotInstrument(Object instrumentEnv);
+
     }
 
     public abstract static class FrameSupport extends Support {
@@ -1039,6 +1081,7 @@ public abstract class Accessor {
         private static final Accessor.IOSupport IO;
         private static final Accessor.FrameSupport FRAMES;
         private static final Accessor.EngineSupport ENGINE;
+        private static final Accessor.HostSupport HOST;
         private static final Accessor.RuntimeSupport RUNTIME;
 
         static {
@@ -1053,6 +1096,7 @@ public abstract class Accessor {
             IO = loadSupport(IOSupport.IMPL_CLASS_NAME);
             FRAMES = loadSupport(FrameSupport.IMPL_CLASS_NAME);
             ENGINE = loadSupport(EngineSupport.IMPL_CLASS_NAME);
+            HOST = loadSupport(HostSupport.IMPL_CLASS_NAME);
             RUNTIME = getTVMCI().createRuntimeSupport(RuntimeSupport.PERMISSION);
         }
 
@@ -1082,6 +1126,7 @@ public abstract class Accessor {
                         "com.oracle.truffle.api.exception.ExceptionAccessor".equals(thisClassName) ||
                         "com.oracle.truffle.api.io.IOAccessor".equals(thisClassName) ||
                         "com.oracle.truffle.api.frame.FrameAccessor".equals(thisClassName) ||
+                        "com.oracle.truffle.host.HostAccessor".equals(thisClassName) ||
                         "com.oracle.truffle.polyglot.EngineAccessor".equals(thisClassName) ||
                         "com.oracle.truffle.api.utilities.JSONHelper.DumpAccessor".equals(thisClassName)) {
             // OK, classes initializing accessors
@@ -1136,6 +1181,10 @@ public abstract class Accessor {
 
     public final RuntimeSupport runtimeSupport() {
         return Constants.RUNTIME;
+    }
+
+    public final HostSupport hostSupport() {
+        return Constants.HOST;
     }
 
     public final IOSupport ioSupport() {

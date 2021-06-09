@@ -58,7 +58,6 @@ import java.util.logging.Handler;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.ResourceLimitEvent;
@@ -69,11 +68,11 @@ import org.graalvm.polyglot.io.MessageTransport;
 import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.polyglot.PolyglotEngineImpl.LogConfig;
 import com.oracle.truffle.polyglot.PolyglotLoggers.EngineLoggerProvider;
 
@@ -89,35 +88,22 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     static final String OPTION_GROUP_ENGINE = "engine";
     static final String PROP_ALLOW_EXPERIMENTAL_OPTIONS = OptionValuesImpl.SYSTEM_PROPERTY_PREFIX + OPTION_GROUP_ENGINE + ".AllowExperimentalOptions";
 
-    @SuppressWarnings("serial") private static final HostException STACKOVERFLOW_ERROR = new HostException(new StackOverflowError() {
-        @SuppressWarnings("sync-override")
-        @Override
-        public Throwable fillInStackTrace() {
-            return this;
-        }
-    });
-
     private final PolyglotSourceDispatch sourceDispatch = new PolyglotSourceDispatch(this);
     private final PolyglotSourceSectionDispatch sourceSectionDispatch = new PolyglotSourceSectionDispatch(this);
     private final PolyglotManagementDispatch executionListenerDispatch = new PolyglotManagementDispatch(this);
     final PolyglotEngineDispatch engineDispatch = new PolyglotEngineDispatch(this);
     final PolyglotContextDispatch contextDispatch = new PolyglotContextDispatch(this);
-    final PolyglotExceptionDispatch exceptionDispatch = new PolyglotExceptionDispatch(this);
+    private final PolyglotExceptionDispatch exceptionDispatch = new PolyglotExceptionDispatch(this);
     final PolyglotInstrumentDispatch instrumentDispatch = new PolyglotInstrumentDispatch(this);
     final PolyglotLanguageDispatch languageDispatch = new PolyglotLanguageDispatch(this);
 
     private final AtomicReference<PolyglotEngineImpl> preInitializedEngineRef = new AtomicReference<>();
-    private final Function<Source, org.graalvm.polyglot.Source> sourceConstructor = new Function<Source, org.graalvm.polyglot.Source>() {
-        public org.graalvm.polyglot.Source apply(Source t) {
-            return getAPIAccess().newSource(t);
-        }
-    };
 
-    final Map<Class<?>, PolyglotValue> primitiveValues = new HashMap<>();
+    private final Map<Class<?>, PolyglotValueDispatch> primitiveValues = new HashMap<>();
     Value hostNull; // effectively final
-    PolyglotValue disconnectedHostValue;
+    private PolyglotValueDispatch disconnectedHostValue;
 
-    static volatile PolyglotImpl polyglotImpl;
+    private static volatile PolyglotImpl polyglotImpl;
 
     /**
      * Internal method do not use.
@@ -154,9 +140,9 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
     @Override
     protected void initialize() {
-        this.hostNull = getAPIAccess().newValue(PolyglotValue.createHostNull(this), HostObject.NULL);
-        PolyglotValue.createDefaultValues(this, null, primitiveValues);
-        disconnectedHostValue = new PolyglotValue.HostValue(this);
+        this.hostNull = getAPIAccess().newValue(PolyglotValueDispatch.createHostNull(this), null, EngineAccessor.HOST.getHostNull());
+        this.disconnectedHostValue = new PolyglotValueDispatch.HostValue(this);
+        PolyglotValueDispatch.createDefaultValues(this, null, primitiveValues);
     }
 
     @Override
@@ -217,10 +203,10 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     /**
      * Internal method do not use.
      */
+    @SuppressWarnings("unchecked")
     @Override
     public Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> originalOptions, boolean useSystemProperties, final boolean allowExperimentalOptions,
-                    boolean boundEngine,
-                    MessageTransport messageInterceptor, Object logHandlerOrStream, HostAccess conf) {
+                    boolean boundEngine, MessageTransport messageInterceptor, Object logHandlerOrStream, Object hostLanguage, boolean hostLanguageOnly) {
         PolyglotEngineImpl impl = null;
         try {
             if (TruffleOptions.AOT) {
@@ -232,7 +218,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             DispatchOutputStream dispatchOut = INSTRUMENT.createDispatchOutput(resolvedOut);
             DispatchOutputStream dispatchErr = INSTRUMENT.createDispatchOutput(resolvedErr);
             Handler logHandler = PolyglotLoggers.asHandler(logHandlerOrStream);
-            ClassLoader contextClassLoader = TruffleOptions.AOT ? null : Thread.currentThread().getContextClassLoader();
             boolean useAllowExperimentalOptions = allowExperimentalOptions || Boolean.parseBoolean(EngineAccessor.RUNTIME.getSavedProperty(PROP_ALLOW_EXPERIMENTAL_OPTIONS));
 
             Map<String, String> options = new HashMap<>(originalOptions);
@@ -247,11 +232,14 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             EngineLoggerProvider loggerProvider = new PolyglotLoggers.EngineLoggerProvider(logHandler, logConfig.logLevels);
 
             impl = (PolyglotEngineImpl) EngineAccessor.RUNTIME.tryLoadCachedEngine(engineOptions, loggerProvider);
-            if (impl == null && boundEngine && !EngineAccessor.RUNTIME.isStoreEnabled(engineOptions)) {
+            if (impl == null && boundEngine && !hostLanguageOnly && !EngineAccessor.RUNTIME.isStoreEnabled(engineOptions)) {
                 impl = preInitializedEngineRef.getAndSet(null);
             }
 
             if (impl != null) {
+                if (hostLanguage.getClass() != impl.hostLanguageInstance.spi.getClass()) {
+                    throw new AssertionError("Patching engine with different host language is not supported.");
+                }
                 impl.patch(dispatchOut,
                                 dispatchErr,
                                 resolvedIn,
@@ -260,7 +248,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                                 loggerProvider,
                                 options,
                                 useAllowExperimentalOptions,
-                                contextClassLoader,
                                 boundEngine,
                                 logHandler);
             }
@@ -274,10 +261,11 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                                 loggerProvider,
                                 options,
                                 useAllowExperimentalOptions,
-                                contextClassLoader,
                                 boundEngine, false,
                                 messageInterceptor,
-                                logHandler);
+                                logHandler,
+                                (TruffleLanguage<Object>) hostLanguage,
+                                hostLanguageOnly);
             }
             return getAPIAccess().newEngine(engineDispatch, impl);
         } catch (Throwable t) {
@@ -329,9 +317,16 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         DispatchOutputStream err = INSTRUMENT.createDispatchOutput(System.err);
         Handler logHandler = PolyglotEngineImpl.createLogHandler(logConfig, err);
         EngineLoggerProvider loggerProvider = new PolyglotLoggers.EngineLoggerProvider(logHandler, logConfig.logLevels);
+        TruffleLanguage<Object> host = createHostLanguage(createHostAccess());
         final PolyglotEngineImpl engine = new PolyglotEngineImpl(this, out, err, System.in, engineOptions, logConfig.logLevels, loggerProvider, options, true,
-                        TruffleOptions.AOT ? null : Thread.currentThread().getContextClassLoader(), true, true, null, logHandler);
+                        true, true, null, logHandler, host, false);
         return engine;
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public TruffleLanguage<Object> createHostLanguage(AbstractHostAccess access) {
+        return (TruffleLanguage<Object>) EngineAccessor.HOST.createDefaultHostLanguage(this, access);
     }
 
     /**
@@ -376,11 +371,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
     @Override
     public <S, T> Object newTargetTypeMapping(Class<S> sourceType, Class<T> targetType, Predicate<S> acceptsValue, Function<S, T> convertValue, TargetMappingPrecedence precedence) {
-        try {
-            return new PolyglotTargetMapping(sourceType, targetType, acceptsValue, convertValue, precedence);
-        } catch (Throwable t) {
-            throw PolyglotImpl.guestToHostException(this, t);
-        }
+        return EngineAccessor.HOST.newTargetTypeMapping(sourceType, targetType, acceptsValue, convertValue, precedence);
     }
 
     Value asValue(PolyglotContextImpl currentContext, Object hostValue) {
@@ -396,9 +387,9 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         if (hostValue == null) {
             return hostNull;
         } else if (isGuestPrimitive(hostValue)) {
-            return getAPIAccess().newValue(primitiveValues.get(hostValue.getClass()), hostValue);
-        } else if (HostWrapper.isInstance(hostValue)) {
-            HostWrapper hostWrapper = HostWrapper.asInstance(hostValue);
+            return getAPIAccess().newValue(primitiveValues.get(hostValue.getClass()), null, hostValue);
+        } else if (PolyglotWrapper.isInstance(hostValue)) {
+            PolyglotWrapper hostWrapper = PolyglotWrapper.asInstance(hostValue);
             // host wrappers can nicely reuse the associated context
             PolyglotLanguageContext languageContext = hostWrapper.getLanguageContext();
             assert languageContext != null : "HostWrappers must be guaranteed to have non-null language context.";
@@ -413,13 +404,11 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             if (hostValue instanceof TruffleObject) {
                 guestValue = hostValue;
             } else if (hostValue instanceof Proxy) {
-                guestValue = PolyglotProxy.toProxyGuestObject((Proxy) hostValue);
-            } else if (hostValue instanceof Class) {
-                guestValue = HostObject.forClass((Class<?>) hostValue, null);
+                guestValue = EngineAccessor.HOST.toDisconnectedHostProxy((Proxy) hostValue);
             } else {
-                guestValue = HostObject.forObject(hostValue, null);
+                guestValue = EngineAccessor.HOST.toDisconnectedHostObject(hostValue);
             }
-            return getAPIAccess().newValue(disconnectedHostValue, guestValue);
+            return getAPIAccess().newValue(disconnectedHostValue, null, guestValue);
         }
     }
 
@@ -439,61 +428,21 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         return FileSystems.newDefaultFileSystem();
     }
 
-    org.graalvm.polyglot.Source getOrCreatePolyglotSource(Source source) {
-        return EngineAccessor.SOURCE.getOrCreatePolyglotSource(source, this.sourceConstructor);
+    @Override
+    public AbstractHostAccess createHostAccess() {
+        return new PolyglotHostAccess(this);
     }
 
-    org.graalvm.polyglot.SourceSection getPolyglotSourceSection(SourceSection sourceSection) {
+    static org.graalvm.polyglot.Source getOrCreatePolyglotSource(AbstractPolyglotImpl polyglot, Source source) {
+        return EngineAccessor.SOURCE.getOrCreatePolyglotSource(source, (t) -> polyglot.getAPIAccess().newSource(t));
+    }
+
+    static org.graalvm.polyglot.SourceSection getPolyglotSourceSection(AbstractPolyglotImpl polyglot, com.oracle.truffle.api.source.SourceSection sourceSection) {
         if (sourceSection == null) {
             return null;
         }
-        org.graalvm.polyglot.Source polyglotSource = getOrCreatePolyglotSource(sourceSection.getSource());
-        return getAPIAccess().newSourceSection(polyglotSource, sourceSection);
-    }
-
-    static <T extends Throwable> RuntimeException hostToGuestException(PolyglotLanguageContext context, T e) {
-        return hostToGuestException(context.context, e);
-    }
-
-    /**
-     * Performs necessary conversions for exceptions coming from the polyglot embedding API and
-     * thrown to the language or engine. The conversion must happen exactly once per API call, that
-     * is why this coercion should only be used in the catch block at the outermost API call.
-     */
-    @SuppressWarnings("deprecation")
-    @TruffleBoundary
-    static <T extends Throwable> RuntimeException hostToGuestException(PolyglotContextImpl context, T e) {
-        assert !(e instanceof PolyglotEngineException) : "engine exceptions not expected here";
-        assert !(e instanceof HostException) : "host exceptions not expected here";
-
-        if (e instanceof ThreadDeath) {
-            throw (ThreadDeath) e;
-        } else if (e instanceof PolyglotException) {
-            PolyglotException polyglot = (PolyglotException) e;
-            if (context != null) {
-                PolyglotExceptionImpl exceptionImpl = ((PolyglotExceptionImpl) context.getImpl().getAPIAccess().getReceiver(polyglot));
-                if (exceptionImpl.context == context || exceptionImpl.context == null || exceptionImpl.isHostException()) {
-                    // for values of the same context the TruffleException is allowed to be unboxed
-                    // for host exceptions no guest values are bound therefore it can also be
-                    // unboxed
-                    Throwable original = ((PolyglotExceptionImpl) context.getImpl().getAPIAccess().getReceiver(polyglot)).exception;
-                    if (original instanceof RuntimeException) {
-                        throw (RuntimeException) original;
-                    } else if (original instanceof Error) {
-                        throw (Error) original;
-                    }
-                }
-                // fall-through and treat it as any other host exception
-            }
-        }
-        try {
-            return new HostException(e);
-        } catch (StackOverflowError stack) {
-            /*
-             * Cannot create a new host exception. Use a readily prepared instance.
-             */
-            return STACKOVERFLOW_ERROR;
-        }
+        org.graalvm.polyglot.Source polyglotSource = getOrCreatePolyglotSource(polyglot, sourceSection.getSource());
+        return polyglot.getAPIAccess().newSourceSection(polyglotSource, sourceSection);
     }
 
     /**
@@ -573,7 +522,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
      * only be used when no engine is accessible.
      */
     @TruffleBoundary
-    static <T extends Throwable> PolyglotException guestToHostException(PolyglotImpl polyglot, T e) {
+    private static <T extends Throwable> PolyglotException guestToHostException(PolyglotImpl polyglot, T e) {
         assert !(e instanceof PolyglotException) : "polyglot exceptions must not be thrown to the host: " + e;
         PolyglotEngineException.rethrow(e);
 

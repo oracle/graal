@@ -42,8 +42,8 @@ package com.oracle.truffle.polyglot;
 
 import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 import static com.oracle.truffle.polyglot.EngineAccessor.LANGUAGE;
-import static com.oracle.truffle.polyglot.PolyglotValue.hostEnter;
-import static com.oracle.truffle.polyglot.PolyglotValue.hostLeave;
+import static com.oracle.truffle.polyglot.PolyglotValueDispatch.hostEnter;
+import static com.oracle.truffle.polyglot.PolyglotValueDispatch.hostLeave;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -78,6 +78,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostService;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
@@ -93,13 +94,15 @@ import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.polyglot.HostLanguage.HostContext;
 import com.oracle.truffle.polyglot.PolyglotEngineImpl.CancelExecution;
 import com.oracle.truffle.polyglot.PolyglotEngineImpl.StableLocalLocations;
+import com.oracle.truffle.polyglot.PolyglotLanguageContext.ValueMigrationException;
 import com.oracle.truffle.polyglot.PolyglotLocals.LocalLocation;
 
 final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
@@ -281,7 +284,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         this.currentTruffleContext = EngineAccessor.LANGUAGE.createTruffleContext(this, false);
         this.weakReference = new ContextWeakReference(this);
         this.contextImpls = new Object[engine.contextLength];
-        this.contexts = createContextArray();
+        this.contexts = createContextArray(engine.hostLanguageInstance);
         this.subProcesses = new HashSet<>();
         this.statementLimit = config.limits != null && config.limits.statementLimit != 0 ? config.limits.statementLimit : Long.MAX_VALUE - 1;
         this.statementCounter = statementLimit;
@@ -329,7 +332,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             EngineAccessor.LANGUAGE.configureLoggers(this, parent.config.logLevels, getAllLoggers());
         }
         this.contextImpls = new Object[engine.contextLength];
-        this.contexts = createContextArray();
+        this.contexts = createContextArray(engine.hostLanguageInstance);
         this.subProcesses = new HashSet<>();
         // notifyContextCreated() is called after spiContext.impl is set to this.
         this.engine.noInnerContexts.invalidate();
@@ -365,18 +368,19 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         }
     }
 
-    private PolyglotLanguageContext[] createContextArray() {
+    private PolyglotLanguageContext[] createContextArray(PolyglotLanguageInstance hostLanguageInstance) {
         Collection<PolyglotLanguage> languages = engine.idToLanguage.values();
         PolyglotLanguageContext[] newContexts = new PolyglotLanguageContext[engine.contextLength];
         Iterator<PolyglotLanguage> languageIterator = languages.iterator();
-        PolyglotLanguageContext hostContext = new PolyglotLanguageContext(this, engine.hostLanguage);
-        newContexts[PolyglotEngineImpl.HOST_LANGUAGE_INDEX] = hostContext;
         for (int i = (PolyglotEngineImpl.HOST_LANGUAGE_INDEX + 1); i < engine.contextLength; i++) {
             PolyglotLanguage language = languageIterator.next();
             newContexts[i] = new PolyglotLanguageContext(this, language);
         }
+        PolyglotLanguage hostLanguage = hostLanguageInstance.language;
+        PolyglotLanguageContext hostContext = new PolyglotLanguageContext(this, hostLanguage);
+        newContexts[PolyglotEngineImpl.HOST_LANGUAGE_INDEX] = hostContext;
+        hostContext.ensureCreated(hostLanguage, hostLanguageInstance);
         hostContext.ensureInitialized(null);
-        ((HostContext) hostContext.getContextImpl()).initializeInternal(hostContext);
         return newContexts;
     }
 
@@ -920,8 +924,9 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         synchronized (this) {
             if (this.polyglotBindings == null) {
                 this.polyglotBindings = new ConcurrentHashMap<>();
-                PolyglotBindings bindings = new PolyglotBindings(getHostContext());
-                this.polyglotHostBindings = getAPIAccess().newValue(new PolyglotBindingsValue(getHostContext(), bindings), bindings);
+                PolyglotLanguageContext hostContext = getHostContext();
+                PolyglotBindings bindings = new PolyglotBindings(hostContext);
+                this.polyglotHostBindings = getAPIAccess().newValue(new PolyglotBindingsValue(hostContext, bindings), hostContext, bindings);
             }
         }
     }
@@ -942,12 +947,50 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         }
     }
 
+    Object migrateValue(Node parentNode, Object value, PolyglotContextImpl valueContext) {
+        // migration of guest primitives is already handled.
+        if (PolyglotImpl.isGuestPrimitive(value)) {
+            // allowed to be passed freely
+            return value;
+        } else if (engine.host.isHostObject(value)) {
+            return engine.host.migrateHostObject(getHostContextImpl(), value);
+        } else if (engine.host.isHostProxy(value)) {
+            return engine.host.migrateHostProxy(getHostContextImpl(), value);
+        } else if (valueContext == null) {
+            /*
+             * The only way this can happen is with Value.asValue(TruffleObject). If it happens
+             * otherwise, its wrong.
+             */
+            assert value instanceof TruffleObject;
+            return value;
+        } else {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            Node nodeContext = parentNode;
+            if (nodeContext == null || nodeContext.getRootNode() == null) {
+                nodeContext = EncapsulatingNodeReference.getCurrent().get();
+            }
+            throw new ValueMigrationException(String.format("The value '%s' cannot be passed from one context to another. " +
+                            "The current context is 0x%x and the argument value originates from context 0x%x.",
+                            PolyglotValueDispatch.getValueInfo((PolyglotContextImpl) null, value), hashCode(), valueContext.hashCode()), nodeContext);
+        }
+    }
+
+    Object migrateHostWrapper(Node parentNode, PolyglotWrapper wrapper) {
+        Object wrapped = wrapper.getGuestObject();
+        PolyglotContextImpl valueContext = wrapper.getContext();
+        if (valueContext != this) {
+            // migrate wrapped value to the context
+            wrapped = migrateValue(parentNode, wrapped, valueContext);
+        }
+        return wrapped;
+    }
+
     PolyglotLanguageContext getHostContext() {
         return contexts[PolyglotEngineImpl.HOST_LANGUAGE_INDEX];
     }
 
-    HostContext getHostContextImpl() {
-        return (HostContext) getHostContext().getContextImpl();
+    Object getHostContextImpl() {
+        return contextImpls[PolyglotEngineImpl.HOST_LANGUAGE_INDEX];
     }
 
     @Override
@@ -1283,34 +1326,50 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
 
     public Value asValue(Object hostValue) {
         PolyglotLanguageContext languageContext = this.getHostContext();
-        assert languageContext != null;
         Object prev = hostEnter(languageContext);
         try {
             checkClosed();
             PolyglotLanguageContext targetLanguageContext;
             if (hostValue instanceof Value) {
                 // fast path for when no context migration is necessary
-                PolyglotValue value = (PolyglotValue) getAPIAccess().getDispatch((Value) hostValue);
-                if (value.languageContext != null && value.languageContext.context == this) {
+                PolyglotLanguageContext valueContext = (PolyglotLanguageContext) getAPIAccess().getContext((Value) hostValue);
+                if (valueContext != null && valueContext.context == this) {
                     return (Value) hostValue;
                 }
-                targetLanguageContext = getHostContext();
-            } else if (HostWrapper.isInstance(hostValue)) {
+                targetLanguageContext = languageContext;
+            } else if (PolyglotWrapper.isInstance(hostValue)) {
                 // host wrappers can nicely reuse the associated context
-                targetLanguageContext = HostWrapper.asInstance(hostValue).getLanguageContext();
+                targetLanguageContext = PolyglotWrapper.asInstance(hostValue).getLanguageContext();
                 if (this != targetLanguageContext.context) {
                     // this will fail later in toGuestValue when migrating
                     // or succeed in case of host languages.
-                    targetLanguageContext = getHostContext();
+                    targetLanguageContext = languageContext;
                 }
             } else {
-                targetLanguageContext = getHostContext();
+                targetLanguageContext = languageContext;
             }
-            return targetLanguageContext.asValue(targetLanguageContext.toGuestValue(null, hostValue));
+            return targetLanguageContext.asValue(toGuestValue(null, hostValue));
         } catch (Throwable e) {
             throw PolyglotImpl.guestToHostException(this.getHostContext(), e, true);
         } finally {
             hostLeave(languageContext, prev);
+        }
+    }
+
+    Object toGuestValue(Node location, Object hostValue) {
+        if (hostValue instanceof Value) {
+            Value receiverValue = (Value) hostValue;
+            PolyglotLanguageContext languageContext = (PolyglotLanguageContext) getAPIAccess().getContext(receiverValue);
+            PolyglotContextImpl valueContext = languageContext != null ? languageContext.context : null;
+            Object valueReceiver = getAPIAccess().getReceiver(receiverValue);
+            if (valueContext != this) {
+                valueReceiver = this.migrateValue(location, valueReceiver, valueContext);
+            }
+            return valueReceiver;
+        } else if (PolyglotWrapper.isInstance(hostValue)) {
+            return migrateHostWrapper(location, PolyglotWrapper.asInstance(hostValue));
+        } else {
+            return engine.host.toGuestValue(getHostContextImpl(), hostValue);
         }
     }
 
@@ -2056,8 +2115,11 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         }
         final PolyglotContextImpl prev = engine.enter(this, engine.getUncachedLocation(), true);
         try {
-            for (int i = 1; i < this.contexts.length; i++) {
+            for (int i = 0; i < this.contexts.length; i++) {
                 final PolyglotLanguageContext context = this.contexts[i];
+                if (context.language.isHost()) {
+                    initializeHostContext(context, newConfig);
+                }
                 if (!context.patch(newConfig)) {
                     return false;
                 }
@@ -2066,6 +2128,31 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             engine.leave(prev, this);
         }
         return true;
+    }
+
+    @SuppressWarnings("unchecked")
+    void initializeHostContext(PolyglotLanguageContext context, PolyglotContextConfig newConfig) {
+        try {
+            Object contextImpl = this.contextImpls[context.language.index];
+            if (contextImpl == null) {
+                throw new AssertionError("Host context not initialized.");
+            }
+
+            AbstractHostService currentHost = engine.host;
+            AbstractHostService newHost = context.lookupService(AbstractHostService.class);
+            if (newHost == null) {
+                throw new AssertionError("The engine host language must register a service of type:" + AbstractHostService.class);
+            }
+            if (currentHost == null) {
+                engine.host = newHost;
+            } else if (currentHost != newHost) {
+                throw new AssertionError("Host service must not change per engine.");
+            }
+            newHost.initializeHostContext(this, contextImpl, newConfig.hostAccess, newConfig.hostClassLoader, newConfig.classFilter, newConfig.hostClassLoadingAllowed,
+                            newConfig.hostLookupAllowed);
+        } catch (IllegalStateException e) {
+            throw PolyglotEngineException.illegalState(e.getMessage());
+        }
     }
 
     void replayInstrumentationEvents() {
@@ -2116,7 +2203,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                         allowedLanguages,
                         Collections.emptyMap(),
                         fs, internalFs, engine.logHandler, false, null,
-                        EnvironmentAccess.INHERIT, null, null, null, null);
+                        EnvironmentAccess.INHERIT, null, null, null, null, null);
 
         final PolyglotContextImpl context = new PolyglotContextImpl(engine, config);
         synchronized (engine.lock) {

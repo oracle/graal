@@ -1917,7 +1917,7 @@ public abstract class DebugValue {
             if (clazz.isInstance(val)) {
                 return clazz.cast(val);
             }
-            return clazz.cast(Debugger.ACCESSOR.engineSupport().convertPrimitive(val, clazz));
+            return clazz.cast(Debugger.ACCESSOR.hostSupport().convertPrimitiveLossLess(val, clazz));
         }
 
         @Override

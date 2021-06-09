@@ -73,8 +73,8 @@ abstract class HostToGuestRootNode extends RootNode {
         this(null, null);
     }
 
-    HostToGuestRootNode(PolyglotLanguageContext languageContext) {
-        this(null, languageContext != null ? languageContext.getLanguageInstance().spi : null);
+    HostToGuestRootNode(TruffleLanguage<?> language) {
+        this(null, language);
     }
 
     private HostToGuestRootNode(PolyglotEngineImpl engine, TruffleLanguage<?> language) {
@@ -87,18 +87,9 @@ abstract class HostToGuestRootNode extends RootNode {
             EngineAccessor.NODES.setPolyglotEngine(this, engine);
         }
         assert this.engine != null : "all host to guest root nodes need to be initialized when entered";
-        assert needsEnter() || !needsExceptionWrapping() : "HostToGuestRootNode which does not require enter cannot have exception wrapping.";
     }
 
     protected abstract Class<?> getReceiverType();
-
-    protected boolean needsEnter() {
-        return true;
-    }
-
-    protected boolean needsExceptionWrapping() {
-        return true;
-    }
 
     @Override
     public final Object execute(VirtualFrame frame) {
@@ -110,7 +101,7 @@ abstract class HostToGuestRootNode extends RootNode {
         try {
             assert languageContext != null;
             context = languageContext.context;
-            needsEnter = needsEnter() && languageContext != null && engine.needsEnter(context);
+            needsEnter = languageContext != null && engine.needsEnter(context);
             if (needsEnter) {
                 if (!seenEnter) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -135,7 +126,7 @@ abstract class HostToGuestRootNode extends RootNode {
             assert !(result instanceof TruffleObject);
             return result;
         } catch (Throwable e) {
-            throw handleException(languageContext, e, needsEnter(), RuntimeException.class);
+            throw handleException(languageContext, e, true, RuntimeException.class);
         } finally {
             if (needsEnter) {
                 try {
@@ -149,12 +140,8 @@ abstract class HostToGuestRootNode extends RootNode {
 
     @SuppressWarnings({"unchecked", "unused"})
     private <E extends Throwable> E handleException(PolyglotLanguageContext languageContext, Throwable e, boolean entered, Class<E> exceptionType) throws E {
-        if (needsExceptionWrapping()) {
-            error.enter();
-            throw PolyglotImpl.guestToHostException(languageContext, e, entered);
-        }
-        // no wrapping, just throw
-        throw (E) e;
+        error.enter();
+        throw PolyglotImpl.guestToHostException(languageContext, e, entered);
     }
 
     private PolyglotLanguageContext profileContext(Object languageContext) {
@@ -173,7 +160,7 @@ abstract class HostToGuestRootNode extends RootNode {
     }
 
     static <T> T installHostCodeCache(PolyglotLanguageContext languageContext, Object key, T value, Class<T> expectedType) {
-        T result = expectedType.cast(languageContext.getLanguageInstance().hostInteropCodeCache.putIfAbsent(key, value));
+        T result = expectedType.cast(languageContext.getLanguageInstance().hostToGuestCodeCache.putIfAbsent(key, value));
         if (result != null) {
             return result;
         } else {
@@ -182,7 +169,7 @@ abstract class HostToGuestRootNode extends RootNode {
     }
 
     static <T> T lookupHostCodeCache(PolyglotLanguageContext languageContext, Object key, Class<T> expectedType) {
-        return expectedType.cast(languageContext.getLanguageInstance().hostInteropCodeCache.get(key));
+        return expectedType.cast(languageContext.getLanguageInstance().hostToGuestCodeCache.get(key));
     }
 
 }

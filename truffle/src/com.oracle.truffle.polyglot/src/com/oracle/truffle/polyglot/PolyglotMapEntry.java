@@ -54,7 +54,7 @@ import java.lang.reflect.Type;
 import java.util.Map;
 import java.util.Objects;
 
-class PolyglotMapEntry<K, V> implements Map.Entry<K, V>, HostWrapper {
+class PolyglotMapEntry<K, V> implements Map.Entry<K, V>, PolyglotWrapper {
 
     final PolyglotLanguageContext languageContext;
     final Object guestObject;
@@ -110,7 +110,7 @@ class PolyglotMapEntry<K, V> implements Map.Entry<K, V>, HostWrapper {
     @Override
     public final boolean equals(Object o) {
         if (o instanceof PolyglotMapEntry) {
-            return HostWrapper.equals(languageContext, guestObject, ((PolyglotMapEntry<?, ?>) o).guestObject);
+            return PolyglotWrapper.equals(languageContext, guestObject, ((PolyglotMapEntry<?, ?>) o).guestObject);
         } else {
             return false;
         }
@@ -118,12 +118,12 @@ class PolyglotMapEntry<K, V> implements Map.Entry<K, V>, HostWrapper {
 
     @Override
     public final int hashCode() {
-        return HostWrapper.hashCode(languageContext, guestObject);
+        return PolyglotWrapper.hashCode(languageContext, guestObject);
     }
 
     @Override
     public final String toString() {
-        return HostWrapper.toString(this);
+        return PolyglotWrapper.toString(this);
     }
 
     static final class Cache {
@@ -235,11 +235,11 @@ class PolyglotMapEntry<K, V> implements Map.Entry<K, V>, HostWrapper {
             }
 
             protected final RuntimeException unsupported(PolyglotLanguageContext languageContext, Object receiver) {
-                throw HostInteropErrors.mapEntryUnsupported(languageContext, receiver, getKeyType(), getValueType(), getOperationName());
+                throw PolyglotInteropErrors.mapEntryUnsupported(languageContext, receiver, getKeyType(), getValueType(), getOperationName());
             }
 
             protected final RuntimeException invalidArrayIndex(PolyglotLanguageContext languageContext, Object receiver, long index) {
-                throw HostInteropErrors.invalidMapEntryArrayIndex(languageContext, receiver, getKeyType(), getValueType(), index);
+                throw PolyglotInteropErrors.invalidMapEntryArrayIndex(languageContext, receiver, getKeyType(), getValueType(), index);
             }
 
             protected final Type getKeyType() {
@@ -275,7 +275,7 @@ class PolyglotMapEntry<K, V> implements Map.Entry<K, V>, HostWrapper {
             @SuppressWarnings("unused")
             protected Object doCached(PolyglotLanguageContext languageContext, Object receiver, Object[] args,
                             @CachedLibrary("receiver") InteropLibrary interop,
-                            @Cached ToHostNode toHost,
+                            @Cached PolyglotToHostNode toHost,
                             @Cached BranchProfile error) {
                 if (interop.hasArrayElements(receiver)) {
                     Object result;
@@ -288,7 +288,7 @@ class PolyglotMapEntry<K, V> implements Map.Entry<K, V>, HostWrapper {
                         error.enter();
                         throw invalidArrayIndex(languageContext, receiver, e.getInvalidIndex());
                     }
-                    return toHost.execute(result, elementClass, elementType, languageContext, true);
+                    return toHost.execute(languageContext, result, elementClass, elementType);
                 } else {
                     error.enter();
                     throw unsupported(languageContext, receiver);

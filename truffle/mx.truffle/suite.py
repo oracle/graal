@@ -175,6 +175,19 @@ suite = {
         "sdk:GRAAL_SDK",
         "com.oracle.truffle.api.instrumentation",
         "com.oracle.truffle.api.exception",
+      ],
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
+      "checkstyle" : "com.oracle.truffle.api",
+      "javaCompliance" : "8+",
+      "workingSets" : "API,Truffle",
+    },
+
+    "com.oracle.truffle.host" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "sdk:GRAAL_SDK",
+        "com.oracle.truffle.api.exception",
         "truffle:TRUFFLE_ASM_7.2",
       ],
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
@@ -900,6 +913,7 @@ suite = {
         "com.oracle.truffle.object",
         "com.oracle.truffle.api.object.dsl",
         "com.oracle.truffle.polyglot",
+        "com.oracle.truffle.host",
       ],
       "distDependencies" : [
         "sdk:GRAAL_SDK"

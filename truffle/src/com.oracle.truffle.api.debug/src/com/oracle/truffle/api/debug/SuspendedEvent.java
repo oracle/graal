@@ -848,7 +848,7 @@ public final class SuspendedEvent {
         public Iterator<DebugStackFrame> iterator() {
             if (hostStack != null) {
                 AtomicInteger frameDepth = new AtomicInteger(0);
-                return Debugger.ACCESSOR.engineSupport().mergeHostGuestFrames(hostStack, new GuestIterator(true) {
+                return Debugger.ACCESSOR.engineSupport().mergeHostGuestFrames(session.getDebugger().getEnv(), hostStack, new GuestIterator(true) {
                     @Override
                     public DebugStackFrame next() {
                         DebugStackFrame frame = super.next();

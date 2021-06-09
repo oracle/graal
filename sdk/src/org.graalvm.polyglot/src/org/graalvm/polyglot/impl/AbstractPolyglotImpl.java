@@ -48,6 +48,7 @@ import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.Reader;
 import java.lang.reflect.AnnotatedElement;
+import java.lang.reflect.Type;
 import java.net.URI;
 import java.net.URL;
 import java.nio.ByteOrder;
@@ -59,6 +60,7 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -146,7 +148,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Instrument newInstrument(AbstractInstrumentDispatch dispatch, Object receiver);
 
-        public abstract Value newValue(AbstractValueDispatch dispatch, Object receiver);
+        public abstract Value newValue(AbstractValueDispatch dispatch, Object context, Object receiver);
 
         public abstract Source newSource(Object receiver);
 
@@ -167,6 +169,8 @@ public abstract class AbstractPolyglotImpl {
         public abstract Object getReceiver(ResourceLimits value);
 
         public abstract AbstractValueDispatch getDispatch(Value value);
+
+        public abstract Object getContext(Value value);
 
         public abstract AbstractStackFrameImpl getDispatch(StackFrame value);
 
@@ -265,12 +269,13 @@ public abstract class AbstractPolyglotImpl {
     }
 
     public abstract Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> options, boolean useSystemProperties, boolean allowExperimentalOptions,
-                    boolean boundEngine,
-                    MessageTransport messageInterceptor, Object logHandlerOrStream, HostAccess conf);
+                    boolean boundEngine, MessageTransport messageInterceptor, Object logHandlerOrStream, Object hostLanguage, boolean hostLanguageOnly);
 
     public abstract int getPriority();
 
     public abstract void preInitializeEngine();
+
+    public abstract Object createHostLanguage(AbstractHostAccess access);
 
     public abstract void resetPreInitializedEngine();
 
@@ -279,6 +284,11 @@ public abstract class AbstractPolyglotImpl {
     public abstract AbstractSourceSectionDispatch getSourceSectionDispatch();
 
     public abstract AbstractManagementDispatch getManagementDispatch();
+
+    /**
+     * Returns the default host dispatch of this polyglot abstraction.
+     */
+    public abstract AbstractHostAccess createHostAccess();
 
     public abstract static class AbstractManagementDispatch {
 
@@ -606,275 +616,380 @@ public abstract class AbstractPolyglotImpl {
         public abstract String getDefaultMimeType(Object receiver);
     }
 
+    public abstract static class AbstractHostAccess {
+
+        protected AbstractHostAccess(AbstractPolyglotImpl impl) {
+            Objects.requireNonNull(impl);
+        }
+
+        public abstract Object toGuestValue(Object internalContext, Object parentNode, Object hostValue);
+
+        public abstract <T> List<T> toList(Object internalContext, Object guestValue, boolean implementFunction, Class<T> elementClass, Type elementType);
+
+        public abstract <K, V> Map<K, V> toMap(Object internalContext, Object foreignObject, boolean implementsFunction, Class<K> keyClass, Type keyType, Class<V> valueClass, Type valueType);
+
+        public abstract <K, V> Map.Entry<K, V> toMapEntry(Object internalContext, Object foreignObject, boolean implementsFunction,
+                        Class<K> keyClass, Type keyType, Class<V> valueClass, Type valueType);
+
+        public abstract <T> Function<?, ?> toFunction(Object internalContext, Object function, Class<?> returnClass, Type returnType, Class<?> paramClass, Type paramType);
+
+        public abstract Object toObjectProxy(Object internalContext, Class<?> clazz, Object obj) throws IllegalArgumentException;
+
+        public abstract <T> T toFunctionProxy(Object internalContext, Class<T> functionalType, Object function);
+
+        public abstract <T> Iterable<T> toIterable(Object internalContext, Object iterable, boolean implementFunction, Class<T> elementClass, Type elementType);
+
+        public abstract <T> Iterator<T> toIterator(Object internalContext, Object iterable, boolean implementFunction, Class<T> elementClass, Type elementType);
+
+        public abstract PolyglotException toPolyglotException(Object internalContext, Throwable e);
+
+        public abstract Value toValue(Object internalContext, Object receiver);
+
+        public abstract String getValueInfo(Object internalContext, Object value);
+
+        public abstract Value[] toValues(Object internalContext, Object[] values, int startIndex);
+
+        public abstract Value[] toValues(Object internalContext, Object[] values);
+
+        public abstract void rethrowPolyglotException(Object internalContext, PolyglotException e);
+
+        public abstract RuntimeException toEngineException(RuntimeException e);
+
+        public abstract boolean isEngineException(RuntimeException e);
+
+        public abstract RuntimeException unboxEngineException(RuntimeException e);
+
+    }
+
+    public abstract static class AbstractHostService {
+
+        protected AbstractHostService(AbstractPolyglotImpl polyglot) {
+            Objects.requireNonNull(polyglot);
+        }
+
+        public abstract void initializeHostContext(Object internalContext, Object context, HostAccess access, ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed,
+                        boolean hostLookupAllowed);
+
+        public abstract void addToHostClassPath(Object context, Object truffleFile);
+
+        public abstract Object toGuestValue(Object context, Object hostValue);
+
+        public abstract Object asHostDynamicClass(Object context, Class<?> value);
+
+        public abstract Object asHostStaticClass(Object context, Class<?> value);
+
+        public abstract Object findDynamicClass(Object context, String classValue);
+
+        public abstract Object findStaticClass(Object context, String classValue);
+
+        public abstract Object createToHostTypeNode();
+
+        public abstract <T> T toHostType(Object hostNode, Object hostContext, Object value, Class<T> targetType, Type genericType);
+
+        public abstract boolean isHostValue(Object value);
+
+        public abstract Object unboxHostObject(Object hostValue);
+
+        public abstract Object unboxProxyObject(Object hostValue);
+
+        public abstract Throwable unboxHostException(Throwable hostValue);
+
+        public abstract Object toHostObject(Object context, Object value);
+
+        public abstract RuntimeException toHostException(Object hostContext, Throwable exception);
+
+        public abstract boolean isHostException(Throwable exception);
+
+        public abstract boolean isHostFunction(Object obj);
+
+        public abstract boolean isHostObject(Object obj);
+
+        public abstract boolean isHostSymbol(Object obj);
+
+        public abstract Object createHostAdapter(Object hostContextObject, Class<?>[] types, Object classOverrides);
+
+        public abstract boolean isHostProxy(Object value);
+
+        public abstract Object migrateHostObject(Object newContext, Object value);
+
+        public abstract Object migrateHostProxy(Object newContext, Object value);
+
+        public abstract Error toHostResourceError(Throwable hostException);
+
+        public abstract int findNextGuestToHostStackTraceElement(StackTraceElement firstElement, StackTraceElement[] hostStack, int nextElementIndex);
+
+    }
+
     public abstract static class AbstractValueDispatch {
 
         protected AbstractValueDispatch(AbstractPolyglotImpl impl) {
             Objects.requireNonNull(impl);
         }
 
-        public boolean hasArrayElements(Object receiver) {
+        public boolean hasArrayElements(Object context, Object receiver) {
             return false;
         }
 
-        public abstract Value getArrayElement(Object receiver, long index);
+        public abstract Value getArrayElement(Object context, Object receiver, long index);
 
-        public abstract void setArrayElement(Object receiver, long index, Object value);
+        public abstract void setArrayElement(Object context, Object receiver, long index, Object value);
 
-        public abstract boolean removeArrayElement(Object receiver, long index);
+        public abstract boolean removeArrayElement(Object context, Object receiver, long index);
 
-        public abstract long getArraySize(Object receiver);
+        public abstract long getArraySize(Object context, Object receiver);
 
         // region Buffer Methods
 
-        public boolean hasBufferElements(Object receiver) {
+        public boolean hasBufferElements(Object context, Object receiver) {
             return false;
         }
 
-        public abstract boolean isBufferWritable(Object receiver);
+        public abstract boolean isBufferWritable(Object context, Object receiver);
 
-        public abstract long getBufferSize(Object receiver);
+        public abstract long getBufferSize(Object context, Object receiver);
 
-        public abstract byte readBufferByte(Object receiver, long byteOffset);
+        public abstract byte readBufferByte(Object context, Object receiver, long byteOffset);
 
-        public abstract void writeBufferByte(Object receiver, long byteOffset, byte value);
+        public abstract void writeBufferByte(Object context, Object receiver, long byteOffset, byte value);
 
-        public abstract short readBufferShort(Object receiver, ByteOrder order, long byteOffset);
+        public abstract short readBufferShort(Object context, Object receiver, ByteOrder order, long byteOffset);
 
-        public abstract void writeBufferShort(Object receiver, ByteOrder order, long byteOffset, short value);
+        public abstract void writeBufferShort(Object context, Object receiver, ByteOrder order, long byteOffset, short value);
 
-        public abstract int readBufferInt(Object receiver, ByteOrder order, long byteOffset);
+        public abstract int readBufferInt(Object context, Object receiver, ByteOrder order, long byteOffset);
 
-        public abstract void writeBufferInt(Object receiver, ByteOrder order, long byteOffset, int value);
+        public abstract void writeBufferInt(Object context, Object receiver, ByteOrder order, long byteOffset, int value);
 
-        public abstract long readBufferLong(Object receiver, ByteOrder order, long byteOffset);
+        public abstract long readBufferLong(Object context, Object receiver, ByteOrder order, long byteOffset);
 
-        public abstract void writeBufferLong(Object receiver, ByteOrder order, long byteOffset, long value);
+        public abstract void writeBufferLong(Object context, Object receiver, ByteOrder order, long byteOffset, long value);
 
-        public abstract float readBufferFloat(Object receiver, ByteOrder order, long byteOffset);
+        public abstract float readBufferFloat(Object context, Object receiver, ByteOrder order, long byteOffset);
 
-        public abstract void writeBufferFloat(Object receiver, ByteOrder order, long byteOffset, float value);
+        public abstract void writeBufferFloat(Object context, Object receiver, ByteOrder order, long byteOffset, float value);
 
-        public abstract double readBufferDouble(Object receiver, ByteOrder order, long byteOffset);
+        public abstract double readBufferDouble(Object context, Object receiver, ByteOrder order, long byteOffset);
 
-        public abstract void writeBufferDouble(Object receiver, ByteOrder order, long byteOffset, double value);
+        public abstract void writeBufferDouble(Object context, Object receiver, ByteOrder order, long byteOffset, double value);
 
         // endregion
 
-        public boolean hasMembers(Object receiver) {
+        public boolean hasMembers(Object context, Object receiver) {
             return false;
         }
 
-        public abstract Value getMember(Object receiver, String key);
+        public abstract Value getMember(Object context, Object receiver, String key);
 
-        public boolean hasMember(Object receiver, String key) {
+        public boolean hasMember(Object context, Object receiver, String key) {
             return false;
         }
 
-        public Context getContext() {
+        public Context getContext(Object context) {
             return null;
         }
 
-        public Set<String> getMemberKeys(Object receiver) {
+        public Set<String> getMemberKeys(Object context, Object receiver) {
             return Collections.emptySet();
         }
 
-        public abstract void putMember(Object receiver, String key, Object member);
+        public abstract void putMember(Object context, Object receiver, String key, Object member);
 
-        public abstract boolean removeMember(Object receiver, String key);
+        public abstract boolean removeMember(Object context, Object receiver, String key);
 
-        public boolean canExecute(Object receiver) {
+        public boolean canExecute(Object context, Object receiver) {
             return false;
         }
 
-        public abstract Value execute(Object receiver, Object[] arguments);
+        public abstract Value execute(Object context, Object receiver, Object[] arguments);
 
-        public abstract Value execute(Object receiver);
+        public abstract Value execute(Object context, Object receiver);
 
-        public boolean canInstantiate(Object receiver) {
+        public boolean canInstantiate(Object context, Object receiver) {
             return false;
         }
 
-        public abstract Value newInstance(Object receiver, Object[] arguments);
+        public abstract Value newInstance(Object context, Object receiver, Object[] arguments);
 
-        public abstract void executeVoid(Object receiver, Object[] arguments);
+        public abstract void executeVoid(Object context, Object receiver, Object[] arguments);
 
-        public abstract void executeVoid(Object receiver);
+        public abstract void executeVoid(Object context, Object receiver);
 
-        public boolean canInvoke(String identifier, Object receiver) {
+        public boolean canInvoke(Object context, String identifier, Object receiver) {
             return false;
         }
 
-        public abstract Value invoke(Object receiver, String identifier, Object[] arguments);
+        public abstract Value invoke(Object context, Object receiver, String identifier, Object[] arguments);
 
-        public abstract Value invoke(Object receiver, String identifier);
+        public abstract Value invoke(Object context, Object receiver, String identifier);
 
-        public boolean isString(Object receiver) {
+        public boolean isString(Object context, Object receiver) {
             return false;
         }
 
-        public abstract String asString(Object receiver);
+        public abstract String asString(Object context, Object receiver);
 
-        public boolean isBoolean(Object receiver) {
+        public boolean isBoolean(Object context, Object receiver) {
             return false;
         }
 
-        public abstract boolean asBoolean(Object receiver);
+        public abstract boolean asBoolean(Object context, Object receiver);
 
-        public boolean fitsInInt(Object receiver) {
+        public boolean fitsInInt(Object context, Object receiver) {
             return false;
         }
 
-        public abstract int asInt(Object receiver);
+        public abstract int asInt(Object context, Object receiver);
 
-        public boolean fitsInLong(Object receiver) {
+        public boolean fitsInLong(Object context, Object receiver) {
             return false;
         }
 
-        public abstract long asLong(Object receiver);
+        public abstract long asLong(Object context, Object receiver);
 
-        public boolean fitsInDouble(Object receiver) {
+        public boolean fitsInDouble(Object context, Object receiver) {
             return false;
         }
 
-        public abstract double asDouble(Object receiver);
+        public abstract double asDouble(Object context, Object receiver);
 
-        public boolean fitsInFloat(Object receiver) {
+        public boolean fitsInFloat(Object context, Object receiver) {
             return false;
         }
 
-        public abstract float asFloat(Object receiver);
+        public abstract float asFloat(Object context, Object receiver);
 
-        public boolean isNull(Object receiver) {
+        public boolean isNull(Object context, Object receiver) {
             return false;
         }
 
-        public boolean isNativePointer(Object receiver) {
+        public boolean isNativePointer(Object context, Object receiver) {
             return false;
         }
 
-        public boolean fitsInByte(Object receiver) {
+        public boolean fitsInByte(Object context, Object receiver) {
             return false;
         }
 
-        public abstract byte asByte(Object receiver);
+        public abstract byte asByte(Object context, Object receiver);
 
-        public boolean fitsInShort(Object receiver) {
+        public boolean fitsInShort(Object context, Object receiver) {
             return false;
         }
 
-        public abstract short asShort(Object receiver);
+        public abstract short asShort(Object context, Object receiver);
 
-        public abstract long asNativePointer(Object receiver);
+        public abstract long asNativePointer(Object context, Object receiver);
 
-        public boolean isHostObject(Object receiver) {
+        public boolean isHostObject(Object context, Object receiver) {
             return false;
         }
 
-        public boolean isProxyObject(Object receiver) {
+        public boolean isProxyObject(Object context, Object receiver) {
             return false;
         }
 
-        public abstract Object asHostObject(Object receiver);
+        public abstract Object asHostObject(Object context, Object receiver);
 
-        public abstract Object asProxyObject(Object receiver);
+        public abstract Object asProxyObject(Object context, Object receiver);
 
-        public abstract String toString(Object receiver);
+        public abstract String toString(Object context, Object receiver);
 
-        public abstract Value getMetaObject(Object receiver);
+        public abstract Value getMetaObject(Object context, Object receiver);
 
-        public boolean isNumber(Object receiver) {
+        public boolean isNumber(Object context, Object receiver) {
             return false;
         }
 
-        public abstract <T> T as(Object receiver, Class<T> targetType);
+        public abstract <T> T as(Object context, Object receiver, Class<T> targetType);
 
-        public abstract <T> T as(Object receiver, TypeLiteral<T> targetType);
+        public abstract <T> T as(Object context, Object receiver, TypeLiteral<T> targetType);
 
-        public abstract SourceSection getSourceLocation(Object receiver);
+        public abstract SourceSection getSourceLocation(Object context, Object receiver);
 
-        public boolean isDate(Object receiver) {
+        public boolean isDate(Object context, Object receiver) {
             return false;
         }
 
-        public abstract LocalDate asDate(Object receiver);
+        public abstract LocalDate asDate(Object context, Object receiver);
 
-        public boolean isTime(Object receiver) {
+        public boolean isTime(Object context, Object receiver) {
             return false;
         }
 
-        public abstract LocalTime asTime(Object receiver);
+        public abstract LocalTime asTime(Object context, Object receiver);
 
-        public abstract Instant asInstant(Object receiver);
+        public abstract Instant asInstant(Object context, Object receiver);
 
-        public boolean isTimeZone(Object receiver) {
+        public boolean isTimeZone(Object context, Object receiver) {
             return false;
         }
 
-        public abstract ZoneId asTimeZone(Object receiver);
+        public abstract ZoneId asTimeZone(Object context, Object receiver);
 
-        public boolean isDuration(Object receiver) {
+        public boolean isDuration(Object context, Object receiver) {
             return false;
         }
 
-        public abstract Duration asDuration(Object receiver);
+        public abstract Duration asDuration(Object context, Object receiver);
 
-        public boolean isException(Object receiver) {
+        public boolean isException(Object context, Object receiver) {
             return false;
         }
 
-        public abstract RuntimeException throwException(Object receiver);
+        public abstract RuntimeException throwException(Object context, Object receiver);
 
-        public boolean isMetaObject(Object receiver) {
+        public boolean isMetaObject(Object context, Object receiver) {
             return false;
         }
 
-        public abstract String getMetaQualifiedName(Object receiver);
+        public abstract String getMetaQualifiedName(Object context, Object receiver);
 
-        public abstract String getMetaSimpleName(Object receiver);
+        public abstract String getMetaSimpleName(Object context, Object receiver);
 
-        public abstract boolean isMetaInstance(Object receiver, Object instance);
+        public abstract boolean isMetaInstance(Object context, Object receiver, Object instance);
 
-        public abstract boolean equalsImpl(Object receiver, Object obj);
+        public abstract boolean equalsImpl(Object context, Object receiver, Object obj);
 
-        public abstract int hashCodeImpl(Object receiver);
+        public abstract int hashCodeImpl(Object context, Object receiver);
 
-        public boolean hasIterator(Object receiver) {
+        public boolean hasIterator(Object context, Object receiver) {
             return false;
         }
 
-        public abstract Value getIterator(Object receiver);
+        public abstract Value getIterator(Object context, Object receiver);
 
-        public boolean isIterator(Object receiver) {
+        public boolean isIterator(Object context, Object receiver) {
             return false;
         }
 
-        public abstract boolean hasIteratorNextElement(Object receiver);
+        public abstract boolean hasIteratorNextElement(Object context, Object receiver);
 
-        public abstract Value getIteratorNextElement(Object receiver);
+        public abstract Value getIteratorNextElement(Object context, Object receiver);
 
-        public boolean hasHashEntries(Object receiver) {
+        public boolean hasHashEntries(Object context, Object receiver) {
             return false;
         }
 
-        public abstract long getHashSize(Object receiver);
+        public abstract long getHashSize(Object context, Object receiver);
 
-        public boolean hasHashEntry(Object receiver, Object key) {
+        public boolean hasHashEntry(Object context, Object receiver, Object key) {
             return false;
         }
 
-        public abstract Value getHashValue(Object receiver, Object key);
+        public abstract Value getHashValue(Object context, Object receiver, Object key);
 
-        public abstract Value getHashValueOrDefault(Object receiver, Object key, Object defaultValue);
+        public abstract Value getHashValueOrDefault(Object context, Object receiver, Object key, Object defaultValue);
 
-        public abstract void putHashEntry(Object receiver, Object key, Object value);
+        public abstract void putHashEntry(Object context, Object receiver, Object key, Object value);
 
-        public abstract boolean removeHashEntry(Object receiver, Object key);
+        public abstract boolean removeHashEntry(Object context, Object receiver, Object key);
 
-        public abstract Value getHashEntriesIterator(Object receiver);
+        public abstract Value getHashEntriesIterator(Object context, Object receiver);
 
-        public abstract Value getHashKeysIterator(Object receiver);
+        public abstract Value getHashKeysIterator(Object context, Object receiver);
 
-        public abstract Value getHashValuesIterator(Object receiver);
+        public abstract Value getHashValuesIterator(Object context, Object receiver);
+
     }
 
     public abstract Class<?> loadLanguageClass(String className);
@@ -890,5 +1005,9 @@ public abstract class AbstractPolyglotImpl {
     public abstract Object buildLimits(long statementLimit, Predicate<Source> statementLimitSourceFilter, Consumer<ResourceLimitEvent> onLimit);
 
     public abstract FileSystem newDefaultFileSystem();
+
+    public AbstractValueDispatch createValueDispatch(Object context, Object o) {
+        throw new UnsupportedOperationException();
+    }
 
 }
