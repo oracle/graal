@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.jfr;
 
-import com.oracle.svm.core.util.VMError;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.UnmanagedMemory;
@@ -56,7 +55,7 @@ public class JfrGlobalMemory {
         this.bufferSize = globalBufferSize;
 
         // Allocate all buffers eagerly.
-        buffers = UnmanagedMemory.calloc(SizeOf.unsigned(JfrBuffer.class).multiply(WordFactory.unsigned(bufferCount)));
+        buffers = UnmanagedMemory.calloc(SizeOf.unsigned(JfrBuffers.class).multiply(WordFactory.unsigned(bufferCount)));
         for (int i = 0; i < bufferCount; i++) {
             JfrBuffer buffer = JfrBufferAccess.allocate(WordFactory.unsigned(bufferSize));
             buffers.addressOf(i).write(buffer);
@@ -87,7 +86,7 @@ public class JfrGlobalMemory {
 
     @Uninterruptible(reason = "Epoch must not change while in this method.")
     public boolean write(JfrBuffer threadLocalBuffer, UnsignedWord unflushedSize) {
-        JfrBuffer promotionBuffer = acquirePromotionBuffer(unflushedSize);
+        JfrBuffer promotionBuffer = acquireBufferWithRetry(unflushedSize, PROMOTION_RETRY_COUNT);
         if (promotionBuffer.isNull()) {
             return false;
         }
@@ -108,18 +107,6 @@ public class JfrGlobalMemory {
             recorderThread.signal();
         }
         return true;
-    }
-
-    @Uninterruptible(reason = "Epoch must not change while in this method.")
-    private JfrBuffer acquirePromotionBuffer(UnsignedWord size) {
-        while (true) {
-            JfrBuffer buffer = acquireBufferWithRetry(size, PROMOTION_RETRY_COUNT);
-            if (buffer.isNull() && shouldDiscard()) {
-                discardOldest();
-                continue;
-            }
-            return buffer;
-        }
     }
 
     @Uninterruptible(reason = "Epoch must not change while in this method.")
@@ -144,16 +131,5 @@ public class JfrGlobalMemory {
     private static void releasePromotionBuffer(JfrBuffer buffer) {
         assert JfrBufferAccess.isAcquired(buffer);
         JfrBufferAccess.release(buffer);
-    }
-
-    @Uninterruptible(reason = "Epoch must not change while in this method.")
-    private static boolean shouldDiscard() {
-        // Currently unused as in-memory recording is not supported yet.
-        return false;
-    }
-
-    @Uninterruptible(reason = "Epoch must not change while in this method.")
-    private static void discardOldest() {
-        throw VMError.shouldNotReachHere("Not supported at the moment.");
     }
 }

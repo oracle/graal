@@ -315,7 +315,7 @@ public class JfrOptionSet {
         if (memorySize.isUserValue() && globalBufferSize.isUserValue() && globalBufferCount.isUserValue() && globalBufferSize.getValue() * globalBufferCount.getValue() != memorySize.getValue()) {
             throw new IllegalStateException(
                             "The values specified for the JFR options 'memorySize', 'globalbuffersize', and 'globalbuffercount' are causing an ambiguity when trying to determine how much memory to use. " +
-                                            "Try to remove one of the involved options or make sure they are unambigous.");
+                                            "Try to remove one of the involved options or make sure they are unambiguous.");
         }
     }
 

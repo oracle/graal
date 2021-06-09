@@ -253,7 +253,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
 
     public void writeBoolean(boolean value) {
         assert lock.isHeldByCurrentThread() || VMOperationControl.isDedicatedVMOperationThread() && lock.isLocked();
-        writeCompressedInt(value ? 1 : 0);
+        writeByte((byte) (value ? 1 : 0));
     }
 
     public void writeByte(byte value) {
@@ -375,7 +375,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         /**
          * We need to ensure that all JFR events that are triggered by the current thread are
          * recorded for the next epoch. Otherwise, those JFR events could pollute the data that we
-         * currently try to persist. To ensure that, we must uninterruptibly flush all data that is
+         * currently try to persist. To ensure that, we must uninterruptedly flush all data that is
          * currently in-flight.
          */
         @Uninterruptible(reason = "Prevent pollution of the current thread's thread local JFR buffer.")
