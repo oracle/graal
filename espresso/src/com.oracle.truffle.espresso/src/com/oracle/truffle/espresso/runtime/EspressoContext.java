@@ -166,7 +166,6 @@ public final class EspressoContext {
     public final boolean InlineMethodHandle;
     public final boolean SplitMethodHandles;
     public final boolean livenessAnalysis;
-    public final int OSRThreshold;
 
     // Behavior control
     public final boolean EnableManagement;
@@ -258,7 +257,6 @@ public final class EspressoContext {
         this.EnableSignals = env.getOptions().get(EspressoOptions.EnableSignals);
         this.SpecCompliancyMode = env.getOptions().get(EspressoOptions.SpecCompliancy);
         this.livenessAnalysis = env.getOptions().get(EspressoOptions.LivenessAnalysis);
-        this.OSRThreshold = env.getOptions().get(EspressoOptions.OSRThreshold);
         this.EnableManagement = env.getOptions().get(EspressoOptions.EnableManagement);
         this.EnableAgents = getEnv().getOptions().get(EspressoOptions.EnableAgents);
         String multiThreadingDisabledReason = null;

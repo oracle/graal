@@ -424,7 +424,6 @@ public final class BytecodeNode extends EspressoMethodNode implements OnStackRep
             CompilerDirectives.transferToInterpreter();
             throw EspressoError.shouldNotReachHere(e);
         }
-        // TODO: clean up interface to take the parent frame and copy it (and check if it escapes?)
         return executeOSR(innerFrame, (Integer) target);
     }
 

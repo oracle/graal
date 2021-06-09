@@ -954,7 +954,8 @@ public abstract class Accessor {
          * Reports a back edge to the target location. This information can be used to trigger
          * on-stack replacement (OSR).
          *
-         * @param source the root node in which the back edge occurs
+         * @param rootNode the root node in which the back edge occurs
+         * @param language the language of the node
          * @param parentFrame frame to be passed for OSR
          * @param target target location of the jump (e.g., bytecode index) used to differentiate
          *            back edges.

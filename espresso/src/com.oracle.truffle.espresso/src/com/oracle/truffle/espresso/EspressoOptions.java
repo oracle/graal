@@ -236,10 +236,6 @@ public final class EspressoOptions {
                     category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
     public static final OptionKey<Boolean> LivenessAnalysis = new OptionKey<>(false);
 
-    @Option(help = "The loop iteration threshold to trigger OSR (-1 to disable OSR).", //
-            category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
-    public static final OptionKey<Integer> OSRThreshold = new OptionKey<>(1 << 10);
-
     private static final OptionType<com.oracle.truffle.espresso.jdwp.api.JDWPOptions> JDWP_OPTIONS_OPTION_TYPE = new OptionType<>("JDWPOptions",
                     new Function<String, JDWPOptions>() {
 

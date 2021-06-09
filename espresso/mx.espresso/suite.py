@@ -78,13 +78,6 @@ suite = {
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
                 ]
             },
-            {
-                "name": "compiler",
-                "subdir": True,
-                "urls": [
-                    {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
-                ]
-            },
         ],
     },
 
@@ -120,7 +113,6 @@ suite = {
                 "truffle:TRUFFLE_NFI",
                 "com.oracle.truffle.espresso.jdwp",
                 "com.oracle.truffle.espresso.staticobject",
-                "compiler:GRAAL",
             ],
             "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR", "ESPRESSO_PROCESSOR"],
             "javaCompliance": "1.8+",
@@ -309,7 +301,6 @@ suite = {
                 "truffle:TRUFFLE_NFI",
                 "truffle:TRUFFLE_NFI_LIBFFI",
                 "tools:TRUFFLE_PROFILER",
-                "compiler:GRAAL",
             ],
             "exclude": [
                 "truffle:TRUFFLE_ASM_7.2",

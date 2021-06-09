@@ -711,11 +711,11 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      * Returns <code>true</code> if this target can be compiled in principle, else
      * <code>false</code>.
      */
-    public final boolean acceptForCompilation() {
+    final boolean acceptForCompilation() {
         return engine.acceptForCompilation(getRootNode());
     }
 
-    public final boolean isCompilationFailed() {
+    final boolean isCompilationFailed() {
         return compilationFailed;
     }
 

@@ -405,6 +405,7 @@ public abstract class RootNode extends ExecutableNode {
      *
      * An good example of trivial root nodes would be getters and setters in java.
      *
+     * @since 20.3.0
      * @return <code>true </code>if this root node should be considered trivial by the runtime.
      *         <code>false</code> otherwise.
      */

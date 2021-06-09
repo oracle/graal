@@ -279,8 +279,6 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
             return new Default(this);
         }
 
-
-
         @Override
         public Object execute(VirtualFrame frame) {
             if (usesMonitors()) {
