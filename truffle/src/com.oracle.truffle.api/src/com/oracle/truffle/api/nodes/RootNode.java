@@ -47,6 +47,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerOptions;
@@ -404,7 +405,6 @@ public abstract class RootNode extends ExecutableNode {
      *
      * An good example of trivial root nodes would be getters and setters in java.
      *
-     * @since 20.3.0
      * @return <code>true </code>if this root node should be considered trivial by the runtime.
      *         <code>false</code> otherwise.
      */
@@ -485,6 +485,29 @@ public abstract class RootNode extends ExecutableNode {
      */
     protected ExecutionSignature prepareForAOT() {
         return null;
+    }
+
+    /**
+     * Reports a back edge to the target location. This information could be used to trigger
+     * on-stack replacement (OSR).
+     * <p>
+     * NOTE: This method makes OSR possible for bytecode interpreters which do not contain
+     * structured {@link com.oracle.truffle.api.nodes.LoopNode LoopNodes}.
+     *
+     * @param osrNode the node which can be on-stack replaced
+     * @param parentFrame frame at current point of execution
+     * @param target target location of the jump (e.g., bytecode index). Targets are differentiated
+     *            using {@link Object#equals(Object)}.
+     * @return result if OSR was performed, or {@code null} otherwise.
+     */
+    // TODO: can we push this into OnStackReplaceableNode? I don't think we can put the same type constraint on the receiver.
+    public final <T extends Node & OnStackReplaceableNode> Object reportOSRBackEdge(T osrNode, VirtualFrame parentFrame, Object target) {
+        // Report loop count for the standard compilation path.
+        LoopNode.reportLoopCount(this, 1);
+        if (!CompilerDirectives.inInterpreter()) {
+            return null;
+        }
+        return NodeAccessor.RUNTIME.onOSRBackEdge(this, getLanguage(), osrNode, parentFrame, target);
     }
 
     /**

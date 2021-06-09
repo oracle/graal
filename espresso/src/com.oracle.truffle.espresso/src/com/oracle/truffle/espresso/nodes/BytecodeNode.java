@@ -242,7 +242,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.ReplaceObserver;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
@@ -262,6 +261,7 @@ import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.OnStackReplaceableNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.analysis.liveness.LivenessAnalysis;
@@ -342,12 +342,6 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
-import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntimeListener;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.runtime.TruffleInlining;
-
 /**
  * Bytecode interpreter loop.
  *
@@ -362,7 +356,7 @@ import org.graalvm.compiler.truffle.runtime.TruffleInlining;
  * bytecode is first processed/executed without growing or shrinking the stack and only then the
  * {@code top} of the stack index is adjusted depending on the bytecode stack offset.
  */
-public final class BytecodeNode extends EspressoMethodNode implements ReplaceObserver {
+public final class BytecodeNode extends EspressoMethodNode implements OnStackReplaceableNode {
 
     private static final DebugCounter EXECUTED_BYTECODES_COUNT = DebugCounter.create("Executed bytecodes");
     private static final DebugCounter QUICKENED_BYTECODES = DebugCounter.create("Quickened bytecodes");
@@ -414,9 +408,25 @@ public final class BytecodeNode extends EspressoMethodNode implements ReplaceObs
 
     private final LivenessAnalysis livenessAnalysis;
 
-    private final OptimizedCallTarget[] osrTargets;
-    private int backedgeCount = 0;
-    private volatile boolean canCompile;
+    @Override
+    public Object doOSR(Object target, Frame parentFrame, VirtualFrame innerFrame) {
+        FrameDescriptor parentDescriptor = parentFrame.getFrameDescriptor();
+        FrameDescriptor innerDescriptor = innerFrame.getFrameDescriptor();
+        try {
+            // TODO: modifying the frame blocks compilation. how can we set up the frame descriptor in advance?
+            FrameSlot innerPrimitivesSlot = innerDescriptor.addFrameSlot("primitives", FrameSlotKind.Object);
+            FrameSlot innerRefsSlot = innerDescriptor.addFrameSlot("refs", FrameSlotKind.Object);
+            FrameSlot innerBciSlot = innerDescriptor.addFrameSlot("bci", FrameSlotKind.Int);
+            innerFrame.setObject(innerPrimitivesSlot, parentFrame.getObject(primitivesSlot));
+            innerFrame.setObject(innerRefsSlot, parentFrame.getObject(refsSlot));
+            innerFrame.setInt(innerBciSlot, parentFrame.getInt(bciSlot));
+        } catch (FrameSlotTypeException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere(e);
+        }
+        // TODO: clean up interface to take the parent frame and copy it (and check if it escapes?)
+        return executeOSR(innerFrame, (Integer) target);
+    }
 
     private static final class EspressoOSRReturnException extends ControlFlowException {
         private static final long serialVersionUID = 117347248600170993L;
@@ -443,8 +453,6 @@ public final class BytecodeNode extends EspressoMethodNode implements ReplaceObs
         this.noForeignObjects = Truffle.getRuntime().createAssumption("noForeignObjects");
         this.implicitExceptionProfile = false;
         this.livenessAnalysis = LivenessAnalysis.analyze(method.getMethod());
-        this.osrTargets = new OptimizedCallTarget[bs.endBCI()];
-        this.canCompile = getContext().OSRThreshold > 0;
     }
 
     public BytecodeNode(BytecodeNode copy) {
@@ -1027,7 +1035,7 @@ public final class BytecodeNode extends EspressoMethodNode implements ReplaceObs
                     case IFLE: // fall through
                         if (takeBranchPrimitive1(popInt(primitives, top - 1), curOpcode)) {
                             int targetBCI = bs.readBranchDest2(curBCI);
-                            nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument, loopCount);
+                            nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument, loopCount, frame);
                             top += Bytecodes.stackEffectOf(IFLE);
                             curBCI = targetBCI;
                             continue loop;
@@ -1041,7 +1049,7 @@ public final class BytecodeNode extends EspressoMethodNode implements ReplaceObs
                     case IF_ICMPGT: // fall through
                     case IF_ICMPLE:
                         if (takeBranchPrimitive2(popInt(primitives, top - 1), popInt(primitives, top - 2), curOpcode)) {
-                            nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, bs.readBranchDest2(curBCI), statementIndex, instrument, loopCount);
+                            nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, bs.readBranchDest2(curBCI), statementIndex, instrument, loopCount, frame);
                             top += Bytecodes.stackEffectOf(IF_ICMPLE);
                             curBCI = bs.readBranchDest2(curBCI);
                             continue loop;
@@ -1052,7 +1060,7 @@ public final class BytecodeNode extends EspressoMethodNode implements ReplaceObs
                     case IF_ACMPNE:
                         if (takeBranchRef2(popObject(refs, top - 1), popObject(refs, top - 2), curOpcode)) {
                             int targetBCI = bs.readBranchDest2(curBCI);
-                            nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument, loopCount);
+                            nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument, loopCount, frame);
                             top += Bytecodes.stackEffectOf(IF_ACMPNE);
                             curBCI = targetBCI;
                             continue loop;
@@ -1063,7 +1071,7 @@ public final class BytecodeNode extends EspressoMethodNode implements ReplaceObs
                     case IFNONNULL:
                         if (takeBranchRef1(popObject(refs, top - 1), curOpcode)) {
                             int targetBCI = bs.readBranchDest2(curBCI);
-                            nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument, loopCount);
+                            nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument, loopCount, frame);
                             top += Bytecodes.stackEffectOf(IFNONNULL);
                             curBCI = targetBCI;
                             continue loop;
@@ -1072,20 +1080,20 @@ public final class BytecodeNode extends EspressoMethodNode implements ReplaceObs
 
                     case GOTO: {
                         int targetBCI = bs.readBranchDest2(curBCI);
-                        nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument, loopCount);
+                        nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument, loopCount, frame);
                         curBCI = targetBCI;
                         continue loop;
                     }
                     case GOTO_W: {
                         int targetBCI = bs.readBranchDest4(curBCI);
-                        nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument, loopCount);
+                        nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument, loopCount, frame);
                         curBCI = targetBCI;
                         continue loop;
                     }
                     case JSR: {
                         putReturnAddress(refs, top, bs.nextBCI(curBCI));
                         int targetBCI = bs.readBranchDest2(curBCI);
-                        nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument, loopCount);
+                        nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument, loopCount, frame);
                         top += Bytecodes.stackEffectOf(JSR);
                         curBCI = targetBCI;
                         continue loop;
@@ -1093,7 +1101,7 @@ public final class BytecodeNode extends EspressoMethodNode implements ReplaceObs
                     case JSR_W: {
                         putReturnAddress(refs, top, bs.nextBCI(curBCI));
                         int targetBCI = bs.readBranchDest4(curBCI);
-                        nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument, loopCount);
+                        nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument, loopCount, frame);
                         top += Bytecodes.stackEffectOf(JSR_W);
                         curBCI = targetBCI;
                         continue loop;
@@ -1113,7 +1121,7 @@ public final class BytecodeNode extends EspressoMethodNode implements ReplaceObs
                             if (jsr == targetBCI) {
                                 CompilerAsserts.partialEvaluationConstant(jsr);
                                 targetBCI = jsr;
-                                nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument, loopCount);
+                                nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument, loopCount, frame);
                                 top += Bytecodes.stackEffectOf(RET);
                                 curBCI = targetBCI;
                                 continue loop;
@@ -1122,7 +1130,7 @@ public final class BytecodeNode extends EspressoMethodNode implements ReplaceObs
                         CompilerDirectives.transferToInterpreterAndInvalidate();
                         jsrBci[curBCI] = Arrays.copyOf(jsrBci[curBCI], jsrBci[curBCI].length + 1);
                         jsrBci[curBCI][jsrBci[curBCI].length - 1] = targetBCI;
-                        nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument, loopCount);
+                        nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument, loopCount, frame);
                         top += Bytecodes.stackEffectOf(RET);
                         curBCI = targetBCI;
                         continue loop;
@@ -1143,7 +1151,7 @@ public final class BytecodeNode extends EspressoMethodNode implements ReplaceObs
                             } else {
                                 targetBCI = switchHelper.defaultTarget(bs, curBCI);
                             }
-                            nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument, loopCount);
+                            nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument, loopCount, frame);
                             top += Bytecodes.stackEffectOf(TABLESWITCH);
                             curBCI = targetBCI;
                             continue loop;
@@ -1155,7 +1163,7 @@ public final class BytecodeNode extends EspressoMethodNode implements ReplaceObs
                             if (i == index) {
                                 // Key found.
                                 int targetBCI = switchHelper.targetAt(bs, curBCI, i - low);
-                                nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument, loopCount);
+                                nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument, loopCount, frame);
                                 top += Bytecodes.stackEffectOf(TABLESWITCH);
                                 curBCI = targetBCI;
                                 continue loop;
@@ -1164,7 +1172,7 @@ public final class BytecodeNode extends EspressoMethodNode implements ReplaceObs
 
                         // Key not found.
                         int targetBCI = switchHelper.defaultTarget(bs, curBCI);
-                        nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument, loopCount);
+                        nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument, loopCount, frame);
                         top += Bytecodes.stackEffectOf(TABLESWITCH);
                         curBCI = targetBCI;
                         continue loop;
@@ -1184,7 +1192,7 @@ public final class BytecodeNode extends EspressoMethodNode implements ReplaceObs
                             } else {
                                 // Key found.
                                 int targetBCI = curBCI + switchHelper.offsetAt(bs, curBCI, mid);
-                                nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument, loopCount);
+                                nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument, loopCount, frame);
                                 top += Bytecodes.stackEffectOf(LOOKUPSWITCH);
                                 curBCI = targetBCI;
                                 continue loop;
@@ -1193,7 +1201,7 @@ public final class BytecodeNode extends EspressoMethodNode implements ReplaceObs
 
                         // Key not found.
                         int targetBCI = switchHelper.defaultTarget(bs, curBCI);
-                        nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument, loopCount);
+                        nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument, loopCount, frame);
                         top += Bytecodes.stackEffectOf(LOOKUPSWITCH);
                         curBCI = targetBCI;
                         continue loop;
@@ -1277,7 +1285,7 @@ public final class BytecodeNode extends EspressoMethodNode implements ReplaceObs
                                     if (jsr == targetBCI) {
                                         CompilerAsserts.partialEvaluationConstant(jsr);
                                         targetBCI = jsr;
-                                        nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument, loopCount);
+                                        nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument, loopCount, frame);
                                         top += Bytecodes.stackEffectOf(RET);
                                         curBCI = targetBCI;
                                         continue loop;
@@ -1286,7 +1294,7 @@ public final class BytecodeNode extends EspressoMethodNode implements ReplaceObs
                                 CompilerDirectives.transferToInterpreterAndInvalidate();
                                 jsrBci[curBCI] = Arrays.copyOf(jsrBci[curBCI], jsrBci[curBCI].length + 1);
                                 jsrBci[curBCI][jsrBci[curBCI].length - 1] = targetBCI;
-                                nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument, loopCount);
+                                nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument, loopCount, frame);
                                 top += Bytecodes.stackEffectOf(RET);
                                 curBCI = targetBCI;
                                 continue loop;
@@ -1384,7 +1392,7 @@ public final class BytecodeNode extends EspressoMethodNode implements ReplaceObs
                                 putObject(refs, 0, wrappedStackOverflowError.getExceptionObject());
                                 top++;
                                 int targetBCI = stackOverflowErrorInfo[i + 2];
-                                nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument, loopCount);
+                                nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument, loopCount, frame);
                                 curBCI = targetBCI;
                                 continue loop; // skip bs.next()
                             }
@@ -1434,7 +1442,7 @@ public final class BytecodeNode extends EspressoMethodNode implements ReplaceObs
                         putObject(refs, 0, wrappedException.getExceptionObject());
                         top++;
                         int targetBCI = handler.getHandlerBCI();
-                        nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument, loopCount);
+                        nextStatementIndex = beforeJumpChecks(primitives, refs, curBCI, targetBCI, statementIndex, instrument, loopCount, frame);
                         curBCI = targetBCI;
                         continue loop; // skip bs.next()
                     } else {
@@ -1686,7 +1694,7 @@ public final class BytecodeNode extends EspressoMethodNode implements ReplaceObs
         refArrayStoreNode.arrayStore(EspressoFrame.popObject(refs, top - 1), index, array);
     }
 
-    private int beforeJumpChecks(long[] primitives, Object[] refs, int curBCI, int targetBCI, int statementIndex, InstrumentationSupport instrument, int[] loopCount) {
+    private int beforeJumpChecks(long[] primitives, Object[] refs, int curBCI, int targetBCI, int statementIndex, InstrumentationSupport instrument, int[] loopCount, VirtualFrame frame) {
         CompilerAsserts.partialEvaluationConstant(targetBCI);
         int nextStatementIndex = 0;
         if (targetBCI <= curBCI) {
@@ -1695,9 +1703,9 @@ public final class BytecodeNode extends EspressoMethodNode implements ReplaceObs
                 LoopNode.reportLoopCount(this, REPORT_LOOP_STRIDE);
                 loopCount[0] = 0;
             }
-            if (CompilerDirectives.inInterpreter() && canCompile && ++backedgeCount >= getContext().OSRThreshold) {
-                backedgeCount = 0;
-                tryOSR(primitives, refs, targetBCI);
+            Object osrResult = getRootNode().reportOSRBackEdge(this, frame, targetBCI);
+            if (osrResult != null) {
+                throw new EspressoOSRReturnException(osrResult);
             }
         }
         if (instrument != null) {
@@ -1705,109 +1713,6 @@ public final class BytecodeNode extends EspressoMethodNode implements ReplaceObs
         }
         livenessAnalysis.performOnEdge(primitives, refs, curBCI, targetBCI);
         return nextStatementIndex;
-    }
-
-    private void tryOSR(long[] primitives, Object[] refs, int targetBCI) {
-        CompilerAsserts.neverPartOfCompilation();
-        OptimizedCallTarget osrTarget = osrTargets[targetBCI];
-        if (osrTarget == null) {
-            synchronized (osrTargets) {
-                osrTarget = osrTargets[targetBCI];
-                if (osrTarget == null) {  // double checked locking
-                    System.err.println("~~~~ Requesting OSR for bci " + targetBCI + " on method " + getMethod().getDeclaringKlass().getNameAsString() + "." + getMethod().getNameAsString());
-                    osrTargets[targetBCI] = osrTarget = requestOSR(targetBCI);
-                }
-            }
-        }
-        if (osrTarget != null && !osrTarget.isSubmittedForCompilation()) {
-            if (osrTarget.isValid()) {
-                System.err.println("~~~~ Calling OSR for bci " + targetBCI + " on method " + getMethod().getDeclaringKlass().getNameAsString() + "." + getMethod().getNameAsString());
-                Object result = osrTarget.callOSR(primitives, refs);
-                System.err.println("~~~~ Returned from OSR call to bci " + targetBCI + " on method " + getMethod().getDeclaringKlass().getNameAsString() + "." + getMethod().getNameAsString() +
-                                ". Result = " + result);
-                throw new EspressoOSRReturnException(result);
-            } else {
-                System.err.println("~~~~ OSR for bci " + targetBCI + " on method " + getMethod().getDeclaringKlass().getNameAsString() + "." + getMethod().getNameAsString() + " failed!");
-                invalidateOSRTarget(targetBCI, "OSR compilation failed or cancelled");
-            }
-        }
-
-    }
-
-    private OptimizedCallTarget requestOSR(int targetBCI) {
-        synchronized (osrTargets) {
-            assert osrTargets[targetBCI] == null;
-            GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
-            // TODO: this is a hack to prevent call target creation from adopting this BytecodeNode.
-            // Once we get to a Truffle OSR API we can get rid of this.
-            EspressoRootNode osrRootNode = new EspressoRootNode.OSR(getRoot(), this, targetBCI);
-            osrRootNode.methodNode = null;
-            OptimizedCallTarget osrTarget = runtime.createOSRCallTarget(osrRootNode);
-            osrRootNode.methodNode = this;
-
-            if (!osrTarget.acceptForCompilation()) {
-                canCompile = false;
-                return null;
-            }
-
-            runtime.addListener(new GraalTruffleRuntimeListener() {
-                @Override
-                public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout, int tier) {
-                    if (target == osrTarget) {
-                        System.err.println("~~~~ OSR for bci " + targetBCI + (permanentBailout ? " permanently" : "") + " failed: " + reason);
-                        if (permanentBailout) {
-                            canCompile = false;
-                        }
-                    }
-                }
-
-                @Override
-                public void onCompilationDeoptimized(OptimizedCallTarget target, Frame frame) {
-                    if (target == osrTarget) {
-                        System.err.println("~~~~ OSR for bci " + targetBCI + " deoptimized.");
-                        canCompile = false;
-                    }
-                }
-            });
-            osrTarget.compile(true);
-            this.osrTargets[targetBCI] = osrTarget;
-            return osrTarget;
-        }
-    }
-
-    @Override
-    public boolean nodeReplaced(Node oldNode, Node newNode, CharSequence reason) {
-        CompilerAsserts.neverPartOfCompilation();
-        callNodeReplacedOnOSRTargets(oldNode, newNode, reason);
-        return false;
-    }
-
-    private void callNodeReplacedOnOSRTargets(Node oldNode, Node newNode, CharSequence reason) {
-        atomic(() -> {
-            for (int bci = 0; bci < osrTargets.length; bci++) {
-                OptimizedCallTarget target = osrTargets[bci];
-                if (target != null) {
-                    if (target.isCompilationFailed()) {
-                        canCompile = false;
-                    }
-                    target.nodeReplaced(oldNode, newNode, reason);
-                }
-                osrTargets[bci] = null;
-            }
-        });
-    }
-
-    private void invalidateOSRTarget(int bci, CharSequence reason) {
-        atomic(() -> {
-            OptimizedCallTarget target = osrTargets[bci];
-            if (target != null) {
-                if (target.isCompilationFailed()) {
-                    canCompile = false;
-                }
-                target.invalidate(reason);
-            }
-            osrTargets[bci] = null;
-        });
     }
 
     private void checkStopping() {

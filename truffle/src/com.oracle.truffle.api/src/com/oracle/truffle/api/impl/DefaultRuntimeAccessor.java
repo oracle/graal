@@ -42,6 +42,9 @@ package com.oracle.truffle.api.impl;
 
 import java.util.function.Function;
 
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.OnStackReplaceableNode;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
@@ -81,6 +84,11 @@ final class DefaultRuntimeAccessor extends Accessor {
         @Override
         public void onLoopCount(Node source, int iterations) {
             // do nothing
+        }
+
+        @Override
+        public <T extends Node & OnStackReplaceableNode> Object onOSRBackEdge(RootNode rootNode, TruffleLanguage<?> language, T osrNode, VirtualFrame parentFrame, Object target) {
+            return null;
         }
 
         @Override

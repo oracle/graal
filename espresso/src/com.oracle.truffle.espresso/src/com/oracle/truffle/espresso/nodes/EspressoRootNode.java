@@ -290,31 +290,6 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
         }
     }
 
-    static final class OSR extends EspressoRootNode {
-        private final int startBCI;
-
-        OSR(EspressoRootNode split, BytecodeNode methodNode, int startBCI) {
-            super(split, split.getFrameDescriptor(), methodNode);
-            this.startBCI = startBCI;
-        }
-
-        @Override
-        public EspressoRootNode split() {
-            return new OSR(this, (BytecodeNode) methodNode, startBCI);
-        }
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            BytecodeNode bytecodeNode = (BytecodeNode) methodNode;
-            return bytecodeNode.executeOSR(frame, startBCI);
-        }
-
-        @Override
-        protected boolean isInstrumentable() {
-            return false;
-        }
-    }
-
     private static final class MonitorStack {
         private static final int DEFAULT_CAPACITY = 4;
 

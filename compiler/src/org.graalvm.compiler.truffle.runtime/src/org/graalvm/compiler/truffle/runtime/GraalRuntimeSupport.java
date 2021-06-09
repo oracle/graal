@@ -26,12 +26,15 @@ package org.graalvm.compiler.truffle.runtime;
 
 import java.util.function.Function;
 
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.nodes.OnStackReplaceableNode;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.ThreadLocalHandshake;
 import com.oracle.truffle.api.impl.Accessor.RuntimeSupport;
 import com.oracle.truffle.api.nodes.BlockNode;
@@ -69,6 +72,15 @@ final class GraalRuntimeSupport extends RuntimeSupport {
                 ((OptimizedCallTarget) target).onLoopCount(count);
             }
         }
+    }
+
+    @Override
+    public <T extends Node & OnStackReplaceableNode> Object onOSRBackEdge(RootNode rootNode, TruffleLanguage<?> language, T osrNode, VirtualFrame parentFrame, Object target) {
+        CallTarget callTarget = rootNode.getCallTarget();
+        if (callTarget instanceof OptimizedCallTarget){
+            return ((OptimizedCallTarget) callTarget).onOSRBackEdge(language, osrNode, parentFrame, target);
+        }
+        return null;
     }
 
     @Override

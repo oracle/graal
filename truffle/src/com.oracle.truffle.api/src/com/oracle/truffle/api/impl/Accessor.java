@@ -66,6 +66,8 @@ import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.OnStackReplaceableNode;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
@@ -947,6 +949,18 @@ public abstract class Accessor {
          * @param iterations the number iterations to report to the runtime system
          */
         public abstract void onLoopCount(Node source, int iterations);
+
+        /**
+         * Reports a back edge to the target location. This information can be used to trigger
+         * on-stack replacement (OSR).
+         *
+         * @param source the root node in which the back edge occurs
+         * @param parentFrame frame to be passed for OSR
+         * @param target target location of the jump (e.g., bytecode index) used to differentiate
+         *            back edges.
+         * @return result if OSR was performed, or {@code null}.
+         */
+        public abstract <T extends Node & OnStackReplaceableNode> Object onOSRBackEdge(RootNode rootNode, TruffleLanguage<?> language, T osrNode, VirtualFrame parentFrame, Object target);
 
         /**
          * Returns the compiler options specified available from the runtime.
