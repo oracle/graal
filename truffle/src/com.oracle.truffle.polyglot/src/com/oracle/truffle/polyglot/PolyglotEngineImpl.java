@@ -1022,6 +1022,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         return foundLanguage;
     }
 
+    @SuppressWarnings("static-method")
     <T extends TruffleLanguage<?>> PolyglotLanguageInstance getCurrentLanguageInstance(PolyglotLanguage language) {
         PolyglotLanguageContext context = language.getCurrentLanguageContextOptional();
         if (context == null) {
