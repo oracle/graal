@@ -1071,8 +1071,16 @@ final class EngineAccessor extends Accessor {
         public <T extends TruffleLanguage<C>, C> TruffleLanguage.ContextReference<C> lookupContextReference(Object polyglotEngine, TruffleLanguage<?> sourceLanguageSPI,
                         Class<T> targetLanguageClass) {
             assert sourceLanguageSPI == null || sourceLanguageSPI.getClass() != targetLanguageClass;
-            PolyglotLanguageInstance instance = ((PolyglotEngineImpl) polyglotEngine).getCurrentLanguageInstance(targetLanguageClass);
-            return (TruffleLanguage.ContextReference<C>) instance.lookupContextSupplier(resolveLanguage(sourceLanguageSPI));
+            PolyglotEngineImpl engine = ((PolyglotEngineImpl) polyglotEngine);
+            PolyglotLanguage targetLanguage = engine.getLanguage(targetLanguageClass, true);
+            PolyglotLanguageInstance instance = engine.getCurrentLanguageInstance(targetLanguage);
+            TruffleLanguage.ContextReference<?> ref;
+            if (instance != null) {
+                ref = instance.lookupContextSupplier(resolveLanguage(sourceLanguageSPI));
+            } else {
+                ref = targetLanguage.getContextReference();
+            }
+            return (TruffleLanguage.ContextReference<C>) ref;
         }
 
         @SuppressWarnings("unchecked")
@@ -1097,8 +1105,16 @@ final class EngineAccessor extends Accessor {
         public <T extends TruffleLanguage<?>> TruffleLanguage.LanguageReference<T> lookupLanguageReference(Object polyglotEngineImpl, TruffleLanguage<?> sourceLanguageSPI,
                         Class<T> targetLanguageClass) {
             assert sourceLanguageSPI == null || sourceLanguageSPI.getClass() != targetLanguageClass;
-            PolyglotLanguageInstance instance = ((PolyglotEngineImpl) polyglotEngineImpl).getCurrentLanguageInstance(targetLanguageClass);
-            return (TruffleLanguage.LanguageReference<T>) instance.lookupLanguageSupplier(resolveLanguage(sourceLanguageSPI));
+            PolyglotEngineImpl engine = ((PolyglotEngineImpl) polyglotEngineImpl);
+            PolyglotLanguage targetLanguage = engine.getLanguage(targetLanguageClass, true);
+            PolyglotLanguageInstance instance = engine.getCurrentLanguageInstance(targetLanguage);
+            TruffleLanguage.LanguageReference<?> ref;
+            if (instance != null) {
+                ref = instance.lookupLanguageSupplier(resolveLanguage(sourceLanguageSPI));
+            } else {
+                ref = targetLanguage.getLanguageReference();
+            }
+            return (TruffleLanguage.LanguageReference<T>) ref;
         }
 
         private static PolyglotLanguageInstance resolveLanguageInstance(TruffleLanguage<?> sourceLanguageSPI) {

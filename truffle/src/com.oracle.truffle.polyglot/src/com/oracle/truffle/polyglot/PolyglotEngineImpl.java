@@ -1022,12 +1022,10 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         return foundLanguage;
     }
 
-    <T extends TruffleLanguage<?>> PolyglotLanguageInstance getCurrentLanguageInstance(Class<T> languageClass) {
-        PolyglotLanguage foundLanguage = getLanguage(languageClass, true);
-        PolyglotLanguageContext context = foundLanguage.getCurrentLanguageContext();
-        if (!context.isCreated()) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw PolyglotEngineException.illegalState(String.format("A context for language %s was not yet created.", languageClass.getName()));
+    <T extends TruffleLanguage<?>> PolyglotLanguageInstance getCurrentLanguageInstance(PolyglotLanguage language) {
+        PolyglotLanguageContext context = language.getCurrentLanguageContextOptional();
+        if (context == null) {
+            return null;
         }
         return context.getLanguageInstance();
     }

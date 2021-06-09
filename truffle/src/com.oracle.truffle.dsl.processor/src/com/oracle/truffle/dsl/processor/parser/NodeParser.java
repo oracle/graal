@@ -513,19 +513,6 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
                 }
             }
-
-// if (specialization.hasMultipleInstances()) {
-// specialization.addError("Failed to generate code for @%s: " + //
-// "Specializations with multiple instances cannot be prepared for AOT. " + //
-// "Resolve this problem by either: %n" + //
-// " - Modify the specialization guards to no longer bind cached parameters. %n" + //
-// " - Set limit=\"1\" to declare that only a single instance is needed. %n" + //
-// " - Exclude the specialization from AOT preparation with the @%s.%s annotation.",
-// getSimpleName(types.GenerateAOT),
-// getSimpleName(types.GenerateAOT),
-// getSimpleName(types.GenerateAOT_Exclude));
-// continue;
-// }
         }
 
     }

@@ -860,8 +860,8 @@ public class FlatNodeGenFactory {
                         }
                     }
                     TypeMirror languageType = cache.getLanguageType();
-                    boolean needsCheck = true;
-                    if (usedGuards.isEmpty()) {
+                    boolean needsCheck = false;
+                    if (!usedGuards.isEmpty()) {
                         needsCheck = languagesChecked.add(ElementUtils.getTypeId(languageType));
                     }
                     CodeTreeBuilder b = builder.create();
