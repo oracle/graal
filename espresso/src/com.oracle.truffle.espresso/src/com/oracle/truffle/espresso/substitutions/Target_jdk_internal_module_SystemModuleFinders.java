@@ -81,12 +81,7 @@ public class Target_jdk_internal_module_SystemModuleFinders {
             }
         }
         if (!extensionPaths.isEmpty()) {
-            StaticObject pathArray = meta.java_nio_file_Path.allocateReferenceArray(extensionPaths.size());
-            StaticObject[] array = pathArray.unwrap();
-            for (int i = 0; i < array.length; i++) {
-                array[i] = extensionPaths.get(i);
-            }
-            return pathArray;
+            return  meta.java_nio_file_Path.allocateReferenceArray(extensionPaths.size(), extensionPaths::get);
         } else {
             return StaticObject.NULL;
         }
