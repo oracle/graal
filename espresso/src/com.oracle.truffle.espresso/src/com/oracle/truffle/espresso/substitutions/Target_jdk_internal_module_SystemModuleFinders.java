@@ -95,8 +95,7 @@ public class Target_jdk_internal_module_SystemModuleFinders {
         StaticObject[] unwrapped = moduleFinderArray.unwrap();
         unwrapped[0] = extension;
         unwrapped[1] = moduleFinder;
-        moduleFinder = (StaticObject) meta.java_lang_module_ModuleFinder_compose.invokeDirect(StaticObject.NULL, moduleFinderArray);
-        return moduleFinder;
+        return (StaticObject) meta.java_lang_module_ModuleFinder_compose.invokeDirect(StaticObject.NULL, moduleFinderArray);
     }
 
     private static StaticObject getEspressoModulePath(Meta meta, String jarName) {
