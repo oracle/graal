@@ -219,7 +219,7 @@ public class PropertyAccessTest extends StaticObjectTest {
             Assert.fail();
         } catch (ClassCastException e) {
             Assert.assertTrue(!ARRAY_BASED_STORAGE);
-        } catch (RuntimeException e) {
+        } catch (IllegalArgumentException e) {
             Assert.assertTrue(e.getMessage().startsWith("Incompatible shape on property access."));
         }
     }

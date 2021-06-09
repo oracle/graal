@@ -124,10 +124,12 @@ public abstract class StaticProperty {
     // Object field access
     /**
      * Returns the {@link Object} value represented by this StaticProperty and stored in the
-     * specified static object.
+     * specified static object. This property access has the memory semantics of reading as if the
+     * variable was declared non-volatile and non-final.
      *
      * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Object}
+     *             {@link StaticPropertyKind#Object} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
      * @param obj the static object that stores the static property value
      * @return the value of the static property stored in static object obj
      */
@@ -138,10 +140,12 @@ public abstract class StaticProperty {
 
     /**
      * Returns the {@link Object} value represented by this StaticProperty and stored in the
-     * specified static object. This property access has volatile semantics.
+     * specified static object. This property access has the memory semantics of reading as if the
+     * variable was declared volatile.
      *
      * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Object}
+     *             {@link StaticPropertyKind#Object} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
      * @param obj the static object that stores the static property value
      * @return the value of the static property stored in static object obj
      */
@@ -152,10 +156,12 @@ public abstract class StaticProperty {
 
     /**
      * Sets the {@link Object} value represented by this StaticProperty and stored in the specified
-     * static object.
+     * static object. This property access has the memory semantics of setting as if the variable
+     * was declared non-volatile and non-final.
      *
      * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Object}
+     *             {@link StaticPropertyKind#Object} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
      * @param obj the static object that stores the static property value
      * @param value the new static property value, to be stored in static object obj
      */
@@ -166,10 +172,12 @@ public abstract class StaticProperty {
 
     /**
      * Sets the {@link Object} value represented by this StaticProperty and stored in the specified
-     * static object. This property access has volatile semantics.
+     * static object. This property access has the memory semantics of setting as if the variable
+     * was declared volatile.
      *
      * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Object}
+     *             {@link StaticPropertyKind#Object} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
      * @param obj the static object that stores the static property value
      * @param value the new static property value, to be stored in static object obj
      */
@@ -184,7 +192,8 @@ public abstract class StaticProperty {
      * expected value.
      *
      * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Object}
+     *             {@link StaticPropertyKind#Object} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
      * @param obj the static object that stores the static property value
      * @param expect the expected value
      * @param update the new value
@@ -201,7 +210,8 @@ public abstract class StaticProperty {
      * specified static object to the given value and returns the old value.
      *
      * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Object}
+     *             {@link StaticPropertyKind#Object} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
      * @param obj the static object that stores the static property value
      * @param value the new value
      * @return the previous value
@@ -214,10 +224,12 @@ public abstract class StaticProperty {
     // boolean field access
     /**
      * Returns the {@link boolean} value represented by this StaticProperty and stored in the
-     * specified static object.
+     * specified static object. This property access has the memory semantics of reading as if the
+     * variable was declared non-volatile and non-final.
      *
      * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Boolean}
+     *             {@link StaticPropertyKind#Boolean} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
      * @param obj the static object that stores the static property value
      * @return the value of the static property stored in static object obj
      */
@@ -228,10 +240,12 @@ public abstract class StaticProperty {
 
     /**
      * Returns the {@link boolean} value represented by this StaticProperty and stored in the
-     * specified static object. This property access has volatile semantics.
+     * specified static object. This property access has the memory semantics of reading as if the
+     * variable was declared volatile.
      *
      * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Boolean}
+     *             {@link StaticPropertyKind#Boolean} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
      * @param obj the static object that stores the static property value
      * @return the value of the static property stored in static object obj
      */
@@ -242,10 +256,12 @@ public abstract class StaticProperty {
 
     /**
      * Sets the {@link boolean} value represented by this StaticProperty and stored in the specified
-     * static object.
+     * static object. This property access has the memory semantics of setting as if the variable
+     * was declared non-volatile and non-final.
      *
      * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Boolean}
+     *             {@link StaticPropertyKind#Boolean} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
      * @param obj the static object that stores the static property value
      * @param value the new static property value, to be stored in static object obj
      */
@@ -256,10 +272,12 @@ public abstract class StaticProperty {
 
     /**
      * Sets the {@link boolean} value represented by this StaticProperty and stored in the specified
-     * static object. This property access has volatile semantics.
+     * static object. This property access has the memory semantics of setting as if the variable
+     * was declared volatile.
      *
      * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Boolean}
+     *             {@link StaticPropertyKind#Boolean} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
      * @param obj the static object that stores the static property value
      * @param value the new static property value, to be stored in static object obj
      */
@@ -271,10 +289,12 @@ public abstract class StaticProperty {
     // byte field access
     /**
      * Returns the {@link byte} value represented by this StaticProperty and stored in the specified
-     * static object.
+     * static object. This property access has the memory semantics of reading as if the variable
+     * was declared non-volatile and non-final.
      *
      * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Byte}
+     *             {@link StaticPropertyKind#Byte} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
      * @param obj the static object that stores the static property value
      * @return the value of the static property stored in static object obj
      */
@@ -285,10 +305,12 @@ public abstract class StaticProperty {
 
     /**
      * Returns the {@link byte} value represented by this StaticProperty and stored in the specified
-     * static object. This property access has volatile semantics.
+     * static object. This property access has the memory semantics of reading as if the variable
+     * was declared volatile.
      *
      * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Byte}
+     *             {@link StaticPropertyKind#Byte} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
      * @param obj the static object that stores the static property value
      * @return the value of the static property stored in static object obj
      */
@@ -299,10 +321,12 @@ public abstract class StaticProperty {
 
     /**
      * Sets the {@link byte} value represented by this StaticProperty and stored in the specified
-     * static object.
+     * static object. This property access has the memory semantics of setting as if the variable
+     * was declared non-volatile and non-final.
      *
      * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Byte}
+     *             {@link StaticPropertyKind#Byte} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
      * @param obj the static object that stores the static property value
      * @param value the new static property value, to be stored in static object obj
      */
@@ -313,10 +337,12 @@ public abstract class StaticProperty {
 
     /**
      * Sets the {@link byte} value represented by this StaticProperty and stored in the specified
-     * static object. This property access has volatile semantics.
+     * static object. This property access has the memory semantics of setting as if the variable
+     * was declared volatile.
      *
      * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Byte}
+     *             {@link StaticPropertyKind#Byte} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
      * @param obj the static object that stores the static property value
      * @param value the new static property value, to be stored in static object obj
      */
@@ -328,10 +354,12 @@ public abstract class StaticProperty {
     // char field access
     /**
      * Returns the {@link char} value represented by this StaticProperty and stored in the specified
-     * static object.
+     * static object. This property access has the memory semantics of reading as if the variable
+     * was declared non-volatile and non-final.
      *
      * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Char}
+     *             {@link StaticPropertyKind#Char} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
      * @param obj the static object that stores the static property value
      * @return the value of the static property stored in static object obj
      */
@@ -342,10 +370,12 @@ public abstract class StaticProperty {
 
     /**
      * Returns the {@link char} value represented by this StaticProperty and stored in the specified
-     * static object. This property access has volatile semantics.
+     * static object. This property access has the memory semantics of reading as if the variable
+     * was declared volatile.
      *
      * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Char}
+     *             {@link StaticPropertyKind#Char} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
      * @param obj the static object that stores the static property value
      * @return the value of the static property stored in static object obj
      */
@@ -356,10 +386,12 @@ public abstract class StaticProperty {
 
     /**
      * Sets the {@link char} value represented by this StaticProperty and stored in the specified
-     * static object.
+     * static object. This property access has the memory semantics of setting as if the variable
+     * was declared non-volatile and non-final.
      *
      * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Char}
+     *             {@link StaticPropertyKind#Char} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
      * @param obj the static object that stores the static property value
      * @param value the new static property value, to be stored in static object obj
      */
@@ -370,10 +402,12 @@ public abstract class StaticProperty {
 
     /**
      * Sets the {@link char} value represented by this StaticProperty and stored in the specified
-     * static object. This property access has volatile semantics.
+     * static object. This property access has the memory semantics of setting as if the variable
+     * was declared volatile.
      *
      * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Char}
+     *             {@link StaticPropertyKind#Char} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
      * @param obj the static object that stores the static property value
      * @param value the new static property value, to be stored in static object obj
      */
@@ -385,10 +419,12 @@ public abstract class StaticProperty {
     // double field access
     /**
      * Returns the {@link double} value represented by this StaticProperty and stored in the
-     * specified static object.
+     * specified static object. This property access has the memory semantics of reading as if the
+     * variable was declared non-volatile and non-final.
      *
      * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Double}
+     *             {@link StaticPropertyKind#Double} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
      * @param obj the static object that stores the static property value
      * @return the value of the static property stored in static object obj
      */
@@ -399,10 +435,12 @@ public abstract class StaticProperty {
 
     /**
      * Returns the {@link double} value represented by this StaticProperty and stored in the
-     * specified static object. This property access has volatile semantics.
+     * specified static object. This property access has the memory semantics of reading as if the
+     * variable was declared volatile.
      *
      * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Double}
+     *             {@link StaticPropertyKind#Double} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
      * @param obj the static object that stores the static property value
      * @return the value of the static property stored in static object obj
      */
@@ -413,10 +451,12 @@ public abstract class StaticProperty {
 
     /**
      * Sets the {@link double} value represented by this StaticProperty and stored in the specified
-     * static object.
+     * static object. This property access has the memory semantics of setting as if the variable
+     * was declared non-volatile and non-final.
      *
      * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Double}
+     *             {@link StaticPropertyKind#Double} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
      * @param obj the static object that stores the static property value
      * @param value the new static property value, to be stored in static object obj
      */
@@ -427,10 +467,12 @@ public abstract class StaticProperty {
 
     /**
      * Sets the {@link double} value represented by this StaticProperty and stored in the specified
-     * static object. This property access has volatile semantics.
+     * static object. This property access has the memory semantics of setting as if the variable
+     * was declared volatile.
      *
      * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Double}
+     *             {@link StaticPropertyKind#Double} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
      * @param obj the static object that stores the static property value
      * @param value the new static property value, to be stored in static object obj
      */
@@ -442,10 +484,12 @@ public abstract class StaticProperty {
     // float field access
     /**
      * Returns the {@link float} value represented by this StaticProperty and stored in the
-     * specified static object.
+     * specified static object. This property access has the memory semantics of reading as if the
+     * variable was declared non-volatile and non-final.
      *
      * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Float}
+     *             {@link StaticPropertyKind#Float} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
      * @param obj the static object that stores the static property value
      * @return the value of the static property stored in static object obj
      */
@@ -456,10 +500,12 @@ public abstract class StaticProperty {
 
     /**
      * Returns the {@link float} value represented by this StaticProperty and stored in the
-     * specified static object. This property access has volatile semantics.
+     * specified static object. This property access has the memory semantics of reading as if the
+     * variable was declared volatile.
      *
      * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Float}
+     *             {@link StaticPropertyKind#Float} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
      * @param obj the static object that stores the static property value
      * @return the value of the static property stored in static object obj
      */
@@ -470,10 +516,12 @@ public abstract class StaticProperty {
 
     /**
      * Sets the {@link float} value represented by this StaticProperty and stored in the specified
-     * static object.
+     * static object. This property access has the memory semantics of setting as if the variable
+     * was declared non-volatile and non-final.
      *
      * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Float}
+     *             {@link StaticPropertyKind#Float} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
      * @param obj the static object that stores the static property value
      * @param value the new static property value, to be stored in static object obj
      */
@@ -484,10 +532,12 @@ public abstract class StaticProperty {
 
     /**
      * Sets the {@link float} value represented by this StaticProperty and stored in the specified
-     * static object. This property access has volatile semantics.
+     * static object. This property access has the memory semantics of setting as if the variable
+     * was declared volatile.
      *
      * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Float}
+     *             {@link StaticPropertyKind#Float} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
      * @param obj the static object that stores the static property value
      * @param value the new static property value, to be stored in static object obj
      */
@@ -499,10 +549,12 @@ public abstract class StaticProperty {
     // int field access
     /**
      * Returns the {@link int} value represented by this StaticProperty and stored in the specified
-     * static object.
+     * static object. This property access has the memory semantics of reading as if the variable
+     * was declared non-volatile and non-final.
      *
      * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Int}
+     *             {@link StaticPropertyKind#Int} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
      * @param obj the static object that stores the static property value
      * @return the value of the static property stored in static object obj
      */
@@ -513,10 +565,12 @@ public abstract class StaticProperty {
 
     /**
      * Returns the {@link int} value represented by this StaticProperty and stored in the specified
-     * static object. This property access has volatile semantics.
+     * static object. This property access has the memory semantics of reading as if the variable
+     * was declared volatile.
      *
      * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Int}
+     *             {@link StaticPropertyKind#Int} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
      * @param obj the static object that stores the static property value
      * @return the value of the static property stored in static object obj
      */
@@ -527,10 +581,12 @@ public abstract class StaticProperty {
 
     /**
      * Sets the {@link int} value represented by this StaticProperty and stored in the specified
-     * static object.
+     * static object. This property access has the memory semantics of setting as if the variable
+     * was declared non-volatile and non-final.
      *
      * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Int}
+     *             {@link StaticPropertyKind#Int} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
      * @param obj the static object that stores the static property value
      * @param value the new static property value, to be stored in static object obj
      */
@@ -541,10 +597,12 @@ public abstract class StaticProperty {
 
     /**
      * Sets the {@link int} value represented by this StaticProperty and stored in the specified
-     * static object. This property access has volatile semantics.
+     * static object. This property access has the memory semantics of setting as if the variable
+     * was declared volatile.
      *
      * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Int}
+     *             {@link StaticPropertyKind#Int} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
      * @param obj the static object that stores the static property value
      * @param value the new static property value, to be stored in static object obj
      */
@@ -559,7 +617,8 @@ public abstract class StaticProperty {
      * expected value.
      *
      * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Int}
+     *             {@link StaticPropertyKind#Int} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
      * @param obj the static object that stores the static property value
      * @param expect the expected value
      * @param update the new value
@@ -576,7 +635,8 @@ public abstract class StaticProperty {
      * StaticProperty and stored in the specified static object.
      *
      * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Int}
+     *             {@link StaticPropertyKind#Int} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
      * @param obj the static object that stores the static property value
      * @param delta the value to add
      * @return the previous value
@@ -591,7 +651,8 @@ public abstract class StaticProperty {
      * specified static object to the given value and returns the old value.
      *
      * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Int}
+     *             {@link StaticPropertyKind#Int} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
      * @param obj the static object that stores the static property value
      * @param value the new value
      * @return the previous value
@@ -604,10 +665,12 @@ public abstract class StaticProperty {
     // long field access
     /**
      * Returns the {@link long} value represented by this StaticProperty and stored in the specified
-     * static object.
+     * static object. This property access has the memory semantics of reading as if the variable
+     * was declared non-volatile and non-final.
      *
      * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Long}
+     *             {@link StaticPropertyKind#Long} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
      * @param obj the static object that stores the static property value
      * @return the value of the static property stored in static object obj
      */
@@ -618,10 +681,12 @@ public abstract class StaticProperty {
 
     /**
      * Returns the {@link long} value represented by this StaticProperty and stored in the specified
-     * static object. This property access has volatile semantics.
+     * static object. This property access has the memory semantics of reading as if the variable
+     * was declared volatile.
      *
      * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Long}
+     *             {@link StaticPropertyKind#Long} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
      * @param obj the static object that stores the static property value
      * @return the value of the static property stored in static object obj
      */
@@ -632,10 +697,12 @@ public abstract class StaticProperty {
 
     /**
      * Sets the {@link long} value represented by this StaticProperty and stored in the specified
-     * static object.
+     * static object. This property access has the memory semantics of setting as if the variable
+     * was declared non-volatile and non-final.
      *
      * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Long}
+     *             {@link StaticPropertyKind#Long} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
      * @param obj the static object that stores the static property value
      * @param value the new static property value, to be stored in static object obj
      */
@@ -646,10 +713,12 @@ public abstract class StaticProperty {
 
     /**
      * Sets the {@link long} value represented by this StaticProperty and stored in the specified
-     * static object. This property access has volatile semantics.
+     * static object. This property access has the memory semantics of setting as if the variable
+     * was declared volatile.
      *
      * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Long}
+     *             {@link StaticPropertyKind#Long} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
      * @param obj the static object that stores the static property value
      * @param value the new static property value, to be stored in static object obj
      */
@@ -664,7 +733,8 @@ public abstract class StaticProperty {
      * expected value.
      *
      * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Long}
+     *             {@link StaticPropertyKind#Long} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
      * @param obj the static object that stores the static property value
      * @param expect the expected value
      * @param update the new value
@@ -681,7 +751,8 @@ public abstract class StaticProperty {
      * StaticProperty and stored in the specified static object.
      *
      * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Long}
+     *             {@link StaticPropertyKind#Long} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
      * @param obj the static object that stores the static property value
      * @param delta the value to add
      * @return the previous value
@@ -696,7 +767,8 @@ public abstract class StaticProperty {
      * specified static object to the given value and returns the old value.
      *
      * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Long}
+     *             {@link StaticPropertyKind#Long} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
      * @param obj the static object that stores the static property value
      * @param value the new value
      * @return the previous value
@@ -709,10 +781,12 @@ public abstract class StaticProperty {
     // short field access
     /**
      * Returns the {@link short} value represented by this StaticProperty and stored in the
-     * specified static object.
+     * specified static object. This property access has the memory semantics of reading as if the
+     * variable was declared non-volatile and non-final.
      *
      * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Short}
+     *             {@link StaticPropertyKind#Short} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
      * @param obj the static object that stores the static property value
      * @return the value of the static property stored in static object obj
      */
@@ -723,10 +797,12 @@ public abstract class StaticProperty {
 
     /**
      * Returns the {@link short} value represented by this StaticProperty and stored in the
-     * specified static object. This property access has volatile semantics.
+     * specified static object. This property access has the memory semantics of reading as if the
+     * variable was declared volatile.
      *
      * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Short}
+     *             {@link StaticPropertyKind#Short} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
      * @param obj the static object that stores the static property value
      * @return the value of the static property stored in static object obj
      */
@@ -737,10 +813,12 @@ public abstract class StaticProperty {
 
     /**
      * Sets the {@link short} value represented by this StaticProperty and stored in the specified
-     * static object.
+     * static object. This property access has the memory semantics of setting as if the variable
+     * was declared non-volatile and non-final.
      *
      * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Short}
+     *             {@link StaticPropertyKind#Short} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
      * @param obj the static object that stores the static property value
      * @param value the new static property value, to be stored in static object obj
      */
@@ -751,10 +829,12 @@ public abstract class StaticProperty {
 
     /**
      * Sets the {@link short} value represented by this StaticProperty and stored in the specified
-     * static object. This property access has volatile semantics.
+     * static object. This property access has the memory semantics of setting as if the variable
+     * was declared volatile.
      *
      * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Short}
+     *             {@link StaticPropertyKind#Short} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
      * @param obj the static object that stores the static property value
      * @param value the new static property value, to be stored in static object obj
      */
