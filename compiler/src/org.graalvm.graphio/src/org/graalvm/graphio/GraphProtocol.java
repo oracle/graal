@@ -32,13 +32,13 @@ import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.channels.WritableByteChannel;
 import java.nio.charset.Charset;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedList;
 import java.util.Map;
 import java.util.Objects;
+import java.util.WeakHashMap;
 
 abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaMethod, ResolvedJavaField, Signature, NodeSourcePosition, Location> implements Closeable {
     private static final Charset UTF8 = Charset.forName("UTF-8");
@@ -881,42 +881,42 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
         return true;
     }
 
-    private static final class ConstantPool extends LinkedHashMap<Object, Character> {
-
-        private final LinkedList<Character> availableIds;
+    /**
+     * This class maintains a limited pool of constants for use by the graph protocol. Once the
+     * cache fills up the oldest slots are replaced with new values in a cyclic fashion.
+     */
+    private static final class ConstantPool {
         private char nextId;
-        private static final long serialVersionUID = -2676889957907285681L;
+        private final WeakHashMap<Object, Character> map = new WeakHashMap<>();
+        private final Object[] keys = new Object[CONSTANT_POOL_MAX_SIZE];
 
         ConstantPool() {
-            super(50, 0.65f);
-            availableIds = new LinkedList<>();
         }
 
-        @Override
-        protected boolean removeEldestEntry(java.util.Map.Entry<Object, Character> eldest) {
-            if (size() > CONSTANT_POOL_MAX_SIZE) {
-                availableIds.addFirst(eldest.getValue());
-                return true;
+        Character get(Object key) {
+            Character id = map.get(key);
+            if (id != null && keys[id].equals(key)) {
+                return id;
             }
-            return false;
+            return null;
         }
 
-        private Character nextAvailableId() {
-            if (!availableIds.isEmpty()) {
-                return availableIds.removeFirst();
+        char add(Object key) {
+            char id = nextId++;
+            if (nextId == CONSTANT_POOL_MAX_SIZE) {
+                nextId = 0;
             }
-            return nextId++;
-        }
-
-        public char add(Object obj) {
-            Character id = nextAvailableId();
-            put(obj, id);
+            if (keys[id] != null) {
+                map.remove(keys[id]);
+            }
+            map.put(key, id);
+            keys[id] = key;
             return id;
         }
 
         void reset() {
-            clear();
-            availableIds.clear();
+            map.clear();
+            Arrays.fill(keys, null);
             nextId = 0;
         }
     }
