@@ -331,7 +331,7 @@ public abstract class StaticShape<T> {
             }
             if (Cloneable.class.isAssignableFrom(storageSuperClass)) {
                 Method clone = getCloneMethod(storageSuperClass);
-                if (Modifier.isFinal(clone.getModifiers())) {
+                if (clone != null && Modifier.isFinal(clone.getModifiers())) {
                     throw new IllegalArgumentException("'" + storageSuperClass.getName() + "' implements Cloneable and declares a final 'clone()' method");
                 }
             }
