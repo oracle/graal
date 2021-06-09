@@ -1038,7 +1038,7 @@ public class FlatNodeGenFactory {
                 }
             }
 
-            if (resetSpecializationClass) {
+            if (resetSpecializationClass || specialization.hasMultipleInstances()) {
                 builder.startStatement();
                 builder.string("this.", createSpecializationFieldName(specialization));
                 builder.string(" = null");
