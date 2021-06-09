@@ -223,9 +223,9 @@ public abstract class StaticProperty {
 
     // boolean field access
     /**
-     * Returns the boolean value represented by this StaticProperty and stored in the
-     * specified static object. This property access has the memory semantics of reading as if the
-     * variable was declared non-volatile and non-final.
+     * Returns the boolean value represented by this StaticProperty and stored in the specified
+     * static object. This property access has the memory semantics of reading as if the variable
+     * was declared non-volatile and non-final.
      *
      * @param obj the static object that stores the static property value
      * @return the value of the static property stored in static object obj
@@ -239,9 +239,9 @@ public abstract class StaticProperty {
     }
 
     /**
-     * Returns the boolean value represented by this StaticProperty and stored in the
-     * specified static object. This property access has the memory semantics of reading as if the
-     * variable was declared volatile.
+     * Returns the boolean value represented by this StaticProperty and stored in the specified
+     * static object. This property access has the memory semantics of reading as if the variable
+     * was declared volatile.
      *
      * @param obj the static object that stores the static property value
      * @return the value of the static property stored in static object obj
@@ -255,9 +255,9 @@ public abstract class StaticProperty {
     }
 
     /**
-     * Sets the boolean value represented by this StaticProperty and stored in the specified
-     * static object. This property access has the memory semantics of setting as if the variable
-     * was declared non-volatile and non-final.
+     * Sets the boolean value represented by this StaticProperty and stored in the specified static
+     * object. This property access has the memory semantics of setting as if the variable was
+     * declared non-volatile and non-final.
      *
      * @param obj the static object that stores the static property value
      * @param value the new static property value, to be stored in static object obj
@@ -271,9 +271,9 @@ public abstract class StaticProperty {
     }
 
     /**
-     * Sets the boolean value represented by this StaticProperty and stored in the specified
-     * static object. This property access has the memory semantics of setting as if the variable
-     * was declared volatile.
+     * Sets the boolean value represented by this StaticProperty and stored in the specified static
+     * object. This property access has the memory semantics of setting as if the variable was
+     * declared volatile.
      *
      * @param obj the static object that stores the static property value
      * @param value the new static property value, to be stored in static object obj
@@ -288,9 +288,9 @@ public abstract class StaticProperty {
 
     // byte field access
     /**
-     * Returns the byte value represented by this StaticProperty and stored in the specified
-     * static object. This property access has the memory semantics of reading as if the variable
-     * was declared non-volatile and non-final.
+     * Returns the byte value represented by this StaticProperty and stored in the specified static
+     * object. This property access has the memory semantics of reading as if the variable was
+     * declared non-volatile and non-final.
      *
      * @param obj the static object that stores the static property value
      * @return the value of the static property stored in static object obj
@@ -304,9 +304,9 @@ public abstract class StaticProperty {
     }
 
     /**
-     * Returns the byte value represented by this StaticProperty and stored in the specified
-     * static object. This property access has the memory semantics of reading as if the variable
-     * was declared volatile.
+     * Returns the byte value represented by this StaticProperty and stored in the specified static
+     * object. This property access has the memory semantics of reading as if the variable was
+     * declared volatile.
      *
      * @param obj the static object that stores the static property value
      * @return the value of the static property stored in static object obj
@@ -320,9 +320,9 @@ public abstract class StaticProperty {
     }
 
     /**
-     * Sets the byte value represented by this StaticProperty and stored in the specified
-     * static object. This property access has the memory semantics of setting as if the variable
-     * was declared non-volatile and non-final.
+     * Sets the byte value represented by this StaticProperty and stored in the specified static
+     * object. This property access has the memory semantics of setting as if the variable was
+     * declared non-volatile and non-final.
      *
      * @param obj the static object that stores the static property value
      * @param value the new static property value, to be stored in static object obj
@@ -336,9 +336,9 @@ public abstract class StaticProperty {
     }
 
     /**
-     * Sets the byte value represented by this StaticProperty and stored in the specified
-     * static object. This property access has the memory semantics of setting as if the variable
-     * was declared volatile.
+     * Sets the byte value represented by this StaticProperty and stored in the specified static
+     * object. This property access has the memory semantics of setting as if the variable was
+     * declared volatile.
      *
      * @param obj the static object that stores the static property value
      * @param value the new static property value, to be stored in static object obj
@@ -353,9 +353,9 @@ public abstract class StaticProperty {
 
     // char field access
     /**
-     * Returns the char value represented by this StaticProperty and stored in the specified
-     * static object. This property access has the memory semantics of reading as if the variable
-     * was declared non-volatile and non-final.
+     * Returns the char value represented by this StaticProperty and stored in the specified static
+     * object. This property access has the memory semantics of reading as if the variable was
+     * declared non-volatile and non-final.
      *
      * @param obj the static object that stores the static property value
      * @return the value of the static property stored in static object obj
@@ -369,9 +369,9 @@ public abstract class StaticProperty {
     }
 
     /**
-     * Returns the char value represented by this StaticProperty and stored in the specified
-     * static object. This property access has the memory semantics of reading as if the variable
-     * was declared volatile.
+     * Returns the char value represented by this StaticProperty and stored in the specified static
+     * object. This property access has the memory semantics of reading as if the variable was
+     * declared volatile.
      *
      * @param obj the static object that stores the static property value
      * @return the value of the static property stored in static object obj
@@ -385,9 +385,9 @@ public abstract class StaticProperty {
     }
 
     /**
-     * Sets the char value represented by this StaticProperty and stored in the specified
-     * static object. This property access has the memory semantics of setting as if the variable
-     * was declared non-volatile and non-final.
+     * Sets the char value represented by this StaticProperty and stored in the specified static
+     * object. This property access has the memory semantics of setting as if the variable was
+     * declared non-volatile and non-final.
      *
      * @param obj the static object that stores the static property value
      * @param value the new static property value, to be stored in static object obj
@@ -401,9 +401,9 @@ public abstract class StaticProperty {
     }
 
     /**
-     * Sets the char value represented by this StaticProperty and stored in the specified
-     * static object. This property access has the memory semantics of setting as if the variable
-     * was declared volatile.
+     * Sets the char value represented by this StaticProperty and stored in the specified static
+     * object. This property access has the memory semantics of setting as if the variable was
+     * declared volatile.
      *
      * @param obj the static object that stores the static property value
      * @param value the new static property value, to be stored in static object obj
@@ -418,9 +418,9 @@ public abstract class StaticProperty {
 
     // double field access
     /**
-     * Returns the double value represented by this StaticProperty and stored in the
-     * specified static object. This property access has the memory semantics of reading as if the
-     * variable was declared non-volatile and non-final.
+     * Returns the double value represented by this StaticProperty and stored in the specified
+     * static object. This property access has the memory semantics of reading as if the variable
+     * was declared non-volatile and non-final.
      *
      * @param obj the static object that stores the static property value
      * @return the value of the static property stored in static object obj
@@ -434,9 +434,9 @@ public abstract class StaticProperty {
     }
 
     /**
-     * Returns the double value represented by this StaticProperty and stored in the
-     * specified static object. This property access has the memory semantics of reading as if the
-     * variable was declared volatile.
+     * Returns the double value represented by this StaticProperty and stored in the specified
+     * static object. This property access has the memory semantics of reading as if the variable
+     * was declared volatile.
      *
      * @param obj the static object that stores the static property value
      * @return the value of the static property stored in static object obj
@@ -450,9 +450,9 @@ public abstract class StaticProperty {
     }
 
     /**
-     * Sets the double value represented by this StaticProperty and stored in the specified
-     * static object. This property access has the memory semantics of setting as if the variable
-     * was declared non-volatile and non-final.
+     * Sets the double value represented by this StaticProperty and stored in the specified static
+     * object. This property access has the memory semantics of setting as if the variable was
+     * declared non-volatile and non-final.
      *
      * @param obj the static object that stores the static property value
      * @param value the new static property value, to be stored in static object obj
@@ -466,9 +466,9 @@ public abstract class StaticProperty {
     }
 
     /**
-     * Sets the double value represented by this StaticProperty and stored in the specified
-     * static object. This property access has the memory semantics of setting as if the variable
-     * was declared volatile.
+     * Sets the double value represented by this StaticProperty and stored in the specified static
+     * object. This property access has the memory semantics of setting as if the variable was
+     * declared volatile.
      *
      * @param obj the static object that stores the static property value
      * @param value the new static property value, to be stored in static object obj
@@ -483,9 +483,9 @@ public abstract class StaticProperty {
 
     // float field access
     /**
-     * Returns the float value represented by this StaticProperty and stored in the
-     * specified static object. This property access has the memory semantics of reading as if the
-     * variable was declared non-volatile and non-final.
+     * Returns the float value represented by this StaticProperty and stored in the specified static
+     * object. This property access has the memory semantics of reading as if the variable was
+     * declared non-volatile and non-final.
      *
      * @param obj the static object that stores the static property value
      * @return the value of the static property stored in static object obj
@@ -499,9 +499,9 @@ public abstract class StaticProperty {
     }
 
     /**
-     * Returns the float value represented by this StaticProperty and stored in the
-     * specified static object. This property access has the memory semantics of reading as if the
-     * variable was declared volatile.
+     * Returns the float value represented by this StaticProperty and stored in the specified static
+     * object. This property access has the memory semantics of reading as if the variable was
+     * declared volatile.
      *
      * @param obj the static object that stores the static property value
      * @return the value of the static property stored in static object obj
@@ -515,9 +515,9 @@ public abstract class StaticProperty {
     }
 
     /**
-     * Sets the float value represented by this StaticProperty and stored in the specified
-     * static object. This property access has the memory semantics of setting as if the variable
-     * was declared non-volatile and non-final.
+     * Sets the float value represented by this StaticProperty and stored in the specified static
+     * object. This property access has the memory semantics of setting as if the variable was
+     * declared non-volatile and non-final.
      *
      * @param obj the static object that stores the static property value
      * @param value the new static property value, to be stored in static object obj
@@ -531,9 +531,9 @@ public abstract class StaticProperty {
     }
 
     /**
-     * Sets the float value represented by this StaticProperty and stored in the specified
-     * static object. This property access has the memory semantics of setting as if the variable
-     * was declared volatile.
+     * Sets the float value represented by this StaticProperty and stored in the specified static
+     * object. This property access has the memory semantics of setting as if the variable was
+     * declared volatile.
      *
      * @param obj the static object that stores the static property value
      * @param value the new static property value, to be stored in static object obj
@@ -548,9 +548,9 @@ public abstract class StaticProperty {
 
     // int field access
     /**
-     * Returns the int value represented by this StaticProperty and stored in the specified
-     * static object. This property access has the memory semantics of reading as if the variable
-     * was declared non-volatile and non-final.
+     * Returns the int value represented by this StaticProperty and stored in the specified static
+     * object. This property access has the memory semantics of reading as if the variable was
+     * declared non-volatile and non-final.
      *
      * @param obj the static object that stores the static property value
      * @return the value of the static property stored in static object obj
@@ -564,9 +564,9 @@ public abstract class StaticProperty {
     }
 
     /**
-     * Returns the int value represented by this StaticProperty and stored in the specified
-     * static object. This property access has the memory semantics of reading as if the variable
-     * was declared volatile.
+     * Returns the int value represented by this StaticProperty and stored in the specified static
+     * object. This property access has the memory semantics of reading as if the variable was
+     * declared volatile.
      *
      * @param obj the static object that stores the static property value
      * @return the value of the static property stored in static object obj
@@ -580,9 +580,9 @@ public abstract class StaticProperty {
     }
 
     /**
-     * Sets the int value represented by this StaticProperty and stored in the specified
-     * static object. This property access has the memory semantics of setting as if the variable
-     * was declared non-volatile and non-final.
+     * Sets the int value represented by this StaticProperty and stored in the specified static
+     * object. This property access has the memory semantics of setting as if the variable was
+     * declared non-volatile and non-final.
      *
      * @param obj the static object that stores the static property value
      * @param value the new static property value, to be stored in static object obj
@@ -596,9 +596,9 @@ public abstract class StaticProperty {
     }
 
     /**
-     * Sets the int value represented by this StaticProperty and stored in the specified
-     * static object. This property access has the memory semantics of setting as if the variable
-     * was declared volatile.
+     * Sets the int value represented by this StaticProperty and stored in the specified static
+     * object. This property access has the memory semantics of setting as if the variable was
+     * declared volatile.
      *
      * @param obj the static object that stores the static property value
      * @param value the new static property value, to be stored in static object obj
@@ -612,9 +612,8 @@ public abstract class StaticProperty {
     }
 
     /**
-     * Atomically sets the int value represented by this StaticProperty and stored in the
-     * specified static object to the given updated value if the current value {@code ==} the
-     * expected value.
+     * Atomically sets the int value represented by this StaticProperty and stored in the specified
+     * static object to the given updated value if the current value {@code ==} the expected value.
      *
      * @param obj the static object that stores the static property value
      * @param expect the expected value
@@ -631,8 +630,8 @@ public abstract class StaticProperty {
     }
 
     /**
-     * Atomically adds the given value to the current int value represented by this
-     * StaticProperty and stored in the specified static object.
+     * Atomically adds the given value to the current int value represented by this StaticProperty
+     * and stored in the specified static object.
      *
      * @param obj the static object that stores the static property value
      * @param delta the value to add
@@ -647,8 +646,8 @@ public abstract class StaticProperty {
     }
 
     /**
-     * Atomically sets the int value represented by this StaticProperty and stored in the
-     * specified static object to the given value and returns the old value.
+     * Atomically sets the int value represented by this StaticProperty and stored in the specified
+     * static object to the given value and returns the old value.
      *
      * @param obj the static object that stores the static property value
      * @param value the new value
@@ -664,9 +663,9 @@ public abstract class StaticProperty {
 
     // long field access
     /**
-     * Returns the long value represented by this StaticProperty and stored in the specified
-     * static object. This property access has the memory semantics of reading as if the variable
-     * was declared non-volatile and non-final.
+     * Returns the long value represented by this StaticProperty and stored in the specified static
+     * object. This property access has the memory semantics of reading as if the variable was
+     * declared non-volatile and non-final.
      *
      * @param obj the static object that stores the static property value
      * @return the value of the static property stored in static object obj
@@ -680,9 +679,9 @@ public abstract class StaticProperty {
     }
 
     /**
-     * Returns the long value represented by this StaticProperty and stored in the specified
-     * static object. This property access has the memory semantics of reading as if the variable
-     * was declared volatile.
+     * Returns the long value represented by this StaticProperty and stored in the specified static
+     * object. This property access has the memory semantics of reading as if the variable was
+     * declared volatile.
      *
      * @param obj the static object that stores the static property value
      * @return the value of the static property stored in static object obj
@@ -696,9 +695,9 @@ public abstract class StaticProperty {
     }
 
     /**
-     * Sets the long value represented by this StaticProperty and stored in the specified
-     * static object. This property access has the memory semantics of setting as if the variable
-     * was declared non-volatile and non-final.
+     * Sets the long value represented by this StaticProperty and stored in the specified static
+     * object. This property access has the memory semantics of setting as if the variable was
+     * declared non-volatile and non-final.
      *
      * @param obj the static object that stores the static property value
      * @param value the new static property value, to be stored in static object obj
@@ -712,9 +711,9 @@ public abstract class StaticProperty {
     }
 
     /**
-     * Sets the long value represented by this StaticProperty and stored in the specified
-     * static object. This property access has the memory semantics of setting as if the variable
-     * was declared volatile.
+     * Sets the long value represented by this StaticProperty and stored in the specified static
+     * object. This property access has the memory semantics of setting as if the variable was
+     * declared volatile.
      *
      * @param obj the static object that stores the static property value
      * @param value the new static property value, to be stored in static object obj
@@ -728,9 +727,8 @@ public abstract class StaticProperty {
     }
 
     /**
-     * Atomically sets the long value represented by this StaticProperty and stored in the
-     * specified static object to the given updated value if the current value {@code ==} the
-     * expected value.
+     * Atomically sets the long value represented by this StaticProperty and stored in the specified
+     * static object to the given updated value if the current value {@code ==} the expected value.
      *
      * @param obj the static object that stores the static property value
      * @param expect the expected value
@@ -747,8 +745,8 @@ public abstract class StaticProperty {
     }
 
     /**
-     * Atomically adds the given value to the current long value represented by this
-     * StaticProperty and stored in the specified static object.
+     * Atomically adds the given value to the current long value represented by this StaticProperty
+     * and stored in the specified static object.
      *
      * @param obj the static object that stores the static property value
      * @param delta the value to add
@@ -763,8 +761,8 @@ public abstract class StaticProperty {
     }
 
     /**
-     * Atomically sets the long value represented by this StaticProperty and stored in the
-     * specified static object to the given value and returns the old value.
+     * Atomically sets the long value represented by this StaticProperty and stored in the specified
+     * static object to the given value and returns the old value.
      *
      * @param obj the static object that stores the static property value
      * @param value the new value
@@ -780,9 +778,9 @@ public abstract class StaticProperty {
 
     // short field access
     /**
-     * Returns the short value represented by this StaticProperty and stored in the
-     * specified static object. This property access has the memory semantics of reading as if the
-     * variable was declared non-volatile and non-final.
+     * Returns the short value represented by this StaticProperty and stored in the specified static
+     * object. This property access has the memory semantics of reading as if the variable was
+     * declared non-volatile and non-final.
      *
      * @param obj the static object that stores the static property value
      * @return the value of the static property stored in static object obj
@@ -796,9 +794,9 @@ public abstract class StaticProperty {
     }
 
     /**
-     * Returns the short value represented by this StaticProperty and stored in the
-     * specified static object. This property access has the memory semantics of reading as if the
-     * variable was declared volatile.
+     * Returns the short value represented by this StaticProperty and stored in the specified static
+     * object. This property access has the memory semantics of reading as if the variable was
+     * declared volatile.
      *
      * @param obj the static object that stores the static property value
      * @return the value of the static property stored in static object obj
@@ -812,9 +810,9 @@ public abstract class StaticProperty {
     }
 
     /**
-     * Sets the short value represented by this StaticProperty and stored in the specified
-     * static object. This property access has the memory semantics of setting as if the variable
-     * was declared non-volatile and non-final.
+     * Sets the short value represented by this StaticProperty and stored in the specified static
+     * object. This property access has the memory semantics of setting as if the variable was
+     * declared non-volatile and non-final.
      *
      * @param obj the static object that stores the static property value
      * @param value the new static property value, to be stored in static object obj
@@ -828,9 +826,9 @@ public abstract class StaticProperty {
     }
 
     /**
-     * Sets the short value represented by this StaticProperty and stored in the specified
-     * static object. This property access has the memory semantics of setting as if the variable
-     * was declared volatile.
+     * Sets the short value represented by this StaticProperty and stored in the specified static
+     * object. This property access has the memory semantics of setting as if the variable was
+     * declared volatile.
      *
      * @param obj the static object that stores the static property value
      * @param value the new static property value, to be stored in static object obj
