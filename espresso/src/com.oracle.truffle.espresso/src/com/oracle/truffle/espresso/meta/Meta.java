@@ -281,12 +281,9 @@ public final class Meta implements ContextAccess {
         java_io_InputStream_close = java_io_InputStream.requireDeclaredMethod(Name.close, Signature._void);
         java_io_PrintStream = knownKlass(Type.java_io_PrintStream);
         java_io_PrintStream_println = java_io_PrintStream.requireDeclaredMethod(Name.println, Signature._void_String);
-        java_io_File = knownKlass(Type.java_io_File);
-        java_io_File_init = java_io_File.requireDeclaredMethod(Name._init_, Signature._void_String);
-        java_io_File_toURI = java_io_File.requireDeclaredMethod(Name.toURI, Signature.URI);
         java_nio_file_Path = knownKlass(Type.java_nio_file_Path);
         java_nio_file_Paths = knownKlass(Type.java_nio_file_Paths);
-        java_nio_file_Paths_get = java_nio_file_Paths.requireDeclaredMethod(Name.get, Signature.Path_URI);
+        java_nio_file_Paths_get = java_nio_file_Paths.requireDeclaredMethod(Name.get, Signature.Path_String_String_array);
 
         sun_launcher_LauncherHelper = knownKlass(Type.sun_launcher_LauncherHelper);
         sun_launcher_LauncherHelper_printHelpMessage = sun_launcher_LauncherHelper.requireDeclaredMethod(Name.printHelpMessage, Signature._void_boolean);
@@ -1015,10 +1012,6 @@ public final class Meta implements ContextAccess {
 
     public final ObjectKlass java_io_PrintStream;
     public final Method java_io_PrintStream_println;
-
-    public final ObjectKlass java_io_File;
-    public final Method java_io_File_init;
-    public final Method java_io_File_toURI;
 
     public final ObjectKlass java_nio_file_Path;
     public final ObjectKlass java_nio_file_Paths;
