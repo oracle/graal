@@ -952,7 +952,8 @@ public class NativeImage {
         ResourceConfiguration(ConfigurationFiles.Options.ResourceConfigurationResources, ConfigurationFiles.RESOURCES_NAME),
         ProxyConfiguration(ConfigurationFiles.Options.DynamicProxyConfigurationResources, ConfigurationFiles.DYNAMIC_PROXY_NAME),
         SerializationConfiguration(ConfigurationFiles.Options.SerializationConfigurationResources, ConfigurationFiles.SERIALIZATION_NAME),
-        SerializationDenyConfiguration(ConfigurationFiles.Options.SerializationDenyConfigurationResources, ConfigurationFiles.SERIALIZATION_DENY_NAME);
+        SerializationDenyConfiguration(ConfigurationFiles.Options.SerializationDenyConfigurationResources, ConfigurationFiles.SERIALIZATION_DENY_NAME),
+        PredefinedClassesConfiguration(ConfigurationFiles.Options.PredefinedClassesConfigurationResources, ConfigurationFiles.PREDEFINED_CLASSES_NAME);
 
         final OptionKey<?> optionKey;
         final String fileName;

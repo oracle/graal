@@ -570,7 +570,7 @@ class NativeImageVM(GraalVm):
                 out('The executed image size for benchmark ' + config.benchmark_suite_name + ':' + config.benchmark_name + ' is ' + str(image_size) + ' B')
                 image_sections_command = "objdump -h " + image_path
                 out(subprocess.check_output(image_sections_command, shell=True, universal_newlines=True))
-                for config_type in ['jni', 'proxy', 'reflect', 'resource', 'serialization']:
+                for config_type in ['jni', 'proxy', 'predefined-classes', 'reflect', 'resource', 'serialization']:
                     config_path = os.path.join(config.config_dir, config_type + '-config.json')
                     if os.path.exists(config_path):
                         config_size = os.stat(config_path).st_size

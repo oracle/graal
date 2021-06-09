@@ -59,18 +59,18 @@ final class LinkedKlassFieldLayout {
 
         for (ParserField parserField : parserKlass.getFields()) {
             if (parserField.isStatic()) {
-                LinkedField field = new LinkedField(parserField, nextStaticFieldSlot++);
+                LinkedField field = new LinkedField(parserField, nextStaticFieldSlot++, storeAsFinal(parserKlass, parserField));
                 staticBuilder.property(field);
                 staticFields[nextStaticFieldIndex++] = field;
             } else {
-                LinkedField field = new LinkedField(parserField, nextInstanceFieldSlot++);
+                LinkedField field = new LinkedField(parserField, nextInstanceFieldSlot++, storeAsFinal(parserKlass, parserField));
                 instanceBuilder.property(field);
                 instanceFields[nextInstanceFieldIndex++] = field;
             }
         }
         for (Symbol<Name> hiddenFieldName : fieldCounter.hiddenFieldNames) {
             ParserField hiddenParserField = new ParserField(ParserField.HIDDEN, hiddenFieldName, Type.java_lang_Object, null);
-            LinkedField field = new LinkedField(hiddenParserField, nextInstanceFieldSlot++);
+            LinkedField field = new LinkedField(hiddenParserField, nextInstanceFieldSlot++, storeAsFinal(parserKlass, hiddenParserField));
             instanceBuilder.property(field);
             instanceFields[nextInstanceFieldIndex++] = field;
         }
@@ -81,6 +81,19 @@ final class LinkedKlassFieldLayout {
         }
         staticShape = staticBuilder.build(StaticObject.class, StaticObjectFactory.class);
         fieldTableLength = nextInstanceFieldSlot;
+    }
+
+    private static boolean storeAsFinal(ParserKlass klass, ParserField field) {
+        Symbol<Type> klassType = klass.getType();
+        Symbol<Name> fieldName = field.getName();
+        // The Graal compiler folds final fields, with some exceptions (e.g., `System.out`). If the
+        // value of one of these fields is stored as final, the corresponding set method has no
+        // effect on already compiled methods that folded the read of the field value during
+        // compilation.
+        if (klassType == Type.java_lang_System && (fieldName == Name.in || fieldName == Name.out || fieldName == Name.err)) {
+            return false;
+        }
+        return field.isFinal();
     }
 
     private static final class FieldCounter {

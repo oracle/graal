@@ -19,8 +19,23 @@
   jdt:: downloads.jdt,
 
   build_base:: {
-    // holds location of CI resources that can easily be overwritten
+    // holds location of CI resources that can easily be overwritten in an overlay
     ci_resources:: (import "ci-resources.libsonnet"),
+  },
+
+  // Job frequencies
+  // ***************
+  on_demand:: {
+    targets+: [],
+  },
+  post_merge:: {
+    targets+: ["post-merge"],
+  },
+  daily:: {
+    targets+: ["daily"],
+  },
+  weekly:: {
+    targets+: ["weekly"],
   },
 
   // Heap settings
@@ -127,48 +142,4 @@
   "darwin-amd64"::    self.darwin + self.amd64,
   "windows-amd64"::   self.windows + self.amd64,
   "linux-aarch64"::   self.linux + self.aarch64,
-
-  // Benchmarking building blocks
-  // ****************************
-  bench_hw:: {
-    _bench_machine:: {
-      targets+: ["bench"],
-      machine_name:: error "machine_name must be set!",
-      local _machine_name = self.machine_name,
-      capabilities+: [_machine_name],
-      environment+: { "MACHINE_NAME": _machine_name },
-      numa_nodes:: [],
-      is_numa:: std.length(self.numa_nodes) > 0,
-    },
-
-    x52:: $.linux + $.amd64 + self._bench_machine + {
-      machine_name:: "x52",
-      capabilities+: ["no_frequency_scaling", "tmpfs25g"],
-      numa_nodes:: [0, 1]
-    },
-    xgene3:: $.linux + $.aarch64 + self._bench_machine + {
-      machine_name:: "xgene3",
-      capabilities+: [],
-    },
-    a12c:: $.linux + $.aarch64 + self._bench_machine + {
-      machine_name:: "a12c",
-      capabilities+: ["no_frequency_scaling", "tmpfs25g"],
-      numa_nodes:: [0, 1]
-    }
-  },
-
-  hwlocIfNuma(numa, cmd, node=0)::
-    if numa then
-      ["hwloc-bind", "--cpubind", "node:"+node, "--membind", "node:"+node, "--"] + cmd
-    else
-      cmd,
-
-  parallelHwloc(cmd_node0, cmd_node1)::
-    // Returns a list of commands that will run cmd_nod0 on NUMA node 0
-    // concurrently with cmd_node1 on NUMA node 1 and then wait for both to complete.
-    [
-      $.hwlocIfNuma(true, cmd_node0, node=0) + ["&"],
-      $.hwlocIfNuma(true, cmd_node1, node=1) + ["&"],
-      ["wait"]
-    ]
 }

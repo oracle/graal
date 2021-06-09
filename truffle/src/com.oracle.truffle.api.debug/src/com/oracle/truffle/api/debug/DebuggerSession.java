@@ -696,6 +696,24 @@ public final class DebuggerSession implements Closeable {
     }
 
     /**
+     * Creates a {@link DebugValue} object that wraps a primitive value. Strings and boxed Java
+     * primitive types are considered primitive. Throws {@link IllegalArgumentException} if the
+     * value is not primitive.
+     *
+     * @param primitiveValue a primitive value
+     * @param language guest language this value is value is associated with. Some value attributes
+     *            depend on the language, like {@link DebugValue#getMetaObject()}. Can be
+     *            <code>null</code>.
+     * @return a {@link DebugValue} that wraps the primitive value.
+     * @throws IllegalArgumentException if the value is not a boxed Java primitive or a String.
+     * @since 21.2
+     */
+    public DebugValue createPrimitiveValue(Object primitiveValue, LanguageInfo language) throws IllegalArgumentException {
+        DebugValue.checkPrimitive(primitiveValue);
+        return new DebugValue.HeapValue(this, language, null, primitiveValue);
+    }
+
+    /**
      * Closes the current debugging session and disposes all installed breakpoints.
      *
      * @since 0.17

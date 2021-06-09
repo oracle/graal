@@ -29,6 +29,7 @@ import java.io.Reader;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.svm.configure.config.PredefinedClassesConfiguration;
 import com.oracle.svm.configure.config.ProxyConfiguration;
 import com.oracle.svm.configure.config.ResourceConfiguration;
 import com.oracle.svm.configure.config.SerializationConfiguration;
@@ -40,13 +41,16 @@ public class TraceProcessor extends AbstractProcessor {
     private final JniProcessor jniProcessor;
     private final ReflectionProcessor reflectionProcessor;
     private final SerializationProcessor serializationProcessor;
+    private final ClassLoadingProcessor classLoadingProcessor;
 
     public TraceProcessor(AccessAdvisor accessAdvisor, TypeConfiguration jniConfiguration, TypeConfiguration reflectionConfiguration,
-                    ProxyConfiguration proxyConfiguration, ResourceConfiguration resourceConfiguration, SerializationConfiguration serializationConfiguration) {
+                    ProxyConfiguration proxyConfiguration, ResourceConfiguration resourceConfiguration, SerializationConfiguration serializationConfiguration,
+                    PredefinedClassesConfiguration predefinedClassesConfiguration) {
         advisor = accessAdvisor;
         jniProcessor = new JniProcessor(this.advisor, jniConfiguration, reflectionConfiguration);
         reflectionProcessor = new ReflectionProcessor(this.advisor, reflectionConfiguration, proxyConfiguration, resourceConfiguration);
         serializationProcessor = new SerializationProcessor(this.advisor, serializationConfiguration);
+        classLoadingProcessor = new ClassLoadingProcessor(predefinedClassesConfiguration);
     }
 
     public TypeConfiguration getJniConfiguration() {
@@ -67,6 +71,10 @@ public class TraceProcessor extends AbstractProcessor {
 
     public SerializationConfiguration getSerializationConfiguration() {
         return serializationProcessor.getSerializationConfiguration();
+    }
+
+    public PredefinedClassesConfiguration getPredefinedClassesConfiguration() {
+        return classLoadingProcessor.getPredefinedClassesConfiguration();
     }
 
     @SuppressWarnings("unchecked")
@@ -107,6 +115,9 @@ public class TraceProcessor extends AbstractProcessor {
                     break;
                 case "serialization":
                     serializationProcessor.processEntry(entry);
+                    break;
+                case "classloading":
+                    classLoadingProcessor.processEntry(entry);
                     break;
                 default:
                     logWarning("Unknown tracer, ignoring: " + tracer);

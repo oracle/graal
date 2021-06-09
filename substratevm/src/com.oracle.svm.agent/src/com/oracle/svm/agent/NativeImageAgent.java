@@ -24,9 +24,7 @@
  */
 package com.oracle.svm.agent;
 
-import java.io.FileReader;
 import java.io.IOException;
-import java.io.Reader;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
@@ -106,6 +104,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
         List<String> callerFilterFiles = new ArrayList<>();
         List<String> accessFilterFiles = new ArrayList<>();
         boolean experimentalClassLoaderSupport = true;
+        boolean experimentalClassDefineSupport = false;
         boolean build = false;
         int configWritePeriod = -1; // in seconds
         int configWritePeriodInitialDelay = 1; // in seconds
@@ -149,6 +148,10 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                 experimentalClassLoaderSupport = true;
             } else if (token.startsWith("experimental-class-loader-support=")) {
                 experimentalClassLoaderSupport = Boolean.parseBoolean(getTokenValue(token));
+            } else if (token.equals("experimental-class-define-support")) {
+                experimentalClassDefineSupport = true;
+            } else if (token.startsWith("experimental-class-define-support=")) {
+                experimentalClassDefineSupport = Boolean.parseBoolean(getTokenValue(token));
             } else if (token.startsWith("config-write-period-secs=")) {
                 configWritePeriod = parseIntegerOrNegative(getTokenValue(token));
                 if (configWritePeriod <= 0) {
@@ -211,12 +214,11 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                     }
                     return e; // rethrow
                 };
-                // Note that we cannot share use the same advisor for generating the configuration
-                // from parsing events and for enforcing restrictions because they are stateful.
-                // They should use the same filter sets, however.
                 AccessAdvisor advisor = createAccessAdvisor(builtinHeuristicFilter, callerFilter, accessFilter);
+                Path[] predefinedClassDestinationDirs = {configOutputDirPath.resolve(ConfigurationFiles.PREDEFINED_CLASSES_AGENT_EXTRACTED_SUBDIR)};
                 TraceProcessor processor = new TraceProcessor(advisor, mergeConfigs.loadJniConfig(handler), mergeConfigs.loadReflectConfig(handler),
-                                mergeConfigs.loadProxyConfig(handler), mergeConfigs.loadResourceConfig(handler), mergeConfigs.loadSerializationConfig(handler));
+                                mergeConfigs.loadProxyConfig(handler), mergeConfigs.loadResourceConfig(handler), mergeConfigs.loadSerializationConfig(handler),
+                                mergeConfigs.loadPredefinedClassesConfig(predefinedClassDestinationDirs, handler));
                 traceWriter = new TraceProcessorWriterAdapter(processor);
             } catch (Throwable t) {
                 return error(2, t.toString());
@@ -240,7 +242,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
 
         accessAdvisor = createAccessAdvisor(builtinHeuristicFilter, callerFilter, accessFilter);
         try {
-            BreakpointInterceptor.onLoad(jvmti, callbacks, traceWriter, this, experimentalClassLoaderSupport);
+            BreakpointInterceptor.onLoad(jvmti, callbacks, traceWriter, this, experimentalClassLoaderSupport, experimentalClassDefineSupport);
         } catch (Throwable t) {
             return error(3, t.toString());
         }
@@ -296,8 +298,8 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
 
     private static boolean parseFilterFiles(RuleNode filter, List<String> filterFiles) {
         for (String path : filterFiles) {
-            try (Reader reader = new FileReader(path)) {
-                new FilterConfigurationParser(filter).parseAndRegister(reader);
+            try {
+                new FilterConfigurationParser(filter).parseAndRegister(Paths.get(path));
             } catch (Exception e) {
                 return error(false, "cannot parse filter file " + path + ": " + e);
             }
@@ -419,12 +421,13 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                             : Files.createTempDirectory("tempConfig-");
             TraceProcessor p = ((TraceProcessorWriterAdapter) traceWriter).getProcessor();
 
-            Map<String, JsonPrintable> allConfigFiles = new HashMap<>(4);
+            Map<String, JsonPrintable> allConfigFiles = new HashMap<>();
             allConfigFiles.put(ConfigurationFiles.REFLECTION_NAME, p.getReflectionConfiguration());
             allConfigFiles.put(ConfigurationFiles.JNI_NAME, p.getJniConfiguration());
             allConfigFiles.put(ConfigurationFiles.DYNAMIC_PROXY_NAME, p.getProxyConfiguration());
             allConfigFiles.put(ConfigurationFiles.RESOURCES_NAME, p.getResourceConfiguration());
             allConfigFiles.put(ConfigurationFiles.SERIALIZATION_NAME, p.getSerializationConfiguration());
+            allConfigFiles.put(ConfigurationFiles.PREDEFINED_CLASSES_NAME, p.getPredefinedClassesConfiguration());
 
             for (Map.Entry<String, JsonPrintable> configFile : allConfigFiles.entrySet()) {
                 Path tempPath = tempDirectory.resolve(configFile.getKey());
@@ -438,6 +441,12 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                 Path target = configOutputDirPath.resolve(configFile.getKey());
                 tryAtomicMove(source, target);
             }
+
+            /*
+             * Note that sidecar files may be written directly to the final output directory, such
+             * as the class files from predefined class tracking. However, such files generally
+             * don't change once they have been written.
+             */
 
             compulsoryDelete(tempDirectory);
         } catch (IOException e) {

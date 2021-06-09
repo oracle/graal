@@ -94,7 +94,6 @@ public final class LLVMPThreadStart {
                         }
                     }
                 }
-                pThreadContext.clearThreadId();
             }
         }
     }
@@ -127,6 +126,11 @@ public final class LLVMPThreadStart {
             FrameSlot functionSlot = descriptor.addFrameSlot("function");
             FrameSlot argSlot = descriptor.addFrameSlot("arg");
             return new LLVMPThreadFunctionRootNode(language, descriptor, functionSlot, argSlot, nodeFactory);
+        }
+
+        @Override
+        public boolean isInternal() {
+            return false;
         }
 
         @Override

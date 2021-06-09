@@ -29,6 +29,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import java.lang.ref.ReferenceQueue;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.graalvm.nativeimage.UnmanagedMemory;
@@ -49,4 +50,16 @@ final class Target_com_oracle_truffle_nfi_backend_libffi_NativeAllocation {
      */
     @Alias @RecomputeFieldValue(kind = Kind.FromAlias) //
     static AtomicReference<Thread> gcThread = new AtomicReference<>(null);
+
+    /**
+     * If the NFI is already used during image build time, it might happen that even though no
+     * objects are alive anymore, some of the destructors are still queued and haven't been run yet.
+     * These destructors need to run in the image build process. Since none of these objects are
+     * allowed to be stored in the image heap anyway, we can just reset to an empty queue there.
+     */
+    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClassName = "com.oracle.truffle.nfi.backend.libffi.NativeAllocation$Queue") //
+    static Target_com_oracle_truffle_nfi_backend_libffi_NativeAllocation_Queue globalQueue;
+
+    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClass = ReferenceQueue.class) //
+    static ReferenceQueue<Object> refQueue;
 }

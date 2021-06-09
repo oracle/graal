@@ -51,7 +51,7 @@ import com.oracle.svm.core.jdk.RecordSupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
-import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
+import com.oracle.svm.hosted.FeatureImpl.FeatureAccessImpl;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -75,7 +75,7 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
 
     private final ReflectionDataAccessors accessors;
 
-    public ReflectionDataBuilder(DuringSetupAccessImpl access) {
+    public ReflectionDataBuilder(FeatureAccessImpl access) {
         arrayReflectionData = getArrayReflectionData();
         accessors = new ReflectionDataAccessors(access);
     }
@@ -440,7 +440,7 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
         private final Field declaredPublicFieldsField;
         private final Field declaredPublicMethodsField;
 
-        ReflectionDataAccessors(DuringSetupAccessImpl access) {
+        ReflectionDataAccessors(FeatureAccessImpl access) {
             reflectionDataMethod = ReflectionUtil.lookupMethod(Class.class, "reflectionData");
             Class<?> originalReflectionDataClass = access.getImageClassLoader().findClassOrFail("java.lang.Class$ReflectionData");
             declaredFieldsField = ReflectionUtil.lookupField(originalReflectionDataClass, "declaredFields");

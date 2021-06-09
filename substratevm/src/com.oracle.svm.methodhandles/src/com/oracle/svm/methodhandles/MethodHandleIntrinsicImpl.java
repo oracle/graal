@@ -28,6 +28,7 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.lang.invoke.MethodType;
 // Checkstyle: stop
+import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 // Checkstyle: allow
 import java.util.Arrays;
@@ -255,8 +256,17 @@ final class MethodHandleIntrinsicImpl implements MethodHandleIntrinsic {
                 if (args[0] instanceof Target_java_lang_invoke_MethodHandleImpl_IntrinsicMethodHandle) {
                     mh = (SubstrateUtil.cast(args[0], Target_java_lang_invoke_MethodHandleImpl_IntrinsicMethodHandle.class).getTarget());
                 }
-                Target_java_lang_invoke_SimpleMethodHandle bmh = SubstrateUtil.cast(mh, Target_java_lang_invoke_SimpleMethodHandle.class);
-                return bmh.args[index];
+
+                if (Target_java_lang_invoke_SimpleMethodHandle.class.isAssignableFrom(mh.getClass())) {
+                    Target_java_lang_invoke_SimpleMethodHandle bmh = SubstrateUtil.cast(mh, Target_java_lang_invoke_SimpleMethodHandle.class);
+                    return bmh.args[index];
+                } else {
+                    char kindChar = kind == JavaKind.Object ? 'L' : kind.getTypeChar();
+                    String argName = "arg" + kindChar + index;
+                    Field argField = mh.getClass().getDeclaredField(argName);
+                    argField.setAccessible(true);
+                    return argField.get(mh);
+                }
             }
 
             /* java.lang.invoke.MethodHandleImpl helper functions */

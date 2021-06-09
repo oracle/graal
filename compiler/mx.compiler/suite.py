@@ -1012,6 +1012,15 @@ suite = {
       "workingSets" : "Graal,LIR",
     },
 
+    "org.graalvm.compiler.lir.processor" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : ["org.graalvm.compiler.processor"],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "8+",
+      "workingSets" : "Graal,LIR",
+    },
+
     "org.graalvm.compiler.lir.jtt" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -2134,7 +2143,8 @@ suite = {
         "org.graalvm.compiler.serviceprovider.processor",
         "org.graalvm.compiler.nodeinfo.processor",
         "org.graalvm.compiler.replacements.processor",
-        "org.graalvm.compiler.core.match.processor"
+        "org.graalvm.compiler.core.match.processor",
+        "org.graalvm.compiler.lir.processor",
        ],
       "maven": False,
     },

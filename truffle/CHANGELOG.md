@@ -18,6 +18,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Enabled by default the traversing compilation queue with dynamic thresholds. See [the documentation](https://github.com/oracle/graal/blob/master/truffle/docs/TraversingCompilationQueue.md) for more information.
 * Changed behavior of parameterized `Function<Object, Object>` conversion such that an `Object[]` argument is passed through to the guest function as a single array argument. Both raw `Function` and `Function<Object[], Object>` treat an `Object[]` as an array of arguments, like before.
 * Added `TruffleContext.pause()` and `TruffleContext.resume(Future<Void>)` to pause and resume execution for a truffle context, respectively.
+* Added `DebuggerSession.createPrimitiveValue()` to create a `DebugValue` from a primitive value. Use it instead of `DebugValue.set(primitiveValue)` which is now deprecated.
 
 ## Version 21.1.0
 * Added methods into `Instrumenter` that create bindings to be attached later on. Added `EventBinding.attach()` method.
