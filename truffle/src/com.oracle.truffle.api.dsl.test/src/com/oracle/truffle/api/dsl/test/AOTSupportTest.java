@@ -651,6 +651,19 @@ public class AOTSupportTest extends AbstractPolyglotTest {
 
     @SuppressWarnings("unused")
     @GenerateAOT
+    public abstract static class AOTDirectRecursionError extends BaseNode {
+
+        @Specialization
+        int doDefault(Object receiver, int arg1,
+                        @ExpectError("Failed to generate code for @GenerateAOT: Recursive AOT preparation detected. %")//
+                        @Cached AOTDirectRecursionError cachedValue) {
+            return arg1;
+        }
+
+    }
+
+    @SuppressWarnings("unused")
+    @GenerateAOT
     public abstract static class AOTIndirectRecursiveErrorNode extends BaseNode {
 
         @Specialization

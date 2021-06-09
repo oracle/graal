@@ -66,6 +66,7 @@ import static com.oracle.truffle.dsl.processor.java.ElementUtils.typeEquals;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.unboxAnnotationValue;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.uniqueSortedTypes;
 
+import java.lang.annotation.ElementType;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -429,6 +430,24 @@ public final class NodeParser extends AbstractParser<NodeData> {
             }
 
             for (CacheExpression cache : specialization.getCaches()) {
+
+                if (ElementUtils.typeEquals(cache.getParameter().getType(), node.getTemplateType().asType())) {
+                    if (specialization.getGuards().isEmpty()) {
+                        if (cache.usesDefaultCachedInitializer()) {
+                            // guaranteed recursion
+                            cache.addError("Failed to generate code for @%s: " + //
+                                            "Recursive AOT preparation detected. Recursive AOT preparation is not supported as this would lead to infinite compiled code." + //
+                                            "Resolve this problem by either: %n" + //
+                                            " - Exclude this specialization from AOT with @%s.%s if it is acceptable to deoptimize for this specialization in AOT compiled code. %n" + //
+                                            " - Configure the specialization to be replaced with a more generic specialization. %n" + //
+                                            " - Add a specialization guard that guarantees that the recursion is finite. %n" + //
+                                            " - Remove the cached parameter value. %n", //
+                                            getSimpleName(types.GenerateAOT),
+                                            getSimpleName(types.GenerateAOT), getSimpleName(types.GenerateAOT_Exclude));
+                            continue;
+                        }
+                    }
+                }
 
                 if (cache.isMergedLibrary()) {
                     cache.addError("Merged librares are not supported in combination with AOT preparation. " + //
