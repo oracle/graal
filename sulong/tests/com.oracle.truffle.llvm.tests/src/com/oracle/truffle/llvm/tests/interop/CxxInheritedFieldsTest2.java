@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -46,13 +46,11 @@ public class CxxInheritedFieldsTest2 extends InteropTestBase {
 
     private static Value testCppLibrary;
     private static Object testCppLibraryInternal;
-    private static CxxInheritedFieldsTest2_Helpers helpers;
 
     @BeforeClass
     public static void loadTestBitcode() {
         testCppLibrary = loadTestBitcodeValue("inheritedFieldsTest2.cpp");
         testCppLibraryInternal = loadTestBitcodeInternal("inheritedFieldsTest2.cpp");
-        helpers = new CxxInheritedFieldsTest2_Helpers();
     }
 
     public static class Check0Node extends SulongTestNode {
@@ -91,11 +89,11 @@ public class CxxInheritedFieldsTest2 extends InteropTestBase {
                     @Inject(Check2Node.class) CallTarget check2,
                     @Inject(Check3Node.class) CallTarget check3,
                     @Inject(Check4Node.class) CallTarget check4) {
-        check(check0.call(toGuestValue(helpers.getA0())));
-        check(check1.call(toGuestValue(helpers.getA1())));
-        check(check2.call(toGuestValue(helpers.getA2())));
-        check(check3.call(toGuestValue(helpers.getA3())));
-        check(check4.call(toGuestValue(helpers.getA4())));
+        check(check0.call(CxxInheritedFieldsTest2_Helpers.getA0()));
+        check(check1.call(CxxInheritedFieldsTest2_Helpers.getA1()));
+        check(check2.call(CxxInheritedFieldsTest2_Helpers.getA2()));
+        check(check3.call(CxxInheritedFieldsTest2_Helpers.getA3()));
+        check(check4.call(CxxInheritedFieldsTest2_Helpers.getA4()));
     }
 
     private static void check(Object guestReturnValue) {
@@ -106,16 +104,12 @@ public class CxxInheritedFieldsTest2 extends InteropTestBase {
         }
     }
 
-    private static Object toGuestValue(Object hostValue) {
-        return runWithPolyglot.getTruffleTestEnv().asGuestValue(hostValue);
-    }
-
     @Test
     public void test() {
-        Assert.assertTrue(testCppLibrary.invokeMember("check0", helpers.getA0()).asBoolean());
-        Assert.assertTrue(testCppLibrary.invokeMember("check1", helpers.getA1()).asBoolean());
-        Assert.assertTrue(testCppLibrary.invokeMember("check2", helpers.getA2()).asBoolean());
-        Assert.assertTrue(testCppLibrary.invokeMember("check3", helpers.getA3()).asBoolean());
-        Assert.assertTrue(testCppLibrary.invokeMember("check4", helpers.getA4()).asBoolean());
+        Assert.assertTrue(testCppLibrary.invokeMember("check0", CxxInheritedFieldsTest2_Helpers.getA0()).asBoolean());
+        Assert.assertTrue(testCppLibrary.invokeMember("check1", CxxInheritedFieldsTest2_Helpers.getA1()).asBoolean());
+        Assert.assertTrue(testCppLibrary.invokeMember("check2", CxxInheritedFieldsTest2_Helpers.getA2()).asBoolean());
+        Assert.assertTrue(testCppLibrary.invokeMember("check3", CxxInheritedFieldsTest2_Helpers.getA3()).asBoolean());
+        Assert.assertTrue(testCppLibrary.invokeMember("check4", CxxInheritedFieldsTest2_Helpers.getA4()).asBoolean());
     }
 }

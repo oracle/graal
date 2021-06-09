@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -69,8 +69,7 @@ public class CxxVTableTest1 extends InteropTestBase {
 
     @Test
     public void testInternal(@Inject(EvaluateDirectly.class) CallTarget ed) throws UnsupportedMessageException {
-        CxxVTableTest1_TestClass testObject = new CxxVTableTest1_TestClass();
-        Object guestValue = runWithPolyglot.getTruffleTestEnv().asGuestValue(testObject);
+        Object guestValue = CxxVTableTest1_TestClass.createAsInterop();
         Object ret = ed.call(guestValue, 10);
         Assert.assertEquals(50, InteropLibrary.getUncached().asInt(ret));
         ret = ed.call(guestValue, 10);
@@ -87,7 +86,7 @@ public class CxxVTableTest1 extends InteropTestBase {
 
     @Test
     public void testWithPolyglot() {
-        CxxVTableTest1_TestClass testObject = new CxxVTableTest1_TestClass();
+        Object testObject = CxxVTableTest1_TestClass.createAsInterop();
         Assert.assertEquals(50, evaluateDirectly.execute(testObject, 10).asInt());
         Assert.assertEquals(60, evaluateDirectly.execute(testObject, 10).asInt());
         Assert.assertEquals(10, evaluateDirectly.execute(testObject, 0).asInt());

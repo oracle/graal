@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,69 +29,64 @@
  */
 package com.oracle.truffle.llvm.tests.interop;
 
-public class CxxInheritedFieldsTest2_Helpers {
-    public A0 getA0() {
-        return new A0();
+import com.oracle.truffle.llvm.tests.interop.values.StructObject;
+import java.util.HashMap;
+
+/**
+ * Simulate an inheritance hierarchy of four classes, each having one additional field.
+ */
+public final class CxxInheritedFieldsTest2_Helpers {
+
+    private CxxInheritedFieldsTest2_Helpers() {
     }
 
-    public A1 getA1() {
-        return new A1();
+    private static HashMap<String, Object> createA0() {
+        HashMap<String, Object> ret = new HashMap<>();
+        ret.put("a0", 0);
+        return ret;
     }
 
-    public A2 getA2() {
-        return new A2();
+    public static Object getA0() {
+        return new StructObject(createA0());
     }
 
-    public A3 getA3() {
-        return new A3();
+    private static HashMap<String, Object> createA1() {
+        HashMap<String, Object> ret = createA0();
+        ret.put("a1", 1);
+        return ret;
     }
 
-    public A4 getA4() {
-        return new A4();
+    public static Object getA1() {
+        return new StructObject(createA1());
     }
 
-    public class A0 {
-        public int a0;
-
-        A0() {
-            this.a0 = 0;
-        }
+    private static HashMap<String, Object> createA2() {
+        HashMap<String, Object> ret = createA1();
+        ret.put("a2", 2);
+        return ret;
     }
 
-    public class A1 extends A0 {
-        public int a1;
-
-        A1() {
-            super();
-            this.a1 = 1;
-        }
+    public static Object getA2() {
+        return new StructObject(createA2());
     }
 
-    public class A2 extends A1 {
-        public int a2;
-
-        A2() {
-            super();
-            this.a2 = 2;
-        }
+    private static HashMap<String, Object> createA3() {
+        HashMap<String, Object> ret = createA2();
+        ret.put("a3", 3);
+        return ret;
     }
 
-    public class A3 extends A2 {
-        public int a3;
-
-        A3() {
-            super();
-            this.a3 = 3;
-        }
+    public static Object getA3() {
+        return new StructObject(createA3());
     }
 
-    public class A4 extends A3 {
-        public int a4;
-
-        A4() {
-            super();
-            this.a4 = 4;
-        }
+    private static HashMap<String, Object> createA4() {
+        HashMap<String, Object> ret = createA3();
+        ret.put("a4", 4);
+        return ret;
     }
 
+    public static Object getA4() {
+        return new StructObject(createA4());
+    }
 }

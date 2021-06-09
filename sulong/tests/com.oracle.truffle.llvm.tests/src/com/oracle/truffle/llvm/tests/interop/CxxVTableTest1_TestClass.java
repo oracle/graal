@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,11 +30,22 @@
 
 package com.oracle.truffle.llvm.tests.interop;
 
-public class CxxVTableTest1_TestClass {
+import com.oracle.truffle.llvm.tests.interop.values.StructObject;
+import com.oracle.truffle.llvm.tests.interop.values.TestCallback;
+import java.util.HashMap;
+
+public final class CxxVTableTest1_TestClass {
 
     private int last;
 
-    public CxxVTableTest1_TestClass() {
+    public static Object createAsInterop() {
+        CxxVTableTest1_TestClass ret = new CxxVTableTest1_TestClass();
+        HashMap<String, Object> properties = new HashMap<>();
+        properties.put("foo", new TestCallback(1, (args) -> ret.foo((Integer) args[0])));
+        return new StructObject(properties);
+    }
+
+    private CxxVTableTest1_TestClass() {
         this.last = 0;
     }
 
