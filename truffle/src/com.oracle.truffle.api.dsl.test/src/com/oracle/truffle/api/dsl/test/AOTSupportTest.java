@@ -72,6 +72,7 @@ import com.oracle.truffle.api.dsl.test.AOTSupportTestFactory.AOTManualLibraryNod
 import com.oracle.truffle.api.dsl.test.AOTSupportTestFactory.AOTManualLibrarySingleLimitNodeGen;
 import com.oracle.truffle.api.dsl.test.AOTSupportTestFactory.AOTRecursiveErrorNodeGen;
 import com.oracle.truffle.api.dsl.test.AOTSupportTestFactory.NoSpecializationTestNodeGen;
+import com.oracle.truffle.api.dsl.test.AOTSupportTestFactory.RecursiveNodeGen;
 import com.oracle.truffle.api.dsl.test.AOTSupportTestFactory.TestNodeGen;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -1055,6 +1056,43 @@ public class AOTSupportTest extends AbstractPolyglotTest {
             return 0;
         }
 
+    }
+
+    @GenerateAOT
+    @GenerateUncached
+    public abstract static class RecursiveNode extends BaseNode {
+
+        @Specialization(limit = "3")
+        @SuppressWarnings("unused")
+        int doI32DerefHandle(Object arg, @CachedLibrary("arg") RecursiveLibrary lib) {
+            return 42;
+        }
+
+    }
+
+    @GenerateLibrary
+    @GenerateAOT
+    public abstract static class RecursiveLibrary extends Library {
+
+        public abstract void m0(Object receiver);
+
+    }
+
+    @ExportLibrary(value = RecursiveLibrary.class, useForAOT = true, useForAOTPriority = 1)
+    public static final class RecursiveExportingClass {
+
+        @SuppressWarnings("unused")
+        @ExportMessage
+        void m0(@Cached RecursiveNode lib) {
+        }
+    }
+
+    @Test
+    public void testRecursionError2() {
+        TestRootNode root = setup(RecursiveNodeGen.create());
+        AbstractPolyglotTest.assertFails(() -> AOTSupport.prepareForAOT(root), AssertionError.class, (e) -> {
+            assertTrue(e.getMessage(), e.getMessage().contains("<-recursion-detected->"));
+        });
     }
 
 }

@@ -66,7 +66,6 @@ import static com.oracle.truffle.dsl.processor.java.ElementUtils.typeEquals;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.unboxAnnotationValue;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.uniqueSortedTypes;
 
-import java.lang.annotation.ElementType;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
