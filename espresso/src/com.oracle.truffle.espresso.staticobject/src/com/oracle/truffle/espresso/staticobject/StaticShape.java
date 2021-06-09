@@ -65,7 +65,6 @@ import java.util.Objects;
  * @param <T> the {@linkplain Builder#build() default} or the
  *            {@linkplain StaticShape.Builder#build(Class, Class) user-defined} factory interface to
  *            allocate static objects
- * @throws AssertionError if this class is subclassed by a custom implementation
  */
 public abstract class StaticShape<T> {
     protected static final Unsafe UNSAFE = getUnsafe();
