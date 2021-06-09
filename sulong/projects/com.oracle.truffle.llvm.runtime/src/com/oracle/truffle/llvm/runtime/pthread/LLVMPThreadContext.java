@@ -51,8 +51,7 @@ public final class LLVMPThreadContext {
     private final Object threadLock;
 
     /**
-     * TODO GR-30833: At pthread_join, return values need to be cleared from the map of thread
-     * return values.
+     * At pthread_join, return values shall be cleared from this map of return values.
      */
     private final ConcurrentMap<Long, Object> threadReturnValueStorage;
 
@@ -96,14 +95,16 @@ public final class LLVMPThreadContext {
 
     @TruffleBoundary
     public void joinAllThreads() {
-        final Collection<WeakReference<Thread>> threadsToJoin;
+        final Collection<WeakReference<Thread>> threads;
+
         synchronized (threadLock) {
             this.isCreateThreadAllowed = false;
-            threadsToJoin = threadStorage.values();
+            threads = threadStorage.values();
         }
-        for (WeakReference<Thread> createdThread : threadsToJoin) {
+
+        for (WeakReference<Thread> thread : threads) {
             try {
-                Thread t = createdThread.get();
+                Thread t = thread.get();
                 if (t != null) {
                     t.join();
                 }
@@ -209,18 +210,23 @@ public final class LLVMPThreadContext {
     }
 
     @TruffleBoundary
-    public void clearThreadId() {
-        threadStorage.remove(Thread.currentThread().getId());
+    public void clearThreadID(long threadID) {
+        threadStorage.remove(threadID);
     }
 
     @TruffleBoundary
-    public void setThreadReturnValue(long threadId, Object value) {
-        threadReturnValueStorage.put(threadId, value);
+    public void setThreadReturnValue(long threadID, Object value) {
+        threadReturnValueStorage.put(threadID, value);
     }
 
     @TruffleBoundary
-    public Object getThreadReturnValue(long threadId) {
-        return threadReturnValueStorage.get(threadId);
+    public Object getThreadReturnValue(long threadID) {
+        return threadReturnValueStorage.get(threadID);
+    }
+
+    @TruffleBoundary
+    public void clearThreadReturnValue(long threadID) {
+        threadReturnValueStorage.remove(threadID);
     }
 
     public CallTarget getPthreadCallTarget() {
