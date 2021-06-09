@@ -66,16 +66,18 @@ public final class PredefinedClassesSupport {
     private final ReentrantLock lock = new ReentrantLock();
 
     /** Predefined classes by hash. */
-    private final EconomicMap<String, Class<?>> predefinedClassesByName = ImageHeapMap.create();
+    private final EconomicMap<String, Class<?>> predefinedClassesByHash = ImageHeapMap.create();
 
     /** Predefined classes which have already been loaded, by name. */
     private final EconomicMap<String, Class<?>> loadedClassesByName = EconomicMap.create();
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void registerClass(String hash, Class<?> clazz) {
-        Class<?> existing = singleton().predefinedClassesByName.putIfAbsent(hash, clazz);
-        VMError.guarantee(existing == null, "Can define only one class per hash");
-        singleton().predefinedClasses.add(clazz);
+        Class<?> existing = singleton().predefinedClassesByHash.putIfAbsent(hash, clazz);
+        if (existing != clazz) {
+            VMError.guarantee(existing == null, "Can define only one class per hash");
+            singleton().predefinedClasses.add(clazz);
+        }
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -85,7 +87,7 @@ public final class PredefinedClassesSupport {
 
     public static Class<?> loadClass(ClassLoader classLoader, String expectedName, byte[] data, int offset, int length, ProtectionDomain protectionDomain) {
         String hash = hash(data, offset, length);
-        Class<?> clazz = singleton().predefinedClassesByName.get(hash);
+        Class<?> clazz = singleton().predefinedClassesByHash.get(hash);
         if (clazz == null) {
             String name = (expectedName != null) ? expectedName : "(name not specified)";
             throw VMError.unsupportedFeature("Defining a class from new bytecodes at run time is not supported. Class " + name +
@@ -97,7 +99,7 @@ public final class PredefinedClassesSupport {
     private Class<?> load(ClassLoader classLoader, ProtectionDomain protectionDomain, Class<?> clazz) {
         lock.lock();
         try {
-            boolean alreadyLoaded = singleton().loadedClassesByName.putIfAbsent(clazz.getName(), clazz) != null;
+            boolean alreadyLoaded = (loadedClassesByName.get(clazz.getName()) == clazz);
             if (alreadyLoaded) {
                 if (classLoader == clazz.getClassLoader()) {
                     throw new LinkageError("loader " + classLoader + " attempted duplicate class definition for " + clazz.getName() + " defined by " + clazz.getClassLoader());
@@ -107,6 +109,12 @@ public final class PredefinedClassesSupport {
                                     "been loaded by class loader: " + clazz.getClassLoader());
                 }
             }
+
+            throwIfUnresolvable(clazz.getSuperclass(), classLoader);
+            for (Class<?> intf : clazz.getInterfaces()) {
+                throwIfUnresolvable(intf, classLoader);
+            }
+
             /*
              * The following is part of the locked block so that other threads can observe only the
              * initialized values once the class can be found.
@@ -116,10 +124,31 @@ public final class PredefinedClassesSupport {
             if (protectionDomain != null) {
                 hub.setProtectionDomainAtRuntime(protectionDomain);
             }
+            loadedClassesByName.put(clazz.getName(), clazz);
             return clazz;
         } finally {
             lock.unlock();
         }
+    }
+
+    public static void throwIfUnresolvable(Class<?> clazz, ClassLoader classLoader) {
+        if (clazz == null) {
+            return;
+        }
+        DynamicHub hub = DynamicHub.fromClass(clazz);
+        if (!hub.hasClassLoader()) {
+            throwResolutionError(clazz.getName());
+        }
+        if (!isSameOrParent(clazz.getClassLoader(), classLoader)) { // common case: same loader
+            throwResolutionError(clazz.getName());
+        }
+    }
+
+    private static void throwResolutionError(String name) {
+        // NoClassDefFoundError with ClassNotFoundException required by Java VM specification, 5.3
+        NoClassDefFoundError error = new NoClassDefFoundError(name.replace('.', '/'));
+        error.initCause(new ClassNotFoundException(name));
+        throw error;
     }
 
     static Class<?> getLoadedForNameOrNull(String name, ClassLoader classLoader) {
@@ -145,7 +174,7 @@ public final class PredefinedClassesSupport {
         }
         ClassLoader c = child;
         do {
-            if (c == parent) {
+            if (c == parent) { // common case
                 return true;
             }
             c = c.getParent();
@@ -155,7 +184,7 @@ public final class PredefinedClassesSupport {
 
     public static class TestingBackdoor {
         public static UnmodifiableEconomicMap<String, Class<?>> getPredefinedClasses() {
-            return singleton().predefinedClassesByName;
+            return singleton().predefinedClassesByHash;
         }
     }
 }
