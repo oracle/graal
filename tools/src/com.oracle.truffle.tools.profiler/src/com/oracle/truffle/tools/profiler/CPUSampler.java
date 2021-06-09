@@ -678,6 +678,9 @@ public final class CPUSampler implements Closeable {
                 List<StackSample> samples = safepointStack.sample(env, context);
 
                 synchronized (CPUSampler.this) {
+                    if (context.isClosed()) {
+                        continue;
+                    }
                     Map<Thread, ProfilerNode<Payload>> nodes = activeContexts.get(context);
                     if (nodes == null) {
                         continue context;
