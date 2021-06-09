@@ -275,8 +275,8 @@ public interface EspressoProperties {
 
         Path espressoHome = HomeFinder.getInstance().getLanguageHomes().get(EspressoLanguage.ID);
 
-        // Inject hotswap.jar
-        if (options.get(EspressoOptions.JDWPOptions) != null) {
+        // Inject hotswap.jar on Java 8
+        if (options.get(EspressoOptions.JDWPOptions) != null && Files.isDirectory(java8Home)) {
             Path hotswapJar = espressoHome.resolve("lib").resolve("hotswap.jar");
             if (Files.isReadable(hotswapJar)) {
                 TruffleLogger.getLogger(EspressoLanguage.ID).fine("Adding HotSwap API to the boot classpath: " + hotswapJar);
