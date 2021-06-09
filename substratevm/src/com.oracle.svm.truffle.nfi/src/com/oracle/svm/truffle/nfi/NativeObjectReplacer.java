@@ -44,14 +44,7 @@ public final class NativeObjectReplacer implements Function<Object, Object> {
         disallowedClasses.put(access.findClassByName("com.oracle.truffle.nfi.backend.libffi.LibFFILibrary"), Boolean.FALSE);
         disallowedClasses.put(access.findClassByName("com.oracle.truffle.nfi.backend.libffi.LibFFISignature"), Boolean.FALSE);
         disallowedClasses.put(access.findClassByName("com.oracle.truffle.nfi.backend.libffi.LibFFISymbol"), Boolean.FALSE);
-        disallowedClasses.put(access.findClassByName("com.oracle.truffle.nfi.backend.libffi.LibFFIType$ArrayType"), Boolean.FALSE);
-        disallowedClasses.put(access.findClassByName("com.oracle.truffle.nfi.backend.libffi.LibFFIType$ClosureType"), Boolean.FALSE);
-        disallowedClasses.put(access.findClassByName("com.oracle.truffle.nfi.backend.libffi.LibFFIType$EnvType"), Boolean.FALSE);
-        disallowedClasses.put(access.findClassByName("com.oracle.truffle.nfi.backend.libffi.LibFFIType$NullableType"), Boolean.FALSE);
-        disallowedClasses.put(access.findClassByName("com.oracle.truffle.nfi.backend.libffi.LibFFIType$ObjectType"), Boolean.FALSE);
-        disallowedClasses.put(access.findClassByName("com.oracle.truffle.nfi.backend.libffi.LibFFIType$SimpleType"), Boolean.FALSE);
-        disallowedClasses.put(access.findClassByName("com.oracle.truffle.nfi.backend.libffi.LibFFIType$StringType"), Boolean.FALSE);
-        disallowedClasses.put(access.findClassByName("com.oracle.truffle.nfi.backend.libffi.LibFFIType$VoidType"), Boolean.FALSE);
+        disallowedClasses.put(access.findClassByName("com.oracle.truffle.nfi.backend.libffi.LibFFIType"), Boolean.FALSE);
         disallowedClasses.put(access.findClassByName("com.oracle.truffle.nfi.backend.libffi.NativeAllocation$FreeDestructor"), Boolean.FALSE);
         disallowedClasses.put(access.findClassByName("com.oracle.truffle.nfi.backend.libffi.NativePointer"), Boolean.FALSE);
         disallowedClasses.put(access.findClassByName("com.oracle.truffle.nfi.backend.libffi.NativeString"), Boolean.FALSE);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,30 +22,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.methodhandles;
+package com.oracle.svm.truffle.nfi;
 
-// Checkstyle: stop
-
-import java.lang.ref.SoftReference;
-
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.RecomputeFieldValue;
-import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
-import com.oracle.svm.core.annotate.RecomputeFieldValue.NewEmptyArrayTransformer;
 import com.oracle.svm.core.annotate.TargetClass;
 
-// Checkstyle: resume
-
-@TargetClass(className = "java.lang.invoke.MethodTypeForm")
-final class Target_java_lang_invoke_MethodTypeForm {
-
-    /*
-     * The following two fields are arrays that are filled lazily. Resetting them brings them into a
-     * consistent state, to avoid problems when the lazily initialization happens during image heap
-     * writing.
-     */
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = NewEmptyArrayTransformer.class) //
-    private SoftReference<?>[] methodHandles;
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = NewEmptyArrayTransformer.class) //
-    private SoftReference<?>[] lambdaForms;
+@TargetClass(className = "com.oracle.truffle.nfi.backend.libffi.NativeAllocation", innerClass = "Queue", onlyWith = TruffleNFIFeature.IsEnabled.class)
+final class Target_com_oracle_truffle_nfi_backend_libffi_NativeAllocation_Queue {
 }
