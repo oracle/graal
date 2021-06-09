@@ -1024,6 +1024,9 @@ public class FlatNodeGenFactory {
         for (SpecializationData specialization : filteredSpecializations) {
             boolean resetSpecializationClass = false;
             for (CacheExpression cache : specialization.getCaches()) {
+                if (cache.isAlwaysInitialized()) {
+                    continue;
+                }
                 if (cache.isCachedLibraryManuallyDispatched()) {
                     if (useSpecializationClass(specialization)) {
                         resetSpecializationClass = true;

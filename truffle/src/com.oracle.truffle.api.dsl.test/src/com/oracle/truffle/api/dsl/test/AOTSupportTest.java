@@ -605,7 +605,7 @@ public class AOTSupportTest extends AbstractPolyglotTest {
             }
 
             @Specialization(guards = {"arg == 9"})
-            static int nop1(AOTInitializable receiver, int arg) {
+            static int nop1(AOTInitializable receiver, int arg, @CachedLibrary("receiver") AOTTestLibrary library) {
                 return arg;
             }
 
