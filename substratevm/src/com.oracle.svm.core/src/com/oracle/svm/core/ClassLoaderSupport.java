@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,11 +24,28 @@
  */
 package com.oracle.svm.core;
 
+import java.util.List;
+import java.util.Locale;
+import java.util.ResourceBundle;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 @Platforms(Platform.HOSTED_ONLY.class)
-public interface ClassLoaderQuery {
+public abstract class ClassLoaderSupport {
 
-    boolean isNativeImageClassLoader(ClassLoader c);
+    public boolean isNativeImageClassLoader(ClassLoader classLoader) {
+        ClassLoader loader = classLoader;
+        while (loader != null) {
+            if (isNativeImageClassLoaderImpl(loader)) {
+                return true;
+            }
+            loader = loader.getParent();
+        }
+        return false;
+    }
+
+    protected abstract boolean isNativeImageClassLoaderImpl(ClassLoader classLoader);
+
+    public abstract List<ResourceBundle> getResourceBundle(String bundleName, Locale locale);
 }

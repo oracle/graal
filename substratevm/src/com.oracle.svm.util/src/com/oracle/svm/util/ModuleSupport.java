@@ -26,9 +26,7 @@ package com.oracle.svm.util;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Locale;
 import java.util.NoSuchElementException;
-import java.util.ResourceBundle;
 import java.util.function.BiConsumer;
 import java.util.function.Predicate;
 
@@ -39,10 +37,6 @@ import org.graalvm.nativeimage.Platforms;
 @Platforms(Platform.HOSTED_ONLY.class)
 public final class ModuleSupport {
     private ModuleSupport() {
-    }
-
-    public static ResourceBundle getResourceBundle(String bundleName, Locale locale, ClassLoader loader) {
-        return ResourceBundle.getBundle(bundleName, locale, loader);
     }
 
     /**

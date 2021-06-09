@@ -49,7 +49,6 @@ import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.ClassLoaderQuery;
 import com.oracle.svm.core.TypeResult;
 
 public final class ImageClassLoader {
@@ -434,23 +433,3 @@ public final class ImageClassLoader {
     }
 }
 
-class ClassLoaderQueryImpl implements ClassLoaderQuery {
-
-    private final ClassLoader imageClassLoader;
-
-    ClassLoaderQueryImpl(ClassLoader imageClassLoader) {
-        this.imageClassLoader = imageClassLoader;
-    }
-
-    @Override
-    public boolean isNativeImageClassLoader(ClassLoader classLoader) {
-        ClassLoader loader = classLoader;
-        while (loader != null) {
-            if (loader == imageClassLoader || loader instanceof NativeImageSystemClassLoader) {
-                return true;
-            }
-            loader = loader.getParent();
-        }
-        return false;
-    }
-}

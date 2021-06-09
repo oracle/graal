@@ -33,15 +33,9 @@ import java.lang.module.ModuleReader;
 import java.lang.module.ModuleReference;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -65,27 +59,16 @@ public class NativeImageClassLoaderSupport extends AbstractNativeImageClassLoade
     private final List<Path> buildmp;
 
     private final ClassLoader classLoader;
-    private final ModuleLayer moduleLayerForImageBuild;
-    private final Map<String, Set<Module>> packageToModuleNames;
+    final ModuleLayer moduleLayerForImageBuild;
 
     NativeImageClassLoaderSupport(ClassLoader defaultSystemClassLoader, String[] classpath, String[] modulePath) {
         super(defaultSystemClassLoader, classpath);
-
-        packageToModuleNames = new HashMap<>();
 
         imagemp = Arrays.stream(modulePath).map(Paths::get).collect(Collectors.toUnmodifiableList());
         buildmp = Arrays.stream(System.getProperty("jdk.module.path", "").split(File.pathSeparator)).map(Paths::get).collect(Collectors.toUnmodifiableList());
 
         ModuleLayer moduleLayer = createModuleLayer(imagemp.toArray(Path[]::new), classPathClassLoader);
         adjustBootLayerQualifiedExports(moduleLayer);
-        for (ModuleLayer layer : allLayers(moduleLayer)) {
-            for (Module module : layer.modules()) {
-                for (String packageName : module.getDescriptor().packages()) {
-                    addToPackageNameModules(module, packageName);
-                }
-            }
-        }
-        // dumpPackageNameModulesMapping();
         moduleLayerForImageBuild = moduleLayer;
         classLoader = getSingleClassloader(moduleLayer);
     }
@@ -100,56 +83,6 @@ public class NativeImageClassLoaderSupport extends AbstractNativeImageClassLoade
          * accessed with a single classloader so we can use it for {@link ImageClassLoader}.
          */
         return ModuleLayer.defineModulesWithOneLoader(configuration, List.of(ModuleLayer.boot()), parent).layer();
-    }
-
-    private List<ModuleLayer> allLayers(ModuleLayer moduleLayer) {
-        /** Implementation taken from {@link ModuleLayer#layers()} */
-        List<ModuleLayer> allLayers = new ArrayList<>();
-        Set<ModuleLayer> visited = new HashSet<>();
-        Deque<ModuleLayer> stack = new ArrayDeque<>();
-        visited.add(moduleLayer);
-        stack.push(moduleLayer);
-
-        while (!stack.isEmpty()) {
-            ModuleLayer layer = stack.pop();
-            allLayers.add(layer);
-
-            // push in reverse order
-            for (int i = layer.parents().size() - 1; i >= 0; i--) {
-                ModuleLayer parent = layer.parents().get(i);
-                if (!visited.contains(parent)) {
-                    visited.add(parent);
-                    stack.push(parent);
-                }
-            }
-        }
-        return allLayers;
-    }
-
-    private void addToPackageNameModules(Module moduleName, String packageName) {
-        Set<Module> prevValue = packageToModuleNames.get(packageName);
-        if (prevValue == null) {
-            /* Mostly packageName is only used in a single module */
-            packageToModuleNames.put(packageName, Collections.singleton(moduleName));
-        } else if (prevValue.size() == 1) {
-            /* Transition to HashSet - happens rarely */
-            HashSet<Module> newValue = new HashSet<>();
-            newValue.add(prevValue.iterator().next());
-            newValue.add(moduleName);
-            packageToModuleNames.put(packageName, newValue);
-        } else if (prevValue.size() > 1) {
-            /* Add to exiting HashSet - happens rarely */
-            prevValue.add(moduleName);
-        }
-    }
-
-    public void dumpPackageNameModulesMapping() {
-        packageToModuleNames.entrySet().stream()
-                        .sorted(Map.Entry.comparingByKey())
-                        .map(e -> e.getKey() + " -> " + e.getValue().stream()
-                                        .map(Module::getName)
-                                        .collect(Collectors.joining(", ")))
-                        .forEach(System.out::println);
     }
 
     private void adjustBootLayerQualifiedExports(ModuleLayer layer) {

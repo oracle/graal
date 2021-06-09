@@ -30,11 +30,8 @@ import java.lang.module.ModuleReader;
 import java.lang.module.ModuleReference;
 import java.lang.module.ResolvedModule;
 import java.util.List;
-import java.util.Locale;
-import java.util.MissingResourceException;
 import java.util.NoSuchElementException;
 import java.util.Optional;
-import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Predicate;
@@ -48,58 +45,6 @@ import jdk.internal.module.Modules;
 @Platforms(Platform.HOSTED_ONLY.class)
 public final class ModuleSupport {
     private ModuleSupport() {
-    }
-
-    public static ResourceBundle getResourceBundle(String bundleName, Locale locale, ClassLoader loader) {
-        Class<?> bundleClass;
-        try {
-            bundleClass = loader.loadClass(bundleName);
-        } catch (ClassNotFoundException ex) {
-            return getResourceBundleFallback(bundleName, locale, loader);
-        }
-        /*
-         * Open up module that contains the bundleClass so that ResourceBundle.getBundle can
-         * succeed.
-         */
-        ModuleSupport.openModuleByClass(bundleClass, ModuleSupport.class);
-        return ResourceBundle.getBundle(bundleName, locale, bundleClass.getModule());
-    }
-
-    private static ResourceBundle getResourceBundleFallback(String bundleName, Locale locale, ClassLoader loader) {
-        /* Try looking through all modules to find a match. */
-        Optional<String> packageName = packageName(bundleName);
-        for (Module module : ModuleLayer.boot().modules()) {
-            try {
-                packageName.ifPresent(p -> {
-                    if (module.getPackages().contains(p)) {
-                        Modules.addExportsToAllUnnamed(module, p);
-                        Modules.addOpensToAllUnnamed(module, p);
-                    }
-                });
-                return ResourceBundle.getBundle(bundleName, locale, module);
-            } catch (MissingResourceException e2) {
-                /* Continue the loop. */
-            }
-        }
-
-        /*
-         * This call will most likely throw an exception because it will also not find the bundle
-         * class. But it avoids special and JDK-specific handling here.
-         */
-        return ResourceBundle.getBundle(bundleName, locale, loader);
-    }
-
-    /**
-     * If the bundle is specified via java.class or java.properties format extract the package from
-     * the name.
-     */
-    private static Optional<String> packageName(String bundleName) {
-        int classSep = bundleName.replace('/', '.').lastIndexOf('.');
-        if (classSep == -1) {
-            /* The bundle is not specified via a java.class or java.properties format. */
-            return Optional.empty();
-        }
-        return Optional.of(bundleName.substring(0, classSep));
     }
 
     public static void openModuleByClass(Class<?> declaringClass, Class<?> accessingClass) {
