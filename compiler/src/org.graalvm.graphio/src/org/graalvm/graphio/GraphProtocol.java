@@ -474,11 +474,11 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
             writeByte(POOL_NULL);
             return;
         }
-        Character id = constantPool.get(object);
+        int type = findPoolType(object, null);
+        Character id = constantPool.get(object, type);
         if (id == null) {
             addPoolEntry(object);
         } else {
-            int type = findPoolType(object, null);
             writeByte(type);
             writeShort(id.charValue());
         }
@@ -649,12 +649,12 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
     @SuppressWarnings("unchecked")
     private void addPoolEntry(Object obj) throws IOException {
         Object object = obj;
-        char index = constantPool.add(object);
+        Object[] found = {null};
+        int type = findPoolType(object, found);
+        char index = constantPool.add(object, type);
         writeByte(POOL_NEW);
         writeShort(index);
 
-        Object[] found = {null};
-        int type = findPoolType(object, found);
         writeByte(type);
         switch (type) {
             case POOL_FIELD: {
@@ -887,27 +887,61 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
      */
     private static final class ConstantPool {
         private char nextId;
-        private final WeakHashMap<Object, Character> map = new WeakHashMap<>();
+        /*
+         * A mapping from an object to the pool entry that represents it. Normally the value is the
+         * Character id of the entry but for {@link POOL_STRING} entries a second forwarding entry
+         * might be created. A {@link POOL_STRING} can be looked up either by the original object or
+         * by the toString representation of that object. To handle this case the original object is
+         * inserted with the toString as the value. That string should then be looked up to get the
+         * actual id. This is done to avoid excessive toString calls during encoding.
+         */
+        private final WeakHashMap<Object, Object> map = new WeakHashMap<>();
         private final Object[] keys = new Object[CONSTANT_POOL_MAX_SIZE];
 
         ConstantPool() {
         }
 
-        Character get(Object key) {
-            Character id = map.get(key);
-            if (id != null && keys[id].equals(key)) {
+        Character get(Object key, int type) {
+            Object value = map.get(key);
+            if (value instanceof String) {
+                assert key.toString().equals(value);
+                value = map.get(value);
+                Character id = (Character) value;
+                if (id != null && keys[id] == value) {
+                    return id;
+                }
+            }
+            Character id = (Character) value;
+            if (id != null && keys[id] == key) {
                 return id;
+            }
+            if (type == POOL_STRING && !(key instanceof String)) {
+                // See if the String representation is already in the map
+                String string = key.toString();
+                id = get(string, type);
+                if (id != null) {
+                    // Add an entry that forwards from the object to the string.
+                    map.put(key, string);
+                    return id;
+                }
             }
             return null;
         }
 
-        char add(Object key) {
+        char add(Object key, int type) {
             char id = nextId++;
             if (nextId == CONSTANT_POOL_MAX_SIZE) {
                 nextId = 0;
             }
             if (keys[id] != null) {
                 map.remove(keys[id]);
+            }
+            if (type == POOL_STRING && !(key instanceof String)) {
+                // Insert a forwarding entry from the original object to the string representation
+                // and then directly insert the string with the pool id.
+                String string = key.toString();
+                map.put(key, string);
+                key = string;
             }
             map.put(key, id);
             keys[id] = key;
