@@ -275,27 +275,35 @@ public interface EspressoProperties {
 
         Path espressoHome = HomeFinder.getInstance().getLanguageHomes().get(EspressoLanguage.ID);
 
-        // Inject hotswap.jar on Java 8
-        if (options.get(EspressoOptions.JDWPOptions) != null && Files.isDirectory(java8Home)) {
-            Path hotswapJar = espressoHome.resolve("lib").resolve("hotswap.jar");
-            if (Files.isReadable(hotswapJar)) {
-                TruffleLogger.getLogger(EspressoLanguage.ID).fine("Adding HotSwap API to the boot classpath: " + hotswapJar);
-                bootClasspath.add(hotswapJar);
-            } else {
-                TruffleLogger.getLogger(EspressoLanguage.ID).warning("hotswap.jar (HotSwap API) not found at " + espressoHome.resolve("lib"));
+        boolean isJava8 = builder.bootClassPathVersion().getJavaVersion() == 8;
+
+        // Inject hotswap.jar
+        if (options.get(EspressoOptions.JDWPOptions) != null) {
+            // only inject on JDK 8
+            if (isJava8) {
+                Path hotswapJar = espressoHome.resolve("lib").resolve("hotswap.jar");
+                if (Files.isReadable(hotswapJar)) {
+                    TruffleLogger.getLogger(EspressoLanguage.ID).fine("Adding HotSwap API to the boot classpath: " + hotswapJar);
+                    bootClasspath.add(hotswapJar);
+                } else {
+                    TruffleLogger.getLogger(EspressoLanguage.ID).warning("hotswap.jar (HotSwap API) not found at " + espressoHome.resolve("lib"));
+                }
             }
         } else {
             JDWP.LOGGER.fine(() -> "Espresso HotSwap Plugin support is disabled. HotSwap is only supported in debug mode.");
         }
 
         // Inject polyglot.jar on Java 8
-        if (options.get(EspressoOptions.Polyglot) && Files.isDirectory(java8Home)) {
-            Path polyglotJar = espressoHome.resolve("lib").resolve("polyglot.jar");
-            if (Files.isReadable(polyglotJar)) {
-                TruffleLogger.getLogger(EspressoLanguage.ID).fine("Adding Polyglot API to the boot classpath: " + polyglotJar);
-                bootClasspath.add(polyglotJar);
-            } else {
-                TruffleLogger.getLogger(EspressoLanguage.ID).warning("polyglot.jar (Polyglot API) not found at " + espressoHome.resolve("lib"));
+        if (options.get(EspressoOptions.Polyglot)) {
+            // only inject on JDK 8.
+            if (isJava8) {
+                Path polyglotJar = espressoHome.resolve("lib").resolve("polyglot.jar");
+                if (Files.isReadable(polyglotJar)) {
+                    TruffleLogger.getLogger(EspressoLanguage.ID).fine("Adding Polyglot API to the boot classpath: " + polyglotJar);
+                    bootClasspath.add(polyglotJar);
+                } else {
+                    TruffleLogger.getLogger(EspressoLanguage.ID).warning("polyglot.jar (Polyglot API) not found at " + espressoHome.resolve("lib"));
+                }
             }
         } else {
             TruffleLogger.getLogger(EspressoLanguage.ID).fine("Polyglot support is (--java.Poylglot=false) disabled.");

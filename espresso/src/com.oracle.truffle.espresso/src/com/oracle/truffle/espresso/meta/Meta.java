@@ -1304,8 +1304,8 @@ public final class Meta implements ContextAccess {
         private PolyglotSupport() {
             boolean polyglotSupport = getContext().getEnv().getOptions().get(EspressoOptions.Polyglot);
             EspressoError.guarantee(polyglotSupport, "--java.Polyglot must be enabled");
-            // polyglot.jar is either on boot class path (JDK 8) or defined by a platform module
-            // (JDK 11+)
+            // polyglot.jar is either on boot class path (JDK 8)
+            // or defined by a platform module (JDK 11+)
             if (getJavaVersion().java8OrEarlier()) {
                 EspressoError.guarantee(loadKlassWithBootClassLoader(Type.com_oracle_truffle_espresso_polyglot_Polyglot) != null,
                                 "polyglot.jar (Polyglot API) is not accessible");
@@ -1538,7 +1538,9 @@ public final class Meta implements ContextAccess {
     }
 
     private ObjectKlass knownPlatformKlass(Symbol<Type> type) {
-        return knownKlass(type, this::loadKlassWithPlatformClassLoader);
+        // known platform classes are loaded by the platform loader on JDK 11 and
+        // by the boot classloader on JDK 8
+        return knownKlass(type, getJavaVersion().java8OrEarlier() ? this::loadKlassWithBootClassLoader : this::loadKlassWithPlatformClassLoader);
     }
 
     private ObjectKlass knownKlass(Symbol<Type> type, Function<Symbol<Type>, ObjectKlass> f) {
