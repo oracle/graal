@@ -489,29 +489,6 @@ public abstract class RootNode extends ExecutableNode {
     }
 
     /**
-     * Reports a back edge to the target location. This information could be used to trigger
-     * on-stack replacement (OSR).
-     * <p>
-     * NOTE: This method makes OSR possible for bytecode interpreters which do not contain
-     * structured {@link com.oracle.truffle.api.nodes.LoopNode LoopNodes}.
-     *
-     * @param osrNode the node which can be on-stack replaced
-     * @param parentFrame frame at current point of execution
-     * @param target target location of the jump (e.g., bytecode index). Targets are differentiated
-     *            using {@link Object#equals(Object)}.
-     * @return result if OSR was performed, or {@code null} otherwise.
-     */
-    // TODO: can we push this into OnStackReplaceableNode? I don't think we can put the same type constraint on the receiver.
-    public final <T extends Node & OnStackReplaceableNode> Object reportOSRBackEdge(T osrNode, VirtualFrame parentFrame, Object target) {
-        // Report loop count for the standard compilation path.
-        LoopNode.reportLoopCount(this, 1);
-        if (!CompilerDirectives.inInterpreter()) {
-            return null;
-        }
-        return NodeAccessor.RUNTIME.onOSRBackEdge(this, getLanguage(), osrNode, parentFrame, target);
-    }
-
-    /**
      * Helper method to create a root node that always returns the same value. Certain operations
      * (especially {@link com.oracle.truffle.api.interop inter-operability} API) require return of
      * stable {@link RootNode root nodes}. To simplify creation of such nodes, here is a factory

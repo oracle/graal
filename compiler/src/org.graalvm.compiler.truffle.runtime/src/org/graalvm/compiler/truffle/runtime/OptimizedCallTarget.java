@@ -335,13 +335,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     private volatile WeakReference<OptimizedDirectCallNode> singleCallNode = NO_CALL;
     volatile List<OptimizedCallTarget> blockCompilations;
 
-    // TODO: are economic maps OK? we shouldn't be doing OSR in compiled code, so I don't think PE
-    // needs to see through them.
-    private final EconomicMap<Object, OptimizedCallTarget> osrCompilations;
-    private boolean osrEnabled;
-    private final int osrThreshold;
-    private int backEdgeCount = 0;  // TODO: should this be volatile?
-
     protected OptimizedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode rootNode) {
         assert sourceCallTarget == null || sourceCallTarget.sourceCallTarget == null : "Cannot create a clone of a cloned CallTarget";
         this.sourceCallTarget = sourceCallTarget;
@@ -351,11 +344,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         this.resetCompilationProfile();
         // Do not adopt children of OSRRootNodes; we want to preserve the parent of the LoopNode.
         this.uninitializedNodeCount = !(rootNode instanceof OptimizedOSRLoopNode.OSRRootNode) ? GraalRuntimeAccessor.NODES.adoptChildrenAndCount(rootNode) : -1;
-
-        // TODO: is the default equivalence strategy appropriate?
-        this.osrCompilations = EconomicMap.create();
-        this.osrEnabled = getOptionValue(PolyglotCompilerOptions.OSR);
-        this.osrThreshold = getOptionValue(PolyglotCompilerOptions.OSRCompilationThreshold);
         GraalRuntimeAccessor.NODES.setCallTarget(rootNode, this);
     }
 
@@ -1039,74 +1027,98 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         this.callAndLoopCount = newLoopCallCount >= oldLoopCallCount ? newLoopCallCount : Integer.MAX_VALUE;
     }
 
-    final <T extends Node & OnStackReplaceableNode> Object onOSRBackEdge(TruffleLanguage<?> language, T osrNode, VirtualFrame parentFrame, Object target) {
+    final Object onOSRBackEdge(OnStackReplaceableNode osrNode, VirtualFrame parentFrame, int target, TruffleLanguage<?> language) {
         CompilerAsserts.neverPartOfCompilation();
-        if (!osrEnabled) {
-            return null;
-        }
-        this.backEdgeCount = backEdgeCount == Integer.MAX_VALUE ? backEdgeCount : ++backEdgeCount;
-        if (backEdgeCount < osrThreshold) {
-            return null;
-        }
-        // TODO: add a polling frequency so we don't poll compilation on every back edge
-        OptimizedCallTarget osrTarget = osrCompilations.get(target);
-        if (osrTarget == null) {
-            synchronized (osrCompilations) {
-                osrTarget = osrCompilations.get(target);
-                if (osrTarget == null) {  // double checked locking
-                    osrTarget = requestOSR(language, osrNode, target);
-                    osrCompilations.put(target, osrTarget);
+
+        OSRState osrState = (OSRState) osrNode.getOSRState();
+        if (osrState == null) {
+            synchronized (osrNode) {
+                osrState = (OSRState) osrNode.getOSRState();
+                if (osrState == null) {
+                    osrState = new OSRState(osrNode, getOptionValue(PolyglotCompilerOptions.OSR), getOptionValue(PolyglotCompilerOptions.OSRCompilationThreshold));
+                    osrNode.setOSRState(osrState);
                 }
             }
         }
-        if (osrTarget != null && !osrTarget.isCompiling()) {
-            // TODO: check if frame escaped. if so, abort OSR (do we need to invalidate the target if this happens?)
-            if (osrTarget.isValid()) {
-                return osrTarget.call(parentFrame);
-            }
-            invalidateOSRTarget(target, "OSR compilation failed or cancelled");
-        }
-        return null;
+        return osrState.onOSRBackEdge(parentFrame, target, language);
     }
 
-    private <T extends Node & OnStackReplaceableNode> OptimizedCallTarget requestOSR(TruffleLanguage<?> language, T osrNode, Object target) {
-        assert !osrCompilations.containsKey(target);
-        OptimizedCallTarget callTarget = GraalTruffleRuntime.getRuntime().createOSRCallTarget(new OSRRootNode<>(language, getRootNode(), osrNode, target));
-        // TODO: do we want last tier compilation?
-        callTarget.compile(false);
-        if (callTarget.compilationFailed) {
-            osrEnabled = false;
+    void callNodeReplacedOnOSRTargets(OnStackReplaceableNode osrNode, Node oldNode, Node newNode, CharSequence reason) {
+        OSRState osrState = (OSRState) osrNode.getOSRState();
+        if (osrState != null) {
+            osrState.nodeReplaced(oldNode, newNode, reason);
+        }
+    }
+
+    private static final class OSRState {
+        private final OnStackReplaceableNode osrNode;
+        private final EconomicMap<Integer, OptimizedCallTarget> osrCompilations;
+        // TODO: should any of these be volatile?
+        private boolean osrEnabled;
+        private final int osrThreshold;
+        private int backEdgeCount;
+
+        OSRState(OnStackReplaceableNode osrNode, boolean osrEnabled, int osrThreshold) {
+            this.osrNode = osrNode;
+            this.osrCompilations = EconomicMap.create();
+            this.osrEnabled = osrEnabled;
+            this.osrThreshold = osrThreshold;
+            this.backEdgeCount = 0;
+        }
+
+        final Object onOSRBackEdge(VirtualFrame parentFrame, int target, TruffleLanguage<?> language) {
+            if (!osrEnabled) {
+                return null;
+            }
+
+            if (!incrementAndCheck()) {
+                return null;
+            }
+
+            // TODO: add a polling frequency so we don't poll compilation on every back edge
+            OptimizedCallTarget osrTarget = osrCompilations.get(target);
+            if (osrTarget == null) {
+                synchronized (this) {
+                    osrTarget = osrCompilations.get(target);
+                    if (osrTarget == null) {
+                        osrTarget = requestOSR(language, osrNode, target);
+                        osrCompilations.put(target, osrTarget);
+                    }
+                }
+            }
+            if (osrTarget != null && !osrTarget.isCompiling()) {
+                // TODO: check if frame escaped. if so, abort OSR (do we need to invalidate the target
+                // if this happens?)
+                if (osrTarget.isValid()) {
+                    return osrTarget.call(parentFrame);
+                }
+                invalidateOSRTarget(target, "OSR compilation failed or cancelled");
+            }
             return null;
         }
-        osrCompilations.put(target, callTarget);
-        return callTarget;
-    }
 
-    private static final class OSRRootNode<T extends Node & OnStackReplaceableNode> extends RootNode {
-        // TODO: do we want this marked @Child?
-        private final T onStackReplaceableNode;
-        @CompilationFinal private final Object target;
-
-        OSRRootNode(TruffleLanguage<?> language, RootNode oldRoot, T onStackReplaceableNode, Object target) {
-            super(language, oldRoot.getFrameDescriptor());
-            this.onStackReplaceableNode = onStackReplaceableNode;
-            this.target = target;
+        // Increment back-edge count and check whether the new count exceeds the threshold.
+        private boolean incrementAndCheck() {
+            int newBackEdgeCount = backEdgeCount;
+            newBackEdgeCount = (newBackEdgeCount == Integer.MAX_VALUE) ? newBackEdgeCount : newBackEdgeCount+1;
+            backEdgeCount = newBackEdgeCount;
+            return newBackEdgeCount >= osrThreshold;
         }
 
-        @Override
-        public Object execute(VirtualFrame frame) {
-            Frame parentFrame = (Frame) frame.getArguments()[0];
-            return onStackReplaceableNode.doOSR(target, parentFrame, frame);
+        private synchronized OptimizedCallTarget requestOSR(TruffleLanguage<?> language, OnStackReplaceableNode osrNode, int target) {
+            assert !osrCompilations.containsKey(target);
+            OptimizedCallTarget callTarget = GraalTruffleRuntime.getRuntime().createOSRCallTarget(new OSRRootNode(language, osrNode, target));
+            // TODO: do we want last tier compilation?
+            callTarget.compile(false);
+            if (callTarget.compilationFailed) {
+                osrEnabled = false;
+                return null;
+            }
+            osrCompilations.put(target, callTarget);
+            return callTarget;
         }
 
-        @Override
-        public String toString() {
-            return onStackReplaceableNode.toString() + "<OSR>";
-        }
-    }
-
-    private void invalidateOSRTarget(Object target, CharSequence reason) {
-        rootNode.atomic(() -> {
+        private synchronized void invalidateOSRTarget(int target, CharSequence reason) {
             OptimizedCallTarget callTarget = osrCompilations.removeKey(target);
             if (callTarget != null) {
                 if (callTarget.isCompilationFailed()) {
@@ -1114,7 +1126,44 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                 }
                 callTarget.invalidate(reason);
             }
-        });
+        }
+
+        synchronized void nodeReplaced(Node oldNode, Node newNode, CharSequence reason) {
+            MapCursor<Integer, OptimizedCallTarget> cursor = osrCompilations.getEntries();
+            while (cursor.advance()) {
+                OptimizedCallTarget callTarget = cursor.getValue();
+                if (callTarget != null) {
+                    if (callTarget.isCompilationFailed()) {
+                        osrEnabled = false;
+                    }
+                    callTarget.nodeReplaced(oldNode, newNode, reason);
+                }
+            }
+            osrCompilations.clear();
+        }
+    }
+
+    private static final class OSRRootNode extends RootNode {
+        // TODO: do we want this marked @Child?
+        private final OnStackReplaceableNode onStackReplaceableNode;
+        @CompilationFinal private final Object target;
+
+        OSRRootNode(TruffleLanguage<?> language, OnStackReplaceableNode onStackReplaceableNode, Object target) {
+            super(language, onStackReplaceableNode.getRootNode().getFrameDescriptor());
+            this.onStackReplaceableNode = onStackReplaceableNode;
+            this.target = target;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            Frame parentFrame = (Frame) frame.getArguments()[0];
+            return onStackReplaceableNode.doOSR(frame, parentFrame, target);
+        }
+
+        @Override
+        public String toString() {
+            return onStackReplaceableNode.toString() + "<OSR>";
+        }
     }
 
     @Override
@@ -1127,24 +1176,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
          * that can no longer be cancelled is invalidated.
          */
         invalidateNodeRewritingAssumption();
-        callNodeReplacedOnOSRTargets(oldNode, newNode, reason);
         return false;
-    }
-
-    private void callNodeReplacedOnOSRTargets(Node oldNode, Node newNode, CharSequence reason) {
-        rootNode.atomic(() -> {
-            MapCursor<Object, OptimizedCallTarget> cursor = osrCompilations.getEntries();
-            while (cursor.advance()) {
-                OptimizedCallTarget callTarget = cursor.getValue();
-                if (callTarget != null) {
-                    if (callTarget.isCompilationFailed()) {
-                        osrEnabled = false;
-                    }
-                    callTarget.nodeReplaced(oldNode, newNode, reason);
-                }
-            }
-            osrCompilations.clear();
-        });
     }
 
     public final void accept(NodeVisitor visitor) {

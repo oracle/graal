@@ -87,8 +87,13 @@ final class DefaultRuntimeAccessor extends Accessor {
         }
 
         @Override
-        public <T extends Node & OnStackReplaceableNode> Object onOSRBackEdge(RootNode rootNode, TruffleLanguage<?> language, T osrNode, VirtualFrame parentFrame, Object target) {
+        public Object onOSRBackEdge(OnStackReplaceableNode osrNode, VirtualFrame parentFrame, int target, TruffleLanguage<?> language) {
             return null;
+        }
+
+        @Override
+        public void onOSRNodeReplaced(OnStackReplaceableNode osrNode, Node oldNode, Node newNode, CharSequence reason) {
+            // do nothing
         }
 
         @Override

@@ -261,7 +261,6 @@ import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.OnStackReplaceableNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.analysis.liveness.LivenessAnalysis;
@@ -356,7 +355,7 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
  * bytecode is first processed/executed without growing or shrinking the stack and only then the
  * {@code top} of the stack index is adjusted depending on the bytecode stack offset.
  */
-public final class BytecodeNode extends EspressoMethodNode implements OnStackReplaceableNode {
+public final class BytecodeNode extends EspressoMethodNode {
 
     private static final DebugCounter EXECUTED_BYTECODES_COUNT = DebugCounter.create("Executed bytecodes");
     private static final DebugCounter QUICKENED_BYTECODES = DebugCounter.create("Quickened bytecodes");
@@ -409,7 +408,7 @@ public final class BytecodeNode extends EspressoMethodNode implements OnStackRep
     private final LivenessAnalysis livenessAnalysis;
 
     @Override
-    public Object doOSR(Object target, Frame parentFrame, VirtualFrame innerFrame) {
+    public Object doOSR(VirtualFrame innerFrame, Frame parentFrame, Object target) {
         FrameDescriptor parentDescriptor = parentFrame.getFrameDescriptor();
         FrameDescriptor innerDescriptor = innerFrame.getFrameDescriptor();
         try {
@@ -1702,7 +1701,7 @@ public final class BytecodeNode extends EspressoMethodNode implements OnStackRep
                 LoopNode.reportLoopCount(this, REPORT_LOOP_STRIDE);
                 loopCount[0] = 0;
             }
-            Object osrResult = getRootNode().reportOSRBackEdge(this, frame, targetBCI);
+            Object osrResult = reportOSRBackEdge(frame, targetBCI);
             if (osrResult != null) {
                 throw new EspressoOSRReturnException(osrResult);
             }

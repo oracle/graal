@@ -952,16 +952,17 @@ public abstract class Accessor {
 
         /**
          * Reports a back edge to the target location. This information can be used to trigger
-         * on-stack replacement (OSR).
+         * on-stack replacement (OSR) for an {@link OnStackReplaceableNode}.
          *
-         * @param rootNode the root node in which the back edge occurs
-         * @param language the language of the node
+         * @param osrNode the node which can be on-stack replaced
          * @param parentFrame frame to be passed for OSR
-         * @param target target location of the jump (e.g., bytecode index) used to differentiate
-         *            back edges.
+         * @param target target location of the jump (e.g., bytecode index)
+         * @param language the language of the node
          * @return result if OSR was performed, or {@code null}.
          */
-        public abstract <T extends Node & OnStackReplaceableNode> Object onOSRBackEdge(RootNode rootNode, TruffleLanguage<?> language, T osrNode, VirtualFrame parentFrame, Object target);
+        public abstract Object onOSRBackEdge(OnStackReplaceableNode osrNode, VirtualFrame parentFrame, int target, TruffleLanguage<?> language);
+
+        public abstract void onOSRNodeReplaced(OnStackReplaceableNode osrNode, Node oldNode, Node newNode, CharSequence reason);
 
         /**
          * Returns the compiler options specified available from the runtime.
