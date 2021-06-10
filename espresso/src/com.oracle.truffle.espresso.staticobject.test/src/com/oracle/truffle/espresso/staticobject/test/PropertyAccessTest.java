@@ -217,15 +217,30 @@ public class PropertyAccessTest extends StaticObjectTest {
         try {
             descriptor.setter.set(p1, o2, descriptor.testValue);
             Assert.fail();
-        } catch (ClassCastException e) {
-            Assert.assertTrue(!ARRAY_BASED_STORAGE);
         } catch (IllegalArgumentException e) {
-            Assert.assertTrue(e.getMessage().startsWith("Incompatible shape on property access."));
+            if (ARRAY_BASED_STORAGE) {
+                Assert.assertTrue(e.getMessage().startsWith("Incompatible shape on property access."));
+            } else {
+                Assert.assertTrue(e.getMessage().matches("Object '.*' of class '.*' does not have the expected shape"));
+            }
         }
     }
 
     @Test
-    public void dummy() {
-        // to make sure this file is recognized as a test
+    @SuppressWarnings("unused")
+    public void wrongObject() {
+        StaticShape.Builder builder = StaticShape.newBuilder(this);
+        StaticProperty property = new DefaultStaticProperty("property", StaticPropertyKind.Int, false);
+        builder.property(property);
+        StaticShape<DefaultStaticObjectFactory> shape = builder.build();
+        Object staticObject = shape.getFactory().create();
+        Object wrongObject = new Object();
+
+        try {
+            property.setInt(wrongObject, 42);
+            Assert.fail();
+        } catch (IllegalArgumentException e) {
+            Assert.assertTrue(e.getMessage().matches("Object '.*' of class '.*' does not have the expected shape"));
+        }
     }
 }

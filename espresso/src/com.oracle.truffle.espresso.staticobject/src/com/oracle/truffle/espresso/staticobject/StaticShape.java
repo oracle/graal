@@ -135,7 +135,11 @@ public abstract class StaticShape<T> {
     abstract Object getStorage(Object obj, boolean primitive);
 
     static <T> T cast(Object obj, Class<T> type) {
-        return type.cast(obj);
+        try {
+            return type.cast(obj);
+        } catch (ClassCastException e) {
+            throw new IllegalArgumentException("Object '" + obj + "' of class '" + obj.getClass().getName() + "' does not have the expected shape", e);
+        }
     }
 
     @SuppressWarnings("unchecked")
