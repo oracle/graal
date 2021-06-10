@@ -771,6 +771,7 @@ public class FlatNodeGenFactory {
         }
 
         builder.startAssert();
+        builder.string("!isAdoptable() || ");
         builder.string("(").cast(context.getType(ReentrantLock.class), CodeTreeBuilder.singleString("getLock()"));
         builder.string(").isHeldByCurrentThread()");
         builder.string(" : ").doubleQuote("During prepare AST lock must be held.");
