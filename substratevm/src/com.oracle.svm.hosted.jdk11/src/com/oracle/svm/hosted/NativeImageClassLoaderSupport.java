@@ -108,11 +108,11 @@ public class NativeImageClassLoaderSupport extends AbstractNativeImageClassLoade
         }
     }
 
-    private static ClassLoader getSingleClassloader(ModuleLayer moduleLayer) {
-        ClassLoader singleClassloader = null;
+    private ClassLoader getSingleClassloader(ModuleLayer moduleLayer) {
+        ClassLoader singleClassloader = classPathClassLoader;
         for (Module module : moduleLayer.modules()) {
             ClassLoader moduleClassLoader = module.getClassLoader();
-            if (singleClassloader == null) {
+            if (singleClassloader == classPathClassLoader) {
                 singleClassloader = moduleClassLoader;
             } else {
                 VMError.guarantee(singleClassloader == moduleClassLoader);
