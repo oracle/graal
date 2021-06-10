@@ -241,14 +241,6 @@ public class MethodTypeFlowBuilder {
                 AnalysisField field = (AnalysisField) node.field();
                 field.registerAsWritten(methodFlow);
 
-            } else if (n instanceof StoreIndexedNode) {
-                StoreIndexedNode node = (StoreIndexedNode) n;
-                AnalysisType arrayType = (AnalysisType) StampTool.typeOrNull(node.array());
-                if (arrayType != null) {
-                    assert arrayType.isArray();
-                    arrayType.getComponentType().registerAsReachable();
-                }
-
             } else if (n instanceof ConstantNode) {
                 ConstantNode cn = (ConstantNode) n;
                 if (cn.hasUsages() && cn.isJavaConstant() && cn.asJavaConstant().getJavaKind() == JavaKind.Object && cn.asJavaConstant().isNonNull()) {
