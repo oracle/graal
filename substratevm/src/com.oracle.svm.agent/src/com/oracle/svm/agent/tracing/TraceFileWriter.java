@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.agent;
+package com.oracle.svm.agent.tracing;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -33,16 +33,18 @@ import java.util.Base64;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import com.oracle.svm.agent.tracing.core.Tracer;
+import com.oracle.svm.agent.tracing.core.TracingResultWriter;
 import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.core.util.VMError;
 
-class TraceFileWriter extends TraceWriter {
+public class TraceFileWriter extends Tracer implements TracingResultWriter {
     private final Object lock = new Object();
     private final BufferedWriter writer;
     private boolean open = true;
     private int written = 0;
 
-    TraceFileWriter(Path path) throws IOException {
+    public TraceFileWriter(Path path) throws IOException {
         writer = Files.newBufferedWriter(path);
         JsonWriter json = new JsonWriter(writer);
         json.append('[').newline();
@@ -51,7 +53,7 @@ class TraceFileWriter extends TraceWriter {
     }
 
     @Override
-    void traceEntry(Map<String, Object> entry) {
+    protected void traceEntry(Map<String, Object> entry) {
         try {
             StringWriter str = new StringWriter();
             try (JsonWriter json = new JsonWriter(str)) {
@@ -113,6 +115,16 @@ class TraceFileWriter extends TraceWriter {
                 written++;
             }
         }
+    }
+
+    @Override
+    public boolean supportsOnUnloadTraceWriting() {
+        return false;
+    }
+
+    @Override
+    public boolean supportsPeriodicTraceWriting() {
+        return false;
     }
 
     @Override

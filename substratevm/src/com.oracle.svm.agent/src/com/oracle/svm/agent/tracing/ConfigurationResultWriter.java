@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,32 +22,35 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.agent;
+package com.oracle.svm.agent.tracing;
 
+import java.io.IOException;
+import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.svm.agent.tracing.core.Tracer;
+import com.oracle.svm.agent.tracing.core.TracingResultWriter;
+import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.configure.trace.TraceProcessor;
+import com.oracle.svm.core.configure.ConfigurationFile;
 
-public class TraceProcessorWriterAdapter extends TraceWriter {
+public class ConfigurationResultWriter extends Tracer implements TracingResultWriter {
     private final TraceProcessor processor;
 
-    TraceProcessorWriterAdapter(TraceProcessor processor) {
+    public ConfigurationResultWriter(TraceProcessor processor) {
         this.processor = processor;
     }
 
-    TraceProcessor getProcessor() {
-        return processor;
-    }
-
     @Override
-    void traceEntry(Map<String, Object> entry) {
+    protected void traceEntry(Map<String, Object> entry) {
         processor.processEntry(arraysToLists(entry));
     }
 
     /** {@link TraceProcessor} expects {@link List} objects instead of plain arrays. */
-    private Map<String, Object> arraysToLists(Map<String, Object> map) {
+    public static Map<String, Object> arraysToLists(Map<String, Object> map) {
         for (Map.Entry<String, Object> mapEntry : map.entrySet()) {
             if (mapEntry.getValue() instanceof Object[]) {
                 mapEntry.setValue(arraysToLists((Object[]) mapEntry.getValue()));
@@ -56,7 +59,7 @@ public class TraceProcessorWriterAdapter extends TraceWriter {
         return map;
     }
 
-    private List<?> arraysToLists(Object[] array) {
+    private static List<?> arraysToLists(Object[] array) {
         Object[] newArray = Arrays.copyOf(array, array.length);
         for (int i = 0; i < newArray.length; i++) {
             if (newArray[i] instanceof Object[]) {
@@ -67,6 +70,29 @@ public class TraceProcessorWriterAdapter extends TraceWriter {
     }
 
     @Override
-    public void close() {
+    public boolean supportsPeriodicTraceWriting() {
+        return true;
+    }
+
+    @Override
+    public boolean supportsOnUnloadTraceWriting() {
+        return true;
+    }
+
+    @Override
+    public List<Path> writeToDirectory(Path directoryPath) throws IOException {
+        List<Path> writtenPaths = new ArrayList<>();
+        for (ConfigurationFile configFile : ConfigurationFile.values()) {
+            if (configFile.canBeGeneratedByAgent()) {
+                Path filePath = directoryPath.resolve(configFile.getFileName());
+                try (JsonWriter writer = new JsonWriter(filePath)) {
+                    processor.getConfiguration(configFile).printJson(writer);
+                    /* Add an extra EOF newline */
+                    writer.newline();
+                }
+                writtenPaths.add(filePath);
+            }
+        }
+        return writtenPaths;
     }
 }

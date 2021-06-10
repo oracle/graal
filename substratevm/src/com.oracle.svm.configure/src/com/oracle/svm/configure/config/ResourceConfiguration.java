@@ -30,12 +30,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Pattern;
 
-import com.oracle.svm.configure.json.JsonPrintable;
+import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.configure.json.JsonPrinter;
 import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.core.configure.ResourcesRegistry;
 
-public class ResourceConfiguration implements JsonPrintable {
+public class ResourceConfiguration implements ConfigurationBase {
 
     public static class ParserAdapter implements ResourcesRegistry {
         private final ResourceConfiguration configuration;
@@ -112,6 +112,12 @@ public class ResourceConfiguration implements JsonPrintable {
         writer.append('}').append(',').newline();
         writer.quote("bundles").append(':');
         JsonPrinter.printCollection(writer, bundles, Comparator.naturalOrder(), (String p, JsonWriter w) -> w.append('{').quote("name").append(':').quote(p).append('}'));
-        writer.unindent().newline().append('}').newline();
+        writer.unindent().newline().append('}');
     }
+
+    @Override
+    public boolean isEmpty() {
+        return addedResources.isEmpty() && bundles.isEmpty();
+    }
+
 }

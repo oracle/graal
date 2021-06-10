@@ -34,7 +34,7 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.function.Function;
 
-import com.oracle.svm.core.configure.ConfigurationFiles;
+import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationParser;
 import com.oracle.svm.core.configure.PredefinedClassesConfigurationParser;
 import com.oracle.svm.core.configure.ProxyConfigurationParser;
@@ -53,12 +53,12 @@ public class ConfigurationSet {
     private final Set<URI> predefinedClassesConfigPaths = new LinkedHashSet<>();
 
     public void addDirectory(Path path) {
-        jniConfigPaths.add(path.resolve(ConfigurationFiles.JNI_NAME).toUri());
-        reflectConfigPaths.add(path.resolve(ConfigurationFiles.REFLECTION_NAME).toUri());
-        proxyConfigPaths.add(path.resolve(ConfigurationFiles.DYNAMIC_PROXY_NAME).toUri());
-        resourceConfigPaths.add(path.resolve(ConfigurationFiles.RESOURCES_NAME).toUri());
-        serializationConfigPaths.add(path.resolve(ConfigurationFiles.SERIALIZATION_NAME).toUri());
-        predefinedClassesConfigPaths.add(path.resolve(ConfigurationFiles.PREDEFINED_CLASSES_NAME).toUri());
+        jniConfigPaths.add(path.resolve(ConfigurationFile.JNI.getFileName()).toUri());
+        reflectConfigPaths.add(path.resolve(ConfigurationFile.REFLECTION.getFileName()).toUri());
+        proxyConfigPaths.add(path.resolve(ConfigurationFile.DYNAMIC_PROXY.getFileName()).toUri());
+        resourceConfigPaths.add(path.resolve(ConfigurationFile.RESOURCES.getFileName()).toUri());
+        serializationConfigPaths.add(path.resolve(ConfigurationFile.SERIALIZATION.getFileName()).toUri());
+        predefinedClassesConfigPaths.add(path.resolve(ConfigurationFile.PREDEFINED_CLASSES_NAME.getFileName()).toUri());
     }
 
     public boolean isEmpty() {

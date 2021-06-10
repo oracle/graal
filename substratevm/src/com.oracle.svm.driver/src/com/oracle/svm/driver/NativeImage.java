@@ -72,6 +72,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.svm.core.configure.ConfigurationFile;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
@@ -947,13 +948,13 @@ public class NativeImage {
 
     enum MetaInfFileType {
         Properties(null, nativeImagePropertiesFilename),
-        JniConfiguration(ConfigurationFiles.Options.JNIConfigurationResources, ConfigurationFiles.JNI_NAME),
-        ReflectConfiguration(ConfigurationFiles.Options.ReflectionConfigurationResources, ConfigurationFiles.REFLECTION_NAME),
-        ResourceConfiguration(ConfigurationFiles.Options.ResourceConfigurationResources, ConfigurationFiles.RESOURCES_NAME),
-        ProxyConfiguration(ConfigurationFiles.Options.DynamicProxyConfigurationResources, ConfigurationFiles.DYNAMIC_PROXY_NAME),
-        SerializationConfiguration(ConfigurationFiles.Options.SerializationConfigurationResources, ConfigurationFiles.SERIALIZATION_NAME),
-        SerializationDenyConfiguration(ConfigurationFiles.Options.SerializationDenyConfigurationResources, ConfigurationFiles.SERIALIZATION_DENY_NAME),
-        PredefinedClassesConfiguration(ConfigurationFiles.Options.PredefinedClassesConfigurationResources, ConfigurationFiles.PREDEFINED_CLASSES_NAME);
+        JniConfiguration(ConfigurationFiles.Options.JNIConfigurationResources, ConfigurationFile.JNI.getFileName()),
+        ReflectConfiguration(ConfigurationFiles.Options.ReflectionConfigurationResources, ConfigurationFile.REFLECTION.getFileName()),
+        ResourceConfiguration(ConfigurationFiles.Options.ResourceConfigurationResources, ConfigurationFile.RESOURCES.getFileName()),
+        ProxyConfiguration(ConfigurationFiles.Options.DynamicProxyConfigurationResources, ConfigurationFile.DYNAMIC_PROXY.getFileName()),
+        SerializationConfiguration(ConfigurationFiles.Options.SerializationConfigurationResources, ConfigurationFile.SERIALIZATION.getFileName()),
+        SerializationDenyConfiguration(ConfigurationFiles.Options.SerializationDenyConfigurationResources, ConfigurationFile.SERIALIZATION_DENY.getFileName()),
+        PredefinedClassesConfiguration(ConfigurationFiles.Options.PredefinedClassesConfigurationResources, ConfigurationFile.PREDEFINED_CLASSES_NAME.getFileName());
 
         final OptionKey<?> optionKey;
         final String fileName;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,21 +22,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.agent;
+package com.oracle.svm.agent.tracing.core;
 
-import java.io.Closeable;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-public abstract class TraceWriter implements Closeable {
+import com.oracle.svm.jni.nativeapi.JNIMethodId;
+
+public abstract class Tracer {
     /** Value to explicitly express {@code null} in a trace, instead of omitting the value. */
     public static final String EXPLICIT_NULL = new String("null");
 
     /** Value to express an unknown value, for example on failure to retrieve the value. */
     public static final String UNKNOWN_VALUE = new String("\0");
 
-    static Object handleSpecialValue(Object obj) {
+    protected static Object handleSpecialValue(Object obj) {
         if (obj == EXPLICIT_NULL) {
             return null;
         }
@@ -57,7 +58,7 @@ public abstract class TraceWriter implements Closeable {
         return obj;
     }
 
-    void traceInitialization() {
+    public void traceInitialization() {
         Map<String, Object> entry = new HashMap<>();
         entry.put("tracer", "meta");
         entry.put("event", "initialization");
@@ -86,9 +87,12 @@ public abstract class TraceWriter implements Closeable {
      *            specified to provide the (super)class which actually declares that member.
      * @param callerClass The class on the call stack which performed the call.
      * @param result The result of the call.
+     * @param stackTrace Full stack trace leading to (and including) the call, or null if not
+     *            available. The first element of this array represents the top of the stack.
+     *
      * @param args Arguments to the call, which may contain arrays (which can contain more arrays)
      */
-    public void traceCall(String tracer, String function, Object clazz, Object declaringClass, Object callerClass, Object result, Object... args) {
+    public void traceCall(String tracer, String function, Object clazz, Object declaringClass, Object callerClass, Object result, JNIMethodId[] stackTrace, Object... args) {
         Map<String, Object> entry = new HashMap<>();
         entry.put("tracer", tracer);
         entry.put("function", function);
@@ -107,11 +111,11 @@ public abstract class TraceWriter implements Closeable {
         if (args != null) {
             entry.put("args", handleSpecialValue(args));
         }
+        if (stackTrace != null) {
+            entry.put("stack_trace", stackTrace);
+        }
         traceEntry(entry);
     }
 
-    abstract void traceEntry(Map<String, Object> entry);
-
-    @Override
-    public abstract void close();
+    protected abstract void traceEntry(Map<String, Object> entry);
 }

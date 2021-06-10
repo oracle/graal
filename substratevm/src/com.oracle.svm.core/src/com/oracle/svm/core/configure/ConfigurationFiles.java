@@ -49,18 +49,6 @@ import com.oracle.svm.core.util.UserError;
  */
 public final class ConfigurationFiles {
 
-    private static final String SUFFIX = "-config.json";
-
-    public static final String DYNAMIC_PROXY_NAME = "proxy" + SUFFIX;
-    public static final String RESOURCES_NAME = "resource" + SUFFIX;
-    public static final String JNI_NAME = "jni" + SUFFIX;
-    public static final String REFLECTION_NAME = "reflect" + SUFFIX;
-    public static final String SERIALIZATION_NAME = "serialization" + SUFFIX;
-    public static final String SERIALIZATION_DENY_NAME = "serialization-deny" + SUFFIX;
-    public static final String PREDEFINED_CLASSES_NAME = "predefined-classes" + SUFFIX;
-    public static final String PREDEFINED_CLASSES_AGENT_EXTRACTED_SUBDIR = "agent-extracted-predefined-classes";
-    public static final String PREDEFINED_CLASSES_AGENT_EXTRACTED_NAME_SUFFIX = ".classdata";
-
     public static final class Options {
         @Option(help = "Directories directly containing configuration files for dynamic features at runtime.", type = OptionType.User)//
         static final HostedOptionKey<LocatableMultiOptionValue.Strings> ConfigurationFileDirectories = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());

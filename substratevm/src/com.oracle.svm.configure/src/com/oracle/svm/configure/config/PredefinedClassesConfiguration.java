@@ -31,29 +31,29 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.oracle.svm.configure.json.JsonPrintable;
+import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.configure.json.JsonWriter;
-import com.oracle.svm.core.configure.ConfigurationFiles;
+import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
-import com.oracle.svm.core.util.VMError;
 
-public class PredefinedClassesConfiguration implements JsonPrintable {
+public class PredefinedClassesConfiguration implements ConfigurationBase {
     private final Path[] classDestinationDirs;
     private final ConcurrentHashMap<String, ConfigurationPredefinedClass> classes = new ConcurrentHashMap<>();
 
-    PredefinedClassesConfiguration(Path[] classDestinationDirs) {
+    public PredefinedClassesConfiguration(Path[] classDestinationDirs) {
         this.classDestinationDirs = classDestinationDirs;
     }
 
     public void add(String nameInfo, byte[] classData) {
-        VMError.guarantee(classDestinationDirs != null && classDestinationDirs.length > 0, "Must have at least one destination directory");
         ensureDestinationDirsExist();
         String hash = PredefinedClassesSupport.hash(classData, 0, classData.length);
-        for (Path dir : classDestinationDirs) {
-            try {
-                Files.write(dir.resolve(getFileName(hash)), classData);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
+        if (classDestinationDirs != null) {
+            for (Path dir : classDestinationDirs) {
+                try {
+                    Files.write(dir.resolve(getFileName(hash)), classData);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
             }
         }
         ConfigurationPredefinedClass clazz = new ConfigurationPredefinedClass(nameInfo, hash);
@@ -95,7 +95,7 @@ public class PredefinedClassesConfiguration implements JsonPrintable {
     }
 
     private static String getFileName(String hash) {
-        return hash + ConfigurationFiles.PREDEFINED_CLASSES_AGENT_EXTRACTED_NAME_SUFFIX;
+        return hash + ConfigurationFile.PREDEFINED_CLASSES_AGENT_EXTRACTED_NAME_SUFFIX;
     }
 
     @Override
@@ -113,5 +113,10 @@ public class PredefinedClassesConfiguration implements JsonPrintable {
         writer.unindent().newline().append(']');
         writer.unindent().newline().append('}');
         writer.unindent().newline().append(']').newline();
+    }
+
+    @Override
+    public boolean isEmpty() {
+        return classes.isEmpty();
     }
 }

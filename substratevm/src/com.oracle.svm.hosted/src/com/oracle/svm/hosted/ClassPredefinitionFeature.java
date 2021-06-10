@@ -33,6 +33,7 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.oracle.svm.core.configure.ConfigurationFile;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
@@ -65,7 +66,7 @@ public class ClassPredefinitionFeature implements Feature {
         PredefinedClassesConfigurationParser parser = new PredefinedClassesConfigurationParser(registry);
         ConfigurationParserUtils.parseAndRegisterConfigurations(parser, access.getImageClassLoader(), "class predefinition",
                         ConfigurationFiles.Options.PredefinedClassesConfigurationFiles, ConfigurationFiles.Options.PredefinedClassesConfigurationResources,
-                        ConfigurationFiles.PREDEFINED_CLASSES_NAME);
+                        ConfigurationFile.PREDEFINED_CLASSES_NAME.getFileName());
     }
 
     private class PredefinedClassesRegistryImpl implements PredefinedClassesRegistry {
@@ -75,7 +76,7 @@ public class ClassPredefinitionFeature implements Feature {
         @Override
         public void add(String nameInfo, String providedHash, Path basePath) {
             try {
-                Path path = basePath.resolve(providedHash + ConfigurationFiles.PREDEFINED_CLASSES_AGENT_EXTRACTED_NAME_SUFFIX);
+                Path path = basePath.resolve(providedHash + ConfigurationFile.PREDEFINED_CLASSES_AGENT_EXTRACTED_NAME_SUFFIX);
                 byte[] data = Files.readAllBytes(path);
 
                 // Compute our own hash code, the files could have been messed with.
