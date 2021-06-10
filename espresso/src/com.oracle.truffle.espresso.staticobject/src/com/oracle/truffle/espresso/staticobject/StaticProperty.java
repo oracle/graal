@@ -63,8 +63,9 @@ public abstract class StaticProperty {
     /**
      * Constructor for subclasses. Only property accesses that match the
      * {@linkplain StaticPropertyKind property kind} are allowed. Property values can be optionally
-     * stored in a final field. It is up to the user to enforce that property values stored as final
-     * are not assigned more than once.
+     * stored in a final field. Accesses to such values might be specially optimized by the
+     * compiler. For example, reads might be constant-folded. It is up to the user to enforce that
+     * property values stored as final are not assigned more than once.
      *
      * @param kind the kind of static property
      * @param storeAsFinal if this property value can be stored in a final field
