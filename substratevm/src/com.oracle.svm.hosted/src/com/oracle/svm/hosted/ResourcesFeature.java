@@ -304,7 +304,7 @@ public final class ResourcesFeature implements Feature {
             if (entry.isDirectory()) {
                 String dirName = entry.getName().substring(0, entry.getName().length() - 1);
                 if (matches(includePatterns, excludePatterns, dirName)) {
-                    // Directory content is empty in JAR scanning.
+                    // Register the directory with empty content to preserve Java behavior
                     registerDirectoryResource(debugContext, dirName, "");
                 }
             } else {

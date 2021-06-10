@@ -24,12 +24,10 @@
  */
 package com.oracle.svm.core.jdk;
 
-import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
-import java.net.URLClassLoader;
 import java.net.URLConnection;
 import java.security.ProtectionDomain;
 import java.util.ArrayList;
@@ -38,7 +36,6 @@ import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Vector;
-import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
@@ -125,185 +122,6 @@ class ResourcesHelper {
     }
 }
 
-@TargetClass(classNameProvider = Package_jdk_internal_loader.class, className = "URLClassPath")
-@SuppressWarnings({"unused", "static-method"})
-final class Target_jdk_internal_loader_URLClassPath {
-
-    /* Reset fields that can store a Zip file via sun.misc.URLClassPath$JarLoader.jar. */
-
-    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClass = ArrayList.class)//
-    private ArrayList<?> loaders;
-
-    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClass = HashMap.class)//
-    private HashMap<String, ?> lmap;
-
-    /* The original locations of the .jar files are no longer available at run time. */
-    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClass = ArrayList.class)//
-    private ArrayList<URL> path;
-
-    /*
-     * We are defensive and also handle private native methods by marking them as deleted. If they
-     * are reachable, the user is certainly doing something wrong. But we do not want to fail with a
-     * linking error.
-     */
-
-    @Delete
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    private static native URL[] getLookupCacheURLs(ClassLoader loader);
-
-    @Delete
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    private static native int[] getLookupCacheForClassLoader(ClassLoader loader, String name);
-
-    @Delete
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    private static native boolean knownToNotExist0(ClassLoader loader, String className);
-
-    @Substitute
-    public URL findResource(String name, boolean check) {
-        return Resources.createURL(name);
-    }
-
-    @Substitute
-    public Enumeration<URL> findResources(final String name, final boolean check) {
-        return Resources.createURLs(name);
-    }
-
-    @Substitute
-    @TargetElement(name = "getResource", onlyWith = JDK11OrLater.class)
-    public Target_jdk_internal_loader_Resource_JDK11OrLater getResourceJDK11OrLater(String name, boolean check) {
-        return ResourcesHelper.nameToResource(name);
-    }
-
-    @Substitute
-    @TargetElement(name = "getResources", onlyWith = JDK11OrLater.class)
-    public Enumeration<Target_jdk_internal_loader_Resource_JDK11OrLater> getResourcesJDK11OrLater(final String name,
-                    final boolean check) {
-        return ResourcesHelper.nameToResources(name);
-    }
-
-    @Substitute
-    @TargetElement(name = "getResource", onlyWith = JDK8OrEarlier.class)
-    public Target_sun_misc_Resource_JDK8OrEarlier getResourceJDK8OrEarlier(String name, boolean check) {
-        return ResourcesHelper.nameToResource(name);
-    }
-
-    @Substitute
-    @TargetElement(name = "getResources", onlyWith = JDK8OrEarlier.class)
-    public Enumeration<Target_sun_misc_Resource_JDK8OrEarlier> getResourcesJDK8OrEarlier(final String name,
-                    final boolean check) {
-        return ResourcesHelper.nameToResources(name);
-    }
-}
-
-@TargetClass(URLClassLoader.class)
-@SuppressWarnings({"unused", "static-method"})
-final class Target_java_net_URLClassLoader {
-    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClass = WeakHashMap.class)//
-    private WeakHashMap<Closeable, Void> closeables;
-
-    @Substitute
-    public InputStream getResourceAsStream(String name) throws IOException {
-        return ResourcesHelper.nameToResourceInputStream(name);
-    }
-
-    @Substitute
-    public URL findResource(final String name) {
-        return ResourcesHelper.nameToResourceURL(name);
-    }
-
-    @Substitute
-    public Enumeration<URL> findResources(final String name) {
-        return ResourcesHelper.nameToResources(name);
-    }
-
-    @Substitute
-    @SuppressWarnings("unused")
-    protected Class<?> findClass(final String name) {
-        throw VMError.unsupportedFeature("Loading bytecodes.");
-    }
-}
-
-@TargetClass(className = "jdk.internal.loader.BuiltinClassLoader", onlyWith = JDK11OrLater.class)
-@SuppressWarnings({"unused", "static-method"})
-final class Target_jdk_internal_loader_BuiltinClassLoader {
-
-    @Substitute
-    public URL findResource(String mn, String name) {
-        return ResourcesHelper.nameToResourceURL(name);
-    }
-
-    @Substitute
-    public InputStream findResourceAsStream(String mn, String name) throws IOException {
-        return ResourcesHelper.nameToResourceInputStream(name);
-    }
-
-    @Substitute
-    public URL findResource(String name) {
-        return ResourcesHelper.nameToResourceURL(name);
-    }
-
-    @Substitute
-    public Enumeration<URL> findResources(String name) {
-        return ResourcesHelper.nameToResourceEnumerationURLs(name);
-    }
-
-    @Substitute
-    private List<URL> findMiscResource(String name) {
-        return ResourcesHelper.nameToResourceListURLs(name);
-    }
-
-    @Substitute
-    private URL findResource(Target_java_lang_module_ModuleReference mref, String name) {
-        return ResourcesHelper.nameToResourceURL(name);
-    }
-
-    @Substitute
-    private URL findResourceOnClassPath(String name) {
-        return ResourcesHelper.nameToResourceURL(name);
-    }
-
-    @Substitute
-    private Enumeration<URL> findResourcesOnClassPath(String name) {
-        return ResourcesHelper.nameToResourceEnumerationURLs(name);
-    }
-}
-
-@TargetClass(className = "jdk.internal.loader.Loader", onlyWith = JDK11OrLater.class)
-@SuppressWarnings({"unused", "static-method"})
-final class Target_jdk_internal_loader_Loader {
-
-    @Substitute
-    protected URL findResource(String mn, String name) {
-        return ResourcesHelper.nameToResourceURL(name);
-    }
-
-    @Substitute
-    public URL findResource(String name) {
-        return ResourcesHelper.nameToResourceURL(name);
-    }
-
-    @Substitute
-    public Enumeration<URL> findResources(String name) {
-        return ResourcesHelper.nameToResourceEnumerationURLs(name);
-    }
-
-    @Substitute
-    public URL getResource(String name) {
-        return ResourcesHelper.nameToResourceURL(name);
-    }
-
-    @Substitute
-    public Enumeration<URL> getResources(String name) throws IOException {
-        return ResourcesHelper.nameToResourceEnumerationURLs(name);
-    }
-
-    @Substitute
-    private List<URL> findResourcesAsList(String name) {
-        return ResourcesHelper.nameToResourceListURLs(name);
-    }
-}
-
 @TargetClass(ClassLoader.class)
 @SuppressWarnings("static-method")
 public final class Target_java_lang_ClassLoader {
@@ -356,6 +174,16 @@ public final class Target_java_lang_ClassLoader {
     @Substitute
     private Enumeration<URL> getResources(String name) {
         return ResourcesHelper.nameToResourceEnumerationURLs(name);
+    }
+
+    @Substitute
+    public InputStream getResourceAsStream(String name) {
+        return Resources.createInputStream(name);
+    }
+
+    @Substitute
+    public static InputStream getSystemResourceAsStream(String name) {
+        return Resources.createInputStream(name);
     }
 
     @Substitute

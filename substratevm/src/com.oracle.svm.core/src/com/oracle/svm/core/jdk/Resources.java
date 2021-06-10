@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.jdk;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
@@ -140,11 +141,30 @@ public final class Resources {
     }
 
     public static URL createURL(String resourceName) {
+        if (resourceName == null) {
+            return null;
+        }
         Enumeration<URL> urls = createURLs(resourceName);
         return urls.hasMoreElements() ? urls.nextElement() : null;
     }
 
+    /* Avoid pulling in the URL class when only an InputStream is needed. */
+    public static InputStream createInputStream(String resourceName) {
+        if (resourceName == null) {
+            return null;
+        }
+        ResourceStorageEntry entry = Resources.get(resourceName);
+        if (entry == null) {
+            return null;
+        }
+        List<byte[]> data = entry.getData();
+        return data.isEmpty() ? null : new ByteArrayInputStream(data.get(0));
+    }
+
     public static Enumeration<URL> createURLs(String resourceName) {
+        if (resourceName == null) {
+            return null;
+        }
         ResourceStorageEntry entry = Resources.get(resourceName);
         if (entry == null) {
             return Collections.emptyEnumeration();

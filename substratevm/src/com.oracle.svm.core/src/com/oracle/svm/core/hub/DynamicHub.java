@@ -53,6 +53,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.StringJoiner;
 
+import com.oracle.svm.core.jdk.Resources;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -721,8 +722,10 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @KeepOriginal
     public native URL getResource(String resourceName);
 
-    @KeepOriginal
-    public native InputStream getResourceAsStream(String resourceName);
+    @Substitute
+    public InputStream getResourceAsStream(String resourceName) {
+        return Resources.createInputStream(resolveName(resourceName));
+    }
 
     @KeepOriginal
     private native String resolveName(String resourceName);
