@@ -1240,7 +1240,7 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public LLVMExpressionNode createLandingPad(LLVMExpressionNode allocateLandingPadValue, FrameSlot exceptionValueSlot, boolean cleanup, long[] clauseKinds,
+    public LLVMExpressionNode createLandingPad(FrameSlot exceptionValueSlot, boolean cleanup, long[] clauseKinds,
                     LLVMExpressionNode[] entries, LLVMExpressionNode getStack) {
 
         LLVMLandingpadNode.LandingpadEntryNode[] landingpadEntries = new LLVMLandingpadNode.LandingpadEntryNode[entries.length];
@@ -1255,7 +1255,7 @@ public class BasicNodeFactory implements NodeFactory {
                 throw new IllegalStateException();
             }
         }
-        return LLVMLandingpadNodeGen.create(getStack, allocateLandingPadValue, exceptionValueSlot, cleanup, landingpadEntries);
+        return LLVMLandingpadNodeGen.create(getStack, exceptionValueSlot, cleanup, landingpadEntries);
     }
 
     private static LLVMLandingpadNode.LandingpadEntryNode getLandingpadCatchEntry(LLVMExpressionNode exp) {

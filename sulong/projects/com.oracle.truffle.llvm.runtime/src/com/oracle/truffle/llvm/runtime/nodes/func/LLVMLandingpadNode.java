@@ -65,18 +65,14 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 public abstract class LLVMLandingpadNode extends LLVMExpressionNode {
 
     @Child private LLVMExpressionNode getStack;
-    @Child private LLVMExpressionNode allocateLandingPadValue;
-    @Child private LLVMPointerStoreNode writePointer = LLVMPointerStoreNode.create();
-    @Child private LLVMI32OffsetStoreNode writeI32 = LLVMI32OffsetStoreNode.create();
     @Children private final LandingpadEntryNode[] entries;
 
     private final FrameSlot exceptionSlot;
     private final boolean cleanup;
 
-    public LLVMLandingpadNode(LLVMExpressionNode getStack, LLVMExpressionNode allocateLandingPadValue, FrameSlot exceptionSlot, boolean cleanup,
+    public LLVMLandingpadNode(LLVMExpressionNode getStack, FrameSlot exceptionSlot, boolean cleanup,
                     LandingpadEntryNode[] entries) {
         this.getStack = getStack;
-        this.allocateLandingPadValue = allocateLandingPadValue;
         this.exceptionSlot = exceptionSlot;
         this.cleanup = cleanup;
         this.entries = entries;
