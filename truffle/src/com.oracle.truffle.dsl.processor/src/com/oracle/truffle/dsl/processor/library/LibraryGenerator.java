@@ -682,6 +682,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
 
         if (model.isGenerateAOT()) {
             CodeExecutableElement prepareForAOT = cachedDispatchFirst.add(CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.GenerateAOT_Provider, "prepareForAOT")));
+            GeneratorUtils.addOverride(prepareForAOT);
             removeAbstractModifiers(prepareForAOT);
             builder = prepareForAOT.createBuilder();
 
