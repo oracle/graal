@@ -50,11 +50,18 @@ public final class ModuleSupport {
     public static void openModuleByClass(Class<?> declaringClass, Class<?> accessingClass) {
         Module declaringModule = declaringClass.getModule();
         String packageName = declaringClass.getPackageName();
-        if (accessingClass != null ? declaringModule.isOpen(packageName, accessingClass.getModule()) : declaringModule.isOpen(packageName)) {
+        Module namedAccessingModule = null;
+        if (accessingClass != null) {
+            Module accessingModule = accessingClass.getModule();
+            if (accessingModule.isNamed()) {
+                namedAccessingModule = accessingModule;
+            }
+        }
+        if (namedAccessingModule != null ? declaringModule.isOpen(packageName, namedAccessingModule) : declaringModule.isOpen(packageName)) {
             return;
         }
-        if (accessingClass != null && accessingClass.getModule().isNamed()) {
-            Modules.addOpens(declaringModule, packageName, accessingClass.getModule());
+        if (namedAccessingModule != null) {
+            Modules.addOpens(declaringModule, packageName, namedAccessingModule);
         } else {
             Modules.addOpensToAllUnnamed(declaringModule, packageName);
         }
