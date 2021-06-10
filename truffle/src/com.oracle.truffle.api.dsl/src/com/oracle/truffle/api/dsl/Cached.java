@@ -361,7 +361,7 @@ public @interface Cached {
      * opportunities to the user by showing a warning.
      * <p>
      * Shared caches with reference types must never return <code>null</code> for their initializer,
-     * Because the <code>null</code> value is reserved for the uninitialized state. An
+     * because the <code>null</code> value is reserved for the uninitialized state. An
      * {@link AssertionError} will be thrown at runtime if that is the case. Shared caches with
      * primitive types do not have this restriction, but must not be used in guard expressions.
      *
