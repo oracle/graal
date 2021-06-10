@@ -15,7 +15,7 @@
     microservice_suites:: std.set([$.microservice_benchmarks], keyF=uniq_key),
 
     main_suites:: std.set(self.open_suites + self.spec_suites + self.legacy_suites, keyF=uniq_key),
-    all_suites:: std.set(self.main_suites + self.jmh_micros_suites + self.special_suites, keyF=uniq_key),
+    all_suites:: std.set(self.main_suites + self.jmh_micros_suites + self.special_suites + self.microservice_suites, keyF=uniq_key),
 
     weekly_forks_suites:: self.main_suites,
     profiled_suites::     std.setDiff(self.main_suites, [$.specjbb2015], keyF=uniq_key),
