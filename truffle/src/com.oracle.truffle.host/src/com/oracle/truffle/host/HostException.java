@@ -62,6 +62,11 @@ final class HostException extends AbstractTruffleException {
     Throwable getOriginal() {
         return original;
     }
+    
+    @Override
+    public String toString() {
+        return getClass().getName() + ": " + getOriginal().toString();
+    }
 
     @Override
     public String getMessage() {
