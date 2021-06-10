@@ -432,4 +432,3 @@ public final class ImageClassLoader {
         classLoaderSupport.processAddExportsAndAddOpens(parsedHostedOptions);
     }
 }
-
