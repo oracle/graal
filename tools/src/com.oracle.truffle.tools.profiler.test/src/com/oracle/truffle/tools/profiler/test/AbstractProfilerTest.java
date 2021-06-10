@@ -86,7 +86,11 @@ public abstract class AbstractProfilerTest {
 
     @Before
     public void setup() {
-        context = Context.newBuilder().in(System.in).out(out).err(err).build();
+        try {
+            context = Context.newBuilder().option("engine.CompileImmediately", "false").in(System.in).out(out).err(err).build();
+        } catch (Exception e) {
+            context = Context.newBuilder().in(System.in).out(out).err(err).build();
+        }
     }
 
     protected void eval(Source source) {

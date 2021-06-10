@@ -95,7 +95,13 @@ public class ManualSamplingTest extends AbstractPolyglotTest {
 
     @Before
     public void setup() {
-        setupEnv(Context.newBuilder().build(), new ProxyLanguage() {
+        Context newContext;
+        try {
+            newContext = Context.newBuilder().option("engine.CompileImmediately", "false").build();
+        } catch (Exception e) {
+            newContext = Context.newBuilder().build();
+        }
+        setupEnv(newContext, new ProxyLanguage() {
             @Override
             protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
                 return true;
