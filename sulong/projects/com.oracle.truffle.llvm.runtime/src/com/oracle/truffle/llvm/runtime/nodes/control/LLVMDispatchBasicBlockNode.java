@@ -42,7 +42,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.llvm.runtime.except.LLVMUserException;
-import com.oracle.truffle.llvm.runtime.interop.LLVMForeignCreateUnwindHeaderNode;
+import com.oracle.truffle.llvm.runtime.interop.LLVMManagedExceptionObject;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
@@ -51,6 +51,8 @@ import com.oracle.truffle.llvm.runtime.nodes.base.LLVMFrameNullerUtil;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMInvokeNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMResumeNode;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMUnreachableNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.symbols.LocalVariableDebugInfo;
 
 public abstract class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
@@ -264,8 +266,8 @@ public abstract class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
                     nullDeadSlots(frame, bodyNodes[basicBlockIndex].nullableBefore);
                     continue outer;
                 } catch (AbstractTruffleException e) {
-                    LLVMForeignCreateUnwindHeaderNode createUnwindHeaderNode = insert(LLVMForeignCreateUnwindHeaderNode.create());
-                    frame.setObject(exceptionValueSlot, new LLVMUserException(invokeNode, createUnwindHeaderNode.execute(e)));
+                    LLVMPointer exceptionPointer = LLVMManagedPointer.create(new LLVMManagedExceptionObject(e));
+                    frame.setObject(exceptionValueSlot, new LLVMUserException(invokeNode, exceptionPointer));
                     if (CompilerDirectives.inInterpreter()) {
                         if (invokeNode.getUnwindSuccessor() <= basicBlockIndex) {
                             backEdgeCounter++;
