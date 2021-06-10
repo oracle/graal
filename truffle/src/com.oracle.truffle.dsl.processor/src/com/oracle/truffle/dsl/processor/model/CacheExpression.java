@@ -78,6 +78,7 @@ public final class CacheExpression extends MessageContainer {
     private TypeMirror referenceType;
 
     private LibraryData cachedlibrary;
+    private boolean usedInGuard;
 
     public CacheExpression(Parameter sourceParameter, AnnotationMirror sourceAnnotationMirror) {
         this.sourceParameter = sourceParameter;
@@ -91,6 +92,14 @@ public final class CacheExpression extends MessageContainer {
         copy.uncachedExpression = this.uncachedExpression;
         copy.alwaysInitialized = this.alwaysInitialized;
         return copy;
+    }
+
+    public void setIsUsedInGuard(boolean b) {
+        this.usedInGuard = b;
+    }
+
+    public boolean isUsedInGuard() {
+        return usedInGuard;
     }
 
     public void setLanguageType(TypeMirror languageType) {

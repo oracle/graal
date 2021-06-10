@@ -4697,9 +4697,9 @@ public class FlatNodeGenFactory {
             }
 
             CodeTree cacheReference = createCacheReference(frameState, specialization, cache);
-            if (!cache.isEagerInitialize() && sharedCaches.containsKey(cache) && !ElementUtils.isPrimitive(cache.getParameter().getType())) {
+            if (cache.isUsedInGuard() && !cache.isEagerInitialize() && sharedCaches.containsKey(cache) && !ElementUtils.isPrimitive(cache.getParameter().getType())) {
                 builder.startIf().tree(cacheReference).string(" == null").end().startBlock();
-                String localName = createCacheLocalName(specialization, cache) + "_";
+                String localName = createCacheLocalName(specialization, cache) + "_check";
                 builder.declaration(cache.getParameter().getType(), localName, value);
                 builder.startIf().string(localName).string(" == null").end().startBlock();
                 builder.startThrow().startNew(context.getType(AssertionError.class)).doubleQuote(

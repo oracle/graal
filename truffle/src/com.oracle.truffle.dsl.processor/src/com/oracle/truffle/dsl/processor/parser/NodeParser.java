@@ -2889,6 +2889,8 @@ public final class NodeParser extends AbstractParser<NodeData> {
                     if (handledCaches.contains(cache)) {
                         continue;
                     }
+                    cache.setIsUsedInGuard(true);
+
                     handledCaches.add(cache);
                     if (cache.isWeakReferenceGet()) {
                         newGuards.add(createWeakReferenceGuard(resolver, specialization, cache));
