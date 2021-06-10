@@ -26,8 +26,11 @@
 package com.oracle.svm.reflect.serialize;
 
 import java.io.Serializable;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.nativeimage.Platform;
@@ -108,9 +111,35 @@ public class SerializationSupport implements SerializationRegistry {
 
     private final Map<SerializationLookupKey, Object> constructorAccessors;
 
+    @Platforms(Platform.HOSTED_ONLY.class) private final Map<Class<?>, Boolean> deniedClasses;
+
+    @Platforms(Platform.HOSTED_ONLY.class) private final Set<Class<?>> registeredTargets;
+
     @Platforms(Platform.HOSTED_ONLY.class)
     public SerializationSupport() {
         constructorAccessors = new ConcurrentHashMap<>();
+        deniedClasses = new HashMap<>();
+        registeredTargets = new HashSet<>();
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public boolean isRegistered(Class<?> serializationCandidate) {
+        return registeredTargets.contains(serializationCandidate);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void addRegistered(Class<?> serializationTarget) {
+        registeredTargets.add(serializationTarget);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public Map<Class<?>, Boolean> getDeniedClasses() {
+        return deniedClasses;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void putDeniedClass(Class<?> clazz, boolean denied) {
+        deniedClasses.put(clazz, denied);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
