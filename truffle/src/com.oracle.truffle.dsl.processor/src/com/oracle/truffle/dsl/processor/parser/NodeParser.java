@@ -2893,6 +2893,20 @@ public final class NodeParser extends AbstractParser<NodeData> {
                     if (cache.isWeakReferenceGet()) {
                         newGuards.add(createWeakReferenceGuard(resolver, specialization, cache));
                     }
+                    if (cache.getSharedGroup() != null) {
+                        if (ElementUtils.isPrimitive(cache.getParameter().getType())) {
+                            guard.addError("This guard references a @%s cache with a primitive type. This is not supported. " +
+                                            "Resolve this by either:%n" +
+                                            " - Removing the @%s annotation from the referenced cache.%n" +
+                                            " - Removing the guard.%n" +
+                                            " - Removing the reference from the cache to the guard.",
+                                            getSimpleName(types.Cached_Shared),
+                                            getSimpleName(types.Cached_Shared));
+                        } else {
+                            // generated code will verify that the returned shared value is
+                            // non-null.
+                        }
+                    }
                 }
             }
 
