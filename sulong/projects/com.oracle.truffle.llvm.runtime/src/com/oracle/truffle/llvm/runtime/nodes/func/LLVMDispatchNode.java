@@ -168,6 +168,13 @@ public abstract class LLVMDispatchNode extends LLVMNode {
         return callNode.call(arguments);
     }
 
+    @Specialization(replaces = "doDirectCodeFast", guards = "code.isLLVMIRFunction()")
+    protected static Object doIndirectCode(LLVMFunctionCode code, Object[] arguments,
+                                           @Cached ResolveFunctionNode resolve,
+                                           @Cached("create()") IndirectCallNode callNode) {
+        return callNode.call(code.getLLVMIRFunction(resolve), arguments);
+    }
+
     @Specialization(limit = "INLINE_CACHE_SIZE", replaces = "doDirectCodeFast", guards = {"descriptor == cachedDescriptor", "callNode != null"}, assumptions = "singleContextAssumption()")
     protected static Object doDirectFunction(@SuppressWarnings("unused") LLVMFunctionDescriptor descriptor, Object[] arguments,
                                              @Cached("descriptor") @SuppressWarnings("unused") LLVMFunctionDescriptor cachedDescriptor,
@@ -176,7 +183,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
         return callNode.call(arguments);
     }
 
-    @Specialization(limit = "INLINE_CACHE_SIZE", replaces = {"doDirectCodeFast", "doDirectFunction"}, guards = {"descriptor.getFunctionCode() == cachedFunctionCode", "callNode != null"})
+    @Specialization(limit = "INLINE_CACHE_SIZE", replaces = "doDirectFunction", guards = {"descriptor.getFunctionCode() == cachedFunctionCode", "callNode != null"})
     protected static Object doDirectCode(@SuppressWarnings("unused") LLVMFunctionDescriptor descriptor, Object[] arguments,
                                          @Cached("descriptor.getFunctionCode()") @SuppressWarnings("unused") LLVMFunctionCode cachedFunctionCode,
                                          @Cached("createCallNode(cachedFunctionCode)") DirectCallNode callNode) {
@@ -190,8 +197,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
         return callNode.call(descriptor.getFunctionCode().getLLVMIRFunction(resolve), arguments);
     }
 
-    // TODO: the limit=1 is a DSL bug workaround
-    @Specialization(replaces = {"doDirectCodeFast", "doDirectCode"}, guards = "descriptor.getFunctionCode().isIntrinsicFunction(resolve)", limit = "1")
+    @Specialization(replaces = {"doDirectCodeFast", "doDirectCode"}, guards = "descriptor.getFunctionCode().isIntrinsicFunction(resolve)")
     protected Object doIndirectIntrinsic(LLVMFunctionDescriptor descriptor, Object[] arguments,
                                          @Cached ResolveFunctionNode resolve,
                                          @Cached("create()") IndirectCallNode callNode) {
