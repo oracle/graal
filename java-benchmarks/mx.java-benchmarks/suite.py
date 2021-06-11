@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.287.0",
+  "mxversion" : "5.301.0",
   "name": "java-benchmarks",
 
   "javac.lint.overrides": "none",

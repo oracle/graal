@@ -438,7 +438,7 @@ class DaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.DaCapoBenchmarkSuite, B
     def daCapoSuiteTitle(self):
         return super(DaCapoNativeImageBenchmarkSuite, self).suite_title()
 
-    def benchSuiteName(self):
+    def benchSuiteName(self, bmSuiteArgs=None):
         return 'dacapo'
 
     def daCapoIterations(self):
