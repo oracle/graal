@@ -149,7 +149,7 @@ class RenaissanceNativeImageBenchmarkSuite(mx_java_benchmarks.RenaissanceBenchma
     def name(self):
         return 'renaissance-native-image'
 
-    def benchSuiteName(self):
+    def benchSuiteName(self, bmSuiteArgs=None):
         return 'renaissance'
 
     def renaissance_harness_lib_name(self):
@@ -571,7 +571,7 @@ class ScalaDaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.ScalaDaCapoBenchma
             return lib.get_path(True)
         return None
 
-    def benchSuiteName(self):
+    def benchSuiteName(self, bmSuiteArgs=None):
         return 'scala-dacapo'
 
     def daCapoIterations(self):

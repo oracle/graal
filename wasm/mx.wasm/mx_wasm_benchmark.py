@@ -212,7 +212,9 @@ class WasmBenchmarkSuite(JMHDistBenchmarkSuite):
     def group(self):
         return "Graal"
 
-    def benchSuiteName(self, bmSuiteArgs):
+    def benchSuiteName(self, bmSuiteArgs=None):
+        if bmSuiteArgs is None:
+            bmSuiteArgs = []
         return next(arg for arg in bmSuiteArgs if arg.endswith("BenchmarkSuite"))
 
     def subgroup(self):

@@ -547,9 +547,6 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
     def subgroup(self):
         return "graal-compiler"
 
-    def benchSuiteName(self):
-        return self.name()
-
     def daCapoClasspathEnvVarName(self):
         raise NotImplementedError()
 
