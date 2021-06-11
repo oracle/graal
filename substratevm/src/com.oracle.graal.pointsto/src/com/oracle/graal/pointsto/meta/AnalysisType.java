@@ -404,13 +404,6 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
 
     public static boolean verifyAssignableTypes(BigBang bb) {
         List<AnalysisType> allTypes = bb.getUniverse().getTypes();
-        if (allTypes.size() > 5000) {
-            /*
-             * The verification has quadratic time complexity. With many reachable types, this is
-             * infeasible and slows down image building too much.
-             */
-            return true;
-        }
 
         boolean pass = true;
         for (AnalysisType t1 : allTypes) {
