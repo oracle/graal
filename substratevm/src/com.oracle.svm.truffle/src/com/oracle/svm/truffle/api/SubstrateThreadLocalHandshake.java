@@ -61,7 +61,7 @@ import jdk.vm.ci.meta.SpeculationLog;
 
 public final class SubstrateThreadLocalHandshake extends ThreadLocalHandshake {
 
-    public static final SubstrateForeignCallDescriptor FOREIGN_POLL = SnippetRuntime.findForeignCall(SubstrateThreadLocalHandshake.class, "pollStub", false, TLAB_LOCATIONS);
+    public static final SubstrateForeignCallDescriptor FOREIGN_POLL = SnippetRuntime.findForeignCall(SubstrateThreadLocalHandshake.class, "pollStub", true, TLAB_LOCATIONS);
 
     static final SubstrateThreadLocalHandshake SINGLETON = new SubstrateThreadLocalHandshake();
 
