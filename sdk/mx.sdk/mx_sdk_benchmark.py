@@ -202,9 +202,6 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
         self.parser.add_argument("--workload-configuration", type=str, default=None, help="Path to workload configuration.")
         self.parser.add_argument("--skip-latency-measurements", action='store_true', default=False, help="Determines if the latency measurements should be skipped.")
 
-    def benchSuiteName(self):
-        return self.name()
-
     def benchMicroserviceName(self):
         """
         Returns the microservice name. The convention here is that the benchmark name contains two elements separated
