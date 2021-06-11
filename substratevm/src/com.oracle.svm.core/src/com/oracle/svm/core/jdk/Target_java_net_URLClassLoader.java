@@ -85,7 +85,7 @@ final class Target_jdk_internal_loader_URLClassPath {
     @Substitute
     @TargetElement(name = "getResources", onlyWith = JDK11OrLater.class)
     public Enumeration<Target_jdk_internal_loader_Resource_JDK11OrLater> getResourcesJDK11OrLater(final String name,
-                                                                                                  final boolean check) {
+                    final boolean check) {
         return ResourcesHelper.nameToResources(name);
     }
 
@@ -98,7 +98,7 @@ final class Target_jdk_internal_loader_URLClassPath {
     @Substitute
     @TargetElement(name = "getResources", onlyWith = JDK8OrEarlier.class)
     public Enumeration<Target_sun_misc_Resource_JDK8OrEarlier> getResourcesJDK8OrEarlier(final String name,
-                                                                                         final boolean check) {
+                    final boolean check) {
         return ResourcesHelper.nameToResources(name);
     }
 }
@@ -106,7 +106,7 @@ final class Target_jdk_internal_loader_URLClassPath {
 @TargetClass(URLClassLoader.class)
 @SuppressWarnings({"unused", "static-method"})
 final class Target_java_net_URLClassLoader {
-    @Alias
+    @Alias//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = WeakHashMap.class)//
     private WeakHashMap<Closeable, Void> closeables;
 
