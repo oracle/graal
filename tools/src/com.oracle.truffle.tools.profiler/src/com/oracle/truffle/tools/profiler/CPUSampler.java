@@ -514,6 +514,7 @@ public final class CPUSampler implements Closeable {
 
     /**
      * Get per-context profiling data.
+     *
      * @return a map from {@link TruffleContext} to {@link CPUSamplerData}.
      * @since 21.3.0
      */
@@ -533,6 +534,29 @@ public final class CPUSampler implements Closeable {
             contextToData.put(context, new CPUSamplerData(context, threads, samplerTask.biasStatistic, samplerTask.durationStatistic, samplesTaken.get(context).get(), period));
         }
         return contextToData;
+    }
+
+    /**
+     * The sample bias is a measurement of of how much time passed between requesting a stack sample
+     * and starting the stack traversal. This method provies a summary of said times during the
+     * profiling run.
+     *
+     * @return A {@link LongSummaryStatistics} of the sample bias.
+     * @since 21.3.0
+     */
+    public synchronized LongSummaryStatistics getBiasStatistics() {
+        return samplerTask.biasStatistic;
+    }
+
+    /**
+     * The sample duration is a measurement of how long it took to traverse the stack when taking a
+     * sample. This method provides a summary of said times during the profiling run.
+     *
+     * @return A {@link LongSummaryStatistics} of the sample duration.
+     * @since 21.3.0
+     */
+    public LongSummaryStatistics getSampleDuration() {
+        return samplerTask.durationStatistic;
     }
 
     /**
