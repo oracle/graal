@@ -664,8 +664,8 @@ public final class Meta implements ContextAccess {
         java_lang_reflect_Proxy = knownKlass(Type.java_lang_reflect_Proxy);
 
         // java.beans package only available if java.desktop module is present on JDK9+
-        java_beans_ThreadGroupContext = loadKlassOrNull(Type.java_beans_ThreadGroupContext, StaticObject.NULL);
-        java_beans_Introspector = loadKlassOrNull(Type.java_beans_Introspector, StaticObject.NULL);
+        java_beans_ThreadGroupContext = loadKlassWithBootClassLoader(Type.java_beans_ThreadGroupContext);
+        java_beans_Introspector = loadKlassWithBootClassLoader(Type.java_beans_Introspector);
 
         java_beans_ThreadGroupContext_init = java_beans_ThreadGroupContext != null ? java_beans_ThreadGroupContext.requireDeclaredMethod(Name._init_, Signature._void) : null;
         java_beans_ThreadGroupContext_removeBeanInfo = java_beans_ThreadGroupContext != null ? java_beans_ThreadGroupContext.requireDeclaredMethod(Name.removeBeanInfo, Signature._void_Class) : null;
@@ -717,9 +717,9 @@ public final class Meta implements ContextAccess {
      */
     public void postSystemInit() {
         // java.management
-        java_lang_management_MemoryUsage = loadKlassOrNull(Type.java_lang_management_MemoryUsage, StaticObject.NULL);
+        java_lang_management_MemoryUsage = loadKlassWithBootClassLoader(Type.java_lang_management_MemoryUsage);
 
-        java_lang_management_ThreadInfo = loadKlassOrNull(Type.java_lang_management_ThreadInfo, StaticObject.NULL);
+        java_lang_management_ThreadInfo = loadKlassWithBootClassLoader(Type.java_lang_management_ThreadInfo);
 
         sun_management_ManagementFactory = loadKlassWithBootClassLoaderDiffVersion(Type.sun_management_ManagementFactory, Type.sun_management_ManagementFactoryHelper);
         if (sun_management_ManagementFactory != null) {
@@ -776,9 +776,9 @@ public final class Meta implements ContextAccess {
 
     private ObjectKlass loadKlassWithBootClassLoaderDiffVersion(Symbol<Type> t1, Symbol<Type> t2) {
         if (getJavaVersion().java8OrEarlier()) {
-            return loadKlassOrNull(t1, StaticObject.NULL);
+            return loadKlassWithBootClassLoader(t1);
         } else if (getJavaVersion().java9OrLater()) {
-            return loadKlassOrNull(t2, StaticObject.NULL);
+            return loadKlassWithBootClassLoader(t2);
         } else {
             throw EspressoError.shouldNotReachHere();
         }
@@ -1305,7 +1305,7 @@ public final class Meta implements ContextAccess {
             // polyglot.jar is either on boot class path (JDK 8)
             // or defined by a platform module (JDK 11+)
             if (getJavaVersion().java8OrEarlier()) {
-                EspressoError.guarantee(loadKlassOrNull(Type.com_oracle_truffle_espresso_polyglot_Polyglot, StaticObject.NULL) != null,
+                EspressoError.guarantee(loadKlassWithBootClassLoader(Type.com_oracle_truffle_espresso_polyglot_Polyglot) != null,
                                 "polyglot.jar (Polyglot API) is not accessible");
             } else {
                 EspressoError.guarantee(loadKlassOrNull(Type.com_oracle_truffle_espresso_polyglot_Polyglot, getPlatformClassLoader()) != null,
@@ -1592,6 +1592,11 @@ public final class Meta implements ContextAccess {
     @TruffleBoundary
     private ObjectKlass loadKlassOrNull(Symbol<Type> type, @Host(ClassLoader.class) StaticObject classLoader) {
         return (ObjectKlass) loadKlassOrNull(type, classLoader, StaticObject.NULL);
+    }
+
+    @TruffleBoundary
+    private ObjectKlass loadKlassWithBootClassLoader(Symbol<Type> type) {
+        return loadKlassOrNull(type, StaticObject.NULL);
     }
 
     private StaticObject getPlatformClassLoader() {
