@@ -1404,7 +1404,7 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
      * @param other a node of exactly the same type as this node
      * @return true if the data fields of this object and {@code other} are equal
      */
-    public boolean valueEquals(Node other) {
+    public final boolean valueEquals(Node other) {
         return getNodeClass().dataEquals(this, other);
     }
 
@@ -1413,7 +1413,7 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
      * {@linkplain Successor control-flow} edges.
      *
      */
-    public boolean dataFlowEquals(Node other) {
+    public final boolean dataFlowEquals(Node other) {
         return this == other || nodeClass == other.getNodeClass() && this.valueEquals(other) && nodeClass.equalInputs(this, other);
     }
 
