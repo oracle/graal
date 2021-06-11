@@ -26,8 +26,6 @@ package com.oracle.svm.core.jdk;
 
 import java.util.ArrayList;
 
-import com.oracle.svm.core.thread.JavaContinuations;
-import com.oracle.svm.core.thread.Target_java_lang_Continuation;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.util.DirectAnnotationAccess;
 import org.graalvm.word.Pointer;
@@ -36,6 +34,9 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.stack.JavaStackFrameVisitor;
 import com.oracle.svm.core.stack.JavaStackWalker;
+import com.oracle.svm.core.thread.JavaContinuations;
+import com.oracle.svm.core.thread.Target_java_lang_Continuation;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -169,6 +170,12 @@ public class StackTraceUtils {
 
         return true;
     }
+
+    public static ClassLoader latestUserDefinedClassLoader(Pointer startSP) {
+        GetLatestUserDefinedClassLoaderVisitor visitor = new GetLatestUserDefinedClassLoaderVisitor();
+        JavaStackWalker.walkCurrentThread(startSP, visitor);
+        return visitor.result;
+    }
 }
 
 class BuildStackTraceVisitor extends JavaStackFrameVisitor {
@@ -272,5 +279,41 @@ class GetClassContextVisitor extends JavaStackFrameVisitor {
             trace.add(frameInfo.getSourceClass());
         }
         return true;
+    }
+}
+
+class GetLatestUserDefinedClassLoaderVisitor extends JavaStackFrameVisitor {
+    ClassLoader result;
+
+    GetLatestUserDefinedClassLoaderVisitor() {
+    }
+
+    @Override
+    public boolean visitFrame(FrameInfoQueryResult frameInfo) {
+        if (!StackTraceUtils.shouldShowFrame(frameInfo, true, true, false)) {
+            // Skip internal frames.
+            return true;
+        }
+
+        Class<?> clazz = frameInfo.getSourceClass();
+        if (Target_jdk_internal_reflect_MethodAccessorImpl.class.isAssignableFrom(clazz) || Target_jdk_internal_reflect_ConstructorAccessorImpl.class.isAssignableFrom(clazz)) {
+            // Skip certain reflection-related frames.
+            return true;
+        }
+
+        ClassLoader classLoader = clazz.getClassLoader();
+        if (classLoader == null || JDKSpecificClassLoaders.isExtensionOrPlatformLoader(classLoader)) {
+            // Skip bootstrap and platform/extension class loader.
+            return true;
+        }
+
+        result = classLoader;
+        return false;
+    }
+}
+
+class JDKSpecificClassLoaders {
+    public static boolean isExtensionOrPlatformLoader(@SuppressWarnings("unused") ClassLoader classLoader) {
+        throw VMError.shouldNotReachHere("Replaced with a JDK-specific implementation");
     }
 }
