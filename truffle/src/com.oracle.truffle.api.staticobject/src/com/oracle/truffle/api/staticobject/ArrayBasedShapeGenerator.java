@@ -98,26 +98,6 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
     @CompilationFinal private int objectArrayOffset;
     @CompilationFinal private int shapeOffset;
 
-    static {
-        if (TruffleOptions.AOT) {
-            try {
-                // When this class will be in truffle we will remove this code and introduce a
-                // SubstrateVM feature that locates these classes at image build time.
-                Class<?> defaultStorageSuperClass = Class.forName("com.oracle.truffle.espresso.runtime.StaticObject");
-                Class<?> defaultStorageFactoryInterface = Class.forName("com.oracle.truffle.espresso.runtime.StaticObject$StaticObjectFactory");
-                Class<?> defaultStorageClass = Class.forName("com.oracle.truffle.espresso.runtime.StaticObject$DefaultArrayBasedStaticObject");
-                Class<?> defaultFactoryClass = Class.forName("com.oracle.truffle.espresso.runtime.StaticObject$DefaultArrayBasedStaticObjectFactory");
-                // The offsets of the byte and object arrays cannot be computed at image build time.
-                // They would refer to a Java object, not to a Native object.
-                ArrayBasedShapeGenerator<?> sg = new ArrayBasedShapeGenerator<>(defaultStorageClass, defaultFactoryClass, UNINITIALIZED_NATIVE_OFFSET, UNINITIALIZED_NATIVE_OFFSET,
-                                UNINITIALIZED_NATIVE_OFFSET);
-                generatorCache.putIfAbsent(Pair.create(defaultStorageSuperClass, defaultStorageFactoryInterface), sg);
-            } catch (ClassNotFoundException e) {
-                throw new RuntimeException(e);
-            }
-        }
-    }
-
     private ArrayBasedShapeGenerator(Class<?> generatedStorageClass, Class<? extends T> generatedFactoryClass) {
         this(
                         generatedStorageClass,

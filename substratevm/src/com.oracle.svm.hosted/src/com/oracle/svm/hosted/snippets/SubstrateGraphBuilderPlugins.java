@@ -1139,7 +1139,7 @@ public class SubstrateGraphBuilderPlugins {
         return result;
     }
 
-    private static void checkParameterUsage(boolean condition, GraphBuilderContext b, ResolvedJavaMethod targetMethod, int parameterIndex, String message) {
+    public static void checkParameterUsage(boolean condition, GraphBuilderContext b, ResolvedJavaMethod targetMethod, int parameterIndex, String message) {
         if (condition) {
             return;
         }
