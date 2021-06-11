@@ -911,6 +911,14 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             if (invocationPlugins == null || invocationPlugins.isEmpty()) {
                 return false;
             }
+            if (!callTarget.invokeKind().isDirect()) {
+                /*
+                 * Like method inlining, method intrinsification using InvocationPlugin can only
+                 * handle direct calls. Indirect calls can only be intrinsified by a NodePlugin (and
+                 * currently only during bytecode parsing and not during partial evaluation).
+                 */
+                return false;
+            }
 
             Invoke invoke = invokeData.invoke;
 
