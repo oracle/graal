@@ -269,7 +269,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
         checkEagerInitialization(clazz);
 
         if (!GraalUnsafeAccess.shouldBeInitialized(clazz)) {
-            throw UserError.abort("The class %1$s has already been initialized; it is too late to register %1$s for build-time initialization (%2$s). %3$s",
+            throw UserError.abort("The class %1$s has already been initialized (%2$s); it is too late to register %1$s for build-time initialization. %3$s",
                             clazz.getTypeName(), reason,
                             classInitializationErrorMessage(clazz, "Try avoiding this conflict by avoiding to initialize the class that caused initialization of " + clazz.getTypeName() +
                                             " or by not marking " + clazz.getTypeName() + " for build-time initialization."));
@@ -307,21 +307,12 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
 
             StackTraceElement[] trace = initializedClasses.get(clazz);
             String culprit = null;
-            boolean containsLambdaMetaFactory = false;
             for (StackTraceElement stackTraceElement : trace) {
                 if (stackTraceElement.getMethodName().equals("<clinit>")) {
                     culprit = stackTraceElement.getClassName();
                 }
-                if (stackTraceElement.getClassName().equals("java.lang.invoke.LambdaMetafactory")) {
-                    containsLambdaMetaFactory = true;
-                }
             }
-            if (containsLambdaMetaFactory) {
-                return clazz.getTypeName() + " was initialized through a lambda (https://github.com/oracle/graal/issues/1218). Try marking " + clazz.getTypeName() +
-                                " for build-time initialization with " + SubstrateOptionsParser.commandArgument(
-                                                ClassInitializationOptions.ClassInitialization, clazz.getTypeName(), "initialize-at-build-time") +
-                                ".";
-            } else if (culprit != null) {
+            if (culprit != null) {
                 return culprit + " caused initialization of this class with the following trace: \n" + classInitializationTrace(clazz);
             } else {
                 return clazz.getTypeName() + " has been initialized through the following trace:\n" + classInitializationTrace(clazz);
@@ -366,22 +357,16 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
     public String reasonForClass(Class<?> clazz) {
         InitKind initKind = classInitKinds.get(clazz);
         String reason = classInitializationConfiguration.lookupReason(clazz.getTypeName());
-        if (reason != null) {
+        if (initKind == InitKind.BUILD_TIME && provenSafeEarly.contains(clazz)) {
+            return "class proven as side-effect free before analysis";
+        } else if (initKind == InitKind.BUILD_TIME && provenSafeLate.contains(clazz)) {
+            return "class proven as side-effect free after analysis";
+        } else if (initKind.isRunTime()) {
+            return "classes are initialized at run time by default";
+        } else if (reason != null) {
             return reason;
         } else {
-            if (initKind == InitKind.BUILD_TIME) {
-                if (provenSafeEarly.contains(clazz)) {
-                    return "class proven as side-effect free before analysis";
-                } else if (provenSafeLate.contains(clazz)) {
-                    return "class proven as side-effect free after analysis";
-                } else {
-                    throw VMError.shouldNotReachHere(clazz.getTypeName() + " is initialized at build time but not specified. It must be proven as safe.");
-                }
-            } else if (initKind.isRunTime()) {
-                return "classes are initialized at run time by default";
-            } else {
-                throw VMError.shouldNotReachHere("Must be either proven or specified");
-            }
+            throw VMError.shouldNotReachHere("Must be either proven or specified");
         }
     }
 

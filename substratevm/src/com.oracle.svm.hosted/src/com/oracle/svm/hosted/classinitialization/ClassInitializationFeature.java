@@ -196,7 +196,7 @@ public class ClassInitializationFeature implements GraalFeature {
 
             classInitializationSupport.setProvenSafeLate(initializeSafeDelayedClasses(initGraph));
             if (ClassInitializationOptions.PrintClassInitialization.getValue()) {
-                reportInitiazlizerDependencies(universe, initGraph, path);
+                reportInitializerDependencies(universe, initGraph, path);
                 reportClassInitializationInfo(path);
             }
 
@@ -206,7 +206,7 @@ public class ClassInitializationFeature implements GraalFeature {
         }
     }
 
-    private static void reportInitiazlizerDependencies(AnalysisUniverse universe, TypeInitializerGraph initGraph, String path) {
+    private static void reportInitializerDependencies(AnalysisUniverse universe, TypeInitializerGraph initGraph, String path) {
         ReportUtils.report("class initialization dependencies", path, "class_initialization_dependencies", "dot", writer -> {
             writer.println("digraph class_initializer_dependencies {");
             universe.getTypes().stream()
