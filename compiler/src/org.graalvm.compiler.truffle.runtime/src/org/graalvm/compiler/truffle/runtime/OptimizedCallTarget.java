@@ -35,6 +35,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Supplier;
 
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.nodes.OnStackReplaceableNode;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
@@ -130,6 +131,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     private static final WeakReference<OptimizedDirectCallNode> MULTIPLE_CALLS = null;
     private static final String SPLIT_LOG_FORMAT = "[poly-event] %-70s %s";
     private static final int MAX_PROFILED_ARGUMENTS = 256;
+    // Note: must be a power of 2.
+    private static final int OSR_POLL_INTERVAL = 256;
 
     /** The AST to be executed when this call target is called. */
     private final RootNode rootNode;
@@ -1053,9 +1056,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     private static final class OSRState {
         private final OnStackReplaceableNode osrNode;
         private final EconomicMap<Integer, OptimizedCallTarget> osrCompilations;
-        // TODO: should any of these be volatile?
-        private boolean osrEnabled;
         private final int osrThreshold;
+        // TODO: check whether these fields need to be volatile.
+        private volatile boolean osrEnabled;
         private int backEdgeCount;
 
         OSRState(OnStackReplaceableNode osrNode, boolean osrEnabled, int osrThreshold) {
@@ -1070,12 +1073,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             if (!osrEnabled) {
                 return null;
             }
-
             if (!incrementAndCheck()) {
                 return null;
             }
-
-            // TODO: add a polling frequency so we don't poll compilation on every back edge
             OptimizedCallTarget osrTarget = osrCompilations.get(target);
             if (osrTarget == null) {
                 synchronized (this) {
@@ -1087,22 +1087,30 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                 }
             }
             if (osrTarget != null && !osrTarget.isCompiling()) {
-                // TODO: check if frame escaped. if so, abort OSR (do we need to invalidate the target
-                // if this happens?)
                 if (osrTarget.isValid()) {
-                    return osrTarget.call(parentFrame);
+                    if (!GraalRuntimeAccessor.FRAME.getMaterializeCalled(parentFrame.getFrameDescriptor())) {
+                        return osrTarget.call(parentFrame);
+                    }
+                    // We cannot perform OSR if the frame is materialized. The original and OSR frames could get
+                    // out of sync, which could lead to inconsistent views of the program state.
+                    return null;
                 }
                 invalidateOSRTarget(target, "OSR compilation failed or cancelled");
             }
             return null;
         }
 
-        // Increment back-edge count and check whether the new count exceeds the threshold.
         private boolean incrementAndCheck() {
+            /*
+             * Increment back edge count. Once the compilation threshold is reached, return true after every
+             * OSR_POLL_INTERVAL back-edges (polling compilation rather than checking after every loop iteration).
+             *
+             * This method is thread-safe, but could under-count.
+             */
             int newBackEdgeCount = backEdgeCount;
             newBackEdgeCount = (newBackEdgeCount == Integer.MAX_VALUE) ? newBackEdgeCount : newBackEdgeCount+1;
             backEdgeCount = newBackEdgeCount;
-            return newBackEdgeCount >= osrThreshold;
+            return newBackEdgeCount >= osrThreshold && (newBackEdgeCount & (OSR_POLL_INTERVAL - 1)) == 0;
         }
 
         private synchronized OptimizedCallTarget requestOSR(TruffleLanguage<?> language, OnStackReplaceableNode osrNode, int target) {
