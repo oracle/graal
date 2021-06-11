@@ -68,7 +68,12 @@ public enum InitKind {
         } else if (this == RERUN) {
             return name -> support.rerunInitialization(name, reason);
         } else {
-            return name -> support.initializeAtBuildTime(name, reason);
+            return name -> {
+                if (name.equals("")) {
+                    System.err.println("--initialize-at-build-time without arguments has been deprecated and will be removed in GraalVM 22.0.");
+                }
+                support.initializeAtBuildTime(name, reason);
+            };
         }
     }
 
