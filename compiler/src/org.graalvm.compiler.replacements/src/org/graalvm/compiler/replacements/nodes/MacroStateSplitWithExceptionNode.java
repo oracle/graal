@@ -143,16 +143,25 @@ public abstract class MacroStateSplitWithExceptionNode extends WithExceptionNode
         return LocationIdentity.any();
     }
 
-    /**
-     * Create invoke. This node is not modified. The exception edge is not yet set.
-     */
     protected InvokeWithExceptionNode createInvoke() {
+        return createInvoke(this);
+    }
+
+    /**
+     * Creates an invoke for the {@link #getTargetMethod()} associated with this node. The exception
+     * edge of the result is not set by this function. This node is not modified.
+     *
+     * @param oldResult represents the result of this node in the {@link #stateAfter()}. Usually, it
+     *            is {@code this}, but if this node has already been replaced it might be a
+     *            different one.
+     */
+    public InvokeWithExceptionNode createInvoke(Node oldResult) {
         MethodCallTargetNode callTarget = graph().add(new MethodCallTargetNode(invokeKind, targetMethod, getArguments().toArray(new ValueNode[arguments.size()]), returnStamp, null));
         InvokeWithExceptionNode invoke = graph().add(new InvokeWithExceptionNode(callTarget, null, bci));
         if (stateAfter() != null) {
             invoke.setStateAfter(stateAfter().duplicate());
             if (getStackKind() != JavaKind.Void) {
-                invoke.stateAfter().replaceFirstInput(this, invoke);
+                invoke.stateAfter().replaceFirstInput(oldResult, invoke);
             }
         }
         return invoke;
