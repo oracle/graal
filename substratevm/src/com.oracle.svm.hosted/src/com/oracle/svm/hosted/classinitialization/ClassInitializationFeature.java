@@ -73,6 +73,7 @@ import com.oracle.svm.hosted.meta.MethodPointer;
 @AutomaticFeature
 public class ClassInitializationFeature implements GraalFeature {
 
+    public static final String REPORTS_PATH = Paths.get(Paths.get(SubstrateOptions.Path.getValue()).toString(), "reports").toAbsolutePath().toString();
     private ClassInitializationSupport classInitializationSupport;
     private AnalysisUniverse universe;
     private AnalysisMetaAccess metaAccess;
@@ -188,7 +189,7 @@ public class ClassInitializationFeature implements GraalFeature {
         try (Timer.StopTimer ignored = new Timer(imageName, "(clinit)").start()) {
             classInitializationSupport.setUnsupportedFeatures(null);
 
-            String path = Paths.get(Paths.get(SubstrateOptions.Path.getValue()).toString(), "reports").toAbsolutePath().toString();
+            String path = REPORTS_PATH;
             assert classInitializationSupport.checkDelayedInitialization();
 
             TypeInitializerGraph initGraph = new TypeInitializerGraph(universe);

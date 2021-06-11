@@ -511,10 +511,11 @@ class TestClassInitializationMustBeSafeEarlyFeature implements Feature {
 }
 
 /**
- * In addition to the initialization checks in {@link TestClassInitializationMustBeSafeEarlyFeature},
- * suffixes MustBeSafe and MustBeDelayed are parsed by an external script in the tests after the
- * image is built. Every class that ends with `MustBeSafe` should be eagerly initialized and every
- * class that ends with `MustBeDelayed` should be initialized at runtime.
+ * In addition to the initialization checks in
+ * {@link TestClassInitializationMustBeSafeEarlyFeature}, suffixes MustBeSafe and MustBeDelayed are
+ * parsed by an external script in the tests after the image is built. Every class that ends with
+ * `MustBeSafe` should be eagerly initialized and every class that ends with `MustBeDelayed` should
+ * be initialized at runtime.
  */
 public class TestClassInitializationMustBeSafeEarly {
     static int pure() {

@@ -96,7 +96,7 @@ public final class RuntimeClassInitialization {
     public static void initializeAtRunTime(Class<?>... classes) {
         StackTraceElement[] stacktrace = Thread.currentThread().getStackTrace();
         for (Class<?> aClass : classes) {
-            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).initializeAtRunTime(aClass, classReason(stacktrace, aClass.getSimpleName(), ".class'"));
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).initializeAtRunTime(aClass, classReason(stacktrace, aClass.getSimpleName() + ".class'"));
         }
     }
 
@@ -115,7 +115,7 @@ public final class RuntimeClassInitialization {
     public static void initializeAtBuildTime(Class<?>... classes) {
         StackTraceElement[] stacktrace = Thread.currentThread().getStackTrace();
         for (Class<?> aClass : classes) {
-            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).initializeAtBuildTime(aClass, classReason(stacktrace, aClass.getSimpleName(), ".class'"));
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).initializeAtBuildTime(aClass, classReason(stacktrace, aClass.getSimpleName() + ".class'"));
         }
     }
 
@@ -135,7 +135,7 @@ public final class RuntimeClassInitialization {
     public static void initializeAtRunTime(String... packages) {
         StackTraceElement[] stacktrace = Thread.currentThread().getStackTrace();
         for (String aPackage : packages) {
-            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).initializeAtRunTime(aPackage, classReason(stacktrace, aPackage, "'"));
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).initializeAtRunTime(aPackage, classReason(stacktrace, aPackage));
         }
     }
 
@@ -154,7 +154,7 @@ public final class RuntimeClassInitialization {
     public static void initializeAtBuildTime(String... packages) {
         StackTraceElement[] stacktrace = Thread.currentThread().getStackTrace();
         for (String aPackage : packages) {
-            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).initializeAtBuildTime(aPackage, classReason(stacktrace, aPackage, "'"));
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).initializeAtBuildTime(aPackage, classReason(stacktrace, aPackage));
         }
     }
 
@@ -163,8 +163,8 @@ public final class RuntimeClassInitialization {
         return e.getClassName() + "." + e.getMethodName();
     }
 
-    private static String classReason(StackTraceElement[] stacktrace, String simpleName, String s) {
-        return "from feature " + getCaller(stacktrace) + " with '" + simpleName + s;
+    private static String classReason(StackTraceElement[] stacktrace, String simpleName) {
+        return "from feature " + getCaller(stacktrace) + " with '" + simpleName + "'";
     }
 
     private RuntimeClassInitialization() {
