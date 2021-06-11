@@ -47,12 +47,12 @@ import com.oracle.truffle.tck.TruffleRunner.Inject;
 public final class NativeMemsetTest extends InteropTestBase {
 
     protected static Object testLibrary;
-    
+
     @BeforeClass
     public static void loadTestBitcode() {
         testLibrary = loadTestBitcodeInternal("nativeMemset.c");
     }
-    
+
     private static StructObject makePoint() {
         Map<String, Object> point = new HashMap<>();
         point.put("member0", "");
@@ -69,6 +69,7 @@ public final class NativeMemsetTest extends InteropTestBase {
     }
 
     @Test
+    @SuppressWarnings("static-method")
     public void memset(@Inject(DoMemsetNode.class) CallTarget doMemset) {
         StructObject object = makePoint();
 
