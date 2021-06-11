@@ -1108,8 +1108,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         private synchronized OptimizedCallTarget requestOSR(TruffleLanguage<?> language, OnStackReplaceableNode osrNode, int target) {
             assert !osrCompilations.containsKey(target);
             OptimizedCallTarget callTarget = GraalTruffleRuntime.getRuntime().createOSRCallTarget(new OSRRootNode(language, osrNode, target));
-            // TODO: do we want last tier compilation?
-            callTarget.compile(false);
+            // TODO: do we want first or last tier compilation?
+            callTarget.compile(true);
             if (callTarget.compilationFailed) {
                 osrEnabled = false;
                 return null;
@@ -1146,9 +1146,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     private static final class OSRRootNode extends RootNode {
         // TODO: do we want this marked @Child?
         private final OnStackReplaceableNode onStackReplaceableNode;
-        @CompilationFinal private final Object target;
+        private final int target;
 
-        OSRRootNode(TruffleLanguage<?> language, OnStackReplaceableNode onStackReplaceableNode, Object target) {
+        OSRRootNode(TruffleLanguage<?> language, OnStackReplaceableNode onStackReplaceableNode, int target) {
             super(language, onStackReplaceableNode.getRootNode().getFrameDescriptor());
             this.onStackReplaceableNode = onStackReplaceableNode;
             this.target = target;

@@ -80,7 +80,7 @@ public final class IntrinsicSubstitutorNode extends EspressoMethodNode {
     }
 
     @Override
-    public Object doOSR(VirtualFrame innerFrame, Frame parentFrame, Object target) {
+    public Object doOSR(VirtualFrame innerFrame, Frame parentFrame, int target) {
         throw new UnsupportedOperationException("OSR is not supported on intrinsic nodes");
     }
 

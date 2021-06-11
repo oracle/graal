@@ -19,7 +19,7 @@ public abstract class OnStackReplaceableNode extends ExecutableNode implements R
         super(language);
     }
 
-    abstract public Object doOSR(VirtualFrame innerFrame, Frame parentFrame, Object target);
+    abstract public Object doOSR(VirtualFrame innerFrame, Frame parentFrame, int target);
 
     /**
      * Reports a back edge to the target location. This information could be used to trigger

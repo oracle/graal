@@ -408,22 +408,9 @@ public final class BytecodeNode extends EspressoMethodNode {
     private final LivenessAnalysis livenessAnalysis;
 
     @Override
-    public Object doOSR(VirtualFrame innerFrame, Frame parentFrame, Object target) {
-        FrameDescriptor parentDescriptor = parentFrame.getFrameDescriptor();
-        FrameDescriptor innerDescriptor = innerFrame.getFrameDescriptor();
-        try {
-            // TODO: modifying the frame blocks compilation. how can we set up the frame descriptor in advance?
-            FrameSlot innerPrimitivesSlot = innerDescriptor.addFrameSlot("primitives", FrameSlotKind.Object);
-            FrameSlot innerRefsSlot = innerDescriptor.addFrameSlot("refs", FrameSlotKind.Object);
-            FrameSlot innerBciSlot = innerDescriptor.addFrameSlot("bci", FrameSlotKind.Int);
-            innerFrame.setObject(innerPrimitivesSlot, parentFrame.getObject(primitivesSlot));
-            innerFrame.setObject(innerRefsSlot, parentFrame.getObject(refsSlot));
-            innerFrame.setInt(innerBciSlot, parentFrame.getInt(bciSlot));
-        } catch (FrameSlotTypeException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw EspressoError.shouldNotReachHere(e);
-        }
-        return executeOSR(innerFrame, (Integer) target);
+    public Object doOSR(VirtualFrame innerFrame, Frame parentFrame, int target) {
+        initializeOSRBody(innerFrame, parentFrame, target);
+        return executeBodyFromBCI(innerFrame, target);
     }
 
     private static final class EspressoOSRReturnException extends ControlFlowException {
@@ -663,23 +650,29 @@ public final class BytecodeNode extends EspressoMethodNode {
 
     @Override
     void initializeBody(VirtualFrame frame) {
-        initializeBody(frame, false, 0);
+        int slotCount = getMethod().getMaxLocals() + getMethod().getMaxStackSize();
+        CompilerAsserts.partialEvaluationConstant(slotCount);
+        long[] primitives = new long[slotCount];
+        Object[] refs = new Object[slotCount];
+        frame.setObject(primitivesSlot, primitives);
+        frame.setObject(refsSlot, refs);
+        initArguments(frame.getArguments(), primitives, refs);
+        // initialize the bci slot
+        setBCI(frame, 0);
     }
 
     @ExplodeLoop
-    private void initializeBody(VirtualFrame frame, boolean isOSR, int startBCI) {
-        CompilerAsserts.partialEvaluationConstant(isOSR);
+    void initializeOSRBody(VirtualFrame frame, Frame parentFrame, int startBCI) {
         CompilerAsserts.partialEvaluationConstant(startBCI);
         int slotCount = getMethod().getMaxLocals() + getMethod().getMaxStackSize();
         CompilerAsserts.partialEvaluationConstant(slotCount);
         long[] primitives = new long[slotCount];
         Object[] refs = new Object[slotCount];
-
-        Object[] arguments = frame.getArguments();
-        if (isOSR) {
-            assert arguments.length == 2;
-            long[] callerPrimitives = (long[]) arguments[0];
-            Object[] callerRefs = (Object[]) arguments[1];
+        frame.setObject(primitivesSlot, primitives);
+        frame.setObject(refsSlot, refs);
+        try {
+            long[] callerPrimitives = (long[]) parentFrame.getObject(primitivesSlot);
+            Object[] callerRefs = (Object[]) parentFrame.getObject(refsSlot);
             assert callerPrimitives.length == slotCount && callerRefs.length == slotCount;
             for (int i = 0; i < slotCount; i++) {
                 // copy locals into our frame
@@ -688,23 +681,16 @@ public final class BytecodeNode extends EspressoMethodNode {
                 // we will not continue executing in the caller, so free up the locals
                 EspressoFrame.clear(callerPrimitives, callerRefs, i);
             }
-        } else {
-            initArguments(arguments, primitives, refs);
+        } catch (FrameSlotTypeException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw EspressoError.shouldNotReachHere(e);
         }
-        frame.setObject(primitivesSlot, primitives);
-        frame.setObject(refsSlot, refs);
-        // initialize the bci slot
         setBCI(frame, startBCI);
     }
 
     @Override
     Object executeBody(VirtualFrame frame) {
         return executeBodyFromBCI(frame, 0);
-    }
-
-    Object executeOSR(VirtualFrame frame, int startBCI) {
-        initializeBody(frame, true, startBCI);
-        return executeBodyFromBCI(frame, startBCI);
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
