@@ -81,7 +81,7 @@ public class Target_jdk_internal_module_SystemModuleFinders {
             }
         }
         if (!extensionPaths.isEmpty()) {
-            return  meta.java_nio_file_Path.allocateReferenceArray(extensionPaths.size(), extensionPaths::get);
+            return meta.java_nio_file_Path.allocateReferenceArray(extensionPaths.size(), extensionPaths::get);
         } else {
             return StaticObject.NULL;
         }
