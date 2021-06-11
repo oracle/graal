@@ -509,7 +509,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> removeBeanInfo = StaticSymbols.putName("removeBeanInfo");
 
         public static final Symbol<Name> platformClassLoader = StaticSymbols.putName("platformClassLoader");
-        public static final Symbol<Name> platformModules = StaticSymbols.putName("platformModules");
+        public static final Symbol<Name> bootModules = StaticSymbols.putName("bootModules");
         public static final Symbol<Name> descriptor = StaticSymbols.putName("descriptor");
         public static final Symbol<Name> ofSystem = StaticSymbols.putName("ofSystem");
     }

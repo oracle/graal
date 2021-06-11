@@ -38,9 +38,9 @@ public class Target_jdk_internal_module_ModuleLoaderMap {
     public static final String POLYGLOT_MODULE_NAME = "espresso.polyglot";
 
     @Substitution
-    public static @Host(Set.class) StaticObject platformModules(
+    public static @Host(Set.class) StaticObject bootModules(
                     // Checkstyle: stop
-                    @GuestCall(target = "jdk_internal_module_ModuleLoaderMap_platformModules", original = true) DirectCallNode original,
+                    @GuestCall(target = "jdk_internal_module_ModuleLoaderMap_bootModules", original = true) DirectCallNode original,
                     // Checkstyle: resume
                     @InjectMeta Meta meta) {
         // fetch original platform modules set

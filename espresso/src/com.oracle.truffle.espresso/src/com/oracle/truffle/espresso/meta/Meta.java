@@ -688,7 +688,7 @@ public final class Meta implements ContextAccess {
 
         if (getJavaVersion().java9OrLater()) {
             jdk_internal_module_ModuleLoaderMap = knownKlass(Type.jdk_internal_module_ModuleLoaderMap);
-            jdk_internal_module_ModuleLoaderMap_platformModules = jdk_internal_module_ModuleLoaderMap.requireDeclaredMethod(Name.platformModules, Signature.java_util_Set);
+            jdk_internal_module_ModuleLoaderMap_bootModules = jdk_internal_module_ModuleLoaderMap.requireDeclaredMethod(Name.bootModules, Signature.java_util_Set);
             jdk_internal_module_SystemModuleFinders = knownKlass(Type.jdk_internal_module_SystemModuleFinders);
             jdk_internal_module_SystemModuleFinders_of = jdk_internal_module_SystemModuleFinders.requireDeclaredMethod(Name.of, Signature.ModuleFinder_SystemModules);
             jdk_internal_module_SystemModuleFinders_ofSystem = jdk_internal_module_SystemModuleFinders.requireDeclaredMethod(Name.ofSystem, Signature.ModuleFinder);
@@ -698,7 +698,7 @@ public final class Meta implements ContextAccess {
             java_lang_module_ModuleFinder_compose = java_lang_module_ModuleFinder.requireDeclaredMethod(Name.compose, Signature.ModuleFinder_ModuleFinder_array);
         } else {
             jdk_internal_module_ModuleLoaderMap = null;
-            jdk_internal_module_ModuleLoaderMap_platformModules = null;
+            jdk_internal_module_ModuleLoaderMap_bootModules = null;
             jdk_internal_module_SystemModuleFinders = null;
             jdk_internal_module_SystemModuleFinders_of = null;
             jdk_internal_module_SystemModuleFinders_ofSystem = null;
@@ -1188,7 +1188,7 @@ public final class Meta implements ContextAccess {
 
     // Module system
     public final ObjectKlass jdk_internal_module_ModuleLoaderMap;
-    public final Method jdk_internal_module_ModuleLoaderMap_platformModules;
+    public final Method jdk_internal_module_ModuleLoaderMap_bootModules;
     public final ObjectKlass jdk_internal_module_SystemModuleFinders;
     public final Method jdk_internal_module_SystemModuleFinders_of;
     public final Method jdk_internal_module_SystemModuleFinders_ofSystem;
