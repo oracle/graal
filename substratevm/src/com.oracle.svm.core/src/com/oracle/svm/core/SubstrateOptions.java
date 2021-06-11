@@ -563,4 +563,13 @@ public class SubstrateOptions {
             return getValueOrDefault(values.getMap());
         }
     };
+
+    @Option(help = "Enable Java Flight Recorder.")//
+    public static final RuntimeOptionKey<Boolean> FlightRecorder = new RuntimeOptionKey<>(false);
+
+    @Option(help = "Start flight recording with options.")//
+    public static final RuntimeOptionKey<String> StartFlightRecording = new RuntimeOptionKey<>("");
+
+    @Option(help = "file:doc-files/FlightRecorderLoggingHelp.txt")//
+    public static final RuntimeOptionKey<String> FlightRecorderLogging = new RuntimeOptionKey<>("all=warning");
 }
