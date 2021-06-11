@@ -955,13 +955,22 @@ public abstract class Accessor {
          * on-stack replacement (OSR) for an {@link OnStackReplaceableNode}.
          *
          * @param osrNode the node which can be on-stack replaced
-         * @param parentFrame frame to be passed for OSR
-         * @param target target location of the jump (e.g., bytecode index)
+         * @param parentFrame the frame to be passed for OSR
+         * @param target the target location of the jump (e.g., bytecode index)
          * @param language the language of the node
          * @return result if OSR was performed, or {@code null}.
          */
         public abstract Object onOSRBackEdge(OnStackReplaceableNode osrNode, VirtualFrame parentFrame, int target, TruffleLanguage<?> language);
 
+        /**
+         * Reports that a child node of an {@link OnStackReplaceableNode} was replaced. Allows the runtime system to
+         * invalidate any OSR targets it has created.
+         *
+         * @param osrNode the node whose child was replaced
+         * @param oldNode the replaced node
+         * @param newNode the replacement node
+         * @param reason the replacement reason
+         */
         public abstract void onOSRNodeReplaced(OnStackReplaceableNode osrNode, Node oldNode, Node newNode, CharSequence reason);
 
         /**
