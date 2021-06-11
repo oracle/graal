@@ -202,7 +202,19 @@ public final class Target_java_lang_Thread {
         contextClassLoader = ClassLoader.getSystemClassLoader();
     }
 
-    @Uninterruptible(reason = "called from uninterruptible code", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Substitute
+    public long getId() {
+        return tid;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Substitute
+    public boolean isDaemon() {
+        return daemon;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Substitute
     @TargetElement(onlyWith = NotLoomJDK.class)
     static Thread currentThread() {

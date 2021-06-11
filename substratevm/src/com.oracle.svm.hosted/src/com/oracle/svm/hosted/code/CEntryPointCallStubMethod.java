@@ -511,7 +511,7 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
             ResolvedJavaType handler = providers.getMetaAccess().lookupJavaType(entryPointData.getExceptionHandler());
             ResolvedJavaMethod[] handlerMethods = handler.getDeclaredMethods();
             UserError.guarantee(handlerMethods.length == 1 && handlerMethods[0].isStatic(),
-                            "Exception handler class must declare exactly one static method: % -> %s", targetMethod, handler);
+                            "Exception handler class must declare exactly one static method: %s -> %s", targetMethod, handler);
             JavaType[] handlerParameterTypes = handlerMethods[0].toParameterTypes();
             UserError.guarantee(handlerParameterTypes.length == 1 &&
                             ((ResolvedJavaType) handlerParameterTypes[0]).isAssignableFrom(throwable),

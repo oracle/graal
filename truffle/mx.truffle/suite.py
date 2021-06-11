@@ -871,7 +871,8 @@ suite = {
           "com.oracle.truffle.api.impl.TruffleLocator",
           "com.oracle.truffle.api.TruffleLanguage.Provider",
           "com.oracle.truffle.api.instrumentation.TruffleInstrument.Provider",
-          "com.oracle.truffle.api.library.DefaultExportProvider"
+          "com.oracle.truffle.api.library.DefaultExportProvider",
+          "com.oracle.truffle.api.library.EagerExportProvider"
         ],
       },
       "moduleInfo:open" : {
