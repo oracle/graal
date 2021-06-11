@@ -37,10 +37,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.core.SubstrateOptions;
 import org.graalvm.compiler.core.common.calc.UnsignedMath;
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.util.VMError;
 
@@ -197,10 +197,13 @@ public class TypeCheckBuilder {
      */
     private static void generateHeightOrderHelper(int depth, HostedType type, Map<HostedType, List<HostedType>> subtypeMap, Map<HostedType, Integer> heightMap, Set<HostedType> allTypes) {
         assert allTypes.contains(type);
-        heightMap.compute(type, (k, currentHeight) -> Integer.max(depth, currentHeight));
 
-        for (HostedType subtype : subtypeMap.get(type)) {
-            generateHeightOrderHelper(depth + 1, subtype, subtypeMap, heightMap, allTypes);
+        Integer currentHeight = heightMap.get(type);
+        if (depth > currentHeight) {
+            heightMap.put(type, depth);
+            for (HostedType subtype : subtypeMap.get(type)) {
+                generateHeightOrderHelper(depth + 1, subtype, subtypeMap, heightMap, allTypes);
+            }
         }
     }
 

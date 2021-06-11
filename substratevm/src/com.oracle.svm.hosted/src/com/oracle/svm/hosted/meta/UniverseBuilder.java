@@ -616,7 +616,8 @@ public class UniverseBuilder {
          * 1) Process java.lang.Object first because the methods defined there (equals, hashCode,
          * toString, clone) are in every vtable. We must not have filler slots before these methods.
          */
-        assignImplementations(hUniverse.getObjectClass(), vtablesMap, usedSlotsMap, vtablesSlots);
+        HostedInstanceClass objectClass = hUniverse.getObjectClass();
+        assignImplementations(objectClass, vtablesMap, usedSlotsMap, vtablesSlots);
 
         /*
          * 2) Process interfaces. Interface methods have higher constraints on vtable slots because
@@ -648,9 +649,12 @@ public class UniverseBuilder {
          * 3) Process all implementation classes, starting with java.lang.Object and going
          * depth-first down the tree.
          */
-        buildVTable(hUniverse.getObjectClass(), vtablesMap, usedSlotsMap, vtablesSlots);
+        buildVTable(objectClass, vtablesMap, usedSlotsMap, vtablesSlots);
 
         for (HostedType type : hUniverse.getTypes()) {
+            if (type.isArray()) {
+                type.vtable = objectClass.vtable;
+            }
             if (type.vtable == null) {
                 assert type.isInterface() || type.isPrimitive();
                 type.vtable = new HostedMethod[0];
@@ -686,7 +690,7 @@ public class UniverseBuilder {
         clazz.vtable = vtableArray;
 
         for (HostedType subClass : clazz.subTypes) {
-            if (!subClass.isInterface()) {
+            if (!subClass.isInterface() && !subClass.isArray()) {
                 buildVTable((HostedClass) subClass, vtablesMap, usedSlotsMap, vtablesSlots);
             }
         }
@@ -738,7 +742,9 @@ public class UniverseBuilder {
         }
 
         for (HostedType subtype : type.subTypes) {
-            assignImplementations(subtype, method, slot, vtablesMap);
+            if (!subtype.isArray()) {
+                assignImplementations(subtype, method, slot, vtablesMap);
+            }
         }
     }
 
@@ -816,7 +822,9 @@ public class UniverseBuilder {
     private void collectUsedSlots(HostedType type, BitSet usedSlots, Map<HostedType, BitSet> usedSlotsMap) {
         usedSlots.or(usedSlotsMap.get(type));
         for (HostedType sub : type.subTypes) {
-            collectUsedSlots(sub, usedSlots, usedSlotsMap);
+            if (!sub.isArray()) {
+                collectUsedSlots(sub, usedSlots, usedSlotsMap);
+            }
         }
     }
 
@@ -825,7 +833,9 @@ public class UniverseBuilder {
 
         usedSlotsMap.get(type).set(resultSlot);
         for (HostedType sub : type.subTypes) {
-            markSlotAsUsed(resultSlot, sub, vtablesMap, usedSlotsMap);
+            if (!sub.isArray()) {
+                markSlotAsUsed(resultSlot, sub, vtablesMap, usedSlotsMap);
+            }
         }
     }
 
