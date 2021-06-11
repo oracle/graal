@@ -222,7 +222,7 @@ public class FeatureImpl {
         }
 
         public boolean isReachable(AnalysisMethod method) {
-            return method.isImplementationInvoked();
+            return method.isReachable();
         }
 
         public Set<Class<?>> reachableSubtypes(Class<?> baseClass) {

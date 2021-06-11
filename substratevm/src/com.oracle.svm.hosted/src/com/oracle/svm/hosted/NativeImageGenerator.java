@@ -1505,7 +1505,7 @@ public class NativeImageGenerator {
 
         if (SubstrateOptions.VerifyNamingConventions.getValue()) {
             for (AnalysisMethod method : aUniverse.getMethods()) {
-                if ((method.isInvoked() || method.isImplementationInvoked()) && method.getAnnotation(Fold.class) == null) {
+                if ((method.isInvoked() || method.isReachable()) && method.getAnnotation(Fold.class) == null) {
                     checkName(method.format("%H.%n(%p)"), method);
                 }
             }

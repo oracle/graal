@@ -528,7 +528,7 @@ public abstract class PartialEvaluator {
         return new CachingPEGraphDecoder(architecture, request.graph, compilationUnitProviders, newConfig, TruffleCompilerImpl.Optimizations,
                         AllowAssumptions.ifNonNull(request.graph.getAssumptions()),
                         loopExplosionPlugin, decodingPlugins, inlineInvokePlugins, parameterPlugin, nodePluginList, callInlined,
-                        sourceLanguagePositionProvider, postParsingPhase, graphCache);
+                        sourceLanguagePositionProvider, postParsingPhase, graphCache, false);
     }
 
     public void doGraphPE(Request request, InlineInvokePlugin inlineInvokePlugin, EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache) {
