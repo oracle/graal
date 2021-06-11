@@ -24,22 +24,30 @@
  */
 package com.oracle.truffle.tools.profiler;
 
+import java.util.Collection;
 import java.util.LongSummaryStatistics;
 import java.util.Map;
 
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.tools.profiler.CPUSampler.Payload;
 
+/**
+ * Execution profile of a particular context.
+ *
+ * @see CPUSampler#getContextData()
+ * @since 21.3.0
+ */
 public final class CPUSamplerData {
 
     final TruffleContext context;
-    final Map<Thread, ProfilerNode<Payload>> threadData;
+    final Map<Thread, Collection<ProfilerNode<Payload>>> threadData;
     final LongSummaryStatistics biasStatistics;
     final LongSummaryStatistics durationStatistics;
     final long samplesTaken;
     final long intervalMs;
 
-    public CPUSamplerData(TruffleContext context, Map<Thread, ProfilerNode<Payload>> threadData, LongSummaryStatistics biasStatistics, LongSummaryStatistics durationStatistics, long samplesTaken,
+    public CPUSamplerData(TruffleContext context, Map<Thread, Collection<ProfilerNode<Payload>>> threadData, LongSummaryStatistics biasStatistics, LongSummaryStatistics durationStatistics,
+                    long samplesTaken,
                     long intervalMs) {
         this.context = context;
         this.threadData = threadData;
@@ -49,26 +57,57 @@ public final class CPUSamplerData {
         this.intervalMs = intervalMs;
     }
 
+    /**
+     * @return The context this data applies to.
+     * @since 21.3.0
+     */
     public TruffleContext getContext() {
         return context;
     }
 
-    public Map<Thread, ProfilerNode<Payload>> getThreadData() {
+    /**
+     *
+     * @return A mapping from each thread executing in the context to the {@link ProfilerNode}s
+     *         describing the profile of the execution.
+     * @since 21.3.0
+     */
+    public Map<Thread, Collection<ProfilerNode<Payload>>> getThreadData() {
         return threadData;
     }
 
+    /**
+     * @return how many samples were taken.
+     * @since 21.3.0
+     */
     public long getSamples() {
         return samplesTaken;
     }
 
+    /**
+     * @return what was the sampling interval.
+     * @since 21.3.0
+     */
     public long getSampleInterval() {
         return intervalMs;
     }
 
+    /**
+     * The sample bias is a measurement of of how much time passed between requesting a stack sample
+     * and starting the stack traversal. This method provies a summary of said times during the
+     * profiling run.
+     *
+     * @return A {@link LongSummaryStatistics} of the sample bias.
+     */
     public LongSummaryStatistics getSampleBias() {
         return biasStatistics;
     }
 
+    /**
+     * The sample duration is a measurement of how long it took to traverse the stack when taking a
+     * sample. This method provides a summary of said times during the profiling run.
+     *
+     * @return A {@link LongSummaryStatistics} of the sample duration.
+     */
     public LongSummaryStatistics getSampleDuration() {
         return durationStatistics;
     }
