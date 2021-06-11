@@ -215,7 +215,10 @@ class WasmBenchmarkSuite(JMHDistBenchmarkSuite):
     def benchSuiteName(self, bmSuiteArgs=None):
         if bmSuiteArgs is None:
             bmSuiteArgs = []
-        return next(arg for arg in bmSuiteArgs if arg.endswith("BenchmarkSuite"))
+        try:
+            return next(arg for arg in bmSuiteArgs if arg.endswith("BenchmarkSuite"))
+        except StopIteration:
+            return self.name()
 
     def subgroup(self):
         return "wasm"
