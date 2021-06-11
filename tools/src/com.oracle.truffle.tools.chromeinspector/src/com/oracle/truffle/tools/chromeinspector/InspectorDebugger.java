@@ -936,8 +936,7 @@ public final class InspectorDebugger extends DebuggerDomain {
                     DebuggerSuspendedInfo susp = suspendedInfo;
                     if (susp != null) {
                         SuspendedEvent suspendedEvent = susp.getSuspendedEvent();
-                        DebugValue returnValue = suspendedEvent.getReturnValue();
-                        context.setValue(returnValue, newValue);
+                        DebugValue returnValue = context.getDebugValue(newValue, suspendedEvent.getSession());
                         susp.getSuspendedEvent().setReturnValue(returnValue);
                     }
                     return null;

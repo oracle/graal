@@ -541,6 +541,46 @@ suite = {
             "spotbugs": "false",
         },
 
+        "com.oracle.svm.jfr": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.svm.hosted",
+            ],
+            "checkstyle": "com.oracle.svm.core",
+            "javaCompliance": "11+",
+            "requires": [
+                "jdk.jfr",
+                "jdk.management",
+                "jdk.unsupported"
+            ],
+            "requiresConcealed": {
+                "jdk.jfr": [
+                    "jdk.jfr.internal",
+                    "jdk.jfr.internal.consumer",
+                    "jdk.jfr.internal.jfc",
+                    "jdk.jfr.internal.handlers",
+                    "jdk.jfr.events"
+                ],
+                "jdk.internal.vm.ci": [
+                    "jdk.vm.ci.meta",
+                    "jdk.vm.ci.code",
+                    "jdk.vm.ci.hotspot"
+                ],
+                "java.base": [
+                    "jdk.internal.event",
+                    "jdk.internal.misc",
+                    "jdk.internal.util.xml",
+                    "jdk.internal.util.xml.impl",
+                    "jdk.internal.org.xml.sax.helpers"
+                ]
+            },
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+            ],
+            "workingSets": "SVM",
+        },
+
         "com.oracle.svm.driver": {
             "subDir": "src",
             "sourceDirs": [
@@ -626,7 +666,10 @@ suite = {
                 "mx:JUNIT_TOOL",
                 "sdk:GRAAL_SDK",
             ],
-            "requires" : ["java.compiler"],
+            "requires" : [
+                "java.compiler",
+                "jdk.jfr",
+            ],
             "checkstyle": "com.oracle.svm.core",
             "workingSets": "SVM",
             "annotationProcessors": [
@@ -1025,6 +1068,7 @@ suite = {
                 "com.oracle.svm.core.windows",
                 "com.oracle.svm.core.genscavenge",
                 "com.oracle.svm.jni",
+                "com.oracle.svm.jfr",
                 "com.oracle.svm.reflect",
                 "com.oracle.svm.methodhandles"
             ],

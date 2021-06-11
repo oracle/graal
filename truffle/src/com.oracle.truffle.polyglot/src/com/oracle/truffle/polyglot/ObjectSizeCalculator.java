@@ -261,7 +261,7 @@ final class ObjectSizeCalculator {
                         !(obj instanceof ExecutionEventListener) &&
                         !(obj instanceof ClassValue) &&
                         !(obj instanceof ClassLoader) &&
-                        !(obj instanceof HostWrapper) &&
+                        !(obj instanceof PolyglotWrapper) &&
                         !(obj instanceof Value) &&
                         !(obj instanceof Context) &&
                         !(obj instanceof Engine) &&
@@ -271,11 +271,7 @@ final class ObjectSizeCalculator {
                         !(obj instanceof org.graalvm.polyglot.SourceSection) : obj.getClass().getName() + " should not be reachable";
 
         return (obj instanceof Thread) ||
-                        (obj instanceof HostObject) ||
-                        (obj instanceof HostFunction) ||
-                        (obj instanceof HostException) ||
-                        (obj instanceof HostLanguage.HostContext) ||
-                        (obj instanceof PolyglotProxy) ||
+                        EngineAccessor.HOST.isHostBoundaryValue(obj) ||
 
                         (obj instanceof Class) ||
                         (obj instanceof OptionValues) ||
@@ -313,7 +309,7 @@ final class ObjectSizeCalculator {
                         (obj instanceof ExecutionEventListener) ||
                         (obj instanceof ClassValue) ||
                         (obj instanceof ClassLoader) ||
-                        (obj instanceof HostWrapper) ||
+                        (obj instanceof PolyglotWrapper) ||
                         (obj instanceof Value) ||
                         (obj instanceof Context) ||
                         (obj instanceof Engine) ||

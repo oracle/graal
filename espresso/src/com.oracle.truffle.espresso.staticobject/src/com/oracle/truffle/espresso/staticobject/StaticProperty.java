@@ -29,7 +29,7 @@ import sun.misc.Unsafe;
 
 public abstract class StaticProperty {
     private static final Unsafe UNSAFE = getUnsafe();
-    private static final byte IS_FINAL = (byte) (1 << 7);
+    private static final byte STORE_AS_FINAL = (byte) (1 << 7);
     private final byte flags;
     @CompilationFinal //
     private StaticShape<?> shape;
@@ -37,16 +37,16 @@ public abstract class StaticProperty {
     @CompilationFinal //
     private int offset;
 
-    protected StaticProperty(StaticPropertyKind kind, boolean isFinal) {
+    protected StaticProperty(StaticPropertyKind kind, boolean storeAsFinal) {
         byte internalKind = getInternalKind(kind);
-        assert (internalKind & IS_FINAL) == 0;
-        this.flags = (byte) (isFinal ? IS_FINAL | internalKind : internalKind);
+        assert (internalKind & STORE_AS_FINAL) == 0;
+        this.flags = (byte) (storeAsFinal ? STORE_AS_FINAL | internalKind : internalKind);
     }
 
     protected abstract String getId();
 
-    public final boolean isFinal() {
-        return (flags & IS_FINAL) == IS_FINAL;
+    final boolean storeAsFinal() {
+        return (flags & STORE_AS_FINAL) == STORE_AS_FINAL;
     }
 
     private static byte getInternalKind(StaticPropertyKind kind) {
@@ -54,7 +54,7 @@ public abstract class StaticProperty {
     }
 
     final byte getInternalKind() {
-        return (byte) (flags & ~IS_FINAL);
+        return (byte) (flags & ~STORE_AS_FINAL);
     }
 
     final void initOffset(int o) {

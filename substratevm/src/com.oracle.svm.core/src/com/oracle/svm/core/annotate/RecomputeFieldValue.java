@@ -24,10 +24,13 @@
  */
 package com.oracle.svm.core.annotate;
 
+// Checkstyle: allow reflection
+
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.lang.reflect.Array;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -151,6 +154,21 @@ public @interface RecomputeFieldValue {
          * @return The new field value.
          */
         Object transform(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver, Object originalValue);
+    }
+
+    /**
+     * Reset an array field to a new empty array of the same type and length.
+     */
+    final class NewEmptyArrayTransformer implements CustomFieldValueTransformer {
+        @Override
+        public Object transform(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver, Object originalValue) {
+            if (originalValue == null) {
+                return null;
+            } else {
+                int originalLength = Array.getLength(originalValue);
+                return Array.newInstance(originalValue.getClass().getComponentType(), originalLength);
+            }
+        }
     }
 
     /**

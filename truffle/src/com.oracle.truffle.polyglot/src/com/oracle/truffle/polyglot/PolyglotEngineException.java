@@ -100,7 +100,7 @@ final class PolyglotEngineException extends RuntimeException {
     final RuntimeException e;
     final boolean closingContext;
 
-    private PolyglotEngineException(RuntimeException e) {
+    PolyglotEngineException(RuntimeException e) {
         this(e, false);
     }
 

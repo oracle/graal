@@ -130,7 +130,7 @@ public final class Engine implements AutoCloseable {
     }
 
     private static final class ImplHolder {
-        private static final AbstractPolyglotImpl IMPL = initEngineImpl();
+        private static AbstractPolyglotImpl IMPL = initEngineImpl();
 
         /**
          * Performs context pre-initialization.
@@ -556,12 +556,12 @@ public final class Engine implements AutoCloseable {
          * @since 19.0
          */
         public Engine build() {
-            AbstractPolyglotImpl loadedImpl = getImpl();
-            if (loadedImpl == null) {
+            AbstractPolyglotImpl polyglot = getImpl();
+            if (polyglot == null) {
                 throw new IllegalStateException("The Polyglot API implementation failed to load.");
             }
-            Engine engine = loadedImpl.buildEngine(out, err, in, options, useSystemProperties, allowExperimentalOptions,
-                            boundEngine, messageTransport, customLogHandler, null);
+            Engine engine = polyglot.buildEngine(out, err, in, options, useSystemProperties, allowExperimentalOptions,
+                            boundEngine, messageTransport, customLogHandler, polyglot.createHostLanguage(polyglot.createHostAccess()), false);
             return engine;
         }
 
@@ -600,8 +600,13 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public Value newValue(AbstractValueDispatch dispatch, Object receiver) {
-            return new Value(dispatch, receiver);
+        public Object getContext(Value value) {
+            return value.context;
+        }
+
+        @Override
+        public Value newValue(AbstractValueDispatch dispatch, Object context, Object receiver) {
+            return new Value(dispatch, context, receiver);
         }
 
         @Override
@@ -861,12 +866,22 @@ public final class Engine implements AutoCloseable {
 
         @Override
         public Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, boolean useSystemProperties, boolean allowExperimentalOptions, boolean boundEngine,
-                        MessageTransport messageInterceptor, Object logHandlerOrStream, HostAccess conf) {
+                        MessageTransport messageInterceptor, Object logHandlerOrStream, Object hostLanguage, boolean hostLanguageOnly) {
+            throw noPolyglotImplementationFound();
+        }
+
+        @Override
+        public Object createHostLanguage(AbstractHostAccess access) {
             throw noPolyglotImplementationFound();
         }
 
         @Override
         public Object buildLimits(long statementLimit, Predicate<Source> statementLimitSourceFilter, Consumer<ResourceLimitEvent> onLimit) {
+            throw noPolyglotImplementationFound();
+        }
+
+        @Override
+        public AbstractHostAccess createHostAccess() {
             throw noPolyglotImplementationFound();
         }
 

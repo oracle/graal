@@ -38,6 +38,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.svm.core.configure.ConfigurationFile;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
@@ -87,7 +88,7 @@ public class SerializationFeature implements Feature {
         ImageClassLoader imageClassLoader = access.getImageClassLoader();
         ConfigurationParserUtils.parseAndRegisterConfigurations(denyCollectorParser, imageClassLoader, "serialization",
                         ConfigurationFiles.Options.SerializationDenyConfigurationFiles, ConfigurationFiles.Options.SerializationDenyConfigurationResources,
-                        ConfigurationFiles.SERIALIZATION_DENY_NAME);
+                        ConfigurationFile.SERIALIZATION_DENY.getFileName());
 
         SerializationParserFunction serializationAdapter = (strTargetSerializationClass, strCustomTargetConstructorClass) -> {
             Class<?> serializationTargetClass = resolveClass(strTargetSerializationClass, access);
@@ -120,7 +121,7 @@ public class SerializationFeature implements Feature {
         SerializationConfigurationParser parser = new SerializationConfigurationParser(serializationAdapter);
         loadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurations(parser, imageClassLoader, "serialization",
                         ConfigurationFiles.Options.SerializationConfigurationFiles, ConfigurationFiles.Options.SerializationConfigurationResources,
-                        ConfigurationFiles.SERIALIZATION_NAME);
+                        ConfigurationFile.SERIALIZATION.getFileName());
     }
 
     public static void addReflections(Class<?> serializationTargetClass, Class<?> targetConstructorClass) {

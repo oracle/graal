@@ -81,6 +81,7 @@ public class MethodHandleFeature implements Feature {
 
     private boolean analysisFinished = false;
     private Class<?> directMethodHandleClass;
+    private Class<?> boundMethodHandleClass;
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
@@ -90,6 +91,7 @@ public class MethodHandleFeature implements Feature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
         directMethodHandleClass = access.findClassByName("java.lang.invoke.DirectMethodHandle");
+        boundMethodHandleClass = access.findClassByName("java.lang.invoke.BoundMethodHandle");
         access.registerObjectReplacer(this::registerMethodHandle);
     }
 
@@ -240,7 +242,11 @@ public class MethodHandleFeature implements Feature {
     }
 
     private Object registerMethodHandle(Object obj) {
-        if (!analysisFinished && directMethodHandleClass.isAssignableFrom(obj.getClass())) {
+        if (analysisFinished) {
+            return obj;
+        }
+
+        if (directMethodHandleClass.isAssignableFrom(obj.getClass())) {
             MethodHandle handle = (MethodHandle) obj;
             try {
                 Member member = MethodHandles.reflectAs(Member.class, handle);
@@ -254,6 +260,10 @@ public class MethodHandleFeature implements Feature {
             } catch (IllegalArgumentException e) {
                 /* This happens for polymorphic signature methods, no need to register those. */
             }
+        } else if (boundMethodHandleClass.isAssignableFrom(obj.getClass())) {
+            /* Allow access to species class args at runtime */
+            MethodHandle handle = (MethodHandle) obj;
+            RuntimeReflection.register(obj.getClass().getDeclaredFields());
         }
         return obj;
     }

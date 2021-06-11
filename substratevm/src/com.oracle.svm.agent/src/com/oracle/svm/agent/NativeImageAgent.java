@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,9 +24,7 @@
  */
 package com.oracle.svm.agent;
 
-import java.io.FileReader;
 import java.io.IOException;
-import java.io.Reader;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
@@ -38,27 +36,33 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.TimeZone;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
 
+import com.oracle.svm.agent.stackaccess.InterceptedState;
+import com.oracle.svm.agent.stackaccess.EagerlyLoadedJavaStackAccess;
+import com.oracle.svm.agent.stackaccess.OnDemandJavaStackAccess;
+import com.oracle.svm.agent.tracing.TraceFileWriter;
+import com.oracle.svm.agent.tracing.ConfigurationResultWriter;
+import com.oracle.svm.agent.tracing.core.Tracer;
+import com.oracle.svm.agent.tracing.core.TracingResultWriter;
+import com.oracle.svm.core.configure.ConfigurationFile;
 import org.graalvm.nativeimage.ProcessProperties;
 import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.svm.agent.predicatedconfig.MethodInfoRecordKeeper;
+import com.oracle.svm.agent.predicatedconfig.ConfigurationWithOriginsResultWriter;
 import com.oracle.svm.configure.config.ConfigurationSet;
 import com.oracle.svm.configure.filters.FilterConfigurationParser;
 import com.oracle.svm.configure.filters.RuleNode;
-import com.oracle.svm.configure.json.JsonPrintable;
-import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.configure.trace.AccessAdvisor;
 import com.oracle.svm.configure.trace.TraceProcessor;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.driver.NativeImage;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIJavaVM;
@@ -76,11 +80,10 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
 
     private ScheduledThreadPoolExecutor periodicConfigWriterExecutor = null;
 
-    private TraceWriter traceWriter;
+    private Tracer tracer;
+    private TracingResultWriter tracingResultWriter;
 
     private Path configOutputDirPath;
-
-    private AccessAdvisor accessAdvisor;
 
     private static String getTokenValue(String token) {
         return token.substring(token.indexOf('=') + 1);
@@ -106,7 +109,9 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
         List<String> callerFilterFiles = new ArrayList<>();
         List<String> accessFilterFiles = new ArrayList<>();
         boolean experimentalClassLoaderSupport = true;
+        boolean experimentalClassDefineSupport = false;
         boolean build = false;
+        boolean configurationWithOrigins = false;
         int configWritePeriod = -1; // in seconds
         int configWritePeriodInitialDelay = 1; // in seconds
 
@@ -149,6 +154,10 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                 experimentalClassLoaderSupport = true;
             } else if (token.startsWith("experimental-class-loader-support=")) {
                 experimentalClassLoaderSupport = Boolean.parseBoolean(getTokenValue(token));
+            } else if (token.equals("experimental-class-define-support")) {
+                experimentalClassDefineSupport = true;
+            } else if (token.startsWith("experimental-class-define-support=")) {
+                experimentalClassDefineSupport = Boolean.parseBoolean(getTokenValue(token));
             } else if (token.startsWith("config-write-period-secs=")) {
                 configWritePeriod = parseIntegerOrNegative(getTokenValue(token));
                 if (configWritePeriod <= 0) {
@@ -163,6 +172,8 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                 build = true;
             } else if (token.startsWith("build=")) {
                 build = Boolean.parseBoolean(getTokenValue(token));
+            } else if (token.equals("experimental-configuration-with-origins")) {
+                configurationWithOrigins = true;
             } else {
                 return usage(1, "unknown option: '" + token + "'.");
             }
@@ -171,6 +182,15 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
         if (traceOutputFile == null && configOutputDir == null && !build) {
             configOutputDir = transformPath(AGENT_NAME + "_config-pid{pid}-{datetime}/");
             inform("no output/build options provided, tracking dynamic accesses and writing configuration to directory: " + configOutputDir);
+        }
+
+        if (configurationWithOrigins && !mergeConfigs.isEmpty()) {
+            configurationWithOrigins = false;
+            inform("using configuration with origins with configuration merging is currently unsupported. Disabling configuration with origins mode.");
+        }
+
+        if (configurationWithOrigins) {
+            warn("using experimental configuration with origins mode. Note that native-image cannot process these files, and this flag may change or be removed without a warning!");
         }
 
         RuleNode callerFilter = null;
@@ -195,6 +215,10 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
             }
         }
 
+        final MethodInfoRecordKeeper recordKeeper = new MethodInfoRecordKeeper(configurationWithOrigins);
+        final Supplier<InterceptedState> interceptedStateSupplier = configurationWithOrigins ? EagerlyLoadedJavaStackAccess.stackAccessSupplier()
+                        : OnDemandJavaStackAccess.stackAccessSupplier();
+
         if (configOutputDir != null) {
             if (traceOutputFile != null) {
                 return usage(1, "can only once specify exactly one of trace-output=, config-output-dir= or config-merge-dir=.");
@@ -211,20 +235,29 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                     }
                     return e; // rethrow
                 };
-                // Note that we cannot share use the same advisor for generating the configuration
-                // from parsing events and for enforcing restrictions because they are stateful.
-                // They should use the same filter sets, however.
                 AccessAdvisor advisor = createAccessAdvisor(builtinHeuristicFilter, callerFilter, accessFilter);
-                TraceProcessor processor = new TraceProcessor(advisor, mergeConfigs.loadJniConfig(handler), mergeConfigs.loadReflectConfig(handler),
-                                mergeConfigs.loadProxyConfig(handler), mergeConfigs.loadResourceConfig(handler), mergeConfigs.loadSerializationConfig(handler));
-                traceWriter = new TraceProcessorWriterAdapter(processor);
+                Path[] predefinedClassDestinationDirs = {configOutputDirPath.resolve(ConfigurationFile.PREDEFINED_CLASSES_AGENT_EXTRACTED_SUBDIR)};
+                if (configurationWithOrigins) {
+                    ConfigurationWithOriginsResultWriter writer = new ConfigurationWithOriginsResultWriter(advisor, recordKeeper);
+                    tracer = writer;
+                    tracingResultWriter = writer;
+                } else {
+                    TraceProcessor processor = new TraceProcessor(advisor, mergeConfigs.loadJniConfig(handler), mergeConfigs.loadReflectConfig(handler),
+                                    mergeConfigs.loadProxyConfig(handler), mergeConfigs.loadResourceConfig(handler), mergeConfigs.loadSerializationConfig(handler),
+                                    mergeConfigs.loadPredefinedClassesConfig(predefinedClassDestinationDirs, handler));
+                    ConfigurationResultWriter writer = new ConfigurationResultWriter(processor);
+                    tracer = writer;
+                    tracingResultWriter = writer;
+                }
             } catch (Throwable t) {
                 return error(2, t.toString());
             }
         } else if (traceOutputFile != null) {
             try {
                 Path path = Paths.get(transformPath(traceOutputFile));
-                traceWriter = new TraceFileWriter(path);
+                TraceFileWriter writer = new TraceFileWriter(path);
+                tracer = writer;
+                tracingResultWriter = writer;
             } catch (Throwable t) {
                 return error(2, t.toString());
             }
@@ -238,14 +271,13 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
             return status;
         }
 
-        accessAdvisor = createAccessAdvisor(builtinHeuristicFilter, callerFilter, accessFilter);
         try {
-            BreakpointInterceptor.onLoad(jvmti, callbacks, traceWriter, this, experimentalClassLoaderSupport);
+            BreakpointInterceptor.onLoad(jvmti, callbacks, tracer, this, interceptedStateSupplier, experimentalClassLoaderSupport, experimentalClassDefineSupport);
         } catch (Throwable t) {
             return error(3, t.toString());
         }
         try {
-            JniCallInterceptor.onLoad(traceWriter, this);
+            JniCallInterceptor.onLoad(tracer, this, interceptedStateSupplier);
         } catch (Throwable t) {
             return error(4, t.toString());
         }
@@ -296,8 +328,8 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
 
     private static boolean parseFilterFiles(RuleNode filter, List<String> filterFiles) {
         for (String path : filterFiles) {
-            try (Reader reader = new FileReader(path)) {
-                new FilterConfigurationParser(filter).parseAndRegister(reader);
+            try {
+                new FilterConfigurationParser(filter).parseAndRegister(Paths.get(path));
             } catch (Exception e) {
                 return error(false, "cannot parse filter file " + path + ": " + e);
             }
@@ -307,7 +339,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
     }
 
     private void setupExecutorServiceForPeriodicConfigurationCapture(int writePeriod, int initialDelay) {
-        if (traceWriter == null || configOutputDirPath == null) {
+        if (tracingResultWriter == null || configOutputDirPath == null || !tracingResultWriter.supportsPeriodicTraceWriting()) {
             return;
         }
 
@@ -386,26 +418,24 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
 
     @Override
     protected void onVMInitCallback(JvmtiEnv jvmti, JNIEnvironment jni, JNIObjectHandle thread) {
-        accessAdvisor.setInLivePhase(true);
         BreakpointInterceptor.onVMInit(jvmti, jni);
-        if (traceWriter != null) {
-            traceWriter.tracePhaseChange("live");
+        if (tracer != null) {
+            tracer.tracePhaseChange("live");
         }
     }
 
     @Override
     protected void onVMStartCallback(JvmtiEnv jvmti, JNIEnvironment jni) {
         JniCallInterceptor.onVMStart(jvmti);
-        if (traceWriter != null) {
-            traceWriter.tracePhaseChange("start");
+        if (tracer != null) {
+            tracer.tracePhaseChange("start");
         }
     }
 
     @Override
     protected void onVMDeathCallback(JvmtiEnv jvmti, JNIEnvironment jni) {
-        accessAdvisor.setInLivePhase(false);
-        if (traceWriter != null) {
-            traceWriter.tracePhaseChange("dead");
+        if (tracer != null) {
+            tracer.tracePhaseChange("dead");
         }
     }
 
@@ -417,27 +447,19 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
             final Path tempDirectory = configOutputDirPath.toFile().exists()
                             ? Files.createTempDirectory(configOutputDirPath, "tempConfig-")
                             : Files.createTempDirectory("tempConfig-");
-            TraceProcessor p = ((TraceProcessorWriterAdapter) traceWriter).getProcessor();
+            List<Path> writtenFilePaths = tracingResultWriter.writeToDirectory(tempDirectory);
 
-            Map<String, JsonPrintable> allConfigFiles = new HashMap<>(4);
-            allConfigFiles.put(ConfigurationFiles.REFLECTION_NAME, p.getReflectionConfiguration());
-            allConfigFiles.put(ConfigurationFiles.JNI_NAME, p.getJniConfiguration());
-            allConfigFiles.put(ConfigurationFiles.DYNAMIC_PROXY_NAME, p.getProxyConfiguration());
-            allConfigFiles.put(ConfigurationFiles.RESOURCES_NAME, p.getResourceConfiguration());
-            allConfigFiles.put(ConfigurationFiles.SERIALIZATION_NAME, p.getSerializationConfiguration());
-
-            for (Map.Entry<String, JsonPrintable> configFile : allConfigFiles.entrySet()) {
-                Path tempPath = tempDirectory.resolve(configFile.getKey());
-                try (JsonWriter writer = new JsonWriter(tempPath)) {
-                    configFile.getValue().printJson(writer);
-                }
+            for (Path writtenFilePath : writtenFilePaths) {
+                Path fileName = tempDirectory.relativize(writtenFilePath);
+                Path target = configOutputDirPath.resolve(fileName);
+                tryAtomicMove(writtenFilePath, target);
             }
 
-            for (Map.Entry<String, JsonPrintable> configFile : allConfigFiles.entrySet()) {
-                Path source = tempDirectory.resolve(configFile.getKey());
-                Path target = configOutputDirPath.resolve(configFile.getKey());
-                tryAtomicMove(source, target);
-            }
+            /*
+             * Note that sidecar files may be written directly to the final output directory, such
+             * as the class files from predefined class tracking. However, such files generally
+             * don't change once they have been written.
+             */
 
             compulsoryDelete(tempDirectory);
         } catch (IOException e) {
@@ -490,14 +512,18 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
             }
         }
 
-        if (traceWriter != null) {
-            traceWriter.tracePhaseChange("unload");
-            traceWriter.close();
-            if (configOutputDirPath != null) {
-                writeConfigurationFiles();
-                configOutputDirPath = null;
+        if (tracer != null) {
+            tracer.tracePhaseChange("unload");
+        }
+
+        if (tracingResultWriter != null) {
+            tracingResultWriter.close();
+            if (tracingResultWriter.supportsOnUnloadTraceWriting()) {
+                if (configOutputDirPath != null) {
+                    writeConfigurationFiles();
+                    configOutputDirPath = null;
+                }
             }
-            traceWriter = null;
         }
 
         /*

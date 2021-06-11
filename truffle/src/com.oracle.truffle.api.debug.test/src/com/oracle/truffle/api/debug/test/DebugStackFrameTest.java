@@ -201,7 +201,7 @@ public class DebugStackFrameTest extends AbstractDebugTest {
                 assertInvalidDebugValue(data.stackValueWithIterator);
 
                 assertEquals("45", data.heapValue.toDisplayString());
-                assertTrue(data.heapValue.isWritable());
+                assertFalse(data.heapValue.isWritable());
                 assertTrue(data.heapValue.isReadable());
             });
 

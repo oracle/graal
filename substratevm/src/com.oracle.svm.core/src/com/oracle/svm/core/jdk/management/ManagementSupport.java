@@ -47,9 +47,12 @@ import javax.management.StandardMBean;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.thread.ThreadListener;
 import com.oracle.svm.core.util.UserError;
 import com.sun.jmx.mbeanserver.MXBeanLookup;
 
@@ -61,7 +64,7 @@ import com.sun.jmx.mbeanserver.MXBeanLookup;
  * which is accessible in the JDK via {@link ManagementFactory}. There are two mostly independent
  * parts: The beans (implementations of {@link PlatformManagedObject}) themselves; and the singleton
  * {@link ManagementFactory#getPlatformMBeanServer() MBean server}.
- * 
+ *
  * Support for {@link PlatformManagedObject}: All MXBean that provide VM introspection are allocated
  * eagerly at image build time, and stored in {@link #platformManagedObjectsMap} as well as
  * {@link #platformManagedObjectsSet}. The registration is decentralized: while some general beans
@@ -71,7 +74,7 @@ import com.sun.jmx.mbeanserver.MXBeanLookup;
  * allocation of all the beans avoids the complicated registry that the JDK maintains for lazy
  * loading (the code in PlatformComponent - note that this code and even the package of the class is
  * significantly different between JDK 8 and JDK 11).
- * 
+ *
  * Support for {@link ManagementFactory#getPlatformMBeanServer()}: The {@link MBeanServer} that
  * makes all MXBean available too is allocated lazily at run time. This has advantages and
  * disadvantages. The {@link MBeanServer} and all the bean registrations is a quite heavyweight data
@@ -83,7 +86,7 @@ import com.sun.jmx.mbeanserver.MXBeanLookup;
  * made available at runtime using these caches, i.e., a complicated re-build of the caches would be
  * necessary at image build time. Therefore we opted to inialize the {@link MBeanServer} at run
  * time.
- * 
+ *
  * This has two important consequences: 1) There must not be any {@link MBeanServer} in the image
  * heap, neither the singleton platform server nor a custom server created by the application.
  * Classes that cache a {@link MBeanServer} in a static final field must be initialized at run time.
@@ -96,7 +99,7 @@ import com.sun.jmx.mbeanserver.MXBeanLookup;
  * platform objects and directly calling methods on them is much easier and therefore the common use
  * case. We therefore believe that the automatic reflection registration is indeed unnecessary.
  */
-public final class ManagementSupport {
+public final class ManagementSupport implements ThreadListener {
 
     /**
      * All {@link PlatformManagedObject} structured by their interface. The same object can be
@@ -236,12 +239,20 @@ public final class ManagementSupport {
         return true;
     }
 
-    public void noteThreadStart(Thread thread) {
-        threadMXBean.noteThreadStart(thread);
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Override
+    public void beforeThreadRun(IsolateThread isolateThread, Thread javaThread) {
+        threadMXBean.noteThreadStart(javaThread);
     }
 
-    public void noteThreadFinish(Thread thread) {
-        threadMXBean.noteThreadFinish(thread);
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Override
+    public void afterThreadExit(IsolateThread isolateThread, Thread javaThread) {
+        threadMXBean.noteThreadFinish(javaThread);
+    }
+
+    public void noteThreadFinish(@SuppressWarnings("unused") Thread thread) {
+        // Will be removed as soon as possible.
     }
 
     synchronized MBeanServer getPlatformMBeanServer() {

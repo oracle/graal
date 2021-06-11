@@ -26,7 +26,6 @@ package com.oracle.svm.configure;
 
 import java.io.BufferedReader;
 import java.io.FileOutputStream;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -51,6 +50,7 @@ import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.configure.trace.AccessAdvisor;
 import com.oracle.svm.configure.trace.TraceProcessor;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.util.VMError;
 
 public class ConfigurationTool {
@@ -195,6 +195,12 @@ public class ConfigurationTool {
                     set.getSerializationConfigPaths().add(requirePathUri(current, value));
                     break;
 
+                case "--predefined-classes-input":
+                    set = inputSet; // fall through
+                case "--predefined-classes-output":
+                    set.getPredefinedClassesConfigPaths().add(requirePathUri(current, value));
+                    break;
+
                 case "--trace-input":
                     traceInputs.add(requirePathUri(current, value));
                     break;
@@ -239,7 +245,7 @@ public class ConfigurationTool {
             for (Path path : callerFilterFiles) {
                 try {
                     FilterConfigurationParser parser = new FilterConfigurationParser(callersFilter);
-                    parser.parseAndRegister(new FileReader(path.toFile()));
+                    parser.parseAndRegister(path);
                 } catch (Exception e) {
                     throw new UsageException("Cannot parse filter file " + path + ": " + e);
                 }
@@ -254,9 +260,14 @@ public class ConfigurationTool {
         }
         TraceProcessor p;
         try {
+            List<Path> predefinedClassDestDirs = new ArrayList<>();
+            for (URI pathUri : outputSet.getPredefinedClassesConfigPaths()) {
+                predefinedClassDestDirs.add(Paths.get(pathUri).getParent().resolve(ConfigurationFile.PREDEFINED_CLASSES_AGENT_EXTRACTED_SUBDIR));
+            }
             p = new TraceProcessor(advisor, inputSet.loadJniConfig(ConfigurationSet.FAIL_ON_EXCEPTION), inputSet.loadReflectConfig(ConfigurationSet.FAIL_ON_EXCEPTION),
                             inputSet.loadProxyConfig(ConfigurationSet.FAIL_ON_EXCEPTION), inputSet.loadResourceConfig(ConfigurationSet.FAIL_ON_EXCEPTION),
-                            inputSet.loadSerializationConfig(ConfigurationSet.FAIL_ON_EXCEPTION));
+                            inputSet.loadSerializationConfig(ConfigurationSet.FAIL_ON_EXCEPTION),
+                            inputSet.loadPredefinedClassesConfig(predefinedClassDestDirs.toArray(new Path[0]), ConfigurationSet.FAIL_ON_EXCEPTION));
         } catch (IOException e) {
             throw e;
         } catch (Throwable t) {
@@ -297,6 +308,11 @@ public class ConfigurationTool {
         for (URI uri : outputSet.getSerializationConfigPaths()) {
             try (JsonWriter writer = new JsonWriter(Paths.get(uri))) {
                 p.getSerializationConfiguration().printJson(writer);
+            }
+        }
+        for (URI uri : outputSet.getPredefinedClassesConfigPaths()) {
+            try (JsonWriter writer = new JsonWriter(Paths.get(uri))) {
+                p.getPredefinedClassesConfiguration().printJson(writer);
             }
         }
     }
@@ -344,10 +360,7 @@ public class ConfigurationTool {
 
                 case "--input-file":
                     rootNode = maybeCreateRootNode(rootNode);
-                    try (FileReader reader = new FileReader(requirePath(current, value).toFile())) {
-                        FilterConfigurationParser parser = new FilterConfigurationParser(rootNode);
-                        parser.parseAndRegister(reader);
-                    }
+                    new FilterConfigurationParser(rootNode).parseAndRegister(requirePath(current, value));
                     break;
 
                 case "--output-file":

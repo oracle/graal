@@ -120,13 +120,13 @@ final class PolyglotManagementDispatch extends AbstractManagementDispatch {
                     return false;
                 } else if (sourceFilter != null) {
                     try {
-                        return sourceFilter.test(engineImpl.getOrCreatePolyglotSource(s));
+                        return sourceFilter.test(PolyglotImpl.getOrCreatePolyglotSource(engineImpl, s));
                     } catch (Throwable e) {
                         if (config.closing) {
                             // configuration is closing ignore errors.
                             return false;
                         }
-                        throw new HostException(e);
+                        throw engine.host.toHostException(null, e);
                     }
                 } else {
                     return true;
@@ -144,7 +144,7 @@ final class PolyglotManagementDispatch extends AbstractManagementDispatch {
                             // configuration is closing ignore errors.
                             return false;
                         }
-                        throw new HostException(e);
+                        throw engine.host.toHostException(null, e);
                     }
                 }
             });
@@ -356,7 +356,7 @@ final class PolyglotManagementDispatch extends AbstractManagementDispatch {
             if (languageToUse == null) {
                 // should not happen but just in case fallback to host language
                 assert false;
-                languageToUse = config.engine.hostLanguage;
+                languageToUse = config.engine.hostLanguageInstance.language;
             }
             this.language = languageToUse;
         }
@@ -524,7 +524,7 @@ final class PolyglotManagementDispatch extends AbstractManagementDispatch {
         AbstractNode(ListenerImpl config, EventContext context) {
             this.config = config;
             this.context = context;
-            this.location = config.engine.impl.getPolyglotSourceSection(context.getInstrumentedSourceSection());
+            this.location = PolyglotImpl.getPolyglotSourceSection(config.engine.impl, context.getInstrumentedSourceSection());
             this.cachedEvent = config.engine.impl.getManagement().newExecutionEvent(this);
         }
 
@@ -553,8 +553,8 @@ final class PolyglotManagementDispatch extends AbstractManagementDispatch {
         }
 
         protected RuntimeException wrapHostError(Throwable t) {
-            assert !(t instanceof HostException);
-            throw new HostException(t);
+            assert !config.engine.host.isHostException(t);
+            throw config.engine.host.toHostException(null, t);
         }
 
         @TruffleBoundary(allowInlining = true)

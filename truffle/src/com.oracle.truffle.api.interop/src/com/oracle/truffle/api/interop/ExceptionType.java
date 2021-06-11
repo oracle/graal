@@ -51,7 +51,7 @@ import com.oracle.truffle.api.TruffleLanguage.ParsingRequest;
  *
  * @since 20.3
  */
-public enum ExceptionType implements TruffleObject {
+public enum ExceptionType {
     /**
      * Indicates that the application was exited within the guest language program. To obtain the
      * exit status use {@link InteropLibrary#getExceptionExitStatus(Object) getExceptionExitStatus}.
