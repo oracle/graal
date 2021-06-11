@@ -9,7 +9,9 @@ CLSS public abstract interface !annotation com.oracle.truffle.api.library.Export
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
 innr public abstract interface static !annotation Repeat
 intf java.lang.annotation.Annotation
+meth public abstract !hasdefault boolean useForAOT()
 meth public abstract !hasdefault int priority()
+meth public abstract !hasdefault int useForAOTPriority()
 meth public abstract !hasdefault java.lang.Class<?> receiverType()
 meth public abstract !hasdefault java.lang.String delegateTo()
 meth public abstract !hasdefault java.lang.String transitionLimit()

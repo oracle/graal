@@ -339,4 +339,8 @@ public final class CacheExpression extends MessageContainer {
         this.cachedlibrary = cachedlibrary;
     }
 
+    public boolean usesDefaultCachedInitializer() {
+        return ElementUtils.getAnnotationValue(getMessageAnnotation(), "value", false) == null;
+    }
+
 }

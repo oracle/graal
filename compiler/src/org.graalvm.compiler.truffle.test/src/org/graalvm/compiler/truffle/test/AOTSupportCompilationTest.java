@@ -33,8 +33,17 @@ import org.junit.Test;
 import org.openjdk.jmh.annotations.TearDown;
 
 import com.oracle.truffle.api.dsl.test.AOTSupportTest;
+import com.oracle.truffle.api.dsl.test.AOTSupportTest.AOTDynamicDispatch;
+import com.oracle.truffle.api.dsl.test.AOTSupportTest.AOTDynamicDispatchTarget;
+import com.oracle.truffle.api.dsl.test.AOTSupportTest.AOTInitializable;
+import com.oracle.truffle.api.dsl.test.AOTSupportTest.BaseNode;
 import com.oracle.truffle.api.dsl.test.AOTSupportTest.TestLanguage;
 import com.oracle.truffle.api.dsl.test.AOTSupportTest.TestRootNode;
+import com.oracle.truffle.api.dsl.test.AOTSupportTestFactory.AOTAutoLibraryNodeGen;
+import com.oracle.truffle.api.dsl.test.AOTSupportTestFactory.AOTManualLibraryNodeGen;
+import com.oracle.truffle.api.dsl.test.AOTSupportTestFactory.AOTManualLibrarySingleLimitNodeGen;
+import com.oracle.truffle.api.dsl.test.AOTSupportTestFactory.TestNodeGen;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
 public class AOTSupportCompilationTest extends PartialEvaluationTest {
 
@@ -46,8 +55,22 @@ public class AOTSupportCompilationTest extends PartialEvaluationTest {
 
     @Test
     public void testAOTCompilation() {
-        TestRootNode root = setup();
+        assertValidCompilation(TestNodeGen.create(false), null);
+
+        assertValidCompilation(AOTAutoLibraryNodeGen.create(), new AOTInitializable());
+        assertValidCompilation(AOTManualLibraryNodeGen.create(), new AOTInitializable());
+        assertValidCompilation(AOTManualLibrarySingleLimitNodeGen.create(), new AOTInitializable());
+
+        assertValidCompilation(AOTAutoLibraryNodeGen.create(), new AOTDynamicDispatch(AOTDynamicDispatchTarget.class));
+        assertValidCompilation(AOTManualLibraryNodeGen.create(), new AOTDynamicDispatch(AOTDynamicDispatchTarget.class));
+        assertValidCompilation(AOTManualLibrarySingleLimitNodeGen.create(), new AOTDynamicDispatch(AOTDynamicDispatchTarget.class));
+    }
+
+    private void assertValidCompilation(BaseNode node, Object receiver) {
+        TestRootNode root = setup(node, receiver);
         OptimizedCallTarget target = (OptimizedCallTarget) root.getCallTarget();
+        target.prepareForAOT();
+
         context.enter();
         target.compile(true);
         assertTrue(target.isValidLastTier());
@@ -58,7 +81,19 @@ public class AOTSupportCompilationTest extends PartialEvaluationTest {
 
     @Test
     public void testGraph() {
-        TestRootNode root = setup();
+        assertGraphNoCalls(TestNodeGen.create(false), null);
+
+        assertGraphNoCalls(AOTAutoLibraryNodeGen.create(), new AOTInitializable());
+        assertGraphNoCalls(AOTManualLibraryNodeGen.create(), new AOTInitializable());
+        assertGraphNoCalls(AOTManualLibrarySingleLimitNodeGen.create(), new AOTInitializable());
+
+        assertGraphNoCalls(AOTManualLibrarySingleLimitNodeGen.create(), new AOTDynamicDispatch(AOTDynamicDispatchTarget.class));
+        assertGraphNoCalls(AOTAutoLibraryNodeGen.create(), new AOTDynamicDispatch(AOTDynamicDispatchTarget.class));
+        assertGraphNoCalls(AOTManualLibraryNodeGen.create(), new AOTDynamicDispatch(AOTDynamicDispatchTarget.class));
+    }
+
+    private void assertGraphNoCalls(BaseNode node, Object receiver) throws AssertionError {
+        TestRootNode root = setup(node, receiver);
         OptimizedCallTarget target = (OptimizedCallTarget) root.getCallTarget();
         context.enter();
         StructuredGraph graph = partialEval(target, new Object[0]);
@@ -68,13 +103,18 @@ public class AOTSupportCompilationTest extends PartialEvaluationTest {
         context.leave();
     }
 
-    private TestRootNode setup() {
+    private TestRootNode setup(BaseNode node, Object receiver) {
+        if (context != null) {
+            context.close();
+            context = null;
+        }
         context = Context.newBuilder().allowExperimentalOptions(true) //
                         .option("engine.CompileImmediately", "true") //
                         .option("engine.BackgroundCompilation", "false").build();
         context.initialize(AOTSupportTest.LANGUAGE_ID);
+        context.initialize(ProxyLanguage.ID);
         context.enter();
-        TestRootNode root = new TestRootNode(TestLanguage.getCurrentLanguage());
+        TestRootNode root = new TestRootNode(TestLanguage.getCurrentLanguage(), node, receiver);
         GraalTruffleRuntime.getRuntime().createCallTarget(root);
         context.leave();
         return root;

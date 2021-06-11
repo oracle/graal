@@ -217,6 +217,7 @@ public class TruffleTypes {
     public final DeclaredType UnsupportedSpecializationException = c.getDeclaredType(UnsupportedSpecializationException_Name);
 
     // Library API
+    public static final String EagerExportProvider_Name = "com.oracle.truffle.api.library.EagerExportProvider";
     public static final String CachedLibrary_Name = "com.oracle.truffle.api.library.CachedLibrary";
     public static final String DefaultExportProvider_Name = "com.oracle.truffle.api.library.DefaultExportProvider";
     public static final String DynamicDispatchLibrary_Name = "com.oracle.truffle.api.library.DynamicDispatchLibrary";
@@ -235,6 +236,7 @@ public class TruffleTypes {
     public static final String Message_Name = "com.oracle.truffle.api.library.Message";
     public static final String ReflectionLibrary_Name = "com.oracle.truffle.api.library.ReflectionLibrary";
 
+    public final DeclaredType EagerExportProvider = c.getDeclaredType(EagerExportProvider_Name);
     public final DeclaredType CachedLibrary = c.getDeclaredType(CachedLibrary_Name);
     public final DeclaredType DefaultExportProvider = c.getDeclaredType(DefaultExportProvider_Name);
     public final DeclaredType DynamicDispatchLibrary = c.getDeclaredType(DynamicDispatchLibrary_Name);
