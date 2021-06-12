@@ -1620,9 +1620,6 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
     def subgroup(self):
         return "graal-compiler"
 
-    def benchSuiteName(self):
-        return self.name()
-
     def renaissanceLibraryName(self):
         return "RENAISSANCE_{}".format(self.renaissanceVersionToRun())
 
@@ -1960,9 +1957,6 @@ class AWFYBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Averaging
 
     def subgroup(self):
         return "graal-compiler"
-
-    def benchSuiteName(self):
-        return self.name()
 
     def version(self):
         return "1.1"
