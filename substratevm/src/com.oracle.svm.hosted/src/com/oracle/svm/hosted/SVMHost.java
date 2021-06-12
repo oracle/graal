@@ -84,6 +84,7 @@ import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode;
+import com.oracle.svm.core.graal.thread.VMThreadLocalAccess;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.Target_java_lang_ref_Reference;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -635,10 +636,13 @@ public class SVMHost implements HostVM {
             if (field.isStatic() && (!method.isClassInitializer() || !field.getDeclaringClass().equals(method.getDeclaringClass()))) {
                 classInitializerSideEffect.put(method, true);
             }
-        } else if (n instanceof UnsafeAccessNode) {
+        } else if (n instanceof UnsafeAccessNode || n instanceof VMThreadLocalAccess) {
             /*
              * Unsafe memory access nodes are rare, so it does not pay off to check what kind of
              * field they are accessing.
+             * 
+             * Methods that access a thread-local value cannot be initialized at image build time
+             * because such values are not available yet.
              */
             classInitializerSideEffect.put(method, true);
         } else if (n instanceof EnsureClassInitializedNode) {

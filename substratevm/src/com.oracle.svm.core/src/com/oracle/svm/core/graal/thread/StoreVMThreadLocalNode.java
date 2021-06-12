@@ -43,7 +43,7 @@ import org.graalvm.compiler.nodes.spi.LoweringTool;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
 
 @NodeInfo(cycles = CYCLES_2, size = SIZE_1)
-public class StoreVMThreadLocalNode extends AbstractStateSplit implements Lowerable {
+public class StoreVMThreadLocalNode extends AbstractStateSplit implements VMThreadLocalAccess, Lowerable {
     public static final NodeClass<StoreVMThreadLocalNode> TYPE = NodeClass.create(StoreVMThreadLocalNode.class);
 
     protected final VMThreadLocalInfo threadLocalInfo;

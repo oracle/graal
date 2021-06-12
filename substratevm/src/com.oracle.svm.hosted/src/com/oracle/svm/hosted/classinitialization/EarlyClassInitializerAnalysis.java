@@ -55,6 +55,7 @@ import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.util.Providers;
 
 import com.oracle.svm.core.ParsingReason;
+import com.oracle.svm.core.graal.thread.VMThreadLocalAccess;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.c.GraalAccess;
@@ -256,6 +257,8 @@ final class AbortOnDisallowedNode extends Graph.NodeEventListener {
             if (field.isStatic() && !field.getDeclaringClass().equals(clinit.getDeclaringClass())) {
                 throw new ClassInitalizerHasSideEffectsException("Access of static field from a different class: " + field.format("%H.%n"));
             }
+        } else if (node instanceof VMThreadLocalAccess) {
+            throw new ClassInitalizerHasSideEffectsException("Access of thread-local value");
         } else if (node instanceof UnsafeAccessNode) {
             throw VMError.shouldNotReachHere("Intrinsification of Unsafe methods is not enabled during bytecode parsing");
         }
