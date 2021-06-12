@@ -206,6 +206,7 @@ suite = {
                     "jdk.internal.module",
                     "jdk.internal.misc",
                     "jdk.internal.logger",
+                    "jdk.internal.loader",
                     "sun.util.resources",
                     "sun.text.spi",
                     "jdk.internal.perf",
