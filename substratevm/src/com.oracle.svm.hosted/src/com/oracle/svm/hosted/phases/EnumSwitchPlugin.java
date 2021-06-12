@@ -99,7 +99,7 @@ final class EnumSwitchPlugin implements NodePlugin {
              */
             AnalysisMethod aMethod = (AnalysisMethod) method;
             EnumSwitchFeature feature = ImageSingletons.lookup(EnumSwitchFeature.class);
-            aMethod.ensureGraphParsed(feature.bb, false);
+            aMethod.ensureGraphParsed(feature.bb);
             Boolean methodSafeForExecution = feature.methodsSafeForExecution.get(aMethod);
             assert methodSafeForExecution != null : "after-parsing hook not executed for method " + aMethod.format("%H.%n(%p)");
             if (!methodSafeForExecution.booleanValue()) {

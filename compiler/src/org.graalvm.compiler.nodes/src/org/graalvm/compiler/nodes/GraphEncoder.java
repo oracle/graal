@@ -304,11 +304,11 @@ public class GraphEncoder {
          */
         int metadataStart = TypeConversion.asS4(writer.getBytesWritten());
         writer.putUV(nodeOrder.maxFixedNodeOrderId);
+        writeObjectId(graph.getGuardsStage());
         writer.putUV(nodeCount);
         for (int i = 0; i < nodeCount; i++) {
             writer.putUV(metadataStart - nodeStartOffsets[i]);
         }
-        writeObjectId(graph.getGuardsStage());
 
         /* Check that the decoding of the encode graph is the same as the input. */
         assert verifyEncoding(graph, new EncodedGraph(getEncoding(), metadataStart, getObjects(), getNodeClasses(), graph));

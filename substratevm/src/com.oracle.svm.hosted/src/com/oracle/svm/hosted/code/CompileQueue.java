@@ -740,7 +740,7 @@ public class CompileQueue {
 
     private StructuredGraph transplantGraph(DebugContext debug, HostedMethod hMethod, CompileReason reason) {
         AnalysisMethod aMethod = hMethod.getWrapped();
-        StructuredGraph aGraph = aMethod.parsedGraph();
+        StructuredGraph aGraph = aMethod.getAnalyzedGraph();
         if (aGraph == null) {
             throw VMError.shouldNotReachHere("Method not parsed during static analysis: " + aMethod.format("%r %H.%n(%p)") + ". Reachable from: " + reason);
         }
@@ -1060,8 +1060,8 @@ public class CompileQueue {
         if (callerAnnotatedWith(invoke, Specialize.class) && callee.getAnnotation(DeoptTest.class) != null) {
             return false;
         }
-        Uninterruptible calleeUninterruptible = callee.getAnnotation(Uninterruptible.class);
-        if (calleeUninterruptible != null && !calleeUninterruptible.mayBeInlined() && caller.getAnnotation(Uninterruptible.class) == null) {
+
+        if (!Uninterruptible.Utils.inliningAllowed(caller, callee)) {
             return false;
         }
         if (!mustNotAllocateCallee(caller) && mustNotAllocate(callee)) {
