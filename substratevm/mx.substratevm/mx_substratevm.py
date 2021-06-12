@@ -1122,26 +1122,35 @@ def clinittest(args):
 
         # Build and run the example
         native_image(
-            ['-H:Path=' + build_dir, '-cp', test_cp, '-H:Class=com.oracle.svm.test.TestClassInitializationMustBeSafe',
-             '-H:Features=com.oracle.svm.test.TestClassInitializationMustBeSafeFeature',
+            ['-H:Path=' + build_dir, '-cp', test_cp, '-H:Class=com.oracle.svm.test.clinit.TestClassInitializationMustBeSafeEarly',
+             '-H:Features=com.oracle.svm.test.clinit.TestClassInitializationMustBeSafeEarlyFeature',
              '-H:+PrintClassInitialization', '-H:Name=clinittest', '-H:+ReportExceptionStackTraces'] + args)
         mx.run([join(build_dir, 'clinittest')])
 
         # Check the reports for initialized classes
-        def check_class_initialization(classes_file_name, marker, prefix=''):
+        def check_class_initialization(classes_file_name):
             classes_file = os.path.join(build_dir, 'reports', classes_file_name)
+            wrongly_initialized_lines = []
+
+            def checkLine(line, marker, init_kind, msg, wrongly_initialized_lines):
+                if marker + "," in line and not ((init_kind + ",") in line and msg in line):
+                    wrongly_initialized_lines += [(line,
+                                                   "Classes marked with " + marker + " must have init kind " + init_kind + " and message " + msg)]
             with open(classes_file) as f:
-                wrongly_initialized_classes = [line.strip() for line in f if line.strip().startswith(prefix) and marker not in line.strip()]
-                if len(wrongly_initialized_classes) > 0:
-                    mx.abort("Only classes with marker " + marker + " must be in file " + classes_file + ". Found:\n" +
-                             str(wrongly_initialized_classes))
+                for line in f:
+                    checkLine(line, "MustBeDelayed", "RUN_TIME", "classes are initialized at run time by default", wrongly_initialized_lines)
+                    checkLine(line, "MustBeSafeEarly", "BUILD_TIME", "class proven as side-effect free before analysis", wrongly_initialized_lines)
+                    checkLine(line, "MustBeSafeLate", "BUILD_TIME", "class proven as side-effect free after analysis", wrongly_initialized_lines)
+                if len(wrongly_initialized_lines) > 0:
+                    msg = ""
+                    for (line, error) in wrongly_initialized_lines:
+                        msg += "In line \n" + line + error + "\n"
+                    mx.abort("Error in initialization reporting:\n" + msg)
 
         reports = os.listdir(os.path.join(build_dir, 'reports'))
-        delayed_classes = next(report for report in reports if report.startswith('run_time_classes'))
-        safe_classes = next(report for report in reports if report.startswith('safe_classes'))
+        all_classes_file = next(report for report in reports if report.startswith('class_initialization_report'))
 
-        check_class_initialization(delayed_classes, 'MustBeDelayed', prefix='com.oracle.svm.test')
-        check_class_initialization(safe_classes, 'MustBeSafe')
+        check_class_initialization(all_classes_file)
 
     native_image_context_run(build_and_test_clinittest_image, args)
 

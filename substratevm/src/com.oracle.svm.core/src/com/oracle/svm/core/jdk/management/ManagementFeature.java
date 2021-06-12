@@ -86,7 +86,7 @@ public final class ManagementFeature extends JNIRegistrationUtil implements Feat
         }
         access.registerObjectReplacer(this::replaceHostedPlatformManagedObject);
 
-        RuntimeClassInitialization.initializeAtBuildTime("com.sun.jmx.mbeanserver.DefaultMXBeanMappingFactory", "Avoids unnecessary reflection in the image");
+        RuntimeClassInitialization.initializeAtBuildTime("com.sun.jmx.mbeanserver.DefaultMXBeanMappingFactory");
     }
 
     /**
