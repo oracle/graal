@@ -100,7 +100,7 @@ final class ArrayBasedStaticShape<T> extends StaticShape<T> {
         ArrayBasedStaticShape<?> receiverShape = cast(UNSAFE.getObject(receiverObject, (long) propertyLayout.shapeOffset), ArrayBasedStaticShape.class);
         if (this != receiverShape && (receiverShape.superShapes.length < superShapes.length || receiverShape.superShapes[superShapes.length - 1] != this)) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new RuntimeException("Incompatible shape on property access. Expected '" + this + "' got '" + receiverShape + "'.");
+            throw new IllegalArgumentException("Incompatible shape on property access. Expected '" + this + "' got '" + receiverShape + "'.");
         }
     }
 

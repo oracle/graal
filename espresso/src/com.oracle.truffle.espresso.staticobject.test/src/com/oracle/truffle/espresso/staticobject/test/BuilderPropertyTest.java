@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.espresso.staticobject.test;
 
-import com.oracle.truffle.espresso.staticobject.DefaultStaticObject;
+import com.oracle.truffle.espresso.staticobject.DefaultStaticObjectFactory;
 import com.oracle.truffle.espresso.staticobject.DefaultStaticProperty;
 import com.oracle.truffle.espresso.staticobject.StaticProperty;
 import com.oracle.truffle.espresso.staticobject.StaticPropertyKind;
@@ -90,8 +90,8 @@ public class BuilderPropertyTest extends StaticObjectTest {
         StaticShape.Builder builder = StaticShape.newBuilder(this);
         StaticProperty property = new DefaultStaticProperty("property", StaticPropertyKind.Int, false);
         builder.property(property);
-        StaticShape<DefaultStaticObject.Factory> shape = builder.build();
-        DefaultStaticObject object = shape.getFactory().create();
+        StaticShape<DefaultStaticObjectFactory> shape = builder.build();
+        Object object = shape.getFactory().create();
         object.getClass().getField(guessGeneratedFieldName(property));
     }
 
@@ -104,8 +104,8 @@ public class BuilderPropertyTest extends StaticObjectTest {
         StaticProperty p2 = new DefaultStaticProperty("p2", StaticPropertyKind.Int, false);
         builder.property(p1);
         builder.property(p2);
-        StaticShape<DefaultStaticObject.Factory> shape = builder.build();
-        DefaultStaticObject object = shape.getFactory().create();
+        StaticShape<DefaultStaticObjectFactory> shape = builder.build();
+        Object object = shape.getFactory().create();
         Field f1 = object.getClass().getField(guessGeneratedFieldName(p1));
         Field f2 = object.getClass().getField(guessGeneratedFieldName(p2));
         Assert.assertTrue(Modifier.isFinal(f1.getModifiers()));
@@ -123,8 +123,8 @@ public class BuilderPropertyTest extends StaticObjectTest {
             properties[i] = new DefaultStaticProperty(kinds[i].name(), kinds[i], false);
             builder.property(properties[i]);
         }
-        StaticShape<DefaultStaticObject.Factory> shape = builder.build();
-        DefaultStaticObject object = shape.getFactory().create();
+        StaticShape<DefaultStaticObjectFactory> shape = builder.build();
+        Object object = shape.getFactory().create();
         for (int i = 0; i < properties.length; i++) {
             Class<?> expectedType;
             switch (kinds[i]) {

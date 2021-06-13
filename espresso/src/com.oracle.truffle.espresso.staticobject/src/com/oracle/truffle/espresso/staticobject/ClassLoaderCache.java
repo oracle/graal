@@ -25,9 +25,23 @@ package com.oracle.truffle.espresso.staticobject;
 /**
  * This interface is a temporary workaround to store the class loader of generated classes in the
  * TruffleLanguage instance. Once the Static Object Model is moved to Truffle, it will be removed.
+ *
+ * <p>
+ * Implementations of ClassLoaderCache must store the provided {@link ClassLoader} instance without
+ * modifying it.
  */
 public interface ClassLoaderCache {
+    /**
+     * Stores a {@link ClassLoader} instance.
+     *
+     * @param cl the {@link ClassLoader} instance to be stored
+     */
     void setClassLoader(ClassLoader cl);
 
+    /**
+     * Returns the previously stored {@link ClassLoader} instance.
+     *
+     * @return the previously stored {@link ClassLoader}
+     */
     ClassLoader getClassLoader();
 }
