@@ -21,6 +21,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added `DebuggerSession.createPrimitiveValue()` to create a `DebugValue` from a primitive value. Use it instead of `DebugValue.set(primitiveValue)` which is now deprecated.
 * Added support for iterators and hash maps to `DebugValue`. The added methods wraps the respective methods of `InteropLibrary`.
 * Added support for Truffle libraries to be prepared for AOT. See `ExportLibrary.useForAOT` or the `AOTTutorial` java class for further details.
+* The Specialization DSL now generates code to throw an `AssertionError` if a `@Shared` and `@Cached` parameter returns a non-null value and is used in a guard. The `null` state is reserved for the uninitialized state.
 
 ## Version 21.1.0
 * Added methods into `Instrumenter` that create bindings to be attached later on. Added `EventBinding.attach()` method.

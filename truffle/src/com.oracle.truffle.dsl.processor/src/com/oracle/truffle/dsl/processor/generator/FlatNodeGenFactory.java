@@ -4778,9 +4778,18 @@ public class FlatNodeGenFactory {
             }
 
             CodeTree cacheReference = createCacheReference(frameState, specialization, cache);
-            if (!cache.isEagerInitialize() && sharedCaches.containsKey(cache) && !ElementUtils.isPrimitive(cache.getParameter().getType())) {
+            if (cache.isUsedInGuard() && !cache.isEagerInitialize() && sharedCaches.containsKey(cache) && !ElementUtils.isPrimitive(cache.getParameter().getType())) {
                 builder.startIf().tree(cacheReference).string(" == null").end().startBlock();
-                builder.startStatement().tree(cacheReference).string(" = ").tree(value).end();
+                String localName = createCacheLocalName(specialization, cache) + "_check";
+                builder.declaration(cache.getParameter().getType(), localName, value);
+                builder.startIf().string(localName).string(" == null").end().startBlock();
+                builder.startThrow().startNew(context.getType(AssertionError.class)).doubleQuote(
+                                String.format("Specialization '%s' contains a shared cache with name '%s' that returned a null value for the cached initializer. " +
+                                                "Null values are not supported for shared cached initializers because null is reserved for the uninitialized state.",
+                                                ElementUtils.getReadableSignature(specialization.getMethod()),
+                                                cache.getParameter().getLocalName())).end().end();
+                builder.end();
+                builder.startStatement().tree(cacheReference).string(" = ").string(localName).end();
                 builder.end();
             } else {
                 builder.startStatement().tree(cacheReference).string(" = ").tree(value).end();
@@ -4961,7 +4970,18 @@ public class FlatNodeGenFactory {
                     expression = substituteToDispatchedUncached(expression);
                 }
             }
-            tree = writeExpression(frameState, specialization, expression);
+            String sharedName;
+            if (frameState.getMode().isSlowPath() && !cache.isEagerInitialize() && (sharedName = sharedCaches.get(cache)) != null && !ElementUtils.isPrimitive(cache.getParameter().getType())) {
+                CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
+                builder.string("this.").string(sharedName).string(" == null ? (");
+                builder.tree(writeExpression(frameState, specialization, expression));
+                builder.string(") : ");
+                builder.string("this.").string(sharedName);
+                tree = builder.build();
+            } else {
+                tree = writeExpression(frameState, specialization, expression);
+            }
+
         }
         return tree;
     }
