@@ -190,7 +190,6 @@ public final class EspressoContext {
     @CompilationFinal private InterpreterToVM interpreterToVM;
     @CompilationFinal private JImageLibrary jimageLibrary;
     @CompilationFinal private EspressoProperties vmProperties;
-    @CompilationFinal private JavaVersion javaVersion;
     @CompilationFinal private AgentLibraries agents;
     @CompilationFinal private NativeAccess nativeAccess;
     // endregion VM
@@ -447,16 +446,16 @@ public final class EspressoContext {
 
             initVmProperties();
 
-            if (getJavaVersion().modulesEnabled()) {
-                registries.initJavaBaseModule();
-                registries.getBootClassRegistry().initUnnamedModule(StaticObject.NULL);
-            }
-
             // Spawn JNI first, then the VM.
             try (DebugCloseable vmInit = VM_INIT.scope(timers)) {
                 this.nativeAccess = spawnNativeAccess();
                 this.vm = VM.create(getJNI()); // Mokapot is loaded
                 vm.attachThread(Thread.currentThread());
+            }
+
+            if (getJavaVersion().modulesEnabled()) {
+                registries.initJavaBaseModule();
+                registries.getBootClassRegistry().initUnnamedModule(StaticObject.NULL);
             }
 
             // TODO: link libjimage
@@ -612,7 +611,6 @@ public final class EspressoContext {
         // libraries bundled with GraalVM.
         builder.javaHome(Engine.findHome());
         vmProperties = EspressoProperties.processOptions(builder, getEnv().getOptions()).build();
-        javaVersion = new JavaVersion(vmProperties.bootClassPathType().getJavaVersion());
     }
 
     private void initializeKnownClass(Symbol<Type> type) {
@@ -650,7 +648,7 @@ public final class EspressoContext {
     }
 
     public JavaVersion getJavaVersion() {
-        return javaVersion;
+        return vm.getJavaVersion();
     }
 
     public Types getTypes() {

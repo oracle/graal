@@ -48,4 +48,8 @@ public abstract class StructStorage<T extends StructWrapper> {
     public void free(NativeAccess nativeAccess, T wrapper) {
         nativeAccess.freeMemory(wrapper.pointer());
     }
+
+    public long structSize() {
+        return structSize;
+    }
 }

@@ -119,6 +119,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.runtime.EspressoProperties;
+import com.oracle.truffle.espresso.runtime.JavaVersion;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.GenerateNativeEnv;
@@ -135,6 +136,7 @@ import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread.State;
 import com.oracle.truffle.espresso.substitutions.VMCollector;
 import com.oracle.truffle.espresso.vm.structs.JavaVMAttachArgs;
+import com.oracle.truffle.espresso.vm.structs.JdkVersionInfo;
 import com.oracle.truffle.espresso.vm.structs.Structs;
 import com.oracle.truffle.espresso.vm.structs.StructsAccess;
 
@@ -162,6 +164,8 @@ public final class VM extends NativeEnv implements ContextAccess {
     private final @Pointer TruffleObject getPackageAt;
 
     private final long rtldDefaultValue;
+
+    private final JavaVersion javaVersion;
 
     private final Structs structs;
 
@@ -206,6 +210,11 @@ public final class VM extends NativeEnv implements ContextAccess {
         }
     }
 
+    @Override
+    public JavaVersion getJavaVersion() {
+        return javaVersion;
+    }
+
     public @Pointer TruffleObject getJavaLibrary() {
         return javaLibrary;
     }
@@ -215,29 +224,51 @@ public final class VM extends NativeEnv implements ContextAccess {
         // Try to load verify dll first. In 1.3 java dll depends on it and is not
         // always able to find it when the loading executable is outside the JDK.
         // In order to keep working with 1.2 we ignore any loading errors.
+
         /* verifyLibrary = */ getNativeAccess().loadLibrary(bootLibraryPath, "verify", false);
-        TruffleObject libJava = getNativeAccess().loadLibrary(bootLibraryPath, "java", true);
+        return getNativeAccess().loadLibrary(bootLibraryPath, "java", true);
+    }
 
-        if (getJavaVersion().java9OrLater()) {
-            return libJava;
+    private void libJavaOnLoad(TruffleObject libJava) {
+        if (getJavaVersion().java8OrEarlier()) {
+            // The JNI_OnLoad handling is normally done by method load in
+            // java.lang.ClassLoader$NativeLibrary, but the VM loads the base library
+            // explicitly so we have to check for JNI_OnLoad as well
+            // libjava is initialized after libjvm (Espresso VM native context).
+
+            // TODO(peterssen): Use JVM_FindLibraryEntry.
+            TruffleObject jniOnLoad = getNativeAccess().lookupAndBindSymbol(libJava, "JNI_OnLoad", NativeSignature.create(NativeType.INT, NativeType.POINTER, NativeType.POINTER));
+            if (jniOnLoad != null) {
+                try {
+                    getUncached().execute(jniOnLoad, mokapotEnvPtr, RawPointer.nullInstance());
+                } catch (UnsupportedTypeException | UnsupportedMessageException | ArityException e) {
+                    throw EspressoError.shouldNotReachHere(e);
+                }
+            }
         }
+    }
 
-        // The JNI_OnLoad handling is normally done by method load in
-        // java.lang.ClassLoader$NativeLibrary, but the VM loads the base library
-        // explicitly so we have to check for JNI_OnLoad as well
-        // libjava is initialized after libjvm (Espresso VM native context).
-
-        // TODO(peterssen): Use JVM_FindLibraryEntry.
-        TruffleObject jniOnLoad = getNativeAccess().lookupAndBindSymbol(libJava, "JNI_OnLoad", NativeSignature.create(NativeType.INT, NativeType.POINTER, NativeType.POINTER));
-        if (jniOnLoad != null) {
+    private JavaVersion findJavaVersion(TruffleObject libJava) {
+        JdkVersionInfo.JdkVersionInfoWrapper wrapper = getStructs().jdkVersionInfo.allocate(getNativeAccess(), jni());
+        // void JDK_GetVersionInfo0(jdk_version_info* info, size_t info_size);
+        TruffleObject jdkGetVersionInfo = getNativeAccess().lookupAndBindSymbol(libJava, "JDK_GetVersionInfo0", NativeSignature.create(NativeType.VOID, NativeType.POINTER, NativeType.LONG));
+        if (jdkGetVersionInfo != null) {
             try {
-                getUncached().execute(jniOnLoad, mokapotEnvPtr, RawPointer.nullInstance());
+                getUncached().execute(jdkGetVersionInfo, wrapper.pointer(), getStructs().jdkVersionInfo.structSize());
             } catch (UnsupportedTypeException | UnsupportedMessageException | ArityException e) {
                 throw EspressoError.shouldNotReachHere(e);
             }
         }
+        int versionInfo = wrapper.jdkVersion();
+        getStructs().jdkVersionInfo.free(getNativeAccess(), wrapper);
 
-        return libJava;
+        int major = (versionInfo & 0xFF000000) >> 24;
+        int minor = (versionInfo & 0x00FF0000) >> 16;
+        if (major == 1) {
+            return new JavaVersion(minor);
+        } else {
+            return new JavaVersion(major);
+        }
     }
 
     private VM(JniEnv jniEnv) {
@@ -296,6 +327,8 @@ public final class VM extends NativeEnv implements ContextAccess {
             assert !getUncached().isNull(this.mokapotEnvPtr);
 
             javaLibrary = loadJavaLibrary(props.bootLibraryPath());
+            javaVersion = findJavaVersion(javaLibrary);
+            libJavaOnLoad(javaLibrary);
 
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere(e);
