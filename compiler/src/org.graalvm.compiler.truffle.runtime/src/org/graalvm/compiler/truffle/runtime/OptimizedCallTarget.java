@@ -535,9 +535,11 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     private boolean interpreterCall() {
+        boolean bypassedInstalledCode = false;
         if (isValid()) {
             // Native entry stubs were deoptimized => reinstall.
             runtime().bypassedInstalledCode(this);
+            bypassedInstalledCode = true;
         }
         ensureInitialized();
         int intCallCount = this.callCount;
@@ -547,7 +549,16 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
         // Check if call target is hot enough to compile
         if (shouldCompileImpl(intCallCount, intLoopCallCount)) {
-            return compile(!engine.multiTier);
+            boolean isCompiled = compile(!engine.multiTier);
+            /*
+             * If we bypassed the installed code chances are high that the code is currently being
+             * debugged. This means that returning true for the interpreter call will retry the call
+             * boundary. If the call boundary is retried and debug stepping would invalidate the
+             * entry stub again then this leads to an inconvenient stack overflow error. In order to
+             * avoid this we just do not return true and wait for the second execution to jump to
+             * the optimized code. In practice the installed code should rarely be bypassed.
+             */
+            return isCompiled && !bypassedInstalledCode;
         }
         return false;
     }
