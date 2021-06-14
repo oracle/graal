@@ -242,10 +242,10 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
             // tasks previously compiled with higher tier are better
             return compiledTier > otherCompileTier;
         }
+        if (engineData.traversingFirstTierBonus > 0) {
+            return lastWeight * (1 + engineData.traversingFirstTierBonus) > other.lastWeight;
+        }
         if (engineData.weightingBothTiers || isFirstTier()) {
-            if (engineData.traversingFirstTierBonus > 0 && isFirstTier() && other.isLastTier()) {
-                return lastWeight * (1 + engineData.traversingFirstTierBonus) > other.lastWeight;
-            }
             return lastWeight > other.lastWeight;
         }
         return false;
