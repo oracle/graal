@@ -732,11 +732,4 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }
-
-    // IsolateCreationWatcher will be removed, see GR-30740. Use
-    // IsolateListener and IsolateListenerSupport instead.
-    public interface IsolateCreationWatcher {
-        @Uninterruptible(reason = "Thread state not yet set up.")
-        void registerIsolate(Isolate isolate);
-    }
 }
