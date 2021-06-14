@@ -492,7 +492,7 @@ public final class EspressoContext {
                     getLogger().log(Level.FINE, "ParserKlassCacheList: Attempting to read class: {0}", type.toString());
                     ClasspathFile cpFile = getBootClasspath().readClassFile(type);
                     if (cpFile != null) {
-                        getCache().getOrCreateParserKlass(type.toString(), cpFile.contents, this);
+                        getCache().getOrCreateParserKlass(registries.getBootClassRegistry().getClassLoader(), type.toString(), cpFile.contents, this);
                     } else {
                         getLogger().log(Level.WARNING, "Pre-initialization failed to read class: {0}", type.toString());
                     }

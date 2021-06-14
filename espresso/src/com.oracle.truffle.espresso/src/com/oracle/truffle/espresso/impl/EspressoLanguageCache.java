@@ -23,11 +23,13 @@
 package com.oracle.truffle.espresso.impl;
 
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.ClassfileStream;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -66,7 +68,7 @@ public final class EspressoLanguageCache {
         isLinkedKlassCacheEnabled = env.getOptions().get(EspressoOptions.UseLinkedKlassCache);
     }
 
-    public ParserKlass getOrCreateParserKlass(String name, byte[] bytes, EspressoContext context) {
+    public ParserKlass getOrCreateParserKlass(StaticObject loader, String name, byte[] bytes, EspressoContext context) {
         if (isParserKlassCacheEnabled) {
             ParserKlassCacheKey key = null;
             ParserKlass parserKlass = bootParserKlassCache.get(name);
@@ -75,7 +77,7 @@ public final class EspressoLanguageCache {
                 parserKlass = appParserKlassCache.get(key);
             }
             if (parserKlass == null) {
-                parserKlass = createParserKlass(name, bytes, context);
+                parserKlass = createParserKlass(loader, name, bytes, context);
                 if (sealed) {
                     if (key == null) {
                         key = new ParserKlassCacheKey(bytes);
@@ -87,21 +89,21 @@ public final class EspressoLanguageCache {
             }
             return parserKlass;
         } else {
-            return createParserKlass(name, bytes, context);
+            return createParserKlass(loader, name, bytes, context);
         }
     }
 
-    public LinkedKlass getOrCreateLinkedKlass(ParserKlass parserKlass, LinkedKlass superKlass, LinkedKlass[] interfaces) {
+    public LinkedKlass getOrCreateLinkedKlass(EspressoLanguage language, ParserKlass parserKlass, LinkedKlass superKlass, LinkedKlass[] interfaces) {
         if (isLinkedKlassCacheEnabled) {
             LinkedKlassCacheKey key = new LinkedKlassCacheKey(parserKlass, superKlass, interfaces);
             LinkedKlass linkedKlass = linkedKlassCache.get(key);
             if (linkedKlass == null) {
-                linkedKlass = createLinkedKlass(parserKlass, superKlass, interfaces);
+                linkedKlass = createLinkedKlass(language, parserKlass, superKlass, interfaces);
                 linkedKlassCache.put(key, linkedKlass);
             }
             return linkedKlass;
         } else {
-            return createLinkedKlass(parserKlass, superKlass, interfaces);
+            return createLinkedKlass(language, parserKlass, superKlass, interfaces);
         }
     }
 
@@ -116,12 +118,13 @@ public final class EspressoLanguageCache {
         this.sealed = false;
     }
 
-    private ParserKlass createParserKlass(String name, byte[] bytes, EspressoContext context) {
-        return ClassfileParser.parse(new ClassfileStream(bytes, null), name, null, context);
+    private ParserKlass createParserKlass(StaticObject loader, String name, byte[] bytes, EspressoContext context) {
+        // May throw guest ClassFormatError, NoClassDefFoundError.
+        return ClassfileParser.parse(new ClassfileStream(bytes, null), loader, name, context);
     }
 
-    private LinkedKlass createLinkedKlass(ParserKlass parserKlass, LinkedKlass superKlass, LinkedKlass[] interfaces) {
-        return new LinkedKlass(parserKlass, superKlass, interfaces);
+    private LinkedKlass createLinkedKlass(EspressoLanguage language, ParserKlass parserKlass, LinkedKlass superKlass, LinkedKlass[] interfaces) {
+        return LinkedKlass.create(language, parserKlass, superKlass == null ? null : superKlass, interfaces);
     }
 
     private static final class ParserKlassCacheKey {

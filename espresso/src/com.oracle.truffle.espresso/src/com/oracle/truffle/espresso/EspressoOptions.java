@@ -438,7 +438,7 @@ public final class EspressoOptions {
     public static final OptionKey<Boolean> UseParserKlassCache = new OptionKey<>(true);
 
     @Option(help = "File containing a list of internal class names to load into the ParserKlass cache during context pre-initialization.", //
-            category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<Path> ParserKlassCacheList = new OptionKey<>(EMPTY, PATH_OPTION_TYPE);
 
     @Option(help = "Enables LinkedKlass caching for pre-initialized context (if invoked during image build time) " +
