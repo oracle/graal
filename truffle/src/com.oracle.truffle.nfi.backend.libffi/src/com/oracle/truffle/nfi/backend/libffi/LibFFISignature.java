@@ -114,10 +114,10 @@ final class LibFFISignature {
         @Specialization(limit = "3")
         @GenerateAOT.Exclude
         static Object call(LibFFISignature self, Object functionPointer, Object[] args,
-                    @CachedLibrary("functionPointer") InteropLibrary interop,
-                    @Cached BranchProfile toNative,
-                    @Cached BranchProfile error,
-                    @Cached FunctionExecuteNode functionExecute) throws ArityException, UnsupportedTypeException {
+                        @CachedLibrary("functionPointer") InteropLibrary interop,
+                        @Cached BranchProfile toNative,
+                        @Cached BranchProfile error,
+                        @Cached FunctionExecuteNode functionExecute) throws ArityException, UnsupportedTypeException {
             if (!interop.isPointer(functionPointer)) {
                 toNative.enter();
                 interop.toNative(functionPointer);
@@ -133,7 +133,6 @@ final class LibFFISignature {
         }
 
     }
-
 
     @ExportMessage
     @ImportStatic(LibFFILanguage.class)
@@ -154,9 +153,9 @@ final class LibFFISignature {
 
         @Specialization(replaces = "doCachedExecutable", guards = "signature.signatureInfo == cachedSignatureInfo")
         static LibFFIClosure doCachedSignature(LibFFISignature signature, Object executable,
-                                               @Cached("signature.signatureInfo") CachedSignatureInfo cachedSignatureInfo,
-                                               @CachedContext(LibFFILanguage.class) LibFFIContext ctx,
-                                               @Cached("create(ctx.language, cachedSignatureInfo)") PolymorphicClosureInfo cachedClosureInfo) {
+                        @Cached("signature.signatureInfo") CachedSignatureInfo cachedSignatureInfo,
+                        @CachedContext(LibFFILanguage.class) LibFFIContext ctx,
+                        @Cached("create(ctx.language, cachedSignatureInfo)") PolymorphicClosureInfo cachedClosureInfo) {
             assert signature.signatureInfo == cachedSignatureInfo;
             ClosureNativePointer nativePointer = cachedClosureInfo.allocateClosure(ctx, signature, executable);
             return LibFFIClosure.newClosureWrapper(nativePointer);

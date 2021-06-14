@@ -51,7 +51,7 @@ public interface ToolchainConfig extends LLVMCapability {
     /**
      * Binds the signature with the function.
      */
-    default Object bind(Object signature, Object function) {
+    default Object bind(@SuppressWarnings("unused") Object signature, @SuppressWarnings("unused") Object function) {
         return null;
     }
 }

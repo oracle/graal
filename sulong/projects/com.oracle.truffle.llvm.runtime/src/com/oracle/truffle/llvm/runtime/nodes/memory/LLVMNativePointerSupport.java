@@ -136,7 +136,7 @@ public final class LLVMNativePointerSupport extends LLVMNode {
         public abstract boolean execute(Object receiver);
 
         @Specialization
-        boolean doNativePointer(LLVMNativePointer receiver) {
+        boolean doNativePointer(@SuppressWarnings("unused") LLVMNativePointer receiver) {
             return true;
         }
 

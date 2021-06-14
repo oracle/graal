@@ -57,7 +57,6 @@ import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMSourceTypeFactory;
 import com.oracle.truffle.llvm.runtime.except.LLVMMemoryException;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
-import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMCopyTargetLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
@@ -95,12 +94,11 @@ import com.oracle.truffle.llvm.spi.NativeTypeLibrary;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-@ExportLibrary(value = LLVMAsForeignLibrary.class, useForAOT = true, useForAOTPriority = 5)
-@ExportLibrary(value = LLVMManagedReadLibrary.class, useForAOT = true, useForAOTPriority = 4)
-@ExportLibrary(value = LLVMManagedWriteLibrary.class, useForAOT = true, useForAOTPriority = 3)
-@ExportLibrary(value = LLVMVaListLibrary.class, useForAOT = true, useForAOTPriority = 2)
-@ExportLibrary(value = NativeTypeLibrary.class, useForAOT = true, useForAOTPriority = 1)
-@ExportLibrary(value = LLVMCopyTargetLibrary.class, useForAOT = true, useForAOTPriority = 0)
+@ExportLibrary(value = LLVMManagedReadLibrary.class, useForAOT = true, useForAOTPriority = 5)
+@ExportLibrary(value = LLVMManagedWriteLibrary.class, useForAOT = true, useForAOTPriority = 4)
+@ExportLibrary(value = LLVMVaListLibrary.class, useForAOT = true, useForAOTPriority = 3)
+@ExportLibrary(value = NativeTypeLibrary.class, useForAOT = true, useForAOTPriority = 2)
+@ExportLibrary(value = LLVMCopyTargetLibrary.class, useForAOT = true, useForAOTPriority = 1)
 @ExportLibrary(InteropLibrary.class)
 public final class LLVMAarch64VaListStorage extends LLVMVaListStorage {
 
@@ -161,16 +159,10 @@ public final class LLVMAarch64VaListStorage extends LLVMVaListStorage {
         return usedGpArea;
     }
 
-    // LLVMAsForeignLibrary
-
-    @ExportMessage
-    public static boolean isForeign(@SuppressWarnings("unused") LLVMAarch64VaListStorage receiver) {
-        return false;
-    }
-
     // LLVMCopyTargetLibrary
 
     @ExportMessage
+    @SuppressWarnings("static-method")
     public boolean canCopyFrom(Object source, @SuppressWarnings("unused") long length) {
         /*
          * I do not test if the length is the size of va_list as I need that the execution proceed

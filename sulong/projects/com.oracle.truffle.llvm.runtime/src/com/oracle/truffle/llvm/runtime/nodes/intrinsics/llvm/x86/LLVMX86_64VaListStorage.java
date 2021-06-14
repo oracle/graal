@@ -57,7 +57,6 @@ import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMSourceTypeFactory;
 import com.oracle.truffle.llvm.runtime.except.LLVMMemoryException;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
-import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
@@ -183,7 +182,6 @@ import java.util.Arrays;
  * creating the native counterpart and the state of the managed va_list is no longer updated.
  *
  */
-@ExportLibrary(value = LLVMAsForeignLibrary.class, useForAOT = true, useForAOTPriority = 4)
 @ExportLibrary(value = LLVMManagedReadLibrary.class, useForAOT = true, useForAOTPriority = 3)
 @ExportLibrary(value = LLVMManagedWriteLibrary.class, useForAOT = true, useForAOTPriority = 2)
 @ExportLibrary(value = LLVMVaListLibrary.class, useForAOT = true, useForAOTPriority = 1)
@@ -214,13 +212,6 @@ public final class LLVMX86_64VaListStorage extends LLVMVaListStorage {
 
     public boolean isNativized() {
         return nativized != null;
-    }
-
-    // LLVMAsForeignLibrary
-
-    @ExportMessage
-    public static boolean isForeign(@SuppressWarnings("unused") LLVMX86_64VaListStorage receiver) {
-        return false;
     }
 
     // NativeTypeLibrary library
