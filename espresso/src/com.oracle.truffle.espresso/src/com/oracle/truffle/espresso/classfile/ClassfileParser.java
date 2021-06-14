@@ -66,6 +66,7 @@ import com.oracle.truffle.espresso.classfile.attributes.LocalVariableTable;
 import com.oracle.truffle.espresso.classfile.attributes.MethodParametersAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.NestHostAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.NestMembersAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.PermittedSubclassesAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.SignatureAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.SourceDebugExtensionAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.SourceFileAttribute;
@@ -885,6 +886,7 @@ public final class ClassfileParser {
         EnclosingMethodAttribute enclosingMethod = null;
         BootstrapMethodsAttribute bootstrapMethods = null;
         InnerClassesAttribute innerClasses = null;
+        PermittedSubclassesAttribute permittedSubclasses = null;
 
         CommonAttributeParser commonAttributeParser = new CommonAttributeParser(InfoType.Class);
 
@@ -942,6 +944,11 @@ public final class ClassfileParser {
                         throw ConstantPool.classFormatError("Classfile cannot have both a nest members and a nest host attribute.");
                     }
                     classAttributes[i] = nestMembers = parseNestMembers(attributeName);
+                } else if (majorVersion >= JAVA_17_VERSION && attributeName.equals(Name.PermittedSubclasses)) {
+                    if (permittedSubclasses != null) {
+                        throw ConstantPool.classFormatError("Duplicate PermittedSubclasses attribute");
+                    }
+                    classAttributes[i] = permittedSubclasses = parsePermittedSubclasses(attributeName);
                 } else {
                     Attribute attr = commonAttributeParser.parseCommonAttribute(attributeName, attributeSize);
                     // stream.skip(attributeSize);
@@ -1237,6 +1244,18 @@ public final class ClassfileParser {
             classes[i] = pos;
         }
         return new NestMembersAttribute(attributeName, classes);
+    }
+
+    private PermittedSubclassesAttribute parsePermittedSubclasses(Symbol<Name> attributeName) {
+        assert PermittedSubclassesAttribute.NAME.equals(attributeName);
+        int numberOfClasses = stream.readU2();
+        int[] classes = new int[numberOfClasses];
+        for (int i = 0; i < numberOfClasses; i++) {
+            int pos = stream.readU2();
+            pool.classAt(pos).validate(pool);
+            classes[i] = pos;
+        }
+        return new PermittedSubclassesAttribute(attributeName, classes);
     }
 
     private InnerClassesAttribute.Entry parseInnerClassEntry() {
