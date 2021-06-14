@@ -70,153 +70,64 @@ import com.oracle.truffle.tools.profiler.impl.ProfilerToolFactory;
  */
 public final class CPUSampler implements Closeable {
 
-    /**
-     * Wrapper for information on how many times an element was seen on the shadow stack. Used as a
-     * template parameter of {@link ProfilerNode}. Differentiates between an execution in compiled
-     * code and in the interpreter.
-     *
-     * @since 0.30
-     */
-    public static final class Payload {
-
-        Payload() {
-        }
-
-        int compiledHitCount;
-        int interpretedHitCount;
-
-        int selfCompiledHitCount;
-        int selfInterpretedHitCount;
-
-        final List<Long> selfHitTimes = new ArrayList<>();
-
-        /**
-         * @return The number of times the element was found bellow the top of the shadow stack as
-         *         compiled code
-         * @since 0.30
-         */
-        public int getCompiledHitCount() {
-            return compiledHitCount;
-        }
-
-        /**
-         * @return The number of times the element was found bellow the top of the shadow stack as
-         *         interpreted code
-         * @since 0.30
-         */
-        public int getInterpretedHitCount() {
-            return interpretedHitCount;
-        }
-
-        /**
-         * @return The number of times the element was found on the top of the shadow stack as
-         *         compiled code
-         * @since 0.30
-         */
-        public int getSelfCompiledHitCount() {
-            return selfCompiledHitCount;
-        }
-
-        /**
-         * @return The number of times the element was found on the top of the shadow stack as
-         *         interpreted code
-         * @since 0.30
-         */
-        public int getSelfInterpretedHitCount() {
-            return selfInterpretedHitCount;
-        }
-
-        /**
-         * @return Total number of times the element was found on the top of the shadow stack
-         * @since 0.30
-         */
-        public int getSelfHitCount() {
-            return selfCompiledHitCount + selfInterpretedHitCount;
-        }
-
-        /**
-         * @return Total number of times the element was found bellow the top of the shadow stack
-         * @since 0.30
-         */
-        public int getHitCount() {
-            return compiledHitCount + interpretedHitCount;
-        }
-
-        /**
-         * @return An immutable list of time stamps for the times that the element was on the top of
-         *         the stack
-         * @since 0.30
-         */
-        public List<Long> getSelfHitTimes() {
-            return Collections.unmodifiableList(selfHitTimes);
-        }
-
-        void addSelfHitTime(Long time) {
-            selfHitTimes.add(time);
-        }
-    }
-
-    /**
-     * Describes the different modes in which the CPU sampler can operate.
-     *
-     * @since 0.30
-     */
-    public enum Mode {
-        /**
-         * Sample {@link RootTag Roots} <b>excluding</b> the ones that get inlined during
-         * compilation. This mode is the default and has the least amount of impact on peak
-         * performance.
-         *
-         * @since 0.30
-         */
-        EXCLUDE_INLINED_ROOTS,
-        /**
-         * Sample {@link RootTag Roots} <b>including</b> the ones that get inlined during
-         * compilation.
-         *
-         * @since 0.30
-         */
-        ROOTS,
-        /**
-         * Sample all {@link com.oracle.truffle.api.instrumentation.StandardTags.StatementTag
-         * Statements}. This mode has serious impact on peek performance.
-         *
-         * @since 0.30
-         */
-        STATEMENTS
-    }
-
     static final SourceSectionFilter DEFAULT_FILTER = SourceSectionFilter.newBuilder().tagIs(RootTag.class).build();
+    private static final Supplier<Payload> PAYLOAD_FACTORY = new Supplier<Payload>() {
+        @Override
+        public Payload get() {
+            return new Payload();
+        }
+    };
+    private static final BiConsumer<Payload, Payload> MERGE_PAYLOAD = new BiConsumer<Payload, Payload>() {
+        @Override
+        public void accept(Payload sourcePayload, Payload destinationPayload) {
+            destinationPayload.selfCompiledHitCount += sourcePayload.selfCompiledHitCount;
+            destinationPayload.selfInterpretedHitCount += sourcePayload.selfInterpretedHitCount;
+            destinationPayload.compiledHitCount += sourcePayload.compiledHitCount;
+            destinationPayload.interpretedHitCount += sourcePayload.interpretedHitCount;
+            for (Long timestamp : sourcePayload.getSelfHitTimes()) {
+                destinationPayload.addSelfHitTime(timestamp);
+            }
+        }
+    };
+    private static final Function<Payload, Payload> COPY_PAYLOAD = new Function<Payload, Payload>() {
+        @Override
+        public Payload apply(Payload sourcePayload) {
+            Payload destinationPayload = new Payload();
+            destinationPayload.selfCompiledHitCount = sourcePayload.selfCompiledHitCount;
+            destinationPayload.selfInterpretedHitCount = sourcePayload.selfInterpretedHitCount;
+            destinationPayload.compiledHitCount = sourcePayload.compiledHitCount;
+            destinationPayload.interpretedHitCount = sourcePayload.interpretedHitCount;
+            for (Long timestamp : sourcePayload.getSelfHitTimes()) {
+                destinationPayload.addSelfHitTime(timestamp);
+            }
+            return destinationPayload;
+        }
+    };
 
-    private volatile boolean closed;
-
-    private volatile boolean collecting;
-
-    private long period = 10;
-
-    private long delay = 0;
-
-    private int stackLimit = 10000;
-
-    private SourceSectionFilter filter = DEFAULT_FILTER;
-
-    private Map<TruffleContext, AtomicLong> samplesTaken = new HashMap<>(0);
-
-    private Timer samplerThread;
-
-    private SamplingTimerTask samplerTask;
-
-    private volatile SafepointStack safepointStack;
+    static {
+        CPUSamplerInstrument.setFactory(new ProfilerToolFactory<CPUSampler>() {
+            @Override
+            public CPUSampler create(Env env) {
+                return new CPUSampler(env);
+            }
+        });
+    }
 
     private final Env env;
-
-    private boolean gatherSelfHitTimes = false;
-
-    private volatile boolean nonInternalLanguageContextInitialized = false;
-
-    private boolean delaySamplingUntilNonInternalLangInit = true;
-
     private final Map<TruffleContext, Map<Thread, ProfilerNode<Payload>>> activeContexts = Collections.synchronizedMap(new HashMap<>());
+    private volatile boolean closed;
+    private volatile boolean collecting;
+    private long period = 10;
+    private long delay = 0;
+    private int stackLimit = 10000;
+    private SourceSectionFilter filter = DEFAULT_FILTER;
+    private Map<TruffleContext, AtomicLong> samplesTaken = new HashMap<>(0);
+    private Timer samplerThread;
+    private SamplingTimerTask samplerTask;
+    private volatile SafepointStack safepointStack;
+    private boolean gatherSelfHitTimes = false;
+    private volatile boolean nonInternalLanguageContextInitialized = false;
+    private boolean delaySamplingUntilNonInternalLangInit = true;
 
     CPUSampler(Env env) {
         this.env = env;
@@ -275,6 +186,15 @@ public final class CPUSampler implements Closeable {
         }, true);
     }
 
+    /**
+     * Finds {@link CPUSampler} associated with given engine.
+     *
+     * @since 19.0
+     */
+    public static CPUSampler find(Engine engine) {
+        return CPUSamplerInstrument.getSampler(engine);
+    }
+
     @SuppressWarnings("unused")
     private void pushSyntheticFrame(TruffleContext context, LanguageInfo info, String message) {
         // TODO GR-32022
@@ -286,12 +206,11 @@ public final class CPUSampler implements Closeable {
     }
 
     /**
-     * Finds {@link CPUSampler} associated with given engine.
-     *
-     * @since 19.0
+     * @return whether or not the sampler is currently collecting data.
+     * @since 0.30
      */
-    public static CPUSampler find(Engine engine) {
-        return CPUSamplerInstrument.getSampler(engine);
+    public synchronized boolean isCollecting() {
+        return collecting;
     }
 
     /**
@@ -308,14 +227,6 @@ public final class CPUSampler implements Closeable {
     }
 
     /**
-     * @return whether or not the sampler is currently collecting data.
-     * @since 0.30
-     */
-    public synchronized boolean isCollecting() {
-        return collecting;
-    }
-
-    /**
      * Sets the {@link Mode mode} for the sampler.
      *
      * @param mode the new mode for the sampler.
@@ -325,6 +236,14 @@ public final class CPUSampler implements Closeable {
     @Deprecated
     public synchronized void setMode(Mode mode) {
         // Deprecated, a noop.
+    }
+
+    /**
+     * @return the sampling period i.e. the time between two samples of the shadow stack are taken.
+     * @since 0.30
+     */
+    public synchronized long getPeriod() {
+        return period;
     }
 
     /**
@@ -339,14 +258,6 @@ public final class CPUSampler implements Closeable {
             throw new ProfilerException(String.format("Invalid sample period %s.", samplePeriod));
         }
         this.period = samplePeriod;
-    }
-
-    /**
-     * @return the sampling period i.e. the time between two samples of the shadow stack are taken.
-     * @since 0.30
-     */
-    public synchronized long getPeriod() {
-        return period;
     }
 
     /**
@@ -365,6 +276,14 @@ public final class CPUSampler implements Closeable {
     }
 
     /**
+     * @return size of the shadow stack
+     * @since 0.30
+     */
+    public synchronized int getStackLimit() {
+        return stackLimit;
+    }
+
+    /**
      * Sets the maximum amount of stack frames that are sampled. Whether or not the stack grew more
      * than the provided size during execution can be checked with {@linkplain #hasStackOverflowed}
      *
@@ -377,26 +296,6 @@ public final class CPUSampler implements Closeable {
             throw new ProfilerException(String.format("Invalid stack limit %s.", stackLimit));
         }
         this.stackLimit = stackLimit;
-    }
-
-    /**
-     * @return size of the shadow stack
-     * @since 0.30
-     */
-    public synchronized int getStackLimit() {
-        return stackLimit;
-    }
-
-    /**
-     * Sets the {@link SourceSectionFilter filter} for the sampler. The sampler will only observe
-     * parts of the executed source code that is specified by the filter.
-     *
-     * @param filter The new filter describing which part of the source code to sample
-     * @since 0.30
-     */
-    public synchronized void setFilter(SourceSectionFilter filter) {
-        enterChangeConfig();
-        this.filter = filter;
     }
 
     /**
@@ -417,6 +316,18 @@ public final class CPUSampler implements Closeable {
      */
     public synchronized SourceSectionFilter getFilter() {
         return filter;
+    }
+
+    /**
+     * Sets the {@link SourceSectionFilter filter} for the sampler. The sampler will only observe
+     * parts of the executed source code that is specified by the filter.
+     *
+     * @param filter The new filter describing which part of the source code to sample
+     * @since 0.30
+     */
+    public synchronized void setFilter(SourceSectionFilter filter) {
+        enterChangeConfig();
+        this.filter = filter;
     }
 
     /**
@@ -455,41 +366,6 @@ public final class CPUSampler implements Closeable {
         }
         return mergedRoot.getChildren();
     }
-
-    private static final Supplier<Payload> PAYLOAD_FACTORY = new Supplier<Payload>() {
-        @Override
-        public Payload get() {
-            return new Payload();
-        }
-    };
-
-    private static final BiConsumer<Payload, Payload> MERGE_PAYLOAD = new BiConsumer<Payload, Payload>() {
-        @Override
-        public void accept(Payload sourcePayload, Payload destinationPayload) {
-            destinationPayload.selfCompiledHitCount += sourcePayload.selfCompiledHitCount;
-            destinationPayload.selfInterpretedHitCount += sourcePayload.selfInterpretedHitCount;
-            destinationPayload.compiledHitCount += sourcePayload.compiledHitCount;
-            destinationPayload.interpretedHitCount += sourcePayload.interpretedHitCount;
-            for (Long timestamp : sourcePayload.getSelfHitTimes()) {
-                destinationPayload.addSelfHitTime(timestamp);
-            }
-        }
-    };
-
-    private static final Function<Payload, Payload> COPY_PAYLOAD = new Function<Payload, Payload>() {
-        @Override
-        public Payload apply(Payload sourcePayload) {
-            Payload destinationPayload = new Payload();
-            destinationPayload.selfCompiledHitCount = sourcePayload.selfCompiledHitCount;
-            destinationPayload.selfInterpretedHitCount = sourcePayload.selfInterpretedHitCount;
-            destinationPayload.compiledHitCount = sourcePayload.compiledHitCount;
-            destinationPayload.interpretedHitCount = sourcePayload.interpretedHitCount;
-            for (Long timestamp : sourcePayload.getSelfHitTimes()) {
-                destinationPayload.addSelfHitTime(timestamp);
-            }
-            return destinationPayload;
-        }
-    };
 
     /**
      * @return The roots of the trees representing the profile of the execution per thread.
@@ -677,6 +553,121 @@ public final class CPUSampler implements Closeable {
         }
     }
 
+    /**
+     * Describes the different modes in which the CPU sampler can operate.
+     *
+     * @since 0.30
+     */
+    public enum Mode {
+        /**
+         * Sample {@link RootTag Roots} <b>excluding</b> the ones that get inlined during
+         * compilation. This mode is the default and has the least amount of impact on peak
+         * performance.
+         *
+         * @since 0.30
+         */
+        EXCLUDE_INLINED_ROOTS,
+        /**
+         * Sample {@link RootTag Roots} <b>including</b> the ones that get inlined during
+         * compilation.
+         *
+         * @since 0.30
+         */
+        ROOTS,
+        /**
+         * Sample all {@link com.oracle.truffle.api.instrumentation.StandardTags.StatementTag
+         * Statements}. This mode has serious impact on peek performance.
+         *
+         * @since 0.30
+         */
+        STATEMENTS
+    }
+
+    /**
+     * Wrapper for information on how many times an element was seen on the shadow stack. Used as a
+     * template parameter of {@link ProfilerNode}. Differentiates between an execution in compiled
+     * code and in the interpreter.
+     *
+     * @since 0.30
+     */
+    public static final class Payload {
+
+        final List<Long> selfHitTimes = new ArrayList<>();
+        int compiledHitCount;
+        int interpretedHitCount;
+
+        int selfCompiledHitCount;
+        int selfInterpretedHitCount;
+
+        Payload() {
+        }
+
+        /**
+         * @return The number of times the element was found bellow the top of the shadow stack as
+         *         compiled code
+         * @since 0.30
+         */
+        public int getCompiledHitCount() {
+            return compiledHitCount;
+        }
+
+        /**
+         * @return The number of times the element was found bellow the top of the shadow stack as
+         *         interpreted code
+         * @since 0.30
+         */
+        public int getInterpretedHitCount() {
+            return interpretedHitCount;
+        }
+
+        /**
+         * @return The number of times the element was found on the top of the shadow stack as
+         *         compiled code
+         * @since 0.30
+         */
+        public int getSelfCompiledHitCount() {
+            return selfCompiledHitCount;
+        }
+
+        /**
+         * @return The number of times the element was found on the top of the shadow stack as
+         *         interpreted code
+         * @since 0.30
+         */
+        public int getSelfInterpretedHitCount() {
+            return selfInterpretedHitCount;
+        }
+
+        /**
+         * @return Total number of times the element was found on the top of the shadow stack
+         * @since 0.30
+         */
+        public int getSelfHitCount() {
+            return selfCompiledHitCount + selfInterpretedHitCount;
+        }
+
+        /**
+         * @return Total number of times the element was found bellow the top of the shadow stack
+         * @since 0.30
+         */
+        public int getHitCount() {
+            return compiledHitCount + interpretedHitCount;
+        }
+
+        /**
+         * @return An immutable list of time stamps for the times that the element was on the top of
+         *         the stack
+         * @since 0.30
+         */
+        public List<Long> getSelfHitTimes() {
+            return Collections.unmodifiableList(selfHitTimes);
+        }
+
+        void addSelfHitTime(Long time) {
+            selfHitTimes.add(time);
+        }
+    }
+
     private class SamplingTimerTask extends TimerTask {
 
         private final LongSummaryStatistics biasStatistic = new LongSummaryStatistics();
@@ -767,15 +758,6 @@ public final class CPUSampler implements Closeable {
             }
             return child;
         }
-    }
-
-    static {
-        CPUSamplerInstrument.setFactory(new ProfilerToolFactory<CPUSampler>() {
-            @Override
-            public CPUSampler create(Env env) {
-                return new CPUSampler(env);
-            }
-        });
     }
 
 }
