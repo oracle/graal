@@ -27,110 +27,42 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <graalvm/llvm/polyglot.h>
+#include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
+#include <graalvm/llvm/polyglot.h>
 
-class Point {
-protected:
-    int x;
-    int y;
-
+class A {
 public:
-    Point();
-    int getX();
-    int getY();
-    void setX(int val);
-    void setY(int val);
-    double squaredEuclideanDistance(Point *other);
+    int a;
+    A();
 };
 
-POLYGLOT_DECLARE_TYPE(Point)
+POLYGLOT_DECLARE_TYPE(A);
 
-class XtendPoint : public Point {
-private:
-    int z;
-
+class B : public A {
 public:
-    XtendPoint();
-    int getZ();
-    void setZ(int val);
-    int getZ(int constant);
-    int getX();
+    int b;
+    B();
 };
 
-POLYGLOT_DECLARE_TYPE(XtendPoint)
+POLYGLOT_DECLARE_TYPE(B);
 
-//class methods
-
-Point::Point() {
-    x = 0;
-    y = 0;
+A::A() {
+    a = 3;
+}
+B::B() : A() {
+    b = 4;
 }
 
-int Point::getX() {
-    return x;
+void *prepareA() {
+    A *a = (A *) malloc(sizeof(A));
+    a->a = 3;
+    return polyglot_from_A(a);
 }
 
-int Point::getY() {
-    return y;
-}
-
-void Point::setX(int val) {
-    x = val;
-}
-
-void Point::setY(int val) {
-    y = val;
-}
-
-double Point::squaredEuclideanDistance(Point *other) {
-    double dX = (double) (x - other->x);
-    double dY = (double) (y - other->y);
-    return dX * dX + dY * dY;
-}
-
-XtendPoint::XtendPoint() : Point() {
-    z = 0;
-}
-
-int XtendPoint::getZ() {
-    return z;
-}
-
-void XtendPoint::setZ(int dZ) {
-    z = dZ;
-}
-
-int XtendPoint::getZ(int constantOffset) {
-    return z + constantOffset;
-}
-
-int XtendPoint::getX() {
-    return x * 2;
-}
-
-//functions
-void *allocNativePoint() {
-    Point *ret = (Point *) malloc(sizeof(*ret));
-    return polyglot_from_Point(ret);
-}
-
-void *allocNativeXtendPoint() {
-    XtendPoint *ret = (XtendPoint *) malloc(sizeof(*ret));
-    return polyglot_from_XtendPoint(ret);
-}
-
-void swap(Point *p, Point *q) {
-    Point tmp = *q;
-    *q = *p;
-    *p = tmp;
-}
-
-void freeNativePoint(Point *p) {
-    free(p);
-}
-
-void freeNativeXtendPoint(XtendPoint *p) {
-    free(p);
+void *prepareB() {
+    B *b = (B *) malloc(sizeof(B));
+    b->a = 3;
+    b->b = 4;
+    return polyglot_from_B(b);
 }

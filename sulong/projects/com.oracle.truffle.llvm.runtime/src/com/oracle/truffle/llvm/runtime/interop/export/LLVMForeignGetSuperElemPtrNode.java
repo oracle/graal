@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,29 +27,18 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.metadata;
 
-public enum Flags {
+package com.oracle.truffle.llvm.runtime.interop.export;
 
-    // see https://llvm.org/svn/llvm-project/llvm/trunk/include/llvm/IR/DebugInfoFlags.def
-    VIRTUAL(1L << 5),
-    ARTIFICIAL(1L << 6),
-    OBJECT_POINTER(1L << 10),
-    STATIC_MEMBER(1L << 12),
-    BITFIELD(1L << 19),
-    THUNK(1L << 25);
+import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-    private final long mask;
+@GenerateUncached
+public abstract class LLVMForeignGetSuperElemPtrNode extends LLVMNode {
+    /**
+     * @param offset either direct or virtual offset. See subclasses.
+     */
+    public abstract LLVMPointer execute(LLVMPointer receiver, long offset);
 
-    Flags(long mask) {
-        this.mask = mask;
-    }
-
-    public boolean isSetIn(long flags) {
-        return (mask & flags) != 0;
-    }
-
-    public boolean isAllFlags(long flags) {
-        return mask == flags;
-    }
 }

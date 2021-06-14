@@ -27,110 +27,61 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
 #include <graalvm/llvm/polyglot.h>
-#include <stdlib.h>
-#include <math.h>
 
-class Point {
-protected:
-    int x;
-    int y;
-
+class A0 {
 public:
-    Point();
-    int getX();
-    int getY();
-    void setX(int val);
-    void setY(int val);
-    double squaredEuclideanDistance(Point *other);
+    int a0;
 };
 
-POLYGLOT_DECLARE_TYPE(Point)
-
-class XtendPoint : public Point {
-private:
-    int z;
-
+class A1 : public A0 {
 public:
-    XtendPoint();
-    int getZ();
-    void setZ(int val);
-    int getZ(int constant);
-    int getX();
+    int a1;
 };
 
-POLYGLOT_DECLARE_TYPE(XtendPoint)
+class A2 : public A1 {
+public:
+    int a2;
+};
 
-//class methods
+class A3 : public A2 {
+public:
+    int a3;
+};
 
-Point::Point() {
-    x = 0;
-    y = 0;
+class A4 : public A3 {
+public:
+    int a4;
+};
+
+POLYGLOT_DECLARE_TYPE(A0);
+POLYGLOT_DECLARE_TYPE(A1);
+POLYGLOT_DECLARE_TYPE(A2);
+POLYGLOT_DECLARE_TYPE(A3);
+POLYGLOT_DECLARE_TYPE(A4);
+
+bool check0(void *a0Obj) {
+    A0 *a0 = polyglot_as_A0(a0Obj);
+    return a0->a0 == 0;
 }
 
-int Point::getX() {
-    return x;
+bool check1(void *a1Obj) {
+    A1 *a1 = polyglot_as_A1(a1Obj);
+    return (a1->a0 == 0) && (a1->a1 == 1);
 }
 
-int Point::getY() {
-    return y;
+bool check2(void *a2Obj) {
+    A2 *a2 = polyglot_as_A2(a2Obj);
+    return (a2->a0 == 0) && (a2->a1 == 1) && (a2->a2 == 2);
 }
 
-void Point::setX(int val) {
-    x = val;
+bool check3(void *a3Obj) {
+    A3 *a3 = polyglot_as_A3(a3Obj);
+    return (a3->a0 == 0) && (a3->a1 == 1) && (a3->a2 == 2) && (a3->a3 == 3);
 }
 
-void Point::setY(int val) {
-    y = val;
-}
-
-double Point::squaredEuclideanDistance(Point *other) {
-    double dX = (double) (x - other->x);
-    double dY = (double) (y - other->y);
-    return dX * dX + dY * dY;
-}
-
-XtendPoint::XtendPoint() : Point() {
-    z = 0;
-}
-
-int XtendPoint::getZ() {
-    return z;
-}
-
-void XtendPoint::setZ(int dZ) {
-    z = dZ;
-}
-
-int XtendPoint::getZ(int constantOffset) {
-    return z + constantOffset;
-}
-
-int XtendPoint::getX() {
-    return x * 2;
-}
-
-//functions
-void *allocNativePoint() {
-    Point *ret = (Point *) malloc(sizeof(*ret));
-    return polyglot_from_Point(ret);
-}
-
-void *allocNativeXtendPoint() {
-    XtendPoint *ret = (XtendPoint *) malloc(sizeof(*ret));
-    return polyglot_from_XtendPoint(ret);
-}
-
-void swap(Point *p, Point *q) {
-    Point tmp = *q;
-    *q = *p;
-    *p = tmp;
-}
-
-void freeNativePoint(Point *p) {
-    free(p);
-}
-
-void freeNativeXtendPoint(XtendPoint *p) {
-    free(p);
+bool check4(void *a4Obj) {
+    A4 *a4 = polyglot_as_A4(a4Obj);
+    return (a4->a0 == 0) && (a4->a1 == 1) && (a4->a2 == 2) && (a4->a3 == 3) && (a4->a4 == 4);
 }

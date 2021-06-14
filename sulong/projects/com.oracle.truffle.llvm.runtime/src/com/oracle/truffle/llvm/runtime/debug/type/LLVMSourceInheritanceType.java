@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,29 +27,32 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.metadata;
 
-public enum Flags {
+package com.oracle.truffle.llvm.runtime.debug.type;
 
-    // see https://llvm.org/svn/llvm-project/llvm/trunk/include/llvm/IR/DebugInfoFlags.def
-    VIRTUAL(1L << 5),
-    ARTIFICIAL(1L << 6),
-    OBJECT_POINTER(1L << 10),
-    STATIC_MEMBER(1L << 12),
-    BITFIELD(1L << 19),
-    THUNK(1L << 25);
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
-    private final long mask;
-
-    Flags(long mask) {
-        this.mask = mask;
+public class LLVMSourceInheritanceType extends LLVMSourceMemberType {
+    public LLVMSourceInheritanceType(String name, long size, long align, long offset, LLVMSourceLocation location) {
+        this(name, size, align, offset, LLVMSourceType.UNKNOWN, location, false);
     }
 
-    public boolean isSetIn(long flags) {
-        return (mask & flags) != 0;
+    private boolean virtual;
+
+    private LLVMSourceInheritanceType(String name, long size, long align, long offset, LLVMSourceType elementType, LLVMSourceLocation location, boolean virtual) {
+        super(name, size, align, offset, location);
+        setElementType(elementType);
+        this.virtual = virtual;
     }
 
-    public boolean isAllFlags(long flags) {
-        return mask == flags;
+    public boolean isVirtual() {
+        return virtual;
     }
+
+    public void setVirtual(boolean virtual) {
+        CompilerAsserts.neverPartOfCompilation();
+        this.virtual = virtual;
+    }
+
 }

@@ -27,110 +27,53 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
 #include <graalvm/llvm/polyglot.h>
-#include <stdlib.h>
-#include <math.h>
 
-class Point {
-protected:
-    int x;
-    int y;
-
+class A {
 public:
-    Point();
-    int getX();
-    int getY();
-    void setX(int val);
-    void setY(int val);
-    double squaredEuclideanDistance(Point *other);
+    A();
+    virtual int foo1();
+    virtual int foo2();
 };
 
-POLYGLOT_DECLARE_TYPE(Point)
+POLYGLOT_DECLARE_TYPE(A);
 
-class XtendPoint : public Point {
-private:
-    int z;
-
+class B : public A {
 public:
-    XtendPoint();
-    int getZ();
-    void setZ(int val);
-    int getZ(int constant);
-    int getX();
+    B();
+    int foo1() override;
+    virtual int foo2() override;
+    virtual int foo3();
 };
 
-POLYGLOT_DECLARE_TYPE(XtendPoint)
-
-//class methods
-
-Point::Point() {
-    x = 0;
-    y = 0;
+A::A() {
+}
+B::B() : A() {
 }
 
-int Point::getX() {
-    return x;
+int A::foo1() {
+    return 1;
+}
+int A::foo2() {
+    return 2;
+}
+int B::foo1() {
+    return 11;
+}
+int B::foo2() {
+    return 12;
+}
+int B::foo3() {
+    return 13;
 }
 
-int Point::getY() {
-    return y;
+void *preparePolyglotA() {
+    A *a = new A();
+    return polyglot_from_A(a);
 }
 
-void Point::setX(int val) {
-    x = val;
-}
-
-void Point::setY(int val) {
-    y = val;
-}
-
-double Point::squaredEuclideanDistance(Point *other) {
-    double dX = (double) (x - other->x);
-    double dY = (double) (y - other->y);
-    return dX * dX + dY * dY;
-}
-
-XtendPoint::XtendPoint() : Point() {
-    z = 0;
-}
-
-int XtendPoint::getZ() {
-    return z;
-}
-
-void XtendPoint::setZ(int dZ) {
-    z = dZ;
-}
-
-int XtendPoint::getZ(int constantOffset) {
-    return z + constantOffset;
-}
-
-int XtendPoint::getX() {
-    return x * 2;
-}
-
-//functions
-void *allocNativePoint() {
-    Point *ret = (Point *) malloc(sizeof(*ret));
-    return polyglot_from_Point(ret);
-}
-
-void *allocNativeXtendPoint() {
-    XtendPoint *ret = (XtendPoint *) malloc(sizeof(*ret));
-    return polyglot_from_XtendPoint(ret);
-}
-
-void swap(Point *p, Point *q) {
-    Point tmp = *q;
-    *q = *p;
-    *p = tmp;
-}
-
-void freeNativePoint(Point *p) {
-    free(p);
-}
-
-void freeNativeXtendPoint(XtendPoint *p) {
-    free(p);
+void *preparePolyglotBasA() {
+    A *a = new B();
+    return polyglot_from_A(a);
 }

@@ -46,6 +46,7 @@ import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropAccessNode.Acce
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.interop.convert.ToLLVM;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 /**
@@ -61,7 +62,39 @@ public abstract class LLVMInteropReadNode extends LLVMNode {
 
     public abstract Object execute(LLVMInteropType.Structured type, Object foreign, long offset, ForeignToLLVMType accessType);
 
-    @Specialization(guards = "type != null")
+    static boolean hasVirtualMethods(LLVMInteropType.Structured type) {
+        if (type instanceof LLVMInteropType.Clazz) {
+            return ((LLVMInteropType.Clazz) type).hasVirtualMethods();
+        } else {
+            return false;
+        }
+    }
+
+    @Specialization(guards = {"type == cachedType", "offset == 0", "cachedType != null", "cachedType.hasVirtualMethods()"})
+    Object doClazzCached(@SuppressWarnings("unused") LLVMInteropType.Clazz type, Object foreign, @SuppressWarnings("unused") long offset, @SuppressWarnings("unused") ForeignToLLVMType accessType,
+                    @Cached("type") @SuppressWarnings("unused") LLVMInteropType.Clazz cachedType,
+                    @Cached("cachedType.getVTable()") LLVMInteropType.VTable vTable) {
+        // return an artificially created pointer pointing to vtable and foreign object
+        LLVMInteropType.VTableObjectPair vTableObjectPair = LLVMInteropType.VTableObjectPair.create(vTable, foreign);
+        LLVMManagedPointer pointer = LLVMManagedPointer.create(vTableObjectPair);
+        return pointer;
+    }
+
+    @Specialization(guards = {"type != null", "hasVirtualMethods(type)", "offset == 0"}, replaces = "doClazzCached")
+    Object doClazz(LLVMInteropType.Clazz type, Object foreign, long offset, ForeignToLLVMType accessType,
+                    @Cached LLVMInteropAccessNode access,
+                    @Cached ReadLocationNode read) {
+        if (type.hasVirtualMethods() && offset == 0) {
+            // return an artificially created pointer pointing to vtable and foreign object
+            LLVMInteropType.VTableObjectPair vTableObjectPair = LLVMInteropType.VTableObjectPair.create(type.getVTable(), foreign);
+            LLVMManagedPointer pointer = LLVMManagedPointer.create(vTableObjectPair);
+            return pointer;
+        }
+        AccessLocation location = access.execute(type, foreign, offset);
+        return read.execute(location.identifier, location, accessType);
+    }
+
+    @Specialization(guards = {"type != null", "offset != 0 || !hasVirtualMethods(type)"})
     Object doKnownType(LLVMInteropType.Structured type, Object foreign, long offset, ForeignToLLVMType accessType,
                     @Cached LLVMInteropAccessNode access,
                     @Cached ReadLocationNode read) {

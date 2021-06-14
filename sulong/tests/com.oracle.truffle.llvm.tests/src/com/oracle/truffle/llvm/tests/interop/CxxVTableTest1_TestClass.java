@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,29 +27,31 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.metadata;
 
-public enum Flags {
+package com.oracle.truffle.llvm.tests.interop;
 
-    // see https://llvm.org/svn/llvm-project/llvm/trunk/include/llvm/IR/DebugInfoFlags.def
-    VIRTUAL(1L << 5),
-    ARTIFICIAL(1L << 6),
-    OBJECT_POINTER(1L << 10),
-    STATIC_MEMBER(1L << 12),
-    BITFIELD(1L << 19),
-    THUNK(1L << 25);
+import com.oracle.truffle.llvm.tests.interop.values.StructObject;
+import com.oracle.truffle.llvm.tests.interop.values.TestCallback;
+import java.util.HashMap;
 
-    private final long mask;
+public final class CxxVTableTest1_TestClass {
 
-    Flags(long mask) {
-        this.mask = mask;
+    private int last;
+
+    public static Object createAsInterop() {
+        CxxVTableTest1_TestClass ret = new CxxVTableTest1_TestClass();
+        HashMap<String, Object> properties = new HashMap<>();
+        properties.put("foo", new TestCallback(1, (args) -> ret.foo((Integer) args[0])));
+        return new StructObject(properties);
     }
 
-    public boolean isSetIn(long flags) {
-        return (mask & flags) != 0;
+    private CxxVTableTest1_TestClass() {
+        this.last = 0;
     }
 
-    public boolean isAllFlags(long flags) {
-        return mask == flags;
+    public int foo(int x) {
+        int ret = x * 5 + this.last;
+        this.last = x;
+        return ret;
     }
 }

@@ -27,39 +27,54 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.debug.type;
+package com.oracle.truffle.llvm.tests.interop;
 
-import java.util.List;
+import org.graalvm.polyglot.Value;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 
-public final class LLVMSourceMethodType extends LLVMSourceFunctionType {
-    private final String name;
-    private final String linkageName;
-    private final LLVMSourceClassLikeType clazz;
-    private final long virtualIndex;
+import com.oracle.truffle.tck.TruffleRunner;
 
-    public LLVMSourceMethodType(List<LLVMSourceType> types, String name, String linkageName, LLVMSourceClassLikeType clazz, long virtualIndex) {
-        super(types);
-        this.name = name;
-        this.linkageName = linkageName;
-        this.clazz = clazz;
-        this.virtualIndex = virtualIndex;
+@RunWith(TruffleRunner.class)
+public class CxxInheritedFieldsTest extends InteropTestBase {
+
+    private static Value testCppLibrary;
+    private static Value createA;
+    private static Value createB;
+
+    @BeforeClass
+    public static void loadTestBitcode() {
+        testCppLibrary = loadTestBitcodeValue("inheritedFieldsTest.cpp");
+        createA = testCppLibrary.getMember("prepareA");
+        createB = testCppLibrary.getMember("prepareB");
     }
 
-    @Override
-    public String getName() {
-        return name;
+    @Test
+    public void testBasicClassMembers() {
+        Value aObj = createA.execute();
+        Value bObj = createB.execute();
+
+        Assert.assertTrue("aObj.hasMember(\"a\")", aObj.hasMember("a"));
+        Assert.assertEquals(3, aObj.getMember("a").asInt());
+
+        Assert.assertTrue("bObj.hasMember(\"b\")", bObj.hasMember("b"));
+        Assert.assertEquals(4, bObj.getMember("b").asInt());
     }
 
-    public String getLinkageName() {
-        return linkageName;
+    @Test
+    public void testInheritedFields() {
+        Value bObj = createB.execute();
+
+        Assert.assertTrue("bObj.hasMember(\"a\")", bObj.hasMember("a"));
+        Assert.assertEquals(3, bObj.getMember("a").asInt());
     }
 
-    public LLVMSourceClassLikeType getClazz() {
-        return clazz;
+    @Test
+    public void testUnexistingField() {
+        Assert.assertFalse(testCppLibrary.hasMember("abc"));
+        Value aObj = createA.execute();
+        Assert.assertFalse("aObj.hasMember(\"c\")", aObj.hasMember("c"));
     }
-
-    public long getVirtualIndex() {
-        return virtualIndex;
-    }
-
 }
