@@ -1726,7 +1726,7 @@ public abstract class AArch64Assembler extends Assembler {
      * @param bimm logical immediate. See {@link LogicalBitmaskImmediateEncoding} for exact
      *            definition.
      */
-    protected void orr(int size, Register dst, Register src, long bimm) {
+    public void orr(int size, Register dst, Register src, long bimm) {
         assert !dst.equals(zr);
         assert !src.equals(sp);
         logicalImmInstruction(ORR, dst, src, bimm, generalFromSize(size));
@@ -2016,7 +2016,7 @@ public abstract class AArch64Assembler extends Assembler {
      * @param shiftType all types allowed, may not be null.
      * @param shiftAmt must be in range 0 to size - 1.
      */
-    protected void and(int size, Register dst, Register src1, Register src2, ShiftType shiftType, int shiftAmt) {
+    public void and(int size, Register dst, Register src1, Register src2, ShiftType shiftType, int shiftAmt) {
         logicalRegInstruction(AND, dst, src1, src2, shiftType, shiftAmt, generalFromSize(size));
     }
 
@@ -2044,7 +2044,7 @@ public abstract class AArch64Assembler extends Assembler {
      * @param shiftType all types allowed, may not be null.
      * @param shiftAmt must be in range 0 to size - 1.
      */
-    protected void bic(int size, Register dst, Register src1, Register src2, ShiftType shiftType, int shiftAmt) {
+    public void bic(int size, Register dst, Register src1, Register src2, ShiftType shiftType, int shiftAmt) {
         logicalRegInstruction(BIC, dst, src1, src2, shiftType, shiftAmt, generalFromSize(size));
     }
 
@@ -2072,7 +2072,7 @@ public abstract class AArch64Assembler extends Assembler {
      * @param shiftType all types allowed, may not be null.
      * @param shiftAmt must be in range 0 to size - 1.
      */
-    protected void eon(int size, Register dst, Register src1, Register src2, ShiftType shiftType, int shiftAmt) {
+    public void eon(int size, Register dst, Register src1, Register src2, ShiftType shiftType, int shiftAmt) {
         logicalRegInstruction(EON, dst, src1, src2, shiftType, shiftAmt, generalFromSize(size));
     }
 
@@ -2086,7 +2086,7 @@ public abstract class AArch64Assembler extends Assembler {
      * @param shiftType all types allowed, may not be null.
      * @param shiftAmt must be in range 0 to size - 1.
      */
-    protected void eor(int size, Register dst, Register src1, Register src2, ShiftType shiftType, int shiftAmt) {
+    public void eor(int size, Register dst, Register src1, Register src2, ShiftType shiftType, int shiftAmt) {
         logicalRegInstruction(EOR, dst, src1, src2, shiftType, shiftAmt, generalFromSize(size));
     }
 
@@ -2100,7 +2100,7 @@ public abstract class AArch64Assembler extends Assembler {
      * @param shiftType all types allowed, may not be null.
      * @param shiftAmt must be in range 0 to size - 1.
      */
-    protected void orr(int size, Register dst, Register src1, Register src2, ShiftType shiftType, int shiftAmt) {
+    public void orr(int size, Register dst, Register src1, Register src2, ShiftType shiftType, int shiftAmt) {
         logicalRegInstruction(ORR, dst, src1, src2, shiftType, shiftAmt, generalFromSize(size));
     }
 
@@ -2114,7 +2114,7 @@ public abstract class AArch64Assembler extends Assembler {
      * @param shiftType all types allowed, may not be null.
      * @param shiftAmt must be in range 0 to size - 1.
      */
-    protected void orn(int size, Register dst, Register src1, Register src2, ShiftType shiftType, int shiftAmt) {
+    public void orn(int size, Register dst, Register src1, Register src2, ShiftType shiftType, int shiftAmt) {
         logicalRegInstruction(ORN, dst, src1, src2, shiftType, shiftAmt, generalFromSize(size));
     }
 
@@ -2239,7 +2239,7 @@ public abstract class AArch64Assembler extends Assembler {
      * @param src2 general purpose register. May not be null or the stackpointer.
      * @param condition any condition flag. May not be null.
      */
-    protected void csel(int size, Register dst, Register src1, Register src2, ConditionFlag condition) {
+    public void csel(int size, Register dst, Register src1, Register src2, ConditionFlag condition) {
         conditionalSelectInstruction(CSEL, dst, src1, src2, condition, generalFromSize(size));
     }
 
@@ -2252,7 +2252,7 @@ public abstract class AArch64Assembler extends Assembler {
      * @param src2 general purpose register. May not be null or the stackpointer.
      * @param condition any condition flag. May not be null.
      */
-    protected void csneg(int size, Register dst, Register src1, Register src2, ConditionFlag condition) {
+    public void csneg(int size, Register dst, Register src1, Register src2, ConditionFlag condition) {
         conditionalSelectInstruction(CSNEG, dst, src1, src2, condition, generalFromSize(size));
     }
 
@@ -2287,7 +2287,7 @@ public abstract class AArch64Assembler extends Assembler {
      * @param src2 general purpose register. May not be null or the stackpointer.
      * @param src3 general purpose register. May not be null or the stackpointer.
      */
-    protected void madd(int size, Register dst, Register src1, Register src2, Register src3) {
+    public void madd(int size, Register dst, Register src1, Register src2, Register src3) {
         mulInstruction(MADD, dst, src1, src2, src3, generalFromSize(size));
     }
 
@@ -2300,7 +2300,7 @@ public abstract class AArch64Assembler extends Assembler {
      * @param src2 general purpose register. May not be null or the stackpointer.
      * @param src3 general purpose register. May not be null or the stackpointer.
      */
-    protected void msub(int size, Register dst, Register src1, Register src2, Register src3) {
+    public void msub(int size, Register dst, Register src1, Register src2, Register src3) {
         mulInstruction(MSUB, dst, src1, src2, src3, generalFromSize(size));
     }
 
@@ -2357,6 +2357,7 @@ public abstract class AArch64Assembler extends Assembler {
      * @param src3 general purpose register. May not be null or the stackpointer.
      */
     public void smaddl(Register dst, Register src1, Register src2, Register src3) {
+        assert (!dst.equals(sp) && !src1.equals(sp) && !src2.equals(sp) && !src3.equals(sp));
         smullInstruction(MADD, dst, src1, src2, src3);
     }
 
@@ -2369,6 +2370,7 @@ public abstract class AArch64Assembler extends Assembler {
      * @param src3 general purpose register. May not be null or the stackpointer.
      */
     public void smsubl(Register dst, Register src1, Register src2, Register src3) {
+        assert (!dst.equals(sp) && !src1.equals(sp) && !src2.equals(sp) && !src3.equals(sp));
         smullInstruction(MSUB, dst, src1, src2, src3);
     }
 
@@ -2841,7 +2843,7 @@ public abstract class AArch64Assembler extends Assembler {
      * @param src2 floating point register. May not be null.
      * @param src3 floating point register. May not be null.
      */
-    protected void fmadd(int size, Register dst, Register src1, Register src2, Register src3) {
+    public void fmadd(int size, Register dst, Register src1, Register src2, Register src3) {
         fpDataProcessing3Source(FMADD, dst, src1, src2, src3, floatFromSize(size));
     }
 
@@ -2948,7 +2950,7 @@ public abstract class AArch64Assembler extends Assembler {
      * @param src2 floating point register. May not be null.
      * @param condition every condition allowed. May not be null.
      */
-    protected void fcsel(int size, Register dst, Register src1, Register src2, ConditionFlag condition) {
+    public void fcsel(int size, Register dst, Register src1, Register src2, ConditionFlag condition) {
         assert dst.getRegisterCategory().equals(SIMD);
         assert src1.getRegisterCategory().equals(SIMD);
         assert src2.getRegisterCategory().equals(SIMD);
