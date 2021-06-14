@@ -70,7 +70,7 @@ public class StructsProcessor extends AbstractProcessor {
     private static final String[] EMPTY_ARGS = new String[0];
     private static final String WRAPPER = "Wrapper";
 
-    private static final String STRUCTS_PACKAGE = "com.oracle.truffle.espresso.jvmti.structs";
+    private static final String STRUCTS_PACKAGE = "com.oracle.truffle.espresso.vm.structs";
 
     // Annotations
     private static final String GENERATE_STRUCTS = STRUCTS_PACKAGE + ".GenerateStructs";

@@ -135,6 +135,8 @@ import com.oracle.truffle.espresso.substitutions.Target_java_lang_System;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread.State;
 import com.oracle.truffle.espresso.substitutions.VMCollector;
+import com.oracle.truffle.espresso.vm.structs.Structs;
+import com.oracle.truffle.espresso.vm.structs.StructsAccess;
 
 /**
  * Espresso implementation of the VM interface (libjvm).
@@ -160,6 +162,8 @@ public final class VM extends NativeEnv implements ContextAccess {
     private final @Pointer TruffleObject getPackageAt;
 
     private final long rtldDefaultValue;
+
+    private final Structs structs;
 
     private final JniEnv jniEnv;
     private final Management management;
@@ -266,6 +270,8 @@ public final class VM extends NativeEnv implements ContextAccess {
                 management = null;
             }
 
+            structs = StructsAccess.getStructs(getContext(), mokapotLibrary);
+
             jvmti = new JVMTI(getContext(), mokapotLibrary);
 
             getJavaVM = getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
@@ -315,6 +321,10 @@ public final class VM extends NativeEnv implements ContextAccess {
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere("getJavaVM failed", e);
         }
+    }
+
+    public Structs getStructs() {
+        return structs;
     }
 
     public JVMTI getJvmti() {

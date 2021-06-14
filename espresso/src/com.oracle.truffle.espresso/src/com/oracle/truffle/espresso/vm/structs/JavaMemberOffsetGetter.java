@@ -21,7 +21,7 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.jvmti.structs;
+package com.oracle.truffle.espresso.vm.structs;
 
 import java.util.Collections;
 import java.util.HashMap;

@@ -21,12 +21,21 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.jvmti.structs;
+package com.oracle.truffle.espresso.vm.structs;
 
-public interface MemberOffsetGetter {
-    long getInfo(String structName);
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.espresso.jni.JniEnv;
 
-    default long getOffset(String structName, String memberName) {
-        return getInfo(structName + "." + memberName);
+/**
+ * Commodity class that stores native structs sizes, along with member offsets. See documentation
+ * for {@link StructWrapper}.
+ */
+public abstract class StructStorage {
+    protected final long structSize;
+
+    public StructStorage(long structSize) {
+        this.structSize = structSize;
     }
+
+    public abstract StructWrapper wrap(JniEnv jni, TruffleObject structPtr);
 }

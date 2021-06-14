@@ -21,7 +21,7 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.jvmti.structs;
+package com.oracle.truffle.espresso.vm.structs;
 
 import static com.oracle.truffle.espresso.ffi.NativeType.BOOLEAN;
 import static com.oracle.truffle.espresso.ffi.NativeType.INT;
@@ -36,8 +36,8 @@ import com.oracle.truffle.espresso.ffi.RawPointer;
 import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
 import com.oracle.truffle.espresso.jni.JNIHandles;
 import com.oracle.truffle.espresso.jni.JniEnv;
-import com.oracle.truffle.espresso.jvmti.structs.GenerateStructs.KnownStruct;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.vm.structs.GenerateStructs.KnownStruct;
 
 /**
  * Commodity class that wraps around native pointers to provide an easy and concise way of accessing

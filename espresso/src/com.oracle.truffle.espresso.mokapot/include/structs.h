@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,26 +20,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+#ifndef _STRUCTS_H
+#define _STRUCTS_H
 
-package com.oracle.truffle.espresso.jvmti.structs;
+#include <jni.h>
+#include <stddef.h>
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+typedef struct member_info {
+	char* id;
+	size_t offset;
+	struct member_info *next;
+} member_info;
 
-import com.oracle.truffle.espresso.ffi.NativeType;
+JNIEXPORT size_t JNICALL lookupMemberOffset(void* info, char* id);
 
-@Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.TYPE)
-public @interface GenerateStructs {
-    KnownStruct[] value();
+JNIEXPORT void JNICALL initializeStructs(void (*notify_member_offset_init)(void *));
 
-    @interface KnownStruct {
-        String structName();
-
-        String[] memberNames();
-
-        NativeType[] types();
-    }
-}
+#endif // _STRUCTS_H

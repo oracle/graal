@@ -21,21 +21,25 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.jvmti.structs;
+package com.oracle.truffle.espresso.vm.structs;
 
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.espresso.jni.JniEnv;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-/**
- * Commodity class that stores native structs sizes, along with member offsets. See documentation
- * for {@link StructWrapper}.
- */
-public abstract class StructStorage {
-    protected final long structSize;
+import com.oracle.truffle.espresso.ffi.NativeType;
 
-    public StructStorage(long structSize) {
-        this.structSize = structSize;
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.TYPE)
+public @interface GenerateStructs {
+    KnownStruct[] value();
+
+    @interface KnownStruct {
+        String structName();
+
+        String[] memberNames();
+
+        NativeType[] types();
     }
-
-    public abstract StructWrapper wrap(JniEnv jni, TruffleObject structPtr);
 }
