@@ -141,8 +141,8 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
          * Note: we always set the 'fallbackContents' because in theory, it could happen that
          * someone writes to this global, then the singleContextAssumption is invalidated and from
          * then on just reads the 'fallbackContents'. The penalty won't be high because we only
-         * allow small number of cached writes (i.e. MAX_INVALIDATING_WRITES) in which case we do write
-         * the value twice.
+         * allow small number of cached writes (i.e. MAX_INVALIDATING_WRITES) in which case we do
+         * write the value twice.
          */
         setFallback(value);
     }

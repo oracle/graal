@@ -131,7 +131,7 @@ public final class LLVMNativePointerSupport extends LLVMNode {
     }
 
     @GenerateUncached
-    public static abstract class IsPointerNode extends LLVMNode {
+    public abstract static class IsPointerNode extends LLVMNode {
 
         public abstract boolean execute(Object receiver);
 
@@ -153,7 +153,7 @@ public final class LLVMNativePointerSupport extends LLVMNode {
     }
 
     @GenerateUncached
-    public static abstract class AsPointerNode extends LLVMNode {
+    public abstract static class AsPointerNode extends LLVMNode {
 
         public abstract long execute(Object receiver) throws UnsupportedMessageException;
 
@@ -175,7 +175,7 @@ public final class LLVMNativePointerSupport extends LLVMNode {
     }
 
     @GenerateUncached
-    public static abstract class ToNativePointerNode extends LLVMNode {
+    public abstract static class ToNativePointerNode extends LLVMNode {
 
         public abstract LLVMNativePointer execute(Object receiver);
 

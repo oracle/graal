@@ -155,7 +155,7 @@ public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject impl
 
     @ExportMessage
     public LLVMNativePointer toNativePointer(@CachedLibrary("this") LLVMNativeLibrary self,
-                                             @Cached BranchProfile exceptionProfile) {
+                    @Cached BranchProfile exceptionProfile) {
         if (!isPointer()) {
             toNative();
         }

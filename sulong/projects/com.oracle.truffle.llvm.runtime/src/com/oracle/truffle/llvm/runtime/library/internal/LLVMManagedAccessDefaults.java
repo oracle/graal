@@ -386,7 +386,7 @@ abstract class LLVMManagedAccessDefaults {
 
             @Specialization
             static void writePointer(byte[] obj, long offset, LLVMPointer value,
-                                     @Cached LLVMNativePointerSupport.ToNativePointerNode toNativePointer,
+                            @Cached LLVMNativePointerSupport.ToNativePointerNode toNativePointer,
                             @Exclusive @Cached BranchProfile exception,
                             @CachedLanguage LLVMLanguage language) {
                 LLVMNativePointer nativeValue = toNativePointer.execute(value);

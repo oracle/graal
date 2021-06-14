@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -66,7 +66,8 @@ public final class LLVMNativeCallUtils {
         }
     }
 
-    static Object callNativeFunction(boolean enabled, ContextReference<LLVMContext> context, LLVMDispatchNode.NativeSymbolExecutorNode nativeSymbolExecutorNode, Object function, Object[] nativeArgs, LLVMFunctionDescriptor descriptor) {
+    static Object callNativeFunction(boolean enabled, ContextReference<LLVMContext> context, LLVMDispatchNode.NativeSymbolExecutorNode nativeSymbolExecutorNode, Object function, Object[] nativeArgs,
+                    LLVMFunctionDescriptor descriptor) {
         CompilerAsserts.partialEvaluationConstant(enabled);
         if (enabled) {
             if (descriptor != null) {

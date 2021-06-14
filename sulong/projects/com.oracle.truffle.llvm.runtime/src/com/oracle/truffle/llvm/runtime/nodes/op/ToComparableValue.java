@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -48,15 +48,15 @@ public abstract class ToComparableValue extends LLVMNode {
 
     @Specialization(guards = "isPointer.execute(obj)", rewriteOn = UnsupportedMessageException.class)
     protected long doPointer(Object obj,
-                             @SuppressWarnings("unused") @Cached LLVMNativePointerSupport.IsPointerNode isPointer,
-                             @Cached LLVMNativePointerSupport.AsPointerNode asPointer) throws UnsupportedMessageException {
+                    @SuppressWarnings("unused") @Cached LLVMNativePointerSupport.IsPointerNode isPointer,
+                    @Cached LLVMNativePointerSupport.AsPointerNode asPointer) throws UnsupportedMessageException {
         return asPointer.execute(obj);
     }
 
     @Specialization(guards = "isPointer.execute(obj)")
     protected long doPointerException(Object obj,
-                                      @SuppressWarnings("unused") @Cached LLVMNativePointerSupport.IsPointerNode isPointer,
-                                      @Cached LLVMNativePointerSupport.AsPointerNode asPointer,
+                    @SuppressWarnings("unused") @Cached LLVMNativePointerSupport.IsPointerNode isPointer,
+                    @Cached LLVMNativePointerSupport.AsPointerNode asPointer,
                     @Cached("createUseOffset()") ManagedToComparableValue toComparable) {
         try {
             return asPointer.execute(obj);
@@ -66,7 +66,7 @@ public abstract class ToComparableValue extends LLVMNode {
     }
 
     @Specialization(guards = "!isPointer.execute(obj)")
-    protected long doManaged(Object obj,@SuppressWarnings("unused") @Cached LLVMNativePointerSupport.IsPointerNode isPointer,
+    protected long doManaged(Object obj, @SuppressWarnings("unused") @Cached LLVMNativePointerSupport.IsPointerNode isPointer,
                     @Cached("createUseOffset()") ManagedToComparableValue toComparable) {
         return toComparable.executeWithTarget(obj);
     }

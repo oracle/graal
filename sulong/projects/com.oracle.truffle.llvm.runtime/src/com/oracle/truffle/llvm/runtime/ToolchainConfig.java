@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -48,7 +48,9 @@ public interface ToolchainConfig extends LLVMCapability {
      */
     boolean enableCXX();
 
-    @SuppressWarnings("unused")
+    /**
+     * Binds the signature with the function.
+     */
     default Object bind(Object signature, Object function) {
         return null;
     }

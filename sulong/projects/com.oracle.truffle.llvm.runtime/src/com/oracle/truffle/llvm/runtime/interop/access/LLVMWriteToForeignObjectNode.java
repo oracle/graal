@@ -332,8 +332,8 @@ public abstract class LLVMWriteToForeignObjectNode extends LLVMAccessForeignObje
 
         @Specialization
         void doNativePointer(@SuppressWarnings("unused") Object foreign, @SuppressWarnings("unused") long offset, Object value, LLVMNativePointer resolved, @SuppressWarnings("unused") Object type,
-                             @Cached LLVMNativePointerSupport.ToNativePointerNode toNativePointer,
-                             @CachedLanguage LLVMLanguage language) {
+                        @Cached LLVMNativePointerSupport.ToNativePointerNode toNativePointer,
+                        @CachedLanguage LLVMLanguage language) {
             language.getLLVMMemory().putPointer(this, resolved, toNativePointer.execute(value));
         }
 
@@ -357,8 +357,8 @@ public abstract class LLVMWriteToForeignObjectNode extends LLVMAccessForeignObje
         void doBufferPointer(@SuppressWarnings("unused") Object foreign, @SuppressWarnings("unused") long offset, Object value, LLVMManagedPointer resolved,
                         @SuppressWarnings("unused") LLVMInteropType.Buffer type,
                         @CachedLibrary(limit = "3") InteropLibrary interop,
-                             @Cached LLVMNativePointerSupport.ToNativePointerNode toNativePointer,
-                             @Cached BranchProfile oobProfile) {
+                        @Cached LLVMNativePointerSupport.ToNativePointerNode toNativePointer,
+                        @Cached BranchProfile oobProfile) {
             LLVMNativePointer n = toNativePointer.execute(value);
             try {
                 interop.writeBufferLong(resolved.getObject(), ByteOrder.nativeOrder(), resolved.getOffset(), n.asNative());

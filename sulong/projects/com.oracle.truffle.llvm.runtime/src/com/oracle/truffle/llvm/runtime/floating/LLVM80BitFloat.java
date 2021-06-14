@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -595,7 +595,8 @@ public final class LLVM80BitFloat implements LLVMArithmetic {
         public abstract LLVM80BitFloat execute(LLVM80BitFloat x, LLVM80BitFloat y);
 
         @Specialization(guards = "function != null")
-        @GenerateAOT.Exclude // todo: it could be AOT-included as long as we could somehow pre-load the function
+        @GenerateAOT.Exclude // todo: it could be AOT-included as long as we could somehow pre-load
+                             // the function
         protected LLVM80BitFloat doCall(LLVM80BitFloat x, LLVM80BitFloat y,
                         @Cached("createFunction()") WellKnownNativeFunctionNode function,
                         @CachedLanguage LLVMLanguage language) {

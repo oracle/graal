@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -263,7 +263,7 @@ public abstract class LLVMDataEscapeNode extends LLVMNode {
         @Specialization(replaces = "escapingLong")
         @GenerateAOT.Exclude
         static double escapingPointer(Object escapingValue, LLVMInteropType.Structured type,
-                                      @Cached LLVMNativePointerSupport.ToNativePointerNode toNativePointer) {
+                        @Cached LLVMNativePointerSupport.ToNativePointerNode toNativePointer) {
             return escapingLong(toNativePointer.execute(escapingValue).asNative(), type);
         }
     }

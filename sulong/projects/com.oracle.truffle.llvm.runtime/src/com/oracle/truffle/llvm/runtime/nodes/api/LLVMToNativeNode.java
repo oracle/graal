@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -46,7 +46,7 @@ public abstract class LLVMToNativeNode extends LLVMNode {
 
     @Specialization
     static LLVMNativePointer doConvert(Object obj,
-                                       @Cached LLVMNativePointerSupport.ToNativePointerNode toNativePointer) {
+                    @Cached LLVMNativePointerSupport.ToNativePointerNode toNativePointer) {
         return toNativePointer.execute(obj);
     }
 }

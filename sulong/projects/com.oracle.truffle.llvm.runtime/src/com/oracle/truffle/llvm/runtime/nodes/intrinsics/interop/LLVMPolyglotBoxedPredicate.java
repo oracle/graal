@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -58,15 +58,15 @@ public abstract class LLVMPolyglotBoxedPredicate extends LLVMIntrinsic {
 
     @Specialization(guards = "!foreigns.isForeign(pointer.getObject())")
     boolean matchNonForeignManaged(@SuppressWarnings("unused") LLVMManagedPointer pointer,
-                                   @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMAsForeignLibrary foreigns) {
+                    @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMAsForeignLibrary foreigns) {
         return false;
     }
 
     @Specialization(guards = "foreigns.isForeign(pointer.getObject())")
     @GenerateAOT.Exclude
     boolean matchForeignManaged(LLVMManagedPointer pointer,
-                         @CachedLibrary(limit = "3") LLVMAsForeignLibrary foreigns,
-                         @CachedLibrary(limit = "3") InteropLibrary interop) {
+                    @CachedLibrary(limit = "3") LLVMAsForeignLibrary foreigns,
+                    @CachedLibrary(limit = "3") InteropLibrary interop) {
         Object foreign = foreigns.asForeign(pointer.getObject());
         assert foreign != null;
         return predicate.match(interop, foreign);

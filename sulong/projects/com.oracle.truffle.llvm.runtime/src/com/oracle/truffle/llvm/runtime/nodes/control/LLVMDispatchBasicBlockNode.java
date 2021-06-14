@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -272,7 +272,8 @@ public abstract class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
             } else if (controlFlowNode instanceof LLVMResumeNode) {
                 LLVMResumeNode resumeNode = (LLVMResumeNode) controlFlowNode;
                 assert noPhisNecessary(resumeNode);
-                // Caused a compilation error: "Partial evaluation did not reduce value to a constant"
+                // Caused a compilation error: "Partial evaluation did not reduce value to a
+                // constant"
                 // nullDeadSlots(frame, bb.nullableAfter);
                 resumeNode.execute(frame);
                 CompilerDirectives.transferToInterpreterAndInvalidate();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -97,16 +97,16 @@ public abstract class LLVMAddressEqualsNode extends LLVMAbstractCompareNode {
 
         @Specialization(guards = {"nativesA.isPointer(a)", "nativesB.isPointer(b)"}, rewriteOn = UnsupportedMessageException.class)
         boolean doPointerPointer(Object a, Object b,
-                                 @SuppressWarnings("unused") @Cached LLVMNativePointerSupport nativesA,
-                                 @SuppressWarnings("unused") @Cached LLVMNativePointerSupport nativesB) throws UnsupportedMessageException {
+                        @SuppressWarnings("unused") @Cached LLVMNativePointerSupport nativesA,
+                        @SuppressWarnings("unused") @Cached LLVMNativePointerSupport nativesB) throws UnsupportedMessageException {
             return nativesA.asPointer(a) == nativesB.asPointer(b);
         }
 
         @Specialization(guards = {"nativesA.isPointer(a)", "nativesB.isPointer(b)"}, replaces = "doPointerPointer")
         boolean doPointerPointerException(Object a, Object b,
-                                          @SuppressWarnings("unused") @Cached LLVMNativePointerSupport nativesA,
-                                          @SuppressWarnings("unused") @Cached LLVMNativePointerSupport nativesB,
-                                          @Cached LLVMManagedEqualsNode managedEquals) {
+                        @SuppressWarnings("unused") @Cached LLVMNativePointerSupport nativesA,
+                        @SuppressWarnings("unused") @Cached LLVMNativePointerSupport nativesB,
+                        @Cached LLVMManagedEqualsNode managedEquals) {
             try {
                 return doPointerPointer(a, b, nativesA, nativesB);
             } catch (UnsupportedMessageException ex) {

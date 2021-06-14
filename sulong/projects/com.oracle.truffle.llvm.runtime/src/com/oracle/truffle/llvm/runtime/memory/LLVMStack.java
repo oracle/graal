@@ -214,7 +214,7 @@ public final class LLVMStack {
         }
     }
 
-/**
+    /**
      * Only a single instance of this node needs (and is allowed to) exist for each
      * {@link LLVMRootNode}.
      */
@@ -229,7 +229,7 @@ public final class LLVMStack {
         public LLVMNativeStackAccess(FrameDescriptor frameDescriptor, LLVMMemory memory) {
             this.memory = memory;
             this.stackSlot = getStackSlot(frameDescriptor);
-            //this.basePointerSlot = getBasePointerSlot(frameDescriptor, false);
+            // this.basePointerSlot = getBasePointerSlot(frameDescriptor, false);
             // TODO: a AOT hot fix
             this.basePointerSlot = getBasePointerSlot(frameDescriptor, true);
             this.noBasePointerAssumption = basePointerSlot == null ? frameDescriptor.getNotInFrameAssumption(BASE_POINTER_ID) : null;
@@ -400,7 +400,8 @@ public final class LLVMStack {
             if (stackAccess == null) {
                 return new LLVMStackAccessHolder(((LLVMRootNode) getRootNode()).getStackAccess());
             }
-            // This branch should be executed when this node is used as an uncached one only. See uses of setStackAccess.
+            // This branch should be executed when this node is used as an uncached one only. See
+            // uses of setStackAccess.
             assert getRootNode() == null;
             return new LLVMStackAccessHolder(stackAccess);
         }

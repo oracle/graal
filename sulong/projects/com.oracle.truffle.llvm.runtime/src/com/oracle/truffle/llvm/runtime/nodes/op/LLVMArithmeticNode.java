@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -234,21 +234,21 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
 
         @Specialization(guards = "isPointer.execute(ptr)", rewriteOn = UnsupportedMessageException.class)
         long doPointer(Object ptr,
-                       @SuppressWarnings("unused") @Cached LLVMNativePointerSupport.IsPointerNode isPointer,
-                       @Cached LLVMNativePointerSupport.AsPointerNode asPointer) throws UnsupportedMessageException {
+                        @SuppressWarnings("unused") @Cached LLVMNativePointerSupport.IsPointerNode isPointer,
+                        @Cached LLVMNativePointerSupport.AsPointerNode asPointer) throws UnsupportedMessageException {
             return asPointer.execute(ptr);
         }
 
         @Specialization(guards = "!isPointer.execute(ptr)")
         Object doManaged(Object ptr,
-                         @SuppressWarnings("unused") @Cached LLVMNativePointerSupport.IsPointerNode isPointer) {
+                        @SuppressWarnings("unused") @Cached LLVMNativePointerSupport.IsPointerNode isPointer) {
             return ptr;
         }
 
         @Specialization(replaces = {"doLong", "doPointer", "doManaged"})
         Object doGeneric(Object ptr,
-                         @SuppressWarnings("unused") @Cached LLVMNativePointerSupport.IsPointerNode isPointer,
-                         @Cached LLVMNativePointerSupport.AsPointerNode asPointer) {
+                        @SuppressWarnings("unused") @Cached LLVMNativePointerSupport.IsPointerNode isPointer,
+                        @Cached LLVMNativePointerSupport.AsPointerNode asPointer) {
             if (isPointer.execute(ptr)) {
                 try {
                     return asPointer.execute(ptr);
@@ -321,13 +321,13 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
 
         @Specialization(guards = "!canDoManaged(left)")
         long doPointerRight(long left, LLVMPointer right,
-                            @Cached LLVMNativePointerSupport.ToNativePointerNode toNativePointerRight) {
+                        @Cached LLVMNativePointerSupport.ToNativePointerNode toNativePointerRight) {
             return op.doLong(left, toNativePointerRight.execute(right).asNative());
         }
 
         @Specialization(guards = "!canDoManaged(right)")
         long doPointerLeft(LLVMPointer left, long right,
-                           @Cached LLVMNativePointerSupport.ToNativePointerNode toNativePointerLeft) {
+                        @Cached LLVMNativePointerSupport.ToNativePointerNode toNativePointerLeft) {
             return op.doLong(toNativePointerLeft.execute(left).asNative(), right);
         }
     }
@@ -341,7 +341,7 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
         @Specialization
         long doPointer(LLVMPointer left, LLVMPointer right,
                         @Cached LLVMNativePointerSupport.ToNativePointerNode toNativePointerLeft,
-                       @Cached LLVMNativePointerSupport.ToNativePointerNode toNativePointerRight) {
+                        @Cached LLVMNativePointerSupport.ToNativePointerNode toNativePointerRight) {
             return op.doLong(toNativePointerLeft.execute(left).asNative(), toNativePointerRight.execute(right).asNative());
         }
     }
@@ -360,9 +360,9 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
 
         @Specialization(guards = "!sameObject.execute(left.getObject(), right.getObject())")
         long doNotSameObject(LLVMManagedPointer left, LLVMManagedPointer right,
-                             @SuppressWarnings("unused") @Cached LLVMSameObjectNode sameObject,
-                             @Cached LLVMNativePointerSupport.ToNativePointerNode toNativePointerLeft,
-                             @Cached LLVMNativePointerSupport.ToNativePointerNode toNativePointerRight) {
+                        @SuppressWarnings("unused") @Cached LLVMSameObjectNode sameObject,
+                        @Cached LLVMNativePointerSupport.ToNativePointerNode toNativePointerLeft,
+                        @Cached LLVMNativePointerSupport.ToNativePointerNode toNativePointerRight) {
             return toNativePointerLeft.execute(left).asNative() - toNativePointerRight.execute(right).asNative();
         }
     }

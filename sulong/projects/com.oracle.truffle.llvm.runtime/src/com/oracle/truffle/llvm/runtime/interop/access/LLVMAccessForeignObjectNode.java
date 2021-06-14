@@ -84,7 +84,7 @@ public abstract class LLVMAccessForeignObjectNode extends LLVMNode {
          * pointer). This helper assumes that an isPointer call returns true for {@code obj}.
          */
         static boolean isWrappedAutoDerefHandle(LLVMLanguage language, LLVMNativePointerSupport.IsPointerNode isPointerNode,
-                                                LLVMNativePointerSupport.AsPointerNode asPointerNode, Object obj) {
+                        LLVMNativePointerSupport.AsPointerNode asPointerNode, Object obj) {
             try {
                 assert isPointerNode.execute(obj);
                 return LLVMNode.isAutoDerefHandle(language, asPointerNode.execute(obj));
@@ -98,7 +98,7 @@ public abstract class LLVMAccessForeignObjectNode extends LLVMNode {
         @Specialization(limit = "3", guards = {"isPointerNode.execute(receiver)", "!isWrappedAutoDerefHandle(language, isPointerNode, asPointerNode, receiver)"})
         LLVMNativePointer doPointer(Object receiver, long offset,
                         @SuppressWarnings("unused") @CachedLanguage LLVMLanguage language,
-                                    @SuppressWarnings("unused") @Cached LLVMNativePointerSupport.IsPointerNode isPointerNode,
+                        @SuppressWarnings("unused") @Cached LLVMNativePointerSupport.IsPointerNode isPointerNode,
                         @Cached LLVMNativePointerSupport.AsPointerNode asPointerNode) {
             try {
                 long addr = asPointerNode.execute(receiver) + offset;
@@ -124,7 +124,7 @@ public abstract class LLVMAccessForeignObjectNode extends LLVMNode {
 
         @Specialization(limit = "3", guards = "!isPointerNode.execute(receiver)")
         LLVMManagedPointer doManaged(Object receiver, long offset,
-                                     @SuppressWarnings("unused") @Cached LLVMNativePointerSupport.IsPointerNode isPointerNode) {
+                        @SuppressWarnings("unused") @Cached LLVMNativePointerSupport.IsPointerNode isPointerNode) {
             return LLVMManagedPointer.create(receiver).increment(offset);
         }
     }
