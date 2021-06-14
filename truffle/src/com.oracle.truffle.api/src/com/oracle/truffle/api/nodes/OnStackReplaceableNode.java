@@ -46,6 +46,9 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 
+import java.util.concurrent.locks.Lock;
+import java.util.function.Supplier;
+
 /**
  * Interface for Truffle bytecode nodes which can be on-stack replaced.
  *
@@ -85,6 +88,20 @@ public abstract class OnStackReplaceableNode extends ExecutableNode implements R
 
     public final Object getOSRState() {
         return osrState;
+    }
+
+    public final Object getOrInitializeOSRState(Supplier<Object> defaultValue) {
+        Lock lock = getLock();
+        lock.lock();
+        try {
+            Object osrState = this.osrState;
+            if (osrState == null) {
+                this.osrState = osrState = defaultValue.get();
+            }
+            return osrState;
+        } finally {
+            lock.unlock();
+        }
     }
 
     public final void setOSRState(Object osrState) {

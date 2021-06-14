@@ -30,6 +30,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.Callable;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Supplier;
@@ -1034,14 +1035,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         CompilerAsserts.neverPartOfCompilation();
 
         OSRState osrState = (OSRState) osrNode.getOSRState();
-        if (osrState == null) {
-            synchronized (osrNode) {
-                osrState = (OSRState) osrNode.getOSRState();
-                if (osrState == null) {
-                    osrState = new OSRState(osrNode, getOptionValue(PolyglotCompilerOptions.OSR), getOptionValue(PolyglotCompilerOptions.OSRCompilationThreshold));
-                    osrNode.setOSRState(osrState);
-                }
-            }
+        if (osrState == null) { // double checked locking
+            osrState = (OSRState) osrNode.getOrInitializeOSRState(
+                            () -> new OSRState(osrNode, getOptionValue(PolyglotCompilerOptions.OSR), getOptionValue(PolyglotCompilerOptions.OSRCompilationThreshold)));
         }
         return osrState.onOSRBackEdge(parentFrame, target, language);
     }
@@ -1053,7 +1049,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         }
     }
 
-    private static final class OSRState {
+    public static final class OSRState {
         private final OnStackReplaceableNode osrNode;
         private final EconomicMap<Integer, OptimizedCallTarget> osrCompilations;
         private final int osrThreshold;
@@ -1091,8 +1087,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                     if (!GraalRuntimeAccessor.FRAME.getMaterializeCalled(parentFrame.getFrameDescriptor())) {
                         return osrTarget.call(parentFrame);
                     }
-                    // We cannot perform OSR if the frame is materialized. The original and OSR frames could get
-                    // out of sync, which could lead to inconsistent views of the program state.
+                    // We cannot perform OSR if the frame is materialized. The original and OSR
+                    // frames could get out of sync, which could lead to inconsistent views of the
+                    // program state.
                     return null;
                 }
                 invalidateOSRTarget(target, "OSR compilation failed or cancelled");
@@ -1102,15 +1099,16 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
         private boolean incrementAndCheck() {
             /*
-             * Increment back edge count. Once the compilation threshold is reached, return true after every
-             * OSR_POLL_INTERVAL back-edges (polling compilation rather than checking after every loop iteration).
+             * Increment back edge count. Once the compilation threshold is reached, return true
+             * after every OSR_POLL_INTERVAL back-edges (polling compilation rather than checking
+             * after every loop iteration).
              *
              * This method is thread-safe, but could under-count.
              */
             int newBackEdgeCount = backEdgeCount;
-            newBackEdgeCount = (newBackEdgeCount == Integer.MAX_VALUE) ? newBackEdgeCount : newBackEdgeCount+1;
+            newBackEdgeCount = (newBackEdgeCount == Integer.MAX_VALUE) ? newBackEdgeCount : newBackEdgeCount + 1;
             backEdgeCount = newBackEdgeCount;
-            return newBackEdgeCount >= osrThreshold && (newBackEdgeCount & (OSR_POLL_INTERVAL - 1)) == 0;
+            return newBackEdgeCount >= osrThreshold && ((newBackEdgeCount - osrThreshold) & (OSR_POLL_INTERVAL - 1)) == 0;
         }
 
         private synchronized OptimizedCallTarget requestOSR(TruffleLanguage<?> language, OnStackReplaceableNode osrNode, int target) {
@@ -1148,6 +1146,11 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                 }
             }
             osrCompilations.clear();
+        }
+
+        // for testing
+        public EconomicMap<Integer, OptimizedCallTarget> getOSRCompilations() {
+            return osrCompilations;
         }
     }
 
