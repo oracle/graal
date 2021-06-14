@@ -37,7 +37,7 @@ import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import com.oracle.svm.core.graal.code.SubstrateLIRGenerator;
 
 /**
- * Simplified from {@link UnreachableNode}.
+ * Lowered version of {@link org.graalvm.compiler.nodes.DeadEndNode}.
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
 public final class LoweredDeadEndNode extends ControlSinkNode implements LIRLowerable, IterableNodeType {
