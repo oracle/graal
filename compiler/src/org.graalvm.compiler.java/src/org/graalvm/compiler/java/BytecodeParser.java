@@ -2774,7 +2774,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
              */
             ValueNode receiver = graph.start().stateAfter().localAt(0);
             assert receiver != null && receiver.getStackKind() == JavaKind.Object;
-            if (RegisterFinalizerNode.mayHaveFinalizer(receiver, graph.getAssumptions())) {
+            if (RegisterFinalizerNode.mayHaveFinalizer(receiver, getMetaAccess(), graph.getAssumptions())) {
                 RegisterFinalizerNode regFin = new RegisterFinalizerNode(receiver);
                 append(regFin);
                 regFin.setStateAfter(graph.start().stateAfter());
