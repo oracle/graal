@@ -52,11 +52,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 
-/**
- * Custom more efficient stack representations for profilers.
- *
- * @since 0.30
- */
 final class SafepointStack {
 
     private final int stackLimit;
@@ -78,7 +73,7 @@ final class SafepointStack {
         return visitor;
     }
 
-    private void returnStackVisitor(StackVisitor visitor) {
+    private void freeStackVisitor(StackVisitor visitor) {
         visitor.reset();
         stackVisitorCache.add(visitor);
     }
@@ -87,15 +82,14 @@ final class SafepointStack {
         if (context.isActive()) {
             throw new IllegalArgumentException("Cannot sample a context that is currently active on the current thread.");
         }
+        if (context.isClosed()) {
+            return Collections.emptyList();
+        }
         SampleAction action = cachedAction.getAndSet(null);
         if (action == null) {
             action = new SampleAction(this);
         }
-
-        if (context.isClosed()) {
-            return Collections.emptyList();
-        }
-        long time = System.nanoTime();
+        long submitTime = System.nanoTime();
         Future<Void> future;
         try {
             future = env.submitThreadLocal(context, null, action);
@@ -112,24 +106,27 @@ final class SafepointStack {
             future.cancel(false);
         }
         // we compute the time to find out how accurate this sample is.
-        List<StackSample> threads = new ArrayList<>();
+        List<StackSample> perThreadSamples = new ArrayList<>();
         for (StackVisitor stackVisitor : action.getStacks()) {
             // time until the safepoint is executed from schedule
-            long bias = stackVisitor.startTime - time;
+            long bias = stackVisitor.startTime - submitTime;
             long overhead = stackVisitor.endTime - stackVisitor.startTime;
-
-            threads.add(new StackSample(stackVisitor.thread, stackVisitor.createEntries(sourceSectionFilter),
+            perThreadSamples.add(new StackSample(stackVisitor.thread, stackVisitor.createEntries(sourceSectionFilter),
                             bias, overhead, stackVisitor.overflowed));
-            returnStackVisitor(stackVisitor);
+            freeStackVisitor(stackVisitor);
         }
         action.reset();
         cachedAction.set(action);
 
-        return threads;
+        return perThreadSamples;
     }
 
     public boolean hasOverflowed() {
         return overflowed;
+    }
+
+    private void stackOverflowed(boolean visitorOverflowed) {
+        this.overflowed |= visitorOverflowed;
     }
 
     static class StackVisitor implements FrameInstanceVisitor<FrameInstance> {
@@ -149,18 +146,6 @@ final class SafepointStack {
             this.targets = new CallTarget[stackLimit];
         }
 
-        public FrameInstance visitFrame(FrameInstance frameInstance) {
-            states[nextFrameIndex] = state(frameInstance);
-            targets[nextFrameIndex] = frameInstance.getCallTarget();
-            nextFrameIndex++;
-            if (nextFrameIndex >= targets.length) {
-                // stop traversing
-                overflowed = true;
-                return frameInstance;
-            }
-            return null;
-        }
-
         private static byte state(FrameInstance frameInstance) {
             switch (frameInstance.getCompilationTier()) {
                 case 0:
@@ -178,6 +163,18 @@ final class SafepointStack {
                         return StackTraceEntry.STATE_LAST_TIER_COMPILATION_ROOT;
                     }
             }
+        }
+
+        public FrameInstance visitFrame(FrameInstance frameInstance) {
+            states[nextFrameIndex] = state(frameInstance);
+            targets[nextFrameIndex] = frameInstance.getCallTarget();
+            nextFrameIndex++;
+            if (nextFrameIndex >= targets.length) {
+                // stop traversing
+                overflowed = true;
+                return frameInstance;
+            }
+            return null;
         }
 
         void beforeVisit(Node topOfStackNode) {
@@ -258,7 +255,7 @@ final class SafepointStack {
             safepointStack.stackOverflowed(visitor.overflowed);
             if (cancelled) {
                 // did not complete on time
-                returnStackVisitor(visitor);
+                freeStackVisitor(visitor);
             } else {
                 completed.put(access.getThread(), visitor);
             }
@@ -274,9 +271,5 @@ final class SafepointStack {
             cancelled = false;
             completed.clear();
         }
-    }
-
-    private void stackOverflowed(boolean visitorOverflowed) {
-        this.overflowed |= visitorOverflowed;
     }
 }
