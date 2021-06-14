@@ -44,6 +44,7 @@ import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
+import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 
 import jdk.vm.ci.meta.Assumptions;
@@ -99,12 +100,9 @@ public class RegisterFinalizerNode extends AbstractStateSplit implements Canonic
      */
     public static boolean mayHaveFinalizer(ValueNode object, MetaAccessProvider metaAccess, Assumptions assumptions) {
         ObjectStamp objectStamp = (ObjectStamp) object.stamp(NodeView.DEFAULT);
+        ResolvedJavaType objectType = StampTool.typeOrNull(objectStamp, metaAccess);
         if (objectStamp.isExactType()) {
-            return objectStamp.type().hasFinalizer();
-        }
-        ResolvedJavaType objectType = objectStamp.type();
-        if (objectType == null) {
-            objectType = metaAccess.lookupJavaType(Object.class);
+            return objectType.hasFinalizer();
         }
         AssumptionResult<Boolean> result = objectType.hasFinalizableSubclass();
         if (result.canRecordTo(assumptions)) {
