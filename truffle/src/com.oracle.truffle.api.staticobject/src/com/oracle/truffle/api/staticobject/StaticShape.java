@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.staticobject;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import sun.misc.Unsafe;
 
@@ -86,6 +87,8 @@ import java.util.Objects;
  */
 public abstract class StaticShape<T> {
     protected static final Unsafe UNSAFE = getUnsafe();
+    @CompilationFinal //
+    private static Boolean enableSafeCasts;
     protected final Class<?> storageClass;
     @CompilationFinal //
     protected T factory;
@@ -154,9 +157,30 @@ public abstract class StaticShape<T> {
 
     static <T> T cast(Object obj, Class<T> type) {
         try {
-            return type.cast(obj);
+            if (safeCasts()) {
+                return type.cast(obj);
+            } else {
+                return SomAccessor.RUNTIME.unsafeCast(obj, type, true, false, false);
+            }
         } catch (ClassCastException e) {
             throw new IllegalArgumentException("Object '" + obj + "' of class '" + obj.getClass().getName() + "' does not have the expected shape", e);
+        }
+    }
+
+    static boolean safeCasts() {
+        if (enableSafeCasts == null) {
+            initializeSafeCasts();
+        }
+        return enableSafeCasts;
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    static synchronized void initializeSafeCasts() {
+        if (enableSafeCasts == null) {
+            // Eventually this will become a context option.
+            // For now we store its value in a static field that is initialized on first usage to
+            // avoid that it gets initialized at native-image build time.
+            enableSafeCasts = Boolean.getBoolean("com.oracle.truffle.api.staticobject.SafeCasts");
         }
     }
 

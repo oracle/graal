@@ -38,45 +38,16 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.staticobject.test;
+package com.oracle.truffle.api.staticobject;
 
-import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.staticobject.ClassLoaderCache;
-import com.oracle.truffle.api.staticobject.DefaultStaticProperty;
-import com.oracle.truffle.api.staticobject.StaticProperty;
+import com.oracle.truffle.api.impl.Accessor;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
+final class SomAccessor extends Accessor {
 
-class StaticObjectTest implements ClassLoaderCache {
-    static final boolean ARRAY_BASED_STORAGE = TruffleOptions.AOT || Boolean.getBoolean("com.oracle.truffle.api.staticobject.ArrayBasedStorage");
-    static final boolean SAFE = Boolean.getBoolean("com.oracle.truffle.api.staticobject.SafeCasts") && Boolean.getBoolean("com.oracle.truffle.api.staticobject.ShapeChecks");
-    private ClassLoader cl;
+    @SuppressWarnings("unused") static final SomAccessor ACCESSOR = new SomAccessor();
+    static final RuntimeSupport RUNTIME = ACCESSOR.runtimeSupport();
 
-    String guessGeneratedFieldName(StaticProperty property) {
-        assert !ARRAY_BASED_STORAGE;
-        // The format of generated field names with the field-based storage might change at any
-        // time. Do not depend on it!
-        if (property instanceof DefaultStaticProperty) {
-            return ((DefaultStaticProperty) property).getId();
-        } else {
-            try {
-                Method getId = StaticProperty.class.getDeclaredMethod("getId");
-                getId.setAccessible(true);
-                return (String) getId.invoke(property);
-            } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
-                throw new RuntimeException(e);
-            }
-        }
-    }
+    static final class SomImpl extends SomSupport {
 
-    @Override
-    public void setClassLoader(ClassLoader cl) {
-        this.cl = cl;
-    }
-
-    @Override
-    public ClassLoader getClassLoader() {
-        return cl;
     }
 }

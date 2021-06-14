@@ -926,6 +926,16 @@ public abstract class Accessor {
         public abstract TruffleProcessBuilder createProcessBuilder(Object polylgotLanguageContext, FileSystem fileSystem, List<String> command);
     }
 
+    public abstract static class SomSupport extends Support {
+
+        static final String IMPL_CLASS_NAME = "com.oracle.truffle.api.staticobject.SomAccessor";
+
+        protected SomSupport() {
+            super(IMPL_CLASS_NAME);
+        }
+
+    }
+
     public abstract static class RuntimeSupport {
 
         static final Object PERMISSION = new Object();
@@ -1140,7 +1150,8 @@ public abstract class Accessor {
                         "org.graalvm.compiler.truffle.runtime.debug.CompilerDebugAccessor".equals(thisClassName) ||
                         "com.oracle.truffle.api.dsl.DSLAccessor".equals(thisClassName) ||
                         "com.oracle.truffle.api.memory.MemoryFenceAccessor".equals(thisClassName) ||
-                        "com.oracle.truffle.api.library.LibraryAccessor".equals(thisClassName)) {
+                        "com.oracle.truffle.api.library.LibraryAccessor".equals(thisClassName) ||
+                        "com.oracle.truffle.api.staticobject.SomAccessor".equals(thisClassName)) {
             // OK, classes allowed to use accessors
         } else {
             throw new IllegalStateException(thisClassName);
