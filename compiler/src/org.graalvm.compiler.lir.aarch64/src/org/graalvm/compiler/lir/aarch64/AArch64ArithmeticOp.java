@@ -82,7 +82,6 @@ public enum AArch64ArithmeticOp {
     LSR(SHIFT),
     ASR(SHIFT),
     ROR(SHIFT),
-    RORV(SHIFT),
     ABS,
     FADD,
     FSUB,
@@ -343,8 +342,8 @@ public enum AArch64ArithmeticOp {
                 case ASR:
                     masm.asr(size, dst, src1, src2);
                     break;
-                case RORV:
-                    masm.rorv(size, dst, src1, src2);
+                case ROR:
+                    masm.ror(size, dst, src1, src2);
                     break;
                 case FADD:
                     masm.fadd(size, dst, src1, src2);
@@ -609,6 +608,70 @@ public enum AArch64ArithmeticOp {
 
     }
 
+    public static AArch64LIRInstruction generateASIMDBinaryInstruction(AArch64ArithmeticOp op, AllocatableValue result, AllocatableValue a, AllocatableValue b) {
+        switch (op) {
+            case ASR:
+            case LSR:
+                return new ASIMDTwoStepBinaryOp(op, result, a, b);
+        }
+        return new ASIMDBinaryOp(op, result, a, b);
+    }
+
+    /**
+     * For ASIMD, some arithmetic operations require generating two instructions and eagerly use the
+     * result register. In this case, the input registers must be marked as ALIVE to guarantee they
+     * are not reused for the result reg.
+     */
+    public static class ASIMDTwoStepBinaryOp extends AArch64LIRInstruction {
+        private static final LIRInstructionClass<ASIMDTwoStepBinaryOp> TYPE = LIRInstructionClass.create(ASIMDTwoStepBinaryOp.class);
+
+        @Opcode private final AArch64ArithmeticOp op;
+        @Def({REG}) protected AllocatableValue result;
+        /*
+         * Note currently it is only necessary to keep the first register alive. However, this may
+         * change if more instructions are added here.
+         */
+        @Alive({REG}) protected AllocatableValue a;
+        @Use({REG}) protected AllocatableValue b;
+
+        ASIMDTwoStepBinaryOp(AArch64ArithmeticOp op, AllocatableValue result, AllocatableValue a, AllocatableValue b) {
+            super(TYPE);
+            this.op = op;
+            this.result = result;
+            this.a = a;
+            this.b = b;
+        }
+
+        @Override
+        protected void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
+            ASIMDSize size = ASIMDSize.fromVectorKind(result.getPlatformKind());
+            ElementSize eSize = ElementSize.fromKind(result.getPlatformKind());
+
+            Register dst = asRegister(result);
+            Register src1 = asRegister(a);
+            Register src2 = asRegister(b);
+            switch (op) {
+                case LSR:
+                    /*
+                     * On AArch64 right shifts are actually left shifts by a negative value.
+                     */
+                    masm.neon.negVV(size, eSize, dst, src2);
+                    masm.neon.ushlVVV(size, eSize, dst, src1, dst);
+                    break;
+                case ASR:
+                    /*
+                     * On AArch64 right shifts are actually left shifts by a negative value.
+                     */
+                    masm.neon.negVV(size, eSize, dst, src2);
+                    masm.neon.sshlVVV(size, eSize, dst, src1, dst);
+                    break;
+                default:
+                    throw GraalError.shouldNotReachHere("op=" + op.name());
+
+            }
+        }
+    }
+
     public static class ASIMDBinaryOp extends AArch64LIRInstruction {
         private static final LIRInstructionClass<ASIMDBinaryOp> TYPE = LIRInstructionClass.create(ASIMDBinaryOp.class);
 
@@ -617,7 +680,7 @@ public enum AArch64ArithmeticOp {
         @Use({REG}) protected AllocatableValue a;
         @Use({REG}) protected AllocatableValue b;
 
-        public ASIMDBinaryOp(AArch64ArithmeticOp op, AllocatableValue result, AllocatableValue a, AllocatableValue b) {
+        ASIMDBinaryOp(AArch64ArithmeticOp op, AllocatableValue result, AllocatableValue a, AllocatableValue b) {
             super(TYPE);
             this.op = op;
             this.result = result;
@@ -658,22 +721,14 @@ public enum AArch64ArithmeticOp {
                 case LSL:
                     masm.neon.ushlVVV(size, eSize, dst, src1, src2);
                     break;
-                case LSR:
-                    /*
-                     * On AArch64 right shifts are actually left shifts by a negative value.
-                     */
-                    masm.neon.negVV(size, eSize, dst, src2);
-                    masm.neon.ushlVVV(size, eSize, dst, src1, dst);
-                    break;
-                case ASR:
-                    /*
-                     * On AArch64 right shifts are actually left shifts by a negative value.
-                     */
-                    masm.neon.negVV(size, eSize, dst, src2);
-                    masm.neon.sshlVVV(size, eSize, dst, src1, dst);
-                    break;
                 case MUL:
                     masm.neon.mulVVV(size, eSize, dst, src1, src2);
+                    break;
+                case MNEG:
+                    /* First perform multiply. */
+                    masm.neon.mulVVV(size, eSize, dst, src1, src2);
+                    /* Next negate value. */
+                    masm.neon.negVV(size, eSize, dst, dst);
                     break;
                 case FADD:
                     masm.neon.faddVVV(size, eSize, dst, src1, src2);

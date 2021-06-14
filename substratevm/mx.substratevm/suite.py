@@ -1,5 +1,5 @@
 suite = {
-    "mxversion": "5.294.0",
+    "mxversion": "5.301.0",
     "name": "substratevm",
     "version" : "21.2.0",
     "release" : False,
@@ -206,6 +206,7 @@ suite = {
                     "jdk.internal.module",
                     "jdk.internal.misc",
                     "jdk.internal.logger",
+                    "jdk.internal.loader",
                     "sun.util.resources",
                     "sun.text.spi",
                     "jdk.internal.perf",

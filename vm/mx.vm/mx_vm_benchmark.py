@@ -149,6 +149,7 @@ class NativeImageVM(GraalVm):
             self.base_image_build_args += ['--no-fallback', '-g', '--allow-incomplete-classpath']
             self.base_image_build_args += ['-H:+VerifyGraalGraphs', '-H:+VerifyPhases'] if vm.is_gate else []
             self.base_image_build_args += ['-J-ea', '-J-esa'] if vm.is_gate and not bm_suite.skip_build_assertions(self.benchmark_name) else []
+
             self.base_image_build_args += self.system_properties
             self.base_image_build_args += self.classpath_arguments
             self.base_image_build_args += self.executable

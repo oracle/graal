@@ -150,7 +150,7 @@ public class ExperimentalNativeImageInlineDuringParsingPlugin implements InlineI
 
     public static class Options {
         @Option(help = "Experimental: Inline methods which folds to constant during parsing before the static analysis.")//
-        public static final HostedOptionKey<Boolean> InlineBeforeAnalysis = new HostedOptionKey<>(false);
+        public static final HostedOptionKey<Boolean> OldInlineBeforeAnalysis = new HostedOptionKey<>(false);
 
         @Option(help = "Maximum depth when inlining.")//
         public static final HostedOptionKey<Integer> InlineBeforeAnalysisMaxDepth = new HostedOptionKey<>(9);

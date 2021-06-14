@@ -1421,7 +1421,9 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
-     * Rotate right (register). dst = rotateRight(src1, (src2 & (size - 1))).
+     * C.6.2.228 Rotate right (register). dst = rotateRight(src1, (src2 & (size - 1))).<br>
+     *
+     * Preferred alias for RORV (C6.2.228)
      *
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null or stackpointer.
@@ -1429,8 +1431,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param src2 general purpose register. It holds a shift amount from 0 to (size - 1) in its
      *            bottom 5 bits. May not be null or stackpointer.
      */
-    @Override
-    public void rorv(int size, Register dst, Register src1, Register src2) {
+    public void ror(int size, Register dst, Register src1, Register src2) {
         super.rorv(size, dst, src1, src2);
     }
 

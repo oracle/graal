@@ -164,13 +164,15 @@ public final class NarrowNode extends IntegerConvertNode<Narrow, IntegerConvertO
             }
         } else if (forValue instanceof AndNode) {
             AndNode andNode = (AndNode) forValue;
-            IntegerStamp yStamp = (IntegerStamp) andNode.getY().stamp(view);
-            IntegerStamp xStamp = (IntegerStamp) andNode.getX().stamp(view);
-            long relevantMask = CodeUtil.mask(this.getResultBits());
-            if ((relevantMask & yStamp.downMask()) == relevantMask) {
-                return create(andNode.getX(), this.getResultBits(), view);
-            } else if ((relevantMask & xStamp.downMask()) == relevantMask) {
-                return create(andNode.getY(), this.getResultBits(), view);
+            Stamp xStamp = andNode.getX().stamp(view);
+            Stamp yStamp = andNode.getY().stamp(view);
+            if (xStamp instanceof IntegerStamp && yStamp instanceof IntegerStamp) {
+                long relevantMask = CodeUtil.mask(this.getResultBits());
+                if ((relevantMask & ((IntegerStamp) yStamp).downMask()) == relevantMask) {
+                    return create(andNode.getX(), this.getResultBits(), view);
+                } else if ((relevantMask & ((IntegerStamp) xStamp).downMask()) == relevantMask) {
+                    return create(andNode.getY(), this.getResultBits(), view);
+                }
             }
         }
 

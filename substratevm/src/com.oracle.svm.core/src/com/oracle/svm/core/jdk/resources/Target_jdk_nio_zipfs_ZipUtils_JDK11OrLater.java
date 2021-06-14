@@ -4,7 +4,9 @@
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -20,10 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.staticobject;
 
-public class DefaultStaticObject {
-    public interface Factory {
-        DefaultStaticObject create();
-    }
+package com.oracle.svm.core.jdk.resources;
+
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.JDK11OrLater;
+
+@TargetClass(className = "jdk.nio.zipfs.ZipUtils", onlyWith = JDK11OrLater.class)
+@SuppressWarnings({"unused", "static-method"})
+final class Target_jdk_nio_zipfs_ZipUtils_JDK11OrLater {
+
+    @Alias
+    public static native String toRegexPattern(String globPattern);
 }

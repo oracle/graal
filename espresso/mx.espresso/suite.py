@@ -118,6 +118,7 @@ suite = {
             ],
             "javaCompliance": "1.8+",
             "checkstyle": "com.oracle.truffle.espresso",
+            "javadocType": "api",
         },
 
         "com.oracle.truffle.espresso.staticobject.test": {

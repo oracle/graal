@@ -140,6 +140,15 @@ final class PolyglotLanguage implements com.oracle.truffle.polyglot.PolyglotImpl
         return PolyglotContextImpl.requireContext().contexts[index];
     }
 
+    PolyglotLanguageContext getCurrentLanguageContextOptional() {
+        PolyglotContextImpl context = PolyglotContextImpl.currentNotEntered();
+        if (context != null && context.engine == this.engine) {
+            return context.contexts[index];
+        } else {
+            return null;
+        }
+    }
+
     boolean isFirstInstance() {
         return firstInstance;
     }

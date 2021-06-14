@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test;
+package com.oracle.svm.test.clinit;
 
 // Checkstyle: stop
 
@@ -65,7 +65,7 @@ class NonPureAccessedFinal {
 class PureCallMustBeSafeEarly {
     static int v;
     static {
-        v = TestClassInitializationMustBeSafe.pure();
+        v = TestClassInitializationMustBeSafeEarly.pure();
     }
 }
 
@@ -366,14 +366,14 @@ class ReflectionMustBeSafeEarly {
 
     static {
         try {
-            Class<?> c1Local = Class.forName("com.oracle.svm.test.ForNameMustBeSafeEarly", true, ReflectionMustBeSafeEarly.class.getClassLoader());
+            Class<?> c1Local = Class.forName("com.oracle.svm.test.clinit.ForNameMustBeSafeEarly", true, ReflectionMustBeSafeEarly.class.getClassLoader());
             c1 = c1Local;
 
             /**
              * Looking up a class that cannot be initialized at build time is allowed, as long as
              * `initialize` is `false`.
              */
-            Class<?> c2Local = Class.forName("com.oracle.svm.test.ForNameMustBeDelayed", false, ReflectionMustBeSafeEarly.class.getClassLoader());
+            Class<?> c2Local = Class.forName("com.oracle.svm.test.clinit.ForNameMustBeDelayed", false, ReflectionMustBeSafeEarly.class.getClassLoader());
             c2 = c2Local;
 
             /*
@@ -404,7 +404,7 @@ class ForNameMustBeDelayed {
     int field;
 }
 
-class TestClassInitializationMustBeSafeFeature implements Feature {
+class TestClassInitializationMustBeSafeEarlyFeature implements Feature {
 
     static final Class<?>[] checkedClasses = new Class<?>[]{
                     PureMustBeSafeEarly.class,
@@ -477,6 +477,7 @@ class TestClassInitializationMustBeSafeFeature implements Feature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
+        RuntimeClassInitialization.initializeAtRunTime("com.oracle.svm.test.clinit");
         RuntimeClassInitialization.initializeAtBuildTime(UnsafeAccess.class);
     }
 
@@ -510,12 +511,13 @@ class TestClassInitializationMustBeSafeFeature implements Feature {
 }
 
 /**
- * In addition to the initialization checks in {@link TestClassInitializationMustBeSafeFeature},
- * suffixes MustBeSafe and MustBeDelayed are parsed by an external script in the tests after the
- * image is built. Every class that ends with `MustBeSafe` should be eagerly initialized and every
- * class that ends with `MustBeDelayed` should be initialized at runtime.
+ * In addition to the initialization checks in
+ * {@link TestClassInitializationMustBeSafeEarlyFeature}, suffixes MustBeSafe and MustBeDelayed are
+ * parsed by an external script in the tests after the image is built. Every class that ends with
+ * `MustBeSafe` should be eagerly initialized and every class that ends with `MustBeDelayed` should
+ * be initialized at runtime.
  */
-public class TestClassInitializationMustBeSafe {
+public class TestClassInitializationMustBeSafeEarly {
     static int pure() {
         return transitivelyPure() + 42;
     }

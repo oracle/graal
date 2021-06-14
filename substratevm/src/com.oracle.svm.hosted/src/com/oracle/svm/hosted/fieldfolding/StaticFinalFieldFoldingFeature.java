@@ -281,7 +281,7 @@ final class StaticFinalFieldFoldingFeature implements GraalFeature {
              * the order in which graphs are parsed during static analysis does not affect the
              * outcome of the optimizable check below.
              */
-            field.getDeclaringClass().getClassInitializer().ensureGraphParsed(bb, false);
+            field.getDeclaringClass().getClassInitializer().ensureGraphParsed(bb);
         }
 
         if (foldedFieldValues.containsKey(field)) {
@@ -346,7 +346,7 @@ final class StaticFinalFieldFoldingNodePlugin implements NodePlugin {
          * StaticFinalFieldFoldingFeature#onAnalysisMethodParsed} determines which fields can be
          * optimized.
          */
-        classInitializer.ensureGraphParsed(feature.bb, false);
+        classInitializer.ensureGraphParsed(feature.bb);
 
         JavaConstant initializedValue = feature.foldedFieldValues.get(aField);
         if (initializedValue == null) {

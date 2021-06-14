@@ -184,7 +184,7 @@ class DebugValueBenchmarkMixin(object):
     def getBenchmarkName(self):
         raise NotImplementedError()
 
-    def benchSuiteName(self):
+    def benchSuiteName(self, bmSuiteArgs=None):
         raise NotImplementedError()
 
     def shorten_vm_flags(self, args):
@@ -395,7 +395,7 @@ class DaCapoTimingBenchmarkMixin(TimingBenchmarkMixin, CounterBenchmarkMixin, Me
 class DaCapoTimingBenchmarkSuite(DaCapoTimingBenchmarkMixin, DaCapoBenchmarkSuite): # pylint: disable=too-many-ancestors
     """DaCapo 9.12 (Bach) benchmark suite implementation."""
 
-    def benchSuiteName(self):
+    def benchSuiteName(self, bmSuiteArgs=None):
         return "dacapo"
 
 
@@ -405,7 +405,7 @@ mx_benchmark.add_bm_suite(DaCapoTimingBenchmarkSuite())
 class ScalaDaCapoTimingBenchmarkSuite(DaCapoTimingBenchmarkMixin, ScalaDaCapoBenchmarkSuite): # pylint: disable=too-many-ancestors
     """Scala DaCapo benchmark suite implementation."""
 
-    def benchSuiteName(self):
+    def benchSuiteName(self, bmSuiteArgs=None):
         return "scala-dacapo"
 
 
