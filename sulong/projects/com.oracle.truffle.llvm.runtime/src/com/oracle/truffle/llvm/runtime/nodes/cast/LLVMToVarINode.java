@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,6 +33,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBitLarge;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBitSmall;
@@ -43,6 +44,7 @@ import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMToVarINodeGen.LLVMBitcastT
 import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMToVarINodeGen.LLVMSignedCastToIVarNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMToVarINodeGen.LLVMUnsignedCastToIVarNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+import com.oracle.truffle.llvm.runtime.vector.LLVMI1Vector;
 
 @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
 @NodeField(type = int.class, name = "bits")
@@ -191,6 +193,13 @@ public abstract class LLVMToVarINode extends LLVMExpressionNode {
         protected LLVMIVarBit do80BitFloat(LLVM80BitFloat from) {
             assert getBits() == LLVM80BitFloat.BIT_WIDTH;
             return LLVMIVarBit.create(getBits(), from.getBytesBigEndian(), LLVM80BitFloat.BIT_WIDTH, true);
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected LLVMIVarBit doI1Vector(LLVMI1Vector from) {
+            assert getBits() == from.getLength();
+            return LLVMIVarBit.fromI1Vector(getBits(), from);
         }
     }
 }
