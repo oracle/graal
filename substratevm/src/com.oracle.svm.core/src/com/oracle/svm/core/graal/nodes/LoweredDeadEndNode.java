@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,10 +40,10 @@ import com.oracle.svm.core.graal.code.SubstrateLIRGenerator;
  * Simplified from {@link UnreachableNode}.
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
-public final class DeadEndNode extends ControlSinkNode implements LIRLowerable, IterableNodeType {
-    public static final NodeClass<DeadEndNode> TYPE = NodeClass.create(DeadEndNode.class);
+public final class LoweredDeadEndNode extends ControlSinkNode implements LIRLowerable, IterableNodeType {
+    public static final NodeClass<LoweredDeadEndNode> TYPE = NodeClass.create(LoweredDeadEndNode.class);
 
-    public DeadEndNode() {
+    public LoweredDeadEndNode() {
         super(TYPE, StampFactory.forVoid());
     }
 

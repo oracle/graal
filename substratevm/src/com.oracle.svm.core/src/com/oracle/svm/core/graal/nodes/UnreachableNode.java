@@ -45,7 +45,7 @@ public final class UnreachableNode extends FixedWithNextNode implements Simplifi
     @Override
     public void simplify(SimplifierTool tool) {
         tool.deleteBranch(next());
-        replaceAtPredecessor(graph().add(new DeadEndNode()));
+        replaceAtPredecessor(graph().add(new LoweredDeadEndNode()));
         safeDelete();
     }
 

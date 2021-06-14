@@ -39,7 +39,7 @@ import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
-import com.oracle.svm.core.graal.nodes.DeadEndNode;
+import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.graal.nodes.UnreachableNode;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
@@ -96,7 +96,7 @@ public class JNICallTrampolineMethod extends CustomSubstitutionMethod {
     public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
         HostedGraphKit kit = new JNIGraphKit(debug, providers, method);
         kit.append(new UnreachableNode());
-        kit.append(new DeadEndNode());
+        kit.append(new LoweredDeadEndNode());
 
         return kit.finalizeGraph();
     }
