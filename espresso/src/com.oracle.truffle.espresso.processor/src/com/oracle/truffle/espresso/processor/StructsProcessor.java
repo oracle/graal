@@ -258,9 +258,13 @@ public class StructsProcessor extends AbstractProcessor {
         // Copyright + package + imports
         generateStructHeader(builder);
 
+        String wrapperName = className + WRAPPER;
+
         // Java struct declaration
         builder.append(SUPPRESS_UNUSED).append("\n");
-        builder.append(PUBLIC_FINAL_CLASS).append(className).append(" extends ").append(STRUCT_STORAGE_CLASS).append(" {\n");
+        builder.append(PUBLIC_FINAL_CLASS).append(className).append(" extends ").append(STRUCT_STORAGE_CLASS) //
+                        .append("<").append(className).append(".").append(wrapperName).append(">") //
+                        .append(" {\n");
 
         // Generate the fields:
         // - One to store the struct size
@@ -274,7 +278,7 @@ public class StructsProcessor extends AbstractProcessor {
         // Generate the wrapper structure that will access the native struct java-like.
         // It simply wraps a byte buffer around the pointer, and uses offsets in parent class to
         // perform accesses.
-        String wrapperName = generateWrapper(members, typesList, length, className, builder);
+        generateWrapper(members, typesList, length, builder, wrapperName);
         builder.append("\n");
 
         generateWrapMethod(builder, wrapperName);
@@ -292,8 +296,7 @@ public class StructsProcessor extends AbstractProcessor {
         builder.append(TAB_1).append("}\n");
     }
 
-    private static String generateWrapper(List<String> members, List<NativeType> typesList, int length, String className, StringBuilder builder) {
-        String wrapperName = className + WRAPPER;
+    private static void generateWrapper(List<String> members, List<NativeType> typesList, int length, StringBuilder builder, String wrapperName) {
         builder.append(TAB_1).append(PUBLIC_FINAL_CLASS).append(wrapperName).append(" extends ").append(STRUCT_WRAPPER_CLASS).append(" {\n");
         generateWrapperConstructor(builder, wrapperName);
         for (int i = 0; i < length; i++) {
@@ -302,7 +305,6 @@ public class StructsProcessor extends AbstractProcessor {
             generateGetterSetter(builder, member, type);
         }
         builder.append(TAB_1).append("}\n");
-        return wrapperName;
     }
 
     private static void generateWrapperConstructor(StringBuilder builder, String wrapperName) {

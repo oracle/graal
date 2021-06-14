@@ -21,6 +21,7 @@
  * questions.
  */
 
+#include "jvm.h"
 #include "jvmti.h"
 #include "structs.h"
 
@@ -29,6 +30,14 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+
+#define JNI_STRUCT_MEMBER_LIST(V) \
+	V(JavaVMAttachArgs, version) \
+	V(JavaVMAttachArgs, name) \
+	V(JavaVMAttachArgs, group) \
+
+#define JVM_STRUCT_MEMBER_LIST(V) \
+    V(jdk_version_info, jdk_version)
 
 #define JVMTI_STRUCT_MEMBER_LIST(V) \
     V(_jvmtiThreadInfo, name) \
@@ -164,6 +173,19 @@
     V(_jvmtiEventCallbacks, reserved85) \
     V(_jvmtiEventCallbacks, SampledObjectAlloc)
     
+#define MEMBER_INFO_STRUCT_MEMBER_LIST(V) \
+    V(member_info, id) \
+    V(member_info, offset) \
+    V(member_info, next)
+    
+#define JNI_STRUCT_LIST(V) \
+	V(JavaVMAttachArgs) \
+	V(JavaVMAttachArgs) \
+	V(JavaVMAttachArgs) \
+
+#define JVM_STRUCT_LIST(V) \
+    V(jdk_version_info)
+    
 #define JVMTI_STRUCT_LIST(V) \
     V(_jvmtiThreadInfo) \
     V(_jvmtiMonitorStackDepthInfo) \
@@ -188,19 +210,18 @@
     V(_jvmtiAddrLocationMap) \
     V(_jvmtiEventCallbacks)
     
-#define MEMBER_INFO_STRUCT_MEMBER_LIST(V) \
-    V(member_info, id) \
-    V(member_info, offset) \
-    V(member_info, next)
-    
 #define MEMBER_INFO_STRUCT_LIST(V) \
     V(member_info)
 
 #define STRUCT_LIST_LIST(V) \
+	JNI_STRUCT_LIST(V) \
+	JVM_STRUCT_LIST(V) \
     JVMTI_STRUCT_LIST(V) \
     MEMBER_INFO_STRUCT_LIST(V)
     
 #define STRUCT_MEMBER_LIST_LIST(V) \
+	JNI_STRUCT_MEMBER_LIST(V) \
+	JVM_STRUCT_MEMBER_LIST(V) \
     JVMTI_STRUCT_MEMBER_LIST(V) \
     MEMBER_INFO_STRUCT_MEMBER_LIST(V)
 

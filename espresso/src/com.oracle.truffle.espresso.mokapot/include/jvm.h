@@ -1673,7 +1673,7 @@ typedef struct {
 JNIEXPORT void JNICALL
 JVM_GetVersionInfo(JNIEnv* env, jvm_version_info* info, size_t info_size);
 
-typedef struct {
+typedef struct jdk_version_info {
     // Naming convention of RE build version string: n.n.n[_uu[c]][-<identifier>]-bxx
     unsigned int jdk_version;   /* Consists of major, minor, micro (n.n.n) */
                                 /* and build number (xx) */

@@ -39,7 +39,6 @@ import java.io.File;
 import java.lang.reflect.Array;
 import java.lang.reflect.Parameter;
 import java.nio.ByteBuffer;
-import java.nio.LongBuffer;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.AccessControlContext;
@@ -135,6 +134,7 @@ import com.oracle.truffle.espresso.substitutions.Target_java_lang_System;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread.State;
 import com.oracle.truffle.espresso.substitutions.VMCollector;
+import com.oracle.truffle.espresso.vm.structs.JavaVMAttachArgs;
 import com.oracle.truffle.espresso.vm.structs.Structs;
 import com.oracle.truffle.espresso.vm.structs.StructsAccess;
 
@@ -686,18 +686,14 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     private int attachCurrentThread(@SuppressWarnings("unused") @Pointer TruffleObject penvPtr, @Pointer TruffleObject argsPtr, boolean daemon) {
-        LongBuffer buf = NativeUtils.directByteBuffer(argsPtr, 8, JavaKind.Long).asLongBuffer();
-        int version = (int) buf.get(0);
-        @SuppressWarnings("unused")
-        long namePtr = buf.get(1);
-        long groupHandle = buf.get(2);
+        JavaVMAttachArgs.JavaVMAttachArgsWrapper attachArgs = getStructs().javaVMAttachArgs.wrap(jni(), argsPtr);
         StaticObject group = null;
         String name = null;
-        if (JniVersion.isSupported(version, getContext().getJavaVersion())) {
-            group = getHandles().get(Math.toIntExact(groupHandle));
-            name = NativeUtils.fromUTF8Ptr(namePtr);
+        if (JniVersion.isSupported(attachArgs.version(), getContext().getJavaVersion())) {
+            group = attachArgs.group();
+            name = NativeUtils.fromUTF8Ptr(attachArgs.name());
         } else {
-            getLogger().warning(String.format("AttachCurrentThread with unsupported JavaVMAttachArgs version: 0x%08x", version));
+            getLogger().warning(String.format("AttachCurrentThread with unsupported JavaVMAttachArgs version: 0x%08x", attachArgs.version()));
         }
         StaticObject thread = getContext().createThread(Thread.currentThread(), group, name);
         if (daemon) {
