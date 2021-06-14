@@ -53,6 +53,7 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.util.UserError;
+import org.graalvm.nativeimage.ImageSingletons;
 
 public class SubstrateOptions {
 
@@ -564,4 +565,16 @@ public class SubstrateOptions {
 
     @Option(help = "file:doc-files/FlightRecorderLoggingHelp.txt")//
     public static final RuntimeOptionKey<String> FlightRecorderLogging = new RuntimeOptionKey<>("all=warning");
+
+    public static String reportsPath() {
+        return Paths.get(Paths.get(Path.getValue()).toString(), ImageSingletons.lookup(ReportingSupport.class).reportsPath).toAbsolutePath().toString();
+    }
+
+    public static class ReportingSupport {
+        String reportsPath;
+
+        public ReportingSupport(String reportingPath) {
+            this.reportsPath = reportingPath;
+        }
+    }
 }

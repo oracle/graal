@@ -29,7 +29,6 @@ import static com.oracle.svm.hosted.classinitialization.InitKind.RERUN;
 import static com.oracle.svm.hosted.classinitialization.InitKind.RUN_TIME;
 
 import java.io.PrintWriter;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -73,7 +72,6 @@ import com.oracle.svm.hosted.meta.MethodPointer;
 @AutomaticFeature
 public class ClassInitializationFeature implements GraalFeature {
 
-    public static final String REPORTS_PATH = Paths.get(Paths.get(SubstrateOptions.Path.getValue()).toString(), "reports").toAbsolutePath().toString();
     private ClassInitializationSupport classInitializationSupport;
     private AnalysisUniverse universe;
     private AnalysisMetaAccess metaAccess;
@@ -189,7 +187,7 @@ public class ClassInitializationFeature implements GraalFeature {
         try (Timer.StopTimer ignored = new Timer(imageName, "(clinit)").start()) {
             classInitializationSupport.setUnsupportedFeatures(null);
 
-            String path = REPORTS_PATH;
+            String path = SubstrateOptions.reportsPath();
             assert classInitializationSupport.checkDelayedInitialization();
 
             TypeInitializerGraph initGraph = new TypeInitializerGraph(universe);

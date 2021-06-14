@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted;
 
+import static com.oracle.svm.hosted.NativeImageOptions.DiagnosticMode;
+import static com.oracle.svm.hosted.NativeImageOptions.DiagnosticsDir;
 import static org.graalvm.compiler.hotspot.JVMCIVersionCheck.JVMCI11_RELEASES_URL;
 import static org.graalvm.compiler.hotspot.JVMCIVersionCheck.JVMCI8_RELEASES_URL;
 import static org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.registerInvocationPlugins;
@@ -37,6 +39,7 @@ import java.lang.reflect.Type;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -773,16 +776,16 @@ public class NativeImageGenerator {
              */
             if (bigbang != null) {
                 if (AnalysisReportsOptions.PrintAnalysisStatistics.getValue(options)) {
-                    StatisticsPrinter.print(bigbang, SubstrateOptions.Path.getValue(), ReportUtils.extractImageName(imageName));
+                    StatisticsPrinter.print(bigbang, SubstrateOptions.reportsPath(), ReportUtils.extractImageName(imageName));
                 }
 
                 if (AnalysisReportsOptions.PrintAnalysisCallTree.getValue(options)) {
-                    CallTreePrinter.print(bigbang, SubstrateOptions.Path.getValue(), ReportUtils.extractImageName(imageName));
+                    CallTreePrinter.print(bigbang, SubstrateOptions.reportsPath(), ReportUtils.extractImageName(imageName));
                 }
 
                 if (AnalysisReportsOptions.PrintImageObjectTree.getValue(options)) {
-                    ObjectTreePrinter.print(bigbang, SubstrateOptions.Path.getValue(), ReportUtils.extractImageName(imageName));
-                    AnalysisHeapHistogramPrinter.print(bigbang, SubstrateOptions.Path.getValue(), ReportUtils.extractImageName(imageName));
+                    ObjectTreePrinter.print(bigbang, SubstrateOptions.reportsPath(), ReportUtils.extractImageName(imageName));
+                    AnalysisHeapHistogramPrinter.print(bigbang, SubstrateOptions.reportsPath(), ReportUtils.extractImageName(imageName));
                 }
 
                 if (PointstoOptions.PrintPointsToStatistics.getValue(options)) {
@@ -832,6 +835,9 @@ public class NativeImageGenerator {
                 SubstrateTargetDescription target = createTarget(loader.platform);
                 ImageSingletons.add(Platform.class, loader.platform);
                 ImageSingletons.add(SubstrateTargetDescription.class, target);
+
+                ImageSingletons.add(SubstrateOptions.ReportingSupport.class, new SubstrateOptions.ReportingSupport(
+                                DiagnosticMode.getValue() ? DiagnosticsDir.getValue() : Paths.get("reports").toString()));
 
                 if (javaMainSupport != null) {
                     ImageSingletons.add(JavaMainSupport.class, javaMainSupport);
