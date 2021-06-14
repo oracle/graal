@@ -615,5 +615,14 @@ final class LanguageAccessor extends Accessor {
             action.perform(access);
         }
 
+        @Override
+        public ClassLoader getSomClassloader(TruffleLanguage<?> language) {
+            return language.somCl;
+        }
+
+        @Override
+        public void setSomClassloader(TruffleLanguage<?> language, ClassLoader cl) {
+            language.somCl = cl;
+        }
     }
 }

@@ -32,7 +32,7 @@ import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.hosted.snippets.SubstrateGraphBuilderPlugins;
 import com.oracle.svm.util.ReflectionUtil;
-import com.oracle.truffle.api.staticobject.ClassLoaderCache;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.staticobject.StaticShape;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -56,8 +56,15 @@ import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 
 @AutomaticFeature
-public final class StaticObjectFeature implements GraalFeature {
+public final class SomFeature implements GraalFeature {
     private final HashSet<Pair<Class<?>, Class<?>>> interceptedArgs = new HashSet<>();
+
+    private final TruffleLanguage<?> lang = new TruffleLanguage<Object>() {
+        @Override
+        protected Object createContext(Env env) {
+            throw new UnsupportedOperationException();
+        }
+    };
 
     @Override
     public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, Plugins plugins, ParsingReason reason) {
@@ -92,21 +99,7 @@ public final class StaticObjectFeature implements GraalFeature {
     }
 
     private Class<?> generate(Class<?> storageSuperClass, Class<?> factoryInterface, BeforeAnalysisAccess access) {
-        ClassLoaderCache clc = new ClassLoaderCache() {
-            private ClassLoader cl;
-
-            @Override
-            public void setClassLoader(ClassLoader cl) {
-                this.cl = cl;
-            }
-
-            @Override
-            public ClassLoader getClassLoader() {
-                return cl;
-            }
-        };
-
-        StaticShape<?> shape = StaticShape.newBuilder(clc).build(storageSuperClass, factoryInterface);
+        StaticShape<?> shape = StaticShape.newBuilder(lang).build(storageSuperClass, factoryInterface);
         Class<?> factoryClass = shape.getFactory().getClass();
         for (Constructor<?> c : factoryClass.getDeclaredConstructors()) {
             RuntimeReflection.register(c);

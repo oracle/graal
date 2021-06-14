@@ -50,13 +50,13 @@ public class ShapeAndFactoryTest extends StaticObjectTest {
 
     @Test
     public void correct() {
-        StaticShape.Builder b = StaticShape.newBuilder(this);
+        StaticShape.Builder b = StaticShape.newBuilder(testLanguage);
         b.build(CustomStaticObject.class, CustomFactoryInterface.class);
     }
 
     @Test
     public void wrongFinalClone() {
-        StaticShape.Builder b = StaticShape.newBuilder(this);
+        StaticShape.Builder b = StaticShape.newBuilder(testLanguage);
         try {
             b.build(WrongCloneCustomStaticObject.class, WrongCloneFactoryInterface.class);
             Assert.fail();
@@ -67,7 +67,7 @@ public class ShapeAndFactoryTest extends StaticObjectTest {
 
     @Test
     public void wrongFactoryArgs() {
-        StaticShape.Builder b = StaticShape.newBuilder(this);
+        StaticShape.Builder b = StaticShape.newBuilder(testLanguage);
         try {
             b.build(CustomStaticObject.class, WrongArgsFactoryInterface.class);
             Assert.fail();
@@ -78,7 +78,7 @@ public class ShapeAndFactoryTest extends StaticObjectTest {
 
     @Test
     public void wrongFactoryReturnType() {
-        StaticShape.Builder b = StaticShape.newBuilder(this);
+        StaticShape.Builder b = StaticShape.newBuilder(testLanguage);
         try {
             b.build(CustomStaticObject.class, WrongReturnTypeFactoryInterface.class);
             Assert.fail();

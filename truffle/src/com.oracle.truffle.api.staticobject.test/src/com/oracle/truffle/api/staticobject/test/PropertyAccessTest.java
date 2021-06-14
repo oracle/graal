@@ -177,7 +177,7 @@ public class PropertyAccessTest extends StaticObjectTest {
 
     @Theory
     public void correctAccessors(TestDescriptor descriptor) {
-        StaticShape.Builder builder = StaticShape.newBuilder(this);
+        StaticShape.Builder builder = StaticShape.newBuilder(testLanguage);
         StaticProperty property = new DefaultStaticProperty("property", descriptor.kind, false);
         builder.property(property);
         StaticShape<DefaultStaticObjectFactory> shape = builder.build();
@@ -196,7 +196,7 @@ public class PropertyAccessTest extends StaticObjectTest {
     public void wrongAccessors(TestDescriptor expectedDescriptor, TestDescriptor actualDescriptor) {
         Assume.assumeFalse(expectedDescriptor.equals(actualDescriptor));
 
-        StaticShape.Builder builder = StaticShape.newBuilder(this);
+        StaticShape.Builder builder = StaticShape.newBuilder(testLanguage);
         StaticProperty property = new DefaultStaticProperty("property", expectedDescriptor.kind, false);
         builder.property(property);
         StaticShape<DefaultStaticObjectFactory> shape = builder.build();
@@ -222,12 +222,12 @@ public class PropertyAccessTest extends StaticObjectTest {
     @SuppressWarnings("unused")
     public void wrongShape(TestDescriptor descriptor) {
         if (SAFE) {
-            StaticShape.Builder b1 = StaticShape.newBuilder(this);
+            StaticShape.Builder b1 = StaticShape.newBuilder(testLanguage);
             StaticProperty p1 = new DefaultStaticProperty("property", descriptor.kind, false);
             b1.property(p1);
             StaticShape<DefaultStaticObjectFactory> s1 = b1.build();
 
-            StaticShape.Builder b2 = StaticShape.newBuilder(this);
+            StaticShape.Builder b2 = StaticShape.newBuilder(testLanguage);
             StaticProperty p2 = new DefaultStaticProperty("property", descriptor.kind, false);
             b2.property(p2);
             StaticShape<DefaultStaticObjectFactory> s2 = b2.build();
@@ -250,7 +250,7 @@ public class PropertyAccessTest extends StaticObjectTest {
     @SuppressWarnings("unused")
     public void wrongObject() {
         Assume.assumeTrue(SAFE);
-        StaticShape.Builder builder = StaticShape.newBuilder(this);
+        StaticShape.Builder builder = StaticShape.newBuilder(testLanguage);
         StaticProperty property = new DefaultStaticProperty("property", StaticPropertyKind.Int, false);
         builder.property(property);
         StaticShape<DefaultStaticObjectFactory> shape = builder.build();

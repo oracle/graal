@@ -55,7 +55,7 @@ import java.lang.reflect.Modifier;
 public class BuilderPropertyTest extends StaticObjectTest {
     @Test
     public void sameBuilderSameProperty() {
-        StaticShape.Builder builder = StaticShape.newBuilder(this);
+        StaticShape.Builder builder = StaticShape.newBuilder(testLanguage);
         StaticProperty property = new DefaultStaticProperty("property", StaticPropertyKind.Int, false);
         builder.property(property);
         try {
@@ -70,7 +70,7 @@ public class BuilderPropertyTest extends StaticObjectTest {
 
     @Test
     public void sameBuilderSameName() throws IllegalArgumentException {
-        StaticShape.Builder builder = StaticShape.newBuilder(this);
+        StaticShape.Builder builder = StaticShape.newBuilder(testLanguage);
         StaticProperty p1 = new DefaultStaticProperty("property", StaticPropertyKind.Int, false);
         StaticProperty p2 = new DefaultStaticProperty("property", StaticPropertyKind.Int, false);
         builder.property(p1);
@@ -85,8 +85,8 @@ public class BuilderPropertyTest extends StaticObjectTest {
 
     @Test
     public void differentBuildersSameProperty() {
-        StaticShape.Builder b1 = StaticShape.newBuilder(this);
-        StaticShape.Builder b2 = StaticShape.newBuilder(this);
+        StaticShape.Builder b1 = StaticShape.newBuilder(testLanguage);
+        StaticShape.Builder b2 = StaticShape.newBuilder(testLanguage);
         StaticProperty property = new DefaultStaticProperty("property", StaticPropertyKind.Int, false);
         b1.property(property);
         b2.property(property);
@@ -105,7 +105,7 @@ public class BuilderPropertyTest extends StaticObjectTest {
     public void propertyName() throws NoSuchFieldException {
         Assume.assumeFalse(ARRAY_BASED_STORAGE);
 
-        StaticShape.Builder builder = StaticShape.newBuilder(this);
+        StaticShape.Builder builder = StaticShape.newBuilder(testLanguage);
         StaticProperty property = new DefaultStaticProperty("property", StaticPropertyKind.Int, false);
         builder.property(property);
         StaticShape<DefaultStaticObjectFactory> shape = builder.build();
@@ -117,7 +117,7 @@ public class BuilderPropertyTest extends StaticObjectTest {
     public void propertyFinal() throws NoSuchFieldException {
         Assume.assumeFalse(ARRAY_BASED_STORAGE);
 
-        StaticShape.Builder builder = StaticShape.newBuilder(this);
+        StaticShape.Builder builder = StaticShape.newBuilder(testLanguage);
         StaticProperty p1 = new DefaultStaticProperty("p1", StaticPropertyKind.Int, true);
         StaticProperty p2 = new DefaultStaticProperty("p2", StaticPropertyKind.Int, false);
         builder.property(p1);
@@ -134,7 +134,7 @@ public class BuilderPropertyTest extends StaticObjectTest {
     public void propertyKind() throws NoSuchFieldException {
         Assume.assumeFalse(ARRAY_BASED_STORAGE);
 
-        StaticShape.Builder builder = StaticShape.newBuilder(this);
+        StaticShape.Builder builder = StaticShape.newBuilder(testLanguage);
         StaticPropertyKind[] kinds = StaticPropertyKind.values();
         StaticProperty[] properties = new StaticProperty[kinds.length];
         for (int i = 0; i < properties.length; i++) {

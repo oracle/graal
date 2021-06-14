@@ -43,6 +43,7 @@ package com.oracle.truffle.api.staticobject;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.TruffleLanguage;
 import sun.misc.Unsafe;
 
 import java.lang.reflect.Field;
@@ -56,7 +57,7 @@ import java.util.Objects;
  * A StaticShape is an immutable descriptor of the layout of a static object and is a good entry
  * point to learn about the Static Object Model. Here is an overview:
  * <ul>
- * <li>{@link StaticShape#newBuilder(ClassLoaderCache)} returns a {@link StaticShape.Builder} object
+ * <li>{@link StaticShape#newBuilder(TruffleLanguage)} returns a {@link StaticShape.Builder} object
  * that can be used to {@linkplain StaticShape.Builder#property(StaticProperty) register}
  * {@linkplain StaticProperty static properties} and to generate a new static shape by calling one
  * of its {@linkplain Builder#build() build methods}.
@@ -76,7 +77,7 @@ import java.util.Objects;
  * {@linkplain StaticProperty static properties} to check that the receiver object matches the
  * expected shape.
  * 
- * @see StaticShape#newBuilder(ClassLoaderCache)
+ * @see StaticShape#newBuilder(TruffleLanguage)
  * @see StaticShape.Builder
  * @see StaticProperty
  * @see DefaultStaticProperty
@@ -113,22 +114,16 @@ public abstract class StaticShape<T> {
      * {@link StaticShape#getFactory()}, users can call the accessor methods defined in
      * {@link StaticProperty} to get and set property values stored in a static object instance.
      *
-     * @param clc a class that can be used to cache the class loader instance used to load classes
-     *            that extend the static object {@linkplain StaticShape.Builder#build(Class, Class)
-     *            super class} and implement the corresponding {@linkplain Builder#build() default}
-     *            or {@linkplain StaticShape.Builder#build(Class, Class) user-defined} factory
-     *            interface. This argument will be removed once the code of the Static Object Model
-     *            is moved to Truffle
+     * @param language an instance of the {@link TruffleLanguage} that uses the Static Object Model
      * @return a new static shape builder
      * 
      * @see StaticShape
      * @see StaticProperty
      * @see DefaultStaticProperty
      * @see DefaultStaticObjectFactory
-     * @see ClassLoaderCache
      */
-    public static Builder newBuilder(ClassLoaderCache clc) {
-        return new Builder(clc);
+    public static Builder newBuilder(TruffleLanguage<?> language) {
+        return new Builder(language);
     }
 
     final void setFactory(T factory) {
@@ -209,15 +204,15 @@ public abstract class StaticShape<T> {
      * Builder class to construct {@link StaticShape} instances. The builder instance is not
      * thread-safe and must not be used from multiple threads at the same time.
      *
-     * @see StaticShape#newBuilder(ClassLoaderCache)
+     * @see StaticShape#newBuilder(TruffleLanguage)
      */
     public static final class Builder {
         private static final char[] FORBIDDEN_CHARS = new char[]{'.', ';', '[', '/'};
         private final HashMap<String, StaticProperty> staticProperties = new LinkedHashMap<>();
-        private final ClassLoaderCache clc;
+        private final TruffleLanguage<?> language;
 
-        Builder(ClassLoaderCache clc) {
-            this.clc = clc;
+        Builder(TruffleLanguage<?> language) {
+            this.language = language;
         }
 
         /**
@@ -329,13 +324,13 @@ public abstract class StaticShape<T> {
         }
 
         private GeneratorClassLoader getOrCreateClassLoader(Class<?> referenceClass) {
-            ClassLoader cl = clc.getClassLoader();
+            ClassLoader cl = SomAccessor.LANGUAGE.getSomClassloader(language);
             if (cl == null) {
                 cl = new GeneratorClassLoader(referenceClass.getClassLoader(), referenceClass.getProtectionDomain());
-                clc.setClassLoader(cl);
+                SomAccessor.LANGUAGE.setSomClassloader(language, cl);
             }
             if (!GeneratorClassLoader.class.isInstance(cl)) {
-                throw new RuntimeException("The ClassLoaderCache associated to this Builder returned an unexpected class loader");
+                throw new RuntimeException("The Truffle language instance associated to this Builder returned an unexpected class loader");
             }
             return (GeneratorClassLoader) cl;
         }

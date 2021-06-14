@@ -752,6 +752,10 @@ public abstract class Accessor {
         public abstract boolean isSideEffectingTLAction(ThreadLocalAction action);
 
         public abstract void performTLAction(ThreadLocalAction action, ThreadLocalAction.Access access);
+
+        public abstract ClassLoader getSomClassloader(TruffleLanguage<?> language);
+
+        public abstract void setSomClassloader(TruffleLanguage<?> language, ClassLoader cl);
     }
 
     public abstract static class InstrumentSupport extends Support {

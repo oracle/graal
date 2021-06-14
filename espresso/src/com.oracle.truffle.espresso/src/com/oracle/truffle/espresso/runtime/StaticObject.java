@@ -141,7 +141,7 @@ public class StaticObject implements TruffleObject, Cloneable {
         assert array != null;
         assert !(array instanceof StaticObject);
         assert array.getClass().isArray();
-        StaticObject newObj = EspressoLanguage.getArrayShape().getFactory().create(klass);
+        StaticObject newObj = klass.getEspressoLanguage().getArrayShape().getFactory().create(klass);
         EspressoLanguage.getArrayProperty().setObject(newObj, array);
         return trackAllocation(klass, newObj);
     }
@@ -155,24 +155,24 @@ public class StaticObject implements TruffleObject, Cloneable {
         assert meta.getContext().Polyglot;
         assert interopLibrary.isException(foreignObject);
         assert !(foreignObject instanceof StaticObject);
-        return createForeign(meta.polyglot.ForeignException, foreignObject, interopLibrary);
+        return createForeign(meta.getEspressoLanguage(), meta.polyglot.ForeignException, foreignObject, interopLibrary);
     }
 
-    public static StaticObject createForeign(Klass klass, Object foreignObject, InteropLibrary interopLibrary) {
+    public static StaticObject createForeign(EspressoLanguage lang, Klass klass, Object foreignObject, InteropLibrary interopLibrary) {
         if (interopLibrary.isNull(foreignObject)) {
-            return createForeignNull(foreignObject);
+            return createForeignNull(lang, foreignObject);
         }
-        return createForeign(klass, foreignObject);
+        return createForeign(lang, klass, foreignObject);
     }
 
-    public static StaticObject createForeignNull(Object foreignObject) {
+    public static StaticObject createForeignNull(EspressoLanguage lang, Object foreignObject) {
         assert InteropLibrary.getUncached().isNull(foreignObject);
-        return createForeign(null, foreignObject);
+        return createForeign(lang, null, foreignObject);
     }
 
-    private static StaticObject createForeign(Klass klass, Object foreignObject) {
+    private static StaticObject createForeign(EspressoLanguage lang, Klass klass, Object foreignObject) {
         assert foreignObject != null;
-        StaticObject newObj = EspressoLanguage.getForeignShape().getFactory().create(klass, true);
+        StaticObject newObj = lang.getForeignShape().getFactory().create(klass, true);
         EspressoLanguage.getForeignProperty().setObject(newObj, foreignObject);
         return trackAllocation(klass, newObj);
     }

@@ -489,7 +489,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
             // TODO(peterssen): Cannot wrap as String even if the foreign object is String-like.
             // Executing String methods, that rely on it having a .value field is not supported yet
             // in Espresso.
-            return StaticObject.createForeign(meta.java_lang_Object, message, UNCACHED);
+            return StaticObject.createForeign(meta.getEspressoLanguage(), meta.java_lang_Object, message, UNCACHED);
         } catch (InteropException e) {
             throw throwInteropException(e, meta);
         }
@@ -530,7 +530,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                 return (StaticObject) stackTrace;
             }
             // Return foreign object as an opaque j.l.Object.
-            return StaticObject.createForeign(meta.java_lang_Object, stackTrace, UNCACHED);
+            return StaticObject.createForeign(meta.getEspressoLanguage(), meta.java_lang_Object, stackTrace, UNCACHED);
         } catch (InteropException e) {
             throw throwInteropException(e, meta);
         }
@@ -578,7 +578,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
              * ambiguous and inefficient. The caller is responsible to re-wrap or convert the result
              * as needed.
              */
-            return StaticObject.createForeign(meta.java_lang_Object, value, UNCACHED);
+            return StaticObject.createForeign(meta.getEspressoLanguage(), meta.java_lang_Object, value, UNCACHED);
         } catch (InteropException e) {
             throw throwInteropException(e, meta);
         }
@@ -772,7 +772,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
             if (metaObject instanceof StaticObject) {
                 return (StaticObject) metaObject;
             }
-            return StaticObject.createForeign(meta.java_lang_Object, metaObject, UNCACHED);
+            return StaticObject.createForeign(meta.getEspressoLanguage(), meta.java_lang_Object, metaObject, UNCACHED);
         } catch (InteropException e) {
             throw throwInteropException(e, meta);
         }
@@ -795,7 +795,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         if (displayString instanceof StaticObject) {
             return (StaticObject) displayString;
         }
-        return StaticObject.createForeign(meta.java_lang_Object, displayString, UNCACHED);
+        return StaticObject.createForeign(meta.getEspressoLanguage(), meta.java_lang_Object, displayString, UNCACHED);
     }
 
     /**
@@ -853,7 +853,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
             if (qualifiedName instanceof StaticObject) {
                 return (StaticObject) qualifiedName;
             }
-            return StaticObject.createForeign(meta.java_lang_Object, qualifiedName, UNCACHED);
+            return StaticObject.createForeign(meta.getEspressoLanguage(), meta.java_lang_Object, qualifiedName, UNCACHED);
         } catch (InteropException e) {
             throw throwInteropException(e, meta);
         }
@@ -877,7 +877,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
             if (simpleName instanceof StaticObject) {
                 return (StaticObject) simpleName;
             }
-            return StaticObject.createForeign(meta.java_lang_Object, simpleName, UNCACHED);
+            return StaticObject.createForeign(meta.getEspressoLanguage(), meta.java_lang_Object, simpleName, UNCACHED);
         } catch (InteropException e) {
             throw throwInteropException(e, meta);
         }
@@ -1050,7 +1050,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
             if (value instanceof StaticObject) {
                 return (StaticObject) value;
             }
-            return StaticObject.createForeign(meta.java_lang_Object, value, UNCACHED);
+            return StaticObject.createForeign(meta.getEspressoLanguage(), meta.java_lang_Object, value, UNCACHED);
         } catch (InteropException e) {
             throw throwInteropException(e, meta);
         }
@@ -1093,7 +1093,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
             if (value instanceof StaticObject) {
                 return (StaticObject) value;
             }
-            return StaticObject.createForeign(meta.java_lang_Object, value, UNCACHED);
+            return StaticObject.createForeign(meta.getEspressoLanguage(), meta.java_lang_Object, value, UNCACHED);
         } catch (InteropException e) {
             throw throwInteropException(e, meta);
         }
@@ -1231,7 +1231,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
             if (result instanceof StaticObject) {
                 return (StaticObject) result;
             }
-            return StaticObject.createForeign(meta.java_lang_Object, result, UNCACHED);
+            return StaticObject.createForeign(meta.getEspressoLanguage(), meta.java_lang_Object, result, UNCACHED);
         } catch (InteropException e) {
             throw throwInteropException(e, meta);
         }
@@ -1359,7 +1359,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
             if (result instanceof StaticObject) {
                 return (StaticObject) result;
             }
-            return StaticObject.createForeign(meta.java_lang_Object, result, UNCACHED);
+            return StaticObject.createForeign(meta.getEspressoLanguage(), meta.java_lang_Object, result, UNCACHED);
         } catch (InteropException e) {
             throw throwInteropException(e, meta);
         }
@@ -1401,7 +1401,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
             if (result instanceof StaticObject) {
                 return (StaticObject) result;
             }
-            return StaticObject.createForeign(meta.java_lang_Object, result, UNCACHED);
+            return StaticObject.createForeign(meta.getEspressoLanguage(), meta.java_lang_Object, result, UNCACHED);
         } catch (InteropException e) {
             throw throwInteropException(e, meta);
         }
@@ -1440,7 +1440,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
             if (result instanceof StaticObject) {
                 return (StaticObject) result;
             }
-            return StaticObject.createForeign(meta.java_lang_Object, result, UNCACHED);
+            return StaticObject.createForeign(meta.getEspressoLanguage(), meta.java_lang_Object, result, UNCACHED);
         } catch (InteropException e) {
             throw throwInteropException(e, meta);
         }
@@ -1479,7 +1479,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
             if (result instanceof StaticObject) {
                 return (StaticObject) result;
             }
-            return StaticObject.createForeign(meta.java_lang_Object, result, UNCACHED);
+            return StaticObject.createForeign(meta.getEspressoLanguage(), meta.java_lang_Object, result, UNCACHED);
         } catch (InteropException e) {
             throw throwInteropException(e, meta);
         }
@@ -1545,7 +1545,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                     backingArray[i] = (StaticObject) value; // no need to re-type
                 } else {
                     // TODO(peterssen): Wrap with precise types.
-                    backingArray[i] = StaticObject.createForeign(meta.java_lang_Object, value, UNCACHED);
+                    backingArray[i] = StaticObject.createForeign(meta.getEspressoLanguage(), meta.java_lang_Object, value, UNCACHED);
                 }
             }
             StaticObject suppliedValues = StaticObject.wrap(backingArray, meta);

@@ -46,6 +46,7 @@ final class SomAccessor extends Accessor {
 
     @SuppressWarnings("unused") static final SomAccessor ACCESSOR = new SomAccessor();
     static final RuntimeSupport RUNTIME = ACCESSOR.runtimeSupport();
+    static final LanguageSupport LANGUAGE = ACCESSOR.languageSupport();
 
     static final class SomImpl extends SomSupport {
 
