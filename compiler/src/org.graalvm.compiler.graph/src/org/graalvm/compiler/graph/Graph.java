@@ -76,6 +76,13 @@ public class Graph {
     public final String name;
 
     /**
+     * Cached actual value of the {@link Options} to avoid expensive map lookup for every time a
+     * node / graph is verified.
+     */
+    public final boolean verifyGraphs;
+    public final boolean verifyGraphEdges;
+
+    /**
      * The set of nodes in the graph, ordered by {@linkplain #register(Node) registration} time.
      */
     Node[] nodes;
@@ -287,6 +294,9 @@ public class Graph {
             nodeModCounts = new int[INITIAL_NODES_SIZE];
             nodeUsageModCounts = new int[INITIAL_NODES_SIZE];
         }
+
+        verifyGraphs = Options.VerifyGraalGraphs.getValue(options);
+        verifyGraphEdges = Options.VerifyGraalGraphEdges.getValue(options);
     }
 
     int extractOriginalNodeId(Node node) {
@@ -1166,7 +1176,7 @@ public class Graph {
     }
 
     public boolean verify() {
-        if (Options.VerifyGraalGraphs.getValue(options)) {
+        if (verifyGraphs) {
             for (Node node : getNodes()) {
                 try {
                     try {
