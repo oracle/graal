@@ -117,6 +117,9 @@ class CPUSamplerCLI extends ProfilerCLI {
     @Option(name = "SampleInternal", help = "Capture internal elements (default:false).", category = OptionCategory.INTERNAL) //
     static final OptionKey<Boolean> SAMPLE_INTERNAL = new OptionKey<>(false);
 
+    @Option(name = "SampleLanguageInit", help = "Capture language initialization (default:false).", category = OptionCategory.INTERNAL) //
+    static final OptionKey<Boolean> SAMPLE_LANGUAGE_INIT = new OptionKey<>(false);
+
     @Option(name = "SummariseThreads", help = "Print output as a summary of all 'per thread' profiles. (default: false)", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<Boolean> SUMMARISE_THREADS = new OptionKey<>(false);
 
