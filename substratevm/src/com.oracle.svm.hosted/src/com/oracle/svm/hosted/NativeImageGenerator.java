@@ -483,7 +483,7 @@ public class NativeImageGenerator {
 
             setSystemPropertiesForImageLate(k);
 
-            ImageSingletonsSupportImpl.HostedManagement.installInThread(new ImageSingletonsSupportImpl.HostedManagement());
+            ImageSingletonsSupportImpl.HostedManagement.install(new ImageSingletonsSupportImpl.HostedManagement());
             ForkJoinPool buildExecutor = executor = createForkJoinPool(compilationExecutor.getParallelism());
 
             buildExecutor.submit(() -> {
@@ -536,21 +536,13 @@ public class NativeImageGenerator {
     }
 
     protected ForkJoinPool createForkJoinPool(int maxConcurrentThreads) {
-        ImageSingletonsSupportImpl.HostedManagement vmConfig = ImageSingletonsSupportImpl.HostedManagement.getAndAssertExists();
         return new ForkJoinPool(
                         maxConcurrentThreads,
                         pool -> new ForkJoinWorkerThread(pool) {
                             @Override
                             protected void onStart() {
                                 super.onStart();
-                                ImageSingletonsSupportImpl.HostedManagement.installInThread(vmConfig);
                                 assert loader.getClassLoader().equals(getContextClassLoader());
-                            }
-
-                            @Override
-                            protected void onTermination(Throwable exception) {
-                                ImageSingletonsSupportImpl.HostedManagement.clearInThread();
-                                super.onTermination(exception);
                             }
                         },
                         Thread.getDefaultUncaughtExceptionHandler(),

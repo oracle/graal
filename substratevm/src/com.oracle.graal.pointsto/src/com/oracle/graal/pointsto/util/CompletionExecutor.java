@@ -235,7 +235,12 @@ public class CompletionExecutor {
         while (true) {
             assert state.get() == State.STARTED;
 
-            boolean quiescent = executorService.awaitTermination(100, TimeUnit.MILLISECONDS);
+            boolean quiescent;
+            if (executorService instanceof ForkJoinPool) {
+                quiescent = ((ForkJoinPool) executorService).awaitQuiescence(100, TimeUnit.MILLISECONDS);
+            } else {
+                quiescent = executorService.awaitTermination(100, TimeUnit.MILLISECONDS);
+            }
             if (timing != null && !quiescent) {
                 long curTime = System.nanoTime();
                 if (curTime - lastPrint > timing.getPrintIntervalNanos()) {

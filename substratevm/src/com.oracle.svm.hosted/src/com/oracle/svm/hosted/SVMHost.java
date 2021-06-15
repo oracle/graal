@@ -242,14 +242,12 @@ public class SVMHost implements HostVM {
 
     @Override
     public void clearInThread() {
-        Thread.currentThread().setContextClassLoader(SVMHost.class.getClassLoader());
-        ImageSingletonsSupportImpl.HostedManagement.clearInThread();
     }
 
     @Override
     public void installInThread(Object vmConfig) {
         Thread.currentThread().setContextClassLoader(classLoader);
-        ImageSingletonsSupportImpl.HostedManagement.installInThread((ImageSingletonsSupportImpl.HostedManagement) vmConfig);
+        assert vmConfig == ImageSingletonsSupportImpl.HostedManagement.get();
     }
 
     @Override
