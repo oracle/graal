@@ -56,18 +56,6 @@ public abstract class LLVMIndirectBranchNode extends LLVMControlFlowNode {
 
     public abstract int executeCondition(VirtualFrame frame);
 
-    /**
-     * Override to allow access from generated wrapper.
-     */
-    @Override
-    protected abstract boolean isStatement();
-
-    /**
-     * Override to allow access from generated wrapper.
-     */
-    @Override
-    protected abstract void setStatement(boolean statementTag);
-
     abstract static class LLVMIndirectBranchNodeImpl extends LLVMIndirectBranchNode {
 
         @Children private final LLVMStatementNode[] phiWriteNodes;

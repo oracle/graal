@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,20 +29,23 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.constants;
 
+import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.enums.BinaryOperator;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
+import com.oracle.truffle.llvm.parser.util.LLVMBitcodeTypeHelper;
+import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
+import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
-import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 
 public final class BinaryOperationConstant extends AbstractConstant {
 
     private final BinaryOperator operator;
-
-    private SymbolImpl lhs;
-
-    private SymbolImpl rhs;
+    private Constant lhs;
+    private Constant rhs;
 
     private BinaryOperationConstant(Type type, BinaryOperator operator) {
         super(type);
@@ -56,34 +59,28 @@ public final class BinaryOperationConstant extends AbstractConstant {
         visitor.visit(this);
     }
 
-    public SymbolImpl getLHS() {
-        return lhs;
-    }
-
-    public BinaryOperator getOperator() {
-        return operator;
-    }
-
-    public SymbolImpl getRHS() {
-        return rhs;
-    }
-
     @Override
     public void replace(SymbolImpl original, SymbolImpl replacement) {
         if (lhs == original) {
-            lhs = replacement;
+            lhs = (Constant) replacement;
         }
         if (rhs == original) {
-            rhs = replacement;
+            rhs = (Constant) replacement;
         }
     }
 
     public static BinaryOperationConstant fromSymbols(SymbolTable symbols, Type type, int opcode, int lhs, int rhs) {
-        final boolean isFloatingPoint = Type.isFloatingpointType(type) || (type instanceof VectorType && Type.isFloatingpointType(((VectorType) type).getElementType()));
-        final BinaryOperator operator = BinaryOperator.decode(opcode, isFloatingPoint);
-        final BinaryOperationConstant constant = new BinaryOperationConstant(type, operator);
-        constant.lhs = symbols.getForwardReferenced(lhs, constant);
-        constant.rhs = symbols.getForwardReferenced(rhs, constant);
+        boolean isFloatingPoint = Type.isFloatingpointType(type) || (type instanceof VectorType && Type.isFloatingpointType(((VectorType) type).getElementType()));
+        BinaryOperator operator = BinaryOperator.decode(opcode, isFloatingPoint);
+        BinaryOperationConstant constant = new BinaryOperationConstant(type, operator);
+        constant.lhs = (Constant) symbols.getForwardReferenced(lhs, constant);
+        constant.rhs = (Constant) symbols.getForwardReferenced(rhs, constant);
         return constant;
+    }
+
+    @Override
+    public LLVMExpressionNode createNode(LLVMParserRuntime runtime, DataLayout dataLayout, GetStackSpaceFactory stackFactory) {
+        return LLVMBitcodeTypeHelper.createArithmeticInstruction(lhs.createNode(runtime, dataLayout, stackFactory), rhs.createNode(runtime, dataLayout, stackFactory), operator, getType(),
+                        runtime.getNodeFactory());
     }
 }

@@ -25,10 +25,12 @@
 package com.oracle.svm.core.posix.darwin;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
+import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
@@ -37,6 +39,7 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.posix.PosixSystemPropertiesSupport;
 import com.oracle.svm.core.posix.headers.Limits;
+import com.oracle.svm.core.posix.headers.Stdlib;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.posix.headers.darwin.Foundation;
 
@@ -58,6 +61,28 @@ public class DarwinSystemPropertiesSupport extends PosixSystemPropertiesSupport 
              */
             return "/var/tmp";
         }
+    }
+
+    @Override
+    protected String javaLibraryPathValue() {
+        /*
+         * Adapted from `os::init_system_properties_values` in `src/hotspot/os/bsd/os_bsd.cpp`, but
+         * omits HotSpot specifics.
+         */
+        CCharPointer dyldLibraryPath;
+        try (CCharPointerHolder name = CTypeConversion.toCString("DYLD_LIBRARY_PATH")) {
+            dyldLibraryPath = Stdlib.getenv(name.get());
+        }
+
+        if (dyldLibraryPath.isNull()) {
+            return ".";
+        }
+        return CTypeConversion.toJavaString(dyldLibraryPath) + ":.";
+    }
+
+    @Override
+    protected String osNameValue() {
+        return Platform.includedIn(Platform.IOS.class) ? "iOS" : "Mac OS X";
     }
 
     private static volatile String osVersionValue = null;
@@ -84,7 +109,7 @@ public class DarwinSystemPropertiesSupport extends PosixSystemPropertiesSupport 
 @AutomaticFeature
 class DarwinSystemPropertiesFeature implements Feature {
     @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
+    public void duringSetup(DuringSetupAccess access) {
         ImageSingletons.add(SystemPropertiesSupport.class, new DarwinSystemPropertiesSupport());
     }
 }

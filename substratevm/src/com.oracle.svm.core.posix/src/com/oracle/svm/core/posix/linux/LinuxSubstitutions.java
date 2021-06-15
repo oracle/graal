@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.posix.linux;
 
-import static com.oracle.svm.core.posix.headers.Time.gettimeofday;
 import static com.oracle.svm.core.posix.headers.linux.LinuxTime.CLOCK_MONOTONIC;
 import static com.oracle.svm.core.posix.headers.linux.LinuxTime.clock_gettime;
 
@@ -34,6 +33,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.posix.headers.Time.timespec;
 import com.oracle.svm.core.posix.headers.Time.timeval;
 import com.oracle.svm.core.posix.headers.Time.timezone;
@@ -52,7 +52,7 @@ final class Target_java_lang_System_Linux {
             /* High precision time is not available, fall back to low precision. */
             timeval timeval = StackValue.get(timeval.class);
             timezone timezone = WordFactory.nullPointer();
-            gettimeofday(timeval, timezone);
+            Time.NoTransitions.gettimeofday(timeval, timezone);
             return timeval.tv_sec() * 1_000_000_000L + timeval.tv_usec() * 1_000L;
         }
     }

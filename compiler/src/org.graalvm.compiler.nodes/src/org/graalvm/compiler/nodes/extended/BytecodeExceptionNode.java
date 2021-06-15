@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.nodes.extended;
 
+import static org.graalvm.compiler.nodeinfo.InputType.Memory;
+import static org.graalvm.compiler.nodeinfo.InputType.Value;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_8;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_8;
 
@@ -34,8 +36,8 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeInputList;
-import org.graalvm.compiler.graph.spi.Canonicalizable;
-import org.graalvm.compiler.graph.spi.CanonicalizerTool;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.FrameState;
@@ -53,7 +55,8 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  * either a {@linkplain ForeignCallDescriptor foreign} call or a pre-allocated exception object.
  */
 // @formatter:off
-@NodeInfo(cycles = CYCLES_8,
+@NodeInfo(allowedUsageTypes = {Value, Memory},
+          cycles = CYCLES_8,
           cyclesRationale = "Node will be lowered to a foreign call.",
           size = SIZE_8)
 // @formatter:on
@@ -92,13 +95,26 @@ public final class BytecodeExceptionNode extends AbstractMemoryCheckpoint implem
          */
         ARRAY_STORE(1, ArrayStoreException.class),
 
+        /** Represents a {@link AssertionError} without arguments. */
+        ASSERTION_ERROR_NULLARY(0, AssertionError.class),
+
         /**
-         * Represents a {@link IllegalArgumentException}. One argument is required:
-         * <ol>
-         * <li>The exception message (type: java.lang.String, null is allowed)</li>
-         * </ol>
+         * Represents a {@link AssertionError} with one required Object argument for the error
+         * message.
          */
-        ILLEGAL_ARGUMENT_EXCEPTION(1, IllegalArgumentException.class),
+        ASSERTION_ERROR_OBJECT(1, AssertionError.class),
+
+        /**
+         * Represents a {@link IllegalArgumentException} with a fixed message. No additional
+         * arguments are allowed.
+         */
+        ILLEGAL_ARGUMENT_EXCEPTION_NEGATIVE_LENGTH(0, IllegalArgumentException.class, "Negative length"),
+
+        /**
+         * Represents a {@link IllegalArgumentException} with a fixed message. No additional
+         * arguments are allowed.
+         */
+        ILLEGAL_ARGUMENT_EXCEPTION_ARGUMENT_IS_NOT_AN_ARRAY(0, IllegalArgumentException.class, "Argument is not an array"),
 
         /**
          * Represents a {@link ArithmeticException}, with the exception message indicating a
@@ -120,10 +136,20 @@ public final class BytecodeExceptionNode extends AbstractMemoryCheckpoint implem
 
         final int numArguments;
         final Class<? extends Throwable> exceptionClass;
+        final String exceptionMessage;
 
         BytecodeExceptionKind(int numArguments, Class<? extends Throwable> exceptionClass) {
+            this(numArguments, exceptionClass, null);
+        }
+
+        BytecodeExceptionKind(int numArguments, Class<? extends Throwable> exceptionClass, String exceptionMessage) {
             this.numArguments = numArguments;
             this.exceptionClass = exceptionClass;
+            this.exceptionMessage = exceptionMessage;
+        }
+
+        public String getExceptionMessage() {
+            return exceptionMessage;
         }
     }
 

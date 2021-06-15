@@ -34,26 +34,57 @@ import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.profiles.IntValueProfile;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI32LoadNodeGen.LLVMI32OffsetLoadNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-@GenerateUncached
 public abstract class LLVMI32LoadNode extends LLVMLoadNode {
 
     public static LLVMI32LoadNode create() {
         return LLVMI32LoadNodeGen.create((LLVMExpressionNode) null);
     }
 
+    public abstract int executeWithTarget(Object address);
+
+    @GenerateUncached
+    public abstract static class LLVMI32OffsetLoadNode extends LLVMOffsetLoadNode {
+
+        public static LLVMI32OffsetLoadNode create() {
+            return LLVMI32OffsetLoadNodeGen.create();
+        }
+
+        public abstract int executeWithTarget(LLVMPointer receiver, long offset);
+
+        @Specialization(guards = "!isAutoDerefHandle(language, addr)")
+        protected int doI32Native(LLVMNativePointer addr, long offset,
+                        @CachedLanguage LLVMLanguage language) {
+            return language.getLLVMMemory().getI32(this, addr.asNative() + offset);
+        }
+
+        @Specialization(guards = "isAutoDerefHandle(language, addr)")
+        protected int doI32DerefHandle(LLVMNativePointer addr, long offset,
+                        @Cached LLVMDerefHandleGetReceiverNode getReceiver,
+                        @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
+                        @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) {
+            return doI32Managed(getReceiver.execute(addr), offset, nativeRead);
+        }
+
+        @Specialization(limit = "3")
+        protected int doI32Managed(LLVMManagedPointer addr, long offset,
+                        @CachedLibrary("addr.getObject()") LLVMManagedReadLibrary nativeRead) {
+            return nativeRead.readI32(addr.getObject(), addr.getOffset() + offset);
+        }
+    }
+
     @Specialization(guards = "!isAutoDerefHandle(language, addr)")
     protected int doI32Native(LLVMNativePointer addr,
-                    @Cached("createIdentityProfile()") IntValueProfile profile,
                     @CachedLanguage LLVMLanguage language) {
-        return profile.profile(language.getLLVMMemory().getI32(this, addr));
+        return language.getLLVMMemory().getI32(this, addr);
     }
 
     @Specialization(guards = "isAutoDerefHandle(language, addr)")

@@ -75,6 +75,9 @@ public final class ExportsLibrary extends Template {
     private Map<CacheExpression, String> sharedExpressions;
     private VariableElement delegationVariable;
     private DSLExpression transitionLimit;
+    private final List<TypeElement> declaringTypes = new ArrayList<>();
+    private boolean useForAOT;
+    private int useForAOTPriority;
 
     public ExportsLibrary(ProcessorContext context, TypeElement templateType, AnnotationMirror annotation, ExportsData exports, LibraryData library, TypeMirror receiverType,
                     boolean explicitReceiver) {
@@ -83,6 +86,26 @@ public final class ExportsLibrary extends Template {
         this.receiverType = receiverType;
         this.library = library;
         this.explicitReceiver = explicitReceiver;
+    }
+
+    public boolean isUseForAOT() {
+        return useForAOT;
+    }
+
+    public void setUseForAOT(boolean useForAOT) {
+        this.useForAOT = useForAOT;
+    }
+
+    public int getUseForAOTPriority() {
+        return useForAOTPriority;
+    }
+
+    public void setUseForAOTPriority(int useForAOTPriority) {
+        this.useForAOTPriority = useForAOTPriority;
+    }
+
+    public ExportsData getExports() {
+        return exports;
     }
 
     public void setDefaultExportPriority(int defaultExportPriority) {
@@ -101,6 +124,10 @@ public final class ExportsLibrary extends Template {
         return isExplicitReceiver()//
                         && getLibrary().isDefaultExportLookupEnabled()//
                         && !isBuiltinDefaultExport();
+    }
+
+    public boolean needsEagerExportProvider() {
+        return isUseForAOT() && getLibrary().isGenerateAOT();
     }
 
     public boolean isFinalReceiver() {
@@ -153,16 +180,8 @@ public final class ExportsLibrary extends Template {
     }
 
     private boolean isReceiverDynamicDispatched() {
-        TypeElement receiverTypeElement = ElementUtils.castTypeElement(receiverType);
-        while (receiverTypeElement != null) {
-            List<AnnotationMirror> exportLibrary = getRepeatedAnnotation(receiverTypeElement.getAnnotationMirrors(), types.ExportLibrary);
-            for (AnnotationMirror export : exportLibrary) {
-                TypeMirror exportedLibrary = getAnnotationValue(TypeMirror.class, export, "value");
-                if (ElementUtils.typeEquals(exportedLibrary, types.DynamicDispatchLibrary)) {
-                    return true;
-                }
-            }
-            receiverTypeElement = getSuperType(receiverTypeElement);
+        if (getReceiverDynamicDispatchExport() != null) {
+            return true;
         }
         if (ElementUtils.typeEquals(receiverType, types.DynamicObject)) {
             // GR-24700: DynamicObject may be dispatched via DynamicObjectImpl
@@ -170,6 +189,21 @@ public final class ExportsLibrary extends Template {
             return true;
         }
         return false;
+    }
+
+    public AnnotationMirror getReceiverDynamicDispatchExport() {
+        TypeElement receiverTypeElement = ElementUtils.castTypeElement(receiverType);
+        while (receiverTypeElement != null) {
+            List<AnnotationMirror> exportLibrary = getRepeatedAnnotation(receiverTypeElement.getAnnotationMirrors(), types.ExportLibrary);
+            for (AnnotationMirror export : exportLibrary) {
+                TypeMirror exportedLibrary = getAnnotationValue(TypeMirror.class, export, "value");
+                if (ElementUtils.typeEquals(exportedLibrary, types.DynamicDispatchLibrary)) {
+                    return export;
+                }
+            }
+            receiverTypeElement = getSuperType(receiverTypeElement);
+        }
+        return null;
     }
 
     public boolean needsRewrites() {
@@ -239,6 +273,18 @@ public final class ExportsLibrary extends Template {
 
     public boolean isAllowTransition() {
         return transitionLimit != null;
+    }
+
+    public boolean isDeclaredInTemplate() {
+        return ElementUtils.elementEquals(getDeclaringType(), getTemplateType());
+    }
+
+    public List<TypeElement> getDeclaringTypes() {
+        return declaringTypes;
+    }
+
+    public TypeElement getDeclaringType() {
+        return declaringTypes.get(0);
     }
 
 }

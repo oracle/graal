@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,7 @@ import org.graalvm.options.OptionValues;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.api.impl.ThreadLocalHandshake;
 import com.oracle.truffle.api.impl.Accessor.RuntimeSupport;
 import com.oracle.truffle.api.nodes.BlockNode;
 import com.oracle.truffle.api.nodes.BlockNode.ElementExecutor;
@@ -39,6 +40,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.services.Services;
 
 final class GraalRuntimeSupport extends RuntimeSupport {
@@ -67,6 +69,11 @@ final class GraalRuntimeSupport extends RuntimeSupport {
                 ((OptimizedCallTarget) target).onLoopCount(count);
             }
         }
+    }
+
+    @Override
+    public ThreadLocalHandshake getThreadLocalHandshake() {
+        return GraalTruffleRuntime.getRuntime().getThreadLocalHandshake();
     }
 
     @Override
@@ -202,5 +209,35 @@ final class GraalRuntimeSupport extends RuntimeSupport {
     @Override
     public boolean isOSRRootNode(RootNode rootNode) {
         return rootNode instanceof OptimizedOSRLoopNode.OSRRootNode;
+    }
+
+    @Override
+    public int getObjectAlignment() {
+        return GraalTruffleRuntime.getRuntime().getObjectAlignment();
+    }
+
+    @Override
+    public int getArrayBaseOffset(Class<?> componentType) {
+        return GraalTruffleRuntime.getRuntime().getArrayBaseOffset(componentType);
+    }
+
+    @Override
+    public int getArrayIndexScale(Class<?> componentType) {
+        return GraalTruffleRuntime.getRuntime().getArrayIndexScale(componentType);
+    }
+
+    @Override
+    public int getBaseInstanceSize(Class<?> type) {
+        return GraalTruffleRuntime.getRuntime().getBaseInstanceSize(type);
+    }
+
+    @Override
+    public Object[] getNonPrimitiveResolvedFields(Class<?> type) {
+        return GraalTruffleRuntime.getRuntime().getNonPrimitiveResolvedFields(type);
+    }
+
+    @Override
+    public Object getFieldValue(Object resolvedJavaField, Object obj) {
+        return GraalTruffleRuntime.getRuntime().getFieldValue((ResolvedJavaField) resolvedJavaField, obj);
     }
 }

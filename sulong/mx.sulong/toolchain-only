@@ -1,4 +1,4 @@
 DYNAMIC_IMPORTS=/substratevm,/vm
-COMPONENTS=SubstrateVM,Sulong,LLVM.org toolchain
+COMPONENTS=SubstrateVM,LLVM Runtime Native,LLVM.org toolchain
 NATIVE_IMAGES=graalvm-native-clang,graalvm-native-clang++,graalvm-native-ld,graalvm-native-binutil
 DISABLE_POLYGLOT=true

@@ -28,34 +28,34 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import java.util.BitSet;
 
 import com.oracle.svm.core.hub.DynamicHub;
 
 /**
  * Defines that the annotated class should have a Hybrid layout. Hybrid layouts are hybrids between
- * instance layouts and array layouts. The contents of a specified member array and an (optional)
- * member {@link BitSet} are directly placed within the class layout. This saves one indirection
- * when accessing the array or bit-set.
+ * instance layouts and array layouts. The contents of a specified member array and (optional)
+ * member type id slots are directly placed within the class layout. This saves one indirection when
+ * accessing the array or type id slots.
  *
  * <p>
  * The array length is located directly after the HUB pointer, like in regular array. Then (if
- * present) the bits are located. Then the instance fields are placed. Then, with the default GC,
- * there is an optional identity hashcode. At the end of the layout, the array elements are located.
+ * present) the type id slots follow. Then the instance fields are placed. Then, with the default
+ * GC, there is an optional identity hashcode. At the end of the layout, the array elements are
+ * located.
  * 
  * <pre>
  *    +--------------------------------+
  *    | pointer to DynamicHub          |
  *    +--------------------------------+
- *    | Array length                   |
+ *    | identity hashcode              |
  *    +--------------------------------+
- *    | bits | type id slots (optional)|
+ *    | array length                   |
+ *    +--------------------------------+
+ *    | type id slots (optional)       |
  *    |     ...                        |
  *    +--------------------------------+
  *    | instance fields                |
  *    |     ...                        |
- *    +--------------------------------+
- *    | identity hashcode (optional)   |
  *    +--------------------------------+
  *    | array elements                 |
  *    :     ...                        :
@@ -66,6 +66,17 @@ import com.oracle.svm.core.hub.DynamicHub;
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
 public @interface Hybrid {
+
+    /**
+     * If {@code true}, we expect that the data in the hybrid fields can be duplicated between the
+     * hybrid object and a separate object for the array or bitset. For most objects, a duplication
+     * could occur if inlining and constant folding result in the internal reference to a hybrid
+     * field being constant folded to a constant value, which must be written into the image heap
+     * separately from the hybrid object.
+     * 
+     * If {@code false}, we expect that this duplication of the hybrid fields can never happen.
+     */
+    boolean canHybridFieldsBeDuplicated();
 
     /**
      * Specifies a single member array as the hybrid array.
@@ -81,13 +92,5 @@ public @interface Hybrid {
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.FIELD)
     public @interface TypeIDSlots {
-    }
-
-    /**
-     * Specifies a single member {@link BitSet} as the hybrid bit-set.
-     */
-    @Retention(RetentionPolicy.RUNTIME)
-    @Target(ElementType.FIELD)
-    public @interface Bitset {
     }
 }

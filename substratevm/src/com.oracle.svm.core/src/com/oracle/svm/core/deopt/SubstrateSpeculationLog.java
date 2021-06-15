@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.deopt;
 
-import static com.oracle.svm.core.snippets.KnownIntrinsics.convertUnknownValue;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
@@ -103,9 +101,6 @@ public class SubstrateSpeculationLog implements SpeculationLog {
 
     @Override
     public Speculation speculate(SpeculationReason reason) {
-        if (!maySpeculate(reason)) {
-            throw new IllegalArgumentException("Cannot make speculation with reason " + reason + " as it is known to fail");
-        }
         return new SubstrateSpeculation(reason);
     }
 
@@ -116,6 +111,6 @@ public class SubstrateSpeculationLog implements SpeculationLog {
 
     @Override
     public Speculation lookupSpeculation(JavaConstant constant) {
-        return new SubstrateSpeculation((SpeculationReason) convertUnknownValue(SubstrateObjectConstant.asObject(constant), Object.class));
+        return new SubstrateSpeculation((SpeculationReason) SubstrateObjectConstant.asObject(constant));
     }
 }

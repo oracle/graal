@@ -80,7 +80,7 @@ public final class PureNFAGenerator {
 
     private static PureNFAIndex mapLookArounds(PureNFAGenerator gen, LookAroundIndex lookArounds) {
         if (lookArounds.isEmpty()) {
-            return PureNFAIndex.getEmptyInstance();
+            return PureNFAIndex.getEmptyInstance(gen.ast.getLanguage());
         }
         PureNFAIndex map = new PureNFAIndex(lookArounds.getNumberOfStates());
         for (LookAroundAssertion la : lookArounds) {
@@ -182,6 +182,6 @@ public final class PureNFAGenerator {
     }
 
     private PureNFATransition createEmptyTransition(PureNFAState src, PureNFAState tgt) {
-        return new PureNFATransition(transitionID.inc(), src, tgt, GroupBoundaries.getEmptyInstance(), false, false, QuantifierGuard.NO_GUARDS);
+        return new PureNFATransition(transitionID.inc(), src, tgt, GroupBoundaries.getEmptyInstance(ast.getLanguage()), false, false, QuantifierGuard.NO_GUARDS);
     }
 }

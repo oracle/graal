@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package com.oracle.truffle.regex.tregex.parser.ast;
 
 import com.oracle.truffle.regex.charset.CodePointSet;
+import com.oracle.truffle.regex.charset.Constants;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.DepthFirstTraversalRegexASTVisitor;
 
 /**
@@ -183,7 +184,16 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
 
     @Override
     protected void leave(Group group) {
+        if (group.size() > 1) {
+            ast.getProperties().setAlternations();
+        }
+        if (group.getGroupNumber() > 0) {
+            ast.getProperties().setCaptureGroups();
+        }
         if (group.isDead()) {
+            if (group.getParent() != null) {
+                group.getParent().markAsDead();
+            }
             return;
         }
         int minPath = Integer.MAX_VALUE;
@@ -217,7 +227,10 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
                     maxPath = group.getMaxPath() + ((maxPath - group.getMaxPath()) * group.getQuantifier().getMax());
                 }
             }
-            if ((flags & (RegexASTNode.FLAG_HAS_BACK_REFERENCES | RegexASTNode.FLAG_HAS_LOOK_AHEADS | RegexASTNode.FLAG_HAS_LOOK_BEHINDS)) != 0) {
+            // The optimization below breaks dialects like Python or Ruby, where zero-width guards
+            // on expressions like lookarounds cannot be eliminated statically.
+            if (ast.getOptions().getFlavor().canHaveEmptyLoopIterations() ||
+                            ((flags & (RegexASTNode.FLAG_HAS_BACK_REFERENCES | RegexASTNode.FLAG_HAS_LOOK_AHEADS | RegexASTNode.FLAG_HAS_LOOK_BEHINDS)) != 0)) {
                 /*
                  * If a quantifier can produce a zero-width match, we have to check this in
                  * back-tracking mode.
@@ -299,6 +312,16 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
 
     @Override
     protected void leave(LookBehindAssertion assertion) {
+        if (isForward() && !assertion.isDead()) {
+            if (assertion.isNegated()) {
+                ast.getProperties().setNegativeLookBehindAssertions();
+            } else {
+                ast.getProperties().setLookBehindAssertions();
+            }
+            if (!assertion.isLiteral()) {
+                ast.getProperties().setNonLiteralLookBehindAssertions();
+            }
+        }
         leaveLookAroundAssertion(assertion);
     }
 
@@ -311,6 +334,13 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
 
     @Override
     protected void leave(LookAheadAssertion assertion) {
+        if (isForward() && !assertion.isDead()) {
+            if (assertion.isNegated()) {
+                ast.getProperties().setNegativeLookAheadAssertions();
+            } else {
+                ast.getProperties().setLookAheadAssertions();
+            }
+        }
         leaveLookAroundAssertion(assertion);
     }
 
@@ -318,12 +348,26 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
         if (isForward() && !assertion.isDead()) {
             ast.getLookArounds().add(assertion);
         }
-        int flags = assertion.isNegated() || assertion.isLookBehindAssertion() ? assertion.getFlags(OR_FLAGS) : assertion.getFlags(CHANGED_FLAGS);
+        int flags = assertion.isNegated() || assertion.isLookBehindAssertion() ? assertion.getFlags(OR_FLAGS | RegexASTNode.FLAG_DEAD) : assertion.getFlags(CHANGED_FLAGS);
         assertion.getParent().setFlags(flags | assertion.getParent().getFlags(CHANGED_FLAGS), CHANGED_FLAGS);
     }
 
     @Override
     protected void visit(CharacterClass characterClass) {
+        if (isForward()) {
+            if (!characterClass.getCharSet().matchesSingleChar()) {
+                if (!characterClass.getCharSet().matches2CharsWith1BitDifference()) {
+                    ast.getProperties().unsetCharClassesCanBeMatchedWithMask();
+                }
+                if (!ast.getEncoding().isFixedCodePointWidth(characterClass.getCharSet())) {
+                    ast.getProperties().unsetFixedCodePointWidth();
+                }
+                ast.getProperties().setCharClasses();
+            }
+            if (Constants.SURROGATES.intersects(characterClass.getCharSet())) {
+                ast.getProperties().setLoneSurrogates();
+            }
+        }
         if (characterClass.hasNotUnrolledQuantifier()) {
             characterClass.getParent().setHasQuantifiers();
             setQuantifierIndex(characterClass);
@@ -355,7 +399,7 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
 
     private void setZeroWidthQuantifierIndex(QuantifiableTerm term) {
         if (isForward() && term.getQuantifier().getZeroWidthIndex() < 0) {
-            term.getQuantifier().setZeroWidthIndex(ast.getZeroWidthQuantifierCount().inc());
+            ast.registerZeroWidthQuantifiable(term);
         }
     }
 }

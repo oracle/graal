@@ -23,12 +23,12 @@
  * questions.
  */
 
-/* global agent */
+/* global insight */
 
 var sum = 0;
 var max = 0;
 
-agent.on('enter', (ctx, frame) => {
+insight.on('enter', (ctx, frame) => {
     sum += frame.number;
     if (frame.number > max) {
         max = frame.number;
@@ -38,7 +38,7 @@ agent.on('enter', (ctx, frame) => {
   rootNameFilter: (name) => name === 'Filter'
 });
 
-agent.on('return', (ctx, frame) => {
+insight.on('return', (ctx, frame) => {
     log(`Hundred thousand prime numbers from 2 to ${max} has sum ${sum}`);
     sum = 0;
     max = 0;

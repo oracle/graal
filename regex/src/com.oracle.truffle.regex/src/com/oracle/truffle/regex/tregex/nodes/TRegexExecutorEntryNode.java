@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,7 +52,7 @@ import sun.misc.Unsafe;
 
 /**
  * This class wraps {@link TRegexExecutorNode} and specializes on the type of the input strings
- * provided to {@link TRegexExecRootNode}.
+ * provided to {@link TRegexExecNode}.
  */
 public abstract class TRegexExecutorEntryNode extends Node {
 

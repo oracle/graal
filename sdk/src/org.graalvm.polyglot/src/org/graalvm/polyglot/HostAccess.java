@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,11 @@
  */
 package org.graalvm.polyglot;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.Equivalence;
+import org.graalvm.collections.MapCursor;
+
 import java.lang.annotation.Annotation;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -51,15 +56,12 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Predicate;
-
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.EconomicSet;
-import org.graalvm.collections.Equivalence;
-import org.graalvm.collections.MapCursor;
 
 /**
  * Represents the host access policy of a polyglot context. The host access policy specifies which
@@ -95,9 +97,13 @@ public final class HostAccess {
     private final boolean allowAllClassImplementations;
     final boolean allowArrayAccess;
     final boolean allowListAccess;
+    final boolean allowBufferAccess;
+    final boolean allowIterableAccess;
+    final boolean allowIteratorAccess;
+    final boolean allowMapAccess;
     volatile Object impl;
 
-    private static final HostAccess EMPTY = new HostAccess(null, null, null, null, null, null, null, false, false, false, false, false);
+    private static final HostAccess EMPTY = new HostAccess(null, null, null, null, null, null, null, false, false, false, false, false, false, false, false, false);
 
     /**
      * Predefined host access policy that allows access to public host methods or fields that were
@@ -147,7 +153,8 @@ public final class HostAccess {
                     allowPublicAccess(true).//
                     allowAllImplementations(true).//
                     allowAllClassImplementations(true).//
-                    allowArrayAccess(true).allowListAccess(true).//
+                    allowArrayAccess(true).allowListAccess(true).allowBufferAccess(true).//
+                    allowIterableAccess(true).allowIteratorAccess(true).allowMapAccess(true).//
                     name("HostAccess.ALL").build();
 
     /**
@@ -167,7 +174,8 @@ public final class HostAccess {
                     EconomicSet<Class<? extends Annotation>> implementableAnnotations,
                     EconomicSet<Class<?>> implementableTypes, List<Object> targetMappings,
                     String name,
-                    boolean allowPublic, boolean allowAllImplementations, boolean allowAllClassImplementations, boolean allowArrayAccess, boolean allowListAccess) {
+                    boolean allowPublic, boolean allowAllImplementations, boolean allowAllClassImplementations, boolean allowArrayAccess, boolean allowListAccess, boolean allowBufferAccess,
+                    boolean allowIterableAccess, boolean allowIteratorAccess, boolean allowMapAccess) {
         // create defensive copies
         this.accessAnnotations = copySet(annotations, Equivalence.IDENTITY);
         this.excludeTypes = copyMap(excludeTypes, Equivalence.IDENTITY);
@@ -181,6 +189,10 @@ public final class HostAccess {
         this.allowAllClassImplementations = allowAllClassImplementations;
         this.allowArrayAccess = allowArrayAccess;
         this.allowListAccess = allowListAccess;
+        this.allowBufferAccess = allowBufferAccess;
+        this.allowIterableAccess = allowListAccess || allowIterableAccess;
+        this.allowMapAccess = allowMapAccess;
+        this.allowIteratorAccess = allowListAccess || allowIterableAccess || allowMapAccess || allowIteratorAccess;
     }
 
     /**
@@ -199,6 +211,9 @@ public final class HostAccess {
                         && allowAllClassImplementations == other.allowAllClassImplementations//
                         && allowArrayAccess == other.allowArrayAccess//
                         && allowListAccess == other.allowListAccess//
+                        && allowIterableAccess == other.allowIterableAccess//
+                        && allowIteratorAccess == other.allowIteratorAccess//
+                        && allowMapAccess == other.allowMapAccess//
                         && equalsMap(excludeTypes, other.excludeTypes)//
                         && equalsSet(members, other.members)//
                         && equalsSet(implementableAnnotations, other.implementableAnnotations)//
@@ -219,6 +234,9 @@ public final class HostAccess {
                         allowAllClassImplementations,
                         allowArrayAccess,
                         allowListAccess,
+                        allowIterableAccess,
+                        allowIteratorAccess,
+                        allowMapAccess,
                         hashMap(excludeTypes),
                         hashSet(members),
                         hashSet(implementableAnnotations),
@@ -546,8 +564,12 @@ public final class HostAccess {
         private EconomicSet<AnnotatedElement> members;
         private List<Object> targetMappings;
         private boolean allowPublic;
-        private boolean allowListAccess;
         private boolean allowArrayAccess;
+        private boolean allowListAccess;
+        private boolean allowBufferAccess;
+        private boolean allowIterableAccess;
+        private boolean allowIteratorAccess;
+        private boolean allowMapAccess;
         private boolean allowAllImplementations;
         private boolean allowAllClassImplementations;
         private String name;
@@ -568,6 +590,10 @@ public final class HostAccess {
             this.allowPublic = access.allowPublic;
             this.allowListAccess = access.allowListAccess;
             this.allowArrayAccess = access.allowArrayAccess;
+            this.allowBufferAccess = access.allowBufferAccess;
+            this.allowIterableAccess = access.allowIterableAccess;
+            this.allowIteratorAccess = access.allowIteratorAccess;
+            this.allowMapAccess = access.allowMapAccess;
             this.allowAllImplementations = access.allowAllInterfaceImplementations;
             this.allowAllClassImplementations = access.allowAllClassImplementations;
         }
@@ -752,13 +778,70 @@ public final class HostAccess {
 
         /**
          * Allows the guest application to access lists as values with
-         * {@link Value#hasArrayElements() array elements}. By default no array access is allowed.
+         * {@link Value#hasArrayElements() array elements} and {@link Value#hasIterator()
+         * iterators}. By default no array access is allowed. Allowing list access implies also
+         * allowing of {@link #allowIterableAccess(boolean) iterables} and
+         * {@link #allowIteratorAccess(boolean) iterators}.
          *
          * @see Value#hasArrayElements()
+         * @see Value#hasIterator()
          * @since 19.0
          */
         public Builder allowListAccess(boolean listAccess) {
             this.allowListAccess = listAccess;
+            return this;
+        }
+
+        /**
+         * Allows the guest application to access {@link Iterable iterables} as values with
+         * {@link Value#hasIterator() iterators}. By default no iterable access is allowed. Allowing
+         * iterable access implies also allowing of {@link #allowIteratorAccess(boolean) iterators}.
+         *
+         * @see Value#hasIterator()
+         * @since 21.1
+         */
+        public Builder allowIterableAccess(boolean iterableAccess) {
+            this.allowIterableAccess = iterableAccess;
+            return this;
+        }
+
+        /**
+         * Allows the guest application to access {@link Iterator iterators} as
+         * {@link Value#isIterator() iterator} values. By default no iterator access is allowed.
+         *
+         * @see Value#isIterator()
+         * @see Value#hasIteratorNextElement()
+         * @see Value#getIteratorNextElement()
+         * @since 21.1
+         */
+        public Builder allowIteratorAccess(boolean iteratorAccess) {
+            this.allowIteratorAccess = iteratorAccess;
+            return this;
+        }
+
+        /**
+         * Allows the guest application to access {@link Map map} as {@link Value#hasHashEntries()
+         * hash} values. By default no map access is allowed. Allowing map access implies also
+         * allowing of {@link #allowIteratorAccess(boolean) iterators}.
+         *
+         * @see Value#hasHashEntries()
+         * @since 21.1
+         */
+        public Builder allowMapAccess(boolean mapAccess) {
+            this.allowMapAccess = mapAccess;
+            return this;
+        }
+
+        /**
+         * Allows the guest application to access {@link java.nio.ByteBuffer}s as values with
+         * {@link Value#hasBufferElements() buffer elements}. By default no buffer access is
+         * allowed.
+         *
+         * @see Value#hasBufferElements()
+         * @since 21.1
+         */
+        public Builder allowBufferAccess(boolean bufferAccess) {
+            this.allowBufferAccess = bufferAccess;
             return this;
         }
 
@@ -926,7 +1009,8 @@ public final class HostAccess {
          */
         public HostAccess build() {
             return new HostAccess(accessAnnotations, excludeTypes, members, implementationAnnotations, implementableTypes, targetMappings, name, allowPublic,
-                            allowAllImplementations, allowAllClassImplementations, allowArrayAccess, allowListAccess);
+                            allowAllImplementations, allowAllClassImplementations, allowArrayAccess, allowListAccess, allowBufferAccess, allowIterableAccess,
+                            allowIteratorAccess, allowMapAccess);
         }
     }
 

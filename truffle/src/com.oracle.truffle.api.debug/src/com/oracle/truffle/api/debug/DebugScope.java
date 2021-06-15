@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,8 +40,11 @@
  */
 package com.oracle.truffle.api.debug;
 
+import java.util.Objects;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
@@ -61,11 +64,13 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
- * Representation of guest language scope at the current suspension point. It contains a set of
- * declared and valid variables as well as arguments, if any. The scope is only valid as long as the
- * associated {@link DebugStackFrame frame} is valid.
+ * Representation of guest language scope at the current suspension point, or a top scope. It
+ * contains a set of declared and valid variables, if any. The scope associated with a
+ * {@link DebugStackFrame frame} is only valid as long as the associated {@link DebugStackFrame
+ * frame} is valid and methods on such scope need to be called on the frame's thread.
  *
  * @see DebugStackFrame#getScope()
+ * @see DebuggerSession#getTopScope(String)
  * @since 0.26
  */
 public final class DebugScope {
@@ -113,8 +118,10 @@ public final class DebugScope {
     public String getName() {
         try {
             return INTEROP.asString(INTEROP.toDisplayString(scope));
-        } catch (UnsupportedMessageException ex) {
-            throw new DebugException(session, ex, language, node, true, null);
+        } catch (ThreadDeath td) {
+            throw td;
+        } catch (Throwable ex) {
+            throw DebugException.create(session, ex, language, node, true, null);
         }
     }
 
@@ -134,7 +141,7 @@ public final class DebugScope {
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(session, ex, language, null, true, null);
+            throw DebugException.create(session, ex, language);
         }
         return parent;
     }
@@ -202,7 +209,7 @@ public final class DebugScope {
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(session, ex, language, null, true, null);
+            throw DebugException.create(session, ex, language);
         }
     }
 
@@ -258,7 +265,7 @@ public final class DebugScope {
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(session, ex, language, null, true, null);
+            throw DebugException.create(session, ex, language);
         }
         return null;
     }
@@ -284,15 +291,14 @@ public final class DebugScope {
                 return null;
             }
             String name = INTEROP.asString(NODE.getReceiverMember(node, frame));
-            if (!INTEROP.isMemberReadable(scope, name)) {
+            if (!INTEROP.isMemberReadable(scope, name) || !isDeclaredInScope(name)) {
                 return null;
             }
-            Object receiver = INTEROP.readMember(scope, name);
-            receiverValue = new DebugValue.HeapValue(session, getLanguage(), name, receiver);
+            receiverValue = new DebugValue.ObjectMemberValue(session, getLanguage(), this, scope, name);
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(session, ex, language, null, true, null);
+            throw DebugException.create(session, ex, language);
         }
         return receiverValue;
     }
@@ -313,12 +319,18 @@ public final class DebugScope {
             }
             Object function = NODE.hasRootInstance(node, frame);
             if (function != null) {
-                functionValue = new DebugValue.HeapValue(session, getLanguage(), root.getName(), function);
+                String name;
+                if (INTEROP.hasExecutableName(function)) {
+                    name = INTEROP.asString(INTEROP.getExecutableName(function));
+                } else {
+                    name = root.getName();
+                }
+                functionValue = new DebugValue.HeapValue(session, getLanguage(), name, function);
             }
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(session, ex, language, null, true, null);
+            throw DebugException.create(session, ex, language);
         }
         return functionValue;
     }
@@ -384,9 +396,59 @@ public final class DebugScope {
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(session, ex, language, null, true, null);
+            throw DebugException.create(session, ex, language);
         }
         return variables;
+    }
+
+    private boolean isDeclaredInScope(String name) {
+        Object scopeParent = null;
+        if (INTEROP.hasScopeParent(scope)) {
+            try {
+                scopeParent = INTEROP.getScopeParent(scope);
+            } catch (UnsupportedMessageException ex) {
+                throw CompilerDirectives.shouldNotReachHere(ex);
+            }
+        }
+        if (scopeParent == null) {
+            return true;
+        }
+        return new SubtractedVariables(scope, scopeParent).isMemberReadable(name);
+    }
+
+    /**
+     * Converts the value to a DebugValue, or returns <code>null</code> if the requesting language
+     * class does not match the root node guest language.
+     *
+     * This method is permitted only if the guest language class is available. This is the case if
+     * you want to utilize the Debugger API directly from within a guest language, or if you are an
+     * instrument bound/dependent on a specific language.
+     *
+     * This method is opposite to {@link DebugValue#getRawValue(Class)} where the raw guest language
+     * value is obtained from the DebugValue.
+     *
+     * Note that the <code>rawValue</code> must be a valid Interop value. If not, the method throws
+     * IllegalArgumentException.
+     *
+     * @param languageClass the Truffle language class for a given guest language
+     * @param rawValue the raw value
+     * @return the wrapped DebugValue
+     * @throws IllegalArgumentException when <code>rawValue</code> is not an Interop value
+     * @since 21.1
+     */
+    public DebugValue convertRawValue(Class<? extends TruffleLanguage<?>> languageClass, Object rawValue) {
+        Objects.requireNonNull(languageClass);
+        RootNode rootNode = getRoot();
+        if (rootNode == null) {
+            return null;
+        }
+        // make sure rawValue is a valid Interop value
+        if (!Debugger.ACCESSOR.interopSupport().isInteropType(rawValue)) {
+            throw new IllegalArgumentException("raw value is not an Interop value");
+        }
+        // check if language class of the root node corresponds to the input language
+        TruffleLanguage<?> truffleLanguage = Debugger.ACCESSOR.nodeSupport().getLanguage(rootNode);
+        return truffleLanguage != null && truffleLanguage.getClass() == languageClass ? new DebugValue.HeapValue(session, null, rawValue) : null;
     }
 
     LanguageInfo getLanguage() {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,8 @@ import static com.oracle.truffle.api.instrumentation.test.ContextInterruptStanda
 import static com.oracle.truffle.api.instrumentation.test.ContextInterruptStandaloneTest.getInstrumentEnv;
 
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -61,11 +63,16 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestName;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 
 @RunWith(Parameterized.class)
@@ -131,6 +138,13 @@ public class ContextInterruptParameterizedTest {
     @Parameterized.Parameter(4) public boolean multiEngine;
     @Parameterized.Parameter(5) public boolean closeAfterInterrupt;
 
+    @Rule public TestName testNameRule = new TestName();
+
+    @After
+    public void checkInterrupted() {
+        Assert.assertFalse("Interrupted flag was left set by test: " + testNameRule.getMethodName(), Thread.interrupted());
+    }
+
     @Test
     public void testInterrupt() throws InterruptedException, IOException, ExecutionException, TimeoutException {
         ExecutorService executorService = Executors.newFixedThreadPool(nThreads);
@@ -158,6 +172,13 @@ public class ContextInterruptParameterizedTest {
         }
         try {
             Source source = Source.newBuilder(InstrumentationTestLanguage.ID, code, "InfiniteLoop").build();
+            if (!multiContext && nThreads > 1) {
+                /*
+                 * Prevent multiple definition of the foo function in case of single-context and
+                 * multi-threading.
+                 */
+                contexts.get(0).parse(source);
+            }
             Source checkSource = Source.newBuilder(InstrumentationTestLanguage.ID, "CONSTANT(42)", "CheckAlive").build();
             List<Future<?>> futures = new ArrayList<>();
             for (int i = 0; i < nThreads; i++) {
@@ -199,6 +220,7 @@ public class ContextInterruptParameterizedTest {
                          */
                         Assert.assertEquals(42, context.eval(checkSource).asInt());
                     }
+                    Assert.assertNull("Truffle stack frames not cleared", getThreadLocalStackTraceIfAvailable());
                 }));
             }
             passLatch.await();
@@ -210,14 +232,7 @@ public class ContextInterruptParameterizedTest {
             }
             allCancelledLatch.countDown();
             for (Future<?> future : futures) {
-                boolean finished = false;
-                do {
-                    try {
-                        future.get();
-                        finished = true;
-                    } catch (InterruptedException e) {
-                    }
-                } while (!finished);
+                future.get();
             }
             executorService.shutdownNow();
             executorService.awaitTermination(100, TimeUnit.SECONDS);
@@ -240,6 +255,21 @@ public class ContextInterruptParameterizedTest {
                     contexts.get(i).close();
                 }
             }
+        }
+    }
+
+    private static Object getThreadLocalStackTraceIfAvailable() {
+        if (Truffle.getRuntime() instanceof DefaultTruffleRuntime) {
+            DefaultTruffleRuntime runtime = (DefaultTruffleRuntime) (Truffle.getRuntime());
+            try {
+                Method method = runtime.getClass().getDeclaredMethod("getThreadLocalStackTrace");
+                method.setAccessible(true);
+                return method.invoke(runtime);
+            } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
+                throw new AssertionError(e);
+            }
+        } else {
+            return null;
         }
     }
 }

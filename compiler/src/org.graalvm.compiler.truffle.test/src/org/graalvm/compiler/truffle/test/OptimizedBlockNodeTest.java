@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -109,12 +109,12 @@ public class OptimizedBlockNodeTest {
             assertTrue(partialBlocks.getBlockTargets()[1].isValid());
 
             // test explicit invalidations
-            partialBlocks.getBlockTargets()[0].invalidate(null, "test invalidation");
+            partialBlocks.getBlockTargets()[0].invalidate("test invalidation");
             assertTrue(target.isValid());
             assertFalse(partialBlocks.getBlockTargets()[0].isValid());
             assertTrue(partialBlocks.getBlockTargets()[1].isValid());
 
-            target.invalidate(null, "test invalidation");
+            target.invalidate("test invalidation");
             assertFalse(target.isValid());
             assertFalse(partialBlocks.getBlockTargets()[0].isValid());
             assertTrue(partialBlocks.getBlockTargets()[1].isValid());
@@ -534,7 +534,7 @@ public class OptimizedBlockNodeTest {
         try {
             OptimizedCallTarget target = ((OptimizedCallTarget) SLLanguage.getCurrentContext().getFunctionRegistry().getFunction(name).getCallTarget());
             // we invalidate to make sure the call counts are updated.
-            target.invalidate(null, "invalidate for test");
+            target.invalidate("invalidate for test");
             return target;
         } finally {
             context.leave();
@@ -582,9 +582,10 @@ public class OptimizedBlockNodeTest {
         clearContext();
         context = Context.newBuilder().allowAllAccess(true)//
                         .option("engine.BackgroundCompilation", "false") //
+                        .option("engine.MultiTier", "false") //
                         .option("engine.PartialBlockCompilationSize", String.valueOf(blockCompilationSize))//
                         .option("engine.MaximumGraalNodeCount", String.valueOf(maxGraalNodeCount))//
-                        .option("engine.CompilationThreshold", String.valueOf(TEST_COMPILATION_THRESHOLD)).build();
+                        .option("engine.SingleTierCompilationThreshold", String.valueOf(TEST_COMPILATION_THRESHOLD)).build();
         context.enter();
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -97,7 +97,7 @@ public class InliningLog {
         }
     }
 
-    private class Callsite {
+    class Callsite {
         public final List<Decision> decisions;
         public final List<Callsite> children;
         public Callsite parent;
@@ -492,8 +492,15 @@ public class InliningLog {
         return leaves.containsKey(invokable);
     }
 
-    public void removeLeafCallsite(Invokable invokable) {
-        leaves.removeKey(invokable);
+    public Callsite removeLeafCallsite(Invokable invokable) {
+        return leaves.removeKey(invokable);
+    }
+
+    /**
+     * This method must be called during graph compression, or other node-id changes.
+     */
+    public void addLeafCallsite(Invokable invokable, Callsite callsite) {
+        leaves.put(invokable, callsite);
     }
 
     public void trackNewCallsite(Invokable invoke) {

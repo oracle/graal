@@ -32,10 +32,14 @@ package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMBuiltin;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMBuiltin;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI16StoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI1StoreNode.LLVMI1OffsetStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI32StoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 public abstract class LLVMArithmetic {
 
@@ -44,13 +48,13 @@ public abstract class LLVMArithmetic {
     }
 
     public interface Arithmetic {
-        boolean evalI8(byte left, byte right, Object addr, LLVMStoreNode store);
+        boolean evalI8(byte left, byte right, LLVMPointer addr, LLVMI8StoreNode store);
 
-        boolean evalI16(short left, short right, Object addr, LLVMStoreNode store);
+        boolean evalI16(short left, short right, LLVMPointer addr, LLVMI16StoreNode store);
 
-        boolean evalI32(int left, int right, Object addr, LLVMStoreNode store);
+        boolean evalI32(int left, int right, LLVMPointer addr, LLVMI32StoreNode store);
 
-        boolean evalI64(long left, long right, Object addr, LLVMStoreNode store);
+        boolean evalI64(long left, long right, LLVMPointer addr, LLVMI64StoreNode store);
     }
 
     public interface SaturatingArithmetic {
@@ -64,19 +68,19 @@ public abstract class LLVMArithmetic {
     }
 
     public interface CarryArithmetic {
-        byte evalI8(byte left, byte right, byte cin, Object addr, LLVMStoreNode store);
+        byte evalI8(byte left, byte right, byte cin, LLVMPointer addr, LLVMI8StoreNode store);
 
-        short evalI16(short left, short right, short cin, Object addr, LLVMStoreNode store);
+        short evalI16(short left, short right, short cin, LLVMPointer addr, LLVMI16StoreNode store);
 
-        int evalI32(int left, int right, int cin, Object addr, LLVMStoreNode store);
+        int evalI32(int left, int right, int cin, LLVMPointer addr, LLVMI32StoreNode store);
 
-        long evalI64(long left, long right, long cin, Object addr, LLVMStoreNode store);
+        long evalI64(long left, long right, long cin, LLVMPointer addr, LLVMI64StoreNode store);
     }
 
     public static final CarryArithmetic CARRY_ADD = new CarryArithmetic() {
 
         @Override
-        public byte evalI8(byte left, byte right, byte cin, Object addr, LLVMStoreNode store) {
+        public byte evalI8(byte left, byte right, byte cin, LLVMPointer addr, LLVMI8StoreNode store) {
             final int res = (left & LLVMExpressionNode.I8_MASK) + (right & LLVMExpressionNode.I8_MASK) + (cin & LLVMExpressionNode.I8_MASK);
             final boolean overflow = (res & (0xF << Byte.SIZE)) != 0;
 
@@ -85,7 +89,7 @@ public abstract class LLVMArithmetic {
         }
 
         @Override
-        public short evalI16(short left, short right, short cin, Object addr, LLVMStoreNode store) {
+        public short evalI16(short left, short right, short cin, LLVMPointer addr, LLVMI16StoreNode store) {
             final int res = (left & LLVMExpressionNode.I16_MASK) + (right & LLVMExpressionNode.I16_MASK) + (cin & LLVMExpressionNode.I16_MASK);
             final boolean overflow = (res & (0xF << Short.SIZE)) != 0;
 
@@ -94,7 +98,7 @@ public abstract class LLVMArithmetic {
         }
 
         @Override
-        public int evalI32(int left, int right, int cin, Object addr, LLVMStoreNode store) {
+        public int evalI32(int left, int right, int cin, LLVMPointer addr, LLVMI32StoreNode store) {
             final int res1 = left + right;
             final boolean overflow1 = ((~res1 & left) | (~res1 & right) | (left & right)) < 0;
 
@@ -106,7 +110,7 @@ public abstract class LLVMArithmetic {
         }
 
         @Override
-        public long evalI64(long left, long right, long cin, Object addr, LLVMStoreNode store) {
+        public long evalI64(long left, long right, long cin, LLVMPointer addr, LLVMI64StoreNode store) {
             final long res1 = left + right;
             final boolean overflow1 = ((~res1 & left) | (~res1 & right) | (left & right)) < 0;
 
@@ -121,7 +125,7 @@ public abstract class LLVMArithmetic {
     public static final CarryArithmetic CARRY_SUB = new CarryArithmetic() {
 
         @Override
-        public byte evalI8(byte left, byte right, byte cin, Object addr, LLVMStoreNode store) {
+        public byte evalI8(byte left, byte right, byte cin, LLVMPointer addr, LLVMI8StoreNode store) {
             final int res = (left & LLVMExpressionNode.I8_MASK) - (right & LLVMExpressionNode.I8_MASK) - (cin & LLVMExpressionNode.I8_MASK);
             final boolean overflow = res < 0;
 
@@ -130,7 +134,7 @@ public abstract class LLVMArithmetic {
         }
 
         @Override
-        public short evalI16(short left, short right, short cin, Object addr, LLVMStoreNode store) {
+        public short evalI16(short left, short right, short cin, LLVMPointer addr, LLVMI16StoreNode store) {
             final int res = (left & LLVMExpressionNode.I16_MASK) - (right & LLVMExpressionNode.I16_MASK) - (cin & LLVMExpressionNode.I16_MASK);
             final boolean overflow = res < 0;
 
@@ -139,7 +143,7 @@ public abstract class LLVMArithmetic {
         }
 
         @Override
-        public int evalI32(int left, int right, int cin, Object addr, LLVMStoreNode store) {
+        public int evalI32(int left, int right, int cin, LLVMPointer addr, LLVMI32StoreNode store) {
             final int res1 = left - right;
             final boolean overflow1 = Integer.compareUnsigned(left, right) < 0;
 
@@ -151,7 +155,7 @@ public abstract class LLVMArithmetic {
         }
 
         @Override
-        public long evalI64(long left, long right, long cin, Object addr, LLVMStoreNode store) {
+        public long evalI64(long left, long right, long cin, LLVMPointer addr, LLVMI64StoreNode store) {
             final long res1 = left - right;
             final boolean overflow1 = Long.compareUnsigned(left, right) < 0;
 
@@ -166,7 +170,7 @@ public abstract class LLVMArithmetic {
     public static final Arithmetic SIGNED_ADD = new Arithmetic() {
 
         @Override
-        public boolean evalI8(byte left, byte right, Object addr, LLVMStoreNode store) {
+        public boolean evalI8(byte left, byte right, LLVMPointer addr, LLVMI8StoreNode store) {
             final int res = left + right;
             final boolean overflow = (((res ^ left) & (res ^ right)) & (1 << (Byte.SIZE - 1))) != 0;
             store.executeWithTarget(addr, (byte) res);
@@ -174,7 +178,7 @@ public abstract class LLVMArithmetic {
         }
 
         @Override
-        public boolean evalI16(short left, short right, Object addr, LLVMStoreNode store) {
+        public boolean evalI16(short left, short right, LLVMPointer addr, LLVMI16StoreNode store) {
             final int res = left + right;
             final boolean overflow = (((res ^ left) & (res ^ right)) & (1 << (Short.SIZE - 1))) != 0;
 
@@ -183,7 +187,7 @@ public abstract class LLVMArithmetic {
         }
 
         @Override
-        public boolean evalI32(int left, int right, Object addr, LLVMStoreNode store) {
+        public boolean evalI32(int left, int right, LLVMPointer addr, LLVMI32StoreNode store) {
             int res;
             boolean overflow = false;
             try {
@@ -198,7 +202,7 @@ public abstract class LLVMArithmetic {
         }
 
         @Override
-        public boolean evalI64(long left, long right, Object addr, LLVMStoreNode store) {
+        public boolean evalI64(long left, long right, LLVMPointer addr, LLVMI64StoreNode store) {
             long res;
             boolean overflow = false;
             try {
@@ -277,7 +281,7 @@ public abstract class LLVMArithmetic {
     public static final Arithmetic UNSIGNED_ADD = new Arithmetic() {
 
         @Override
-        public boolean evalI8(byte left, byte right, Object addr, LLVMStoreNode store) {
+        public boolean evalI8(byte left, byte right, LLVMPointer addr, LLVMI8StoreNode store) {
             final int res = (left & LLVMExpressionNode.I8_MASK) + (right & LLVMExpressionNode.I8_MASK);
             final boolean overflow = (res & (1 << Byte.SIZE)) != 0;
             store.executeWithTarget(addr, (byte) res);
@@ -285,7 +289,7 @@ public abstract class LLVMArithmetic {
         }
 
         @Override
-        public boolean evalI16(short left, short right, Object addr, LLVMStoreNode store) {
+        public boolean evalI16(short left, short right, LLVMPointer addr, LLVMI16StoreNode store) {
             final int res = (left & LLVMExpressionNode.I16_MASK) + (right & LLVMExpressionNode.I16_MASK);
             final boolean overflow = (res & (1 << Short.SIZE)) != 0;
 
@@ -294,7 +298,7 @@ public abstract class LLVMArithmetic {
         }
 
         @Override
-        public boolean evalI32(int left, int right, Object addr, LLVMStoreNode store) {
+        public boolean evalI32(int left, int right, LLVMPointer addr, LLVMI32StoreNode store) {
             final int res = left + right;
             final boolean overflow = ((~res & left) | (~res & right) | (left & right)) < 0;
             store.executeWithTarget(addr, res);
@@ -302,7 +306,7 @@ public abstract class LLVMArithmetic {
         }
 
         @Override
-        public boolean evalI64(long left, long right, Object addr, LLVMStoreNode store) {
+        public boolean evalI64(long left, long right, LLVMPointer addr, LLVMI64StoreNode store) {
             final long res = left + right;
             final boolean overflow = ((~res & left) | (~res & right) | (left & right)) < 0;
             store.executeWithTarget(addr, res);
@@ -344,7 +348,7 @@ public abstract class LLVMArithmetic {
     public static final Arithmetic SIGNED_SUB = new Arithmetic() {
 
         @Override
-        public boolean evalI8(byte left, byte right, Object addr, LLVMStoreNode store) {
+        public boolean evalI8(byte left, byte right, LLVMPointer addr, LLVMI8StoreNode store) {
             final int res = left - right;
             final boolean overflow = (((left ^ right) & (left ^ res)) & (1 << (Byte.SIZE - 1))) != 0;
             store.executeWithTarget(addr, (byte) res);
@@ -352,7 +356,7 @@ public abstract class LLVMArithmetic {
         }
 
         @Override
-        public boolean evalI16(short left, short right, Object addr, LLVMStoreNode store) {
+        public boolean evalI16(short left, short right, LLVMPointer addr, LLVMI16StoreNode store) {
             final int res = left - right;
             final boolean overflow = (((left ^ right) & (left ^ res)) & (1 << (Short.SIZE - 1))) != 0;
 
@@ -361,7 +365,7 @@ public abstract class LLVMArithmetic {
         }
 
         @Override
-        public boolean evalI32(int left, int right, Object addr, LLVMStoreNode store) {
+        public boolean evalI32(int left, int right, LLVMPointer addr, LLVMI32StoreNode store) {
             int res;
             boolean overflow = false;
             try {
@@ -376,7 +380,7 @@ public abstract class LLVMArithmetic {
         }
 
         @Override
-        public boolean evalI64(long left, long right, Object addr, LLVMStoreNode store) {
+        public boolean evalI64(long left, long right, LLVMPointer addr, LLVMI64StoreNode store) {
             long res;
             boolean overflow = false;
             try {
@@ -455,7 +459,7 @@ public abstract class LLVMArithmetic {
     public static final Arithmetic UNSIGNED_SUB = new Arithmetic() {
 
         @Override
-        public boolean evalI8(byte left, byte right, Object addr, LLVMStoreNode store) {
+        public boolean evalI8(byte left, byte right, LLVMPointer addr, LLVMI8StoreNode store) {
             final int res = (left & LLVMExpressionNode.I8_MASK) - (right & LLVMExpressionNode.I8_MASK);
             boolean overflow = res < 0;
             store.executeWithTarget(addr, (byte) res);
@@ -463,7 +467,7 @@ public abstract class LLVMArithmetic {
         }
 
         @Override
-        public boolean evalI16(short left, short right, Object addr, LLVMStoreNode store) {
+        public boolean evalI16(short left, short right, LLVMPointer addr, LLVMI16StoreNode store) {
             final int res = (left & LLVMExpressionNode.I16_MASK) - (right & LLVMExpressionNode.I16_MASK);
             final boolean overflow = res < 0;
 
@@ -472,7 +476,7 @@ public abstract class LLVMArithmetic {
         }
 
         @Override
-        public boolean evalI32(int left, int right, Object addr, LLVMStoreNode store) {
+        public boolean evalI32(int left, int right, LLVMPointer addr, LLVMI32StoreNode store) {
             final int res = left - right;
             final boolean overflow = Integer.compareUnsigned(left, right) < 0;
             store.executeWithTarget(addr, res);
@@ -480,7 +484,7 @@ public abstract class LLVMArithmetic {
         }
 
         @Override
-        public boolean evalI64(long left, long right, Object addr, LLVMStoreNode store) {
+        public boolean evalI64(long left, long right, LLVMPointer addr, LLVMI64StoreNode store) {
             final long res = left - right;
             final boolean overflow = Long.compareUnsigned(left, right) < 0;
             store.executeWithTarget(addr, res);
@@ -522,7 +526,7 @@ public abstract class LLVMArithmetic {
     public static final Arithmetic SIGNED_MUL = new Arithmetic() {
 
         @Override
-        public boolean evalI8(byte left, byte right, Object addr, LLVMStoreNode store) {
+        public boolean evalI8(byte left, byte right, LLVMPointer addr, LLVMI8StoreNode store) {
             final int res = left * right;
             final boolean overflow = (byte) res != res;
             store.executeWithTarget(addr, (byte) res);
@@ -530,7 +534,7 @@ public abstract class LLVMArithmetic {
         }
 
         @Override
-        public boolean evalI16(short left, short right, Object addr, LLVMStoreNode store) {
+        public boolean evalI16(short left, short right, LLVMPointer addr, LLVMI16StoreNode store) {
             final int res = left * right;
             final boolean overflow = (short) res != res;
 
@@ -539,7 +543,7 @@ public abstract class LLVMArithmetic {
         }
 
         @Override
-        public boolean evalI32(int left, int right, Object addr, LLVMStoreNode store) {
+        public boolean evalI32(int left, int right, LLVMPointer addr, LLVMI32StoreNode store) {
             int res;
             boolean overflow = false;
             try {
@@ -554,7 +558,7 @@ public abstract class LLVMArithmetic {
         }
 
         @Override
-        public boolean evalI64(long left, long right, Object addr, LLVMStoreNode store) {
+        public boolean evalI64(long left, long right, LLVMPointer addr, LLVMI64StoreNode store) {
             long res;
             boolean overflow = false;
             try {
@@ -572,7 +576,7 @@ public abstract class LLVMArithmetic {
     public static final Arithmetic UNSIGNED_MUL = new Arithmetic() {
 
         @Override
-        public boolean evalI8(byte left, byte right, Object addr, LLVMStoreNode store) {
+        public boolean evalI8(byte left, byte right, LLVMPointer addr, LLVMI8StoreNode store) {
             final int res = (left & LLVMExpressionNode.I8_MASK) * (right & LLVMExpressionNode.I8_MASK);
             final boolean overflow = (res & LLVMExpressionNode.I8_MASK) != res;
             store.executeWithTarget(addr, (byte) res);
@@ -580,7 +584,7 @@ public abstract class LLVMArithmetic {
         }
 
         @Override
-        public boolean evalI16(short left, short right, Object addr, LLVMStoreNode store) {
+        public boolean evalI16(short left, short right, LLVMPointer addr, LLVMI16StoreNode store) {
             final int res = (left & LLVMExpressionNode.I16_MASK) * (right & LLVMExpressionNode.I16_MASK);
             final boolean overflow = (res & LLVMExpressionNode.I16_MASK) != res;
 
@@ -589,7 +593,7 @@ public abstract class LLVMArithmetic {
         }
 
         @Override
-        public boolean evalI32(int left, int right, Object addr, LLVMStoreNode store) {
+        public boolean evalI32(int left, int right, LLVMPointer addr, LLVMI32StoreNode store) {
             final long res = (left & LLVMExpressionNode.I32_MASK) * (right & LLVMExpressionNode.I32_MASK);
             final boolean overflow = (res & LLVMExpressionNode.I32_MASK) != res;
 
@@ -598,7 +602,7 @@ public abstract class LLVMArithmetic {
         }
 
         @Override
-        public boolean evalI64(long left, long right, Object addr, LLVMStoreNode store) {
+        public boolean evalI64(long left, long right, LLVMPointer addr, LLVMI64StoreNode store) {
             final long res = left * right;
             boolean overflow = false;
             if ((left | right) >>> 31 != 0) {
@@ -624,26 +628,26 @@ public abstract class LLVMArithmetic {
         }
 
         @Specialization
-        protected byte doIntrinsic(byte left, byte right, Object addr,
-                        @Cached("createStoreI8()") LLVMStoreNode store) {
+        protected byte doIntrinsic(byte left, byte right, LLVMPointer addr,
+                        @Cached LLVMI8StoreNode store) {
             return (byte) (arithmetic.evalI8(left, right, addr, store) ? 1 : 0);
         }
 
         @Specialization
-        protected short doIntrinsic(short left, short right, Object addr,
-                        @Cached("createStoreI16()") LLVMStoreNode store) {
+        protected short doIntrinsic(short left, short right, LLVMPointer addr,
+                        @Cached LLVMI16StoreNode store) {
             return (short) (arithmetic.evalI16(left, right, addr, store) ? 1 : 0);
         }
 
         @Specialization
-        protected int doIntrinsic(int left, int right, Object addr,
-                        @Cached("createStoreI32()") LLVMStoreNode store) {
+        protected int doIntrinsic(int left, int right, LLVMPointer addr,
+                        @Cached LLVMI32StoreNode store) {
             return arithmetic.evalI32(left, right, addr, store) ? 1 : 0;
         }
 
         @Specialization
-        protected long doIntrinsic(long left, long right, Object addr,
-                        @Cached("createStoreI64()") LLVMStoreNode store) {
+        protected long doIntrinsic(long left, long right, LLVMPointer addr,
+                        @Cached LLVMI64StoreNode store) {
             return arithmetic.evalI64(left, right, addr, store) ? 1 : 0;
         }
     }
@@ -686,7 +690,7 @@ public abstract class LLVMArithmetic {
 
         private final long secondValueOffset;
         private final Arithmetic arithmetic;
-        @Child private LLVMStoreNode storeI8 = createStoreI1();
+        @Child private LLVMI1OffsetStoreNode storeI1 = LLVMI1OffsetStoreNode.create();
 
         public LLVMArithmeticWithOverflow(Arithmetic arithmetic, long secondValueOffset) {
             this.secondValueOffset = secondValueOffset;
@@ -695,33 +699,33 @@ public abstract class LLVMArithmetic {
 
         @Specialization
         protected Object doIntrinsic(byte left, byte right, LLVMPointer addr,
-                        @Cached("createStoreI8()") LLVMStoreNode store) {
-            final boolean overflow = arithmetic.evalI8(left, right, addr, store);
-            storeI8.executeWithTarget(addr.increment(secondValueOffset), overflow);
+                        @Cached LLVMI8StoreNode store) {
+            boolean overflow = arithmetic.evalI8(left, right, addr, store);
+            storeI1.executeWithTarget(addr, secondValueOffset, overflow);
             return addr;
         }
 
         @Specialization
         protected Object doIntrinsic(short left, short right, LLVMPointer addr,
-                        @Cached("createStoreI16()") LLVMStoreNode store) {
-            final boolean overflow = arithmetic.evalI16(left, right, addr, store);
-            storeI8.executeWithTarget(addr.increment(secondValueOffset), overflow);
+                        @Cached LLVMI16StoreNode store) {
+            boolean overflow = arithmetic.evalI16(left, right, addr, store);
+            storeI1.executeWithTarget(addr, secondValueOffset, overflow);
             return addr;
         }
 
         @Specialization
         protected Object doIntrinsic(int left, int right, LLVMPointer addr,
-                        @Cached("createStoreI32()") LLVMStoreNode store) {
-            final boolean overflow = arithmetic.evalI32(left, right, addr, store);
-            storeI8.executeWithTarget(addr.increment(secondValueOffset), overflow);
+                        @Cached LLVMI32StoreNode store) {
+            boolean overflow = arithmetic.evalI32(left, right, addr, store);
+            storeI1.executeWithTarget(addr, secondValueOffset, overflow);
             return addr;
         }
 
         @Specialization
         protected Object doIntrinsic(long left, long right, LLVMPointer addr,
-                        @Cached("createStoreI64()") LLVMStoreNode store) {
-            final boolean overflow = arithmetic.evalI64(left, right, addr, store);
-            storeI8.executeWithTarget(addr.increment(secondValueOffset), overflow);
+                        @Cached LLVMI64StoreNode store) {
+            boolean overflow = arithmetic.evalI64(left, right, addr, store);
+            storeI1.executeWithTarget(addr, secondValueOffset, overflow);
             return addr;
         }
     }
@@ -739,26 +743,26 @@ public abstract class LLVMArithmetic {
         }
 
         @Specialization
-        protected byte doIntrinsic(byte left, byte right, byte cin, Object addr,
-                        @Cached("createStoreI8()") LLVMStoreNode store) {
+        protected byte doIntrinsic(byte left, byte right, byte cin, LLVMPointer addr,
+                        @Cached LLVMI8StoreNode store) {
             return arithmetic.evalI8(left, right, cin, addr, store);
         }
 
         @Specialization
-        protected short doIntrinsic(short left, short right, short cin, Object addr,
-                        @Cached("createStoreI16()") LLVMStoreNode store) {
+        protected short doIntrinsic(short left, short right, short cin, LLVMPointer addr,
+                        @Cached LLVMI16StoreNode store) {
             return arithmetic.evalI16(left, right, cin, addr, store);
         }
 
         @Specialization
-        protected int doIntrinsic(int left, int right, int cin, Object addr,
-                        @Cached("createStoreI32()") LLVMStoreNode store) {
+        protected int doIntrinsic(int left, int right, int cin, LLVMPointer addr,
+                        @Cached LLVMI32StoreNode store) {
             return arithmetic.evalI32(left, right, cin, addr, store);
         }
 
         @Specialization
-        protected long doIntrinsic(long left, long right, long cin, Object addr,
-                        @Cached("createStoreI64()") LLVMStoreNode store) {
+        protected long doIntrinsic(long left, long right, long cin, LLVMPointer addr,
+                        @Cached LLVMI64StoreNode store) {
             return arithmetic.evalI64(left, right, cin, addr, store);
         }
     }

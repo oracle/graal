@@ -56,6 +56,7 @@ import java.util.logging.Level;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.UnmodifiableEconomicSet;
 import org.graalvm.polyglot.EnvironmentAccess;
+import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.ProcessHandler;
@@ -66,7 +67,6 @@ import com.oracle.truffle.polyglot.PolyglotImpl.VMObject;
 final class PolyglotContextConfig {
     private static final String[] EMPTY_STRING_ARRAY = new String[0];
 
-    final PolyglotEngineImpl engine;
     final OutputStream out;
     final OutputStream err;
     final InputStream in;
@@ -85,13 +85,14 @@ final class PolyglotContextConfig {
     final Handler logHandler;
     final PolyglotAccess polyglotAccess;
     final ProcessHandler processHandler;
-    final EnvironmentAccess environmentAccess;
+    private final EnvironmentAccess environmentAccess;
     private final Map<String, String> environment;
     private volatile Map<String, String> configuredEnvironement;
     private volatile ZoneId timeZone;
     final PolyglotLimits limits;
     final ClassLoader hostClassLoader;
     private final List<PolyglotInstrument> configuredInstruments;
+    final HostAccess hostAccess;
 
     PolyglotContextConfig(PolyglotEngineImpl engine, OutputStream out, OutputStream err, InputStream in,
                     boolean hostLookupAllowed, PolyglotAccess polyglotAccess, boolean nativeAccessAllowed, boolean createThreadAllowed,
@@ -99,12 +100,11 @@ final class PolyglotContextConfig {
                     Predicate<String> classFilter, Map<String, String[]> applicationArguments,
                     EconomicSet<String> allowedPublicLanguages, Map<String, String> options, FileSystem publicFileSystem, FileSystem internalFileSystem, Handler logHandler,
                     boolean createProcessAllowed, ProcessHandler processHandler, EnvironmentAccess environmentAccess, Map<String, String> environment,
-                    ZoneId timeZone, PolyglotLimits limits, ClassLoader hostClassLoader) {
+                    ZoneId timeZone, PolyglotLimits limits, ClassLoader hostClassLoader, HostAccess hostAccess) {
         assert out != null;
         assert err != null;
         assert in != null;
         assert environmentAccess != null;
-        this.engine = engine;
         this.out = out;
         this.err = err;
         this.in = in;
@@ -161,6 +161,7 @@ final class PolyglotContextConfig {
         this.processHandler = processHandler;
         this.environmentAccess = environmentAccess;
         this.environment = environment == null ? Collections.emptyMap() : environment;
+        this.hostAccess = hostAccess;
         this.hostClassLoader = hostClassLoader;
     }
 

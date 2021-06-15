@@ -31,22 +31,17 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import com.oracle.svm.configure.json.JsonPrintable;
+import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.core.util.UserError;
 
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaUtil;
 
-public class TypeConfiguration implements JsonPrintable {
+public class TypeConfiguration implements ConfigurationBase {
     private final ConcurrentMap<String, ConfigurationType> types = new ConcurrentHashMap<>();
 
     public ConfigurationType get(String qualifiedJavaName) {
         return types.get(qualifiedJavaName);
-    }
-
-    public ConfigurationType getByInternalName(String internalName) {
-        return types.get(MetaUtil.internalNameToJava(internalName, true, false));
     }
 
     public void add(ConfigurationType type) {
@@ -82,14 +77,20 @@ public class TypeConfiguration implements JsonPrintable {
     @Override
     public void printJson(JsonWriter writer) throws IOException {
         writer.append('[');
-        String prefix = "\n";
+        String prefix = "";
         List<ConfigurationType> list = new ArrayList<>(types.values());
         list.sort(Comparator.comparing(ConfigurationType::getQualifiedJavaName));
         for (ConfigurationType value : list) {
-            writer.append(prefix);
+            writer.append(prefix).newline();
             value.printJson(writer);
-            prefix = ",\n";
+            prefix = ",";
         }
-        writer.newline().append(']').newline();
+        writer.newline().append(']');
     }
+
+    @Override
+    public boolean isEmpty() {
+        return types.isEmpty();
+    }
+
 }

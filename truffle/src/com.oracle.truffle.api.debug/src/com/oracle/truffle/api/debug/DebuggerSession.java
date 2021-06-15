@@ -294,7 +294,7 @@ public final class DebuggerSession implements Closeable {
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
-            throw new DebugException(this, ex, info, null, true, null);
+            throw DebugException.create(this, ex, info);
         }
     }
 
@@ -693,6 +693,24 @@ public final class DebuggerSession implements Closeable {
 
     Set<SourceElement> getSourceElements() {
         return sourceElements;
+    }
+
+    /**
+     * Creates a {@link DebugValue} object that wraps a primitive value. Strings and boxed Java
+     * primitive types are considered primitive. Throws {@link IllegalArgumentException} if the
+     * value is not primitive.
+     *
+     * @param primitiveValue a primitive value
+     * @param language guest language this value is value is associated with. Some value attributes
+     *            depend on the language, like {@link DebugValue#getMetaObject()}. Can be
+     *            <code>null</code>.
+     * @return a {@link DebugValue} that wraps the primitive value.
+     * @throws IllegalArgumentException if the value is not a boxed Java primitive or a String.
+     * @since 21.2
+     */
+    public DebugValue createPrimitiveValue(Object primitiveValue, LanguageInfo language) throws IllegalArgumentException {
+        DebugValue.checkPrimitive(primitiveValue);
+        return new DebugValue.HeapValue(this, language, null, primitiveValue);
     }
 
     /**
@@ -1423,7 +1441,7 @@ public final class DebuggerSession implements Closeable {
             inEvalInContext.set(Boolean.TRUE);
             return evalInContext(ev, node, frame, code);
         } catch (KillException kex) {
-            throw new DebugException(ev.getSession(), "Evaluation was killed.", null, true, null);
+            throw DebugException.create(ev.getSession(), "Evaluation was killed.");
         } catch (IllegalStateException ex) {
             throw ex;
         } catch (Throwable ex) {
@@ -1432,7 +1450,7 @@ public final class DebuggerSession implements Closeable {
             if (root != null) {
                 language = root.getLanguageInfo();
             }
-            throw new DebugException(ev.getSession(), ex, language, null, true, null);
+            throw DebugException.create(ev.getSession(), ex, language);
         } finally {
             inEvalInContext.remove();
         }

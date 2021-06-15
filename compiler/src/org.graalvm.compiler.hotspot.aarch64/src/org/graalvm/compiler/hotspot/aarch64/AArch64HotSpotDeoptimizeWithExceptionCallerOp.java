@@ -59,9 +59,9 @@ public class AArch64HotSpotDeoptimizeWithExceptionCallerOp extends AArch64HotSpo
         leaveFrame(crb, masm, /* emitSafepoint */false, false);
 
         // Save exception oop in TLS
-        masm.str(64, exc, masm.makeAddress(thread, config.threadExceptionOopOffset, 8));
+        masm.str(64, exc, masm.makeAddress(64, thread, config.threadExceptionOopOffset));
         // Store original return address in TLS
-        masm.str(64, lr, masm.makeAddress(thread, config.threadExceptionPcOffset, 8));
+        masm.str(64, lr, masm.makeAddress(64, thread, config.threadExceptionPcOffset));
 
         AArch64Call.directJmp(crb, masm, crb.foreignCalls.lookupForeignCall(DEOPT_BLOB_UNPACK_WITH_EXCEPTION_IN_TLS));
     }

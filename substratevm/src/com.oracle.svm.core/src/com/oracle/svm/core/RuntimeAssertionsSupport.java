@@ -39,6 +39,7 @@ import org.graalvm.nativeimage.hosted.Feature;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.util.VMError;
 
 class RuntimeAssertionsOptionTransformer implements Function<Object, Object> {
@@ -95,7 +96,7 @@ public final class RuntimeAssertionsSupport {
         @APIOption(name = {"-da", "-disableassertions"}, valueSeparator = VALUE_SEPARATOR, valueTransformer = RuntimeAssertionsOptionTransformer.Disable.class, defaultValue = "", //
                         customHelp = "also -da[:[packagename]...|:classname] or -disableassertions[:[packagename]...|:classname]. Disable assertions with specified granularity.")//
         @Option(help = "Enable or disable Java assert statements at run time") //
-        public static final HostedOptionKey<String[]> RuntimeAssertions = new HostedOptionKey<>(new String[0]);
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> RuntimeAssertions = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
 
         @APIOption(name = {"-esa", "-enablesystemassertions"}, customHelp = "also -enablesystemassertions. Enables assertions in all system classes.") //
         @APIOption(name = {"-dsa", "-disablesystemassertions"}, kind = APIOption.APIOptionKind.Negated, customHelp = "also -disablesystemassertions. Disables assertions in all system classes.") //
@@ -115,13 +116,11 @@ public final class RuntimeAssertionsSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     protected RuntimeAssertionsSupport() {
-        String[] runtimeAssertionsOptions = Options.RuntimeAssertions.getValue();
-
         packageAssertionStatus = new HashMap<>();
         classAssertionStatus = new HashMap<>();
         boolean tmpDefaultAssertionStatus = false;
 
-        for (String option : runtimeAssertionsOptions) {
+        for (String option : Options.RuntimeAssertions.getValue().values()) {
             VMError.guarantee(!option.isEmpty(), EMPTY_OPTION_VALUE_MSG);
 
             char prefix = option.charAt(0);

@@ -125,15 +125,6 @@ class ChunkedImageHeapAllocator {
             return true;
         }
 
-        public void finish() {
-            allocateFiller(getUnallocatedBytes());
-            assert isFinished();
-        }
-
-        public boolean isFinished() {
-            return topOffset == getEndOffset();
-        }
-
         private void allocateFiller(long size) {
             if (size != 0) {
                 ImageHeapObject filler = imageHeap.addFillerObject(NumUtil.safeToInt(size));
@@ -216,7 +207,7 @@ class ChunkedImageHeapAllocator {
     }
 
     public void startNewAlignedChunk() {
-        maybeFinishAlignedChunk();
+        finishAlignedChunk();
         alignBetweenChunks(alignedChunkAlignment);
         long chunkBegin = allocateRaw(alignedChunkSize);
         currentAlignedChunk = new AlignedChunk(chunkBegin);
@@ -239,11 +230,8 @@ class ChunkedImageHeapAllocator {
         }
     }
 
-    public void maybeFinishAlignedChunk() {
-        if (currentAlignedChunk != null) {
-            currentAlignedChunk.finish();
-            currentAlignedChunk = null;
-        }
+    public void finishAlignedChunk() {
+        currentAlignedChunk = null;
     }
 
     public List<AlignedChunk> getAlignedChunks() {

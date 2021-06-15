@@ -59,18 +59,6 @@ public abstract class LLVMSwitchNode extends LLVMControlFlowNode {
 
     public abstract boolean checkCase(VirtualFrame frame, int i, Object value);
 
-    /**
-     * Override to allow access from generated wrapper.
-     */
-    @Override
-    protected abstract boolean isStatement();
-
-    /**
-     * Override to allow access from generated wrapper.
-     */
-    @Override
-    protected abstract void setStatement(boolean statementTag);
-
     @NodeChild(value = "cond", type = LLVMExpressionNode.class)
     public abstract static class LLVMSwitchNodeImpl extends LLVMSwitchNode {
         @Children private final LLVMStatementNode[] phiNodes;

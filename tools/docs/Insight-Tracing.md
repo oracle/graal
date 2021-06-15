@@ -154,7 +154,7 @@ $ docker run -d --name jaeger \
   -p 5778:5778   -p 16686:16686   -p 14268:14268   -p 9411:9411 \
   jaegertracing/all-in-one:latest
 
-$ graalvm/bin/node --insight=agent.js --experimental-options server.js
+$ graalvm/bin/node --insight=agent.js server.js
 Providing Jaeger object to the agent
 agent: Jaeger tracer obtained
 Initializing Jaeger Tracer with RemoteReporter and ConstSampler(always)

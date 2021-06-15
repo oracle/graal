@@ -43,8 +43,6 @@ import com.oracle.truffle.llvm.runtime.LLVMExitException;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
-import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessSymbolNode;
-import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessSymbolNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
@@ -57,14 +55,13 @@ public class LLVMGlobalRootNode extends RootNode {
     private final DirectCallNode startFunction;
     private final int mainFunctionType;
     private final String applicationPath;
-
-    @Child private LLVMAccessSymbolNode accessMainFunction;
+    private final LLVMFunction mainFunction;
 
     public LLVMGlobalRootNode(LLVMLanguage language, FrameDescriptor descriptor, LLVMFunction mainFunction, CallTarget startFunction, String applicationPath) {
         super(language, descriptor);
+        this.mainFunction = mainFunction;
         this.startFunction = Truffle.getRuntime().createDirectCallNode(startFunction);
         this.mainFunctionType = getMainFunctionType(mainFunction);
-        this.accessMainFunction = LLVMAccessSymbolNodeGen.create(mainFunction);
         this.applicationPath = applicationPath;
     }
 
@@ -85,7 +82,7 @@ public class LLVMGlobalRootNode extends RootNode {
         try {
             Object appPath = new LLVMArgumentBuffer(applicationPath);
             LLVMManagedPointer applicationPathObj = LLVMManagedPointer.create(appPath);
-            Object[] realArgs = new Object[]{stack, mainFunctionType, applicationPathObj, accessMainFunction.execute()};
+            Object[] realArgs = new Object[]{stack, mainFunctionType, applicationPathObj, getContext().getSymbol(mainFunction)};
             Object result = startFunction.call(realArgs);
             getContext().awaitThreadTermination();
             return (int) result;

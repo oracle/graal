@@ -110,7 +110,6 @@ public class NodeLibraryCompilerTest extends PartialEvaluationTest {
     }
 
     @GenerateWrapper
-    @ExportLibrary(value = NodeLibrary.class)
     abstract static class InstrumentationCompilerTestScopeNode extends Node implements InstrumentableNode {
 
         public abstract Object execute(VirtualFrame frame);
@@ -135,13 +134,6 @@ public class NodeLibraryCompilerTest extends PartialEvaluationTest {
             return tag == StandardTags.ExpressionTag.class;
         }
 
-        @ExportMessage
-        public boolean hasScope(@SuppressWarnings("unused") Frame frame) {
-            return true;
-        }
-
-        @ExportMessage
-        abstract Object getScope(Frame frame, boolean nodeEnter) throws UnsupportedMessageException;
     }
 
     @ExportLibrary(InteropLibrary.class)
@@ -230,12 +222,9 @@ public class NodeLibraryCompilerTest extends PartialEvaluationTest {
             }
         }
 
-        @Override
-        Object getScope(Frame frame, boolean nodeEnter) throws UnsupportedMessageException {
-            throw UnsupportedMessageException.create();
-        }
     }
 
+    @ExportLibrary(NodeLibrary.class)
     static final class DummyInstrumentableNode extends InstrumentationCompilerTestScopeNode {
 
         private final ReadVarNode readVar;
@@ -249,9 +238,14 @@ public class NodeLibraryCompilerTest extends PartialEvaluationTest {
             return Boolean.TRUE;
         }
 
-        @Override
+        @SuppressWarnings("static-method")
         @ExportMessage
-        Object getScope(Frame frame, boolean nodeEnter) throws UnsupportedMessageException {
+        public boolean hasScope(@SuppressWarnings("unused") Frame frame) {
+            return true;
+        }
+
+        @ExportMessage
+        Object getScope(Frame frame, @SuppressWarnings("unused") boolean nodeEnter) {
             return new ScopeVariables(frame, readVar);
         }
     }

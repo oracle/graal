@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.nodes.java;
 
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -46,8 +47,8 @@ public final class UnsafeCompareAndSwapNode extends AbstractUnsafeCompareAndSwap
 
     public static final NodeClass<UnsafeCompareAndSwapNode> TYPE = NodeClass.create(UnsafeCompareAndSwapNode.class);
 
-    public UnsafeCompareAndSwapNode(ValueNode object, ValueNode offset, ValueNode expected, ValueNode newValue, JavaKind valueKind, LocationIdentity locationIdentity) {
-        super(TYPE, StampFactory.forInteger(JavaKind.Int, 0, 1), object, offset, expected, newValue, valueKind, locationIdentity);
+    public UnsafeCompareAndSwapNode(ValueNode object, ValueNode offset, ValueNode expected, ValueNode newValue, JavaKind valueKind, LocationIdentity locationIdentity, MemoryOrderMode memoryOrder) {
+        super(TYPE, StampFactory.forInteger(JavaKind.Int, 0, 1), object, offset, expected, newValue, valueKind, locationIdentity, memoryOrder);
         assert expected.stamp(NodeView.DEFAULT).isCompatible(newValue.stamp(NodeView.DEFAULT));
     }
 

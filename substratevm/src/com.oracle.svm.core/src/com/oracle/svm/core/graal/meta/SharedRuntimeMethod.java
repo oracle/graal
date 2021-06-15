@@ -32,4 +32,8 @@ import com.oracle.svm.core.meta.SharedMethod;
 public interface SharedRuntimeMethod extends SharedMethod {
 
     int getEncodedGraphStartOffset();
+
+    default SharedRuntimeMethod getOriginal() {
+        return this;
+    }
 }

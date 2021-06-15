@@ -38,8 +38,11 @@ import java.util.function.Consumer;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.parser.scanner.RecordBuffer;
+import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
+import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
@@ -333,6 +336,11 @@ public final class Types implements ParserListener, Iterable<Type> {
             return 0;
         }
 
+        @Override
+        public LLVMExpressionNode createNullConstant(NodeFactory nodeFactory, DataLayout dataLayout, GetStackSpaceFactory stackFactory) {
+            CompilerDirectives.transferToInterpreter();
+            throw new LLVMParserException("Unresolved Forward-Referenced Type!");
+        }
     }
 
     @Override

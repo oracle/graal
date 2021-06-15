@@ -274,7 +274,7 @@ public class UseTrappingNullChecksPhase extends BasePhase<LowTierContext> {
 
         if (trappingNullCheck == null) {
             // Need to add a null check node.
-            trappingNullCheck = graph.add(new NullCheckNode(value, deoptReasonAndAction, deoptSpeculation));
+            trappingNullCheck = graph.add(NullCheckNode.create(value, deoptReasonAndAction, deoptSpeculation));
             graph.replaceSplit(ifNode, trappingNullCheck, nonTrappingContinuation);
             debug.log("Inserted NullCheckNode %s", trappingNullCheck);
         }

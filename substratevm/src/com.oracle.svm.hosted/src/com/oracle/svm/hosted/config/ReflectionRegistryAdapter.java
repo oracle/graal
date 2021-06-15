@@ -29,6 +29,7 @@ import java.util.List;
 
 import org.graalvm.nativeimage.impl.ReflectionRegistry;
 
+import com.oracle.svm.core.TypeResult;
 import com.oracle.svm.core.configure.ReflectionConfigurationParserDelegate;
 import com.oracle.svm.hosted.ImageClassLoader;
 
@@ -49,13 +50,19 @@ public class ReflectionRegistryAdapter implements ReflectionConfigurationParserD
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public Class<?> resolveType(String typeName) {
+        return resolveTypeResult(typeName).get();
+    }
+
+    @Override
+    public TypeResult<Class<?>> resolveTypeResult(String typeName) {
         String name = typeName;
         if (name.indexOf('[') != -1) {
             /* accept "int[][]", "java.lang.String[]" */
             name = MetaUtil.internalNameToJava(MetaUtil.toInternalName(name), true, true);
         }
-        return classLoader.findClassByName(name, false);
+        return classLoader.findClass(name);
     }
 
     @Override
@@ -70,12 +77,12 @@ public class ReflectionRegistryAdapter implements ReflectionConfigurationParserD
 
     @Override
     public void registerPublicFields(Class<?> type) {
-        registry.register(false, false, type.getFields());
+        registry.register(false, type.getFields());
     }
 
     @Override
     public void registerDeclaredFields(Class<?> type) {
-        registry.register(false, false, type.getDeclaredFields());
+        registry.register(false, type.getDeclaredFields());
     }
 
     @Override
@@ -99,8 +106,8 @@ public class ReflectionRegistryAdapter implements ReflectionConfigurationParserD
     }
 
     @Override
-    public void registerField(Class<?> type, String fieldName, boolean allowWrite, boolean allowUnsafeAccess) throws NoSuchFieldException {
-        registry.register(allowWrite, allowUnsafeAccess, type.getDeclaredField(fieldName));
+    public void registerField(Class<?> type, String fieldName, boolean allowWrite) throws NoSuchFieldException {
+        registry.register(allowWrite, type.getDeclaredField(fieldName));
     }
 
     @Override

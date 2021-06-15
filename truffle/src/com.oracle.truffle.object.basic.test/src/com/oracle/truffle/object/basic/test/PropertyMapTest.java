@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,11 +51,11 @@ import java.util.Random;
 
 import org.junit.Test;
 
-import com.oracle.truffle.api.object.Layout;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.object.PropertyMap;
 
+@SuppressWarnings("deprecation")
 public class PropertyMapTest {
 
     @Test
@@ -69,7 +69,7 @@ public class PropertyMapTest {
         int[] shuffledSequence = randomSequence.clone();
         shuffle(shuffledSequence, rnd);
 
-        Layout layout = Layout.newLayout().build();
+        com.oracle.truffle.api.object.Layout layout = com.oracle.truffle.api.object.Layout.newLayout().build();
         // fill the map
         for (int i = 0; i < size; i++) {
             int id = randomSequence[i];
@@ -144,7 +144,7 @@ public class PropertyMapTest {
     }
 
     @SuppressWarnings("deprecation")
-    private static Location newLocation(Layout layout, Object id) {
+    private static Location newLocation(com.oracle.truffle.api.object.Layout layout, Object id) {
         return layout.createAllocator().locationForValue(id);
     }
 

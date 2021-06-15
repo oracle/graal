@@ -34,48 +34,47 @@ import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCo
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerListenerGen.callOnGraalTierFinished;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerListenerGen.callOnSuccess;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerListenerGen.callOnTruffleTierFinished;
-import static org.graalvm.libgraal.jni.JNIUtil.createHSString;
+import static org.graalvm.nativebridge.jni.JNIUtil.createHSString;
 
 import java.io.Closeable;
 
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
-import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
+import org.graalvm.compiler.truffle.common.TruffleInliningData;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal;
-import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal;
-import org.graalvm.libgraal.jni.HSObject;
-import org.graalvm.libgraal.jni.JNI.JNIEnv;
-import org.graalvm.libgraal.jni.JNI.JObject;
-import org.graalvm.libgraal.jni.JNI.JString;
-import org.graalvm.libgraal.jni.JNILibGraalScope;
+import org.graalvm.nativebridge.jni.HSObject;
+import org.graalvm.nativebridge.jni.JNI.JNIEnv;
+import org.graalvm.nativebridge.jni.JNI.JObject;
+import org.graalvm.nativebridge.jni.JNI.JString;
+import org.graalvm.nativebridge.jni.JNIMethodScope;
 
 /**
  * Proxy for a {@link TruffleCompilerListener} object in the HotSpot heap.
  */
 final class HSTruffleCompilerListener extends HSObject implements TruffleCompilerListener {
 
-    HSTruffleCompilerListener(JNILibGraalScope<TruffleToLibGraal.Id> scope, JObject handle) {
+    HSTruffleCompilerListener(JNIMethodScope scope, JObject handle) {
         super(scope, handle);
     }
 
     @TruffleFromLibGraal(OnSuccess)
     @Override
-    public void onSuccess(CompilableTruffleAST compilable, TruffleMetaAccessProvider inliningPlan, GraphInfo graphInfo, CompilationResultInfo compilationResultInfo) {
+    public void onSuccess(CompilableTruffleAST compilable, TruffleInliningData inliningPlan, GraphInfo graphInfo, CompilationResultInfo compilationResultInfo, int tier) {
         JObject hsCompilable = ((HSCompilableTruffleAST) compilable).getHandle();
-        JObject hsInliningPlan = ((HSTruffleInliningPlan) inliningPlan).getHandle();
-        JNIEnv env = JNILibGraalScope.env();
+        JObject hsInliningPlan = ((HSTruffleInliningData) inliningPlan).getHandle();
+        JNIEnv env = JNIMethodScope.env();
         try (LibGraalObjectHandleScope graphInfoScope = LibGraalObjectHandleScope.forObject(graphInfo);
                         LibGraalObjectHandleScope compilationResultInfoScope = LibGraalObjectHandleScope.forObject(compilationResultInfo)) {
-            callOnSuccess(env, getHandle(), hsCompilable, hsInliningPlan, graphInfoScope.getHandle(), compilationResultInfoScope.getHandle());
+            callOnSuccess(env, getHandle(), hsCompilable, hsInliningPlan, graphInfoScope.getHandle(), compilationResultInfoScope.getHandle(), tier);
         }
     }
 
     @TruffleFromLibGraal(OnTruffleTierFinished)
     @Override
-    public void onTruffleTierFinished(CompilableTruffleAST compilable, TruffleMetaAccessProvider inliningPlan, GraphInfo graph) {
+    public void onTruffleTierFinished(CompilableTruffleAST compilable, TruffleInliningData inliningPlan, GraphInfo graph) {
         JObject hsCompilable = ((HSCompilableTruffleAST) compilable).getHandle();
-        JObject hsInliningPlan = ((HSTruffleInliningPlan) inliningPlan).getHandle();
-        JNIEnv env = JNILibGraalScope.env();
+        JObject hsInliningPlan = ((HSTruffleInliningData) inliningPlan).getHandle();
+        JNIEnv env = JNIMethodScope.env();
         try (LibGraalObjectHandleScope graphInfoScope = LibGraalObjectHandleScope.forObject(graph)) {
             callOnTruffleTierFinished(env, getHandle(), hsCompilable, hsInliningPlan, graphInfoScope.getHandle());
         }
@@ -86,7 +85,7 @@ final class HSTruffleCompilerListener extends HSObject implements TruffleCompile
     @Override
     public void onGraalTierFinished(CompilableTruffleAST compilable, GraphInfo graph) {
         JObject hsCompilable = ((HSCompilableTruffleAST) compilable).getHandle();
-        JNIEnv env = JNILibGraalScope.env();
+        JNIEnv env = JNIMethodScope.env();
         try (LibGraalObjectHandleScope graphInfoScope = LibGraalObjectHandleScope.forObject(graph)) {
             callOnGraalTierFinished(env, getHandle(), hsCompilable, graphInfoScope.getHandle());
         }
@@ -94,19 +93,19 @@ final class HSTruffleCompilerListener extends HSObject implements TruffleCompile
 
     @TruffleFromLibGraal(OnFailure)
     @Override
-    public void onFailure(CompilableTruffleAST compilable, String serializedException, boolean bailout, boolean permanentBailout) {
+    public void onFailure(CompilableTruffleAST compilable, String serializedException, boolean bailout, boolean permanentBailout, int tier) {
         JObject hsCompilable = ((HSCompilableTruffleAST) compilable).getHandle();
-        JNIEnv env = JNILibGraalScope.env();
+        JNIEnv env = JNIMethodScope.env();
         JString hsReason = createHSString(env, serializedException);
-        callOnFailure(env, getHandle(), hsCompilable, hsReason, bailout, permanentBailout);
+        callOnFailure(env, getHandle(), hsCompilable, hsReason, bailout, permanentBailout, tier);
     }
 
     @TruffleFromLibGraal(OnCompilationRetry)
     @Override
-    public void onCompilationRetry(CompilableTruffleAST compilable) {
+    public void onCompilationRetry(CompilableTruffleAST compilable, int tier) {
         JObject hsCompilable = ((HSCompilableTruffleAST) compilable).getHandle();
-        JNIEnv env = JNILibGraalScope.env();
-        callOnCompilationRetry(env, getHandle(), hsCompilable);
+        JNIEnv env = JNIMethodScope.env();
+        callOnCompilationRetry(env, getHandle(), hsCompilable, tier);
     }
 
     private static final class LibGraalObjectHandleScope implements Closeable {

@@ -72,7 +72,7 @@ public class ChunkedImageHeapPartition extends AbstractImageHeapPartition {
     }
 
     private void layoutInUnalignedChunks(ChunkedImageHeapAllocator allocator) {
-        allocator.maybeFinishAlignedChunk();
+        allocator.finishAlignedChunk();
         allocator.alignBetweenChunks(getStartAlignment());
         startOffset = allocator.getPosition();
 
@@ -107,35 +107,20 @@ public class ChunkedImageHeapPartition extends AbstractImageHeapPartition {
         }
     }
 
-    private ImageHeapObject dequeueBestFit(NavigableMap<Long, Queue<ImageHeapObject>> objects, long nbytesMax) {
-        long nbytes = nbytesMax;
-        while (true) {
-            if (nbytes < minimumObjectSize) {
-                return null;
-            }
-            Map.Entry<Long, Queue<ImageHeapObject>> entry = objects.floorEntry(nbytes);
-            if (entry == null) {
-                return null;
-            }
-
-            long remaining = nbytesMax - entry.getKey();
-            assert remaining >= 0;
-            if (remaining != 0 && remaining < minimumObjectSize) {
-                /*
-                 * The remaining space in the chunk would be too small for a filler object, so try
-                 * to fit a smaller object instead.
-                 */
-                nbytes = entry.getKey() - 1;
-                continue;
-            }
-
-            Queue<ImageHeapObject> queue = entry.getValue();
-            ImageHeapObject info = queue.remove();
-            if (queue.isEmpty()) {
-                objects.remove(entry.getKey());
-            }
-            return info;
+    private ImageHeapObject dequeueBestFit(NavigableMap<Long, Queue<ImageHeapObject>> objects, long nbytes) {
+        if (nbytes < minimumObjectSize) {
+            return null;
         }
+        Map.Entry<Long, Queue<ImageHeapObject>> entry = objects.floorEntry(nbytes);
+        if (entry == null) {
+            return null;
+        }
+        Queue<ImageHeapObject> queue = entry.getValue();
+        ImageHeapObject info = queue.remove();
+        if (queue.isEmpty()) {
+            objects.remove(entry.getKey());
+        }
+        return info;
     }
 
     private static NavigableMap<Long, Queue<ImageHeapObject>> createSortedObjectsMap(List<ImageHeapObject> objects) {

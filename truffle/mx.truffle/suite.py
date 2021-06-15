@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -39,9 +39,9 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion" : "5.265.8",
+  "mxversion" : "5.300.4",
   "name" : "truffle",
-  "version" : "21.0.0",
+  "version" : "21.2.0",
   "release" : False,
   "groupId" : "org.graalvm.truffle",
   "sourceinprojectwhitelist" : [],
@@ -91,18 +91,18 @@ suite = {
     },
 
     "ANTLR4": {
-      "sha1" : "e27d8ab4f984f9d186f54da984a6ab1cccac755e",
+      "sha1" : "ece33ec76e002dfde574cf7b57451a91a99185c5",
       "maven" : {
         "groupId" : "org.antlr",
         "artifactId" : "antlr4-runtime",
-        "version" : "4.7.2",
+        "version" : "4.9.2",
       }
     },
 
     "ANTLR4_COMPLETE": {
-      # original: https://www.antlr.org/download/antlr-4.7.2-complete.jar
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/antlr-4.7.2-complete.jar"],
-      "sha1": "34fc363424d3b060b660f84974a82d6bdc7ebe0c",
+      # original: https://www.antlr.org/download/antlr-4.9.2-complete.jar
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/antlr-4.9.2-complete.jar"],
+      "sha1": "3ce2e9d96baa6e5de18eb370efc71cbb820021fb",
     },
 
     "TRUFFLE_ASM_7.2" : {
@@ -110,6 +110,12 @@ suite = {
       "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/com.oracle.truffle.impl.asm-7.2.0.jar"],
     },
 
+    "TruffleJSON" : {
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20201115.jar"],
+      "sha1" : "7987931963f4fa995fa515273d70116725d0e37f",
+      "sourceUrls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20201115-src.jar"],
+      "sourceSha1" : "1da7c590b0582fb4c2e4de9b581c70407fa9108b",
+    },
   },
   "snippetsPattern" : ".*(Snippets|doc-files).*",
   "projects" : {
@@ -126,7 +132,7 @@ suite = {
       # if warnings as errors is enabled. See GR-14683.
       "forceJavac" : "true",
       "javaCompliance" : "8+",
-      "checkstyleVersion" : "8.8",
+      "checkstyleVersion" : "8.36.1",
       "workingSets" : "API,Truffle",
     },
 
@@ -168,6 +174,19 @@ suite = {
       "dependencies" : [
         "sdk:GRAAL_SDK",
         "com.oracle.truffle.api.instrumentation",
+        "com.oracle.truffle.api.exception",
+      ],
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
+      "checkstyle" : "com.oracle.truffle.api",
+      "javaCompliance" : "8+",
+      "workingSets" : "API,Truffle",
+    },
+
+    "com.oracle.truffle.host" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "sdk:GRAAL_SDK",
         "com.oracle.truffle.api.exception",
         "truffle:TRUFFLE_ASM_7.2",
       ],
@@ -291,7 +310,7 @@ suite = {
       ],
       "checkstyle" : "com.oracle.truffle.dsl.processor",
       "javaCompliance" : "8+",
-      "checkstyleVersion" : "8.8",
+      "checkstyleVersion" : "8.36.1",
       "workingSets" : "Truffle,Codegen",
     },
 
@@ -528,10 +547,34 @@ suite = {
     "com.oracle.truffle.nfi" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
-      "jniHeaders" : True,
+      "dependencies" : [
+        "com.oracle.truffle.nfi.api",
+        "com.oracle.truffle.nfi.backend.spi",
+      ],
+      "checkstyle" : "com.oracle.truffle.api",
+      "javaCompliance" : "8+",
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
+      "workingSets" : "Truffle",
+    },
+
+    "com.oracle.truffle.nfi.api" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.api.interop",
-        "com.oracle.truffle.nfi.spi",
+      ],
+      "checkstyle" : "com.oracle.truffle.api",
+      "javaCompliance" : "8+",
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
+      "workingSets" : "Truffle",
+    },
+
+    "com.oracle.truffle.nfi.backend.libffi" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "jniHeaders" : True,
+      "dependencies" : [
+        "com.oracle.truffle.nfi.backend.spi",
       ],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "8+",
@@ -551,7 +594,7 @@ suite = {
       },
     },
 
-    "com.oracle.truffle.nfi.spi" : {
+    "com.oracle.truffle.nfi.backend.spi" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
@@ -574,9 +617,10 @@ suite = {
       "subDir" : "src",
       "native" : "shared_lib",
       "deliverable" : "trufflenfi",
+      "use_jdk_headers" : True,
       "buildDependencies" : [
         "libffi",
-        "com.oracle.truffle.nfi",
+        "com.oracle.truffle.nfi.backend.libffi",
       ],
       "os_arch" : {
         "windows" : {
@@ -621,7 +665,8 @@ suite = {
       "workingSets" : "Truffle",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "javaProperties" : {
-        "native.test.lib" : "<path:TRUFFLE_TEST_NATIVE>/<lib:nativetest>"
+        "native.test.lib" : "<path:TRUFFLE_TEST_NATIVE>/<lib:nativetest>",
+        "native.isolation.test.lib" : "<path:TRUFFLE_TEST_NATIVE>/<lib:isolationtest>"
       },
       "testProject" : True,
       "jacoco" : "exclude",
@@ -643,14 +688,40 @@ suite = {
         "solaris" : {
           "<others>" : {
             "cflags" : ["-g", "-Wall", "-Werror", "-m64"],
-            "ldflags" : ["-m64"],
+            "ldflags" : ["-m64", "-pthread"],
             "ldlibs" : ["-lm"],
           },
         },
         "<others>" : {
           "<others>" : {
             "cflags" : ["-g", "-Wall", "-Werror"],
+            "ldflags" : ["-pthread"],
             "ldlibs" : ["-lm"],
+          },
+        },
+      },
+      "testProject" : True,
+      "jacoco" : "exclude",
+    },
+
+    "com.oracle.truffle.nfi.test.native.isolation" : {
+      "subDir" : "src",
+      "native" : "shared_lib",
+      "deliverable" : "isolationtest",
+      "os_arch" : {
+        "windows" : {
+          "<others>" : {
+            "cflags" : []
+          }
+        },
+        "solaris" : {
+          "<others>" : {
+            "cflags" : ["-g", "-Wall", "-Werror", "-m64"],
+          },
+        },
+        "<others>" : {
+          "<others>" : {
+            "cflags" : ["-g", "-Wall", "-Werror"],
           },
         },
       },
@@ -666,7 +737,7 @@ suite = {
         "truffle:ANTLR4"
       ],
       "javaCompliance" : "8+",
-      "checkstyleVersion" : "8.8",
+      "checkstyleVersion" : "8.36.1",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle,SimpleLanguage",
     },
@@ -705,7 +776,7 @@ suite = {
         "TRUFFLE_API",
       ],
       "javaCompliance" : "8+",
-      "checkstyleVersion" : "8.8",
+      "checkstyleVersion" : "8.36.1",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle,SimpleLanguage",
     },
@@ -718,7 +789,7 @@ suite = {
         "com.oracle.truffle.st"
       ],
       "javaCompliance" : "8+",
-      "checkstyleVersion" : "8.8",
+      "checkstyleVersion" : "8.36.1",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle,SimpleLanguage",
       "testProject" : True,
@@ -784,13 +855,14 @@ suite = {
           "static java.desktop",
           "jdk.unsupported", # sun.misc.Unsafe
           "java.logging",
-          "java.management"
+          "java.management",
+          "java.sql" # java.sql.date java.sql.Time
         ],
         "exports" : [
           # Qualified exports
-          "com.oracle.truffle.api* to jdk.internal.vm.compiler, com.oracle.graal.graal_enterprise",
+          "com.oracle.truffle.api* to com.oracle.truffle.regex, jdk.internal.vm.compiler, com.oracle.graal.graal_enterprise",
           "com.oracle.truffle.api.impl to org.graalvm.locator",
-          "com.oracle.truffle.api to org.graalvm.locator",
+          "com.oracle.truffle.api to org.graalvm.locator, com.oracle.truffle.truffle_nfi, org.graalvm.nativeimage.builder",
           "com.oracle.truffle.object to jdk.internal.vm.compiler, com.oracle.graal.graal_enterprise",
         ],
         "uses" : [
@@ -799,7 +871,8 @@ suite = {
           "com.oracle.truffle.api.impl.TruffleLocator",
           "com.oracle.truffle.api.TruffleLanguage.Provider",
           "com.oracle.truffle.api.instrumentation.TruffleInstrument.Provider",
-          "com.oracle.truffle.api.library.DefaultExportProvider"
+          "com.oracle.truffle.api.library.DefaultExportProvider",
+          "com.oracle.truffle.api.library.EagerExportProvider"
         ],
       },
       "moduleInfo:open" : {
@@ -841,6 +914,7 @@ suite = {
         "com.oracle.truffle.object",
         "com.oracle.truffle.api.object.dsl",
         "com.oracle.truffle.polyglot",
+        "com.oracle.truffle.host",
       ],
       "distDependencies" : [
         "sdk:GRAAL_SDK"
@@ -857,11 +931,9 @@ suite = {
       # This distribution defines a module.
       "moduleInfo" : {
         "name" : "com.oracle.truffle.truffle_nfi",
-        "requiresConcealed" : {
-          "org.graalvm.truffle" : [
-            "com.oracle.truffle.api"
-          ],
-        }
+        "requires" : [
+          "org.graalvm.truffle",
+        ]
       },
       "subDir" : "src",
       "javaCompliance" : "8+",
@@ -872,10 +944,33 @@ suite = {
         "TRUFFLE_API",
         "TRUFFLE_NFI_NATIVE",
       ],
+      "description" : """Native function interface for the Truffle framework.""",
+      "allowsJavadocWarnings": True,
+    },
+
+    "TRUFFLE_NFI_LIBFFI" : {
+      # This distribution defines a module.
+      "moduleInfo" : {
+        "name" : "com.oracle.truffle.truffle_nfi_libffi",
+        "requiresConcealed" : {
+          "org.graalvm.truffle" : [
+            "com.oracle.truffle.api"
+          ],
+        }
+      },
+      "subDir" : "src",
+      "javaCompliance" : "8+",
+      "dependencies" : [
+        "com.oracle.truffle.nfi.backend.libffi",
+      ],
+      "distDependencies" : [
+        "TRUFFLE_NFI",
+        "TRUFFLE_NFI_NATIVE",
+      ],
       "javaProperties" : {
           "truffle.nfi.library" : "<path:TRUFFLE_NFI_NATIVE>/bin/<lib:trufflenfi>"
       },
-      "description" : """Native function interface for the Truffle framework.""",
+      "description" : """Implementation of the Truffle NFI using libffi.""",
       "allowsJavadocWarnings": True,
     },
 
@@ -892,7 +987,7 @@ suite = {
         "include/" : "dependency:com.oracle.truffle.nfi.native/include/*.h",
       },
       "include_dirs" : ["include"],
-      "description" : "Contains the native library needed by truffle-nfi.",
+      "description" : "Contains the NFI headers, and the native library needed by the libffi NFI backend.",
       "maven": True,
     },
 
@@ -1084,6 +1179,7 @@ suite = {
          "TRUFFLE_TCK_COMMON",
          "TRUFFLE_TCK_TESTS",
          "TRUFFLE_NFI",
+         "TRUFFLE_NFI_LIBFFI",
          "TRUFFLE_DSL_PROCESSOR",
          "TRUFFLE_TEST_NATIVE",
          "TRUFFLE_TCK",
@@ -1097,6 +1193,7 @@ suite = {
        "output" : "<mxbuild>/truffle-test-native",
        "dependencies" : [
          "com.oracle.truffle.nfi.test.native",
+         "com.oracle.truffle.nfi.test.native.isolation",
        ],
        "testDistribution" : True,
       "maven" : False,
@@ -1115,7 +1212,7 @@ suite = {
       "native" : True,
       "description" : "Truffle NFI support distribution for the GraalVM",
       "layout" : {
-        "native-image.properties" : "file:mx.truffle/language-nfi.properties",
+        "./include/" : ["dependency:com.oracle.truffle.nfi.native/include/*.h"],
       },
       "maven" : False,
     },
@@ -1126,16 +1223,6 @@ suite = {
       "description" : "Truffle NFI support distribution for the GraalVM",
       "layout" : {
         "./" : ["dependency:com.oracle.truffle.nfi.native"],
-      },
-      "maven" : False,
-    },
-
-    "TRUFFLE_NFI_GRAALVM_HEADERS_SUPPORT" : {
-      "native" : True,
-      "platformDependent" : True,
-      "description" : "Truffle NFI support distribution for the GraalVM",
-      "layout" : {
-        "./" : ["dependency:com.oracle.truffle.nfi.native/include/*.h"],
       },
       "maven" : False,
     },

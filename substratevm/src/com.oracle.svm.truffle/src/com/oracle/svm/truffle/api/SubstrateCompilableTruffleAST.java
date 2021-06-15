@@ -25,12 +25,21 @@
 package com.oracle.svm.truffle.api;
 
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
-import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
+import com.oracle.svm.graal.meta.SubstrateCodeCacheProvider;
 
 import jdk.vm.ci.code.InstalledCode;
 
-public interface SubstrateCompilableTruffleAST extends CompilableTruffleAST, OptimizedAssumptionDependency.Access, SubstrateInstalledCode.Access {
-    InstalledCode createInstalledCode();
+public interface SubstrateCompilableTruffleAST extends CompilableTruffleAST, SubstrateInstalledCode.Factory {
+    /**
+     * Create a provisional {@link InstalledCode} object for code installation, as required by
+     * infrastructure, but this object does not need to be the same {@link SubstrateInstalledCode}
+     * object that is eventually installed in the code cache. Once the provisional object is passed
+     * to {@link SubstrateCodeCacheProvider}, it creates the final {@link SubstrateInstalledCode}
+     * object and invokes {@link SubstrateInstalledCode#setAddress} on it.
+     *
+     * @see SubstrateCodeCacheProvider
+     */
+    InstalledCode createPreliminaryInstalledCode();
 }

@@ -1316,8 +1316,8 @@ public class FileSystemsTest {
                 if (cfg.isInternal()) {
                     Assert.assertTrue(e instanceof NullPointerException);
                 } else {
-                    Assert.assertTrue(TestAPIAccessor.engineAccess().isHostException(e));
-                    Assert.assertTrue(TestAPIAccessor.engineAccess().asHostException(e) instanceof NullPointerException);
+                    Assert.assertTrue(env.isHostException(e));
+                    Assert.assertTrue(env.asHostException(e) instanceof NullPointerException);
                 }
             }
         };

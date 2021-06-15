@@ -24,17 +24,32 @@
  */
 package com.oracle.svm.core.posix.linux;
 
+import com.oracle.svm.core.c.libc.LibCBase;
+import com.oracle.svm.core.posix.linux.libc.BionicLibC;
+import com.oracle.svm.core.posix.linux.libc.LibCFeature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.CErrorNumber.CErrorNumberSupport;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 
+import java.util.Collections;
+import java.util.List;
+
 @AutomaticFeature
 class LinuxImageSingletonsFeature implements Feature {
 
     @Override
+    public List<Class<? extends Feature>> getRequiredFeatures() {
+        return Collections.singletonList(LibCFeature.class);
+    }
+
+    @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(CErrorNumberSupport.class, new LinuxCErrorNumberSupport());
+        if (LibCBase.singleton() instanceof BionicLibC) {
+            ImageSingletons.add(CErrorNumberSupport.class, new BionicCErrorNumberSupport());
+        } else {
+            ImageSingletons.add(CErrorNumberSupport.class, new LinuxCErrorNumberSupport());
+        }
     }
 }

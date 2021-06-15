@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,31 +40,33 @@
  */
 package com.oracle.truffle.nfi;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.nodes.LanguageInfo;
-import com.oracle.truffle.nfi.spi.NFIBackend;
-import com.oracle.truffle.nfi.spi.NFIBackendFactory;
-import com.oracle.truffle.nfi.spi.NFIBackendTools;
+import com.oracle.truffle.nfi.backend.spi.NFIBackend;
+import com.oracle.truffle.nfi.backend.spi.NFIBackendFactory;
+import com.oracle.truffle.nfi.backend.spi.NFIBackendTools;
 
 final class NFIContext {
 
-    private static final NFIBackendTools TOOLS = new NFIBackendTools() {
+    private static final class NFIBackendToolsImpl extends NFIBackendTools {
+
+        private final String backend;
+
+        NFIBackendToolsImpl(String backend) {
+            this.backend = backend.intern();
+        }
 
         @Override
         public Object createBindableSymbol(Object symbol) {
-            return NFISymbol.createBindable(symbol);
+            return NFISymbol.createBindable(backend, symbol);
         }
-
-        @Override
-        public Object createBoundSymbol(Object symbol, Object signature) {
-            return NFISymbol.createBound(symbol, signature);
-        }
-    };
+    }
 
     Env env;
-    final EconomicMap<String, NFIBackend> backendCache = EconomicMap.create();
+    final EconomicMap<String, API> apiCache = EconomicMap.create();
 
     NFIContext(Env env) {
         this.env = env;
@@ -72,17 +74,22 @@ final class NFIContext {
 
     void patch(Env newEnv) {
         this.env = newEnv;
-        this.backendCache.clear();
+        this.apiCache.clear();
     }
 
     NFIBackend getBackend(String id) {
-        NFIBackend ret = backendCache.get(id);
+        return getAPI(id).backend;
+    }
+
+    @TruffleBoundary
+    API getAPI(String backendId) {
+        API ret = apiCache.get(backendId);
         if (ret != null) {
             return ret;
         }
 
-        synchronized (backendCache) {
-            ret = backendCache.get(id);
+        synchronized (apiCache) {
+            ret = apiCache.get(backendId);
             if (ret != null) {
                 return ret;
             }
@@ -93,13 +100,14 @@ final class NFIContext {
                 }
 
                 NFIBackendFactory backendFactory = env.lookup(language, NFIBackendFactory.class);
-                if (backendFactory != null && backendFactory.getBackendId().equals(id)) {
+                if (backendFactory != null && backendFactory.getBackendId().equals(backendId)) {
                     // force initialization of the backend language
                     env.initializeLanguage(language);
 
-                    NFIBackend backend = backendFactory.createBackend(TOOLS);
-                    backendCache.put(backendFactory.getBackendId(), backend);
-                    return backend;
+                    NFIBackend backend = backendFactory.createBackend(new NFIBackendToolsImpl(backendId));
+                    API api = new API(backendId, backend);
+                    apiCache.put(backendFactory.getBackendId(), api);
+                    return api;
                 }
             }
         }

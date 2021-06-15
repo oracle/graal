@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,7 +34,7 @@ import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.services.Services;
 
 /**
- * JDK 15 version of {@code HotSpotGraalServices}.
+ * JDK 15+ version of {@code HotSpotGraalServices}.
  */
 public class HotSpotGraalServices {
 
@@ -56,9 +56,9 @@ public class HotSpotGraalServices {
         return impl == null ? null : new CompilationContext(impl);
     }
 
-    public static void exit(int status) {
+    public static void exit(int status, HotSpotJVMCIRuntime runtime) {
         if (Services.IS_IN_NATIVE_IMAGE) {
-            HotSpotJVMCIRuntime.runtime().exitHotSpot(status);
+            runtime.exitHotSpot(status);
         } else {
             System.exit(status);
         }

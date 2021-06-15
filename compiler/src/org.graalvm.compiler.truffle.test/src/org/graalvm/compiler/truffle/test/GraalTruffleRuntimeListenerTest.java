@@ -355,7 +355,7 @@ public final class GraalTruffleRuntimeListenerTest extends TestWithPolyglotOptio
         }
 
         @Override
-        public void onCompilationQueued(OptimizedCallTarget target) {
+        public void onCompilationQueued(OptimizedCallTarget target, int tier) {
             if (isImportant(target)) {
                 if (!initialCallTarget.equals(target)) {
                     waitForInitialTarget();
@@ -366,14 +366,14 @@ public final class GraalTruffleRuntimeListenerTest extends TestWithPolyglotOptio
         }
 
         @Override
-        public void onCompilationDequeued(OptimizedCallTarget target, Object source, CharSequence reason) {
+        public void onCompilationDequeued(OptimizedCallTarget target, Object source, CharSequence reason, int tier) {
             if (isImportant(target)) {
                 events.add(EventType.DEQUEUED);
             }
         }
 
         @Override
-        public void onCompilationStarted(OptimizedCallTarget target) {
+        public void onCompilationStarted(OptimizedCallTarget target, int tier) {
             if (isImportant(target)) {
                 waitForInitialTarget();
                 events.add(EventType.COMPILATION_STARTED);
@@ -396,14 +396,14 @@ public final class GraalTruffleRuntimeListenerTest extends TestWithPolyglotOptio
 
         @Override
         public void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, TruffleCompilerListener.GraphInfo graph,
-                        TruffleCompilerListener.CompilationResultInfo result) {
+                        TruffleCompilerListener.CompilationResultInfo result, int tier) {
             if (isImportant(target)) {
                 events.add(EventType.COMPILATION_SUCCESS);
             }
         }
 
         @Override
-        public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout) {
+        public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout, int tier) {
             if ((isImportant(target))) {
                 events.add(EventType.COMPILATION_FAILURE);
             }

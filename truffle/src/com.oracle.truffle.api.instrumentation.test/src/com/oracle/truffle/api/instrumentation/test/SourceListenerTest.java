@@ -40,11 +40,14 @@
  */
 package com.oracle.truffle.api.instrumentation.test;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
@@ -53,6 +56,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -70,8 +74,10 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventBinding;
+import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecuteSourceEvent;
 import com.oracle.truffle.api.instrumentation.ExecuteSourceListener;
+import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.LoadSourceEvent;
@@ -82,6 +88,7 @@ import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.SourceFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.IndexRange;
+import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
@@ -91,6 +98,23 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
 public class SourceListenerTest extends AbstractInstrumentationTest {
+
+    private static final ExecutionEventListener EMPTY_EXECUTION_EVENT_LISTENER = new ExecutionEventListener() {
+        @Override
+        public void onEnter(EventContext c, VirtualFrame frame) {
+
+        }
+
+        @Override
+        public void onReturnValue(EventContext c, VirtualFrame frame, Object result) {
+
+        }
+
+        @Override
+        public void onReturnExceptional(EventContext c, VirtualFrame frame, Throwable exception) {
+
+        }
+    };
 
     @BeforeClass
     public static void beforeClass() {
@@ -128,19 +152,18 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
     }
 
     private void testLoadExecuteSourceImpl(boolean load, int runTimes) throws IOException {
-        int initialQueryCount = InstrumentationTestLanguage.getRootSourceSectionQueryCount();
-
         Instrument instrument = context.getEngine().getInstruments().get("testLoadExecuteSource");
+        TestLoadExecuteSource impl = instrument.lookup(TestLoadExecuteSource.class);
+        assertTrue("Lookup of registered service enables the instrument", isCreated(instrument));
+        impl.createBindings();
         Source source1 = lines("STATEMENT(EXPRESSION, EXPRESSION)");
         // running the same source multiple times should not have any effect on the test result.
         for (int i = 0; i < runTimes; i++) {
             run(source1);
         }
 
-        Assert.assertEquals("unexpected getSourceSection calls without source listeners", initialQueryCount, InstrumentationTestLanguage.getRootSourceSectionQueryCount());
+        impl.assertAllEvents();
 
-        TestLoadExecuteSource impl = instrument.lookup(TestLoadExecuteSource.class);
-        assertTrue("Lookup of registered service enables the instrument", isCreated(instrument));
         if (load) {
             impl.attachLoad();
         } else {
@@ -153,10 +176,8 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
             run(source2);
         }
 
-        Assert.assertNotEquals("expecting getSourceSection calls because of source listeners", initialQueryCount, InstrumentationTestLanguage.getRootSourceSectionQueryCount());
-
-        assertEvents(impl.onlyNewEvents, source2);
-        assertEvents(impl.allEvents, source1, source2);
+        impl.assertOnlyNewEvents(source2);
+        impl.assertAllEvents(source1, source2);
 
         // Load an internal source
         Source source3 = Source.newBuilder(InstrumentationTestLanguage.ID, "STATEMENT", "test").internal(true).build();
@@ -164,9 +185,9 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
             run(source3);
         }
 
-        assertEvents(impl.onlyNewEvents, source2, source3);
-        assertEvents(impl.allEvents, source1, source2, source3);
-        assertEvents(impl.allNotInternalEvents, source1, source2);
+        impl.assertOnlyNewEvents(source2, source3);
+        impl.assertAllEvents(source1, source2, source3);
+        impl.assertAllNotInternalEvents(source1, source2);
 
         // Disable the instrument by closing the engine.
         teardown();
@@ -177,11 +198,12 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
             run(source4);
         }
 
-        assertEvents(impl.onlyNewEvents, source2, source3);
-        assertEvents(impl.allEvents, source1, source2, source3);
+        impl.assertOnlyNewEvents(source2, source3);
+        impl.assertAllEvents(source1, source2, source3);
 
         instrument = engine.getInstruments().get("testLoadExecuteSource");
         impl = instrument.lookup(TestLoadExecuteSource.class);
+        impl.createBindings();
         if (load) {
             impl.attachLoad();
         } else {
@@ -189,17 +211,17 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
         }
 
         assertEvents(impl.onlyNewEvents);
-        assertEvents(impl.allEvents, source4);
+        impl.assertAllEvents(source4);
     }
 
     private static void assertEvents(List<com.oracle.truffle.api.source.Source> actualSources) {
         Assert.assertEquals(0, actualSources.size());
     }
 
-    private void assertEvents(List<com.oracle.truffle.api.source.Source> actualSources, Source... expectedSources) {
+    private static void assertEvents(List<com.oracle.truffle.api.source.Source> actualSources, Source... expectedSources) {
         Assert.assertEquals(expectedSources.length, actualSources.size());
         for (int i = 0; i < expectedSources.length; i++) {
-            Assert.assertEquals("index " + i, getSourceImpl(expectedSources[i]), actualSources.get(i));
+            Assert.assertEquals("index " + i, sourceToImpl(expectedSources[i]), actualSources.get(i));
         }
     }
 
@@ -213,9 +235,59 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
     @Registration(id = "testLoadExecuteSource", services = SourceListenerTest.TestLoadExecuteSource.class)
     public static class TestLoadExecuteSource extends TruffleInstrument {
         private Env env;
-        List<com.oracle.truffle.api.source.Source> onlyNewEvents = new ArrayList<>();
-        List<com.oracle.truffle.api.source.Source> allEvents = new ArrayList<>();
-        List<com.oracle.truffle.api.source.Source> allNotInternalEvents = new ArrayList<>();
+        private List<com.oracle.truffle.api.source.Source> onlyNewEvents = new ArrayList<>();
+        private List<com.oracle.truffle.api.source.Source> allEvents = new ArrayList<>();
+        private List<com.oracle.truffle.api.source.Source> allNotInternalEvents = new ArrayList<>();
+        private final List<EventBinding<?>> createdBindings = new ArrayList<>();
+        private List<com.oracle.truffle.api.source.Source> onlyNewEvents2 = new ArrayList<>();
+        private List<com.oracle.truffle.api.source.Source> allEvents2 = new ArrayList<>();
+        private List<com.oracle.truffle.api.source.Source> allNotInternalEvents2 = new ArrayList<>();
+
+        void createBindings() {
+            // 3 load bindings
+            createdBindings.add(env.getInstrumenter().createLoadSourceBinding(SourceFilter.ANY, new LoadSourceListener() {
+                @Override
+                public void onLoad(LoadSourceEvent event) {
+                    onlyNewEvents2.add(event.getSource());
+                }
+            }, false));
+
+            createdBindings.add(env.getInstrumenter().createLoadSourceBinding(SourceFilter.ANY, new LoadSourceListener() {
+                @Override
+                public void onLoad(LoadSourceEvent event) {
+                    allEvents2.add(event.getSource());
+                }
+            }, true));
+
+            createdBindings.add(env.getInstrumenter().createLoadSourceBinding(SourceFilter.newBuilder().includeInternal(false).build(), new LoadSourceListener() {
+                @Override
+                public void onLoad(LoadSourceEvent event) {
+                    allNotInternalEvents2.add(event.getSource());
+                }
+            }, true));
+
+            // 3 execute bindings
+            createdBindings.add(env.getInstrumenter().createExecuteSourceBinding(SourceFilter.ANY, new ExecuteSourceListener() {
+                @Override
+                public void onExecute(ExecuteSourceEvent event) {
+                    onlyNewEvents2.add(event.getSource());
+                }
+            }, false));
+
+            createdBindings.add(env.getInstrumenter().createExecuteSourceBinding(SourceFilter.ANY, new ExecuteSourceListener() {
+                @Override
+                public void onExecute(ExecuteSourceEvent event) {
+                    allEvents2.add(event.getSource());
+                }
+            }, true));
+
+            createdBindings.add(env.getInstrumenter().createExecuteSourceBinding(SourceFilter.newBuilder().includeInternal(false).build(), new ExecuteSourceListener() {
+                @Override
+                public void onExecute(ExecuteSourceEvent event) {
+                    allNotInternalEvents2.add(event.getSource());
+                }
+            }, true));
+        }
 
         void attachLoad() {
             env.getInstrumenter().attachLoadSourceListener(SourceFilter.ANY, new LoadSourceListener() {
@@ -238,6 +310,11 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
                     allNotInternalEvents.add(event.getSource());
                 }
             }, true);
+
+            // Attach the first 3 load bindings
+            for (int i = 0; i < 3; i++) {
+                createdBindings.get(i).attach();
+            }
         }
 
         void attachExecute() {
@@ -261,6 +338,36 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
                     allNotInternalEvents.add(event.getSource());
                 }
             }, true);
+
+            // Attach the last 3 execute bindings
+            for (int i = 3; i < 6; i++) {
+                createdBindings.get(i).attach();
+            }
+        }
+
+        void assertOnlyNewEvents(Source... expectedSources) {
+            assertEvents(onlyNewEvents, expectedSources);
+            assertEvents(onlyNewEvents2, expectedSources);
+        }
+
+        void assertAllEvents() {
+            assertEvents(allEvents);
+            assertEvents(allEvents2);
+        }
+
+        void assertAllEvents(Source... expectedSources) {
+            assertEvents(allEvents, expectedSources);
+            assertEvents(allEvents2, expectedSources);
+        }
+
+        void assertAllEvents(com.oracle.truffle.api.source.Source... expectedSources) {
+            assertEvents(allEvents, expectedSources);
+            assertEvents(allEvents2, expectedSources);
+        }
+
+        void assertAllNotInternalEvents(Source... expectedSources) {
+            assertEvents(allNotInternalEvents, expectedSources);
+            assertEvents(allNotInternalEvents2, expectedSources);
         }
 
         @Override
@@ -374,6 +481,7 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
         context.initialize(InstrumentationTestLanguage.ID);
         Instrument instrument = engine.getInstruments().get("testLoadExecuteSource");
         TestLoadExecuteSource impl = instrument.lookup(TestLoadExecuteSource.class);
+        impl.createBindings();
         impl.attachLoad();
         testNoRootSectionImpl(impl);
     }
@@ -383,6 +491,7 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
         context.initialize(InstrumentationTestLanguage.ID);
         Instrument instrument = engine.getInstruments().get("testLoadExecuteSource");
         TestLoadExecuteSource impl = instrument.lookup(TestLoadExecuteSource.class);
+        impl.createBindings();
         impl.attachExecute();
         testNoRootSectionImpl(impl);
     }
@@ -393,16 +502,16 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
         com.oracle.truffle.api.source.Source source3 = com.oracle.truffle.api.source.Source.newBuilder("", "line5\nline6", null).name("NoName3").build();
         Node node1 = new SourceSectionFilterTest.SourceSectionNode(source1.createSection(1));
         RootNode rootA = SourceSectionFilterTest.createRootNode(null, Boolean.FALSE, node1);
-        assertEvents(impl.allEvents);
+        impl.assertAllEvents();
         Truffle.getRuntime().createCallTarget(rootA).call();
-        assertEvents(impl.allEvents, source1);
+        impl.assertAllEvents(source1);
 
         Node node2 = new SourceSectionFilterTest.SourceSectionNode(source2.createSection(2));
         Node node3 = new SourceSectionFilterTest.SourceSectionNode(source3.createSection(2));
         RootNode rootB = SourceSectionFilterTest.createRootNode(null, Boolean.FALSE, node2, node3);
-        assertEvents(impl.allEvents, source1);
+        impl.assertAllEvents(source1);
         Truffle.getRuntime().createCallTarget(rootB).call();
-        assertEvents(impl.allEvents, source1, source2, source3);
+        impl.assertAllEvents(source1, source2, source3);
     }
 
     @Test
@@ -544,6 +653,74 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
     }
 
     @Test
+    public void testLoadBindingEarlyDisposal() throws Exception {
+        testBindingEarlyDisposalImpl(true);
+    }
+
+    @Test
+    public void testExecuteBindingEarlyDisposal() throws Exception {
+        testBindingEarlyDisposalImpl(false);
+    }
+
+    private void testBindingEarlyDisposalImpl(boolean load) throws Exception {
+        context.initialize(InstrumentationTestLanguage.ID);
+        Instrument instrument = engine.getInstruments().get("testBindingEarlyDisposal");
+        TestBindingEarlyDisposal impl = instrument.lookup(TestBindingEarlyDisposal.class);
+        impl.createBindings(load, source -> {
+            assertEquals("STATEMENT\n", source.getCharacters());
+            impl.allBinding.dispose();
+        });
+        Source source1 = lines("STATEMENT");
+        Source source2 = lines("EXPRESSION");
+        Source source3 = lines("EXPRESSION(EXPRESSION)");
+        run(source1);
+        run(source2);
+        run(source3);
+        assertFalse(impl.allBinding.isAttached());
+        assertFalse(impl.allBinding.isDisposed());
+        impl.doAttach();
+        assertTrue(impl.allBinding.isDisposed());
+        assertFalse(impl.allBinding.isAttached());
+    }
+
+    @Registration(id = "testBindingEarlyDisposal", services = SourceListenerTest.TestBindingEarlyDisposal.class)
+    public static class TestBindingEarlyDisposal extends TruffleInstrument {
+
+        private Env env;
+        EventBinding<?> allBinding;
+
+        void createBindings(boolean load, Consumer<com.oracle.truffle.api.source.Source> sourceConsumer) {
+            if (load) {
+                allBinding = env.getInstrumenter().createLoadSourceBinding(SourceFilter.ANY, new LoadSourceListener() {
+                    @Override
+                    public void onLoad(LoadSourceEvent event) {
+                        sourceConsumer.accept(event.getSource());
+                    }
+                }, true);
+            } else {
+                allBinding = env.getInstrumenter().createExecuteSourceBinding(SourceFilter.ANY, new ExecuteSourceListener() {
+                    @Override
+                    public void onExecute(ExecuteSourceEvent event) {
+                        sourceConsumer.accept(event.getSource());
+                    }
+                }, true);
+            }
+        }
+
+        void doAttach() {
+            allBinding.attach();
+        }
+
+        @Override
+        @SuppressWarnings("hiding")
+        protected void onCreate(Env env) {
+            this.env = env;
+            env.registerService(this);
+        }
+
+    }
+
+    @Test
     public void testMultiThreadedLoadSource() throws InterruptedException, ExecutionException {
         testMultiThreadedSourceBindings(true);
     }
@@ -612,17 +789,24 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
             f.get();
         }
 
+        List<String> previousNamesUnsorted = null;
         for (int i = 0; i < numInstrumentationThreads; i++) {
             List<com.oracle.truffle.api.source.Source> sourceList = instrumentationRunnables[i].sources;
             Assert.assertEquals("Instrument " + i + " : " + sourceList.toString(), numExecutionThreads, sourceList.size());
-            Set<String> names = new TreeSet<>();
+            Set<String> namesSorted = new TreeSet<>();
+            List<String> namesUnsorted = new ArrayList<>();
             for (int t = 0; t < numExecutionThreads; t++) {
-                names.add(sourceList.get(t).getName());
+                namesSorted.add(sourceList.get(t).getName());
+                namesUnsorted.add(sourceList.get(t).getName());
+            }
+            if (previousNamesUnsorted != null) {
+                assertEquals(previousNamesUnsorted, namesUnsorted);
             }
             int t = 0;
-            for (String name : names) {
-                Assert.assertEquals(names.toString(), sourceName(t++, sourceNumDigits), name);
+            for (String name : namesSorted) {
+                Assert.assertEquals(namesSorted.toString(), sourceName(t++, sourceNumDigits), name);
             }
+            previousNamesUnsorted = namesUnsorted;
         }
     }
 
@@ -814,12 +998,108 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
     }
 
     @Test
+    public void testMaterializedSourcesInAST2() {
+        setupEnv(Context.create(), new MultiSourceASTLanguage());
+        String code = "Mabcd";
+        StringBuilder loadedCode = new StringBuilder();
+        instrumentEnv.getInstrumenter().attachLoadSourceListener(SourceFilter.ANY, s -> loadedCode.append(s.getSource().getCharacters()), true);
+        context.eval(Source.create(ProxyLanguage.ID, code));
+        // Not materialized yet:
+        Assert.assertEquals(code + "M", loadedCode.toString());
+        // Force materialization:
+        instrumentEnv.getInstrumenter().visitLoadedSourceSections(SourceSectionFilter.ANY, e -> {
+        });
+        Assert.assertEquals(code + code, loadedCode.toString());
+    }
+
+    @Test
+    public void testMaterializedSourcesInAST3() {
+        setupEnv(Context.create(), new MultiSourceASTLanguage());
+        String code = "Mabcd";
+        StringBuilder loadedCode = new StringBuilder();
+        instrumentEnv.getInstrumenter().attachLoadSourceListener(SourceFilter.ANY, s -> loadedCode.append(s.getSource().getCharacters()), true);
+        context.eval(Source.create(ProxyLanguage.ID, code));
+        // Not materialized yet:
+        Assert.assertEquals(code + "M", loadedCode.toString());
+        // Force materialization:
+        attachAnySourceSectionExecutionEventListener();
+        Assert.assertEquals(code + code, loadedCode.toString());
+    }
+
+    private void attachAnySourceSectionExecutionEventListener() {
+        instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.ANY, EMPTY_EXECUTION_EVENT_LISTENER);
+    }
+
+    @Test
+    public void testMaterializedSourcesInAST4() {
+        setupEnv(Context.create(), new MultiSourceASTLanguage());
+        String code = "MRabcd";
+        StringBuilder loadedCode = new StringBuilder();
+        // Expression tag does not trigger materialization
+        Set<com.oracle.truffle.api.source.Source> sources = new HashSet<>();
+        instrumentEnv.getInstrumenter().attachLoadSourceSectionListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.ExpressionTag.class).build(), e -> {
+            com.oracle.truffle.api.source.Source s = e.getSourceSection().getSource();
+            if (sources.add(s)) {
+                loadedCode.append(s.getCharacters());
+            }
+        }, true);
+        context.eval(Source.create(ProxyLanguage.ID, code));
+        // Not materialized yet:
+        Assert.assertEquals(code, loadedCode.toString());
+        // Force materialization:
+        instrumentEnv.getInstrumenter().attachLoadSourceSectionListener(SourceSectionFilter.ANY, e -> {
+        }, true);
+        Assert.assertEquals(code + code.substring(2), loadedCode.toString());
+    }
+
+    @Test
+    public void testMaterializedSourcesInAST5() {
+        setupEnv(Context.create(), new MultiSourceASTLanguage());
+        String code = "MRabcd";
+        StringBuilder loadedCode = new StringBuilder();
+        // Expression tag does not trigger materialization
+        Set<com.oracle.truffle.api.source.Source> sources = new HashSet<>();
+        instrumentEnv.getInstrumenter().attachLoadSourceSectionListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.ExpressionTag.class).build(), e -> {
+            com.oracle.truffle.api.source.Source s = e.getSourceSection().getSource();
+            if (sources.add(s)) {
+                loadedCode.append(s.getCharacters());
+            }
+        }, true);
+        context.eval(Source.create(ProxyLanguage.ID, code));
+        // Not materialized yet:
+        Assert.assertEquals(code, loadedCode.toString());
+        // Force materialization:
+        instrumentEnv.getInstrumenter().visitLoadedSourceSections(SourceSectionFilter.ANY, e -> {
+        });
+        Assert.assertEquals(code + code.substring(2), loadedCode.toString());
+    }
+
+    @Test
+    public void testMaterializedSourcesInAST6() {
+        setupEnv(Context.create(), new MultiSourceASTLanguage());
+        String code = "MRabcd";
+        StringBuilder loadedCode = new StringBuilder();
+        // Expression tag does not trigger materialization
+        Set<com.oracle.truffle.api.source.Source> sources = new HashSet<>();
+        instrumentEnv.getInstrumenter().attachLoadSourceSectionListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.ExpressionTag.class).build(), e -> {
+            com.oracle.truffle.api.source.Source s = e.getSourceSection().getSource();
+            if (sources.add(s)) {
+                loadedCode.append(s.getCharacters());
+            }
+        }, true);
+        context.eval(Source.create(ProxyLanguage.ID, code));
+        // Not materialized yet:
+        Assert.assertEquals(code, loadedCode.toString());
+        // Force materialization:
+        attachAnySourceSectionExecutionEventListener();
+        Assert.assertEquals(code + code.substring(2), loadedCode.toString());
+    }
+
+    @Test
     public void testMaterializedSourcesExecutedInAST() {
         setupEnv(Context.create(), new MultiSourceASTLanguage());
         String code = "MRabcd";
         StringBuilder loadedCode = new StringBuilder();
-        instrumentEnv.getInstrumenter().attachLoadSourceListener(SourceFilter.ANY, s -> {
-        }, true);
         context.eval(Source.create(ProxyLanguage.ID, code));
         instrumentEnv.getInstrumenter().attachExecuteSourceListener(SourceFilter.ANY, s -> loadedCode.append(s.getSource().getCharacters()), true);
         // Not materialized yet:
@@ -828,6 +1108,144 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
         instrumentEnv.getInstrumenter().attachLoadSourceSectionListener(SourceSectionFilter.ANY, e -> {
         }, true);
         Assert.assertEquals(code + code.substring(2), loadedCode.toString());
+    }
+
+    @Test
+    public void testMaterializedSourcesExecutedInAST2() {
+        setupEnv(Context.create(), new MultiSourceASTLanguage());
+        String code = "MRabcd";
+        StringBuilder loadedCode = new StringBuilder();
+        context.eval(Source.create(ProxyLanguage.ID, code));
+        instrumentEnv.getInstrumenter().attachExecuteSourceListener(SourceFilter.ANY, s -> loadedCode.append(s.getSource().getCharacters()), true);
+        // Not materialized yet:
+        Assert.assertEquals(code, loadedCode.toString());
+        // Force materialization:
+        instrumentEnv.getInstrumenter().visitLoadedSourceSections(SourceSectionFilter.ANY, e -> {
+        });
+        Assert.assertEquals(code + code.substring(2), loadedCode.toString());
+    }
+
+    @Test
+    public void testMaterializedSourcesExecutedInAST3() {
+        setupEnv(Context.create(), new MultiSourceASTLanguage());
+        String code = "MRabcd";
+        StringBuilder loadedCode = new StringBuilder();
+        context.eval(Source.create(ProxyLanguage.ID, code));
+        instrumentEnv.getInstrumenter().attachExecuteSourceListener(SourceFilter.ANY, s -> loadedCode.append(s.getSource().getCharacters()), true);
+        // Not materialized yet:
+        Assert.assertEquals(code, loadedCode.toString());
+        // Force materialization:
+        attachAnySourceSectionExecutionEventListener();
+        Assert.assertEquals(code + code.substring(2), loadedCode.toString());
+    }
+
+    @Test
+    public void testMaterializedSourcesExecutedInAST4() {
+        setupEnv(Context.create(), new MultiSourceASTLanguage());
+        String code = "MRabcd";
+        StringBuilder loadedCode = new StringBuilder();
+        Source source = Source.create(ProxyLanguage.ID, code);
+        // Expression tag does not trigger materialization
+        attachExpressionTagExecutionEventListener(loadedCode);
+        context.eval(source);
+        // Not materialized yet:
+        Assert.assertEquals(code, loadedCode.toString());
+        // Force materialization:
+        instrumentEnv.getInstrumenter().visitLoadedSourceSections(SourceSectionFilter.ANY, e -> {
+        });
+        context.eval(source);
+        Assert.assertEquals(code + code.substring(2), loadedCode.toString());
+    }
+
+    private void attachExpressionTagExecutionEventListener(StringBuilder loadedCode) {
+        Set<com.oracle.truffle.api.source.Source> sources = new HashSet<>();
+        instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.ExpressionTag.class).build(), new ExecutionEventListener() {
+            @Override
+            public void onEnter(EventContext c, VirtualFrame frame) {
+                com.oracle.truffle.api.source.Source s = c.getInstrumentedSourceSection().getSource();
+                if (sources.add(s)) {
+                    loadedCode.append(s.getCharacters());
+                }
+            }
+
+            @Override
+            public void onReturnValue(EventContext c, VirtualFrame frame, Object result) {
+
+            }
+
+            @Override
+            public void onReturnExceptional(EventContext c, VirtualFrame frame, Throwable exception) {
+
+            }
+        });
+    }
+
+    @Test
+    public void testMaterializedSourcesExecutedInAST5() {
+        setupEnv(Context.create(), new MultiSourceASTLanguage());
+        String code = "MRabcd";
+        StringBuilder loadedCode = new StringBuilder();
+        Source source = Source.create(ProxyLanguage.ID, code);
+        // Expression tag does not trigger materialization
+        attachExpressionTagExecutionEventListener(loadedCode);
+        context.eval(source);
+        // Not materialized yet:
+        Assert.assertEquals(code, loadedCode.toString());
+        // Force materialization:
+        instrumentEnv.getInstrumenter().attachLoadSourceSectionListener(SourceSectionFilter.ANY, e -> {
+        }, true);
+        context.eval(source);
+        Assert.assertEquals(code + code.substring(2), loadedCode.toString());
+    }
+
+    @Test
+    public void testMaterializedSourcesExecutedInAST6() {
+        setupEnv(Context.create(), new MultiSourceASTLanguage());
+        String code = "MRabcd";
+        StringBuilder loadedCode = new StringBuilder();
+        Source source = Source.create(ProxyLanguage.ID, code);
+        // Expression tag does not trigger materialization
+        attachExpressionTagExecutionEventListener(loadedCode);
+        context.eval(source);
+        // Not materialized yet:
+        Assert.assertEquals(code, loadedCode.toString());
+        // Force materialization:
+        attachAnySourceSectionExecutionEventListener();
+        context.eval(source);
+        Assert.assertEquals(code + code.substring(2), loadedCode.toString());
+    }
+
+    @Test
+    public void testMaterializedSourcesExecutedInAST7() {
+        setupEnv(Context.create(), new MultiSourceASTLanguage());
+        String code = "MRabcd";
+        StringBuilder loadedCode = new StringBuilder();
+        Source source = Source.create(ProxyLanguage.ID, code);
+        // Expression tag does not trigger materialization
+        Set<com.oracle.truffle.api.source.Source> sources = new HashSet<>();
+        instrumentEnv.getInstrumenter().attachLoadSourceSectionListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.ExpressionTag.class).build(), e -> {
+            com.oracle.truffle.api.source.Source s = e.getSourceSection().getSource();
+            if (sources.add(s)) {
+                loadedCode.append(s.getCharacters());
+            }
+        }, true);
+        // Force materialization:
+        attachAnySourceSectionExecutionEventListener();
+        context.eval(source);
+        Assert.assertEquals(code + code.substring(2), loadedCode.toString());
+    }
+
+    @Test
+    public void testMaterializedSourcesExecutedInAST8() {
+        setupEnv(Context.create(), new MultiSourceASTLanguage());
+        String code = "Mabcd";
+        StringBuilder loadedCode = new StringBuilder();
+        Source source = Source.create(ProxyLanguage.ID, code);
+        instrumentEnv.getInstrumenter().attachLoadSourceListener(SourceFilter.ANY, s -> loadedCode.append(s.getSource().getCharacters()), true);
+        // Force materialization:
+        attachAnySourceSectionExecutionEventListener();
+        context.eval(source);
+        Assert.assertEquals(code + code, loadedCode.toString());
     }
 
     @Test
@@ -841,15 +1259,58 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
     }
 
     @Test
-    public void testInsertedSourcesExecutedInAST() {
+    public void testInsertedSourcesInAST2() {
         setupEnv(Context.create(), new MultiSourceASTLanguage());
-        String code = "Ia";
+        String code = "Iabcd";
         StringBuilder loadedCode = new StringBuilder();
-        instrumentEnv.getInstrumenter().attachLoadSourceListener(SourceFilter.ANY, s -> {
+        Set<com.oracle.truffle.api.source.Source> sources = new HashSet<>();
+        instrumentEnv.getInstrumenter().attachLoadSourceSectionListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.ExpressionTag.class).build(), e -> {
+            com.oracle.truffle.api.source.Source s = e.getSourceSection().getSource();
+            if (sources.add(s)) {
+                loadedCode.append(s.getCharacters());
+            }
         }, true);
         context.eval(Source.create(ProxyLanguage.ID, code));
+        Assert.assertEquals(code, loadedCode.toString());
+    }
+
+    @Test
+    public void testInsertedSourcesExecutedInAST() {
+        setupEnv(Context.create(), new MultiSourceASTLanguage());
+        String code = "Iabcd";
+        StringBuilder loadedCode = new StringBuilder();
         instrumentEnv.getInstrumenter().attachExecuteSourceListener(SourceFilter.ANY, s -> loadedCode.append(s.getSource().getCharacters()), true);
+        context.eval(Source.create(ProxyLanguage.ID, code));
         Assert.assertEquals(code + code, loadedCode.toString());
+    }
+
+    @Test
+    public void testInsertedSourcesExecutedInAST2() {
+        setupEnv(Context.create(), new MultiSourceASTLanguage());
+        String code = "Iabcd";
+        StringBuilder loadedCode = new StringBuilder();
+        Set<com.oracle.truffle.api.source.Source> sources = new HashSet<>();
+        instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
+            @Override
+            public void onEnter(EventContext c, VirtualFrame frame) {
+                com.oracle.truffle.api.source.Source s = c.getInstrumentedSourceSection().getSource();
+                if (sources.add(s)) {
+                    loadedCode.append(s.getCharacters());
+                }
+            }
+
+            @Override
+            public void onReturnValue(EventContext c, VirtualFrame frame, Object result) {
+
+            }
+
+            @Override
+            public void onReturnExceptional(EventContext c, VirtualFrame frame, Throwable exception) {
+
+            }
+        });
+        context.eval(Source.create(ProxyLanguage.ID, code));
+        Assert.assertEquals(code, loadedCode.toString());
     }
 
     @Test
@@ -1028,8 +1489,13 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
             }
 
             @Override
+            public boolean hasTag(Class<? extends Tag> tag) {
+                return StandardTags.ExpressionTag.class == tag || StandardTags.StatementTag.class == tag || StandardTags.RootBodyTag.class == tag || StandardTags.RootTag.class == tag;
+            }
+
+            @Override
             public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-                if (materialize) {
+                if (materialize && materializedTags.contains(StandardTags.StatementTag.class)) {
                     return new MultiSourceBlock(rootSource, mineSource, childrenCode);
                 }
                 return this;

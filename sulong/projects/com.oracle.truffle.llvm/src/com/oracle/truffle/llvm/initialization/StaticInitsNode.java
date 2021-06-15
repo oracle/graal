@@ -29,7 +29,7 @@
  */
 package com.oracle.truffle.llvm.initialization;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -41,9 +41,9 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 
 public abstract class StaticInitsNode extends LLVMStatementNode {
 
-    @Children final LLVMStatementNode[] statements;
-    final Object moduleName;
-    final String prefix;
+    @Children private final LLVMStatementNode[] statements;
+    private final Object moduleName;
+    private final String prefix;
 
     public StaticInitsNode(LLVMStatementNode[] statements, String prefix, Object moduleName) {
         this.statements = statements;
@@ -65,7 +65,7 @@ public abstract class StaticInitsNode extends LLVMStatementNode {
         }
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     private void traceExecution(LLVMContext ctx) {
         LibraryLocator.traceStaticInits(ctx, prefix, moduleName, String.format("[%d inst]", statements.length));
     }

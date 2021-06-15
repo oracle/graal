@@ -38,18 +38,61 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDerefHandleGetReceiverNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVM80BitFloatStoreNodeGen.LLVM80BitFloatOffsetStoreNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-@GenerateUncached
-public abstract class LLVM80BitFloatStoreNode extends LLVMStoreNodeCommon {
+public abstract class LLVM80BitFloatStoreNode extends LLVMStoreNode {
 
     public static LLVM80BitFloatStoreNode create() {
         return LLVM80BitFloatStoreNodeGen.create(null, null);
     }
 
-    protected abstract void executeManaged(LLVMManagedPointer address, LLVM80BitFloat value);
+    public abstract void executeWithTarget(LLVMPointer address, LLVM80BitFloat value);
+
+    @GenerateUncached
+    public abstract static class LLVM80BitFloatOffsetStoreNode extends LLVMOffsetStoreNode {
+
+        public static LLVM80BitFloatOffsetStoreNode create() {
+            return LLVM80BitFloatOffsetStoreNodeGen.create(null, null, null);
+        }
+
+        public static LLVM80BitFloatOffsetStoreNode create(LLVMExpressionNode value) {
+            return LLVM80BitFloatOffsetStoreNodeGen.create(null, null, value);
+        }
+
+        public abstract void executeWithTarget(LLVMPointer receiver, long offset, LLVM80BitFloat value);
+
+        @Specialization(guards = "!isAutoDerefHandle(language, addr)")
+        protected void doOp(LLVMNativePointer addr, long offset, LLVM80BitFloat value,
+                        @CachedLanguage LLVMLanguage language) {
+            language.getLLVMMemory().put80BitFloat(this, addr.asNative() + offset, value);
+        }
+
+        @Specialization(guards = "isAutoDerefHandle(language, addr)")
+        protected static void doOpDerefHandle(LLVMNativePointer addr, long offset, LLVM80BitFloat value,
+                        @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
+                        @Cached LLVMDerefHandleGetReceiverNode getReceiver,
+                        @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
+            doOpManaged(getReceiver.execute(addr), offset, value, nativeWrite);
+        }
+
+        @Specialization(limit = "3")
+        protected static void doOpManaged(LLVMManagedPointer address, long offset, LLVM80BitFloat value,
+                        @CachedLibrary("address.getObject()") LLVMManagedWriteLibrary nativeWrite) {
+            byte[] bytes = value.getBytes();
+            assert bytes.length == LLVM80BitFloat.BYTE_WIDTH;
+            long curOffset = address.getOffset() + offset;
+            for (int i = 0; i < LLVM80BitFloat.BYTE_WIDTH; i++) {
+                nativeWrite.writeI8(address.getObject(), curOffset, bytes[i]);
+                curOffset += I8_SIZE_IN_BYTES;
+            }
+        }
+    }
 
     @Specialization(guards = "!isAutoDerefHandle(language, addr)")
     protected void doOp(LLVMNativePointer addr, LLVM80BitFloat value,
@@ -58,18 +101,18 @@ public abstract class LLVM80BitFloatStoreNode extends LLVMStoreNodeCommon {
     }
 
     @Specialization(guards = "isAutoDerefHandle(language, addr)")
-    protected void doOpDerefHandle(LLVMNativePointer addr, LLVM80BitFloat value,
+    protected static void doOpDerefHandle(LLVMNativePointer addr, LLVM80BitFloat value,
                     @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                     @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                     @Cached LLVM80BitFloatStoreNode store) {
-        store.executeManaged(getReceiver.execute(addr), value);
+        store.executeWithTarget(getReceiver.execute(addr), value);
     }
 
     // TODO (chaeubl): we could store this in a more efficient way (short + long)
     // TODO (fredmorcos) When GR-26485 is fixed, use limit = "3" here.
     @Specialization
     @ExplodeLoop
-    protected void doForeign(LLVMManagedPointer address, LLVM80BitFloat value,
+    protected static void doForeign(LLVMManagedPointer address, LLVM80BitFloat value,
                     // TODO (fredmorcos) When GR-26485 is fixed, use
                     // @CachedLibrary("address.getObject()") here.
                     @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {

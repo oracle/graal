@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,8 +26,6 @@ package com.oracle.svm.truffle.nfi.posix;
 
 import static com.oracle.svm.core.posix.headers.Dlfcn.GNUExtensions.LM_ID_NEWLM;
 
-import com.oracle.svm.core.posix.linux.libc.GLibC;
-import com.oracle.svm.core.c.libc.LibCBase;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -38,18 +36,21 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Dlfcn;
 import com.oracle.svm.core.posix.headers.Dlfcn.GNUExtensions.Lmid_t;
 import com.oracle.svm.core.posix.headers.Dlfcn.GNUExtensions.Lmid_tPointer;
 import com.oracle.svm.core.posix.headers.LibC;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.posix.linux.libc.GLibC;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.truffle.nfi.Target_com_oracle_truffle_nfi_impl_NFIUnsatisfiedLinkError;
+import com.oracle.svm.truffle.nfi.Target_com_oracle_truffle_nfi_backend_libffi_NFIUnsatisfiedLinkError;
 import com.oracle.svm.truffle.nfi.TruffleNFISupport;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 
 @AutomaticFeature
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
@@ -106,8 +107,7 @@ final class PosixTruffleNFISupport extends TruffleNFISupport {
      */
     private static PointerBase loadLibraryInNamespace(long nativeContext, String name, int mode) {
         assert (mode & isolatedNamespaceFlag) == 0;
-        Target_com_oracle_truffle_nfi_impl_NFIContextLinux context = //
-                        KnownIntrinsics.convertUnknownValue(getContext(nativeContext), Target_com_oracle_truffle_nfi_impl_NFIContextLinux.class);
+        Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContextLinux context = SubstrateUtil.cast(getContext(nativeContext), Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContextLinux.class);
 
         // Double-checked locking on the NFI context instance.
         long namespaceId = context.isolatedNamespaceId;
@@ -152,7 +152,7 @@ final class PosixTruffleNFISupport extends TruffleNFISupport {
         if (handle.equal(WordFactory.zero())) {
             CompilerDirectives.transferToInterpreter();
             String error = PosixUtils.dlerror();
-            throw KnownIntrinsics.convertUnknownValue(new Target_com_oracle_truffle_nfi_impl_NFIUnsatisfiedLinkError(error), RuntimeException.class);
+            throw SubstrateUtil.cast(new Target_com_oracle_truffle_nfi_backend_libffi_NFIUnsatisfiedLinkError(error), AbstractTruffleException.class);
         }
         return handle.rawValue();
     }
@@ -179,7 +179,7 @@ final class PosixTruffleNFISupport extends TruffleNFISupport {
             CompilerDirectives.transferToInterpreter();
             String error = PosixUtils.dlerror();
             if (error != null) {
-                throw KnownIntrinsics.convertUnknownValue(new Target_com_oracle_truffle_nfi_impl_NFIUnsatisfiedLinkError(error), RuntimeException.class);
+                throw SubstrateUtil.cast(new Target_com_oracle_truffle_nfi_backend_libffi_NFIUnsatisfiedLinkError(error), AbstractTruffleException.class);
             }
         }
         return ret.rawValue();

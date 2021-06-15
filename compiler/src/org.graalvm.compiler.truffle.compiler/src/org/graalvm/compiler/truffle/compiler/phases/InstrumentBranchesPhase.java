@@ -65,7 +65,7 @@ public class InstrumentBranchesPhase extends InstrumentPhase {
 
     @Override
     protected void instrumentGraph(StructuredGraph graph, CoreProviders context, JavaConstant tableConstant) {
-        for (IfNode n : graph.getNodes().filter(IfNode.class)) {
+        for (IfNode n : graph.getNodes(IfNode.TYPE)) {
             Point p = getOrCreatePoint(n);
             if (p != null) {
                 insertCounter(graph, context, tableConstant, n.trueSuccessor(), p.slotIndex(0));

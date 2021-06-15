@@ -1,0 +1,10 @@
+testPrimitives.c
+testStructures.c
+testClasses.cpp
+testReenterArgsAndVals.c
+testFunctionPointer.c
+testLongDouble.cpp
+testBitFields.cpp
+testScopes.cpp
+testObjectPointer.cpp
+testBooleans.cpp

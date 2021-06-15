@@ -68,18 +68,12 @@ public class LibGraal {
         if (!isAvailable()) {
             throw new IllegalStateException();
         }
-        if (!inLibGraal() && LibGraalScope.currentScope.get() == null) {
-            throw new IllegalStateException("Not within a " + LibGraalScope.class.getName());
-        }
         return runtime().translate(obj);
     }
 
     public static <T> T unhand(Class<T> type, long handle) {
         if (!isAvailable()) {
             throw new IllegalStateException();
-        }
-        if (!inLibGraal() && LibGraalScope.currentScope.get() == null) {
-            throw new IllegalStateException("Not within a " + LibGraalScope.class.getName());
         }
         return runtime().unhand(type, handle);
     }

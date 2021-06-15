@@ -82,6 +82,12 @@ public final class UntetheredCodeInfoAccess {
         return cast(info).getState();
     }
 
+    /** @see com.oracle.svm.core.code.CodeInfoAccess#isAliveState */
+    @Uninterruptible(reason = "Must prevent the GC from freeing the CodeInfo object.", callerMustBe = true)
+    public static boolean isAlive(UntetheredCodeInfo info) {
+        return CodeInfoAccess.isAliveState(cast(info).getState());
+    }
+
     @Uninterruptible(reason = "Must prevent the GC from freeing the CodeInfo object.", callerMustBe = true)
     public static String getName(UntetheredCodeInfo info) {
         return getObjectFieldUnsafe(info, CodeInfoImpl.NAME_OBJFIELD);

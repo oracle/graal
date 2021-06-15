@@ -253,6 +253,21 @@ public abstract class RootNode extends ExecutableNode {
         return false;
     }
 
+    /**
+     * Returns <code>true</code> if this root node should count towards
+     * {@link com.oracle.truffle.api.exception.AbstractTruffleException#getStackTraceElementLimit}.
+     * <p>
+     * By default, returns the negation of {@link #isInternal()}.
+     * <p>
+     * This method may be invoked on compiled code paths. It is recommended to implement this method
+     * or #isInternal() such that it returns a partial evaluation constant.
+     *
+     * @since 21.2.0
+     */
+    protected boolean countsTowardsStackTraceLimit() {
+        return !isInternal();
+    }
+
     @TruffleBoundary
     private SourceSection materializeSourceSection() {
         return getSourceSection();
@@ -449,6 +464,7 @@ public abstract class RootNode extends ExecutableNode {
      * <li>Initialize local variable types in the {@link FrameDescriptor} of the root node. Without
      * that any access to the frame will invalidate the code on first execute.
      * <li>Initialize specializing nodes with profiles that do not invalidate on first execution.
+     * For initialization of Truffle DSL nodes see {@link com.oracle.truffle.api.dsl.AOTSupport}.
      * <li>Compute the expected execution signature of a root node and return it.
      * </ul>
      * <p>

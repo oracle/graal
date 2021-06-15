@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,10 +24,10 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationThreshold;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.MinInvokeThreshold;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.OSRCompilationThreshold;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ReplaceReprofileCount;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SingleTierCompilationThreshold;
 import static org.junit.Assert.assertSame;
 
 import java.util.concurrent.ExecutionException;
@@ -96,7 +96,7 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
     @Before
     @Override
     public void before() {
-        super.before();
+        setupContext("engine.MultiTier", "false");
         OptimizedCallTarget target = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(0));
         osrThreshold = target.getOptionValue(OSRCompilationThreshold);
     }
@@ -118,14 +118,14 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
     @SuppressWarnings("try")
     @Theory
     public void testOSRAndRewriteDoesNotSuppressTargetCompilation(OSRLoopFactory factory) {
-        setupContext("engine.CompilationThreshold", "3");
+        setupContext("engine.SingleTierCompilationThreshold", "3");
         TestRootNodeWithReplacement rootNode = new TestRootNodeWithReplacement(osrThreshold, factory, new TestRepeatingNode());
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
         target.call(osrThreshold + 1);
         assertCompiled(rootNode.getOSRTarget());
         assertNotCompiled(target);
         target.nodeReplaced(rootNode.toReplace, new TestRepeatingNode(), "test");
-        for (int i = 0; i < target.getOptionValue(CompilationThreshold) + target.getOptionValue(ReplaceReprofileCount) - 1; i++) {
+        for (int i = 0; i < target.getOptionValue(SingleTierCompilationThreshold) + target.getOptionValue(ReplaceReprofileCount) - 1; i++) {
             target.call(2);
         }
         assertCompiled(rootNode.getOSRTarget());
@@ -261,7 +261,7 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
         assertCompiled(rootNode.getOSRTarget());
 
         for (int i = 0; i < 10; i++) {
-            rootNode.getOSRTarget().invalidate(this, "test");
+            rootNode.getOSRTarget().invalidate("test");
             Assert.assertNotNull(rootNode.getOSRTarget());
             assertNotCompiled(rootNode.getOSRTarget());
             Assert.assertNotNull(rootNode.getOSRTarget()); // no eager cleanup for thread safety
@@ -321,7 +321,7 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
         assertCompiled(rootNode.getOSRTarget());
         assertSame(rootNode.getOSRTarget(), osrTarget);
 
-        target.invalidate(this, "test");
+        target.invalidate("test");
         assertNotCompiled(target);
         assertCompiled(rootNode.getOSRTarget());
         assertSame(rootNode.getOSRTarget(), osrTarget);
@@ -335,7 +335,7 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
         assertNotCompiled(target);
 
         // now externally invalidate the osr target and see if we compile the osr target again
-        rootNode.getOSRTarget().invalidate(this, "test");
+        rootNode.getOSRTarget().invalidate("test");
         target.call(osrThreshold + 1);
         assertCompiled(rootNode.getOSRTarget());
     }

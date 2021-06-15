@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import static com.oracle.truffle.api.impl.DefaultTruffleRuntime.getRuntime;
 
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleRuntime;
+import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.impl.DefaultTruffleRuntime.DefaultFrameInstance;
 import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.Node;
@@ -86,7 +87,11 @@ public final class DefaultCallTarget implements RootCallTarget {
             DefaultRuntimeAccessor.LANGUAGE.onThrowable(callNode, this, t, frame);
             throw t;
         } finally {
-            getRuntime().popFrame(callerFrame);
+            try {
+                TruffleSafepoint.poll(rootNode);
+            } finally {
+                getRuntime().popFrame(callerFrame);
+            }
         }
     }
 

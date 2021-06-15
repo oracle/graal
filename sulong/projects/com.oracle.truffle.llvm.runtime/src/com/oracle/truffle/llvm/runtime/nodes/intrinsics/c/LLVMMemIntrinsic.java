@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -71,25 +71,28 @@ public abstract class LLVMMemIntrinsic extends LLVMExpressionNode {
         }
     }
 
+    /**
+     * Handles both memmove and memcpy.
+     */
     @NodeChild(value = "dst", type = LLVMExpressionNode.class)
     @NodeChild(value = "src", type = LLVMExpressionNode.class)
     @NodeChild(value = "len", type = LLVMExpressionNode.class)
-    public abstract static class LLVMLibcMemcpy extends LLVMMemIntrinsic {
-        @Child private LLVMMemMoveNode memcpy;
+    public abstract static class LLVMLibcMemMove extends LLVMMemIntrinsic {
+        @Child private LLVMMemMoveNode memmove;
 
-        public LLVMLibcMemcpy(LLVMMemMoveNode memcpy) {
-            this.memcpy = memcpy;
+        public LLVMLibcMemMove(LLVMMemMoveNode memmove) {
+            this.memmove = memmove;
         }
 
         @Specialization
         protected Object op(Object dst, Object src, int len) {
-            memcpy.executeWithTarget(dst, src, len);
+            memmove.executeWithTarget(dst, src, len);
             return dst;
         }
 
         @Specialization
         protected Object op(Object dst, Object src, long len) {
-            memcpy.executeWithTarget(dst, src, len);
+            memmove.executeWithTarget(dst, src, len);
             return dst;
         }
     }

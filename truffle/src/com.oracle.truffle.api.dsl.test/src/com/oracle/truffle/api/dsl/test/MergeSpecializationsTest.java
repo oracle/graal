@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,8 +45,8 @@ import static com.oracle.truffle.api.dsl.test.TestHelper.executeWith;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-import java.lang.reflect.Field;
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.concurrent.CountDownLatch;
 
 import org.junit.Test;
@@ -62,7 +62,6 @@ import com.oracle.truffle.api.dsl.test.TypeBoxingTest.TypeBoxingTypeSystem;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.test.ReflectionUtils;
 
 public class MergeSpecializationsTest {
 
@@ -210,10 +209,9 @@ public class MergeSpecializationsTest {
         }
     }
 
-    private static void assertState(Node node, int[] expectedOrder, int checkedIndices) throws IllegalArgumentException, IllegalAccessException, NoSuchFieldException, SecurityException {
-        Field stateField = node.getClass().getDeclaredField("state_");
-        ReflectionUtils.setAccessible(stateField, true);
-        int state = ((((Number) stateField.get(node))).intValue());
+    private static void assertState(Node node, int[] expectedOrder, int checkedIndices) {
+        BitSet set = StateBitTest.assertStateFields(node, 3);
+        int state = set.isEmpty() ? 0 : (int) set.toLongArray()[0];
         Arrays.sort(expectedOrder, 0, checkedIndices);
         int mask = 0;
         for (int i = 0; i < checkedIndices; i++) {

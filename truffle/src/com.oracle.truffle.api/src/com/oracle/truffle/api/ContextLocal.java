@@ -70,8 +70,12 @@ public abstract class ContextLocal<T> {
 
     /**
      * Returns the context local value for the currently entered context. This method is intended to
-     * be used on compiled code paths. The return value is never <code>null</code>. Throws
-     * {@link IllegalStateException} if no current context is entered on the current thread.
+     * be used on compiled code paths. The return value is never <code>null</code>.
+     * 
+     * @throws IllegalStateException if assertions (-ea) are enabled and no current context is
+     *             entered on the current thread, context locals have already been cleared for the
+     *             current context, the corresponding instrument is not initialized, or the
+     *             corresponding language is not created.
      *
      * @since 20.3
      */
@@ -80,10 +84,12 @@ public abstract class ContextLocal<T> {
     /**
      * Returns the context local value for an explicit {@link TruffleContext context}. This method
      * is intended to be used on compiled code paths. The return value is never <code>null</code>.
-     * Throws {@link IllegalStateException} if no current context is entered on the current thread.
-     *
+     * 
+     * @throws IllegalStateException if assertions (-ea) are enabled and context locals have already
+     *             been cleared for the specified context, the corresponding instrument is not
+     *             initialized, or the corresponding language is not created.
+     * 
      * @since 20.3
      */
     public abstract T get(TruffleContext context);
-
 }

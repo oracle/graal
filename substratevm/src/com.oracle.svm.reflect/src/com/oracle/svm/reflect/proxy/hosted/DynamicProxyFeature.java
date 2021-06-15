@@ -28,6 +28,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.function.Consumer;
 
+import com.oracle.svm.core.configure.ConfigurationFile;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
@@ -35,6 +36,7 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.ProxyConfigurationParser;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
@@ -63,12 +65,12 @@ public final class DynamicProxyFeature implements Feature {
             Class<?>[] interfaces = new Class<?>[interfaceNames.length];
             for (int i = 0; i < interfaceNames.length; i++) {
                 String className = interfaceNames[i];
-                Class<?> clazz = imageClassLoader.findClassByName(className, false);
+                Class<?> clazz = imageClassLoader.findClass(className).get();
                 if (clazz == null) {
-                    throw new RuntimeException("Class " + className + " not found");
+                    throw UserError.abort("Class " + className + " not found");
                 }
                 if (!clazz.isInterface()) {
-                    throw new RuntimeException("The class \"" + className + "\" is not an interface.");
+                    throw UserError.abort("The class \"" + className + "\" is not an interface.");
                 }
                 interfaces[i] = clazz;
             }
@@ -78,7 +80,7 @@ public final class DynamicProxyFeature implements Feature {
         ProxyConfigurationParser parser = new ProxyConfigurationParser(adapter);
         loadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurations(parser, imageClassLoader, "dynamic proxy",
                         ConfigurationFiles.Options.DynamicProxyConfigurationFiles, ConfigurationFiles.Options.DynamicProxyConfigurationResources,
-                        ConfigurationFiles.DYNAMIC_PROXY_NAME);
+                        ConfigurationFile.DYNAMIC_PROXY.getFileName());
     }
 
     @Override

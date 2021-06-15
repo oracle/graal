@@ -118,6 +118,6 @@ final class GraalTestTVMCI extends TVMCI.Test<GraalTestContext, OptimizedCallTar
     @Override
     public void finishWarmup(GraalTestContext testContext, OptimizedCallTarget callTarget) {
         BackgroundCompileQueue.Priority priority = new BackgroundCompileQueue.Priority(Integer.MAX_VALUE, BackgroundCompileQueue.Priority.Tier.LAST);
-        truffleRuntime.doCompile(callTarget, CompilationTask.createCompilationTask(priority, new WeakReference<>(callTarget), 0));
+        truffleRuntime.doCompile(testContext.debug, callTarget, CompilationTask.createCompilationTask(priority, new WeakReference<>(callTarget), 0));
     }
 }

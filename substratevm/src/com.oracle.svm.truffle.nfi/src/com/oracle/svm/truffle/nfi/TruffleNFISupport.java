@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,13 +32,11 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.ObjectHandles;
 import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.CErrorNumber;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
@@ -114,12 +112,12 @@ public abstract class TruffleNFISupport {
         closureHandles.destroy((ObjectHandle) handle);
     }
 
-    public TruffleContextHandle createContextHandle(Target_com_oracle_truffle_nfi_impl_NFIContext context) {
+    public TruffleContextHandle createContextHandle(Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContext context) {
         return (TruffleContextHandle) contextHandles.create(context);
     }
 
-    public Target_com_oracle_truffle_nfi_impl_NFIContext resolveContextHandle(TruffleContextHandle handle) {
-        return (Target_com_oracle_truffle_nfi_impl_NFIContext) contextHandles.get((ObjectHandle) handle);
+    public Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContext resolveContextHandle(TruffleContextHandle handle) {
+        return (Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContext) contextHandles.get((ObjectHandle) handle);
     }
 
     public void destroyContextHandle(TruffleContextHandle handle) {
@@ -207,49 +205,9 @@ public abstract class TruffleNFISupport {
         return truffleNFISupport.lookupImpl(nativeContext, library, name);
     }
 
-    protected static Target_com_oracle_truffle_nfi_impl_NFIContext getContext(long nativeContext) {
+    protected static Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContext getContext(long nativeContext) {
         TruffleNFISupport truffleNFISupport = ImageSingletons.lookup(TruffleNFISupport.class);
         NativeAPI.NativeTruffleContext ctx = WordFactory.pointer(nativeContext);
         return truffleNFISupport.resolveContextHandle(ctx.contextHandle());
-    }
-
-    /**
-     * Context for calling from native code into Java code. On entry, the native {@code errno} value
-     * is stored in {@link ErrnoMirror}. When leaving the context, the {@link ErrnoMirror} value is
-     * written back to the native {@code errno} location.
-     */
-    public static class ErrnoMirrorContext implements AutoCloseable {
-
-        private final CIntPointer errnoMirror;
-
-        public ErrnoMirrorContext() {
-            errnoMirror = ErrnoMirror.getErrnoMirrorLocation();
-            errnoMirror.write(CErrorNumber.getCErrorNumber());
-        }
-
-        @Override
-        public void close() {
-            CErrorNumber.setCErrorNumber(errnoMirror.read());
-        }
-    }
-
-    /**
-     * Context for calling from Java code into native code. On entry, the {@link ErrnoMirror} mirror
-     * value is stored to the native {@code errno} location. When leaving the context, the native
-     * {@code errno} value is written back to the {@link ErrnoMirror}.
-     */
-    public static class NativeErrnoContext implements AutoCloseable {
-
-        private final CIntPointer errnoMirror;
-
-        public NativeErrnoContext() {
-            errnoMirror = ErrnoMirror.getErrnoMirrorLocation();
-            CErrorNumber.setCErrorNumber(errnoMirror.read());
-        }
-
-        @Override
-        public void close() {
-            errnoMirror.write(CErrorNumber.getCErrorNumber());
-        }
     }
 }

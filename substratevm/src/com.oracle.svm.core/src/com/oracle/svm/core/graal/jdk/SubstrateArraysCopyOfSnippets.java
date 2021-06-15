@@ -46,6 +46,7 @@ import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
 
+import com.oracle.svm.core.JavaMemoryUtil;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
@@ -72,7 +73,8 @@ public final class SubstrateArraysCopyOfSnippets extends SubstrateTemplates impl
     }
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
-    public static Object doArraysCopyOf(DynamicHub hub, Object original, int originalLength, int newLength) {
+    private static Object doArraysCopyOf(DynamicHub hub, Object original, int originalLength, int newLength) {
+        // The allocation will throw a NegativeArraySizeException if necessary.
         Object newArray = java.lang.reflect.Array.newInstance(DynamicHub.toClass(hub.getComponentHub()), newLength);
 
         int layoutEncoding = hub.getLayoutEncoding();
@@ -80,13 +82,14 @@ public final class SubstrateArraysCopyOfSnippets extends SubstrateTemplates impl
         if (LayoutEncoding.isObjectArray(layoutEncoding)) {
             DynamicHub originalHub = KnownIntrinsics.readHub(original);
             if (originalHub == hub || DynamicHub.toClass(hub).isAssignableFrom(DynamicHub.toClass(originalHub))) {
-                ArraycopySnippets.objectCopyForward(original, 0, newArray, 0, copiedLength, layoutEncoding);
+                JavaMemoryUtil.copyObjectArrayForward(original, 0, newArray, 0, copiedLength, layoutEncoding);
             } else {
-                ArraycopySnippets.objectStoreCheckCopyForward(original, 0, newArray, 0, copiedLength);
+                JavaMemoryUtil.copyObjectArrayForwardWithStoreCheck(original, 0, newArray, 0, copiedLength);
             }
         } else {
-            ArraycopySnippets.primitiveCopyForward(original, 0, newArray, 0, copiedLength, layoutEncoding);
+            JavaMemoryUtil.copyPrimitiveArrayForward(original, 0, newArray, 0, copiedLength, layoutEncoding);
         }
+
         // All elements beyond copiedLength were already zeroed by the allocation.
         return newArray;
     }
@@ -120,7 +123,7 @@ public final class SubstrateArraysCopyOfSnippets extends SubstrateTemplates impl
             }
 
             Arguments args = new Arguments(arraysCopyOf, node.graph().getGuardsStage(), tool.getLoweringStage());
-            args.add("hub", node.getNewArrayType());
+            args.add("hub", node.getNewObjectArrayType());
             args.add("original", node.getOriginal());
             args.add("originalLength", node.getOriginalLength());
             args.add("newLength", node.getNewLength());
@@ -135,7 +138,7 @@ public final class SubstrateArraysCopyOfSnippets extends SubstrateTemplates impl
         public void lower(SubstrateArraysCopyOfWithExceptionNode node, LoweringTool tool) {
             StructuredGraph graph = node.graph();
             ForeignCallWithExceptionNode call = graph
-                            .add(new ForeignCallWithExceptionNode(ARRAYS_COPY_OF, node.getNewArrayType(), node.getOriginal(), node.getOriginalLength(), node.getNewLength()));
+                            .add(new ForeignCallWithExceptionNode(ARRAYS_COPY_OF, node.getNewObjectArrayType(), node.getOriginal(), node.getOriginalLength(), node.getNewLength()));
             call.setBci(node.bci());
             call.setStamp(node.stamp(NodeView.DEFAULT));
             graph.replaceWithExceptionSplit(node, call);

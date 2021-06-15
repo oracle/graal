@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,6 @@ package org.graalvm.compiler.replacements;
 
 import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
-import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
@@ -60,16 +59,13 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
-import org.graalvm.compiler.nodes.spi.Replacements;
-import org.graalvm.compiler.nodes.spi.StampProvider;
+import org.graalvm.compiler.nodes.spi.CoreProvidersDelegate;
 import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.BytecodeFrame;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
@@ -78,9 +74,8 @@ import jdk.vm.ci.meta.Signature;
  * Implementation of {@link GraphBuilderContext} used to produce a graph for a method based on an
  * {@link InvocationPlugin} for the method.
  */
-public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
+public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements GraphBuilderContext, Receiver {
 
-    protected final CoreProviders providers;
     protected final StructuredGraph graph;
     protected final Bytecode code;
     protected final ResolvedJavaMethod method;
@@ -119,7 +114,7 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
                     int invokeBci,
                     AllowAssumptions allowAssumptions,
                     GraphBuilderConfiguration graphBuilderConfig) {
-        this.providers = providers;
+        super(providers);
         this.code = code;
         this.method = code.getMethod();
         this.graph = new StructuredGraph.Builder(options, debug, allowAssumptions).method(method).setIsSubstitution(true).trackNodeSourcePosition(true).build();
@@ -256,31 +251,6 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
     }
 
     @Override
-    public StampProvider getStampProvider() {
-        return providers.getStampProvider();
-    }
-
-    @Override
-    public MetaAccessProvider getMetaAccess() {
-        return providers.getMetaAccess();
-    }
-
-    @Override
-    public ConstantReflectionProvider getConstantReflection() {
-        return providers.getConstantReflection();
-    }
-
-    @Override
-    public ConstantFieldProvider getConstantFieldProvider() {
-        return providers.getConstantFieldProvider();
-    }
-
-    @Override
-    public Replacements getReplacements() {
-        return providers.getReplacements();
-    }
-
-    @Override
     public StructuredGraph getGraph() {
         return graph;
     }
@@ -349,6 +319,9 @@ public class IntrinsicGraphBuilder implements GraphBuilderContext, Receiver {
 
     @SuppressWarnings("try")
     public StructuredGraph buildGraph(InvocationPlugin plugin) {
+        // The caller is expected to have filtered out decorator plugins since they cannot be
+        // processed without special handling.
+        assert !plugin.isDecorator() : plugin;
         NodeSourcePosition position = graph.trackNodeSourcePosition() ? NodeSourcePosition.placeholder(method) : null;
         try (DebugCloseable context = graph.withNodeSourcePosition(position)) {
             Receiver receiver = method.isStatic() ? null : this;

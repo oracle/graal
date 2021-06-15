@@ -57,6 +57,11 @@ public @interface APIOption {
     String[] name();
 
     /**
+     * This option should only be shown with --help-extra.
+     */
+    boolean extra() default false;
+
+    /**
      * Make a boolean option part of a group of boolean options.
      **/
     Class<? extends APIOptionGroup> group() default NullGroup.class;

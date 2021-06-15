@@ -1,7 +1,7 @@
 suite = {
     "name": "vm",
-    "version" : "21.0.0",
-    "mxversion" : "5.256.0",
+    "version" : "21.2.0",
+    "mxversion" : "5.301.0",
     "release" : False,
     "groupId" : "org.graalvm",
 
@@ -39,7 +39,7 @@ suite = {
                 "name": "graal-nodejs",
                 "subdir": True,
                 "dynamic": True,
-                "version": "4b91b7ee013092aeb1f76e3203653705d9205e0d",
+                "version": "bea1ff9505c5681638fee424d7e67c6073617e0d",
                 "urls" : [
                     {"url" : "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -49,7 +49,7 @@ suite = {
                 "name": "graal-js",
                 "subdir": True,
                 "dynamic": True,
-                "version": "4b91b7ee013092aeb1f76e3203653705d9205e0d",
+                "version": "bea1ff9505c5681638fee424d7e67c6073617e0d",
                 "urls": [
                     {"url": "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -57,7 +57,7 @@ suite = {
             },
             {
                 "name": "truffleruby",
-                "version": "cf742dac4a72fe561b47d4fe2ed56dde7c4782ac",
+                "version": "139963a0c2c49d2669275dd19d48a0c1ac45b660",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/truffleruby.git", "kind": "git"},
@@ -66,7 +66,7 @@ suite = {
             },
             {
                 "name": "fastr",
-                "version": "662fce9af8ecc5dcc0c3e3b58eca479f33e33dda",
+                "version": "c802b061f9a74189591813d7760bd38e47ecd7b4",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/fastr.git", "kind": "git"},
@@ -75,7 +75,7 @@ suite = {
             },
             {
                 "name": "graalpython",
-                "version": "c36ebb371fbaafd7aaebf4ca8e46ec68500e368c",
+                "version": "449fe0ffcd8cec131b6c176ee0e7f423f2877124",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/graalvm/graalpython.git", "kind": "git"},
@@ -91,9 +91,10 @@ suite = {
             "sourceDirs" : ["src"],
             "javaCompliance" : "1.8+",
             "license" : "GPLv2-CPE",
-            "checkstyleVersion" : "8.8",
+            "checkstyleVersion" : "8.36.1",
             "dependencies": [
                 "sdk:LAUNCHER_COMMON",
+                "truffle:TruffleJSON",
             ],
         },
         "org.graalvm.component.installer.test" : {
@@ -128,6 +129,9 @@ suite = {
             ],
             "distDependencies": [
                 "sdk:LAUNCHER_COMMON",
+            ],
+            "exclude" : [
+                "truffle:TruffleJSON"
             ],
             "maven" : False,
         },
@@ -172,6 +176,27 @@ suite = {
                 "sdk:LAUNCHER_COMMON",
             ],
             "maven" : False,
+        },
+        "POLYBENCH_BENCHMARKS": {
+            "native": True,
+            "description": "Distribution for polybench benchmarks",
+            # llvm bitcode is platform dependent
+            "platformDependent": True,
+            "layout": {
+                # The layout may be modified via mx_vm.mx_register_dynamic_suite_constituents() to include dynamic projects.
+                "./interpreter/": [
+                    "file:benchmarks/interpreter/*.js",
+                    "file:benchmarks/interpreter/*.rb",
+                    "file:benchmarks/interpreter/*.py",
+                ],
+                "./interpreter/dependencies/": [
+                    "file:benchmarks/interpreter/dependencies/*",
+                ],
+                "./compiler/": [
+                    "file:benchmarks/compiler/*",
+                ],
+            },
+            "defaultBuild": False,
         },
     },
 }

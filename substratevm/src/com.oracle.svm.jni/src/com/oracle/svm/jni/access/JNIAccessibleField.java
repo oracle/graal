@@ -29,6 +29,7 @@ package com.oracle.svm.jni.access;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
@@ -36,19 +37,26 @@ import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.StaticFieldsSupport;
+import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.hosted.FeatureImpl.CompilationAccessImpl;
+import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.meta.HostedField;
+import com.oracle.svm.hosted.meta.HostedInstanceClass;
 import com.oracle.svm.jni.nativeapi.JNIFieldId;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Information on a field that can be looked up and accessed via JNI.
  */
 public final class JNIAccessibleField extends JNIAccessibleMember {
+    /* 10000000...0 */
     private static final UnsignedWord ID_STATIC_FLAG = WordFactory.unsigned(-1L).unsignedShiftRight(1).add(1);
+    /* 01000000...0 */
     private static final UnsignedWord ID_OBJECT_FLAG = ID_STATIC_FLAG.unsignedShiftRight(1);
+    /* 00111111...1 */
     private static final UnsignedWord ID_OFFSET_MASK = ID_OBJECT_FLAG.subtract(1);
 
     /**
@@ -66,6 +74,17 @@ public final class JNIAccessibleField extends JNIAccessibleMember {
 
     private final String name;
     @Platforms(HOSTED_ONLY.class) private final UnsignedWord flags;
+
+    /**
+     * Represents the {@link JNIFieldId} of the field.
+     * 
+     * From left (MSB) to right (LSB):
+     * <ul>
+     * <li>1 bit for a flag indicating whether the field is static</li>
+     * <li>1 bit for a flag indicating whether the field is an object reference</li>
+     * <li>Remaining 62 bits for (unsigned) offset in the object</li>
+     * </ul>
+     */
     private UnsignedWord id = WordFactory.zero();
 
     JNIAccessibleField(JNIAccessibleClass declaringClass, String name, JavaKind kind, int modifiers) {
@@ -87,18 +106,39 @@ public final class JNIAccessibleField extends JNIAccessibleMember {
     }
 
     void finishBeforeCompilation(CompilationAccessImpl access) {
-        assert id.equal(0);
+        assert id.equal(0) : "JNI field ID has already been set";
         try {
             Field reflField = getDeclaringClass().getClassObject().getDeclaredField(name);
             HostedField field = access.getMetaAccess().lookupJavaField(reflField);
-            assert field.hasLocation();
-            int offset = field.getLocation();
-            assert ID_OFFSET_MASK.and(offset).equal(offset);
+            int offset;
+            if (HybridLayout.isHybridField(field)) {
+                assert !field.hasLocation();
+                HybridLayout<?> hybridLayout = new HybridLayout<>((HostedInstanceClass) field.getDeclaringClass(), ImageSingletons.lookup(ObjectLayout.class));
+                assert field.equals(hybridLayout.getArrayField()) : "JNI access to hybrid bitset field is not implemented";
+                offset = hybridLayout.getArrayBaseOffset();
+            } else {
+                assert field.hasLocation();
+                offset = field.getLocation();
+            }
+            assert ID_OFFSET_MASK.and(offset).equal(offset) : "Offset is too large to be encoded in the JNIAccessibleField ID";
             this.id = flags.or(offset);
         } catch (NoSuchFieldException e) {
             throw new RuntimeException(e);
         }
-        setHidingSubclasses(access.getMetaAccess(), sub -> anyMatchName(sub.getInstanceFields(false)) || anyMatchName(sub.getStaticFields()));
+        setHidingSubclasses(access.getMetaAccess(), this::anyMatchName);
+    }
+
+    private boolean anyMatchName(ResolvedJavaType sub) {
+        try {
+            return anyMatchName(sub.getInstanceFields(false)) || anyMatchName(sub.getStaticFields());
+
+        } catch (LinkageError ex) {
+            /*
+             * Ignore any linkage errors due to looking up the field. If any field references a
+             * missing type, we have to assume that there is no matching field.
+             */
+            return false;
+        }
     }
 
     private boolean anyMatchName(ResolvedJavaField[] fields) {

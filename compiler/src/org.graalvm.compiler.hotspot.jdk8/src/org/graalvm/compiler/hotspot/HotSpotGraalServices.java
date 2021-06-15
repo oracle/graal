@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -54,9 +54,9 @@ public class HotSpotGraalServices {
         return impl == null ? null : new CompilationContext(impl);
     }
 
-    public static void exit(int status) {
+    public static void exit(int status, HotSpotJVMCIRuntime runtime) {
         if (Services.IS_IN_NATIVE_IMAGE) {
-            HotSpotJVMCIRuntime.runtime().exitHotSpot(status);
+            runtime.exitHotSpot(status);
         } else {
             System.exit(status);
         }

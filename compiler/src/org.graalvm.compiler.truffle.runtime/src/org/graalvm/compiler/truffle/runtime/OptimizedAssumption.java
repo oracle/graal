@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,21 +24,21 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import java.lang.ref.WeakReference;
 import java.util.function.Consumer;
+import java.util.logging.Level;
 
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
+import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.impl.AbstractAssumption;
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
-import java.util.logging.Level;
 
 import jdk.vm.ci.meta.JavaKind.FormatWithToString;
-import org.graalvm.options.OptionValues;
 
 /**
  * An assumption that when {@linkplain #invalidate() invalidated} will cause all
@@ -191,9 +191,10 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
                         reason = new LazyReason(useName, useMessage);
                     }
                 }
-                OptimizedCallTarget callTarget = invalidateWithReason(dependency, reason);
+                dependency.onAssumptionInvalidated(this, reason);
 
                 if (engineOptions == null) {
+                    OptimizedCallTarget callTarget = (OptimizedCallTarget) dependency.getCompilable();
                     if (callTarget != null) {
                         engineOptions = callTarget.getOptionValues();
                         logger = callTarget.engine.getEngineLogger();
@@ -284,17 +285,6 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
         }
     }
 
-    private OptimizedCallTarget invalidateWithReason(OptimizedAssumptionDependency dependency, CharSequence reason) {
-        if (dependency.getCompilable() != null) {
-            OptimizedCallTarget callTarget = (OptimizedCallTarget) dependency.getCompilable();
-            callTarget.invalidate(this, reason);
-            return callTarget;
-        } else {
-            dependency.invalidate();
-            return null;
-        }
-    }
-
     @Override
     public boolean isValid() {
         return isValid;
@@ -305,7 +295,7 @@ public final class OptimizedAssumption extends AbstractAssumption implements For
         if (message != null && !message.isEmpty()) {
             sb.append("' with message '").append(message);
         }
-        logger.log(Level.INFO, sb.toString());
+        logger.log(Level.INFO, sb.append("'").toString());
     }
 
     private static void logStackTrace(OptionValues engineOptions, TruffleLogger logger) {

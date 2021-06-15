@@ -90,16 +90,4 @@ public abstract class LLVMLoopNode extends LLVMControlFlowNode {
             return null;
         }
     }
-
-    /**
-     * Override to allow access from generated wrapper.
-     */
-    @Override
-    protected abstract boolean isStatement();
-
-    /**
-     * Override to allow access from generated wrapper.
-     */
-    @Override
-    protected abstract void setStatement(boolean statementTag);
 }

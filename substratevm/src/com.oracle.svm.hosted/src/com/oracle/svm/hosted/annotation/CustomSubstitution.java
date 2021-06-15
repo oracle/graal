@@ -41,6 +41,10 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 
+/**
+ * A mapping between original {@link ResolvedJavaType}s and {@link CustomSubstitutionType}s used as
+ * substitutions for the original type at image build time.
+ */
 public class CustomSubstitution<T extends CustomSubstitutionType<?, ?>> extends SubstitutionProcessor {
 
     protected final MetaAccessProvider metaAccess;
@@ -72,18 +76,19 @@ public class CustomSubstitution<T extends CustomSubstitutionType<?, ?>> extends 
         return result;
     }
 
-    /*
+    /**
      * Return the annotation attributes. For each attribute return both the name and the original
      * type, as declared by the return type of the annotation method. The name is later used to find
      * the corresponding synthetic field that holds the value. The declared type of the field can be
-     * different than that of the actual attribute type: when the attribute type is either Class or
-     * Class[] the field type is Object since it can also store a TypeNotPresentExceptionProxy.
+     * different than that of the actual attribute type: when the attribute type is either
+     * {@link Class} or {@code Class[]} the field type is {@link Object} since it can also store a
+     * {@link sun.reflect.annotation.TypeNotPresentExceptionProxy}.
      */
     protected static List<Pair<String, ResolvedJavaType>> findAttributes(ResolvedJavaType annotationType) {
         List<Pair<String, ResolvedJavaType>> attributes = new ArrayList<>();
         for (ResolvedJavaMethod method : annotationType.getDeclaredMethods()) {
             String methodName = canonicalMethodName(method);
-            if (methodName.equals("equals") || methodName.equals("hashCode") || methodName.equals("toString") || methodName.equals("annotationType")) {
+            if (methodName.equals("equals") || methodName.equals("hashCode") || methodName.equals("toString") || methodName.equals("annotationType") || methodName.equals("proxyClassLookup")) {
                 /* Ignore non-accessor methods. */
             } else {
                 ResolvedJavaType returnType = (ResolvedJavaType) method.getSignature().getReturnType(null);

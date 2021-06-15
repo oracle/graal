@@ -29,6 +29,8 @@ import static org.graalvm.compiler.nodeinfo.InputType.Memory;
 import static org.graalvm.compiler.nodeinfo.InputType.State;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_UNKNOWN;
+import static org.graalvm.compiler.nodes.Invoke.CYCLES_UNKNOWN_RATIONALE;
+import static org.graalvm.compiler.nodes.Invoke.SIZE_UNKNOWN_RATIONALE;
 
 import java.util.Map;
 
@@ -49,7 +51,12 @@ import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.code.BytecodeFrame;
 
-@NodeInfo(nameTemplate = "Invoke!#{p#targetMethod/s}", allowedUsageTypes = {Memory}, cycles = CYCLES_UNKNOWN, size = SIZE_UNKNOWN)
+// @formatter:off
+@NodeInfo(nameTemplate = "Invoke!#{p#targetMethod/s}",
+          allowedUsageTypes = {Memory},
+          cycles = CYCLES_UNKNOWN, cyclesRationale = CYCLES_UNKNOWN_RATIONALE,
+          size   = SIZE_UNKNOWN,   sizeRationale   = SIZE_UNKNOWN_RATIONALE)
+// @formatter:on
 public final class InvokeWithExceptionNode extends WithExceptionNode implements Invoke, IterableNodeType, SingleMemoryKill, LIRLowerable, UncheckedInterfaceProvider {
     public static final NodeClass<InvokeWithExceptionNode> TYPE = NodeClass.create(InvokeWithExceptionNode.class);
 

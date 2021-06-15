@@ -26,8 +26,19 @@ package com.oracle.svm.core.configure;
 
 import java.util.List;
 
+import com.oracle.svm.core.TypeResult;
+
 public interface ReflectionConfigurationParserDelegate<T> {
-    T resolveType(String typeName);
+
+    /**
+     * @deprecated use {@link #resolveTypeResult(String)} instead.
+     */
+    @Deprecated
+    default T resolveType(String typeName) {
+        return resolveTypeResult(typeName).get();
+    }
+
+    TypeResult<T> resolveTypeResult(String typeName);
 
     void registerType(T type);
 
@@ -47,7 +58,7 @@ public interface ReflectionConfigurationParserDelegate<T> {
 
     void registerDeclaredConstructors(T type);
 
-    void registerField(T type, String fieldName, boolean allowWrite, boolean allowUnsafeAccess) throws NoSuchFieldException;
+    void registerField(T type, String fieldName, boolean allowWrite) throws NoSuchFieldException;
 
     boolean registerAllMethodsWithName(T type, String methodName);
 

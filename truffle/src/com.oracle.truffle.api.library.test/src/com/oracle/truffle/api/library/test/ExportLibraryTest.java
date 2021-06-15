@@ -40,26 +40,130 @@
  */
 package com.oracle.truffle.api.library.test;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+
+import org.junit.Test;
+
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.GenerateLibrary.DefaultExport;
 import com.oracle.truffle.api.library.Library;
+import com.oracle.truffle.api.test.AbstractLibraryTest;
 import com.oracle.truffle.api.test.ExpectError;
 
-public class ExportLibraryTest {
+public class ExportLibraryTest extends AbstractLibraryTest {
 
     @GenerateLibrary
     @DefaultExport(PrimitiveInt.class)
-    public abstract static class TestLibrary extends Library {
+    public abstract static class ExportLibraryTestLibrary extends Library {
 
         public abstract Object m0(Object arg);
 
     }
 
+    @GenerateLibrary
+    public abstract static class ExportLibraryTestLibrary2 extends Library {
+
+        public abstract Object m1(Object arg);
+
+    }
+
+    @Test
+    public void testSubclassRegeneration() {
+        BaseClass base = new BaseClass();
+        BaseClass subNoRegeneration = new SubClassNoRedeclaration();
+        BaseClass subWithRegeneration = new SubClassWithRedeclaration();
+
+        ExportLibraryTestLibrary baseLib = createCached(ExportLibraryTestLibrary.class, base);
+        ExportLibraryTestLibrary subNoRegenerationLib = createCached(ExportLibraryTestLibrary.class, subNoRegeneration);
+        ExportLibraryTestLibrary subWithRegenerationLib = createCached(ExportLibraryTestLibrary.class, subWithRegeneration);
+        ExportLibraryTestLibrary uncachedBaseLib = getUncached(ExportLibraryTestLibrary.class, base);
+        ExportLibraryTestLibrary uncachedSubNoRegenerationLib = getUncached(ExportLibraryTestLibrary.class, subNoRegeneration);
+        ExportLibraryTestLibrary uncachedSubWithRegenerationLib = getUncached(ExportLibraryTestLibrary.class, subWithRegeneration);
+
+        // make sure we don't use a different exports class if no messages are reexported in a
+        // subclass.
+        assertSame(baseLib.getClass(), subNoRegenerationLib.getClass());
+        assertNotSame(baseLib.getClass(), subWithRegenerationLib.getClass());
+
+        // test cached behavior
+
+        assertTrue(baseLib.accepts(base));
+        assertEquals("m0", baseLib.m0(base));
+        assertFalse(subNoRegenerationLib.accepts(base));
+        assertFalse(subWithRegenerationLib.accepts(base));
+
+        assertFalse(baseLib.accepts(subNoRegeneration));
+        assertTrue(subNoRegenerationLib.accepts(subNoRegeneration));
+        assertEquals("m0", subNoRegenerationLib.m0(subNoRegeneration));
+        assertFalse(subWithRegenerationLib.accepts(subNoRegeneration));
+
+        assertFalse(baseLib.accepts(subWithRegeneration));
+        assertFalse(subNoRegenerationLib.accepts(subWithRegeneration));
+        assertTrue(subWithRegenerationLib.accepts(subWithRegeneration));
+        assertEquals("m0override", subWithRegenerationLib.m0(subWithRegeneration));
+
+        // test uncached behavior
+
+        assertSame(uncachedBaseLib.getClass(), uncachedSubNoRegenerationLib.getClass());
+        assertNotSame(uncachedBaseLib.getClass(), uncachedSubWithRegenerationLib.getClass());
+
+        assertTrue(baseLib.accepts(base));
+        assertEquals("m0", uncachedBaseLib.m0(base));
+        assertFalse(uncachedSubNoRegenerationLib.accepts(base));
+        assertFalse(uncachedSubWithRegenerationLib.accepts(base));
+
+        assertFalse(uncachedBaseLib.accepts(subNoRegeneration));
+        assertTrue(uncachedSubNoRegenerationLib.accepts(subNoRegeneration));
+        assertEquals("m0", uncachedSubNoRegenerationLib.m0(subNoRegeneration));
+        assertFalse(uncachedSubWithRegenerationLib.accepts(subNoRegeneration));
+
+        assertFalse(uncachedBaseLib.accepts(subWithRegeneration));
+        assertFalse(uncachedSubNoRegenerationLib.accepts(subWithRegeneration));
+        assertTrue(uncachedSubWithRegenerationLib.accepts(subWithRegeneration));
+        assertEquals("m0override", uncachedSubWithRegenerationLib.m0(subWithRegeneration));
+    }
+
+    @ExportLibrary(value = ExportLibraryTestLibrary.class)
+    public static class BaseClass {
+        @ExportMessage
+        Object m0() {
+            return "m0";
+        }
+    }
+
+    @ExportLibrary(value = ExportLibraryTestLibrary2.class)
+    @ExportLibrary(value = ExportLibraryTestLibrary.class)
+    public static class SubClassWithRedeclaration extends BaseClass {
+
+        @ExportMessage(name = "m0")
+        Object m0override() {
+            return "m0override";
+        }
+
+        @ExportMessage
+        Object m1() {
+            return "m1";
+        }
+    }
+
+    @ExportLibrary(value = ExportLibraryTestLibrary2.class)
+    public static class SubClassNoRedeclaration extends BaseClass {
+
+        @ExportMessage
+        Object m1() {
+            return "m1";
+        }
+    }
+
     @ExpectError("Primitive receiver types are not supported yet.")
-    @ExportLibrary(value = TestLibrary.class, receiverType = int.class)
+    @ExportLibrary(value = ExportLibraryTestLibrary.class, receiverType = int.class)
     public static class PrimitiveInt {
         @ExportMessage
         static Object m0(int receiver) {
@@ -73,10 +177,9 @@ public class ExportLibraryTest {
     @ExpectError("Class 'NoLibrary' is not a library annotated with @GenerateLibrary.")
     @ExportLibrary(NoLibrary.class)
     static class ExportsTestObjectError1 {
-
     }
 
-    @ExportLibrary(TestLibrary.class)
+    @ExportLibrary(ExportLibraryTestLibrary.class)
     @ExpectError("The exported type must not be private. Increase visibility to resolve this.")
     private static class ExportsTestObjectError2 {
         @SuppressWarnings("static-method")
@@ -86,7 +189,7 @@ public class ExportLibraryTest {
         }
     }
 
-    @ExportLibrary(TestLibrary.class)
+    @ExportLibrary(ExportLibraryTestLibrary.class)
     static class ExportsTestObjectError3 {
         @SuppressWarnings("static-method")
         @ExpectError("The exported method must not be private. Increase visibility to resolve this.")
@@ -96,7 +199,7 @@ public class ExportLibraryTest {
         }
     }
 
-    @ExportLibrary(TestLibrary.class)
+    @ExportLibrary(ExportLibraryTestLibrary.class)
     static class ExportsTestObjectError4 {
         @SuppressWarnings("static-method")
         @ExportMessage
@@ -106,7 +209,7 @@ public class ExportLibraryTest {
         }
     }
 
-    @ExportLibrary(TestLibrary.class)
+    @ExportLibrary(ExportLibraryTestLibrary.class)
     static class ExportsTestObjectError5 {
         @ExpectError("Exported message node class must not be private.")
         @ExportMessage
@@ -116,11 +219,11 @@ public class ExportLibraryTest {
 
     @ExpectError("Using explicit receiver types is only supported for default exports or types that export DynamicDispatchLibrary.%n" +
                     "To resolve this use one of the following strategies:%n" +
-                    "  - Make the receiver type implicit by applying '@ExportLibrary(TestLibrary.class)' to the receiver type 'PrimitiveInt' instead.%n" +
-                    "  - Declare a default export on the 'TestLibrary' library with '@DefaultExport(TestReceiver.class)'%n" +
+                    "  - Make the receiver type implicit by applying '@ExportLibrary(ExportLibraryTestLibrary.class)' to the receiver type 'PrimitiveInt' instead.%n" +
+                    "  - Declare a default export on the 'ExportLibraryTestLibrary' library with '@DefaultExport(TestReceiver.class)'%n" +
                     "  - Enable default exports with service providers using @GenerateLibrary(defaultExportLookupEnabled=true) on the library and specify an export priority%n" +
                     "  - Enable dynamic dispatch by annotating the receiver type with '@ExportLibrary(DynamicDispatchLibrary.class)'.")
-    @ExportLibrary(value = TestLibrary.class, receiverType = PrimitiveInt.class)
+    @ExportLibrary(value = ExportLibraryTestLibrary.class, receiverType = PrimitiveInt.class)
     static class TestReceiver {
         @ExportMessage
         static class M0 {

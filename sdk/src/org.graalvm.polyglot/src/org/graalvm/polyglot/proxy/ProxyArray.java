@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package org.graalvm.polyglot.proxy;
 
 import java.util.List;
+import java.util.NoSuchElementException;
 
 import org.graalvm.polyglot.Value;
 
@@ -53,7 +54,7 @@ import org.graalvm.polyglot.Value;
  * @see Proxy
  * @since 19.0
  */
-public interface ProxyArray extends Proxy {
+public interface ProxyArray extends ProxyIterable {
 
     /**
      * Returns the element at the given index.
@@ -95,6 +96,16 @@ public interface ProxyArray extends Proxy {
      * @since 19.0
      */
     long getSize();
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 20.1
+     */
+    @Override
+    default Object getIterator() {
+        return new DefaultProxyArrayIterator(this);
+    }
 
     /**
      * Creates a proxy array backed by a Java Object array. If the set values of the array are host
@@ -171,7 +182,39 @@ public interface ProxyArray extends Proxy {
                 return values.size();
             }
 
+            @Override
+            public Object getIterator() {
+                return ProxyIterator.from(values.iterator());
+            }
         };
     }
+}
 
+final class DefaultProxyArrayIterator implements ProxyIterator {
+
+    private final ProxyArray array;
+    private long index;
+
+    DefaultProxyArrayIterator(ProxyArray array) {
+        this.array = array;
+    }
+
+    @Override
+    public boolean hasNext() {
+        return index < array.getSize();
+    }
+
+    @Override
+    public Object getNext() {
+        if (index >= array.getSize()) {
+            throw new NoSuchElementException();
+        }
+        try {
+            Object res = array.get(index);
+            index++;
+            return res;
+        } catch (ArrayIndexOutOfBoundsException e) {
+            throw new NoSuchElementException();
+        }
+    }
 }

@@ -28,7 +28,6 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 
-import com.oracle.svm.core.genscavenge.HeapPolicy.AlwaysCollectCompletely;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.util.UserError;
@@ -71,14 +70,11 @@ public final class HeapPolicyOptions {
     @Option(help = "Trace heap chunks during collections, if +VerboseGC and +PrintHeapShape.") //
     public static final RuntimeOptionKey<Boolean> TraceHeapChunks = new RuntimeOptionKey<>(false);
 
-    @Option(help = "Policy used when user code requests garbage collection.")//
-    public static final HostedOptionKey<String> UserRequestedGCPolicy = new HostedOptionKey<>(AlwaysCollectCompletely.class.getName());
-
-    @Option(help = "With the skeptical policy for user-requested collections, the threshold for the young generation size to cause a collection.") //
-    public static final RuntimeOptionKey<Long> UserRequestedGCThreshold = new RuntimeOptionKey<>(16L * 1024L * 1024L);
-
     @Option(help = "Maximum number of survivor spaces.") //
     public static final HostedOptionKey<Integer> MaxSurvivorSpaces = new HostedOptionKey<>(0);
+
+    @Option(help = "Determines if a full GC collects the young generation separately or together with the old generation.") //
+    public static final RuntimeOptionKey<Boolean> CollectYoungGenerationSeparately = new RuntimeOptionKey<>(false);
 
     private HeapPolicyOptions() {
     }

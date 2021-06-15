@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 import org.graalvm.compiler.graph.Node;
 
@@ -87,5 +89,9 @@ public interface NodeIterable<T extends Node> extends Iterable<T> {
             }
         }
         return false;
+    }
+
+    default Stream<T> stream() {
+        return StreamSupport.stream(spliterator(), false);
     }
 }

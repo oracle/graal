@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2016, Intel Corporation. All rights reserved.
  * Intel Math Library (LIBM) Source Code
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
@@ -47,12 +47,13 @@ import static org.graalvm.compiler.lir.amd64.AMD64HotSpotHelper.recordExternalAd
 
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
-import org.graalvm.compiler.asm.amd64.AMD64Assembler;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.lir.LIRInstructionClass;
+import org.graalvm.compiler.lir.StubPort;
 import org.graalvm.compiler.lir.asm.ArrayDataPointerConstant;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 import jdk.vm.ci.code.Register;
 
@@ -108,6 +109,13 @@ import jdk.vm.ci.code.Register;
  *  pow(+INF,y) = +INF for y >0.
  * </pre>
  */
+// @formatter:off
+@StubPort(path      = "src/hotspot/cpu/x86/macroAssembler_x86_pow.cpp",
+          lineStart = 0,
+          lineEnd   = 1880,
+          commit    = "51b218842f001f1c4fd5ca7a02a2ba21e9e8a82c",
+          sha1      = "b9ee010c248b0a1ccb29e3348fc158eafbe00115")
+// @formatter:on
 public final class AMD64MathPowOp extends AMD64MathIntrinsicBinaryOp {
 
     public static final LIRInstructionClass<AMD64MathPowOp> TYPE = LIRInstructionClass.create(AMD64MathPowOp.class);
@@ -830,6 +838,18 @@ public final class AMD64MathPowOp extends AMD64MathIntrinsicBinaryOp {
             //@formatter:on
     });
 
+    private ArrayDataPointerConstant double0 = pointerConstant(8, new int[]{
+            //@formatter:off
+            0x00000000, 0x00000000
+            //@formatter:on
+    });
+
+    private ArrayDataPointerConstant double0Point5 = pointerConstant(8, new int[]{
+            //@formatter:off
+            0x00000000, 0x3fe00000
+            //@formatter:on
+    });
+
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
         // registers,
@@ -896,6 +916,7 @@ public final class AMD64MathPowOp extends AMD64MathIntrinsicBinaryOp {
         Label block55 = new Label();
         Label block56 = new Label();
         Label block57 = new Label();
+        Label block58 = new Label();
 
         Register tmp1 = r8;
         Register tmp2 = r9;
@@ -910,11 +931,29 @@ public final class AMD64MathPowOp extends AMD64MathIntrinsicBinaryOp {
         masm.movdq(tmp1, xmm1);
         // TODO (yz) adjust recorded address before jcc mitigation
         masm.cmpq(tmp1, recordExternalAddress(crb, double2));
-        masm.jccb(AMD64Assembler.ConditionFlag.NotEqual, block57);
+        masm.jccb(ConditionFlag.NotEqual, block57);
         masm.mulsd(xmm0, xmm0);
         masm.jmp(block56);
 
         masm.bind(block57);
+
+        // Note: Math.pow(Double.MAX_VALUE, 0.5) changes from 0x5ff0000000000000 to
+        // 0x5fefffffffffffff on Java 17, possibly due to the change in macroAssembler_x86_pow.cpp
+        // as ported below (JDK-8265325).
+        if (JavaVersionUtil.JAVA_SPEC >= 17) {
+            // Special case: pow(x, 0.5) => sqrt(x)
+            // For pow(x, y), check whether y == 0.5
+            masm.cmpq(tmp1, recordExternalAddress(crb, double0Point5));
+            masm.jccb(ConditionFlag.NotEqual, block58);
+            masm.movdq(tmp2, xmm0);
+            // pow(x, 0.5) => sqrt(x) only for x >= 0.0 or x is +inf/NaN
+            masm.cmpq(tmp2, recordExternalAddress(crb, double0));
+            masm.jccb(ConditionFlag.Less, block58);
+            masm.sqrtsd(xmm0, xmm0);
+            masm.jmp(block56);
+            masm.bind(block58);
+        }
+
         masm.pextrw(rax, xmm0, 3);
         masm.xorpd(xmm2, xmm2);
         masm.movq(tmp2, 0x3ff0000000000000L);

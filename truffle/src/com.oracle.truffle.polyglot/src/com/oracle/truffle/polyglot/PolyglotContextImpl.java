@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,9 +42,10 @@ package com.oracle.truffle.polyglot;
 
 import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 import static com.oracle.truffle.polyglot.EngineAccessor.LANGUAGE;
-import static com.oracle.truffle.polyglot.PolyglotValue.hostEnter;
-import static com.oracle.truffle.polyglot.PolyglotValue.hostLeave;
+import static com.oracle.truffle.polyglot.PolyglotValueDispatch.hostEnter;
+import static com.oracle.truffle.polyglot.PolyglotValueDispatch.hostLeave;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.lang.ref.WeakReference;
@@ -57,12 +58,16 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
@@ -70,11 +75,10 @@ import java.util.logging.Level;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextImpl;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostService;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
@@ -82,24 +86,30 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.ThreadLocalAction;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.api.TruffleSafepoint;
+import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.polyglot.HostLanguage.HostContext;
 import com.oracle.truffle.polyglot.PolyglotEngineImpl.CancelExecution;
 import com.oracle.truffle.polyglot.PolyglotEngineImpl.StableLocalLocations;
+import com.oracle.truffle.polyglot.PolyglotLanguageContext.ValueMigrationException;
 import com.oracle.truffle.polyglot.PolyglotLocals.LocalLocation;
 
-final class PolyglotContextImpl extends AbstractContextImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
+final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
 
     private static final TruffleLogger LOG = TruffleLogger.getLogger(PolyglotEngineImpl.OPTION_GROUP_ENGINE, PolyglotContextImpl.class);
     private static final InteropLibrary UNCACHED = InteropLibrary.getFactory().getUncached();
+    private static final Object[] DISPOSED_CONTEXT_THREAD_LOCALS = new Object[0];
 
     /**
      * This class isolates static state to optimize when only a single context is used. This
@@ -166,9 +176,12 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     final Assumption singleThreaded = Truffle.getRuntime().createAssumption("Single threaded");
     private final Map<Thread, PolyglotThreadInfo> threads = new WeakHashMap<>();
 
-    volatile PolyglotThreadInfo currentThreadInfo = PolyglotThreadInfo.NULL;
-    @CompilationFinal volatile PolyglotThreadInfo constantCurrentThreadInfo = PolyglotThreadInfo.NULL;
+    /*
+     * Do not modify only read. Use setCachedThreadInfo to modify.
+     */
+    volatile PolyglotThreadInfo cachedThreadInfo = PolyglotThreadInfo.NULL;
 
+    volatile Context api;
     volatile boolean interrupting;
 
     /*
@@ -176,6 +189,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
      * closed state.
      */
     volatile boolean cancelling;
+    volatile boolean cancelled;
     volatile String invalidMessage;
     volatile boolean invalidResourceLimit;
     volatile Thread closingThread;
@@ -190,9 +204,6 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     @CompilationFinal(dimensions = 1) final PolyglotLanguageContext[] contexts;
     /* Duplicated context impl array for efficient context lookup. */
     @CompilationFinal(dimensions = 1) final Object[] contextImpls;
-
-    Context creatorApi; // effectively final
-    Context currentApi; // effectively final
 
     final TruffleContext creatorTruffleContext;
     final TruffleContext currentTruffleContext;
@@ -217,11 +228,14 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     final AtomicLong volatileStatementCounter = new AtomicLong();
     long statementCounter;
     final long statementLimit;
+    private volatile Object contextBoundLoggers;
 
     /*
      * Initialized once per context.
      */
     @CompilationFinal(dimensions = 1) Object[] contextLocals;
+
+    volatile boolean localsCleared;
 
     /*
      * Access to these three fields is *only* allowed in setCurrentContextLocals and
@@ -231,9 +245,16 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     private long currentThreadLocalSingleThreadID = -1;
     private final ContextLocalsTL contextThreadLocals = new ContextLocalsTL();
 
+    private ObjectSizeCalculator objectSizeCalculator;
+
+    final PolyglotThreadLocalActions threadLocalActions;
+    private Collection<Closeable> closeables;
+
+    private final Set<PauseThreadLocalAction> pauseThreadLocalActions = new LinkedHashSet<>();
+
     /* Constructor for testing. */
+    @SuppressWarnings("unused")
     private PolyglotContextImpl() {
-        super(null);
         this.engine = null;
         this.contexts = null;
         this.contextImpls = null;
@@ -246,6 +267,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         this.creatorArguments = null;
         this.weakReference = null;
         this.statementLimit = 0;
+        this.threadLocalActions = null;
         this.subProcesses = new HashSet<>();
     }
 
@@ -253,7 +275,6 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
      * Constructor for outer contexts.
      */
     PolyglotContextImpl(PolyglotEngineImpl engine, PolyglotContextConfig config) {
-        super(engine.impl);
         this.parent = null;
         this.engine = engine;
         this.config = config;
@@ -263,16 +284,22 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         this.currentTruffleContext = EngineAccessor.LANGUAGE.createTruffleContext(this, false);
         this.weakReference = new ContextWeakReference(this);
         this.contextImpls = new Object[engine.contextLength];
-        this.contexts = createContextArray();
-        if (!config.logLevels.isEmpty()) {
-            EngineAccessor.LANGUAGE.configureLoggers(this, config.logLevels, getAllLoggers(engine));
-        }
+        this.contexts = createContextArray(engine.hostLanguageInstance);
         this.subProcesses = new HashSet<>();
-        this.statementLimit = config.limits != null ? config.limits.statementLimit : Long.MAX_VALUE - 1;
+        this.statementLimit = config.limits != null && config.limits.statementLimit != 0 ? config.limits.statementLimit : Long.MAX_VALUE - 1;
         this.statementCounter = statementLimit;
         this.volatileStatementCounter.set(statementLimit);
+        this.threadLocalActions = new PolyglotThreadLocalActions(this);
 
         PolyglotEngineImpl.ensureInstrumentsCreated(config.getConfiguredInstruments());
+
+        /*
+         * Instruments can add loggers, and so configuration of loggers for this context must be
+         * done after instruments are created.
+         */
+        if (!config.logLevels.isEmpty()) {
+            EngineAccessor.LANGUAGE.configureLoggers(this, config.logLevels, getAllLoggers());
+        }
 
         notifyContextCreated();
         PolyglotContextImpl.initializeStaticContext(this);
@@ -284,7 +311,6 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
      */
     @SuppressWarnings("hiding")
     PolyglotContextImpl(PolyglotLanguageContext creator, Map<String, Object> langConfig) {
-        super(creator.getEngine().impl);
         PolyglotContextImpl parent = creator.context;
         this.parent = parent;
         this.config = parent.config;
@@ -297,11 +323,16 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         this.creatorTruffleContext = EngineAccessor.LANGUAGE.createTruffleContext(this, true);
         this.currentTruffleContext = EngineAccessor.LANGUAGE.createTruffleContext(this, false);
         this.interrupting = parent.interrupting;
+        this.invalid = this.parent.invalid;
+        this.invalidMessage = this.parent.invalidMessage;
+        this.cancelling = this.parent.cancelling;
+        this.contextBoundLoggers = this.parent.contextBoundLoggers;
+        this.threadLocalActions = new PolyglotThreadLocalActions(this);
         if (!parent.config.logLevels.isEmpty()) {
-            EngineAccessor.LANGUAGE.configureLoggers(this, parent.config.logLevels, getAllLoggers(engine));
+            EngineAccessor.LANGUAGE.configureLoggers(this, parent.config.logLevels, getAllLoggers());
         }
         this.contextImpls = new Object[engine.contextLength];
-        this.contexts = createContextArray();
+        this.contexts = createContextArray(engine.hostLanguageInstance);
         this.subProcesses = new HashSet<>();
         // notifyContextCreated() is called after spiContext.impl is set to this.
         this.engine.noInnerContexts.invalidate();
@@ -312,24 +343,44 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         return config.getInstrumentOptionValues(instrument);
     }
 
-    @Override
     public void resetLimits() {
-        PolyglotLimits.reset(this);
-        EngineAccessor.INSTRUMENT.notifyContextResetLimit(engine, creatorTruffleContext);
+        PolyglotLanguageContext languageContext = this.getHostContext();
+        Object prev = hostEnter(languageContext);
+        try {
+            PolyglotLimits.reset(this);
+            EngineAccessor.INSTRUMENT.notifyContextResetLimit(engine, creatorTruffleContext);
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException(languageContext, e, true);
+        } finally {
+            hostLeave(languageContext, prev);
+        }
     }
 
-    private PolyglotLanguageContext[] createContextArray() {
+    public void safepoint() {
+        PolyglotLanguageContext languageContext = this.getHostContext();
+        Object prev = hostEnter(languageContext);
+        try {
+            TruffleSafepoint.poll(this.engine.getUncachedLocation());
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException(languageContext, e, true);
+        } finally {
+            hostLeave(languageContext, prev);
+        }
+    }
+
+    private PolyglotLanguageContext[] createContextArray(PolyglotLanguageInstance hostLanguageInstance) {
         Collection<PolyglotLanguage> languages = engine.idToLanguage.values();
         PolyglotLanguageContext[] newContexts = new PolyglotLanguageContext[engine.contextLength];
         Iterator<PolyglotLanguage> languageIterator = languages.iterator();
-        PolyglotLanguageContext hostContext = new PolyglotLanguageContext(this, engine.hostLanguage);
-        newContexts[PolyglotEngineImpl.HOST_LANGUAGE_INDEX] = hostContext;
         for (int i = (PolyglotEngineImpl.HOST_LANGUAGE_INDEX + 1); i < engine.contextLength; i++) {
             PolyglotLanguage language = languageIterator.next();
             newContexts[i] = new PolyglotLanguageContext(this, language);
         }
+        PolyglotLanguage hostLanguage = hostLanguageInstance.language;
+        PolyglotLanguageContext hostContext = new PolyglotLanguageContext(this, hostLanguage);
+        newContexts[PolyglotEngineImpl.HOST_LANGUAGE_INDEX] = hostContext;
+        hostContext.ensureCreated(hostLanguage, hostLanguageInstance);
         hostContext.ensureInitialized(null);
-        ((HostContext) hostContext.getContextImpl()).initializeInternal(hostContext);
         return newContexts;
     }
 
@@ -423,9 +474,10 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
 
     static PolyglotContextImpl currentNotEntered() {
         SingleContextState singleContext = singleContextState;
+        PolyglotContextImpl context = singleContext.singleContext;
         if (singleContext.singleContextAssumption.isValid()) {
             if (singleContext.contextThreadLocal.isSet()) {
-                return singleContext.singleContext;
+                return context;
             } else {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 return null;
@@ -439,10 +491,8 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         assert enteredInEngine != null;
         CompilerAsserts.partialEvaluationConstant(enteredInEngine);
         SingleContextState state = singleContextState;
-        Object context;
-        if (state.singleContextAssumption.isValid()) {
-            context = state.singleContext;
-        } else {
+        Object context = state.singleContext;
+        if (!state.singleContextAssumption.isValid()) {
             context = state.contextThreadLocal.getEntered();
         }
         if (CompilerDirectives.inCompiledCode()) {
@@ -466,12 +516,10 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         return context;
     }
 
-    @Override
-    public synchronized void explicitEnter(Context sourceContext) {
+    public synchronized void explicitEnter() {
         try {
-            checkCreatorAccess(sourceContext, "entered");
-            PolyglotContextImpl prev = engine.enter(this);
-            PolyglotThreadInfo current = getCurrentThreadInfo();
+            PolyglotContextImpl prev = engine.enter(this, engine.getUncachedLocation(), true);
+            PolyglotThreadInfo current = getCachedThreadInfo();
             assert current.getThread() == Thread.currentThread();
             current.explicitContextStack.addLast(prev);
         } catch (Throwable t) {
@@ -479,16 +527,14 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         }
     }
 
-    @Override
-    public synchronized void explicitLeave(Context sourceContext) {
+    public synchronized void explicitLeave() {
         if (closed || closingThread == Thread.currentThread()) {
             // explicit leaves if already closed are allowed.
             // as close may automatically leave the context on threads.
             return;
         }
         try {
-            checkCreatorAccess(sourceContext, "left");
-            PolyglotThreadInfo current = getCurrentThreadInfo();
+            PolyglotThreadInfo current = getCachedThreadInfo();
             LinkedList<PolyglotContextImpl> stack = current.explicitContextStack;
             if (stack.isEmpty() || current.getThread() == null) {
                 throw PolyglotEngineException.illegalState("The context is not entered explicity. A context can only be left if it was previously entered.");
@@ -499,96 +545,160 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         }
     }
 
-    private void checkCreatorAccess(Context context, String operation) {
-        if (context != creatorApi) {
-            throw PolyglotEngineException.illegalState(String.format("Context instances that were received using Context.get() cannot be %s.", operation));
+    synchronized Future<Void> pause() {
+        PauseThreadLocalAction pauseAction = new PauseThreadLocalAction(this);
+        Future<Void> future = threadLocalActions.submit(null, PolyglotEngineImpl.ENGINE_ID, pauseAction, true, true, false);
+        pauseThreadLocalActions.add(pauseAction);
+        return new ContextPauseHandle(pauseAction, future);
+    }
+
+    void resume(Future<Void> pauseFuture) {
+        if (pauseFuture instanceof ContextPauseHandle && ((ContextPauseHandle) pauseFuture).pauseThreadLocalAction.context == this) {
+            ContextPauseHandle pauseHandle = (ContextPauseHandle) pauseFuture;
+            pauseHandle.resume();
+        } else {
+            throw new IllegalArgumentException("Resume method was not passed a valid pause future!");
         }
     }
 
     @TruffleBoundary
-    PolyglotContextImpl enterThreadChanged() {
-        Thread current = Thread.currentThread();
-        PolyglotContextImpl prev;
-        boolean needsInitialization = false;
-        synchronized (this) {
-            PolyglotThreadInfo threadInfo = getCurrentThreadInfo();
-            checkClosed();
-            assert threadInfo != null;
-
-            threadInfo = threads.get(current);
-            if (threadInfo == null) {
-                threadInfo = createThreadInfo(current);
-                needsInitialization = !inContextPreInitialization;
-            }
-            boolean transitionToMultiThreading = singleThreaded.isValid() && hasActiveOtherThread(true);
-            if (transitionToMultiThreading) {
-                // recheck all thread accesses
-                checkAllThreadAccesses(Thread.currentThread(), false);
-            }
-
-            if (transitionToMultiThreading) {
-                /*
-                 * We need to do this early (before initializeMultiThreading) as entering or local
-                 * initialization depends on single thread per context.
-                 */
-                engine.singleThreadPerContext.invalidate();
-            }
-
-            Thread closing = this.closingThread;
-            if (needsInitialization) {
-                if (closing != null && closing != current) {
-                    throw PolyglotEngineException.illegalState("Can not create new threads in closing context.", true);
+    PolyglotContextImpl enterThreadChanged(Node safepointLocation, boolean enterReverted, boolean pollSafepoint) {
+        PolyglotThreadInfo enteredThread = null;
+        PolyglotContextImpl prev = null;
+        try {
+            Thread current = Thread.currentThread();
+            boolean needsInitialization = false;
+            synchronized (this) {
+                PolyglotThreadInfo threadInfo = getCachedThreadInfo();
+                if (enterReverted && threadInfo.getEnteredCount() == 0) {
+                    threadLocalActions.notifyThreadActivation(threadInfo, false);
+                    if ((cancelling || cancelled) && !threadInfo.isActiveNotCancelled()) {
+                        notifyThreadClosed();
+                    }
+                    if (interrupting && !threadInfo.isActiveNotCancelled()) {
+                        Thread.interrupted();
+                        notifyAll();
+                    }
                 }
-                threads.put(current, threadInfo);
+                checkClosed();
+                assert threadInfo != null;
+
+                threadInfo = threads.get(current);
+                if (threadInfo == null) {
+                    threadInfo = createThreadInfo(current);
+                    needsInitialization = true;
+                }
+                boolean transitionToMultiThreading = singleThreaded.isValid() && hasActiveOtherThread(true);
+                if (transitionToMultiThreading) {
+                    // recheck all thread accesses
+                    checkAllThreadAccesses(Thread.currentThread(), false);
+                }
+
+                if (transitionToMultiThreading) {
+                    /*
+                     * We need to do this early (before initializeMultiThreading) as entering or
+                     * local initialization depends on single thread per context.
+                     */
+                    engine.singleThreadPerContext.invalidate();
+                }
+
+                Thread closing = this.closingThread;
+                if (needsInitialization) {
+                    if (closing != null && closing != current) {
+                        throw PolyglotEngineException.illegalState("Can not create new threads in closing context.", true);
+                    }
+                    threads.put(current, threadInfo);
+                }
+
+                if (needsInitialization) {
+                    /*
+                     * Do not enter the thread before initializing thread locals. Creation of thread
+                     * locals might fail.
+                     */
+                    initializeThreadLocals(threadInfo);
+                }
+
+                prev = threadInfo.enterInternal();
+                try {
+                    threadInfo.notifyEnter(engine, this);
+                } catch (Throwable t) {
+                    threadInfo.leaveInternal(prev);
+                    throw t;
+                }
+                enteredThread = threadInfo;
+
+                if (needsInitialization) {
+                    this.threadLocalActions.notifyEnterCreatedThread();
+                }
+
+                // new thread became active so we need to check potential active thread local
+                // actions and process them.
+                Set<ThreadLocalAction> activatedActions = null;
+                if (enteredThread.getEnteredCount() == 1) {
+                    activatedActions = threadLocalActions.notifyThreadActivation(threadInfo, true);
+                }
+
+                if (transitionToMultiThreading) {
+                    // we need to verify that all languages give access
+                    // to all threads in multi-threaded mode.
+                    transitionToMultiThreaded();
+                }
+
+                if (needsInitialization) {
+                    initializeNewThread(current);
+                }
+
+                if (enteredThread.getEnteredCount() == 1 && !pauseThreadLocalActions.isEmpty()) {
+                    for (Iterator<PauseThreadLocalAction> threadLocalActionIterator = pauseThreadLocalActions.iterator(); threadLocalActionIterator.hasNext();) {
+                        PauseThreadLocalAction threadLocalAction = threadLocalActionIterator.next();
+                        if (!threadLocalAction.isPause()) {
+                            threadLocalActionIterator.remove();
+                        } else {
+                            if (activatedActions == null || !activatedActions.contains(threadLocalAction)) {
+                                threadLocalActions.submit(new Thread[]{Thread.currentThread()}, PolyglotEngineImpl.ENGINE_ID, threadLocalAction, true, true, false);
+                            }
+                        }
+                    }
+                }
+
+                // never cache last thread on close or when closingThread
+                setCachedThreadInfo(threadInfo);
             }
 
             if (needsInitialization) {
-                /*
-                 * Do not enter the thread before initializing thread locals. Creation of thread
-                 * locals might fail.
-                 */
-                initializeThreadLocals(threadInfo);
+                EngineAccessor.INSTRUMENT.notifyThreadStarted(engine, creatorTruffleContext, current);
             }
-
-            // enter the thread info already
-            prev = singleContextState.contextThreadLocal.setReturnParent(this);
-            try {
-                threadInfo.enter(engine, this);
-            } catch (Throwable t) {
-                PolyglotContextImpl.getSingleContextState().getContextThreadLocal().set(prev);
-                throw t;
+            return prev;
+        } finally {
+            /*
+             * We need to always poll the safepoint here in case we already submitted a thread local
+             * action for this thread. Not polling here would make dependencies of that event wait
+             * forever.
+             */
+            if (pollSafepoint) {
+                try {
+                    TruffleSafepoint.pollHere(safepointLocation);
+                } catch (Throwable t) {
+                    /*
+                     * Just in case a safepoint makes the enter fail we need to leave the context
+                     * again.
+                     */
+                    if (enteredThread != null) {
+                        engine.leave(prev, this);
+                    }
+                    throw t;
+                }
             }
-
-            if (transitionToMultiThreading) {
-                // we need to verify that all languages give access
-                // to all threads in multi-threaded mode.
-                transitionToMultiThreaded();
-            }
-
-            if (needsInitialization) {
-                initializeNewThread(current);
-            }
-
-            // never cache last thread on close or when closingThread
-            setCachedThreadInfo(threadInfo);
         }
-
-        if (needsInitialization) {
-            EngineAccessor.INSTRUMENT.notifyThreadStarted(engine, creatorTruffleContext, current);
-        }
-        return prev;
     }
 
     void setCachedThreadInfo(PolyglotThreadInfo info) {
         assert Thread.holdsLock(this);
         if (closed || closingThread != null || invalid || interrupting) {
             // never set the cached thread when closed closing or invalid
-            currentThreadInfo = PolyglotThreadInfo.NULL;
+            cachedThreadInfo = PolyglotThreadInfo.NULL;
         } else {
-            currentThreadInfo = info;
-            if (engine.singleThreadPerContext.isValid() && engine.singleContext.isValid() && engine.neverInterrupted.isValid()) {
-                constantCurrentThreadInfo = info;
-            }
+            cachedThreadInfo = info;
         }
     }
 
@@ -629,7 +739,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     }
 
     @TruffleBoundary
-    PolyglotThreadInfo leaveThreadChanged() {
+    PolyglotThreadInfo leaveThreadChanged(PolyglotContextImpl prev, boolean entered) {
         PolyglotThreadInfo info;
         synchronized (this) {
             Thread current = Thread.currentThread();
@@ -638,11 +748,35 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             PolyglotThreadInfo threadInfo = threads.get(current);
             assert threadInfo != null;
             info = threadInfo;
-            if (cancelling && info.isLastActive()) {
+
+            if (entered) {
+                try {
+                    info.notifyLeave(engine, this);
+                } finally {
+                    info.leaveInternal(prev);
+                }
+            }
+            if (threadInfo.getEnteredCount() == 0) {
+                threadLocalActions.notifyThreadActivation(threadInfo, false);
+            }
+
+            if ((cancelling || cancelled) && !info.isActiveNotCancelled()) {
                 notifyThreadClosed();
             }
-            info.leave(engine, this);
-            if (!closed && !cancelling && !invalid && !interrupting) {
+
+            boolean somePauseThreadLocalActionIsActive = false;
+            if (threadInfo.getEnteredCount() == 0 && !pauseThreadLocalActions.isEmpty()) {
+                for (Iterator<PauseThreadLocalAction> threadLocalActionIterator = pauseThreadLocalActions.iterator(); threadLocalActionIterator.hasNext();) {
+                    PauseThreadLocalAction threadLocalAction = threadLocalActionIterator.next();
+                    if (!threadLocalAction.isPause()) {
+                        threadLocalActionIterator.remove();
+                    } else {
+                        somePauseThreadLocalActionIsActive = true;
+                    }
+                }
+            }
+
+            if (!closed && !cancelling && !invalid && !interrupting && !somePauseThreadLocalActionIsActive) {
                 setCachedThreadInfo(threadInfo);
             }
             if (interrupting && !info.isActiveNotCancelled()) {
@@ -747,10 +881,8 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         return null;
     }
 
-    @Override
     public Value getBindings(String languageId) {
-        PolyglotLanguage language = requirePublicLanguage(languageId);
-        PolyglotLanguageContext languageContext = getContext(language);
+        PolyglotLanguageContext languageContext = lookupLanguageContext(languageId);
         assert languageContext != null;
         Object prev = hostEnter(languageContext);
         try {
@@ -765,7 +897,6 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         }
     }
 
-    @Override
     public Value getPolyglotBindings() {
         try {
             checkClosed();
@@ -793,8 +924,9 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         synchronized (this) {
             if (this.polyglotBindings == null) {
                 this.polyglotBindings = new ConcurrentHashMap<>();
-                PolyglotBindings bindings = new PolyglotBindings(getHostContext());
-                this.polyglotHostBindings = getAPIAccess().newValue(bindings, new PolyglotBindingsValue(getHostContext(), bindings));
+                PolyglotLanguageContext hostContext = getHostContext();
+                PolyglotBindings bindings = new PolyglotBindings(hostContext);
+                this.polyglotHostBindings = getAPIAccess().newValue(new PolyglotBindingsValue(hostContext, bindings), hostContext, bindings);
             }
         }
     }
@@ -804,8 +936,10 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     }
 
     void checkClosed() {
-        if (invalid && closingThread != Thread.currentThread()) {
-            // try closing if this is the last thread
+        if (invalid && closingThread != Thread.currentThread() && invalidMessage != null) {
+            /*
+             * If invalidMessage == null, then invalid flag was set by close.
+             */
             throw createCancelException(null);
         }
         if (closed) {
@@ -813,12 +947,50 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         }
     }
 
+    Object migrateValue(Node parentNode, Object value, PolyglotContextImpl valueContext) {
+        // migration of guest primitives is already handled.
+        if (PolyglotImpl.isGuestPrimitive(value)) {
+            // allowed to be passed freely
+            return value;
+        } else if (engine.host.isHostObject(value)) {
+            return engine.host.migrateHostObject(getHostContextImpl(), value);
+        } else if (engine.host.isHostProxy(value)) {
+            return engine.host.migrateHostProxy(getHostContextImpl(), value);
+        } else if (valueContext == null) {
+            /*
+             * The only way this can happen is with Value.asValue(TruffleObject). If it happens
+             * otherwise, its wrong.
+             */
+            assert value instanceof TruffleObject;
+            return value;
+        } else {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            Node nodeContext = parentNode;
+            if (nodeContext == null || nodeContext.getRootNode() == null) {
+                nodeContext = EncapsulatingNodeReference.getCurrent().get();
+            }
+            throw new ValueMigrationException(String.format("The value '%s' cannot be passed from one context to another. " +
+                            "The current context is 0x%x and the argument value originates from context 0x%x.",
+                            PolyglotValueDispatch.getValueInfo((PolyglotContextImpl) null, value), hashCode(), valueContext.hashCode()), nodeContext);
+        }
+    }
+
+    Object migrateHostWrapper(Node parentNode, PolyglotWrapper wrapper) {
+        Object wrapped = wrapper.getGuestObject();
+        PolyglotContextImpl valueContext = wrapper.getContext();
+        if (valueContext != this) {
+            // migrate wrapped value to the context
+            wrapped = migrateValue(parentNode, wrapped, valueContext);
+        }
+        return wrapped;
+    }
+
     PolyglotLanguageContext getHostContext() {
         return contexts[PolyglotEngineImpl.HOST_LANGUAGE_INDEX];
     }
 
-    HostContext getHostContextImpl() {
-        return (HostContext) getHostContext().getContextImpl();
+    Object getHostContextImpl() {
+        return contextImpls[PolyglotEngineImpl.HOST_LANGUAGE_INDEX];
     }
 
     @Override
@@ -889,29 +1061,41 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         return context;
     }
 
-    @Override
-    public boolean initializeLanguage(String languageId) {
-        PolyglotLanguage language = requirePublicLanguage(languageId);
+    void initializeInnerContextLanguage(String languageId) {
+        PolyglotLanguage language = engine.idToLanguage.get(languageId);
+        assert language != null : "language creating the inner context not be found";
+        Object prev = engine.enterIfNeeded(this, true);
+        try {
+            initializeLanguage(language);
+        } finally {
+            engine.leaveIfNeeded(prev, this);
+        }
+    }
+
+    private boolean initializeLanguage(PolyglotLanguage language) {
         PolyglotLanguageContext languageContext = getContext(language);
         assert languageContext != null;
+        languageContext.checkAccess(null);
+        if (!languageContext.isInitialized()) {
+            return languageContext.ensureInitialized(null);
+        }
+        return false;
+    }
+
+    public boolean initializeLanguage(String languageId) {
+        PolyglotLanguageContext languageContext = lookupLanguageContext(languageId);
         Object prev = hostEnter(languageContext);
         try {
-            languageContext.checkAccess(null);
-            if (!languageContext.isInitialized()) {
-                return languageContext.ensureInitialized(null);
-            }
+            return initializeLanguage(languageContext.language);
         } catch (Throwable t) {
             throw PolyglotImpl.guestToHostException(languageContext, t, true);
         } finally {
             hostLeave(languageContext, prev);
         }
-        return false;
     }
 
-    @Override
     public Value parse(String languageId, Object sourceImpl) {
-        PolyglotLanguage language = requirePublicLanguage(languageId);
-        PolyglotLanguageContext languageContext = getContext(language);
+        PolyglotLanguageContext languageContext = lookupLanguageContext(languageId);
         assert languageContext != null;
         Object prev = hostEnter(languageContext);
         try {
@@ -927,10 +1111,19 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         }
     }
 
-    @Override
+    private PolyglotLanguageContext lookupLanguageContext(String languageId) {
+        PolyglotLanguageContext languageContext;
+        try {
+            PolyglotLanguage language = requirePublicLanguage(languageId);
+            languageContext = getContext(language);
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException(engine, e);
+        }
+        return languageContext;
+    }
+
     public Value eval(String languageId, Object sourceImpl) {
-        PolyglotLanguage language = requirePublicLanguage(languageId);
-        PolyglotLanguageContext languageContext = getContext(language);
+        PolyglotLanguageContext languageContext = lookupLanguageContext(languageId);
         assert languageContext != null;
         Object prev = hostEnter(languageContext);
         try {
@@ -987,23 +1180,24 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         }
     }
 
-    @Override
-    public Engine getEngineImpl(Context sourceContext) {
-        return sourceContext == creatorApi ? engine.creatorApi : engine.currentApi;
-    }
-
-    @Override
-    public void close(Context sourceContext, boolean cancelIfExecuting) {
+    public void close(boolean cancelIfExecuting) {
         try {
-            checkCreatorAccess(sourceContext, "closed");
-            closeAndMaybeWait(cancelIfExecuting);
+            if (cancelIfExecuting) {
+                /*
+                 * Cancel does invalidate. We always need to invalidate before force-closing a
+                 * context that might be active in other threads.
+                 */
+                cancel(false, null, true);
+            } else {
+                closeAndMaybeWait(false);
+            }
         } catch (Throwable t) {
             throw PolyglotImpl.guestToHostException(engine, t);
         }
     }
 
     void cancel(boolean resourceLimit, String message, boolean wait) {
-        boolean invalidated = invalidate(resourceLimit, message == null ? "Context execution was cancelled." : message);
+        boolean invalidated = invalidateAll(resourceLimit, message == null ? "Context execution was cancelled." : message);
         if (wait && invalidated && !closed) {
             closeAndMaybeWait(true);
         }
@@ -1011,8 +1205,8 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
 
     void closeAndMaybeWait(boolean cancelIfExecuting) {
         boolean closeCompleted = closeImpl(cancelIfExecuting, cancelIfExecuting, true);
-        if (cancelIfExecuting) {
-            engine.getCancelHandler().cancel(Arrays.asList(this));
+        if (cancelIfExecuting && !closeCompleted) {
+            engine.cancel(Arrays.asList(this));
         } else if (!closeCompleted) {
             throw PolyglotEngineException.illegalState(String.format("The context is currently executing on another thread. " +
                             "Set cancelIfExecuting to true to stop the execution on this thread."));
@@ -1037,7 +1231,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     private void interruptChildContexts() {
         PolyglotContextImpl[] childContextsToInterrupt;
         synchronized (this) {
-            PolyglotThreadInfo info = getCurrentThreadInfo();
+            PolyglotThreadInfo info = getCachedThreadInfo();
             if (info != PolyglotThreadInfo.NULL && info.isActive()) {
                 throw PolyglotEngineException.illegalState("Cannot interrupt context from a thread where its child context is active.");
             }
@@ -1050,10 +1244,8 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         }
     }
 
-    @Override
-    public boolean interrupt(Context sourceContext, Duration timeout) {
+    public boolean interrupt(Duration timeout) {
         try {
-            checkCreatorAccess(sourceContext, "interrupted");
             if (parent != null) {
                 throw PolyglotEngineException.illegalState("Cannot interrupt inner context separately.");
             }
@@ -1090,7 +1282,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                             continue;
                         }
                     }
-                    PolyglotThreadInfo info = getCurrentThreadInfo();
+                    PolyglotThreadInfo info = getCachedThreadInfo();
                     if (info != PolyglotThreadInfo.NULL && info.isActive()) {
                         throw PolyglotEngineException.illegalState("Cannot interrupt context from a thread where the context is active.");
                     }
@@ -1112,7 +1304,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                     childCtx.interruptChildContexts();
                 }
 
-                return engine.getCancelHandler().cancel(Collections.singletonList(this), startMillis, timeout);
+                return engine.cancelOrInterrupt(Collections.singletonList(this), startMillis, timeout);
             } finally {
                 try {
                     PolyglotContextImpl[] childContextsToFinishInterrupt;
@@ -1132,37 +1324,52 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         }
     }
 
-    @Override
     public Value asValue(Object hostValue) {
         PolyglotLanguageContext languageContext = this.getHostContext();
-        assert languageContext != null;
         Object prev = hostEnter(languageContext);
         try {
             checkClosed();
             PolyglotLanguageContext targetLanguageContext;
             if (hostValue instanceof Value) {
                 // fast path for when no context migration is necessary
-                PolyglotValue value = (PolyglotValue) getAPIAccess().getImpl((Value) hostValue);
-                if (value.languageContext != null && value.languageContext.context == this) {
+                PolyglotLanguageContext valueContext = (PolyglotLanguageContext) getAPIAccess().getContext((Value) hostValue);
+                if (valueContext != null && valueContext.context == this) {
                     return (Value) hostValue;
                 }
-                targetLanguageContext = getHostContext();
-            } else if (HostWrapper.isInstance(hostValue)) {
+                targetLanguageContext = languageContext;
+            } else if (PolyglotWrapper.isInstance(hostValue)) {
                 // host wrappers can nicely reuse the associated context
-                targetLanguageContext = HostWrapper.asInstance(hostValue).getLanguageContext();
+                targetLanguageContext = PolyglotWrapper.asInstance(hostValue).getLanguageContext();
                 if (this != targetLanguageContext.context) {
                     // this will fail later in toGuestValue when migrating
                     // or succeed in case of host languages.
-                    targetLanguageContext = getHostContext();
+                    targetLanguageContext = languageContext;
                 }
             } else {
-                targetLanguageContext = getHostContext();
+                targetLanguageContext = languageContext;
             }
-            return targetLanguageContext.asValue(targetLanguageContext.toGuestValue(null, hostValue));
+            return targetLanguageContext.asValue(toGuestValue(null, hostValue));
         } catch (Throwable e) {
             throw PolyglotImpl.guestToHostException(this.getHostContext(), e, true);
         } finally {
             hostLeave(languageContext, prev);
+        }
+    }
+
+    Object toGuestValue(Node location, Object hostValue) {
+        if (hostValue instanceof Value) {
+            Value receiverValue = (Value) hostValue;
+            PolyglotLanguageContext languageContext = (PolyglotLanguageContext) getAPIAccess().getContext(receiverValue);
+            PolyglotContextImpl valueContext = languageContext != null ? languageContext.context : null;
+            Object valueReceiver = getAPIAccess().getReceiver(receiverValue);
+            if (valueContext != this) {
+                valueReceiver = this.migrateValue(location, valueReceiver, valueContext);
+            }
+            return valueReceiver;
+        } else if (PolyglotWrapper.isInstance(hostValue)) {
+            return migrateHostWrapper(location, PolyglotWrapper.asInstance(hostValue));
+        } else {
+            return engine.host.toGuestValue(getHostContextImpl(), hostValue);
         }
     }
 
@@ -1261,7 +1468,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     }
 
     synchronized void notifyThreadClosed() {
-        PolyglotThreadInfo currentTInfo = getCurrentThreadInfo();
+        PolyglotThreadInfo currentTInfo = getCachedThreadInfo();
         if (currentTInfo != PolyglotThreadInfo.NULL) {
             currentTInfo.cancelled = true;
             // clear interrupted status after closingThread
@@ -1271,6 +1478,77 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         }
     }
 
+    long calculateHeapSize(long stopAtBytes, AtomicBoolean calculationCancelled) {
+        try {
+            ObjectSizeCalculator localObjectSizeCalculator;
+            synchronized (this) {
+                localObjectSizeCalculator = objectSizeCalculator;
+                if (localObjectSizeCalculator == null) {
+                    localObjectSizeCalculator = new ObjectSizeCalculator();
+                    objectSizeCalculator = localObjectSizeCalculator;
+                }
+            }
+            return localObjectSizeCalculator.calculateObjectSize(getContextHeapRoots(), stopAtBytes, calculationCancelled);
+        } catch (UnsupportedOperationException e) {
+            throw new UnsupportedOperationException("Polyglot context heap size calculation is not supported on current Truffle runtime.", e);
+        }
+    }
+
+    Object[] getContextHeapRoots() {
+        List<Object> heapRoots = new ArrayList<>();
+        addRootPointersForContext(heapRoots);
+        addRootPointersForStackFrames(heapRoots);
+        return heapRoots.toArray();
+    }
+
+    private void addRootPointersForStackFrames(List<Object> heapRoots) {
+        FrameInstance[][] frameInstances = PolyglotStackFramesRetriever.getStackFrames(this);
+        for (int i = 0; i < frameInstances.length; i++) {
+            for (int j = 0; j < frameInstances[i].length; j++) {
+                heapRoots.add(frameInstances[i][j].getFrame(FrameInstance.FrameAccess.READ_ONLY));
+            }
+        }
+    }
+
+    private void addRootPointersForContext(List<Object> heapRoots) {
+        heapRoots.add(contextImpls);
+        if (polyglotBindings != null) {
+            synchronized (this) {
+                if (polyglotBindings != null) {
+                    for (Map.Entry<String, Value> binding : polyglotBindings.entrySet()) {
+                        heapRoots.add(binding.getKey());
+                        if (binding.getValue() != null) {
+                            heapRoots.add(getAPIAccess().getReceiver(binding.getValue()));
+                        }
+                    }
+                }
+            }
+        }
+        heapRoots.add(contextLocals);
+        PolyglotContextImpl[] childContextStartPoints;
+        synchronized (this) {
+            for (PolyglotThreadInfo info : threads.values()) {
+                heapRoots.add(info.getContextThreadLocals());
+            }
+            childContextStartPoints = childContexts.toArray(new PolyglotContextImpl[childContexts.size()]);
+        }
+        for (PolyglotContextImpl childCtx : childContextStartPoints) {
+            childCtx.addRootPointersForContext(heapRoots);
+        }
+    }
+
+    private void cancelChildContexts() {
+        PolyglotContextImpl[] childContextsToCancel;
+        synchronized (this) {
+            this.cancelling = true;
+            childContextsToCancel = childContexts.toArray(new PolyglotContextImpl[childContexts.size()]);
+        }
+        for (PolyglotContextImpl childCtx : childContextsToCancel) {
+            childCtx.cancelChildContexts();
+        }
+    }
+
+    @SuppressFBWarnings("UL_UNRELEASED_LOCK_EXCEPTION_PATH")
     boolean closeImpl(boolean cancelIfExecuting, boolean waitForPolyglotThreads, boolean notifyInstruments) {
 
         /*
@@ -1288,70 +1566,81 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
          * 4) The close was not yet performed and no thread is executing -> perform close
          */
         boolean waitForCloseOrInterrupt = false;
-        while (true) {
-            if (waitForCloseOrInterrupt) {
-                closingLock.lock();
-                closingLock.unlock();
-                waitForCloseOrInterrupt = false;
-            }
-            synchronized (this) {
-                if (closed) {
-                    // already cancelled
-                    return true;
+        PolyglotContextImpl[] childContextsToCancel = null;
+        try {
+            while (true) {
+                if (waitForCloseOrInterrupt) {
+                    closingLock.lock();
+                    closingLock.unlock();
+                    waitForCloseOrInterrupt = false;
                 }
-                Thread localClosingThread = closingThread;
-                if (localClosingThread != null) {
-                    if (localClosingThread == Thread.currentThread()) {
-                        // currently canceling recursively -> just complete
+                synchronized (this) {
+                    if (closed) {
+                        // already cancelled
                         return true;
-                    } else {
-                        // currently canceling on another thread -> wait for other thread to
-                        // complete closing
-                        waitForCloseOrInterrupt = true;
-                        continue;
                     }
-                }
-                PolyglotThreadInfo threadInfo = getCurrentThreadInfo();
-                if (interrupting) {
-                    // currently interrupting on another thread
-                    if (parent == null) {
-                        // interrupt operation holds the closingLock -> wait for the interrupt to
-                        // complete
-                        waitForCloseOrInterrupt = true;
-                        continue;
+                    Thread localClosingThread = closingThread;
+                    if (localClosingThread != null) {
+                        if (localClosingThread == Thread.currentThread()) {
+                            // currently canceling recursively -> just complete
+                            return true;
+                        } else {
+                            // currently canceling on another thread -> wait for other thread to
+                            // complete closing
+                            waitForCloseOrInterrupt = true;
+                            continue;
+                        }
                     }
-                }
+                    PolyglotThreadInfo threadInfo = getCachedThreadInfo();
+                    if (interrupting) {
+                        // currently interrupting on another thread
+                        if (parent == null) {
+                            // interrupt operation holds the closingLock -> wait for the interrupt
+                            // to
+                            // complete
+                            waitForCloseOrInterrupt = true;
+                            continue;
+                        }
+                    }
 
-                // triggers a thread changed event which requires slow path enter
-                setCachedThreadInfo(PolyglotThreadInfo.NULL);
-                if (cancelIfExecuting) {
-                    cancelling = true;
-                    if (threadInfo != PolyglotThreadInfo.NULL) {
-                        threadInfo.cancelled = true;
-                        // clear interrupted status after closingThread
-                        // needed because we interrupt when closingThread from another thread.
-                        Thread.interrupted();
+                    // triggers a thread changed event which requires slow path enter
+                    setCachedThreadInfo(PolyglotThreadInfo.NULL);
+                    if (cancelIfExecuting) {
+                        cancelling = true;
+                        childContextsToCancel = childContexts.toArray(new PolyglotContextImpl[childContexts.size()]);
+                        if (threadInfo != PolyglotThreadInfo.NULL) {
+                            threadInfo.cancelled = true;
+                            // clear interrupted status after closingThread
+                            // needed because we interrupt when closingThread from another thread.
+                            Thread.interrupted();
+                        }
                     }
-                }
 
-                if (hasActiveOtherThread(waitForPolyglotThreads)) {
-                    /*
-                     * We are not done executing, cannot close yet.
-                     */
-                    return false;
-                }
-                closingThread = Thread.currentThread();
-                if (!threadInfo.explicitContextStack.isEmpty()) {
-                    PolyglotContextImpl c = this;
-                    while (!threadInfo.explicitContextStack.isEmpty()) {
-                        PolyglotContextImpl prev = threadInfo.explicitContextStack.removeLast();
-                        engine.leave(prev, c);
-                        c = prev;
+                    if (hasActiveOtherThread(waitForPolyglotThreads)) {
+                        /*
+                         * We are not done executing, cannot close yet.
+                         */
+                        return false;
                     }
-                    threadInfo.explicitContextStack.clear();
+                    closingThread = Thread.currentThread();
+                    if (!threadInfo.explicitContextStack.isEmpty()) {
+                        PolyglotContextImpl c = this;
+                        while (!threadInfo.explicitContextStack.isEmpty()) {
+                            PolyglotContextImpl prev = threadInfo.explicitContextStack.removeLast();
+                            engine.leave(prev, c);
+                            c = prev;
+                        }
+                        threadInfo.explicitContextStack.clear();
+                    }
+                    closingLock.lock();
+                    break;
                 }
-                closingLock.lock();
-                break;
+            }
+        } finally {
+            if (childContextsToCancel != null) {
+                for (PolyglotContextImpl childCtx : childContextsToCancel) {
+                    childCtx.cancelChildContexts();
+                }
             }
         }
 
@@ -1367,7 +1656,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             assert closingThread == Thread.currentThread();
             assert closingLock.isHeldByCurrentThread() : "lock is acquired";
             assert !closed;
-            PolyglotContextImpl prev = engine.enter(this);
+            PolyglotContextImpl prev = engine.enter(this, engine.getUncachedLocation(), true);
             try {
                 closeChildContexts(cancelIfExecuting, waitForPolyglotThreads, notifyInstruments);
 
@@ -1377,17 +1666,25 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
 
                 disposedContexts = disposeContext();
 
-                assert childContexts.isEmpty();
                 success = true;
             } finally {
                 synchronized (this) {
+                    /*
+                     * The assert is synchronized because all accesses to childContexts must be
+                     * synchronized.
+                     */
+                    assert !success || childContextsClosed() : "Polyglot context close marked as successful, but there are unclosed child contexts.";
                     engine.leave(prev, this);
                     if (success) {
                         remainingThreads = threads.keySet().toArray(new Thread[0]);
                     }
+                    if (success && cancelling) {
+                        cancelled = true;
+                    }
                     cancelling = false;
                     if (success) {
                         closed = true;
+                        invalid = true;
                     }
                     // triggers a thread changed event which requires slow path enter
                     setCachedThreadInfo(PolyglotThreadInfo.NULL);
@@ -1411,19 +1708,27 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         }
 
         if (success) {
-            if (parent != null) {
-                synchronized (parent) {
-                    parent.childContexts.remove(this);
+            try {
+                /*
+                 * We need to notify before we remove the context from engine's context list,
+                 * otherwise we couldn't use context locals in the context closed notification. New
+                 * instrument introducting new context locals doesn't initialize them in a context
+                 * if it's not in the engine's context list.
+                 */
+                if (notifyInstruments) {
+                    for (Thread thread : remainingThreads) {
+                        EngineAccessor.INSTRUMENT.notifyThreadFinished(engine, creatorTruffleContext, thread);
+                    }
+                    EngineAccessor.INSTRUMENT.notifyContextClosed(engine, creatorTruffleContext);
                 }
-            } else if (notifyInstruments) {
-                engine.removeContext(this);
-            }
-
-            if (notifyInstruments) {
-                for (Thread thread : remainingThreads) {
-                    EngineAccessor.INSTRUMENT.notifyThreadFinished(engine, creatorTruffleContext, thread);
+            } finally {
+                if (parent != null) {
+                    synchronized (parent) {
+                        parent.childContexts.remove(this);
+                    }
+                } else if (notifyInstruments) {
+                    engine.disposeContext(this);
                 }
-                EngineAccessor.INSTRUMENT.notifyContextClosed(engine, creatorTruffleContext);
             }
             synchronized (this) {
                 // sends all threads to do slow-path enter/leave
@@ -1435,6 +1740,8 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                  * changes in language launchers (Node.js).
                  */
                 if (!isActive()) {
+                    threadLocalActions.notifyContextClosed();
+
                     if (contexts != null) {
                         for (PolyglotLanguageContext langContext : contexts) {
                             langContext.close();
@@ -1454,14 +1761,30 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                         }
                     }
                 }
+                localsCleared = true;
             }
             if (parent == null) {
                 if (!this.config.logLevels.isEmpty()) {
-                    EngineAccessor.LANGUAGE.configureLoggers(this, null, getAllLoggers(engine));
+                    EngineAccessor.LANGUAGE.configureLoggers(this, null, getAllLoggers());
                 }
                 if (this.config.logHandler != null && !PolyglotLoggers.isSameLogSink(this.config.logHandler, engine.logHandler)) {
                     this.config.logHandler.close();
                 }
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Used in assertion only. We cannot simply assert that childContexts are empty, because
+     * removing the child context from its parent childContexts list can be done in another thread
+     * after the assertion.
+     */
+    private boolean childContextsClosed() {
+        assert Thread.holdsLock(this);
+        for (PolyglotContextImpl childCtx : childContexts) {
+            if (!childCtx.closed) {
+                return false;
             }
         }
         return true;
@@ -1482,12 +1805,23 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         this.disposing = true;
         try {
             List<PolyglotLanguageContext> disposedContexts = new ArrayList<>(contexts.length);
+            Closeable[] toClose;
             synchronized (this) {
                 for (int i = contexts.length - 1; i >= 0; i--) {
                     PolyglotLanguageContext context = contexts[i];
                     boolean disposed = context.dispose();
                     if (disposed) {
                         disposedContexts.add(context);
+                    }
+                }
+                toClose = closeables == null ? null : closeables.toArray(new Closeable[0]);
+            }
+            if (toClose != null) {
+                for (Closeable closeable : toClose) {
+                    try {
+                        closeable.close();
+                    } catch (IOException ioe) {
+                        engine.getEngineLogger().log(Level.WARNING, "Failed to close " + closeable, ioe);
                     }
                 }
             }
@@ -1629,11 +1963,13 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         Thread thread = threadInfo.getThread();
         for (PolyglotInstrument instrument : engine.idToInstrument.values()) {
             if (instrument.isCreated()) {
+                invokeContextLocalsFactory(this.contextLocals, instrument.contextLocalLocations);
                 invokeContextThreadFactory(locals, instrument.contextThreadLocalLocations, thread);
             }
         }
         for (PolyglotLanguageContext language : contexts) {
             if (language.isCreated()) {
+                invokeContextLocalsFactory(this.contextLocals, language.getLanguageInstance().contextLocalLocations);
                 invokeContextThreadFactory(locals, language.getLanguageInstance().contextThreadLocalLocations, thread);
             }
         }
@@ -1643,6 +1979,11 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
 
     void initializeContextLocals() {
         assert Thread.holdsLock(this);
+
+        if (this.contextLocals != null) {
+            // Could have already been populated by resizeContextLocals.
+            return;
+        }
 
         StableLocalLocations locations = engine.contextLocalLocations;
         Object[] locals = new Object[locations.locations.length];
@@ -1682,10 +2023,14 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     void resizeContextLocals(StableLocalLocations locations) {
         Thread.holdsLock(this);
         Object[] oldLocals = this.contextLocals;
-        if (oldLocals.length > locations.locations.length) {
-            throw new AssertionError("Context locals array must never shrink.");
-        } else if (locations.locations.length > oldLocals.length) {
-            this.contextLocals = Arrays.copyOf(oldLocals, locations.locations.length);
+        if (oldLocals != null) {
+            if (oldLocals.length > locations.locations.length) {
+                throw new AssertionError("Context locals array must never shrink.");
+            } else if (locations.locations.length > oldLocals.length) {
+                this.contextLocals = Arrays.copyOf(oldLocals, locations.locations.length);
+            }
+        } else {
+            this.contextLocals = new Object[locations.locations.length];
         }
     }
 
@@ -1745,9 +2090,9 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         return String.format("Detected invaliding sharing of context locals between polyglot engines. Expected engine %s but was %s.", expectedEngine, actualEngine);
     }
 
-    PolyglotThreadInfo getCurrentThreadInfo() {
+    PolyglotThreadInfo getCachedThreadInfo() {
         assert Thread.holdsLock(this);
-        PolyglotThreadInfo currentTInfo = currentThreadInfo;
+        PolyglotThreadInfo currentTInfo = cachedThreadInfo;
 
         if (currentTInfo.getThread() != Thread.currentThread()) {
             currentTInfo = threads.get(Thread.currentThread());
@@ -1757,7 +2102,6 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             }
         }
         assert currentTInfo.getThread() == null || currentTInfo.getThread() == Thread.currentThread();
-
         return currentTInfo;
     }
 
@@ -1767,12 +2111,15 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         this.config = newConfig;
         initializeStaticContext(this);
         if (!newConfig.logLevels.isEmpty()) {
-            EngineAccessor.LANGUAGE.configureLoggers(this, newConfig.logLevels, getAllLoggers(engine));
+            EngineAccessor.LANGUAGE.configureLoggers(this, newConfig.logLevels, getAllLoggers());
         }
-        final PolyglotContextImpl prev = engine.enter(this);
+        final PolyglotContextImpl prev = engine.enter(this, engine.getUncachedLocation(), true);
         try {
-            for (int i = 1; i < this.contexts.length; i++) {
+            for (int i = 0; i < this.contexts.length; i++) {
                 final PolyglotLanguageContext context = this.contexts[i];
+                if (context.language.isHost()) {
+                    initializeHostContext(context, newConfig);
+                }
                 if (!context.patch(newConfig)) {
                     return false;
                 }
@@ -1783,13 +2130,40 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         return true;
     }
 
+    @SuppressWarnings("unchecked")
+    void initializeHostContext(PolyglotLanguageContext context, PolyglotContextConfig newConfig) {
+        try {
+            Object contextImpl = this.contextImpls[context.language.index];
+            if (contextImpl == null) {
+                throw new AssertionError("Host context not initialized.");
+            }
+
+            AbstractHostService currentHost = engine.host;
+            AbstractHostService newHost = context.lookupService(AbstractHostService.class);
+            if (newHost == null) {
+                throw new AssertionError("The engine host language must register a service of type:" + AbstractHostService.class);
+            }
+            if (currentHost == null) {
+                engine.host = newHost;
+            } else if (currentHost != newHost) {
+                throw new AssertionError("Host service must not change per engine.");
+            }
+            newHost.initializeHostContext(this, contextImpl, newConfig.hostAccess, newConfig.hostClassLoader, newConfig.classFilter, newConfig.hostClassLoadingAllowed,
+                            newConfig.hostLookupAllowed);
+        } catch (IllegalStateException e) {
+            throw PolyglotEngineException.illegalState(e.getMessage());
+        }
+    }
+
     void replayInstrumentationEvents() {
         notifyContextCreated();
         for (PolyglotLanguageContext lc : contexts) {
             LanguageInfo language = lc.language.info;
             if (lc.eventsEnabled && lc.env != null) {
+                EngineAccessor.INSTRUMENT.notifyLanguageContextCreate(this, creatorTruffleContext, language);
                 EngineAccessor.INSTRUMENT.notifyLanguageContextCreated(this, creatorTruffleContext, language);
                 if (lc.isInitialized()) {
+                    EngineAccessor.INSTRUMENT.notifyLanguageContextInitialize(this, creatorTruffleContext, language);
                     EngineAccessor.INSTRUMENT.notifyLanguageContextInitialized(this, creatorTruffleContext, language);
                     if (lc.finalized) {
                         EngineAccessor.INSTRUMENT.notifyLanguageContextFinalized(this, creatorTruffleContext, language);
@@ -1829,10 +2203,16 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                         allowedLanguages,
                         Collections.emptyMap(),
                         fs, internalFs, engine.logHandler, false, null,
-                        EnvironmentAccess.INHERIT, null, null, null, null);
+                        EnvironmentAccess.INHERIT, null, null, null, null, null);
 
         final PolyglotContextImpl context = new PolyglotContextImpl(engine, config);
+        synchronized (engine.lock) {
+            engine.addContext(context);
+        }
         try {
+            synchronized (context) {
+                context.initializeContextLocals();
+            }
             context.sourcesToInvalidate = new ArrayList<>();
             final String oldOption = engine.engineOptionValues.get(PolyglotEngineOptions.PreinitializeContexts);
             final String newOption = ImageBuildTimeOptions.get(ImageBuildTimeOptions.PREINITIALIZE_CONTEXTS_NAME);
@@ -1856,7 +2236,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             if (!languagesToPreinitialize.isEmpty()) {
                 context.inContextPreInitialization = true;
                 try {
-                    PolyglotContextImpl prev = context.engine.enter(context);
+                    PolyglotContextImpl prev = context.engine.enter(context, context.engine.getUncachedLocation(), true);
                     try {
                         for (String languageId : engine.getLanguages().keySet()) {
                             if (languagesToPreinitialize.contains(languageId)) {
@@ -1879,18 +2259,22 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                             language.clearOptionValues();
                         }
                     } finally {
-                        context.engine.leave(prev, context);
+                        synchronized (context) {
+                            context.leaveAndDisposeThread(prev, Thread.currentThread());
+                        }
                     }
                 } finally {
                     context.inContextPreInitialization = false;
                 }
             }
             // Need to clean up Threads before storing SVM image
-            context.currentThreadInfo = PolyglotThreadInfo.NULL;
-            context.constantCurrentThreadInfo = PolyglotThreadInfo.NULL;
+            context.cachedThreadInfo = PolyglotThreadInfo.NULL;
             disposeStaticContext(context);
             return context;
         } finally {
+            synchronized (engine.lock) {
+                engine.removeContext(context);
+            }
             for (Source sourceToInvalidate : context.sourcesToInvalidate) {
                 EngineAccessor.SOURCE.invalidateAfterPreinitialiation(sourceToInvalidate);
             }
@@ -1899,15 +2283,58 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             internalFs.onPreInitializeContextEnd();
             FileSystems.resetDefaultFileSystemProvider();
             if (!config.logLevels.isEmpty()) {
-                EngineAccessor.LANGUAGE.configureLoggers(context, null, getAllLoggers(engine));
+                EngineAccessor.LANGUAGE.configureLoggers(context, null, context.getAllLoggers());
             }
         }
     }
 
-    private static Object[] getAllLoggers(PolyglotEngineImpl engine) {
+    void leaveAndDisposeThread(PolyglotContextImpl prev, Thread thread) {
+        assert Thread.holdsLock(this);
+        assert Thread.currentThread() == thread;
+        Map<Thread, PolyglotThreadInfo> seenThreads = getSeenThreads();
+        PolyglotThreadInfo info = seenThreads.get(thread);
+        if (info == null) {
+            // already disposed
+            return;
+        }
+        for (PolyglotLanguageContext languageContext : contexts) {
+            if (languageContext.isInitialized()) {
+                LANGUAGE.disposeThread(languageContext.env, thread);
+            }
+        }
+        engine.leave(prev, this);
+        info.setContextThreadLocals(DISPOSED_CONTEXT_THREAD_LOCALS);
+        setCurrentThreadLocals(DISPOSED_CONTEXT_THREAD_LOCALS);
+        seenThreads.remove(thread);
+    }
+
+    Object getOrCreateContextLoggers() {
+        Object res = contextBoundLoggers;
+        if (res == null) {
+            synchronized (this) {
+                res = contextBoundLoggers;
+                if (res == null) {
+                    res = LANGUAGE.createEngineLoggers(PolyglotLoggers.LoggerCache.newContextLoggerCache(this), config.logLevels);
+                    contextBoundLoggers = res;
+                }
+            }
+        }
+        return res;
+    }
+
+    private Object[] getAllLoggers() {
         Object defaultLoggers = EngineAccessor.LANGUAGE.getDefaultLoggers();
         Object engineLoggers = engine.getEngineLoggers();
-        return engineLoggers == null ? new Object[]{defaultLoggers} : new Object[]{defaultLoggers, engineLoggers};
+        Object contextLoggers = contextBoundLoggers;
+        List<Object> allLoggers = new ArrayList<>(3);
+        allLoggers.add(defaultLoggers);
+        if (engineLoggers != null) {
+            allLoggers.add(engineLoggers);
+        }
+        if (contextLoggers != null) {
+            allLoggers.add(contextLoggers);
+        }
+        return allLoggers.toArray(new Object[allLoggers.size()]);
     }
 
     static class ContextWeakReference extends WeakReference<PolyglotContextImpl> {
@@ -1926,6 +2353,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     }
 
     synchronized boolean invalidate(boolean resourceLimit, String message) {
+        assert message != null;
         if (!invalid) {
             setCachedThreadInfo(PolyglotThreadInfo.NULL);
             /*
@@ -1940,6 +2368,20 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         return false;
     }
 
+    boolean invalidateAll(boolean resourceLimit, String message) {
+        boolean invalidated;
+        PolyglotContextImpl[] childContextsToInvalidate;
+        synchronized (this) {
+            invalidated = invalidate(resourceLimit, message);
+            childContextsToInvalidate = childContexts.toArray(new PolyglotContextImpl[childContexts.size()]);
+        }
+
+        for (PolyglotContextImpl childCtx : childContextsToInvalidate) {
+            invalidated = childCtx.invalidateAll(resourceLimit, invalidMessage) || invalidated;
+        }
+        return invalidated;
+    }
+
     private static boolean overridesPatchContext(String languageId) {
         LanguageCache cache = LanguageCache.languages().get(languageId);
         for (Method m : cache.loadLanguage().getClass().getDeclaredMethods()) {
@@ -1948,6 +2390,16 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             }
         }
         return false;
+    }
+
+    synchronized void registerOnDispose(Closeable closeable) {
+        if (disposing) {
+            throw new IllegalStateException("Cannot register closeable when context is being disposed.");
+        }
+        if (closeables == null) {
+            closeables = Collections.newSetFromMap(new WeakHashMap<>());
+        }
+        closeables.add(Objects.requireNonNull(closeable));
     }
 
     final class ContextLocalsTL extends ThreadLocal<Object[]> {
@@ -1990,6 +2442,50 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         b.append("]");
         b.append("]");
         return b.toString();
+    }
+
+    Future<Void> submitCancellationThreadLocal() {
+        assert Thread.holdsLock(this);
+        return threadLocalActions.submit(null, PolyglotEngineImpl.ENGINE_ID, new ThreadLocalAction(true, false) {
+            @Override
+            protected void perform(Access access) {
+                cancelExecution(access);
+            }
+
+            private void cancelExecution(Access access) {
+                threadLocalActions.submit(new Thread[]{access.getThread()}, PolyglotEngineImpl.ENGINE_ID, new ThreadLocalAction(true, false) {
+                    @Override
+                    protected void perform(Access access2) {
+                        cancelExecution(access2);
+                    }
+                }, true);
+
+                if (access.getThread() != PolyglotContextImpl.this.closingThread) {
+                    if (invalid || cancelling) {
+                        throw createCancelException(access.getLocation());
+                    } else if (interrupting) {
+                        throw new PolyglotEngineImpl.InterruptExecution(access.getLocation());
+                    }
+                }
+            }
+        }, true);
+    }
+
+    List<Future<Void>> submitCancellationThreadLocals() {
+        List<Future<Void>> futures = new ArrayList<>();
+        PolyglotContextImpl[] localChildContexts = null;
+        synchronized (this) {
+            if (!closed) {
+                futures.add(submitCancellationThreadLocal());
+                localChildContexts = childContexts.toArray(new PolyglotContextImpl[0]);
+            }
+        }
+        if (localChildContexts != null) {
+            for (PolyglotContextImpl childContext : localChildContexts) {
+                futures.addAll(childContext.submitCancellationThreadLocals());
+            }
+        }
+        return futures;
     }
 
 }

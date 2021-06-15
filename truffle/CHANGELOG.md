@@ -2,14 +2,101 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 21.2.0
+* Added `TypeDescriptor.subtract(TypeDescriptor)` creating a new `TypeDescriptor` by removing the given type from a union or intersection type.
+* Added `CompilerDirectives.blackhole(value)` which can be helpful for benchmarking.
+* Added `TruffleLanguage#Env.registerOnDispose(Closeable)` registering `Closeable`s for automatic close on context dispose.
+* Added `RootNode#countsTowardsStackTraceLimit()`, replacing `RootNode#isInternal()` as the criterion that determines whether a frame with the given root node counts towards the stack trace limit.
+* Added `engine.UsePreInitializedContext` option which can be used to disable usage of pre-initialized context.
+* Added `MemoryFence`: provides methods for fine-grained control of memory ordering.
+* `ValueProfile.createEqualityProfile()` was deprecated without replacement. `Object.equals(Object)` cannot safely be used on compiled code paths. Use the Truffle Specialization DSL instead to implement caches with equality semantics. Making `Object.equals(Object)` reachable as runtime compiled method will mark too many equals implementations reachable for runtime compilation in a native image.
+* Methods annotated with `@Fallback`  of the Truffle specialization DSL now support `@Cached`, `@CachedContext`, `@CachedLanguage`, `@Bind` and dispatched `@CachedLibrary` parameters.
+* Deprecated and added methods to support expected arity ranges in `ArityException` instances. Note that the replacement methods now include more strict validations.
+* `DebugValue` methods `hashCode()` and `equals()` provide result of the interop `identityHashCode` and `isIdentical` calls on the corresponding guest objects, respectively.
+* Enabled by default the traversing compilation queue with dynamic thresholds, see `PolyglotCompilerOptions#TraversingCompilationQueue`, `PolyglotCompilerOptions#DynamicCompilationThresholds`, `PolyglotCompilerOptions#DynamicCompilerThresholdsMinScale`, `PolyglotCompilerOptions#DynamicCompilerThresholdsMinNormalLoad` and `PolyglotCompilerOptions#DynamicCompilerThresholdsMaxNormalLoad`.
+* Added `LoopConditionProfile#create()` as an alias of `createCountingProfile()` so it can be used like `@Cached LoopConditionProfile loopProfile`.
+* Enabled by default the traversing compilation queue with dynamic thresholds. See [the documentation](https://github.com/oracle/graal/blob/master/truffle/docs/TraversingCompilationQueue.md) for more information.
+* Changed behavior of parameterized `Function<Object, Object>` conversion such that an `Object[]` argument is passed through to the guest function as a single array argument. Both raw `Function` and `Function<Object[], Object>` treat an `Object[]` as an array of arguments, like before.
+* Added `TruffleContext.pause()` and `TruffleContext.resume(Future<Void>)` to pause and resume execution for a truffle context, respectively.
+* Added `DebuggerSession.createPrimitiveValue()` to create a `DebugValue` from a primitive value. Use it instead of `DebugValue.set(primitiveValue)` which is now deprecated.
+* Added support for iterators and hash maps to `DebugValue`. The added methods wraps the respective methods of `InteropLibrary`.
+* Added support for Truffle libraries to be prepared for AOT. See `ExportLibrary.useForAOT` or the `AOTTutorial` java class for further details.
+* The Specialization DSL now generates code to throw an `AssertionError` if a `@Shared` and `@Cached` parameter returns a non-null value and is used in a guard. The `null` state is reserved for the uninitialized state.
+
+## Version 21.1.0
+* Added methods into `Instrumenter` that create bindings to be attached later on. Added `EventBinding.attach()` method.
+* Added `TruffleContext.isCancelling()` to check whether a truffle context is being cancelled.
+* Added `TruffleInstrument.Env.calculateContextHeapSize(TruffleContext, long, AtomicBoolean)` to calculate the heap size retained by a a context.
+* Added `ContextsListener.onLanguageContextCreate`, `ContextsListener.onLanguageContextCreateFailed`, `ContextsListener.onLanguageContextInitialize`, and `ContextsListener.onLanguageContextInitializeFailed`  to allow instruments to listen to language context creation start events, language context creation failure events, language context initialization start events, and language context initialization failure events, respectively.
+* Added `CompilerDirectives.isExact(Object, Class)` to check whether a value is of an exact type. This method should be used instead of the `value != null && value.getClass() == exactClass` pattern.
+* Added `Frame.clear(FrameSlot)`. This allows the compiler to reason about the liveness of local variables. Languages are recommended to use it when applicable.
+* Added `@GenerateAOT` to support preparation for AOT specializing nodes. Read the [AOT tutorial](https://github.com/oracle/graal/blob/master/truffle/docs/AOT.md) to get started with Truffle and AOT compilation.
+* Profiles now can be disabled using `Profile.disable()` and reset using `Profile.reset()`.
+* Added `--engine.CompileAOTOnCreate` option to trigger AOT compilation on call target create.
+* Added new messages to `InteropLibrary` for interacting with buffer-like objects:
+    * Added `hasBufferElements(Object)` that returns  `true` if this object supports buffer messages.
+    * Added `isBufferWritable(Object)` that returns `true` if this object supports writing buffer elements.
+    * Added `getBufferSize(Object)` to return the size of this buffer.
+    * Added `readBufferByte(Object, long)`, `readBufferShort(Object, ByteOrder, long)`, `readBufferInt(Object, ByteOrder, long)`, `readBufferLong(Object, ByteOrder, long)`, `readBufferFloat(Object, ByteOrder, long)`  and `readBufferDouble(Object, ByteOrder, long)` to read a primitive from this buffer at the given index.
+    * Added `writeBufferByte(Object, long, byte)`, `writeBufferShort(Object, ByteOrder, long, short)`, `writeBufferInt(Object, ByteOrder, long, int)`, `writeBufferLong(Object, ByteOrder, long, long)`, `writeBufferFloat(Object, ByteOrder, long, float)`  and `writeBufferDouble(Object, ByteOrder, long, double)` to write a primitive in this buffer at the given index (supported only if `isBufferWritable(Object)` returns `true`).
+* Added `Shape.getLayoutClass()` as a replacement for `Shape.getLayout().getType()`. Returns the DynamicObject subclass provided to `Shape.Builder.layout`.
+* Changed the default value of `--engine.MultiTier` from `false` to `true`. This should significantly improve the warmup time of Truffle interpreters.
+* The native image build fails if a method known as not suitable for partial evaluation is reachable for runtime compilation. The check can be disabled by the `-H:-TruffleCheckBlackListedMethods` native image option.
+* Added `ExactMath.truncate(float)` and `ExactMath.truncate(double)` methods to remove the decimal part (round toward zero) of a float or of a double respectively. These methods are intrinsified.
+* Added `SuspendedEvent.prepareUnwindFrame(DebugStackFrame, Object)` to support forced early return values from a debugger.
+* Added `DebugScope.convertRawValue(Class<? extends TruffleLanguage<?>>, Object)` to enable wrapping a raw guest language object into a DebugValue.
+* Added new messages to the `InteropLibrary` to support iterables and iterators:
+	* Added `hasIterator(Object)` that allows to specify that the receiver is an iterable.
+    * Added `getIterator(Object)` to return the iterator for an iterable receiver.
+    * Added `isIterator(Object)` that allows to specify that the receiver is an iterator.
+    * Added `hasIteratorNextElement(Object)`  that allows to specify that the iterator receiver has element(s) to return by calling the `getIteratorNextElement(Object)` method.
+    * Added `getIteratorNextElement(Object)` to return the current iterator element.
+* Added `TruffleContext.leaveAndEnter(Node, Supplier)` to wait for another thread without triggering multithreading.
+* Removed deprecated `TruffleLanguage.Env.getTruffleFile(String)`, `TruffleLanguage.Env.getTruffleFile(URI)` methods.
+* Deprecated CompilationThreshold for prefered LastTierCompilationThreshold and SingleTierCompilationThreshold.
+* Added new features to the DSL `@NodeChild` annotation:
+    * Added `implicit` and `implicitCreate` attributes to allow implicit creation of child nodes by the parent factory method.
+    * Added `allowUncached` and `uncached` attributes to allow using `@NodeChild` with `@GenerateUncached`.
+* Added `TruffleLanguage.Env#getTruffleFileInternal(String, Predicate<TruffleFile>)` and `TruffleLanguage.Env#getTruffleFileInternal(URI, Predicate<TruffleFile>)` methods performing the guest language standard libraries check using a supplied predicate. These methods have a better performance compared to the `TruffleLanguage.Env#getInternalTruffleFile(String)` and `TruffleLanguage.Env#getInternalTruffleFile(URI)` as the guest language standard libraries check is performed only for files in the language home when IO is not enabled by the Context.
+* Added `TruffleLanguage.Env.getLogger(String)` and `TruffleLanguage.Env.getLogger(Class<?>)` creating a context-bound logger. The returned `TruffleLogger` always uses a logging handler and options from Env's context and does not depend on being entered on any thread.
+* Added new messages to the `InteropLibrary` to support hash maps:
+	* Added `hasHashEntries(Object)` that allows to specify that the receiver provides hash entries.
+	* Added `getHashSize(Object)` to return hash entries count.
+	* Added `isHashEntryReadable(Object, Object)` that allows to specify that mapping for the given key exists and is readable.
+	* Added `readHashValue(Object, Object)` to read the value for the specified key.
+	* Added `readHashValueOrDefault(Object, Object, Object)` to read the value for the specified key or to return the default value when the mapping for the specified key does not exist.
+	* Added `isHashEntryModifiable(Object, Object)` that allows to specify that mapping for the specified key exists and is writable.
+	* Added `isHashEntryInsertable(Object, Object)` that allows to specify that mapping for the specified key does not exist and is writable.
+	* Added `isHashEntryWritable(Object, Object)` that allows to specify that mapping is either modifiable or insertable.
+	* Added `writeHashEntry(Object, Object, Object)` associating the specified value with the specified key.
+	* Added `isHashEntryRemovable(Object, Object)` that allows to specify that mapping for the specified key exists and is removable.
+	* Added `removeHashEntry(Object, Object)` removing the mapping for a given key.
+	* Added `isHashEntryExisting(Object, Object)` that allows to specify that that mapping for a given key is existing.
+	* Added `getHashEntriesIterator(Object)` to return the hash entries iterator.
+    * Added `getHashKeysIterator(Object)` to return the hash keys iterator.
+    * Added `getHashValuesIterator(Object)` to return the hash values iterator.
+* Added `TypeDescriptor.HASH` and `TypeDescriptor.hash(TypeDescriptor, TypeDescriptor)` representing hash map types in the TCK.
+* Added support for Truffle safepoints and thread local actions. See `TruffleSafepoint` and `ThreadLocalAction`. There is also a [tutorial](https://github.com/oracle/graal/blob/master/truffle/docs/Safepoints.md) that explains how to adopt and use in language or tool implementations.
+* Make the Truffle NFI more modular.
+    * Provide option `--language:nfi=none` for disabling native access via the Truffle NFI in native-image even if the NFI is included in the image (e.g. as dependency of another language).
+    * Moved `trufflenfi.h` header from the JDK root include directory into the NFI language home (`languages/nfi/include`).
+
 ## Version 21.0.0
-* If an `AbstractTruffleException` is thrown from the `ContextLocalFactory`, `ContextThreadLocalFactory` or event listener, which is called during the context enter, the excepion interop messages are executed without a context being entered. The event listeners called during the context enter are:
+* If an `AbstractTruffleException` is thrown from the `ContextLocalFactory`, `ContextThreadLocalFactory` or event listener, which is called during the context enter, the exception interop messages are executed without a context being entered. The event listeners called during the context enter are:
     * `ThreadsActivationListener.onEnterThread(TruffleContext)`
     * `ThreadsListener.onThreadInitialized(TruffleContext, Thread)`
     * `TruffleInstrument.onCreate(Env)`
     * `TruffleLanguage.isThreadAccessAllowed(Thread, boolean)`
     * `TruffleLanguage.initializeMultiThreading(Object)`
     * `TruffleLanguage.initializeThread(Object, Thread)`
+* Added `HostCompilerDirectives` for directives that guide the host compilations of Truffle interpreters.
+    * `HostCompilerDirectives.BytecodeInterpreterSwitch` - to denote methods that contain the instruction-dispatch switch in bytecode interpreters
+    * `HostCompilerDirectives.BytecodeInterpreterSwitchBoundary` - to denote methods that do not need to be inlined into the bytecode interpreter switch
+* Truffle DSL generated nodes are no longer limited to 64 state bits. Use these state bits responsibly.
+* Added support for explicitly selecting a host method overload using the signature in the form of comma-separated fully qualified parameter type names enclosed by parentheses (e.g. `methodName(f.q.TypeName,java.lang.String,int,int[])`).
+* Changed the default value of `--engine.MultiTier` from `false` to `true`. This should significantly improve the warmup time of Truffle interpreters.
+* Deprecated and added methods to support expected arity ranges in `ArityException` instances. Note that the replacement methods now include more strict validations.
+
 
 ## Version 20.3.0
 * Added `RepeatingNode.initialLoopStatus` and `RepeatingNode.shouldContinue` to allow defining a custom loop continuation condition.
@@ -58,7 +145,6 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     * Attention: Since [AbstractTruffleException](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/exception/AbstractTruffleException.html) is an abstract base class, not an interface, the exceptions the Truffle NFI throws do not extend UnsatisfiedLinkError anymore. This is an incompatible change for guest languages that relied on the exact exception class. The recommended fix is to catch AbstractTruffleException instead of UnsatisfiedLinkError.
 * Added [TruffleInstrument.Env.getEnteredContext](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/TruffleInstrument.Env.html#getEnteredContext--) returning the entered `TruffleContext`.
 * Added [DebuggerSession.setShowHostStackFrames](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/DebuggerSession.html#setShowHostStackFrames-boolean-) and host `DebugStackFrame` and `DebugStackTraceElement`. This is useful for debugging of applications that use host interop.
-
 * All Truffle Graal runtime options (-Dgraal.) which were deprecated in GraalVM 20.1 are removed. The Truffle runtime options are no longer specified as Graal options (-Dgraal.). The Graal options must be replaced by corresponding engine options specified using [polyglot API](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/Engine.Builder.html#option-java.lang.String-java.lang.String-).
 * Deprecated the `com.oracle.truffle.api.object.dsl` API without replacement. The migration path is to use `DynamicObject` subclasses with the `com.oracle.truffle.api.object` API.
 * A node parameter now needs to be provided to TruffleContext.enter() and TruffleContext.leave(Object). The overloads without node parameter are deprecated. This is useful to allow the runtime to compile the enter and leave code better if a node is passed as argument. 

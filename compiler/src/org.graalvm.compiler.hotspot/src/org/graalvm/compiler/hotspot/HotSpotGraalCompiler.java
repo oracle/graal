@@ -43,6 +43,7 @@ import org.graalvm.compiler.debug.DebugContext.Activation;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.hotspot.CompilationCounters.Options;
+import org.graalvm.compiler.hotspot.HotSpotGraalRuntime.HotSpotGC;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.phases.OnStackReplacementPhase;
 import org.graalvm.compiler.java.GraphBuilderPhase;
@@ -75,7 +76,7 @@ import jdk.vm.ci.meta.TriState;
 import jdk.vm.ci.runtime.JVMCICompiler;
 import sun.misc.Unsafe;
 
-public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable {
+public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JVMCICompilerShadow {
 
     private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
     private final HotSpotJVMCIRuntime jvmciRuntime;
@@ -106,11 +107,20 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable {
 
     @Override
     public CompilationRequestResult compileMethod(CompilationRequest request) {
-        return compileMethod(request, true, graalRuntime.getOptions());
+        return compileMethod(this, request);
+    }
+
+    /**
+     * Substituted by
+     * {@code com.oracle.svm.graal.hotspot.libgraal.Target_org_graalvm_compiler_hotspot_HotSpotGraalCompiler}
+     * to create a {@code org.graalvm.libgraal.jni.JNILibGraalScope}.
+     */
+    private static CompilationRequestResult compileMethod(HotSpotGraalCompiler compiler, CompilationRequest request) {
+        return compiler.compileMethod(request, true, compiler.getGraalRuntime().getOptions());
     }
 
     @SuppressWarnings("try")
-    CompilationRequestResult compileMethod(CompilationRequest request, boolean installAsDefault, OptionValues initialOptions) {
+    public CompilationRequestResult compileMethod(CompilationRequest request, boolean installAsDefault, OptionValues initialOptions) {
         try (CompilationContext scope = HotSpotGraalServices.openLocalCompilationContext(request)) {
             if (graalRuntime.isShutdown()) {
                 return HotSpotCompilationRequestResult.failure(String.format("Shutdown entered"), true);
@@ -322,5 +332,14 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable {
                 }
             }
         };
+    }
+
+    @Override
+    public boolean isGCSupported(int gcIdentifier) {
+        HotSpotGC gc = HotSpotGC.forName(gcIdentifier, graalRuntime.getVMConfig());
+        if (gc != null) {
+            return gc.supported;
+        }
+        return false;
     }
 }

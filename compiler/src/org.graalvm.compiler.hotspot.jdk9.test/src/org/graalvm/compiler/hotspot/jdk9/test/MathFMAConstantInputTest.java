@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,18 +24,10 @@
  */
 package org.graalvm.compiler.hotspot.jdk9.test;
 
-import static org.junit.Assume.assumeFalse;
-
 import org.graalvm.compiler.core.test.GraalCompilerTest;
-import org.junit.Before;
 import org.junit.Test;
 
 public final class MathFMAConstantInputTest extends GraalCompilerTest {
-
-    @Before
-    public void checkNotSPARC() {
-        assumeFalse("skipping test on SPARC ", isSPARC(getTarget().arch));
-    }
 
     public static float floatFMA() {
         return Math.fma(2.0f, 2.0f, 2.0f);

@@ -33,6 +33,8 @@ import org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilerImpl;
 import org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilerImpl.Options;
 import org.graalvm.compiler.truffle.runtime.hotspot.AbstractHotSpotTruffleRuntime;
 
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+
 final class HotSpotTruffleRuntime extends AbstractHotSpotTruffleRuntime {
 
     HotSpotTruffleRuntime() {
@@ -55,7 +57,8 @@ final class HotSpotTruffleRuntime extends AbstractHotSpotTruffleRuntime {
     protected String initLazyCompilerConfigurationName() {
         final OptionValues options = getGraalOptions(OptionValues.class);
         String factoryName = Options.TruffleCompilerConfiguration.getValue(options);
-        CompilerConfigurationFactory compilerConfigurationFactory = CompilerConfigurationFactory.selectFactory(factoryName, options);
+        HotSpotJVMCIRuntime runtime = HotSpotJVMCIRuntime.runtime();
+        CompilerConfigurationFactory compilerConfigurationFactory = CompilerConfigurationFactory.selectFactory(factoryName, options, runtime);
         return compilerConfigurationFactory.getName();
     }
 

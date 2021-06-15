@@ -49,7 +49,7 @@ public class CompilerLoggingTest extends TruffleCompilerImplTest {
     @Test
     public void testLogging() throws IOException {
         try (ByteArrayOutputStream logOut = new ByteArrayOutputStream()) {
-            setupContext(Context.newBuilder().logHandler(logOut).option("engine.CompileImmediately", "true").option("engine.BackgroundCompilation", "false"));
+            setupContext(Context.newBuilder().logHandler(logOut).option("engine.CompileImmediately", "true").option("engine.MultiTier", "false").option("engine.BackgroundCompilation", "false"));
             GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
             TestListener listener = new TestListener();
             try {
@@ -69,13 +69,13 @@ public class CompilerLoggingTest extends TruffleCompilerImplTest {
 
         @Override
         public void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, TruffleCompilerListener.GraphInfo graph,
-                        TruffleCompilerListener.CompilationResultInfo result) {
+                        TruffleCompilerListener.CompilationResultInfo result, int tier) {
             TTY.printf(FORMAT_SUCCESS, target.getName());
             printCommon();
         }
 
         @Override
-        public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout) {
+        public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout, int tier) {
             TTY.printf(FORMAT_FAILURE, target.getName(), reason);
             printCommon();
         }

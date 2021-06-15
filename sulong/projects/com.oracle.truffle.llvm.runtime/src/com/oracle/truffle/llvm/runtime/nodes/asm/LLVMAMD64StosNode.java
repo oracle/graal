@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,14 +32,13 @@ package com.oracle.truffle.llvm.runtime.nodes.asm;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.llvm.runtime.nodes.asm.support.LLVMAMD64WriteValueNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI16StoreNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI32StoreNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.asm.support.LLVMAMD64WriteValueNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI16StoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI32StoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
@@ -47,7 +46,6 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 @NodeChild(value = "rdi", type = LLVMExpressionNode.class)
 @NodeChild(value = "df", type = LLVMExpressionNode.class)
 public abstract class LLVMAMD64StosNode extends LLVMStatementNode {
-    @Child protected LLVMStoreNode store;
     @Child protected LLVMAMD64WriteValueNode writeRDI;
 
     public LLVMAMD64StosNode(LLVMAMD64WriteValueNode writeRDI) {
@@ -55,9 +53,11 @@ public abstract class LLVMAMD64StosNode extends LLVMStatementNode {
     }
 
     public abstract static class LLVMAMD64StosbNode extends LLVMAMD64StosNode {
+        @Child protected LLVMI8StoreNode store;
+
         public LLVMAMD64StosbNode(LLVMAMD64WriteValueNode writeRDI) {
             super(writeRDI);
-            store = LLVMI8StoreNodeGen.create(null, null);
+            store = LLVMI8StoreNode.create();
         }
 
         @Specialization
@@ -74,9 +74,11 @@ public abstract class LLVMAMD64StosNode extends LLVMStatementNode {
     }
 
     public abstract static class LLVMAMD64StoswNode extends LLVMAMD64StosNode {
+        @Child protected LLVMI16StoreNode store;
+
         public LLVMAMD64StoswNode(LLVMAMD64WriteValueNode writeRDI) {
             super(writeRDI);
-            store = LLVMI16StoreNodeGen.create(null, null);
+            store = LLVMI16StoreNode.create();
         }
 
         @Specialization
@@ -93,9 +95,11 @@ public abstract class LLVMAMD64StosNode extends LLVMStatementNode {
     }
 
     public abstract static class LLVMAMD64StosdNode extends LLVMAMD64StosNode {
+        @Child protected LLVMI32StoreNode store;
+
         public LLVMAMD64StosdNode(LLVMAMD64WriteValueNode writeRDI) {
             super(writeRDI);
-            store = LLVMI32StoreNodeGen.create(null, null);
+            store = LLVMI32StoreNode.create();
         }
 
         @Specialization
@@ -112,9 +116,11 @@ public abstract class LLVMAMD64StosNode extends LLVMStatementNode {
     }
 
     public abstract static class LLVMAMD64StosqNode extends LLVMAMD64StosNode {
+        @Child protected LLVMI64StoreNode store;
+
         public LLVMAMD64StosqNode(LLVMAMD64WriteValueNode writeRDI) {
             super(writeRDI);
-            store = LLVMI64StoreNodeGen.create(null, null);
+            store = LLVMI64StoreNode.create();
         }
 
         @Specialization

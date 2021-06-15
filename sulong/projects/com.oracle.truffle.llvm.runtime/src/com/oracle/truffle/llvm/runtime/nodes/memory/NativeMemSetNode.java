@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -37,6 +37,8 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.Struct;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.StructMember;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemSetNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
@@ -56,12 +58,33 @@ public abstract class NativeMemSetNode extends LLVMMemSetNode {
                 return elementSize;
             }
         }
+        if (type instanceof LLVMInteropType.Struct) {
+            StructMember member = findMember((Struct) type, pointer.getOffset());
+            /*
+             * That's a bit of a guess: We assume that this tries to set 'n' members of the same
+             * size. So, we just take the size of the first member as the access length. If that
+             * isn't true, we will fail afterwards when doing actual access.
+             */
+            if (member != null && member.type instanceof LLVMInteropType.Value && length % member.type.getSize() == 0) {
+                return member.type.getSize();
+            }
+        }
 
         /*
          * Fallback to byte-wise copy if either the type is unknown, not an array, or the length is
          * not a multiple of the array element size.
          */
         return 1;
+    }
+
+    private static StructMember findMember(LLVMInteropType.Struct struct, long offset) {
+        for (int i = 0; i < struct.getMemberCount(); i++) {
+            StructMember m = struct.getMember(i);
+            if (m.startOffset == offset) {
+                return m;
+            }
+        }
+        return null;
     }
 
     @Specialization(limit = "3", guards = {"nativeWrite.isWritable(object.getObject())", "getAccessLength(object, length, nativeTypes) == 1"})

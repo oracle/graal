@@ -115,6 +115,10 @@ public interface LibCBase {
     @Platforms(Platform.HOSTED_ONLY.class)
     boolean requiresLibCSpecificStaticJDKLibraries();
 
+    @Platforms(Platform.HOSTED_ONLY.class)
+    default void checkIfLibCSupported() {
+    }
+
     static LibCBase singleton() {
         return ImageSingletons.lookup(LibCBase.class);
     }

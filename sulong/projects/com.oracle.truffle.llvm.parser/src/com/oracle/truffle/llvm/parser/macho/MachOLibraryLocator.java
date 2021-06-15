@@ -60,7 +60,7 @@ public final class MachOLibraryLocator extends LibraryLocator {
     public TruffleFile locateLibrary(LLVMContext context, String lib, Object reason) {
         Path libPath = Paths.get(lib);
         if (libPath.isAbsolute()) {
-            return DefaultLibraryLocator.locateAbsolute(context, lib, libPath);
+            return DefaultLibraryLocator.locateAbsolute(context, libPath);
         }
         TruffleFile path = DefaultLibraryLocator.locateGlobal(context, lib);
         if (path != null) {

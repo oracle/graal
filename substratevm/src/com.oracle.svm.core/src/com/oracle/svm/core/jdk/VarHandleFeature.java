@@ -235,11 +235,21 @@ class VarHandleFieldStaticBasePrimitiveAccessor {
     static Object get(@SuppressWarnings("unused") Object varHandle) {
         return StaticFieldsSupport.getStaticPrimitiveFields();
     }
+
+    @SuppressWarnings("unused")
+    static void set(Object varHandle, Object value) {
+        assert value == StaticFieldsSupport.getStaticPrimitiveFields();
+    }
 }
 
 class VarHandleFieldStaticBaseObjectAccessor {
     static Object get(@SuppressWarnings("unused") Object varHandle) {
         return StaticFieldsSupport.getStaticObjectFields();
+    }
+
+    @SuppressWarnings("unused")
+    static void set(Object varHandle, Object value) {
+        assert value == StaticFieldsSupport.getStaticObjectFields();
     }
 }
 

@@ -67,6 +67,7 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.reports.CallTreePrinter;
 import com.oracle.graal.pointsto.util.AnalysisError.TypeNotFoundError;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.annotate.UnknownPrimitiveField;
 import com.oracle.svm.core.graal.meta.SubstrateReplacements;
@@ -81,7 +82,6 @@ import com.oracle.svm.hosted.analysis.flow.SVMMethodTypeFlowBuilder;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -98,7 +98,7 @@ public class Inflation extends BigBang {
 
     public Inflation(OptionValues options, AnalysisUniverse universe, HostedProviders providers, AnnotationSubstitutionProcessor annotationSubstitutionProcessor, ForkJoinPool executor,
                     Runnable heartbeatCallback) {
-        super(options, universe, providers, universe.hostVM(), executor, heartbeatCallback, new SubstrateUnsupportedFeatures());
+        super(options, universe, providers, universe.hostVM(), executor, heartbeatCallback, new SubstrateUnsupportedFeatures(), SubstrateOptions.parseOnce());
         this.annotationSubstitutionProcessor = annotationSubstitutionProcessor;
 
         String[] targetCallers = new String[]{"com\\.oracle\\.graal\\.", "org\\.graalvm[^\\.polyglot\\.nativeapi]"};
@@ -339,7 +339,7 @@ public class Inflation extends BigBang {
         Type[] allGenericInterfaces;
         try {
             allGenericInterfaces = javaClass.getGenericInterfaces();
-        } catch (MalformedParameterizedTypeException | TypeNotPresentException | NoClassDefFoundError t) {
+        } catch (MalformedParameterizedTypeException | TypeNotPresentException | LinkageError t) {
             /*
              * Loading generic interfaces can fail due to missing types. Ignore the exception and
              * return an empty array.
@@ -351,7 +351,7 @@ public class Inflation extends BigBang {
         Type[] cachedGenericInterfaces;
         try {
             cachedGenericInterfaces = genericInterfacesMap.computeIfAbsent(new GenericInterfacesEncodingKey(genericInterfaces), k -> genericInterfaces);
-        } catch (MalformedParameterizedTypeException | TypeNotPresentException | NoClassDefFoundError t) {
+        } catch (MalformedParameterizedTypeException | TypeNotPresentException | LinkageError t) {
             /*
              * Computing the hash code of generic interfaces can fail due to missing types. Ignore
              * the exception and proceed without caching. De-duplication of generic interfaces is an
@@ -363,7 +363,7 @@ public class Inflation extends BigBang {
         Type genericSuperClass;
         try {
             genericSuperClass = javaClass.getGenericSuperclass();
-        } catch (MalformedParameterizedTypeException | TypeNotPresentException | NoClassDefFoundError t) {
+        } catch (MalformedParameterizedTypeException | TypeNotPresentException | LinkageError t) {
             /*
              * Loading the generic super class can fail due to missing types. Ignore the exception
              * and return null.
@@ -382,7 +382,7 @@ public class Inflation extends BigBang {
         AnnotatedType annotatedSuperclass;
         try {
             annotatedSuperclass = javaClass.getAnnotatedSuperclass();
-        } catch (MalformedParameterizedTypeException | TypeNotPresentException | NoClassDefFoundError t) {
+        } catch (MalformedParameterizedTypeException | TypeNotPresentException | LinkageError t) {
             /*
              * Loading the annotated super class can fail due to missing types. Ignore the exception
              * and return null.
@@ -396,7 +396,7 @@ public class Inflation extends BigBang {
         AnnotatedType[] allAnnotatedInterfaces;
         try {
             allAnnotatedInterfaces = javaClass.getAnnotatedInterfaces();
-        } catch (MalformedParameterizedTypeException | TypeNotPresentException | NoClassDefFoundError t) {
+        } catch (MalformedParameterizedTypeException | TypeNotPresentException | LinkageError t) {
             /*
              * Loading annotated interfaces can fail due to missing types. Ignore the exception and
              * return an empty array.
@@ -681,16 +681,7 @@ public class Inflation extends BigBang {
          * type fields of type C can be of any type compatible with their declared type.
          */
 
-        if (SVMHost.isUnknownClass(type)) {
-            return false;
-        }
-
-        if (type.isArray() && SVMHost.isUnknownClass(type.getComponentType())) {
-            // TODO are arrays of unknown value types also unknown?
-            throw JVMCIError.unimplemented();
-        }
-
-        return true;
+        return !SVMHost.isUnknownClass(type);
     }
 
     /**

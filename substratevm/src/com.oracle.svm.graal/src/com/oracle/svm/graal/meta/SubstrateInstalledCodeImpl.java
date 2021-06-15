@@ -31,9 +31,10 @@ import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.deopt.SubstrateSpeculationLog;
 import com.oracle.svm.core.graal.meta.SharedRuntimeMethod;
+import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.code.InstalledCode;
-import jdk.vm.ci.code.InvalidInstalledCodeException;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -60,14 +61,32 @@ public class SubstrateInstalledCodeImpl extends InstalledCode implements Substra
 
     @Override
     public void setAddress(long address, ResolvedJavaMethod method) {
+        assert VMOperation.isInProgressAtSafepoint();
         this.address = address;
         this.entryPoint = address;
     }
 
     @Override
     public void clearAddress() {
-        this.address = 0;
+        assert VMOperation.isInProgressAtSafepoint();
         this.entryPoint = 0;
+        this.address = 0;
+    }
+
+    @Override
+    public void invalidate() {
+        CodeInfoTable.invalidateInstalledCode(this);
+    }
+
+    /**
+     * Currently not supported. Existing code would need modifications to ensure that there cannot
+     * be a safepoint between a read of {@link #entryPoint} (such as, at the end of
+     * {@link #getEntryPoint()}), and the invocation of the entry point that was read.
+     */
+    @Override
+    public void invalidateWithoutDeoptimization() {
+        assert VMOperation.isInProgressAtSafepoint();
+        throw VMError.unimplemented();
     }
 
     @Override
@@ -86,12 +105,7 @@ public class SubstrateInstalledCodeImpl extends InstalledCode implements Substra
     }
 
     @Override
-    public void invalidate() {
-        CodeInfoTable.invalidateInstalledCode(this);
-    }
-
-    @Override
-    public Object executeVarargs(Object... args) throws InvalidInstalledCodeException {
+    public Object executeVarargs(Object... args) {
         throw shouldNotReachHere("No implementation in Substrate VM");
     }
 }

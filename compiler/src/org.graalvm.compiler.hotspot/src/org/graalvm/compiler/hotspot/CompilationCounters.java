@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,6 +41,7 @@ import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.code.CompilationRequest;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 class CompilationCounters {
@@ -87,7 +88,7 @@ class CompilationCounters {
                 }
             }
             TTY.flush();
-            HotSpotGraalServices.exit(-1);
+            HotSpotGraalServices.exit(-1, HotSpotJVMCIRuntime.runtime());
         }
     }
 

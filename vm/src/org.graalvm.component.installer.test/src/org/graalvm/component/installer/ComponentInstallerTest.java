@@ -24,7 +24,16 @@
  */
 package org.graalvm.component.installer;
 
+import java.io.File;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.net.URL;
+import java.net.URLClassLoader;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.security.CodeSource;
+import java.security.ProtectionDomain;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -37,7 +46,10 @@ import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.junit.Assert;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+import org.junit.Assume;
 import org.junit.Test;
 
 /**
@@ -55,6 +67,9 @@ public class ComponentInstallerTest extends CommandTestBase {
     }
 
     void reportOption(String k) {
+        if (k.length() == 1 && !Character.isLetterOrDigit(k.charAt(0))) {
+            return;
+        }
         if (message.length() > 0) {
             message.append(", ");
         }
@@ -189,6 +204,8 @@ public class ComponentInstallerTest extends CommandTestBase {
                 it.remove();
             }
         }
+        // exclusion: update is not mentioned on main page:
+        allCmds.remove("update");
         if (!allCmds.isEmpty()) {
             Assert.fail("Not all commands documented: " + allCmds);
         }
@@ -355,7 +372,8 @@ public class ComponentInstallerTest extends CommandTestBase {
 
                 List<String> oneChars = opts.keySet().stream().filter((s) -> s.length() == 1         // one-liner
                                 && !"X".equals(opts.get(s))       // not disabled
-                                && !deprecatedOptions.contains(s) // not deprecated
+                                && (s.length() > 1 || Character.isLetterOrDigit(s.charAt(0))) && !deprecatedOptions.contains(s) // not
+                                                                                                                                // deprecated
                 ).sorted().collect(Collectors.toList());
                 if (!oneChars.isEmpty()) {
                     errors.add("Command " + currentCmd + ": Option(s) missing in command overview - " + oneChars);
@@ -416,5 +434,161 @@ public class ComponentInstallerTest extends CommandTestBase {
             checkCommandAndOptionsList(cc);
         }
         assertTrue("Help inconsistencies found: \n " + String.join("\n", errors), errors.isEmpty());
+    }
+
+    private InstallerExecHelper helper = new InstallerExecHelper();
+
+    @Test
+    public void testFindGraalVMHome() throws Exception {
+        System.getProperties().remove(CommonConstants.ENV_GRAALVM_HOME);
+        System.getProperties().remove("GRAAL_HOME");
+
+        ComponentInstaller installer = new ComponentInstaller(new String[]{});
+
+        Path relComps = Paths.get("lib/installer/components");
+        Path graal = targetPath.resolve("ggg");
+        Path invalidBase = targetPath.resolve("invalid");
+        Path invalidBase2 = targetPath.resolve("invalid2");
+        Files.createDirectories(graal.resolve(relComps));
+        Files.write(graal.resolve("release"), Arrays.asList("Hello, GraalVM!"));
+
+        // check the legacy env setting:
+        helper.fakeEnv.put("GRAAL_HOME", graal.toString());
+
+        Environment env = helper.createFakedEnv();
+        installer.setInput(env);
+
+        Path result;
+
+        result = installer.findGraalHome();
+        assertTrue(Files.isSameFile(graal, result));
+
+        // check that Sysprop overrides the env. First ensure we fail with an invalid home:
+
+        helper.fakeEnv.put("GRAAL_HOME", invalidBase.toString());
+        try {
+            result = installer.findGraalHome();
+            fail("Should fail, invalid home provided.");
+        } catch (FailedOperationException ex) {
+            // expected
+        }
+        System.setProperty("GRAAL_HOME", graal.toString());
+
+        result = installer.findGraalHome();
+        assertTrue(Files.isSameFile(graal, result));
+
+        System.setProperty("GRAAL_HOME", invalidBase2.toString());
+        try {
+            result = installer.findGraalHome();
+            fail("Should fail, invalid home provided.");
+        } catch (FailedOperationException ex) {
+            // expected
+        }
+
+        helper.fakeEnv.put(CommonConstants.ENV_GRAALVM_HOME, graal.toString());
+        result = installer.findGraalHome();
+        assertTrue(Files.isSameFile(graal, result));
+        helper.fakeEnv.put(CommonConstants.ENV_GRAALVM_HOME, invalidBase.toString());
+
+        try {
+            result = installer.findGraalHome();
+            fail("Should fail, invalid home provided.");
+        } catch (FailedOperationException ex) {
+            // expected
+        }
+        System.setProperty(CommonConstants.ENV_GRAALVM_HOME, graal.toString());
+        result = installer.findGraalHome();
+        assertTrue(Files.isSameFile(graal, result));
+    }
+
+    @Test
+    public void testAutoFindGraalVMHome() throws Exception {
+        System.getProperties().remove(CommonConstants.ENV_GRAALVM_HOME);
+        System.getProperties().remove("GRAAL_HOME");
+
+        // Undefine all, and use last resort: copy the JAR
+        URL locInstaller = getClassLocation(ComponentInstaller.class);
+        URL locTest = getClassLocation(ComponentInstallerTest.class);
+
+        Assume.assumeFalse("Skipped because runs from classes", locInstaller == null || locTest == null);
+
+        Path origInstaller = new File(locInstaller.toURI()).toPath();
+        Path origTest = new File(locTest.toURI()).toPath();
+
+        Assume.assumeTrue("Skipped because runs from classes",
+                        origInstaller != null && origTest != null &&
+                                        Files.isRegularFile(origInstaller) && Files.isRegularFile(origTest));
+
+        Path relComps = Paths.get("lib/installer/components");
+        Path graal = targetPath.resolve("ggg");
+        Path instDir = graal.resolve("lib/installer");
+        Files.createDirectories(graal.resolve(relComps));
+        Files.write(graal.resolve("release"), Arrays.asList("Hello, GraalVM!"));
+
+        // copy over the JARs:
+        Path targetInstaller = instDir.resolve(origInstaller.getFileName());
+        Path targetTest = instDir.resolve(origTest.getFileName());
+        Files.copy(origInstaller, targetInstaller);
+        Files.copy(origTest, targetTest);
+
+        URLClassLoader myLoader = (URLClassLoader) getClass().getClassLoader();
+        List<URL> urls = new ArrayList<>();
+
+        urls.add(targetInstaller.toUri().toURL());
+        urls.add(targetTest.toUri().toURL());
+
+        Arrays.asList(myLoader.getURLs()).stream().filter(u -> !(locInstaller.equals(u) || locTest.equals(u))).collect(Collectors.toCollection(() -> urls));
+
+        URLClassLoader ldr = new URLClassLoader(
+                        urls.toArray(new URL[urls.size()]),
+                        getClass().getClassLoader().getParent());
+
+        Class<?> testClazz = Class.forName(InstallerExecHelper.class.getName(), true, ldr);
+
+        Object inst = testClazz.getDeclaredConstructor().newInstance();
+        Method m = testClazz.getMethod("performGraalVMHomeAutodetection");
+        String res = (String) m.invoke(inst);
+
+        assertEquals(graal.toString(), res);
+    }
+
+    public static class InstallerExecHelper {
+        Map<String, String> fakeEnv = new HashMap<>(System.getenv());
+
+        private Environment createFakedEnv() {
+            Environment env = new Environment("", Collections.emptyList(), Collections.emptyMap()) {
+                @Override
+                public String getParameter(String key, boolean cmdLine) {
+                    if (cmdLine) {
+                        return super.getParameter(key, cmdLine);
+                    } else {
+                        return fakeEnv.get(key);
+                    }
+                }
+
+            };
+            return env;
+        }
+
+        public String performGraalVMHomeAutodetection() {
+            ComponentInstaller installer = new ComponentInstaller(new String[]{});
+            fakeEnv.clear();
+            Environment env = createFakedEnv();
+            installer.setInput(env);
+
+            installer.findGraalHome();
+            return installer.getGraalHomePath().toString();
+        }
+    }
+
+    private static URL getClassLocation(Class<?> clazz) {
+        ProtectionDomain pd = clazz.getProtectionDomain();
+        if (pd != null) {
+            CodeSource cs = pd.getCodeSource();
+            if (cs != null) {
+                return cs.getLocation();
+            }
+        }
+        return null;
     }
 }

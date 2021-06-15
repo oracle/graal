@@ -53,10 +53,8 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMInstrumentableNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMLandingpadNodeGen.LandingpadCatchEntryNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMLandingpadNodeGen.LandingpadFilterEntryNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI32StoreNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI32StoreNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI32StoreNode.LLVMI32OffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.ToComparableValue;
 import com.oracle.truffle.llvm.runtime.nodes.op.ToComparableValueNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMDynAccessSymbolNode;
@@ -68,9 +66,10 @@ public abstract class LLVMLandingpadNode extends LLVMExpressionNode {
 
     @Child private LLVMExpressionNode getStack;
     @Child private LLVMExpressionNode allocateLandingPadValue;
-    @Child private LLVMPointerStoreNode writePointer;
-    @Child private LLVMI32StoreNode writeI32;
+    @Child private LLVMPointerStoreNode writePointer = LLVMPointerStoreNode.create();
+    @Child private LLVMI32OffsetStoreNode writeI32 = LLVMI32OffsetStoreNode.create();
     @Children private final LandingpadEntryNode[] entries;
+
     private final FrameSlot exceptionSlot;
     private final boolean cleanup;
 
@@ -78,8 +77,6 @@ public abstract class LLVMLandingpadNode extends LLVMExpressionNode {
                     LandingpadEntryNode[] entries) {
         this.getStack = getStack;
         this.allocateLandingPadValue = allocateLandingPadValue;
-        this.writePointer = LLVMPointerStoreNodeGen.create(null, null);
-        this.writeI32 = LLVMI32StoreNodeGen.create(null, null);
         this.exceptionSlot = exceptionSlot;
         this.cleanup = cleanup;
         this.entries = entries;
@@ -120,18 +117,6 @@ public abstract class LLVMLandingpadNode extends LLVMExpressionNode {
     public abstract static class LandingpadEntryNode extends LLVMInstrumentableNode {
 
         public abstract int execute(VirtualFrame frame, LLVMStack stack, LLVMPointer unwindHeader);
-
-        /**
-         * Override to allow access from generated wrapper.
-         */
-        @Override
-        protected abstract boolean isStatement();
-
-        /**
-         * Override to allow access from generated wrapper.
-         */
-        @Override
-        protected abstract void setStatement(boolean statementTag);
 
         @Override
         public WrapperNode createWrapper(ProbeNode probe) {

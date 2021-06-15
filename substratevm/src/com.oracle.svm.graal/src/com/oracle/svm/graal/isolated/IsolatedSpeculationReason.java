@@ -24,11 +24,6 @@
  */
 package com.oracle.svm.graal.isolated;
 
-import java.util.function.Supplier;
-
-import com.oracle.svm.core.util.VMError;
-
-import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 
 public final class IsolatedSpeculationReason extends IsolatedObjectProxy<SpeculationReason> implements SpeculationReason {
@@ -37,8 +32,4 @@ public final class IsolatedSpeculationReason extends IsolatedObjectProxy<Specula
         super(reason);
     }
 
-    @Override
-    public SpeculationLog.SpeculationReasonEncoding encode(Supplier<SpeculationLog.SpeculationReasonEncoding> encodingSupplier) {
-        throw VMError.shouldNotReachHere();
-    }
 }

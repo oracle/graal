@@ -29,11 +29,20 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.globals;
 
+import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.model.GlobalSymbol;
 import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.enums.Linkage;
 import com.oracle.truffle.llvm.parser.model.enums.Visibility;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
+import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
+import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
+import com.oracle.truffle.llvm.runtime.LLVMFunction;
+import com.oracle.truffle.llvm.runtime.LLVMSymbol;
+import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
+import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 
 public final class GlobalAlias extends GlobalValueSymbol {
@@ -51,5 +60,19 @@ public final class GlobalAlias extends GlobalValueSymbol {
         // aliases always have a value so compensate for zero test in super class
         final int aliasedValue = value + 1;
         return new GlobalAlias(type, Linkage.decode(linkage), Visibility.decode(visibility), symbolTable, aliasedValue, GlobalSymbol.ALIAS_INDEX);
+    }
+
+    @Override
+    public LLVMExpressionNode createNode(LLVMParserRuntime runtime, DataLayout dataLayout, GetStackSpaceFactory stackFactory) {
+        LLVMSymbol symbol = runtime.lookupSymbol(getName());
+        if (symbol.isFunction()) {
+            LLVMFunction value = symbol.asFunction();
+            return CommonNodeFactory.createLiteral(value, getType());
+        } else if (symbol.isGlobalVariable()) {
+            LLVMGlobal value = symbol.asGlobalVariable();
+            return CommonNodeFactory.createLiteral(value, getType());
+        } else {
+            throw new LLVMParserException("Unexpected symbol: " + symbol.getClass());
+        }
     }
 }

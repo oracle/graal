@@ -49,7 +49,6 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
@@ -127,7 +126,7 @@ public class RewriteDuringCompilationTest extends AbstractPolyglotTest {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            frame.setObject(getResult(), InstrumentationTestLanguage.Null.INSTANCE);
+            frame.setObject(getResult(), false);
             frame.setInt(getLoopIndex(), 0);
             loop.execute(frame);
             try {

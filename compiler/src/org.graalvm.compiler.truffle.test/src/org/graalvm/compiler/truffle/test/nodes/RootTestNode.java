@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,6 +37,10 @@ public class RootTestNode extends RootNode {
     private final boolean captureFramesForTrace;
 
     @Child private AbstractTestNode node;
+
+    public RootTestNode(String name, AbstractTestNode node) {
+        this(new FrameDescriptor(), name, node, false, false);
+    }
 
     public RootTestNode(FrameDescriptor descriptor, String name, AbstractTestNode node) {
         this(descriptor, name, node, false, false);

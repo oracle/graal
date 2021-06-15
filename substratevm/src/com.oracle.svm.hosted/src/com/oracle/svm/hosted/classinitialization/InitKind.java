@@ -46,6 +46,10 @@ public enum InitKind {
         return this.ordinal() > other.ordinal() ? this : other;
     }
 
+    InitKind min(InitKind other) {
+        return this.ordinal() < other.ordinal() ? this : other;
+    }
+
     boolean isRunTime() {
         return this.equals(RUN_TIME);
     }
@@ -56,14 +60,24 @@ public enum InitKind {
         return SEPARATOR + name().toLowerCase();
     }
 
-    Consumer<String> stringConsumer(ClassInitializationSupport support) {
+    Consumer<String> stringConsumer(ClassInitializationSupport support, String origin) {
         if (this == RUN_TIME) {
-            return name -> support.initializeAtRunTime(name, "from the command line");
+            return name -> support.initializeAtRunTime(name, reason(origin, name));
         } else if (this == RERUN) {
-            return name -> support.rerunInitialization(name, "from the command line");
+            return name -> support.rerunInitialization(name, reason(origin, name));
         } else {
-            return name -> support.initializeAtBuildTime(name, "from the command line");
+            return name -> {
+                if (name.equals("")) {
+                    System.err.println("--initialize-at-build-time without arguments has been deprecated and will be removed in GraalVM 22.0.");
+                }
+                support.initializeAtBuildTime(name, reason(origin, name));
+            };
         }
+    }
+
+    private static String reason(String origin, String name) {
+        String prefix = "from ";
+        return (origin == null ? prefix + "the command line" : prefix + origin) + " with '" + name + "'";
     }
 
     static Pair<String, InitKind> strip(String input) {

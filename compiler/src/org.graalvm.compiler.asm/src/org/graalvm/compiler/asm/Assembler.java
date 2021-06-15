@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -214,8 +214,10 @@ public abstract class Assembler {
     /**
      * This is used by the CompilationResultBuilder to convert a {@link StackSlot} to an
      * {@link AbstractAddress}.
+     *
+     * @param transferSize bit size of memory operation this address will be used in.
      */
-    public abstract AbstractAddress makeAddress(Register base, int displacement);
+    public abstract AbstractAddress makeAddress(int transferSize, Register base, int displacement);
 
     /**
      * Returns a target specific placeholder address that can be used for code patching.

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.regex;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -56,12 +55,6 @@ public final class UnsupportedRegexException extends AbstractTruffleException {
 
     public UnsupportedRegexException(String reason) {
         super();
-        this.reason = reason;
-    }
-
-    @TruffleBoundary
-    public UnsupportedRegexException(String reason, Throwable cause) {
-        super(cause != null ? cause.getMessage() : null, cause, UNLIMITED_STACK_TRACE, null);
         this.reason = reason;
     }
 

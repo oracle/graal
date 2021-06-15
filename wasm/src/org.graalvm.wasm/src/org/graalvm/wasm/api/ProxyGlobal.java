@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -65,7 +65,7 @@ public class ProxyGlobal extends Dictionary {
             this.valueType = ValueType.valueOf((String) InteropLibrary.getUncached().readMember(descriptor, "value"));
             this.mutable = (boolean) InteropLibrary.getUncached().readMember(descriptor, "mutable");
         } catch (UnsupportedMessageException | UnknownIdentifierException e) {
-            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Invalid global descriptor: " + descriptor);
+            throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Invalid global descriptor: %s", descriptor);
         }
         addMembers(new Object[]{
                         "descriptor", this.descriptor,
@@ -102,7 +102,7 @@ public class ProxyGlobal extends Dictionary {
             case f64:
                 return globals.loadAsDouble(address);
             default:
-                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Unknown value type: " + valueType);
+                throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Unknown value type: %s", valueType);
         }
     }
 

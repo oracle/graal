@@ -146,7 +146,7 @@ public class DashboardDumpFeature implements Feature {
 
     @Override
     public void afterCompilation(AfterCompilationAccess access) {
-        if (isCodeBreakdownDumped()) {
+        if (isCodeBreakdownDumped() || isPointsToDumped()) {
             CodeBreakdownJsonObject dump = new CodeBreakdownJsonObject(access);
             if (isJsonFormat()) {
                 ReportUtils.report(

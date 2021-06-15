@@ -45,7 +45,8 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.utilities.AssumedValue;
+import com.oracle.truffle.llvm.runtime.except.LLVMIllegalSymbolIndexException;
+import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -248,16 +249,13 @@ public class LLVMScope implements TruffleObject {
         if (contains(globalName)) {
             LLVMSymbol symbol = get(globalName);
             if (symbol != null && symbol.isFunction()) {
-                if (symbol.hasValidIndexAndID()) {
-                    int index = symbol.getSymbolIndex(false);
-                    int bitcodeID = symbol.getBitcodeID(false);
-                    if (context.symbolTableExists(bitcodeID)) {
-                        AssumedValue<LLVMPointer>[] symbolTable = context.findSymbolTable(bitcodeID);
-                        if (index < symbolTable.length) {
-                            LLVMPointer pointer = symbolTable[index].get();
-                            return LLVMManagedPointer.cast(pointer).getObject();
-                        }
+                try {
+                    LLVMPointer value = context.getSymbol(symbol);
+                    if (value != null) {
+                        return LLVMManagedPointer.cast(value).getObject();
                     }
+                } catch (LLVMLinkerException | LLVMIllegalSymbolIndexException e) {
+                    // fallthrough
                 }
                 exception.enter();
                 throw UnknownIdentifierException.create(globalName);

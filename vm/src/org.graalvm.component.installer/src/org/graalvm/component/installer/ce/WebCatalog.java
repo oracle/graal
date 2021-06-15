@@ -38,6 +38,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 import java.util.Properties;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Stream;
 import org.graalvm.component.installer.BundleConstants;
 import org.graalvm.component.installer.CommandInput;
 import org.graalvm.component.installer.CommonConstants;
@@ -49,6 +52,8 @@ import org.graalvm.component.installer.remote.FileDownloader;
 import org.graalvm.component.installer.remote.RemotePropertiesStorage;
 import org.graalvm.component.installer.SoftwareChannel;
 import org.graalvm.component.installer.SoftwareChannelSource;
+import org.graalvm.component.installer.SystemUtils;
+import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.RemoteInfoProcessor;
 
@@ -63,6 +68,16 @@ public class WebCatalog implements SoftwareChannel {
     private RuntimeException savedException;
     private RemoteInfoProcessor remoteProcessor = RemoteInfoProcessor.NONE;
 
+    /**
+     * The accepted version - only exact match is supported at the moment.
+     */
+    private Version.Match matchVersion;
+
+    /**
+     * If true, enables loading different versions from V1 catalogs.
+     */
+    private boolean enableV1Versions;
+
     public WebCatalog(String u, SoftwareChannelSource source) {
         this.urlString = u;
         this.source = source;
@@ -74,6 +89,38 @@ public class WebCatalog implements SoftwareChannel {
 
     public void setRemoteProcessor(RemoteInfoProcessor remoteProcessor) {
         this.remoteProcessor = remoteProcessor;
+    }
+
+    public Version.Match getMatchVersion() {
+        return matchVersion;
+    }
+
+    public boolean isEnableV1Versions() {
+        return enableV1Versions;
+    }
+
+    /**
+     * Enables version processing in V1 catalogs. Note that not complete version string semantics is
+     * possible with v1 format, as version may contain underscores (_), which are delimiters in v1
+     * catalogs.
+     * <p/>
+     * The default setting is false.
+     * 
+     * @param enableV1Versions true, if should be enabled.
+     */
+    public void setEnableV1Versions(boolean enableV1Versions) {
+        this.enableV1Versions = enableV1Versions;
+    }
+
+    /**
+     * Overrides versions loaded by this catalog. By default own version only is accepted. If
+     * matchVersion is set, the catalog will load matching version(s). At this moment <b>only exact
+     * match is supported</b>.
+     * 
+     * @param aMatchVersion
+     */
+    public void setMatchVersion(Version.Match aMatchVersion) {
+        this.matchVersion = aMatchVersion;
     }
 
     protected static boolean acceptURLScheme(String scheme, String urlSpec) {
@@ -114,9 +161,9 @@ public class WebCatalog implements SoftwareChannel {
         Map<String, String> graalCaps = local.getGraalCapabilities();
 
         StringBuilder sb = new StringBuilder();
-        sb.append(graalCaps.get(CommonConstants.CAP_OS_NAME).toLowerCase());
+        sb.append(SystemUtils.patternOsName(graalCaps.get(CommonConstants.CAP_OS_NAME)).toLowerCase());
         sb.append("_");
-        sb.append(graalCaps.get(CommonConstants.CAP_OS_ARCH).toLowerCase());
+        sb.append(SystemUtils.patternOsArch(graalCaps.get(CommonConstants.CAP_OS_ARCH).toLowerCase()));
 
         try {
             catalogURL = new URL(urlString);
@@ -156,19 +203,28 @@ public class WebCatalog implements SoftwareChannel {
         // empty catalog.
         this.storage = newStorage;
 
-        StringBuilder oldGraalPref = new StringBuilder(BundleConstants.GRAAL_COMPONENT_ID);
+        StringBuilder oldGraalPref = new StringBuilder("^" + BundleConstants.GRAAL_COMPONENT_ID);
         oldGraalPref.append('.');
 
-        String graalVersionString = graalCaps.get(CommonConstants.CAP_GRAALVM_VERSION).toLowerCase();
-        String normalizedVersion = local.getGraalVersion().toString();
+        String graalVersionString;
+        Version normalizedVersion;
+
+        if (matchVersion != null) {
+            graalVersionString = matchVersion.getVersion().displayString();
+            normalizedVersion = matchVersion.getVersion().installVersion();
+        } else {
+            // read from the release file
+            graalVersionString = graalCaps.get(CommonConstants.CAP_GRAALVM_VERSION).toLowerCase();
+            normalizedVersion = local.getGraalVersion().installVersion();
+        }
 
         StringBuilder graalPref = new StringBuilder(oldGraalPref);
 
-        oldGraalPref.append(graalVersionString);
+        oldGraalPref.append(Pattern.quote(graalVersionString));
 
         oldGraalPref.append('_').append(sb);
         graalPref.append(sb).append('/');
-        graalPref.append(normalizedVersion);
+        graalPref.append("(?<ver>[^/]+)$"); // NOI18N
 
         try (FileInputStream fis = new FileInputStream(dn.getLocalFile())) {
             loadProps.load(fis);
@@ -176,8 +232,25 @@ public class WebCatalog implements SoftwareChannel {
             throw feedback.failure("REMOTE_CorruptedCatalogFile", ex, catalogURL);
         }
 
-        if (loadProps.getProperty(oldGraalPref.toString()) == null &&
-                        loadProps.getProperty(graalPref.toString()) == null) {
+        Pattern oldPrefixPattern = Pattern.compile(oldGraalPref.toString(), Pattern.CASE_INSENSITIVE);
+        Pattern newPrefixPattern = Pattern.compile(graalPref.toString(), Pattern.CASE_INSENSITIVE);
+        Stream<String> propNames = loadProps.stringPropertyNames().stream();
+        boolean foundPrefix = propNames.anyMatch(p -> {
+            if (oldPrefixPattern.matcher(p).matches()) {
+                return true;
+            }
+            Matcher m = newPrefixPattern.matcher(p);
+            if (!m.find() || m.start() > 0) {
+                return false;
+            }
+            try {
+                Version v = Version.fromString(m.group("ver")); // NOI18N
+                return normalizedVersion.match(Version.Match.Type.INSTALLABLE).test(v);
+            } catch (IllegalArgumentException ex) {
+                return false;
+            }
+        });
+        if (!foundPrefix) {
             boolean graalPrefixFound = false;
             boolean componentFound = false;
             for (String s : loadProps.stringPropertyNames()) {

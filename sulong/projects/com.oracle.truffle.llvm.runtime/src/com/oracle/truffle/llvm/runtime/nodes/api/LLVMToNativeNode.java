@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -47,6 +47,7 @@ public abstract class LLVMToNativeNode extends LLVMNode {
     @Specialization(limit = "5")
     static LLVMNativePointer doConvert(Object obj,
                     @CachedLibrary("obj") LLVMNativeLibrary nativeLibrary) {
+        nativeLibrary.accepts(obj); // needed until GR-27452 is fixed
         return nativeLibrary.toNativePointer(obj);
     }
 }

@@ -37,6 +37,7 @@ import org.graalvm.component.installer.CommandInput;
 import org.graalvm.component.installer.Commands;
 import static org.graalvm.component.installer.Commands.LONG_OPTION_LIST_FILES;
 import static org.graalvm.component.installer.Commands.OPTION_LIST_FILES;
+import org.graalvm.component.installer.CommonConstants;
 import static org.graalvm.component.installer.CommonConstants.CAP_GRAALVM_VERSION;
 import org.graalvm.component.installer.ComponentCollection;
 import org.graalvm.component.installer.ComponentParam;
@@ -71,6 +72,7 @@ public abstract class QueryCommandBase implements InstallerCommand {
     protected boolean listFiles;
     protected List<ComponentParam> componentParams = new ArrayList<>();
     protected List<ComponentInfo> components = new ArrayList<>();
+    protected boolean simpleFormat;
 
     public ComponentRegistry getRegistry() {
         return registry;
@@ -122,6 +124,7 @@ public abstract class QueryCommandBase implements InstallerCommand {
         listFiles = commandInput.optValue(OPTION_LIST_FILES) != null;
         verbose = commandInput.optValue(Commands.OPTION_VERBOSE) != null;
         printTable = !listFiles && !verbose;
+        processOutputFormat();
     }
 
     protected void addComponent(ComponentParam param, ComponentInfo info) {
@@ -144,13 +147,21 @@ public abstract class QueryCommandBase implements InstallerCommand {
     }
 
     void printHeader() {
+        if (simpleFormat) {
+            feedback.output("LIST_ComponentShortListHeader_Simple@");
+            return;
+        }
         if (printTable) {
             feedback.output("LIST_ComponentShortListHeader");
         }
     }
 
     String val(String s) {
-        return s == null ? feedback.l10n("LIST_MetadataUnknown") : s;
+        if (simpleFormat) {
+            return s == null ? "" : s;
+        } else {
+            return s == null ? feedback.l10n("LIST_MetadataUnknown") : s;
+        }
     }
 
     protected String shortenComponentId(ComponentInfo info) {
@@ -161,7 +172,9 @@ public abstract class QueryCommandBase implements InstallerCommand {
     void printDetails(ComponentParam param, ComponentInfo info) {
         String org;
         URL u = info.getRemoteURL();
-        if (u == null) {
+        if (simpleFormat) {
+            org = u == null ? "" : u.toString();
+        } else if (u == null) {
             org = ""; // NOI18N
         } else if (u.getProtocol().equals("file")) { // NOI18N
             try {
@@ -174,13 +187,15 @@ public abstract class QueryCommandBase implements InstallerCommand {
             org = u.getHost();
         }
         if (printTable) {
-            String line = String.format(feedback.l10n("LIST_ComponentShortList"),
-                            shortenComponentId(info), info.getVersion().displayString(), info.getName(), org);
+            String fmt = simpleFormat ? "LIST_ComponentShortList_Simple@" : "LIST_ComponentShortList";
+            String line = String.format(feedback.l10n(fmt),
+                            shortenComponentId(info), info.getVersion().displayString(), info.getName(), org, info.getId(), info.getStability().displayName(feedback));
             feedback.verbatimOut(line, false);
         } else {
-            feedback.output("LIST_ComponentBasicInfo",
+            String fmt = simpleFormat ? "LIST_ComponentBasicInfo_Simple@" : "LIST_ComponentBasicInfo";
+            feedback.output(fmt,
                             shortenComponentId(info), info.getVersion().displayString(), info.getName(),
-                            findRequiredGraalVMVersion(info), u);
+                            findRequiredGraalVMVersion(info), u == null ? "" : u, info.getId(), info.getStability().displayName(feedback));
         }
     }
 
@@ -198,17 +213,26 @@ public abstract class QueryCommandBase implements InstallerCommand {
             return;
         }
         List<String> files = new ArrayList<>(info.getPaths());
-        feedback.output("LIST_ComponentFilesHeader", files.size());
+        feedback.output(simpleFormat ? "LIST_ComponentFilesHeader_Simple@" : "LIST_ComponentFilesHeader", files.size());
         Collections.sort(files);
         for (String s : files) {
             feedback.verbatimOut(s, false);
         }
+        if (simpleFormat) {
+            feedback.output("LIST_ComponentFilesEnd@");
+        }
     }
 
     void printSeparator(@SuppressWarnings("unused") ComponentInfo info) {
-        if (printTable) {
+        if (simpleFormat || printTable) {
             return;
         }
         feedback.verbatimOut("", true); // NOI18N
+    }
+
+    void processOutputFormat() {
+        if (Boolean.TRUE.toString().equals(System.getProperty(CommonConstants.SYSPROP_SIMPLE_OUTPUT))) {
+            simpleFormat = true;
+        }
     }
 }

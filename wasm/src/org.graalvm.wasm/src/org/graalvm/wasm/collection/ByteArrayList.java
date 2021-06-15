@@ -41,27 +41,39 @@
 package org.graalvm.wasm.collection;
 
 import java.util.Arrays;
+import java.util.NoSuchElementException;
 
 public final class ByteArrayList {
     private static final byte[] EMPTY_BYTE_ARRAY = new byte[0];
 
     private byte[] array;
-    private int offset;
+    private int size;
 
     public ByteArrayList() {
         this.array = null;
-        this.offset = 0;
+        this.size = 0;
     }
 
     public void add(byte b) {
         ensureSize();
-        array[offset] = b;
-        offset++;
+        array[size] = b;
+        size++;
+    }
+
+    public void push(byte b) {
+        add(b);
     }
 
     public byte popBack() {
-        offset--;
-        return array[offset];
+        if (size() == 0) {
+            throw new NoSuchElementException("Cannot pop from an empty ByteArrayList.");
+        }
+        size--;
+        return array[size];
+    }
+
+    public byte top() {
+        return array[size - 1];
     }
 
     public void set(int index, byte b) {
@@ -79,23 +91,23 @@ public final class ByteArrayList {
     }
 
     public int size() {
-        return offset;
+        return size;
     }
 
     private void ensureSize() {
         if (array == null) {
             array = new byte[4];
-        } else if (offset == array.length) {
+        } else if (size == array.length) {
             byte[] narray = new byte[array.length * 2];
-            System.arraycopy(array, 0, narray, 0, offset);
+            System.arraycopy(array, 0, narray, 0, size);
             array = narray;
         }
     }
 
     public byte[] toArray() {
-        byte[] result = new byte[offset];
+        byte[] result = new byte[size];
         if (array != null) {
-            System.arraycopy(array, 0, result, 0, offset);
+            System.arraycopy(array, 0, result, 0, size);
             return result;
         } else {
             return EMPTY_BYTE_ARRAY;
@@ -108,8 +120,8 @@ public final class ByteArrayList {
         int resultOffset = 0;
         for (ByteArrayList byteArrayList : byteArrayLists) {
             if (byteArrayList.array != null) {
-                System.arraycopy(byteArrayList.array, 0, result, resultOffset, byteArrayList.offset);
-                resultOffset += byteArrayList.offset;
+                System.arraycopy(byteArrayList.array, 0, result, resultOffset, byteArrayList.size);
+                resultOffset += byteArrayList.size;
             }
         }
         return result;

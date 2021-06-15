@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,60 +31,70 @@ package com.oracle.truffle.llvm.initialization;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.llvm.initialization.LoadModulesNode.LLVMLoadingPhase;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.NFIContextExtension;
+import com.oracle.truffle.llvm.runtime.NativeContextExtension;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMDLOpen;
 
 public final class LoadNativeNode extends RootNode {
 
-    final String sourceName;
-    final TruffleFile file;
-    @CompilerDirectives.CompilationFinal TruffleLanguage.ContextReference<LLVMContext> ctxRef;
+    private final String path;
+    @CompilationFinal private ContextReference<LLVMContext> ctxRef;
 
-    private LoadNativeNode(String name, FrameDescriptor rootFrame, LLVMLanguage language, TruffleFile file) {
+    private LoadNativeNode(FrameDescriptor rootFrame, LLVMLanguage language, TruffleFile file) {
         super(language, rootFrame);
-        this.file = file;
-        this.sourceName = name;
+        this.path = file.getPath();
     }
 
-    public static LoadNativeNode create(String name, FrameDescriptor rootFrame, LLVMLanguage language, TruffleFile file) {
-        return new LoadNativeNode(name, rootFrame, language, file);
+    public static LoadNativeNode create(FrameDescriptor rootFrame, LLVMLanguage language, TruffleFile file) {
+        return new LoadNativeNode(rootFrame, language, file);
     }
 
     @Override
     public Object execute(VirtualFrame frame) {
+        Object library = null;
         if (ctxRef == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             this.ctxRef = lookupContextReference(LLVMLanguage.class);
         }
 
-        LoadModulesNode.LLVMLoadingPhase phase;
-        if (frame.getArguments().length > 0 && (frame.getArguments()[0] instanceof LoadModulesNode.LLVMLoadingPhase)) {
-            phase = (LoadModulesNode.LLVMLoadingPhase) frame.getArguments()[0];
+        LLVMLoadingPhase phase;
+        if (frame.getArguments().length > 0 && (frame.getArguments()[0] instanceof LLVMLoadingPhase)) {
+            phase = (LLVMLoadingPhase) frame.getArguments()[0];
+        } else if (frame.getArguments().length == 0 || (frame.getArguments().length > 0 && (frame.getArguments()[0] instanceof LLVMDLOpen.RTLDFlags))) {
+            if (path == null) {
+                throw new LLVMParserException(this, "Toplevel executable %s does not contain bitcode", path);
+            }
+            phase = LLVMLoadingPhase.INIT_SYMBOLS;
         } else {
-            throw new LLVMParserException("LoadNativeNode is called with unexpected arguments");
+            throw new LLVMParserException(this, "LoadNativeNode is called either with unexpected arguments or as a toplevel");
         }
 
-        if (LoadModulesNode.LLVMLoadingPhase.INIT_SYMBOLS.isActive(phase)) {
+        if (LLVMLoadingPhase.INIT_SYMBOLS.isActive(phase)) {
             LLVMContext context = ctxRef.get();
-            parseAndInitialiseNativeLib(context);
+            library = parseAndInitialiseNativeLib(context);
+        }
+        return library;
+    }
+
+    @TruffleBoundary
+    private Object parseAndInitialiseNativeLib(LLVMContext context) {
+        NativeContextExtension nativeContextExtension = context.getContextExtensionOrNull(NativeContextExtension.class);
+        if (nativeContextExtension != null) {
+            CallTarget callTarget = nativeContextExtension.parseNativeLibrary(path, context);
+            Object nfiLibrary = callTarget.call();
+            nativeContextExtension.addLibraryHandles(nfiLibrary);
+            return nfiLibrary;
         }
         return null;
     }
-
-    @CompilerDirectives.TruffleBoundary
-    private void parseAndInitialiseNativeLib(LLVMContext context) {
-        NFIContextExtension nfiContextExtension = context.getContextExtensionOrNull(NFIContextExtension.class);
-        if (nfiContextExtension != null) {
-            CallTarget callTarget = nfiContextExtension.parseNativeLibrary(file, context);
-            nfiContextExtension.addLibraryHandles(callTarget.call());
-        }
-    }
-
 }

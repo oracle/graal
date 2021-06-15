@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,7 +29,12 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.constants.floatingpoint;
 
+import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
+import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
+import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
+import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 
 public final class DoubleConstant extends FloatingPointConstant {
@@ -46,10 +51,6 @@ public final class DoubleConstant extends FloatingPointConstant {
         visitor.visit(this);
     }
 
-    public double getValue() {
-        return value;
-    }
-
     @Override
     public String toString() {
         return String.format("%.6f", value);
@@ -58,5 +59,15 @@ public final class DoubleConstant extends FloatingPointConstant {
     @Override
     public String getStringValue() {
         return String.valueOf(value);
+    }
+
+    @Override
+    public LLVMExpressionNode createNode(LLVMParserRuntime runtime, DataLayout dataLayout, GetStackSpaceFactory stackFactory) {
+        return CommonNodeFactory.createSimpleConstantNoArray(value, getType());
+    }
+
+    @Override
+    public void addToBuffer(Buffer buffer, LLVMParserRuntime runtime, DataLayout dataLayout, GetStackSpaceFactory stackFactory) {
+        buffer.getBuffer().putDouble(value);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,17 +41,17 @@ import jdk.vm.ci.meta.MemoryAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class HotSpotNarrowOopStamp extends NarrowOopStamp {
-    private HotSpotNarrowOopStamp(ResolvedJavaType type, boolean exactType, boolean nonNull, boolean alwaysNull, CompressEncoding encoding) {
-        super(type, exactType, nonNull, alwaysNull, encoding);
+    private HotSpotNarrowOopStamp(ResolvedJavaType type, boolean exactType, boolean nonNull, boolean alwaysNull, boolean alwaysArray, CompressEncoding encoding) {
+        super(type, exactType, nonNull, alwaysNull, alwaysArray, encoding);
     }
 
     @Override
-    protected AbstractObjectStamp copyWith(ResolvedJavaType type, boolean exactType, boolean nonNull, boolean alwaysNull) {
-        return new HotSpotNarrowOopStamp(type, exactType, nonNull, alwaysNull, getEncoding());
+    protected AbstractObjectStamp copyWith(ResolvedJavaType type, boolean exactType, boolean nonNull, boolean alwaysNull, boolean alwaysArray) {
+        return new HotSpotNarrowOopStamp(type, exactType, nonNull, alwaysNull, alwaysArray, getEncoding());
     }
 
     public static Stamp compressed(AbstractObjectStamp stamp, CompressEncoding encoding) {
-        return new HotSpotNarrowOopStamp(stamp.type(), stamp.isExactType(), stamp.nonNull(), stamp.alwaysNull(), encoding);
+        return new HotSpotNarrowOopStamp(stamp.type(), stamp.isExactType(), stamp.nonNull(), stamp.alwaysNull(), stamp.isAlwaysArray(), encoding);
     }
 
     @Override

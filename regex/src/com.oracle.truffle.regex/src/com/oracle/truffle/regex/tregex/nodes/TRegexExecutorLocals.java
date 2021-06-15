@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,7 @@
 package com.oracle.truffle.regex.tregex.nodes;
 
 /**
- * Base class for local variables used by an executor node called by a {@link TRegexExecRootNode}.
+ * Base class for local variables used by an executor node called by a {@link TRegexExecNode}.
  */
 public abstract class TRegexExecutorLocals {
 
@@ -60,28 +60,27 @@ public abstract class TRegexExecutorLocals {
     }
 
     /**
-     * The {@code input} argument given to {@link TRegexExecRootNode#execute(Object, int)}.
+     * The {@code input} argument given to {@link TRegexExecNode#execute(Object, int)}.
      *
-     * @return the {@code input} argument given to {@link TRegexExecRootNode#execute(Object, int)}.
+     * @return the {@code input} argument given to {@link TRegexExecNode#execute(Object, int)}.
      */
     public Object getInput() {
         return input;
     }
 
     /**
-     * The {@code fromIndex} argument given to {@link TRegexExecRootNode#execute(Object, int)}.
+     * The {@code fromIndex} argument given to {@link TRegexExecNode#execute(Object, int)}.
      *
-     * @return the {@code fromIndex} argument given to
-     *         {@link TRegexExecRootNode#execute(Object, int)}.
+     * @return the {@code fromIndex} argument given to {@link TRegexExecNode#execute(Object, int)}.
      */
     public int getFromIndex() {
         return fromIndex;
     }
 
     /**
-     * The maximum index as given by the parent {@link TRegexExecRootNode}.
+     * The maximum index as given by the parent {@link TRegexExecNode}.
      *
-     * @return the maximum index as given by the parent {@link TRegexExecRootNode}.
+     * @return the maximum index as given by the parent {@link TRegexExecNode}.
      */
     public int getMaxIndex() {
         return maxIndex;

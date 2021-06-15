@@ -238,11 +238,11 @@ public class RuntimeCodeCache {
 
         SubstrateInstalledCode installedCode = RuntimeCodeInfoAccess.getInstalledCode(info);
         if (installedCode != null) {
-            assert !installedCode.isValid() || CodeInfoAccess.getCodeStart(info).rawValue() == installedCode.getAddress();
+            assert !installedCode.isAlive() || CodeInfoAccess.getCodeStart(info).rawValue() == installedCode.getAddress();
             /*
-             * Until this point, the InstalledCode is valid. It can be invoked, and frames can be on
-             * the stack. All the metadata must be valid until this point. Make it non-entrant,
-             * i.e., ensure it cannot be invoked any more.
+             * Until here, the InstalledCode may be valid (can be invoked) or alive (frames can be
+             * on the stack). All the metadata must be valid until this point. Ensure it is
+             * non-entrant, that is, it cannot be invoked any more.
              */
             installedCode.clearAddress();
         }

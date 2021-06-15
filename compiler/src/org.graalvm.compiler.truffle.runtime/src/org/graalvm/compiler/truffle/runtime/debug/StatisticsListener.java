@@ -35,8 +35,6 @@ import java.util.IntSummaryStatistics;
 import java.util.LongSummaryStatistics;
 import java.util.Map;
 import java.util.Objects;
-import java.util.SortedSet;
-import java.util.TreeSet;
 import java.util.function.Function;
 import java.util.logging.Level;
 
@@ -141,7 +139,7 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
     }
 
     @Override
-    public synchronized void onCompilationQueued(OptimizedCallTarget target) {
+    public synchronized void onCompilationQueued(OptimizedCallTarget target, int tier) {
         queues++;
         long currentTime = System.nanoTime();
         if (firstCompilation == 0) {
@@ -155,7 +153,7 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
     }
 
     @Override
-    public synchronized void onCompilationDequeued(OptimizedCallTarget target, Object source, CharSequence reason) {
+    public synchronized void onCompilationDequeued(OptimizedCallTarget target, Object source, CharSequence reason, int tier) {
         dequeues++;
         dequeuedReasons.accept(Arrays.asList(Objects.toString(reason)), target);
         timeQueued.remove(target);
@@ -164,11 +162,12 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
     @Override
     public synchronized void onCompilationInvalidated(OptimizedCallTarget target, Object source, CharSequence reason) {
         invalidations++;
-        invalidatedReasons.accept(Arrays.asList(Objects.toString(reason)), target);
+        String useReason = reason == null ? "Unknown Reason" : reason.toString();
+        invalidatedReasons.accept(Arrays.asList(useReason), target);
     }
 
     @Override
-    public synchronized void onCompilationStarted(OptimizedCallTarget target) {
+    public synchronized void onCompilationStarted(OptimizedCallTarget target, int tier) {
         compilations++;
         final Times times = new Times();
         compilationTimes.set(times);
@@ -235,7 +234,7 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
     }
 
     @Override
-    public synchronized void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph, CompilationResultInfo result) {
+    public synchronized void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph, CompilationResultInfo result, int tier) {
         success++;
         long compilationDone = System.nanoTime();
 
@@ -256,7 +255,7 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
     }
 
     @Override
-    public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout) {
+    public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout, int tier) {
         if (bailout) {
             if (permanentBailout) {
                 permanentBailouts++;
@@ -443,9 +442,7 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
             if (normalize) {
                 normalize();
             }
-            SortedSet<T> sortedSet = new TreeSet<>(Comparator.comparing((T c) -> -types.get(c).getSum()));
-            sortedSet.addAll(types.keySet());
-            sortedSet.forEach(c -> {
+            types.keySet().stream().sorted(Comparator.comparing((T c) -> -types.get(c).getSum())).forEach(c -> {
                 String label = String.format("    %s", toStringFunction.apply(c));
                 TargetIntStatistics statistic = types.get(c);
                 if (onlyCount) {
@@ -615,18 +612,18 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
         }
 
         @Override
-        public void onCompilationQueued(OptimizedCallTarget target) {
+        public void onCompilationQueued(OptimizedCallTarget target, int tier) {
             StatisticsListener listener = target.engine.statisticsListener;
             if (listener != null) {
-                listener.onCompilationQueued(target);
+                listener.onCompilationQueued(target, tier);
             }
         }
 
         @Override
-        public void onCompilationStarted(OptimizedCallTarget target) {
+        public void onCompilationStarted(OptimizedCallTarget target, int tier) {
             StatisticsListener listener = target.engine.statisticsListener;
             if (listener != null) {
-                listener.onCompilationStarted(target);
+                listener.onCompilationStarted(target, tier);
             }
         }
 
@@ -647,10 +644,10 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
         }
 
         @Override
-        public void onCompilationDequeued(OptimizedCallTarget target, Object source, CharSequence reason) {
+        public void onCompilationDequeued(OptimizedCallTarget target, Object source, CharSequence reason, int tier) {
             StatisticsListener listener = target.engine.statisticsListener;
             if (listener != null) {
-                listener.onCompilationDequeued(target, source, reason);
+                listener.onCompilationDequeued(target, source, reason, tier);
             }
         }
 
@@ -679,18 +676,18 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
         }
 
         @Override
-        public void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph, CompilationResultInfo result) {
+        public void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph, CompilationResultInfo result, int tier) {
             StatisticsListener listener = target.engine.statisticsListener;
             if (listener != null) {
-                listener.onCompilationSuccess(target, inliningDecision, graph, result);
+                listener.onCompilationSuccess(target, inliningDecision, graph, result, tier);
             }
         }
 
         @Override
-        public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout) {
+        public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout, int tier) {
             StatisticsListener listener = target.engine.statisticsListener;
             if (listener != null) {
-                listener.onCompilationFailed(target, reason, bailout, permanentBailout);
+                listener.onCompilationFailed(target, reason, bailout, permanentBailout, tier);
             }
         }
 

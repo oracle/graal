@@ -216,6 +216,22 @@ public abstract class ConditionProfile extends Profile {
             }
         }
 
+        @Override
+        public void disable() {
+            if (this.trueCount == 0) {
+                this.trueCount = 1;
+            }
+            if (this.falseCount == 0) {
+                this.falseCount = 1;
+            }
+        }
+
+        @Override
+        public void reset() {
+            this.trueCount = 0;
+            this.falseCount = 0;
+        }
+
         int getTrueCount() {
             return trueCount;
         }
@@ -268,6 +284,18 @@ public abstract class ConditionProfile extends Profile {
                 }
                 return false;
             }
+        }
+
+        @Override
+        public void disable() {
+            this.wasFalse = true;
+            this.wasTrue = true;
+        }
+
+        @Override
+        public void reset() {
+            this.wasFalse = false;
+            this.wasTrue = false;
         }
 
         boolean wasTrue() {

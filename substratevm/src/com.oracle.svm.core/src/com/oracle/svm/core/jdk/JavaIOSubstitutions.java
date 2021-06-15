@@ -25,17 +25,17 @@
 package com.oracle.svm.core.jdk;
 
 import java.io.Closeable;
-import java.util.LinkedHashSet;
+import java.lang.ref.ReferenceQueue;
 import java.util.List;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.hub.DynamicHub;
 
 @TargetClass(java.io.FileDescriptor.class)
 final class Target_java_io_FileDescriptor {
@@ -47,115 +47,40 @@ final class Target_java_io_FileDescriptor {
 @TargetClass(java.io.ObjectInputStream.class)
 @SuppressWarnings({"static-method"})
 final class Target_java_io_ObjectInputStream {
-
+    /**
+     * Private method latestUserDefinedLoader is called by
+     * java.io.ObjectInputStream.resolveProxyClass and java.io.ObjectInputStream.resolveClass. The
+     * returned classloader is eventually used in Class.forName and Proxy.getProxyClass0 which are
+     * substituted by Substrate VM and the classloader is ignored. Therefore, this substitution is
+     * safe.
+     *
+     * @return The only classloader in native image
+     */
     @Substitute
-    private Object readObject() {
-        throw VMError.unsupportedFeature("ObjectInputStream.readObject()");
-    }
-
-    @Substitute
-    private Object readUnshared() {
-        throw VMError.unsupportedFeature("ObjectInputStream.readUnshared()");
+    private static ClassLoader latestUserDefinedLoader() {
+        return Target_java_io_ObjectInputStream.class.getClassLoader();
     }
 }
 
-@TargetClass(java.io.ObjectOutputStream.class)
-@SuppressWarnings({"static-method", "unused"})
-final class Target_java_io_ObjectOutputStream {
+@TargetClass(java.io.ObjectStreamClass.class)
+final class Target_java_io_ObjectStreamClass {
 
     @Substitute
-    private void writeObject(Object obj) {
-        throw VMError.unsupportedFeature("ObjectOutputStream.writeObject()");
-    }
-
-    @Substitute
-    private void writeUnshared(Object obj) {
-        throw VMError.unsupportedFeature("ObjectOutputStream.writeUnshared()");
+    private static boolean hasStaticInitializer(Class<?> cl) {
+        return DynamicHub.fromClass(cl).getClassInitializationInfo().hasInitializer();
     }
 }
 
-/**
- * This class provides a replacement for the static initialization in {@code DeleteOnExitHook}. I do
- * not want to use the files list developed during image generation, and I can not use the
- * {@link Runnable} registered during image generation to delete files in the running image.
- *
- * If, in the running image, someone registers a file to be deleted on exit, I lazily add a
- * {@code DeleteOnExitHook} to be run on during shutdown. I am using an injected accessor to
- * intercept all uses of {@code DeleteOnExitHook.files}, though I am only interested in the use in
- * {@code DeleteOnExitHook.add(String)}.
- */
-@TargetClass(className = "java.io.DeleteOnExitHook")
-final class Target_java_io_DeleteOnExitHook {
+@TargetClass(value = java.io.ObjectStreamClass.class, innerClass = "Caches")
+final class Target_java_io_ObjectStreamClass_Caches {
 
-    /** Make this method more visible. */
-    @Alias//
-    static native void runHooks();
+    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClass = ConcurrentHashMap.class) static ConcurrentMap<?, ?> localDescs;
 
-    /** This field is replaced by injected accessors. */
-    @Alias @InjectAccessors(FilesAccessors.class)//
-    private static LinkedHashSet<String> files;
+    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClass = ConcurrentHashMap.class) static ConcurrentMap<?, ?> reflectors;
 
-    /** The accessor for the injected field for {@link #files}. */
-    static final class FilesAccessors {
+    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClass = ReferenceQueue.class) private static ReferenceQueue<Class<?>> localDescsQueue;
 
-        /** The value of the injected field for {@link #files}. */
-        private static volatile LinkedHashSet<String> injectedFiles = null;
-
-        /** The get accessor for {@link Target_java_io_DeleteOnExitHook#files}. */
-        static LinkedHashSet<String> getFiles() {
-            initializeOnce();
-            return injectedFiles;
-        }
-
-        /** The set accessor for {@link Target_java_io_DeleteOnExitHook#files}. */
-        static void setFiles(LinkedHashSet<String> value) {
-            initializeOnce();
-            injectedFiles = value;
-        }
-
-        /** An initialization flag. */
-        private static volatile boolean initialized = false;
-
-        /** A lock to protect the initialization flag. */
-        private static ReentrantLock lock = new ReentrantLock();
-
-        static void initializeOnce() {
-            if (!initialized) {
-                lock.lock();
-                try {
-                    if (!initialized) {
-                        try {
-                            /*
-                             * Register a shutdown hook.
-                             *
-                             * Compare this code to the static initializations done in {@link
-                             * DeleteOnExitHook}, except I am short-circuiting the trampoline
-                             * through {@link sun.misc.SharedSecrets#getJavaLangAccess()}.
-                             */
-                            Target_java_lang_Shutdown.add(2 /* Shutdown hook invocation order */,
-                                            true /* register even if shutdown in progress */,
-                                            new Runnable() {
-                                                @Override
-                                                public void run() {
-                                                    Target_java_io_DeleteOnExitHook.runHooks();
-                                                }
-                                            });
-                        } catch (InternalError ie) {
-                            /* Someone else has registered the shutdown hook at slot 2. */
-                        } catch (IllegalStateException ise) {
-                            /* Too late to register this shutdown hook. */
-                        }
-                        /* Initialize the {@link #injectedFiles} field. */
-                        injectedFiles = new LinkedHashSet<>();
-                        /* Announce that initialization is complete. */
-                        initialized = true;
-                    }
-                } finally {
-                    lock.unlock();
-                }
-            }
-        }
-    }
+    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClass = ReferenceQueue.class) private static ReferenceQueue<Class<?>> reflectorsQueue;
 }
 
 /** Dummy class to have a class with the file's name. */

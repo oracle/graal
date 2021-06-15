@@ -30,6 +30,7 @@ import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_2;
 
 import java.util.List;
+import java.util.Map;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallSignature;
@@ -53,7 +54,7 @@ import jdk.vm.ci.meta.JavaKind;
  * Node for a {@linkplain ForeignCallDescriptor foreign} call.
  */
 // @formatter:off
-@NodeInfo(nameTemplate = "ForeignCall#{p#descriptor/s}",
+@NodeInfo(nameTemplate = "ForeignCall#{p#descriptorName/s}",
           allowedUsageTypes = Memory,
           cycles = CYCLES_2,
           cyclesRationale = "Rough estimation of the call operation itself.",
@@ -183,8 +184,15 @@ public class ForeignCallNode extends AbstractMemoryCheckpoint implements Foreign
     @Override
     public String toString(Verbosity verbosity) {
         if (verbosity == Verbosity.Name) {
-            return super.toString(verbosity) + "#" + descriptor;
+            return super.toString(verbosity) + "#" + descriptor.getName();
         }
         return super.toString(verbosity);
+    }
+
+    @Override
+    public Map<Object, Object> getDebugProperties(Map<Object, Object> map) {
+        Map<Object, Object> debugProperties = super.getDebugProperties(map);
+        debugProperties.put("descriptorName", descriptor.getName());
+        return debugProperties;
     }
 }

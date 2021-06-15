@@ -205,7 +205,7 @@ public final class TypeSnippets extends SubstrateTemplates implements Snippets {
                 args.add("start", hub.getTypeCheckStart());
                 args.add("range", hub.getTypeCheckRange());
                 args.add("slot", hub.getTypeCheckSlot());
-                args.addConst("typeIDSlotOffset", runtimeConfig.getInstanceOfTypeIDSlotsOffset());
+                args.addConst("typeIDSlotOffset", runtimeConfig.getTypeIDSlotsOffset());
                 return args;
             }
         }
@@ -248,7 +248,7 @@ public final class TypeSnippets extends SubstrateTemplates implements Snippets {
                 args.add("trueValue", replacer.trueValue);
                 args.add("falseValue", replacer.falseValue);
                 args.addConst("allowsNull", node.allowsNull());
-                args.addConst("typeIDSlotOffset", runtimeConfig.getInstanceOfTypeIDSlotsOffset());
+                args.addConst("typeIDSlotOffset", runtimeConfig.getTypeIDSlotsOffset());
                 return args;
             }
         }
@@ -279,7 +279,7 @@ public final class TypeSnippets extends SubstrateTemplates implements Snippets {
             args.add("checkedHub", node.getOtherClass());
             args.add("trueValue", replacer.trueValue);
             args.add("falseValue", replacer.falseValue);
-            args.addConst("typeIDSlotOffset", runtimeConfig.getInstanceOfTypeIDSlotsOffset());
+            args.addConst("typeIDSlotOffset", runtimeConfig.getTypeIDSlotsOffset());
             return args;
         }
     }

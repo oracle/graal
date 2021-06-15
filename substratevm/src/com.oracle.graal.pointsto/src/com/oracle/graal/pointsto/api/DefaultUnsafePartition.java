@@ -24,6 +24,8 @@
  */
 package com.oracle.graal.pointsto.api;
 
+import com.oracle.svm.util.UnsafePartitionKind;
+
 /**
  * Marker for default unsafe accesses.
  */

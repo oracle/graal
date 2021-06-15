@@ -27,6 +27,7 @@ package org.graalvm.tools.insight.test;
 // @formatter:off
 import java.util.Map;
 import java.util.function.Predicate;
+import org.graalvm.polyglot.Source;
 import org.graalvm.tools.insight.Insight;
 
 
@@ -35,16 +36,16 @@ import org.graalvm.tools.insight.Insight;
  * in the Insight scripts registered to the instrument.
  */
 public interface InsightAPI {
-    /** ID of the instrument. Version {@code 0.5} has been released as
-     * part of GraalVM 20.1 release.
+    /** ID of the instrument. Version {@code 1.1} has been released as
+     * part of GraalVM 21.1.0 release.
      *
      * @return same value of {@link Insight#ID} - e.g. {@code "insight"}
      * @since 0.3
      */
     String id();
 
-    /** Version of the API. Version {@code 0.1} has been released as
-     * part of GraalVM 19.3.0 release.
+    /** Version of the API. Version {@code 1.1} has been released as
+     * part of GraalVM 21.1.0 release.
      *
      * @return same value of {@link Insight#VERSION}
      * @since 0.1
@@ -85,6 +86,112 @@ public interface InsightAPI {
         String uri();
     }
 
+    interface SourceSectionInfo {
+        /**
+         * Name of the enclosing function.
+         *
+         * @return the name of the enclosing function
+         * @since 0.1
+         */
+        String name();
+
+        /**
+         * Information about surrounding source.
+         *
+         * @return information about the surrounding source
+         * @since 0.4
+         */
+        SourceInfo source();
+
+        /**
+         * Characters of the location.
+         *
+         * @return the characters of this {@link OnEventHandler.Context}
+         * @since 0.4
+         */
+        String characters();
+
+        /**
+         * Line of this location. The same as {@link #startLine()}.
+         *
+         * @return line number counting from one
+         * @since 0.4
+         */
+        int line();
+
+        /**
+         * Staring line of this location.
+         *
+         * @return line number counting from one
+         * @since 0.4
+         */
+        int startLine();
+
+        /**
+         * Final line of this location.
+         *
+         * @return line number counting from one
+         * @since 0.4
+         */
+        int endLine();
+
+        /**
+         * Column of this location. The same as {@link #startColumn()}.
+         *
+         * @return column number counting from one
+         * @since 0.4
+         */
+        int column();
+
+        /**
+         * Starting column of this location.
+         *
+         * @return column number counting from one
+         * @since 0.4
+         */
+        int startColumn();
+
+        /**
+         * Final column of this location.
+         *
+         * @return column number counting from one
+         * @since 0.4
+         */
+        int endColumn();
+
+        /**
+         * Returns the 0-based index of the first character in this section.
+         * Returns <code>0</code> for unavailable source
+         * sections.
+         *
+         * @return the starting character index
+         * @since 1.1
+         */
+        int charIndex();
+
+
+        /**
+         * Returns the length of this section in characters. Returns
+         * <code>0</code> for unavailable source
+         * sections.
+         *
+         * @return the number of characters in the section
+         * @since 1.1
+         */
+        int charEndIndex();
+
+
+        /**
+         * Returns the index of the text position immediately following the last
+         * character in the section.
+         * Returns <code>0</code> for unavailable source sections.
+         *
+         * @return the end position of the section
+         * @since 1.1
+         */
+        int charLength();
+    }
+
     @FunctionalInterface
     interface OnSourceLoadedHandler extends Handler {
         /** Called when a new source is loaded into the system.
@@ -103,67 +210,7 @@ public interface InsightAPI {
 
     @FunctionalInterface
     interface OnEventHandler extends Handler {
-        interface Context {
-            /** Name of the enclosing function.
-             * @return the name of the enclosing function
-             * @since 0.1
-             */
-            String name();
-
-            /** Information about surrounding source.
-             * @return information about the surrounding source
-             * @since 0.4
-             */
-            SourceInfo source();
-
-            /** Characters of the location.
-             * @return the characters of this {@link Context}
-             * @since 0.4
-             */
-            String characters();
-
-            /** Line of this location. The same as {@link #startLine()}.
-             *
-             * @return line number counting from one
-             * @since 0.4
-             */
-            int line();
-
-            /** Staring line of this location.
-             *
-             * @return line number counting from one
-             * @since 0.4
-             */
-            int startLine();
-
-            /** Final line of this location.
-             *
-             * @return line number counting from one
-             * @since 0.4
-             */
-            int endLine();
-
-            /** Column of this location. The same as {@link #startColumn()}.
-             *
-             * @return column number counting from one
-             * @since 0.4
-             */
-            int column();
-
-            /** Starting column of this location.
-             *
-             * @return column number counting from one
-             * @since 0.4
-             */
-            int startColumn();
-
-            /** Final column of this location.
-             *
-             * @return column number counting from one
-             * @since 0.4
-             */
-            int endColumn();
-
+        interface Context extends SourceSectionInfo {
             /** The current return value to be returned unless
              * {@link #returnNow} is called. The only meaningful
              * values can be expected inside of {@link #on on("return", ...)}
@@ -190,9 +237,38 @@ public interface InsightAPI {
              * @see #returnValue(java.util.Map)
              */
             void returnNow(Object value);
+
+            /** Walks the stack at current execution point and iterates through
+             * invocation frames and their local values.
+             *
+             * @param <T> type to return from the iterator
+             * @param it iterator to call for each frame
+             *    (that is not {@link Source#isInternal() internal})
+             * @return first non-{@code null} value returned
+             *    from the {@code it} iterator or {@code null}
+             * @since 1.0
+             */
+            <T> T iterateFrames(FramesIterator<T> it);
         }
         void event(Context ctx, Map<String, Object> frame);
     }
+
+    /** Iterator for the {@link OnEventHandler.Context#iterateFrames}.
+     * @since 1.0
+     */
+    @FunctionalInterface
+    interface FramesIterator<T> {
+        /** Called for each frame found on the stack.
+         *
+         * @param at location in the source code
+         * @param frame access to local variables
+         * @return {@code null} to continue iteration, non-{@code null} to
+         *   return immediatelly from the
+         *   {@link OnEventHandler.Context#iterateFrames} method.
+         */
+        T onFrame(SourceSectionInfo at, Map<String, Object> frame);
+    }
+
     class OnConfig {
         public boolean expressions;
         public boolean statements;

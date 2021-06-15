@@ -34,8 +34,8 @@ int fibonacci(int n) {
 }
 
 int run() {
-  int number = 37;
-  int fiboIs = 24157817;
+  int number = 31;
+  int fiboIs = 1346269;
 
   int fibo = fibonacci(number);
 

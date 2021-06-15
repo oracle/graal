@@ -65,7 +65,6 @@ import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
 import com.oracle.graal.pointsto.flow.OffsetLoadTypeFlow.AbstractUnsafeLoadTypeFlow;
 import com.oracle.graal.pointsto.flow.OffsetStoreTypeFlow.AbstractUnsafeStoreTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
-import com.oracle.graal.pointsto.flow.UnknownTypeFlow;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
 import com.oracle.graal.pointsto.flow.context.AnalysisContextPolicy;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -82,7 +81,6 @@ import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.Timer.StopTimer;
 import com.oracle.svm.util.ImageGeneratorThreadMarker;
 
-import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
@@ -101,7 +99,6 @@ public abstract class BigBang {
     /** The type of {@link java.lang.Object}. */
     private final AnalysisType objectType;
     private TypeFlow<?> allSynchronizedTypeFlow;
-    private UnknownTypeFlow unknownTypeFlow;
 
     protected final AnalysisUniverse universe;
     protected final AnalysisMetaAccess metaAccess;
@@ -128,8 +125,10 @@ public abstract class BigBang {
     public final Timer processFeaturesTimer;
     public final Timer analysisTimer;
 
+    private final boolean strengthenGraalGraphs;
+
     public BigBang(OptionValues options, AnalysisUniverse universe, HostedProviders providers, HostVM hostVM, ForkJoinPool executorService, Runnable heartbeatCallback,
-                    UnsupportedFeatures unsupportedFeatures) {
+                    UnsupportedFeatures unsupportedFeatures, boolean strengthenGraalGraphs) {
         this.options = options;
         this.debugHandlerFactories = Collections.singletonList(new GraalDebugHandlersFactory(providers.getSnippetReflection()));
         this.debug = new Builder(options, debugHandlerFactories).build();
@@ -145,6 +144,7 @@ public abstract class BigBang {
         this.replacements = providers.getReplacements();
         this.unsupportedFeatures = unsupportedFeatures;
         this.providers = providers;
+        this.strengthenGraalGraphs = strengthenGraalGraphs;
 
         this.objectType = metaAccess.lookupJavaType(Object.class);
         /*
@@ -153,7 +153,6 @@ public abstract class BigBang {
          */
         objectType.getTypeFlow(this, true);
         allSynchronizedTypeFlow = new AllSynchronizedTypeFlow();
-        unknownTypeFlow = new UnknownTypeFlow();
 
         trackTypeFlowInputs = PointstoOptions.TrackInputFlows.getValue(options);
         reportAnalysisStatistics = PointstoOptions.PrintPointsToStatistics.getValue(options);
@@ -172,6 +171,10 @@ public abstract class BigBang {
         heapScanningPolicy = PointstoOptions.ExhaustiveHeapScan.getValue(options)
                         ? HeapScanningPolicy.scanAll()
                         : HeapScanningPolicy.skipTypes(skippedHeapTypes());
+    }
+
+    public boolean strengthenGraalGraphs() {
+        return strengthenGraalGraphs;
     }
 
     public AnalysisType[] skippedHeapTypes() {
@@ -212,12 +215,6 @@ public abstract class BigBang {
 
     public void registerUnsafeStore(AbstractUnsafeStoreTypeFlow unsafeStore) {
         unsafeStores.putIfAbsent(unsafeStore, true);
-    }
-
-    public void reportIllegalUnknownUse(AnalysisMethod method, BytecodePosition source, String message) {
-        String trace = "Location: " + (source == null ? "[unknown]" : source.getMethod().asStackTraceElement(source.getBCI()).toString()) + "\n";
-        trace += "Call path:";
-        getUnsupportedFeatures().addMessage(method.format("%H.%n(%p)"), method, message, trace);
     }
 
     /**
@@ -279,7 +276,6 @@ public abstract class BigBang {
         allSynchronizedTypeFlow = null;
         unsafeLoads = null;
         unsafeStores = null;
-        unknownTypeFlow = null;
         scannedObjects = null;
 
         ConstantObjectsProfiler.constantTypes.clear();
@@ -359,10 +355,6 @@ public abstract class BigBang {
 
     public TypeFlow<?> getAllInstantiatedTypeFlow() {
         return objectType.getTypeFlow(this, true);
-    }
-
-    public TypeFlow<?> getUnknownTypeFlow() {
-        return unknownTypeFlow;
     }
 
     public TypeFlow<?> getAllSynchronizedTypeFlow() {
@@ -622,16 +614,17 @@ public abstract class BigBang {
     private void checkObjectGraph() throws InterruptedException {
         scannedObjects.reset();
         // scan constants
-        ObjectScanner objectScanner = new AnalysisObjectScanner(this, scannedObjects);
+        boolean isParallel = PointstoOptions.ScanObjectsParallel.getValue(options);
+        ObjectScanner objectScanner = new AnalysisObjectScanner(this, isParallel ? executor : null, scannedObjects);
         checkObjectGraph(objectScanner);
-        if (PointstoOptions.ScanObjectsParallel.getValue(options)) {
+        if (isParallel) {
             executor.start();
-            objectScanner.scanBootImageHeapRoots(executor);
+            objectScanner.scanBootImageHeapRoots(null, null);
             executor.complete();
             executor.shutdown();
             executor.init(timing);
         } else {
-            objectScanner.scanBootImageHeapRoots(null);
+            objectScanner.scanBootImageHeapRoots(null, null);
         }
         AnalysisType.updateAssignableTypes(this);
     }

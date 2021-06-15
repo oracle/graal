@@ -34,7 +34,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.utilities.AssumedValue;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
@@ -53,19 +52,11 @@ public abstract class LLVMDynAccessSymbolNode extends LLVMNode {
     @Specialization
     LLVMPointer doAccess(LLVMSymbol symbol,
                     @CachedContext(LLVMLanguage.class) LLVMContext context) {
-        if (symbol.hasValidIndexAndID()) {
-            int bitcodeID = symbol.getBitcodeID(false);
-            if (context.symbolTableExists(bitcodeID)) {
-                AssumedValue<LLVMPointer>[] symbols = context.findSymbolTable(bitcodeID);
-                int index = symbol.getSymbolIndex(false);
-                AssumedValue<LLVMPointer> assumedValue = symbols[index];
-                if (assumedValue != null) {
-                    return assumedValue.get();
-                }
-            }
+        LLVMPointer value = context.getSymbol(symbol);
+        if (value != null) {
+            return value;
         }
         CompilerDirectives.transferToInterpreter();
-        throw new LLVMLinkerException(this, String.format("External %s %s cannot be found.",
-                        symbol.getKind(), symbol.getName()));
+        throw new LLVMLinkerException(this, String.format("External %s %s cannot be found.", symbol.getKind(), symbol.getName()));
     }
 }

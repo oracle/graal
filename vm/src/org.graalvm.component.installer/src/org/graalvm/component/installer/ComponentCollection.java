@@ -37,6 +37,8 @@ public interface ComponentCollection {
         return findComponent(id, null);
     }
 
+    boolean isAllowDistUpdate();
+
     void setAllowDistUpdate(boolean distUpgrade);
 
     default ComponentInfo findComponent(String id, Version.Match vm) {

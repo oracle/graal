@@ -46,9 +46,11 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import com.oracle.truffle.api.dsl.AOTSupport;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.CachedLanguage;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.GenerateLibrary.DefaultExport;
 
@@ -357,6 +359,37 @@ public @interface ExportLibrary {
      * @since 20.1
      */
     String transitionLimit() default "";
+
+    /**
+     * Enables {@link AOTSupport#prepareForAOT(com.oracle.truffle.api.nodes.RootNode) AOT
+     * preparation} for this export. An exported library must use the {@link GenerateAOT} annotation
+     * on the library class to allow exports to enable AOT. Multiple AOT exports may be specified
+     * for each library. The library may be used for implicit and explicit receivers, dynamic
+     * dispatch and default exports. Merged libraries are currently not supported for AOT enabled
+     * exports. A {@link #useForAOTPriority() priority} must be set in order to resolve a
+     * deterministic order for AOT initialized exports.
+     * <p>
+     * All exported libraries with AOT enabled are loaded and initialized eagerly when a library
+     * that supports AOT is used for the first time. In order for this to work the exported library
+     * automatically generates subclass of {@link EagerExportProvider} and registers it in the
+     * meta-inf directory as a service provider. When the language is compiled using native-image
+     * then this is not necessary as native-image compilation discovers all AOT exports for a
+     * library during native image generation.
+     *
+     * @since 21.2
+     */
+    boolean useForAOT() default false;
+
+    /**
+     * Specifies the priority for the export when used for AOT preparation. A higher priority
+     * indicates that this export should be ordered earlier in the code rather than later. For
+     * example if a library has two exports and one has a higher priority then the export with the
+     * higher priority with be inserted first in the inline cache. Consequently, the library export
+     * accepts method will be invoked earlier for a higher priority.
+     *
+     * @since 21.2
+     */
+    int useForAOTPriority() default 0;
 
     /***
      * Repeat annotation for {@link ExportLibrary}.

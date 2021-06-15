@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,10 +29,12 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_2;
 
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.spi.Simplifiable;
+import org.graalvm.compiler.nodes.spi.Simplifiable;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.ControlSplitNode;
+import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
+import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
@@ -64,13 +66,18 @@ public abstract class IntegerExactArithmeticSplitNode extends ControlSplitNode i
 
     @Override
     public double probability(AbstractBeginNode successor) {
-        return successor == next ? 1 : 0;
+        return successor == next ? getProfileData().getDesignatedSuccessorProbability() : getProfileData().getNegatedProbability();
     }
 
     @Override
-    public boolean setProbability(AbstractBeginNode successor, double value) {
+    public boolean setProbability(AbstractBeginNode successor, BranchProbabilityData profileData) {
         // Successor probabilities for arithmetic split nodes are fixed.
         return false;
+    }
+
+    @Override
+    public BranchProbabilityData getProfileData() {
+        return BranchProbabilityNode.ALWAYS_TAKEN_PROFILE;
     }
 
     public AbstractBeginNode getNext() {

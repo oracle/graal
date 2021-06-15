@@ -43,7 +43,7 @@ import java.util.stream.Stream;
 
 class HeapBreakdownJsonObject extends JsonObject {
 
-    private final Feature.AfterHeapLayoutAccess access;
+    private Feature.AfterHeapLayoutAccess access;
     private boolean built = false;
     private static final String INFO_NAME = "name";
     private static final String INFO_SIZE = "size";
@@ -121,6 +121,7 @@ class HeapBreakdownJsonObject extends JsonObject {
             stats.size += info.getSize();
             stats.count += 1;
         }
+        access = null;
         built = true;
     }
 }

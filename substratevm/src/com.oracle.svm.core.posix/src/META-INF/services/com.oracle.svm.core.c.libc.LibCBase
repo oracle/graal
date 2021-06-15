@@ -1,0 +1,3 @@
+com.oracle.svm.core.posix.linux.libc.BionicLibC
+com.oracle.svm.core.posix.linux.libc.GLibC
+com.oracle.svm.core.posix.linux.libc.MuslLibC

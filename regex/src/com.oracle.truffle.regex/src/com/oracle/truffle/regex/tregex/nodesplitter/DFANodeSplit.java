@@ -54,7 +54,7 @@ import com.oracle.truffle.regex.tregex.buffer.ShortArrayBuffer;
 import com.oracle.truffle.regex.tregex.dfa.DFAGenerator;
 import com.oracle.truffle.regex.tregex.nodes.dfa.DFAAbstractStateNode;
 import com.oracle.truffle.regex.tregex.nodes.dfa.DFAInitialStateNode;
-import com.oracle.truffle.regex.util.CompilationFinalBitSet;
+import com.oracle.truffle.regex.util.TBitSet;
 
 /**
  * Implementation of a node splitting algorithm presented by Sebastian Unger and Frank Mueller in
@@ -68,14 +68,14 @@ public final class DFANodeSplit implements StateIndex<GraphNode> {
     private final DFAGenerator dfaGenerator;
     private final Graph graph;
     private final DominatorTree domTree;
-    private final CompilationFinalBitSet flagDone;
-    private final CompilationFinalBitSet flagActive;
+    private final TBitSet flagDone;
+    private final TBitSet flagActive;
     private short nextId;
 
     private DFANodeSplit(DFAGenerator dfaGenerator, DFAAbstractStateNode[] dfa) {
         this.dfaGenerator = dfaGenerator;
         graph = new Graph(dfa.length + EXTRA_INITIAL_CAPACITY);
-        CompilationFinalBitSet successorBitSet = new CompilationFinalBitSet(dfa.length);
+        TBitSet successorBitSet = new TBitSet(dfa.length);
         ShortArrayBuffer successorBuffer = new ShortArrayBuffer();
         for (DFAAbstractStateNode n : dfa) {
             for (int i = 0; i < n.getSuccessors().length; i++) {
@@ -94,8 +94,8 @@ public final class DFANodeSplit implements StateIndex<GraphNode> {
             graph.addGraphNode(graphNode);
         }
         nextId = (short) graph.size();
-        flagDone = new CompilationFinalBitSet(graph.size() + EXTRA_INITIAL_CAPACITY);
-        flagActive = new CompilationFinalBitSet(graph.size() + EXTRA_INITIAL_CAPACITY);
+        flagDone = new TBitSet(graph.size() + EXTRA_INITIAL_CAPACITY);
+        flagActive = new TBitSet(graph.size() + EXTRA_INITIAL_CAPACITY);
         for (GraphNode graphNode : graph.getNodes()) {
             for (GraphNode successor : graphNode.getSuccessors(this)) {
                 successor.addPredecessor(graphNode);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,21 +29,38 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.security.SecureRandom;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
+
+import org.graalvm.collections.EconomicMap;
+
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.utilities.AssumedValue;
 import com.oracle.truffle.llvm.api.Toolchain;
 import com.oracle.truffle.llvm.runtime.LLVMArgumentBuffer.LLVMArgumentArray;
-import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
+import com.oracle.truffle.llvm.runtime.except.LLVMIllegalSymbolIndexException;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalContainer;
@@ -58,20 +75,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.pthread.LLVMPThreadContext;
-import org.graalvm.collections.EconomicMap;
-
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.security.SecureRandom;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
+import com.oracle.truffle.llvm.runtime.IDGenerater.BitcodeID;
 
 public final class LLVMContext {
 
@@ -96,6 +100,7 @@ public final class LLVMContext {
     protected final ArrayList<LLVMPointer> globalsNonPointerStore = new ArrayList<>();
     protected final EconomicMap<Integer, LLVMPointer> globalsReadOnlyStore = EconomicMap.create();
     private final Object globalsStoreLock = new Object();
+    public final Object atomicInstructionsLock = new Object();
 
     private final List<LLVMThread> runningThreads = new ArrayList<>();
     @CompilationFinal private LLVMThreadingStack threadingStack;
@@ -120,16 +125,29 @@ public final class LLVMContext {
     private final LLVMFunctionPointerRegistry functionPointerRegistry;
 
     // we are not able to clean up ThreadLocals properly, so we are using maps instead
-    private final Map<Thread, Object> tls = new ConcurrentHashMap<>();
+    private final Map<Thread, LLVMPointer> tls = new ConcurrentHashMap<>();
 
-    // The symbol table for storing the symbols of each bitcode library
-    @CompilationFinal(dimensions = 2) private AssumedValue<LLVMPointer>[][] symbolStorage;
+    // The symbol table for storing the symbols of each bitcode library.
+    // These two fields contain the same value, but have different CompilationFinal annotations:
+    @CompilationFinal(dimensions = 2) private LLVMPointer[][] symbolFinalStorage;
+    @CompilationFinal(dimensions = 1) private LLVMPointer[][] symbolDynamicStorage;
+    // Assumptions that get invalidated whenever an entry in the above array changes:
+    @CompilationFinal(dimensions = 2) private Assumption[][] symbolAssumptions;
+
     private boolean[] libraryLoaded;
+    // Source cache (for reusing bitcode IDs).
+    protected final EconomicMap<BitcodeID, Source> sourceCache = EconomicMap.create();
 
     // signals
     private final LLVMNativePointer sigDfl;
     private final LLVMNativePointer sigIgn;
     private final LLVMNativePointer sigErr;
+
+    private LibraryLocator mainLibraryLocator;
+    private SulongLibrary mainLibrary;
+
+    // dlerror state
+    private int currentDLError;
 
     // pThread state
     private final LLVMPThreadContext pThreadContext;
@@ -142,8 +160,6 @@ public final class LLVMContext {
     protected boolean initialized;
     protected boolean cleanupNecessary;
     private boolean initializeContextCalled;
-    private DataLayout libsulongDatalayout;
-    private Boolean datalayoutInitialised;
     private final LLVMLanguage language;
 
     private LLVMTracerInstrument tracer;    // effectively final after initialization
@@ -167,8 +183,6 @@ public final class LLVMContext {
     @SuppressWarnings({"unchecked", "rawtypes"})
     LLVMContext(LLVMLanguage language, Env env, Toolchain toolchain) {
         this.language = language;
-        this.libsulongDatalayout = null;
-        this.datalayoutInitialised = false;
         this.env = env;
         this.initialized = false;
         this.cleanupNecessary = false;
@@ -196,9 +210,13 @@ public final class LLVMContext {
 
         addLibraryPaths(SulongEngineOption.getPolyglotOptionSearchPaths(env));
 
-        pThreadContext = new LLVMPThreadContext(getEnv(), getLanguage(), getLibsulongDataLayout());
+        currentDLError = 0;
 
-        symbolStorage = new AssumedValue[10][];
+        pThreadContext = new LLVMPThreadContext(getEnv(), getLanguage(), language.getDefaultDataLayout());
+
+        symbolAssumptions = new Assumption[10][];
+        // These two fields contain the same value, but have different CompilationFinal annotations:
+        symbolFinalStorage = symbolDynamicStorage = new LLVMPointer[10][];
         libraryLoaded = new boolean[10];
     }
 
@@ -223,12 +241,22 @@ public final class LLVMContext {
         assert this.threadingStack == null;
         this.contextExtensions = contextExtens;
 
-        final String traceOption = env.getOptions().get(SulongEngineOption.TRACE_IR);
-        if (SulongEngineOption.optionEnabled(traceOption)) {
+        String opt = env.getOptions().get(SulongEngineOption.LD_DEBUG);
+        this.loaderTraceStream = SulongEngineOption.optionEnabled(opt) ? new TargetStream(env, opt) : null;
+        opt = env.getOptions().get(SulongEngineOption.DEBUG_SYSCALLS);
+        this.syscallTraceStream = SulongEngineOption.optionEnabled(opt) ? new TargetStream(env, opt) : null;
+        opt = env.getOptions().get(SulongEngineOption.NATIVE_CALL_STATS);
+        this.nativeCallStatsStream = SulongEngineOption.optionEnabled(opt) ? new TargetStream(env, opt) : null;
+        opt = env.getOptions().get(SulongEngineOption.PRINT_LIFE_TIME_ANALYSIS_STATS);
+        this.lifetimeAnalysisStream = SulongEngineOption.optionEnabled(opt) ? new TargetStream(env, opt) : null;
+        opt = env.getOptions().get(SulongEngineOption.LL_DEBUG_VERBOSE);
+        this.llDebugVerboseStream = (SulongEngineOption.optionEnabled(opt) && env.getOptions().get(SulongEngineOption.LL_DEBUG)) ? new TargetStream(env, opt) : null;
+        opt = env.getOptions().get(SulongEngineOption.TRACE_IR);
+        if (SulongEngineOption.optionEnabled(opt)) {
             if (!env.getOptions().get(SulongEngineOption.LL_DEBUG)) {
                 throw new IllegalStateException("\'--llvm.traceIR\' requires \'--llvm.llDebug=true\'");
             }
-            tracer = new LLVMTracerInstrument(env, traceOption);
+            tracer = new LLVMTracerInstrument(env, opt);
         }
 
         this.threadingStack = new LLVMThreadingStack(Thread.currentThread(), parseStackSize(env.getOptions().get(SulongEngineOption.STACK_SIZE)));
@@ -264,7 +292,7 @@ public final class LLVMContext {
             CallTarget builtinsLibrary = env.parseInternal(Source.newBuilder("llvm",
                             env.getInternalTruffleFile(internalLibraryPath.resolve(language.getCapability(PlatformCapability.class).getBuiltinsLibrary()).toUri())).internal(true).build());
             builtinsLibrary.call();
-        } catch (Exception e) {
+        } catch (IOException e) {
             throw new IllegalStateException(e);
         }
     }
@@ -288,6 +316,24 @@ public final class LLVMContext {
     ContextExtension getContextExtension(int index) {
         CompilerAsserts.partialEvaluationConstant(index);
         return contextExtensions[index];
+    }
+
+    public LibraryLocator getMainLibraryLocator() {
+        return mainLibraryLocator;
+    }
+
+    public void setMainLibraryLocator(LibraryLocator libraryLocator) {
+        this.mainLibraryLocator = libraryLocator;
+    }
+
+    public SulongLibrary getMainLibrary() {
+        return mainLibrary;
+    }
+
+    public void setMainLibrary(SulongLibrary mainLibrary) {
+        if (mainLibrary == null) {
+            this.mainLibrary = mainLibrary;
+        }
     }
 
     public <T extends ContextExtension> T getContextExtension(Class<T> type) {
@@ -399,20 +445,6 @@ public final class LLVMContext {
         return LLVMManagedPointer.create(value);
     }
 
-    public void addLibsulongDataLayout(DataLayout datalayout) {
-        // Libsulong datalayout can only be set once.
-        if (!datalayoutInitialised) {
-            this.libsulongDatalayout = datalayout;
-            datalayoutInitialised = true;
-        } else {
-            throw new NullPointerException("The default datalayout cannot be overrwitten");
-        }
-    }
-
-    public DataLayout getLibsulongDataLayout() {
-        return libsulongDatalayout;
-    }
-
     void finalizeContext(LLVMFunction sulongDisposeContext) {
         // join all created pthread - threads
         pThreadContext.joinAllThreads();
@@ -426,9 +458,7 @@ public final class LLVMContext {
                 if (sulongDisposeContext == null) {
                     throw new IllegalStateException("Context cannot be disposed: " + SULONG_DISPOSE_CONTEXT + " was not found");
                 }
-                AssumedValue<LLVMPointer>[] functions = findSymbolTable(sulongDisposeContext.getBitcodeID(false));
-                int index = sulongDisposeContext.getSymbolIndex(false);
-                LLVMPointer pointer = functions[index].get();
+                LLVMPointer pointer = getSymbol(sulongDisposeContext);
                 if (LLVMManagedPointer.isInstance(pointer)) {
                     LLVMFunctionDescriptor functionDescriptor = (LLVMFunctionDescriptor) LLVMManagedPointer.cast(pointer).getObject();
                     RootCallTarget disposeContext = functionDescriptor.getFunctionCode().getLLVMIRFunctionSlowPath();
@@ -441,13 +471,19 @@ public final class LLVMContext {
                 // nothing needs to be done as the behavior is not defined
             }
         }
+
+        if (language.getFreeGlobalBlocks() != null) {
+            // free the space allocated for non-pointer globals
+            language.getFreeGlobalBlocks().call();
+        }
+
     }
 
     public Object getFreeReadOnlyGlobalsBlockFunction() {
         if (freeGlobalsBlockFunction == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            NFIContextExtension nfiContextExtension = getContextExtensionOrNull(NFIContextExtension.class);
-            freeGlobalsBlockFunction = nfiContextExtension.getNativeFunction("__sulong_free_globals_block", "(POINTER):VOID");
+            NativeContextExtension nativeContextExtension = getContextExtensionOrNull(NativeContextExtension.class);
+            freeGlobalsBlockFunction = nativeContextExtension.getNativeFunction("__sulong_free_globals_block", "(POINTER):VOID");
         }
         return freeGlobalsBlockFunction;
     }
@@ -455,8 +491,8 @@ public final class LLVMContext {
     public Object getProtectReadOnlyGlobalsBlockFunction() {
         if (protectGlobalsBlockFunction == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            NFIContextExtension nfiContextExtension = getContextExtensionOrNull(NFIContextExtension.class);
-            protectGlobalsBlockFunction = nfiContextExtension.getNativeFunction("__sulong_protect_readonly_globals_block", "(POINTER):VOID");
+            NativeContextExtension nativeContextExtension = getContextExtensionOrNull(NativeContextExtension.class);
+            protectGlobalsBlockFunction = nativeContextExtension.getNativeFunction("__sulong_protect_readonly_globals_block", "(POINTER):VOID");
         }
         return protectGlobalsBlockFunction;
     }
@@ -464,8 +500,8 @@ public final class LLVMContext {
     public Object getAllocateGlobalsBlockFunction() {
         if (allocateGlobalsBlockFunction == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            NFIContextExtension nfiContextExtension = getContextExtensionOrNull(NFIContextExtension.class);
-            allocateGlobalsBlockFunction = nfiContextExtension.getNativeFunction("__sulong_allocate_globals_block", "(UINT64):POINTER");
+            NativeContextExtension nativeContextExtension = getContextExtensionOrNull(NativeContextExtension.class);
+            allocateGlobalsBlockFunction = nativeContextExtension.getNativeFunction("__sulong_allocate_globals_block", "(UINT64):POINTER");
         }
         return allocateGlobalsBlockFunction;
     }
@@ -475,11 +511,6 @@ public final class LLVMContext {
 
         if (isInitialized()) {
             threadingStack.freeMainStack(memory);
-        }
-
-        if (language.getFreeGlobalBlocks() != null) {
-            // free the space allocated for non-pointer globals
-            language.getFreeGlobalBlocks().call();
         }
 
         // free the space which might have been when putting pointer-type globals into native memory
@@ -545,6 +576,10 @@ public final class LLVMContext {
         return file.normalize().startsWith(internalLibraryPathFile);
     }
 
+    public boolean isInternalLibraryPath(Path path) {
+        return path.normalize().startsWith(internalLibraryPath);
+    }
+
     public TruffleFile getOrAddTruffleFile(TruffleFile file) {
         synchronized (truffleFilesLock) {
             int index = truffleFiles.indexOf(file);
@@ -586,11 +621,13 @@ public final class LLVMContext {
         }
     }
 
-    public boolean isLibraryAlreadyLoaded(int id) {
+    public boolean isLibraryAlreadyLoaded(BitcodeID bitcodeID) {
+        int id = bitcodeID.getId();
         return id < libraryLoaded.length && libraryLoaded[id];
     }
 
-    public void markLibraryLoaded(int id) {
+    public void markLibraryLoaded(BitcodeID bitcodeID) {
+        int id = bitcodeID.getId();
         if (id >= libraryLoaded.length) {
             int newLength = (id + 1) + ((id + 1) / 2);
             boolean[] temp = new boolean[newLength];
@@ -598,6 +635,13 @@ public final class LLVMContext {
             libraryLoaded = temp;
         }
         libraryLoaded[id] = true;
+    }
+
+    @TruffleBoundary
+    public void addSourceForCache(BitcodeID bitcodeID, Source source) {
+        if (!sourceCache.containsKey(bitcodeID)) {
+            sourceCache.put(bitcodeID, source);
+        }
     }
 
     public LLVMLanguage getLanguage() {
@@ -612,49 +656,112 @@ public final class LLVMContext {
         return globalScope;
     }
 
+    @TruffleBoundary
     public void addLocalScope(LLVMLocalScope scope) {
         localScopes.add(scope);
     }
 
+    public LLVMPointer getSymbol(LLVMSymbol symbol) {
+        assert !symbol.isAlias();
+        BitcodeID bitcodeID = symbol.getBitcodeID(false);
+        int id = bitcodeID.getId();
+        int index = symbol.getSymbolIndex(false);
+        if (CompilerDirectives.inCompiledCode() && CompilerDirectives.isPartialEvaluationConstant(this) && CompilerDirectives.isPartialEvaluationConstant(symbol)) {
+            if (!symbolAssumptions[id][index].isValid()) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+            }
+            return symbolFinalStorage[id][index];
+        } else {
+            return symbolDynamicStorage[id][index];
+        }
+    }
+
+    /**
+     * This method is only intended to be used during initialization of a Sulong library.
+     */
     @TruffleBoundary
-    public LLVMLocalScope getLocalScope(int id) {
-        for (LLVMLocalScope scope : localScopes) {
-            if (scope.containID(id)) {
-                return scope;
+    public void initializeSymbol(LLVMSymbol symbol, LLVMPointer value) {
+        assert !symbol.isAlias();
+        BitcodeID bitcodeID = symbol.getBitcodeID(false);
+        int id = bitcodeID.getId();
+        LLVMPointer[] symbols = symbolDynamicStorage[id];
+        Assumption[] assumptions = symbolAssumptions[id];
+        synchronized (symbols) {
+            try {
+                int index = symbol.getSymbolIndex(false);
+                symbols[index] = value;
+                assumptions[index] = Truffle.getRuntime().createAssumption();
+                if (symbol instanceof LLVMFunction) {
+                    ((LLVMFunction) symbol).setValue(value);
+                }
+            } catch (LLVMIllegalSymbolIndexException e) {
+                throw new LLVMLinkerException("Writing symbol into symbol table is inconsistent.");
             }
         }
-        return null;
     }
 
-    public AssumedValue<LLVMPointer>[] findSymbolTable(int id) {
-        return symbolStorage[id];
+    /**
+     * This method is only intended to be used during initialization of a Sulong library.
+     */
+    @TruffleBoundary
+    public boolean checkSymbol(LLVMSymbol symbol) {
+        assert !symbol.isAlias();
+        if (symbol.hasValidIndexAndID()) {
+            BitcodeID bitcodeID = symbol.getBitcodeID(false);
+            int id = bitcodeID.getId();
+            if (id < symbolDynamicStorage.length && symbolDynamicStorage[id] != null) {
+                LLVMPointer[] symbols = symbolDynamicStorage[id];
+                int index = symbol.getSymbolIndex(false);
+                return symbols[index] != null;
+            }
+        }
+        throw new LLVMLinkerException(String.format("External %s %s cannot be found.", symbol.getKind(), symbol.getName()));
     }
 
-    public boolean symbolTableExists(int id) {
-        return id < symbolStorage.length && symbolStorage[id] != null;
+    public void setSymbol(LLVMSymbol symbol, LLVMPointer value) {
+        CompilerAsserts.neverPartOfCompilation();
+        LLVMSymbol target = LLVMAlias.resolveAlias(symbol);
+        BitcodeID bitcodeID = symbol.getBitcodeID(false);
+        int id = bitcodeID.getId();
+        LLVMPointer[] symbols = symbolDynamicStorage[id];
+        Assumption[] assumptions = symbolAssumptions[id];
+        synchronized (symbols) {
+            try {
+                int index = target.getSymbolIndex(false);
+                symbols[index] = value;
+                assumptions[index].invalidate();
+                assumptions[index] = Truffle.getRuntime().createAssumption();
+                if (target instanceof LLVMFunction) {
+                    ((LLVMFunction) target).setValue(value);
+                }
+            } catch (LLVMIllegalSymbolIndexException e) {
+                throw CompilerDirectives.shouldNotReachHere("symbol to be replaced was not found: " + target);
+            }
+        }
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     @TruffleBoundary
-    public void registerSymbolTable(int index, AssumedValue<LLVMPointer>[] target) {
+    public void initializeSymbolTable(BitcodeID bitcodeID, int globalLength) {
         synchronized (this) {
-            if (index < symbolStorage.length && symbolStorage[index] == null) {
-                symbolStorage[index] = target;
-            } else if (index >= symbolStorage.length) {
+            int index = bitcodeID.getId();
+            assert symbolDynamicStorage == symbolFinalStorage;
+            if (index >= symbolDynamicStorage.length) {
                 int newLength = (index + 1) + ((index + 1) / 2);
-                AssumedValue<LLVMPointer>[][] temp = new AssumedValue[newLength][];
-                System.arraycopy(symbolStorage, 0, temp, 0, symbolStorage.length);
-                symbolStorage = temp;
-                symbolStorage[index] = target;
-            } else {
+                symbolAssumptions = Arrays.copyOf(symbolAssumptions, newLength);
+                symbolFinalStorage = symbolDynamicStorage = Arrays.copyOf(symbolDynamicStorage, newLength);
+            }
+            if (symbolDynamicStorage[index] != null) {
                 throw new IllegalStateException("Registering a new symbol table for an existing id. ");
             }
+            symbolAssumptions[index] = new Assumption[globalLength];
+            symbolDynamicStorage[index] = new LLVMPointer[globalLength];
         }
     }
 
     @TruffleBoundary
-    public Object getThreadLocalStorage() {
-        Object value = tls.get(Thread.currentThread());
+    public LLVMPointer getThreadLocalStorage() {
+        LLVMPointer value = tls.get(Thread.currentThread());
         if (value != null) {
             return value;
         }
@@ -662,8 +769,13 @@ public final class LLVMContext {
     }
 
     @TruffleBoundary
-    public void setThreadLocalStorage(Object value) {
+    public void setThreadLocalStorage(LLVMPointer value) {
         tls.put(Thread.currentThread(), value);
+    }
+
+    @TruffleBoundary
+    public void setThreadLocalStorage(LLVMPointer value, Thread thread) {
+        tls.put(thread, value);
     }
 
     @TruffleBoundary
@@ -819,9 +931,9 @@ public final class LLVMContext {
     }
 
     @TruffleBoundary
-    public LLVMPointer getReadOnlyGlobals(int id) {
+    public LLVMPointer getReadOnlyGlobals(BitcodeID bitcodeID) {
         synchronized (globalsStoreLock) {
-            return globalsReadOnlyStore.get(id);
+            return globalsReadOnlyStore.get(bitcodeID.getId());
         }
     }
 
@@ -875,6 +987,14 @@ public final class LLVMContext {
         }
     }
 
+    public void setDLError(int error) {
+        this.currentDLError = error;
+    }
+
+    public int getCurrentDLError() {
+        return currentDLError;
+    }
+
     public LLVMPThreadContext getpThreadContext() {
         return pThreadContext;
     }
@@ -897,94 +1017,32 @@ public final class LLVMContext {
     }
 
     @CompilationFinal private TargetStream loaderTraceStream;
-    @CompilationFinal private boolean loaderTraceStreamInitialized = false;
 
     public TargetStream loaderTraceStream() {
-        if (!loaderTraceStreamInitialized) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-
-            final String opt = env.getOptions().get(SulongEngineOption.LD_DEBUG);
-            if (SulongEngineOption.optionEnabled(opt)) {
-                loaderTraceStream = new TargetStream(env, opt);
-            }
-
-            loaderTraceStreamInitialized = true;
-        }
         return loaderTraceStream;
     }
 
     @CompilationFinal private TargetStream syscallTraceStream;
-    @CompilationFinal private boolean syscallTraceStreamInitialized = false;
 
     public TargetStream syscallTraceStream() {
-        if (!syscallTraceStreamInitialized) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-
-            final String opt = env.getOptions().get(SulongEngineOption.DEBUG_SYSCALLS);
-            if (SulongEngineOption.optionEnabled(opt)) {
-                syscallTraceStream = new TargetStream(env, opt);
-            }
-
-            syscallTraceStreamInitialized = true;
-        }
-
         return syscallTraceStream;
     }
 
     @CompilationFinal private TargetStream nativeCallStatsStream;
-    @CompilationFinal private boolean nativeCallStatsStreamInitialized = false;
 
     public TargetStream nativeCallStatsStream() {
-        if (!nativeCallStatsStreamInitialized) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-
-            final String opt = env.getOptions().get(SulongEngineOption.NATIVE_CALL_STATS);
-            if (SulongEngineOption.optionEnabled(opt)) {
-                nativeCallStatsStream = new TargetStream(env, opt);
-            }
-
-            nativeCallStatsStreamInitialized = true;
-        }
-
         return nativeCallStatsStream;
     }
 
     @CompilationFinal private TargetStream lifetimeAnalysisStream;
-    @CompilationFinal private boolean lifetimeAnalysisStreamInitialized = false;
 
     public TargetStream lifetimeAnalysisStream() {
-        if (!lifetimeAnalysisStreamInitialized) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-
-            final String opt = env.getOptions().get(SulongEngineOption.PRINT_LIFE_TIME_ANALYSIS_STATS);
-            if (SulongEngineOption.optionEnabled(opt)) {
-                lifetimeAnalysisStream = new TargetStream(env, opt);
-            }
-
-            lifetimeAnalysisStreamInitialized = true;
-        }
-
         return lifetimeAnalysisStream;
     }
 
     @CompilationFinal private TargetStream llDebugVerboseStream;
-    @CompilationFinal private boolean llDebugVerboseStreamInitialized = false;
 
     public TargetStream llDebugVerboseStream() {
-        if (!llDebugVerboseStreamInitialized) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-
-            final String opt = env.getOptions().get(SulongEngineOption.LL_DEBUG_VERBOSE);
-            if (SulongEngineOption.optionEnabled(opt)) {
-                if (env.getOptions().get(SulongEngineOption.LL_DEBUG)) {
-                    llDebugVerboseStream = new TargetStream(env, opt);
-                }
-            }
-
-            llDebugVerboseStreamInitialized = true;
-        }
-
         return llDebugVerboseStream;
     }
-
 }

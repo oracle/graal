@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,35 +27,53 @@ package org.graalvm.compiler.nodes;
 import static org.graalvm.compiler.graph.iterators.NodePredicates.isNotA;
 
 import org.graalvm.compiler.core.common.type.IntegerStamp;
+import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
-import org.graalvm.compiler.graph.spi.SimplifierTool;
+import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.ProfileData.LoopFrequencyData;
 import org.graalvm.compiler.nodes.StructuredGraph.FrameStateVerificationFeature;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
+import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
+
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.SpeculationLog;
 
 @NodeInfo
 public final class LoopBeginNode extends AbstractMergeNode implements IterableNodeType, LIRLowerable {
 
     public static final NodeClass<LoopBeginNode> TYPE = NodeClass.create(LoopBeginNode.class);
-    protected double loopFrequency;
+    private LoopFrequencyData profileData;
     protected double loopOrigFrequency;
     protected int nextEndIndex;
     protected int unswitches;
     protected int splits;
     protected int peelings;
-    protected int inversionCount;
+    protected boolean compilerInverted;
     protected LoopType loopType;
     protected int unrollFactor;
     protected boolean osrLoop;
+    protected boolean stripMinedOuter;
+    protected boolean stripMinedInner;
+    /**
+     * Flag to indicate that this loop must not be detected as a counted loop.
+     */
+    protected boolean disableCounted;
+    /**
+     * Flag indicating that this loop can never overflow based on some property not visible in the
+     * loop control computations.
+     */
+    protected boolean canNeverOverflow;
 
     public enum LoopType {
         SIMPLE_LOOP,
@@ -67,17 +85,72 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
     /** See {@link LoopEndNode#canSafepoint} for more information. */
     boolean canEndsSafepoint;
 
+    /** See {@link LoopEndNode#canGuestSafepoint} for more information. */
+    boolean canEndsGuestSafepoint;
+
     @OptionalInput(InputType.Guard) GuardingNode overflowGuard;
+
+    public static final CounterKey overflowSpeculationTaken = DebugContext.counter("CountedLoops_OverflowSpeculation_Taken");
+    public static final CounterKey overflowSpeculationNotTaken = DebugContext.counter("CountedLoops_OverflowSpeculation_NotTaken");
+
+    public static final SpeculationReasonGroup LOOP_OVERFLOW_DEOPT = new SpeculationReasonGroup("LoopOverflowDeopt", ResolvedJavaMethod.class, int.class);
 
     public LoopBeginNode() {
         super(TYPE);
-        loopFrequency = 1;
+        profileData = LoopFrequencyData.DEFAULT;
         loopOrigFrequency = 1;
         unswitches = 0;
         splits = 0;
         this.canEndsSafepoint = true;
+        this.canEndsGuestSafepoint = true;
         loopType = LoopType.SIMPLE_LOOP;
         unrollFactor = 1;
+    }
+
+    public void checkDisableCountedBySpeculation(int bci, StructuredGraph graph) {
+        SpeculationLog speculationLog = graph.getSpeculationLog();
+        boolean disableCountedBasedOnSpeculation = false;
+        if (speculationLog != null) {
+            SpeculationLog.SpeculationReason speculationReason = LOOP_OVERFLOW_DEOPT.createSpeculationReason(graph.method(), bci);
+            if (!speculationLog.maySpeculate(speculationReason)) {
+                overflowSpeculationNotTaken.increment(graph.getDebug());
+                disableCountedBasedOnSpeculation = true;
+            }
+        }
+        disableCounted = disableCountedBasedOnSpeculation;
+    }
+
+    public boolean canEndsSafepoint() {
+        return canEndsSafepoint;
+    }
+
+    public void setStripMinedInner(boolean stripMinedInner) {
+        this.stripMinedInner = stripMinedInner;
+    }
+
+    public void setStripMinedOuter(boolean stripMinedOuter) {
+        this.stripMinedOuter = stripMinedOuter;
+    }
+
+    public boolean isStripMinedInner() {
+        return stripMinedInner;
+    }
+
+    public boolean isStripMinedOuter() {
+        return stripMinedOuter;
+    }
+
+    public boolean canNeverOverflow() {
+        return canNeverOverflow;
+    }
+
+    public void setCanNeverOverflow() {
+        assert !canNeverOverflow;
+        this.canNeverOverflow = true;
+    }
+
+    public boolean countedLoopDisabled() {
+        return disableCounted;
     }
 
     public boolean isSimpleLoop() {
@@ -129,6 +202,15 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
         }
     }
 
+    public void disableGuestSafepoint() {
+        /* Store flag locally in case new loop ends are created later on. */
+        this.canEndsGuestSafepoint = false;
+        /* Propagate flag to all existing loop ends. */
+        for (LoopEndNode loopEnd : loopEnds()) {
+            loopEnd.disableGuestSafepoint();
+        }
+    }
+
     public double loopOrigFrequency() {
         return loopOrigFrequency;
     }
@@ -138,13 +220,16 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
         this.loopOrigFrequency = loopOrigFrequency;
     }
 
-    public double loopFrequency() {
-        return loopFrequency;
+    public LoopFrequencyData profileData() {
+        return profileData;
     }
 
-    public void setLoopFrequency(double loopFrequency) {
-        assert loopFrequency >= 1.0;
-        this.loopFrequency = loopFrequency;
+    public double loopFrequency() {
+        return profileData.getLoopFrequency();
+    }
+
+    public void setLoopFrequency(LoopFrequencyData newProfileData) {
+        this.profileData = newProfileData;
     }
 
     /**
@@ -297,12 +382,13 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
         unswitches++;
     }
 
-    public int getInversionCount() {
-        return inversionCount;
+    public boolean isCompilerInverted() {
+        return compilerInverted;
     }
 
-    public void setInversionCount(int count) {
-        inversionCount = count;
+    public void setCompilerInverted() {
+        assert !compilerInverted;
+        compilerInverted = true;
     }
 
     @Override

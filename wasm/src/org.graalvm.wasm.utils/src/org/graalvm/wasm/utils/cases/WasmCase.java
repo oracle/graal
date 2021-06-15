@@ -40,24 +40,25 @@
  */
 package org.graalvm.wasm.utils.cases;
 
+import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.io.ByteSequence;
+import org.graalvm.wasm.utils.Assert;
+import org.graalvm.wasm.utils.SystemProperties;
+import org.graalvm.wasm.utils.WasmResource;
+
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.function.BiConsumer;
-
-import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.io.ByteSequence;
-import org.graalvm.wasm.utils.Assert;
-import org.graalvm.wasm.utils.SystemProperties;
-import org.graalvm.wasm.utils.WasmResource;
-import org.graalvm.polyglot.Value;
 
 /**
  * Instances of this class are used for WebAssembly test/benchmark cases.
@@ -110,7 +111,15 @@ public abstract class WasmCase {
     }
 
     public static WasmCaseData expectedStdout(String expectedOutput) {
-        return new WasmCaseData((Value result, String output) -> Assert.assertEquals("Failure: stdout:", expectedOutput, output));
+        return new WasmCaseData((Value result, String output) -> {
+            Assert.assertEquals("Failure: stdout:", expectedOutput, output);
+
+            // When an output is expected, we also check that the main function returns is 0 if it
+            // returns a number.
+            if (result.isNumber()) {
+                Assert.assertEquals("Failure: exit code:", 0, result.asInt());
+            }
+        });
     }
 
     public static WasmCaseData expected(Object expectedValue) {
@@ -234,9 +243,13 @@ public abstract class WasmCase {
         return result;
     }
 
-    public static void validateResult(BiConsumer<Value, String> validator, Value result, OutputStream capturedStdout) {
+    public static void validateResult(BiConsumer<Value, String> validator, Value result, ByteArrayOutputStream capturedStdout) {
         if (validator != null) {
-            validator.accept(result, capturedStdout.toString());
+            try {
+                validator.accept(result, capturedStdout.toString("UTF-8"));
+            } catch (UnsupportedEncodingException e) {
+                Assert.fail("Should not reach here: unsupported encoding");
+            }
         } else {
             Assert.fail("Test was not expected to return a value.");
         }

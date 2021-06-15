@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -36,7 +36,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
 
-import com.oracle.truffle.llvm.runtime.NFIContextExtension;
+import com.oracle.truffle.llvm.runtime.NativeContextExtension;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
@@ -52,7 +52,7 @@ public class LoaderTest {
         return c -> new CaptureNativeOutput();
     }
 
-    private static final String SO_EXT = NFIContextExtension.getNativeLibrarySuffix();
+    private static final String SO_EXT = NativeContextExtension.getNativeLibrarySuffix();
 
     @Test
     public void test() throws IOException {
@@ -63,7 +63,7 @@ public class LoaderTest {
         }
     }
 
-    private static final Path TEST_DIR = new File(TestOptions.TEST_SUITE_PATH).toPath();
+    private static final Path TEST_DIR = new File(TestOptions.getTestDistribution("SULONG_EMBEDDED_TEST_SUITES")).toPath();
 
     protected static Map<String, String> getSulongTestLibContextOptions() {
         Map<String, String> map = new HashMap<>();

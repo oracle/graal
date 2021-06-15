@@ -264,8 +264,7 @@ public abstract class JvmtiAgentBase<T extends JNIHandleSet> {
     @CEntryPointOptions(prologue = AgentIsolate.Prologue.class)
     @SuppressWarnings("unused")
     public static int onUnload(JNIJavaVM vm) {
-        int ret = singleton().onUnloadCallback(vm);
-        return ret;
+        return singleton().onUnloadCallback(vm);
     }
 
     @CEntryPoint()

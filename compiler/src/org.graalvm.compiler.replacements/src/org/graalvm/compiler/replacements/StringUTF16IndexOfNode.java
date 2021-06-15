@@ -34,6 +34,16 @@ import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.replacements.nodes.MacroNode;
 import org.graalvm.compiler.replacements.nodes.MacroStateSplitNode;
 
+/**
+ * Represents a call to the following method, where the {@code str} argument (i.e. the characters
+ * being searched for) is constant.
+ *
+ * <pre>
+ * StringUTF16.indexOfUnsafe(byte[] value, int valueCount, byte[] str, int strCount, int fromIndex)
+ * </pre>
+ *
+ * This node is only for JDK 9+. For JDK 8 or below, see {@link StringIndexOfNode}.
+ */
 @NodeInfo(size = SIZE_64, cycles = CYCLES_256)
 public class StringUTF16IndexOfNode extends MacroStateSplitNode {
     public static final NodeClass<StringUTF16IndexOfNode> TYPE = NodeClass.create(StringUTF16IndexOfNode.class);

@@ -190,6 +190,10 @@ public class LLVMObjectFileReader {
     }
 
     private static DebugInfo copyWithReferenceMap(DebugInfo debugInfo, ReferenceMap referenceMap) {
+        if (debugInfo == null) {
+            return null;
+        }
+
         DebugInfo newInfo = new DebugInfo(debugInfo.getBytecodePosition(), debugInfo.getVirtualObjectMapping());
         newInfo.setCalleeSaveInfo(debugInfo.getCalleeSaveInfo());
         newInfo.setReferenceMap(referenceMap);

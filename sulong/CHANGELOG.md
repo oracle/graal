@@ -1,4 +1,54 @@
+# Version 21.2.0
+
+Fixes:
+
+* Fix LLVM toolchain not working correctly for C++ on MacOS 11.3.
+
+* Fix exceptions being swallowed and not printed out on Sulong context disposal.
+
+* Thread return values are now correctly removed from the context when joining the
+  respective thread.
+
+New features:
+
+* Support implicitly typed XADD instructions in inline assembly.
+
+* Support some atomic variants of certain inline assembly instructions. Currently
+  supported instructions are: xchg, cmpxchg and xadd along with their explicitly typed
+  variants, and various unary instructions including incb/w/l/q and decb/w/l/q.
+
+* System calls that return pointers are now supported.
+
+* Support passing pointers as operands to inline assembly instructions.
+
+# Version 21.1.0
+
+New features:
+
+* Added a sanity check to verify that loaded bitcode files have been compiled correctly.
+  If not, a _mismatching target triple_ error is reported. To make this error non-fatal,
+  set `--llvm.verifyBitcode=false`. To silence the message, set `--log.llvm.BitcodeVerifier.level=OFF`.
+
+* Allow accessing foreign buffers from LLVM bitcode via the interop buffers API.
+
+* Added intrinsic functions for pthread_setname_np and pthread_getname_np.
+
+* Added intrinsic functions for dlopen and dlsym.
+
 # Version 21.0.0
+
+Fixes:
+
+* Improve AST sharing, and support auxiliary engine caching.
+  On top of the regular AST sharing that allows sharing code between multiple contexts in a
+  single engine, this allows persisting of the shared code, to share it across process boundaries.
+
+* Add support for MacOS Big Sur.
+
+Deprecations:
+
+* Add deprecation warning for the old header locations `polyglot.h` and `llvm/api/toolchain.h`.
+  This header files were deprecated already in 20.3.0, but without a warning.
 
 # Version 20.3.0
 

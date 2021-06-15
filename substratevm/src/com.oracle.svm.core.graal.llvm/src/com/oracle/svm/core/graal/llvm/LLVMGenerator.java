@@ -29,9 +29,16 @@ import static com.oracle.svm.core.graal.llvm.util.LLVMUtils.dumpTypes;
 import static com.oracle.svm.core.graal.llvm.util.LLVMUtils.dumpValues;
 import static com.oracle.svm.core.graal.llvm.util.LLVMUtils.getType;
 import static com.oracle.svm.core.graal.llvm.util.LLVMUtils.getVal;
+import static jdk.vm.ci.code.MemoryBarriers.JMM_POST_VOLATILE_READ;
+import static jdk.vm.ci.code.MemoryBarriers.JMM_POST_VOLATILE_WRITE;
+import static jdk.vm.ci.code.MemoryBarriers.JMM_PRE_VOLATILE_READ;
+import static jdk.vm.ci.code.MemoryBarriers.JMM_PRE_VOLATILE_WRITE;
 import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
 import static org.graalvm.compiler.debug.GraalError.unimplemented;
 
+// Checkstyle: allow reflection
+import java.lang.reflect.Field;
+// Checkstyle: disallow reflection
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -47,6 +54,7 @@ import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.calc.FloatConvert;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.spi.CodeGenProviders;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
@@ -71,6 +79,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.type.NarrowOopStamp;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.util.GuardedAnnotationAccess;
 
@@ -121,6 +130,7 @@ import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMValueRef;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.code.DebugInfo;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
@@ -173,7 +183,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         this.providers = providers;
         this.compilationResult = result;
         this.builder = new LLVMIRBuilder(method.format("%H.%n"));
-        this.arithmetic = new ArithmeticLLVMGenerator(builder);
+        this.arithmetic = new ArithmeticLLVMGenerator();
         this.lirKindTool = new LLVMUtils.LLVMKindTool(builder);
         this.debugInfoPrinter = new DebugInfoPrinter(this, debugLevel);
 
@@ -712,14 +722,14 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     }
 
     @Override
-    public Variable emitLogicCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue, boolean useBarriers) {
+    public Variable emitLogicCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue, MemoryOrderMode memoryOrder) {
         LLVMValueRef success = buildCmpxchg(getVal(address), getVal(expectedValue), getVal(newValue), false);
         LLVMValueRef result = builder.buildSelect(success, getVal(trueValue), getVal(falseValue));
         return new LLVMVariable(result);
     }
 
     @Override
-    public Value emitValueCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, boolean useBarriers) {
+    public Value emitValueCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, MemoryOrderMode memoryOrder) {
         LLVMValueRef result = buildCmpxchg(getVal(address), getVal(expectedValue), getVal(newValue), true);
         return new LLVMVariable(result);
     }
@@ -729,7 +739,13 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         LLVMTypeRef newType = LLVMIRBuilder.typeOf(newValue);
         assert LLVMIRBuilder.compatibleTypes(expectedType, newType) : dumpValues("invalid cmpxchg arguments", expectedValue, newValue);
 
-        LLVMValueRef castedAddress = builder.buildBitcast(address, builder.pointerType(expectedType, LLVMIRBuilder.isObjectType(typeOf(address)), false));
+        boolean trackedAddress = LLVMIRBuilder.isObjectType(typeOf(address));
+        LLVMValueRef castedAddress;
+        if (!trackedAddress && LLVMIRBuilder.isObjectType(expectedType)) {
+            castedAddress = builder.buildAddrSpaceCast(address, builder.pointerType(expectedType, true, false));
+        } else {
+            castedAddress = builder.buildBitcast(address, builder.pointerType(expectedType, trackedAddress, false));
+        }
         return builder.buildCmpxchg(castedAddress, expectedValue, newValue, returnValue);
     }
 
@@ -903,9 +919,14 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     public Variable emitForeignCall(ForeignCallLinkage linkage, LIRFrameState state, LLVMBasicBlockRef successor, LLVMBasicBlockRef handler, Value... arguments) {
         ResolvedJavaMethod targetMethod = ((SnippetRuntime.SubstrateForeignCallDescriptor) linkage.getDescriptor()).findMethod(getMetaAccess());
 
-        state.initDebugInfo(null, false);
+        DebugInfo debugInfo = null;
+        if (state != null) {
+            state.initDebugInfo(null, false);
+            debugInfo = state.debugInfo();
+        }
+
         long patchpointId = nextPatchpointId.getAndIncrement();
-        compilationResult.recordCall(NumUtil.safeToInt(patchpointId), 0, targetMethod, state.debugInfo(), true);
+        compilationResult.recordCall(NumUtil.safeToInt(patchpointId), 0, targetMethod, debugInfo, true);
 
         LLVMValueRef callee = getFunction(targetMethod);
         LLVMValueRef[] args = Arrays.stream(arguments).map(LLVMUtils::getVal).toArray(LLVMValueRef[]::new);
@@ -1370,11 +1391,8 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
 
     /* Arithmetic */
 
-    public static class ArithmeticLLVMGenerator implements ArithmeticLIRGeneratorTool, LLVMIntrinsicGenerator {
-        private final LLVMIRBuilder builder;
-
-        ArithmeticLLVMGenerator(LLVMIRBuilder builder) {
-            this.builder = builder;
+    public class ArithmeticLLVMGenerator implements ArithmeticLIRGeneratorTool, LLVMIntrinsicGenerator {
+        ArithmeticLLVMGenerator() {
         }
 
         @Override
@@ -1751,12 +1769,17 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
 
         @Override
         public Variable emitVolatileLoad(LIRKind kind, Value address, LIRFrameState state) {
-            throw GraalError.shouldNotReachHere();
+            emitMembar(JMM_PRE_VOLATILE_READ);
+            Variable var = emitLoad(kind, address, state);
+            emitMembar(JMM_POST_VOLATILE_READ);
+            return var;
         }
 
         @Override
         public void emitVolatileStore(ValueKind<?> kind, Value address, Value input, LIRFrameState state) {
-            throw GraalError.shouldNotReachHere();
+            emitMembar(JMM_PRE_VOLATILE_WRITE);
+            emitStore(kind, address, input, state);
+            emitMembar(JMM_POST_VOLATILE_WRITE);
         }
     }
 
@@ -1929,5 +1952,50 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
                 this.level = level;
             }
         }
+    }
+
+    @Override
+    public void emitCacheWriteback(Value address) {
+        int cacheLineSize = getDataCacheLineFlushSize();
+        if (cacheLineSize == 0) {
+            throw shouldNotReachHere("cache writeback with cache line size of 0");
+        }
+        LLVMValueRef start = builder.buildBitcast(getVal(address), builder.rawPointerType());
+        LLVMValueRef end = builder.buildGEP(start, builder.constantInt(cacheLineSize));
+        builder.buildClearCache(start, end);
+    }
+
+    @Override
+    public void emitCacheWritebackSync(boolean isPreSync) {
+        throw unimplemented("cache sync barrier (GR-30894)");
+    }
+
+    private static final int dataCacheLineFlushSize = initDataCacheLineFlushSize();
+
+    /**
+     * Gets the value of {@code jdk.internal.misc.UnsafeConstants.DATA_CACHE_LINE_FLUSH_SIZE} which
+     * was introduced in JDK 14 by JEP 352.
+     *
+     * This method uses reflection to be compatible with JDKs prior to 14.
+     */
+    private static int initDataCacheLineFlushSize() {
+        if (JavaVersionUtil.JAVA_SPEC >= 14) {
+            Class<?> c;
+            try {
+                // Checkstyle: stop
+                c = Class.forName("jdk.internal.misc.UnsafeConstants");
+                // Checkstyle: resume
+                Field f = c.getDeclaredField("DATA_CACHE_LINE_FLUSH_SIZE");
+                f.setAccessible(true);
+                return (int) f.get(null);
+            } catch (Exception e) {
+                throw new GraalError(e, "Expected UnsafeConstants.DATA_CACHE_LINE_FLUSH_SIZE to exist and be readable");
+            }
+        }
+        return 0;
+    }
+
+    private static int getDataCacheLineFlushSize() {
+        return dataCacheLineFlushSize;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,8 @@ import java.io.IOException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.oracle.truffle.api.CompilerDirectives;
+
 public class DotExport {
 
     public static void printConnection(BufferedWriter writer, String from, String to, String label) throws IOException {
@@ -67,7 +69,7 @@ public class DotExport {
                     replacement = "\\\\\\\\";
                     break;
                 default:
-                    throw Exceptions.shouldNotReachHere();
+                    throw CompilerDirectives.shouldNotReachHere();
             }
             m.appendReplacement(escapedString, replacement);
         }

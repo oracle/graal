@@ -50,11 +50,11 @@ public abstract class LLVMInvokeNode extends LLVMControlFlowNode {
     public static LLVMInvokeNode create(FunctionType type, LLVMWriteNode writeResult, LLVMExpressionNode functionNode, LLVMExpressionNode[] argumentNodes,
                     int normalSuccessor, int unwindSuccessor,
                     LLVMStatementNode normalPhiNode, LLVMStatementNode unwindPhiNode) {
-        LLVMLookupDispatchTargetNode dispatchTargetNode = LLVMLookupDispatchTargetNodeGen.create(functionNode);
+        LLVMExpressionNode dispatchTargetNode = LLVMLookupDispatchTargetNode.createOptimized(functionNode);
         return LLVMInvokeNodeImplNodeGen.create(type, writeResult, argumentNodes, normalSuccessor, unwindSuccessor, normalPhiNode, unwindPhiNode, dispatchTargetNode);
     }
 
-    @NodeChild(value = "dispatchTarget", type = LLVMLookupDispatchTargetNode.class)
+    @NodeChild(value = "dispatchTarget", type = LLVMExpressionNode.class)
     abstract static class LLVMInvokeNodeImpl extends LLVMInvokeNode {
 
         @Child protected LLVMStatementNode normalPhiNode;
@@ -150,12 +150,6 @@ public abstract class LLVMInvokeNode extends LLVMControlFlowNode {
     public abstract void execute(VirtualFrame frame);
 
     @Override
-    public boolean needsBranchProfiling() {
-        // we can't use branch profiling because the control flow happens via exception handling
-        return false;
-    }
-
-    @Override
     public boolean hasTag(Class<? extends Tag> tag) {
         if (tag == StandardTags.CallTag.class) {
             return getSourceLocation() != null;
@@ -163,16 +157,4 @@ public abstract class LLVMInvokeNode extends LLVMControlFlowNode {
             return super.hasTag(tag);
         }
     }
-
-    /**
-     * Override to allow access from generated wrapper.
-     */
-    @Override
-    protected abstract boolean isStatement();
-
-    /**
-     * Override to allow access from generated wrapper.
-     */
-    @Override
-    protected abstract void setStatement(boolean statementTag);
 }

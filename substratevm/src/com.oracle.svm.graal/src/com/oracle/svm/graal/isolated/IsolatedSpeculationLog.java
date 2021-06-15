@@ -24,8 +24,13 @@
  */
 package com.oracle.svm.graal.isolated;
 
+import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.compiler.serviceprovider.UnencodedSpeculationReason;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
@@ -48,10 +53,87 @@ public final class IsolatedSpeculationLog extends IsolatedObjectProxy<Speculatio
         collectFailedSpeculations0(IsolatedCompileContext.get().getClient(), handle);
     }
 
+    private static byte[] encodeAsByteArray(SpeculationReason reason) {
+        int groupId = 0;
+        Object[] context = null;
+        try {
+            final Field groupIdField;
+            final Field contextField;
+            /*
+             * The following reflective accesses do not add runtime overhead as they are being
+             * converted to direct accesses during image building. Maintaining two separate paths
+             * that invoke {@code getDeclaredField} ensures that the analysis will be able to
+             * optimize the reflective accesses and convert them to direct ones.
+             */
+            if (reason instanceof UnencodedSpeculationReason) {
+                final Class<?> klass = UnencodedSpeculationReason.class;
+                groupIdField = klass.getDeclaredField("groupId");
+                contextField = klass.getDeclaredField("context");
+            } else {
+                final Class<?> klass = Class.forName("jdk.vm.ci.meta.EncodedSpeculationReason");
+                groupIdField = klass.getDeclaredField("groupId");
+                contextField = klass.getDeclaredField("context");
+            }
+            groupIdField.setAccessible(true);
+            groupId = groupIdField.getInt(reason);
+            contextField.setAccessible(true);
+            context = (Object[]) contextField.get(reason);
+        } catch (IllegalAccessException | NoSuchFieldException | ClassNotFoundException e) {
+            VMError.shouldNotReachHere("Failed to encode speculation reason", e);
+        }
+        IsolatedSpeculationReasonEncoding encoding = encode(groupId, context);
+        return encoding.getByteArray();
+    }
+
+    /** Adapted from {@code jdk.vm.ci.meta.EncodedSpeculationReason#encode}. */
+    private static IsolatedSpeculationReasonEncoding encode(int groupId, Object[] context) {
+        IsolatedSpeculationReasonEncoding encoding = new IsolatedSpeculationReasonEncoding();
+        encoding.addInt(groupId);
+        for (Object o : context) {
+            if (o == null) {
+                encoding.addInt(0);
+            } else {
+                addNonNullObject(encoding, o);
+            }
+        }
+        return encoding;
+    }
+
+    /** Copied from {@code jdk.vm.ci.meta.EncodedSpeculationReason#addNonNullObject}. */
+    private static void addNonNullObject(IsolatedSpeculationReasonEncoding encoding, Object o) {
+        Class<?> c = o.getClass();
+        if (c == String.class) {
+            encoding.addString((String) o);
+        } else if (c == Byte.class) {
+            encoding.addByte((Byte) o);
+        } else if (c == Short.class) {
+            encoding.addShort((Short) o);
+        } else if (c == Character.class) {
+            encoding.addShort((Character) o);
+        } else if (c == Integer.class) {
+            encoding.addInt((Integer) o);
+        } else if (c == Long.class) {
+            encoding.addLong((Long) o);
+        } else if (c == Float.class) {
+            encoding.addInt(Float.floatToRawIntBits((Float) o));
+        } else if (c == Double.class) {
+            encoding.addLong(Double.doubleToRawLongBits((Double) o));
+        } else if (o instanceof Enum) {
+            encoding.addInt(((Enum<?>) o).ordinal());
+        } else if (o instanceof ResolvedJavaMethod) {
+            encoding.addMethod((ResolvedJavaMethod) o);
+        } else if (o instanceof ResolvedJavaType) {
+            encoding.addType((ResolvedJavaType) o);
+        } else if (o instanceof ResolvedJavaField) {
+            encoding.addField((ResolvedJavaField) o);
+        } else {
+            throw new IllegalArgumentException("Unsupported type for encoding: " + c.getName());
+        }
+    }
+
     @Override
     public boolean maySpeculate(SpeculationReason reason) {
-        SpeculationReasonEncoding encoding = reason.encode(IsolatedSpeculationReasonEncoding::new);
-        byte[] bytes = ((IsolatedSpeculationReasonEncoding) encoding).getByteArray();
+        byte[] bytes = encodeAsByteArray(reason);
         try (PinnedObject pinnedBytes = PinnedObject.create(bytes)) {
             return maySpeculate0(IsolatedCompileContext.get().getClient(), handle, pinnedBytes.addressOfArrayElement(0), bytes.length);
         }
@@ -59,8 +141,7 @@ public final class IsolatedSpeculationLog extends IsolatedObjectProxy<Speculatio
 
     @Override
     public Speculation speculate(SpeculationReason reason) {
-        SpeculationReasonEncoding encoding = reason.encode(IsolatedSpeculationReasonEncoding::new);
-        byte[] bytes = ((IsolatedSpeculationReasonEncoding) encoding).getByteArray();
+        byte[] bytes = encodeAsByteArray(reason);
         ClientHandle<SpeculationReason> reasonHandle;
         try (PinnedObject pinnedBytes = PinnedObject.create(bytes)) {
             reasonHandle = speculate0(IsolatedCompileContext.get().getClient(), handle, pinnedBytes.addressOfArrayElement(0), bytes.length);

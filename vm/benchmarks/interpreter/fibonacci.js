@@ -34,8 +34,8 @@ function fibonacci(n) {
 }
 
 function run() {
-  let number = 37;
-  let fiboIs = 24157817;
+  let number = 31;
+  let fiboIs = 1346269;
 
   let fibo = fibonacci(number);
 

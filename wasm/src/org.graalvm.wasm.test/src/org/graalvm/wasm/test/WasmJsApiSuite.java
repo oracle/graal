@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,24 +40,21 @@
  */
 package org.graalvm.wasm.test;
 
+import static org.graalvm.wasm.utils.WasmBinaryTools.compileWat;
+
 import java.io.IOException;
+import java.nio.ByteOrder;
 import java.util.HashMap;
+import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 
-import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.ExceptionType;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.wasm.ModuleLimits;
 import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmFunctionInstance;
 import org.graalvm.wasm.api.ByteArrayBuffer;
 import org.graalvm.wasm.api.Dictionary;
 import org.graalvm.wasm.api.Executable;
@@ -76,10 +73,27 @@ import org.graalvm.wasm.api.TableDescriptor;
 import org.graalvm.wasm.api.TableKind;
 import org.graalvm.wasm.api.WebAssembly;
 import org.graalvm.wasm.api.WebAssemblyInstantiatedSource;
+import org.graalvm.wasm.constants.Sizes;
 import org.graalvm.wasm.exception.WasmException;
+import org.graalvm.wasm.exception.WasmJsApiException;
 import org.graalvm.wasm.predefined.testutil.TestutilModule;
 import org.graalvm.wasm.utils.Assert;
 import org.junit.Test;
+
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.ExceptionType;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.nodes.RootNode;
 
 public class WasmJsApiSuite {
     @Test
@@ -147,8 +161,8 @@ public class WasmJsApiSuite {
     public void testInstantiateWithImportMemory() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final Memory memory = new Memory(new MemoryDescriptor(1, 4));
-            Dictionary importObject = Dictionary.create(new Object[]{
+            final Memory memory = Memory.create(new MemoryDescriptor(4, 8));
+            final Dictionary importObject = Dictionary.create(new Object[]{
                             "host", Dictionary.create(new Object[]{
                                             "defaultMemory", memory
                             }),
@@ -188,7 +202,7 @@ public class WasmJsApiSuite {
     public void testInstantiateWithImportTable() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final Table table = new Table(new TableDescriptor(TableKind.anyfunc.name(), 1, 4));
+            final Table table = Table.create(new TableDescriptor(TableKind.anyfunc.name(), 4, 8));
             Dictionary importObject = Dictionary.create(new Object[]{
                             "host", Dictionary.create(new Object[]{
                                             "defaultTable", table
@@ -217,23 +231,16 @@ public class WasmJsApiSuite {
                 final Table table = (Table) instance.exports().readMember("defaultTable");
                 final Object result = InteropLibrary.getUncached().execute(table.get(0), 9);
                 Assert.assertEquals("Must be 81.", 81, result);
-            } catch (UnknownIdentifierException e) {
-                throw new RuntimeException(e);
-            } catch (UnsupportedTypeException e) {
-                throw new RuntimeException(e);
-            } catch (UnsupportedMessageException e) {
-                throw new RuntimeException(e);
-            } catch (ArityException e) {
+            } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException | ArityException e) {
                 throw new RuntimeException(e);
             }
         });
     }
 
-    @Test
-    public void testInstantiateWithImportGlobal() throws IOException {
+    private static void checkInstantiateWithImportGlobal(byte[] binaryWithGlobalImport, String globalType, Object globalValue) throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final Global global = new Global("i32", false, 17);
+            final Global global = new Global(globalType, false, globalValue);
             Dictionary importObject = Dictionary.create(new Object[]{
                             "host", Dictionary.create(new Object[]{
                                             "defaultGlobal", global
@@ -242,12 +249,34 @@ public class WasmJsApiSuite {
             final WebAssemblyInstantiatedSource instantiatedSource = wasm.instantiate(binaryWithGlobalImport, importObject);
             final Instance instance = instantiatedSource.instance();
             try {
-                final Executable readGlobal = (Executable) instance.exports().readMember("readGlobal");
-                Assert.assertEquals("Must be 17 initially.", 17, readGlobal.executeFunction(new Object[0]));
+                final Executable readGlobal1 = (Executable) instance.exports().readMember("readGlobal1");
+                final Executable readGlobal2 = (Executable) instance.exports().readMember("readGlobal2");
+                Assert.assertEquals("Must be " + globalValue + " initially.", globalValue, readGlobal1.executeFunction(new Object[0]));
+                Assert.assertEquals("Must be " + globalValue + " initially.", globalValue, readGlobal2.executeFunction(new Object[0]));
             } catch (UnknownIdentifierException e) {
                 throw new RuntimeException(e);
             }
         });
+    }
+
+    @Test
+    public void testInstantiateWithImportGlobalI32() throws IOException {
+        checkInstantiateWithImportGlobal(binaryWithGlobalImportI32, "i32", 1234567890);
+    }
+
+    @Test
+    public void testInstantiateWithImportGlobalI64() throws IOException {
+        checkInstantiateWithImportGlobal(binaryWithGlobalImportI64, "i64", 1234567890123456789L);
+    }
+
+    @Test
+    public void testInstantiateWithImportGlobalF32() throws IOException {
+        checkInstantiateWithImportGlobal(binaryWithGlobalImportF32, "f32", (float) Math.PI);
+    }
+
+    @Test
+    public void testInstantiateWithImportGlobalF64() throws IOException {
+        checkInstantiateWithImportGlobal(binaryWithGlobalImportF64, "f64", Math.E);
     }
 
     @Test
@@ -321,6 +350,47 @@ public class WasmJsApiSuite {
     }
 
     @Test
+    public void testExportMemoryTwice() throws IOException, InterruptedException {
+        final byte[] exportMemoryTwice = compileWat("exportMemoryTwice", "(memory 1) (export \"a\" (memory 0)) (export \"b\" (memory 0))");
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WebAssemblyInstantiatedSource instantiatedSource = wasm.instantiate(exportMemoryTwice, null);
+            final Instance instance = instantiatedSource.instance();
+            try {
+                final InteropLibrary lib = InteropLibrary.getUncached();
+                final Object exports = lib.readMember(instance, "exports");
+                final Object memoryABuffer = lib.execute(lib.readMember(lib.readMember(exports, "a"), "buffer"));
+                final Object memoryBBuffer = lib.execute(lib.readMember(lib.readMember(exports, "b"), "buffer"));
+                lib.writeArrayElement(memoryABuffer, 0, (byte) 42);
+                final byte readValue = lib.asByte(lib.readArrayElement(memoryBBuffer, 0));
+                Assert.assertEquals("Written value should correspond to read value", (byte) 42, readValue);
+            } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException | ArityException | InvalidArrayIndexException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
+    public void testExportTableTwice() throws IOException, InterruptedException {
+        final byte[] exportMemoryTwice = compileWat("exportTableTwice", "(module (table 1 funcref) (export \"a\" (table 0)) (export \"b\" (table 0)))");
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WebAssemblyInstantiatedSource instantiatedSource = wasm.instantiate(exportMemoryTwice, null);
+            final Instance instance = instantiatedSource.instance();
+            final InteropLibrary lib = InteropLibrary.getUncached();
+            try {
+                final Object exports = lib.readMember(instance, "exports");
+                final Object f = new Executable(args -> 42);
+                lib.execute(lib.readMember(lib.readMember(exports, "a"), "set"), 0, f);
+                final Object readValue = lib.execute(lib.readMember(lib.readMember(exports, "b"), "get"), 0);
+                Assert.assertEquals("Written function should correspond ro read function", 42, lib.asInt(lib.execute(readValue)));
+            } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException | ArityException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
     public void testImportOrder() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
@@ -339,12 +409,12 @@ public class WasmJsApiSuite {
     }
 
     @Test
-    public void testModuleLimits() throws IOException {
+    public void testExportCountsLimit() throws IOException {
         runTest(context -> {
             ModuleLimits limits = null;
             context.readModule(binaryWithMixedExports, limits);
 
-            int noLimit = Integer.MAX_VALUE;
+            final int noLimit = Integer.MAX_VALUE;
             limits = new ModuleLimits(noLimit, noLimit, noLimit, noLimit, 6, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit, noLimit);
             context.readModule(binaryWithMixedExports, limits);
 
@@ -354,6 +424,103 @@ public class WasmJsApiSuite {
                 Assert.fail("Should have failed - export count exceeds the limit");
             } catch (WasmException ex) {
                 Assert.assertEquals("Parsing error expected", ExceptionType.PARSE_ERROR, ex.getExceptionType());
+            }
+        });
+    }
+
+    @Test
+    public void testTableInstanceOutOfBoundsGet() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WebAssemblyInstantiatedSource instantiatedSource = wasm.instantiate(binaryWithMixedExports, null);
+            final Instance instance = instantiatedSource.instance();
+            final InteropLibrary lib = InteropLibrary.getUncached();
+
+            // We should be able to get element 1.
+            try {
+                final Object exports = lib.readMember(instance, "exports");
+                lib.execute(lib.readMember(lib.readMember(exports, "t"), "get"), 0);
+            } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException | ArityException e) {
+                throw new RuntimeException(e);
+            }
+
+            // But not element 2.
+            try {
+                final Object exports = lib.readMember(instance, "exports");
+                lib.execute(lib.readMember(lib.readMember(exports, "t"), "get"), 1);
+                Assert.fail("Should have failed - export count exceeds the limit");
+            } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException | ArityException e) {
+                throw new RuntimeException(e);
+            } catch (WasmJsApiException e) {
+                Assert.assertEquals("Range error expected", WasmJsApiException.Kind.RangeError, e.kind());
+            }
+        });
+    }
+
+    @Test
+    public void testTableInstanceOutOfBoundsSet() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WebAssemblyInstantiatedSource instantiatedSource = wasm.instantiate(binaryWithMixedExports, null);
+            final Instance instance = instantiatedSource.instance();
+            final InteropLibrary lib = InteropLibrary.getUncached();
+
+            final WasmFunctionInstance functionInstance = new WasmFunctionInstance(
+                            null,
+                            null,
+                            Truffle.getRuntime().createCallTarget(new RootNode(WasmContext.getCurrent().language()) {
+                                @Override
+                                public Object execute(VirtualFrame frame) {
+                                    return 42;
+                                }
+                            }));
+
+            // We should be able to set element 1.
+            try {
+                final Object exports = lib.readMember(instance, "exports");
+                lib.execute(lib.readMember(lib.readMember(exports, "t"), "set"), 0, functionInstance);
+            } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException | ArityException e) {
+                throw new RuntimeException(e);
+            }
+
+            // But not element 2.
+            try {
+                final Object exports = lib.readMember(instance, "exports");
+                lib.execute(lib.readMember(lib.readMember(exports, "t"), "get"), 1, functionInstance);
+                Assert.fail("Should have failed - export count exceeds the limit");
+            } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException | ArityException e) {
+                throw new RuntimeException(e);
+            } catch (WasmJsApiException e) {
+                Assert.assertEquals("Range error expected", WasmJsApiException.Kind.RangeError, e.kind());
+            }
+        });
+    }
+
+    @Test
+    public void testTableInstanceGrowLimit() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WebAssemblyInstantiatedSource instantiatedSource = wasm.instantiate(binaryWithMixedExports, null);
+            final Instance instance = instantiatedSource.instance();
+            final InteropLibrary lib = InteropLibrary.getUncached();
+
+            // We should be able to grow the table to 10,000,000.
+            try {
+                final Object exports = lib.readMember(instance, "exports");
+                lib.execute(lib.readMember(lib.readMember(exports, "t"), "grow"), 9999999);
+            } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException | ArityException e) {
+                throw new RuntimeException(e);
+            }
+
+            // But growing to 10,000,001 should fail.
+            try {
+                final Object exports = lib.readMember(instance, "exports");
+                lib.execute(lib.readMember(lib.readMember(exports, "t"), "grow"), 1);
+                Assert.fail("Should have failed - export count exceeds the limit");
+            } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException | ArityException e) {
+                throw new RuntimeException(e);
+            } catch (WasmJsApiException e) {
+                Assert.assertEquals("Range error expected", WasmJsApiException.Kind.RangeError, e.kind());
             }
         });
     }
@@ -385,6 +552,245 @@ public class WasmJsApiSuite {
         Assert.assertEquals("Custom section length", expected.length, (int) actual.getArraySize());
         for (int i = 0; i < expected.length; i++) {
             Assert.assertEquals("Custom section data", expected[i], actual.readArrayElement(i));
+        }
+    }
+
+    @Test
+    public void testNameSection() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            // Should not throw an exception i.e. is a valid module
+            // (despite the name section may not be formed correctly).
+            wasm.compile(binaryWithEmptyNameSection);
+            wasm.compile(binaryWithTruncatedNameSection);
+            wasm.compile(binaryWithNameSectionWithInvalidIndex);
+        });
+    }
+
+    private static void assertThrowsIBOE(Callable<?> callable) {
+        try {
+            callable.call();
+            Assert.fail("InvalidBufferOffsetException expected");
+        } catch (Exception ex) {
+            if (!(ex instanceof InvalidBufferOffsetException)) {
+                Assert.fail(ex.getMessage());
+            }
+        }
+    }
+
+    @Test
+    public void testMemoryBufferMessages() throws IOException {
+        runTest(context -> {
+            WebAssembly wasm = new WebAssembly(context);
+            Module module = wasm.compile(binaryWithMemoryExport);
+            Instance instance = wasm.instantiate(module, new Dictionary());
+            try {
+                Object exports = InteropLibrary.getUncached(instance).readMember(instance, "exports");
+                Object memory = InteropLibrary.getUncached(exports).readMember(exports, "memory");
+                Object bufferGetter = InteropLibrary.getUncached(memory).readMember(memory, "buffer");
+                Object buffer = InteropLibrary.getUncached(bufferGetter).execute(bufferGetter);
+
+                long bufferSize = 4 * Sizes.MEMORY_PAGE_SIZE;
+                InteropLibrary interop = InteropLibrary.getUncached(buffer);
+                Assert.assertTrue("Should have buffer elements", interop.hasBufferElements(buffer));
+                Assert.assertEquals("Should have correct buffer size", bufferSize, interop.getBufferSize(buffer));
+                Assert.assertTrue("Should have writable buffer", interop.isBufferWritable(buffer));
+                Assert.assertEquals("Read first byte", (byte) 0, interop.readBufferByte(buffer, 0));
+                Assert.assertEquals("Read last byte", (byte) 0, interop.readBufferByte(buffer, bufferSize - 1));
+                Assert.assertEquals("Read first short LE", (short) 0, interop.readBufferShort(buffer, ByteOrder.LITTLE_ENDIAN, 0));
+                Assert.assertEquals("Read first short BE", (short) 0, interop.readBufferShort(buffer, ByteOrder.BIG_ENDIAN, 0));
+                Assert.assertEquals("Read last short LE", (short) 0, interop.readBufferShort(buffer, ByteOrder.LITTLE_ENDIAN, bufferSize - 2));
+                Assert.assertEquals("Read last short BE", (short) 0, interop.readBufferShort(buffer, ByteOrder.BIG_ENDIAN, bufferSize - 2));
+                Assert.assertEquals("Read first int LE", 0, interop.readBufferInt(buffer, ByteOrder.LITTLE_ENDIAN, 0));
+                Assert.assertEquals("Read first int BE", 0, interop.readBufferInt(buffer, ByteOrder.BIG_ENDIAN, 0));
+                Assert.assertEquals("Read last int LE", 0, interop.readBufferInt(buffer, ByteOrder.LITTLE_ENDIAN, bufferSize - 4));
+                Assert.assertEquals("Read last int BE", 0, interop.readBufferInt(buffer, ByteOrder.BIG_ENDIAN, bufferSize - 4));
+                Assert.assertEquals("Read first long LE", 0L, interop.readBufferLong(buffer, ByteOrder.LITTLE_ENDIAN, 0));
+                Assert.assertEquals("Read first long BE", 0L, interop.readBufferLong(buffer, ByteOrder.BIG_ENDIAN, 0));
+                Assert.assertEquals("Read last long LE", 0L, interop.readBufferLong(buffer, ByteOrder.LITTLE_ENDIAN, bufferSize - 8));
+                Assert.assertEquals("Read last long BE", 0L, interop.readBufferLong(buffer, ByteOrder.BIG_ENDIAN, bufferSize - 8));
+                Assert.assertEquals("Read first float LE", (float) 0, interop.readBufferFloat(buffer, ByteOrder.LITTLE_ENDIAN, 0));
+                Assert.assertEquals("Read first float BE", (float) 0, interop.readBufferFloat(buffer, ByteOrder.BIG_ENDIAN, 0));
+                Assert.assertEquals("Read last float LE", (float) 0, interop.readBufferFloat(buffer, ByteOrder.LITTLE_ENDIAN, bufferSize - 4));
+                Assert.assertEquals("Read last float BE", (float) 0, interop.readBufferFloat(buffer, ByteOrder.BIG_ENDIAN, bufferSize - 4));
+                Assert.assertEquals("Read first double LE", 0d, interop.readBufferDouble(buffer, ByteOrder.LITTLE_ENDIAN, 0));
+                Assert.assertEquals("Read first double BE", 0d, interop.readBufferDouble(buffer, ByteOrder.BIG_ENDIAN, 0));
+                Assert.assertEquals("Read last double LE", 0d, interop.readBufferDouble(buffer, ByteOrder.LITTLE_ENDIAN, bufferSize - 8));
+                Assert.assertEquals("Read last double BE", 0d, interop.readBufferDouble(buffer, ByteOrder.BIG_ENDIAN, bufferSize - 8));
+
+                interop.writeBufferByte(buffer, 0, (byte) 1);
+                Assert.assertEquals("Read written byte", (byte) 1, interop.readBufferByte(buffer, 0));
+
+                interop.writeBufferShort(buffer, ByteOrder.LITTLE_ENDIAN, 0, (short) 0x0102);
+                Assert.assertEquals("Read written short LE", (short) 0x0102, interop.readBufferShort(buffer, ByteOrder.LITTLE_ENDIAN, 0));
+                Assert.assertEquals("Read byte 0 of short LE", (byte) 0x02, interop.readBufferByte(buffer, 0));
+                Assert.assertEquals("Read byte 1 of short LE", (byte) 0x01, interop.readBufferByte(buffer, 1));
+
+                interop.writeBufferShort(buffer, ByteOrder.BIG_ENDIAN, 0, (short) 0x0102);
+                Assert.assertEquals("Read written short BE", (short) 0x0102, interop.readBufferShort(buffer, ByteOrder.BIG_ENDIAN, 0));
+                Assert.assertEquals("Read byte 0 of short BE", (byte) 0x01, interop.readBufferByte(buffer, 0));
+                Assert.assertEquals("Read byte 1 of short BE", (byte) 0x02, interop.readBufferByte(buffer, 1));
+
+                interop.writeBufferInt(buffer, ByteOrder.LITTLE_ENDIAN, 0, 0x01020304);
+                Assert.assertEquals("Read written int LE", 0x01020304, interop.readBufferInt(buffer, ByteOrder.LITTLE_ENDIAN, 0));
+                Assert.assertEquals("Read byte 0 of int LE", (byte) 0x04, interop.readBufferByte(buffer, 0));
+                Assert.assertEquals("Read byte 1 of int LE", (byte) 0x03, interop.readBufferByte(buffer, 1));
+                Assert.assertEquals("Read byte 2 of int LE", (byte) 0x02, interop.readBufferByte(buffer, 2));
+                Assert.assertEquals("Read byte 3 of int LE", (byte) 0x01, interop.readBufferByte(buffer, 3));
+
+                interop.writeBufferInt(buffer, ByteOrder.BIG_ENDIAN, 0, 0x01020304);
+                Assert.assertEquals("Read written int BE", 0x01020304, interop.readBufferInt(buffer, ByteOrder.BIG_ENDIAN, 0));
+                Assert.assertEquals("Read byte 0 of int BE", (byte) 0x01, interop.readBufferByte(buffer, 0));
+                Assert.assertEquals("Read byte 1 of int BE", (byte) 0x02, interop.readBufferByte(buffer, 1));
+                Assert.assertEquals("Read byte 2 of int BE", (byte) 0x03, interop.readBufferByte(buffer, 2));
+                Assert.assertEquals("Read byte 3 of int BE", (byte) 0x04, interop.readBufferByte(buffer, 3));
+
+                interop.writeBufferLong(buffer, ByteOrder.LITTLE_ENDIAN, 0, 0x0102030405060708L);
+                Assert.assertEquals("Read written long LE", 0x0102030405060708L, interop.readBufferLong(buffer, ByteOrder.LITTLE_ENDIAN, 0));
+                Assert.assertEquals("Read byte 0 of long LE", (byte) 0x08, interop.readBufferByte(buffer, 0));
+                Assert.assertEquals("Read byte 1 of long LE", (byte) 0x07, interop.readBufferByte(buffer, 1));
+                Assert.assertEquals("Read byte 2 of long LE", (byte) 0x06, interop.readBufferByte(buffer, 2));
+                Assert.assertEquals("Read byte 3 of long LE", (byte) 0x05, interop.readBufferByte(buffer, 3));
+                Assert.assertEquals("Read byte 4 of long LE", (byte) 0x04, interop.readBufferByte(buffer, 4));
+                Assert.assertEquals("Read byte 5 of long LE", (byte) 0x03, interop.readBufferByte(buffer, 5));
+                Assert.assertEquals("Read byte 6 of long LE", (byte) 0x02, interop.readBufferByte(buffer, 6));
+                Assert.assertEquals("Read byte 7 of long LE", (byte) 0x01, interop.readBufferByte(buffer, 7));
+
+                interop.writeBufferLong(buffer, ByteOrder.BIG_ENDIAN, 0, 0x0102030405060708L);
+                Assert.assertEquals("Read written long BE", 0x0102030405060708L, interop.readBufferLong(buffer, ByteOrder.BIG_ENDIAN, 0));
+                Assert.assertEquals("Read byte 0 of long BE", (byte) 0x01, interop.readBufferByte(buffer, 0));
+                Assert.assertEquals("Read byte 1 of long BE", (byte) 0x02, interop.readBufferByte(buffer, 1));
+                Assert.assertEquals("Read byte 2 of long BE", (byte) 0x03, interop.readBufferByte(buffer, 2));
+                Assert.assertEquals("Read byte 3 of long BE", (byte) 0x04, interop.readBufferByte(buffer, 3));
+                Assert.assertEquals("Read byte 4 of long BE", (byte) 0x05, interop.readBufferByte(buffer, 4));
+                Assert.assertEquals("Read byte 5 of long BE", (byte) 0x06, interop.readBufferByte(buffer, 5));
+                Assert.assertEquals("Read byte 6 of long BE", (byte) 0x07, interop.readBufferByte(buffer, 6));
+                Assert.assertEquals("Read byte 7 of long BE", (byte) 0x08, interop.readBufferByte(buffer, 7));
+
+                float f = Float.intBitsToFloat(0x01020304);
+                interop.writeBufferFloat(buffer, ByteOrder.LITTLE_ENDIAN, 0, f);
+                Assert.assertEquals("Read written float LE", f, interop.readBufferFloat(buffer, ByteOrder.LITTLE_ENDIAN, 0));
+                Assert.assertEquals("Read byte 0 of float LE", (byte) 0x04, interop.readBufferByte(buffer, 0));
+                Assert.assertEquals("Read byte 1 of float LE", (byte) 0x03, interop.readBufferByte(buffer, 1));
+                Assert.assertEquals("Read byte 2 of float LE", (byte) 0x02, interop.readBufferByte(buffer, 2));
+                Assert.assertEquals("Read byte 3 of float LE", (byte) 0x01, interop.readBufferByte(buffer, 3));
+
+                interop.writeBufferFloat(buffer, ByteOrder.BIG_ENDIAN, 0, f);
+                Assert.assertEquals("Read written float BE", f, interop.readBufferFloat(buffer, ByteOrder.BIG_ENDIAN, 0));
+                Assert.assertEquals("Read byte 0 of float BE", (byte) 0x01, interop.readBufferByte(buffer, 0));
+                Assert.assertEquals("Read byte 1 of float BE", (byte) 0x02, interop.readBufferByte(buffer, 1));
+                Assert.assertEquals("Read byte 2 of float BE", (byte) 0x03, interop.readBufferByte(buffer, 2));
+                Assert.assertEquals("Read byte 3 of float BE", (byte) 0x04, interop.readBufferByte(buffer, 3));
+
+                double d = Double.longBitsToDouble(0x0102030405060708L);
+                interop.writeBufferDouble(buffer, ByteOrder.LITTLE_ENDIAN, 0, d);
+                Assert.assertEquals("Read written double LE", d, interop.readBufferDouble(buffer, ByteOrder.LITTLE_ENDIAN, 0));
+                Assert.assertEquals("Read byte 0 of double LE", (byte) 0x08, interop.readBufferByte(buffer, 0));
+                Assert.assertEquals("Read byte 1 of double LE", (byte) 0x07, interop.readBufferByte(buffer, 1));
+                Assert.assertEquals("Read byte 2 of double LE", (byte) 0x06, interop.readBufferByte(buffer, 2));
+                Assert.assertEquals("Read byte 3 of double LE", (byte) 0x05, interop.readBufferByte(buffer, 3));
+                Assert.assertEquals("Read byte 4 of double LE", (byte) 0x04, interop.readBufferByte(buffer, 4));
+                Assert.assertEquals("Read byte 5 of double LE", (byte) 0x03, interop.readBufferByte(buffer, 5));
+                Assert.assertEquals("Read byte 6 of double LE", (byte) 0x02, interop.readBufferByte(buffer, 6));
+                Assert.assertEquals("Read byte 7 of double LE", (byte) 0x01, interop.readBufferByte(buffer, 7));
+
+                interop.writeBufferDouble(buffer, ByteOrder.BIG_ENDIAN, 0, d);
+                Assert.assertEquals("Read written double BE", d, interop.readBufferDouble(buffer, ByteOrder.BIG_ENDIAN, 0));
+                Assert.assertEquals("Read byte 0 of double BE", (byte) 0x01, interop.readBufferByte(buffer, 0));
+                Assert.assertEquals("Read byte 1 of double BE", (byte) 0x02, interop.readBufferByte(buffer, 1));
+                Assert.assertEquals("Read byte 2 of double BE", (byte) 0x03, interop.readBufferByte(buffer, 2));
+                Assert.assertEquals("Read byte 3 of double BE", (byte) 0x04, interop.readBufferByte(buffer, 3));
+                Assert.assertEquals("Read byte 4 of double BE", (byte) 0x05, interop.readBufferByte(buffer, 4));
+                Assert.assertEquals("Read byte 5 of double BE", (byte) 0x06, interop.readBufferByte(buffer, 5));
+                Assert.assertEquals("Read byte 6 of double BE", (byte) 0x07, interop.readBufferByte(buffer, 6));
+                Assert.assertEquals("Read byte 7 of double BE", (byte) 0x08, interop.readBufferByte(buffer, 7));
+
+                // Offset too small
+                assertThrowsIBOE(() -> interop.readBufferByte(buffer, -1));
+                assertThrowsIBOE(() -> interop.readBufferShort(buffer, ByteOrder.LITTLE_ENDIAN, -1));
+                assertThrowsIBOE(() -> interop.readBufferShort(buffer, ByteOrder.BIG_ENDIAN, -1));
+                assertThrowsIBOE(() -> interop.readBufferInt(buffer, ByteOrder.LITTLE_ENDIAN, -1));
+                assertThrowsIBOE(() -> interop.readBufferInt(buffer, ByteOrder.BIG_ENDIAN, -1));
+                assertThrowsIBOE(() -> interop.readBufferLong(buffer, ByteOrder.LITTLE_ENDIAN, -1));
+                assertThrowsIBOE(() -> interop.readBufferLong(buffer, ByteOrder.BIG_ENDIAN, -1));
+                assertThrowsIBOE(() -> interop.readBufferFloat(buffer, ByteOrder.LITTLE_ENDIAN, -1));
+                assertThrowsIBOE(() -> interop.readBufferFloat(buffer, ByteOrder.BIG_ENDIAN, -1));
+                assertThrowsIBOE(() -> interop.readBufferDouble(buffer, ByteOrder.LITTLE_ENDIAN, -1));
+                assertThrowsIBOE(() -> interop.readBufferDouble(buffer, ByteOrder.BIG_ENDIAN, -1));
+
+                // Offset too large
+                assertThrowsIBOE(() -> interop.readBufferByte(buffer, bufferSize));
+                assertThrowsIBOE(() -> interop.readBufferShort(buffer, ByteOrder.LITTLE_ENDIAN, bufferSize - 1));
+                assertThrowsIBOE(() -> interop.readBufferShort(buffer, ByteOrder.BIG_ENDIAN, bufferSize - 1));
+                assertThrowsIBOE(() -> interop.readBufferInt(buffer, ByteOrder.LITTLE_ENDIAN, bufferSize - 3));
+                assertThrowsIBOE(() -> interop.readBufferInt(buffer, ByteOrder.BIG_ENDIAN, bufferSize - 3));
+                assertThrowsIBOE(() -> interop.readBufferLong(buffer, ByteOrder.LITTLE_ENDIAN, bufferSize - 7));
+                assertThrowsIBOE(() -> interop.readBufferLong(buffer, ByteOrder.BIG_ENDIAN, bufferSize - 7));
+                assertThrowsIBOE(() -> interop.readBufferFloat(buffer, ByteOrder.LITTLE_ENDIAN, bufferSize - 3));
+                assertThrowsIBOE(() -> interop.readBufferFloat(buffer, ByteOrder.BIG_ENDIAN, bufferSize - 3));
+                assertThrowsIBOE(() -> interop.readBufferDouble(buffer, ByteOrder.LITTLE_ENDIAN, bufferSize - 7));
+                assertThrowsIBOE(() -> interop.readBufferDouble(buffer, ByteOrder.BIG_ENDIAN, bufferSize - 7));
+            } catch (InteropException ex) {
+                Assert.fail(ex.getMessage());
+            }
+        });
+    }
+
+    @Test
+    public void testTableImport() throws IOException, InterruptedException {
+        // Exports table with a function
+        final byte[] exportTable = compileWat("exportTable", "(module" +
+                        "(func $f0 (result i32) i32.const 42)" +
+                        "(table 1 1 funcref)" +
+                        "(export \"table\" (table 0))" +
+                        "(elem (i32.const 0) $f0)" +
+                        ")");
+
+        // Imports table and exports function that invokes functions from the table
+        final byte[] importTable = compileWat("importTable", "(module" +
+                        "(type (func (param i32) (result i32)))" +
+                        "(type (func (result i32)))" +
+                        "(import \"tableImport\" \"table\" (table 1 1 funcref))" +
+                        "(func (type 0) (param i32) (result i32) local.get 0 call_indirect (type 1))" +
+                        "(export \"testFunc\" (func 0))" +
+                        ")");
+
+        runTest(context -> {
+            WebAssembly wasm = new WebAssembly(context);
+            Instance exportInstance = wasm.instantiate(exportTable, null).instance();
+            try {
+                Object exports = InteropLibrary.getUncached().readMember(exportInstance, "exports");
+                Object exportedTable = InteropLibrary.getUncached().readMember(exports, "table");
+
+                Dictionary importObject = new Dictionary();
+                Dictionary tableImport = new Dictionary();
+                tableImport.addMember("table", exportedTable);
+                importObject.addMember("tableImport", tableImport);
+
+                Instance importInstance = wasm.instantiate(importTable, importObject).instance();
+
+                exports = InteropLibrary.getUncached().readMember(importInstance, "exports");
+                Object testFunc = InteropLibrary.getUncached().readMember(exports, "testFunc");
+                Object result = InteropLibrary.getUncached().execute(testFunc, 0);
+
+                Assert.assertEquals("Return value should be 42", 42, result);
+            } catch (InteropException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
+    public void testMemoryAllocationFailure() {
+        // Memory allocation should either succeed or throw an interop
+        // exception (not an internal error like OutOfMemoryError).
+        try {
+            Object[] memories = new Object[5];
+            for (int i = 0; i < memories.length; i++) {
+                memories[i] = Memory.create(new MemoryDescriptor(32767, 32767));
+            }
+        } catch (AbstractTruffleException ex) {
+            Assert.assertTrue("Should throw interop exception", InteropLibrary.getUncached(ex).isException(ex));
         }
     }
 
@@ -545,20 +951,90 @@ public class WasmJsApiSuite {
 
     // (module
     // (type $t0 (func (result i32)))
-    // (global $global (import "host" "defaultGlobal") i32)
-    // (func $readGlobal (export "readGlobal") (type $t0) (result i32)
-    // get_global $global
+    // (global $global1 (import "host" "defaultGlobal") i32)
+    // (global $global2 i32 (get_global $global1))
+    // (func $readGlobal1 (export "readGlobal1") (type $t0) (result i32)
+    // get_global $global1
+    // )
+    // (func $readGlobal2 (export "readGlobal2") (type $t0) (result i32)
+    // get_global $global2
     // )
     // )
-    private static final byte[] binaryWithGlobalImport = new byte[]{
+    private static final byte[] binaryWithGlobalImportI32 = new byte[]{
                     (byte) 0x00, (byte) 0x61, (byte) 0x73, (byte) 0x6d, (byte) 0x01, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x05, (byte) 0x01, (byte) 0x60, (byte) 0x00,
                     (byte) 0x01, (byte) 0x7f, (byte) 0x02, (byte) 0x17, (byte) 0x01, (byte) 0x04, (byte) 0x68, (byte) 0x6f, (byte) 0x73, (byte) 0x74, (byte) 0x0d, (byte) 0x64, (byte) 0x65,
                     (byte) 0x66, (byte) 0x61, (byte) 0x75, (byte) 0x6c, (byte) 0x74, (byte) 0x47, (byte) 0x6c, (byte) 0x6f, (byte) 0x62, (byte) 0x61, (byte) 0x6c, (byte) 0x03, (byte) 0x7f,
-                    (byte) 0x00, (byte) 0x03, (byte) 0x02, (byte) 0x01, (byte) 0x00, (byte) 0x07, (byte) 0x0e, (byte) 0x01, (byte) 0x0a, (byte) 0x72, (byte) 0x65, (byte) 0x61, (byte) 0x64,
-                    (byte) 0x47, (byte) 0x6c, (byte) 0x6f, (byte) 0x62, (byte) 0x61, (byte) 0x6c, (byte) 0x00, (byte) 0x00, (byte) 0x0a, (byte) 0x06, (byte) 0x01, (byte) 0x04, (byte) 0x00,
-                    (byte) 0x23, (byte) 0x00, (byte) 0x0b, (byte) 0x00, (byte) 0x19, (byte) 0x04, (byte) 0x6e, (byte) 0x61, (byte) 0x6d, (byte) 0x65, (byte) 0x01, (byte) 0x0d, (byte) 0x01,
-                    (byte) 0x00, (byte) 0x0a, (byte) 0x72, (byte) 0x65, (byte) 0x61, (byte) 0x64, (byte) 0x47, (byte) 0x6c, (byte) 0x6f, (byte) 0x62, (byte) 0x61, (byte) 0x6c, (byte) 0x02,
-                    (byte) 0x03, (byte) 0x01, (byte) 0x00, (byte) 0x00,
+                    (byte) 0x00, (byte) 0x03, (byte) 0x03, (byte) 0x02, (byte) 0x00, (byte) 0x00, (byte) 0x06, (byte) 0x06, (byte) 0x01, (byte) 0x7f, (byte) 0x00, (byte) 0x23, (byte) 0x00,
+                    (byte) 0x0b, (byte) 0x07, (byte) 0x1d, (byte) 0x02, (byte) 0x0b, (byte) 0x72, (byte) 0x65, (byte) 0x61, (byte) 0x64, (byte) 0x47, (byte) 0x6c, (byte) 0x6f, (byte) 0x62,
+                    (byte) 0x61, (byte) 0x6c, (byte) 0x31, (byte) 0x00, (byte) 0x00, (byte) 0x0b, (byte) 0x72, (byte) 0x65, (byte) 0x61, (byte) 0x64, (byte) 0x47, (byte) 0x6c, (byte) 0x6f,
+                    (byte) 0x62, (byte) 0x61, (byte) 0x6c, (byte) 0x32, (byte) 0x00, (byte) 0x01, (byte) 0x0a, (byte) 0x0b, (byte) 0x02, (byte) 0x04, (byte) 0x00, (byte) 0x23, (byte) 0x00,
+                    (byte) 0x0b, (byte) 0x04, (byte) 0x00, (byte) 0x23, (byte) 0x01, (byte) 0x0b
+    };
+
+    // (module
+    // (type $t0 (func (result i64)))
+    // (global $global1 (import "host" "defaultGlobal") i64)
+    // (global $global2 i64 (get_global $global1))
+    // (func $readGlobal1 (export "readGlobal1") (type $t0) (result i64)
+    // get_global $global1
+    // )
+    // (func $readGlobal2 (export "readGlobal2") (type $t0) (result i64)
+    // get_global $global2
+    // )
+    // )
+    private static final byte[] binaryWithGlobalImportI64 = new byte[]{
+                    (byte) 0x00, (byte) 0x61, (byte) 0x73, (byte) 0x6d, (byte) 0x01, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x05, (byte) 0x01, (byte) 0x60, (byte) 0x00,
+                    (byte) 0x01, (byte) 0x7e, (byte) 0x02, (byte) 0x17, (byte) 0x01, (byte) 0x04, (byte) 0x68, (byte) 0x6f, (byte) 0x73, (byte) 0x74, (byte) 0x0d, (byte) 0x64, (byte) 0x65,
+                    (byte) 0x66, (byte) 0x61, (byte) 0x75, (byte) 0x6c, (byte) 0x74, (byte) 0x47, (byte) 0x6c, (byte) 0x6f, (byte) 0x62, (byte) 0x61, (byte) 0x6c, (byte) 0x03, (byte) 0x7e,
+                    (byte) 0x00, (byte) 0x03, (byte) 0x03, (byte) 0x02, (byte) 0x00, (byte) 0x00, (byte) 0x06, (byte) 0x06, (byte) 0x01, (byte) 0x7e, (byte) 0x00, (byte) 0x23, (byte) 0x00,
+                    (byte) 0x0b, (byte) 0x07, (byte) 0x1d, (byte) 0x02, (byte) 0x0b, (byte) 0x72, (byte) 0x65, (byte) 0x61, (byte) 0x64, (byte) 0x47, (byte) 0x6c, (byte) 0x6f, (byte) 0x62,
+                    (byte) 0x61, (byte) 0x6c, (byte) 0x31, (byte) 0x00, (byte) 0x00, (byte) 0x0b, (byte) 0x72, (byte) 0x65, (byte) 0x61, (byte) 0x64, (byte) 0x47, (byte) 0x6c, (byte) 0x6f,
+                    (byte) 0x62, (byte) 0x61, (byte) 0x6c, (byte) 0x32, (byte) 0x00, (byte) 0x01, (byte) 0x0a, (byte) 0x0b, (byte) 0x02, (byte) 0x04, (byte) 0x00, (byte) 0x23, (byte) 0x00,
+                    (byte) 0x0b, (byte) 0x04, (byte) 0x00, (byte) 0x23, (byte) 0x01, (byte) 0x0b
+    };
+
+    // (module
+    // (type $t0 (func (result f32)))
+    // (global $global1 (import "host" "defaultGlobal") f32)
+    // (global $global2 f32 (get_global $global1))
+    // (func $readGlobal1 (export "readGlobal1") (type $t0) (result f32)
+    // get_global $global1
+    // )
+    // (func $readGlobal2 (export "readGlobal2") (type $t0) (result f32)
+    // get_global $global2
+    // )
+    // )
+    private static final byte[] binaryWithGlobalImportF32 = new byte[]{
+                    (byte) 0x00, (byte) 0x61, (byte) 0x73, (byte) 0x6d, (byte) 0x01, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x05, (byte) 0x01, (byte) 0x60, (byte) 0x00,
+                    (byte) 0x01, (byte) 0x7d, (byte) 0x02, (byte) 0x17, (byte) 0x01, (byte) 0x04, (byte) 0x68, (byte) 0x6f, (byte) 0x73, (byte) 0x74, (byte) 0x0d, (byte) 0x64, (byte) 0x65,
+                    (byte) 0x66, (byte) 0x61, (byte) 0x75, (byte) 0x6c, (byte) 0x74, (byte) 0x47, (byte) 0x6c, (byte) 0x6f, (byte) 0x62, (byte) 0x61, (byte) 0x6c, (byte) 0x03, (byte) 0x7d,
+                    (byte) 0x00, (byte) 0x03, (byte) 0x03, (byte) 0x02, (byte) 0x00, (byte) 0x00, (byte) 0x06, (byte) 0x06, (byte) 0x01, (byte) 0x7d, (byte) 0x00, (byte) 0x23, (byte) 0x00,
+                    (byte) 0x0b, (byte) 0x07, (byte) 0x1d, (byte) 0x02, (byte) 0x0b, (byte) 0x72, (byte) 0x65, (byte) 0x61, (byte) 0x64, (byte) 0x47, (byte) 0x6c, (byte) 0x6f, (byte) 0x62,
+                    (byte) 0x61, (byte) 0x6c, (byte) 0x31, (byte) 0x00, (byte) 0x00, (byte) 0x0b, (byte) 0x72, (byte) 0x65, (byte) 0x61, (byte) 0x64, (byte) 0x47, (byte) 0x6c, (byte) 0x6f,
+                    (byte) 0x62, (byte) 0x61, (byte) 0x6c, (byte) 0x32, (byte) 0x00, (byte) 0x01, (byte) 0x0a, (byte) 0x0b, (byte) 0x02, (byte) 0x04, (byte) 0x00, (byte) 0x23, (byte) 0x00,
+                    (byte) 0x0b, (byte) 0x04, (byte) 0x00, (byte) 0x23, (byte) 0x01, (byte) 0x0b
+    };
+
+    // (module
+    // (type $t0 (func (result f64)))
+    // (global $global1 (import "host" "defaultGlobal") f64)
+    // (global $global2 f64 (get_global $global1))
+    // (func $readGlobal1 (export "readGlobal1") (type $t0) (result f64)
+    // get_global $global1
+    // )
+    // (func $readGlobal2 (export "readGlobal2") (type $t0) (result f64)
+    // get_global $global2
+    // )
+    // )
+    private static final byte[] binaryWithGlobalImportF64 = new byte[]{
+                    (byte) 0x00, (byte) 0x61, (byte) 0x73, (byte) 0x6d, (byte) 0x01, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x05, (byte) 0x01, (byte) 0x60, (byte) 0x00,
+                    (byte) 0x01, (byte) 0x7c, (byte) 0x02, (byte) 0x17, (byte) 0x01, (byte) 0x04, (byte) 0x68, (byte) 0x6f, (byte) 0x73, (byte) 0x74, (byte) 0x0d, (byte) 0x64, (byte) 0x65,
+                    (byte) 0x66, (byte) 0x61, (byte) 0x75, (byte) 0x6c, (byte) 0x74, (byte) 0x47, (byte) 0x6c, (byte) 0x6f, (byte) 0x62, (byte) 0x61, (byte) 0x6c, (byte) 0x03, (byte) 0x7c,
+                    (byte) 0x00, (byte) 0x03, (byte) 0x03, (byte) 0x02, (byte) 0x00, (byte) 0x00, (byte) 0x06, (byte) 0x06, (byte) 0x01, (byte) 0x7c, (byte) 0x00, (byte) 0x23, (byte) 0x00,
+                    (byte) 0x0b, (byte) 0x07, (byte) 0x1d, (byte) 0x02, (byte) 0x0b, (byte) 0x72, (byte) 0x65, (byte) 0x61, (byte) 0x64, (byte) 0x47, (byte) 0x6c, (byte) 0x6f, (byte) 0x62,
+                    (byte) 0x61, (byte) 0x6c, (byte) 0x31, (byte) 0x00, (byte) 0x00, (byte) 0x0b, (byte) 0x72, (byte) 0x65, (byte) 0x61, (byte) 0x64, (byte) 0x47, (byte) 0x6c, (byte) 0x6f,
+                    (byte) 0x62, (byte) 0x61, (byte) 0x6c, (byte) 0x32, (byte) 0x00, (byte) 0x01, (byte) 0x0a, (byte) 0x0b, (byte) 0x02, (byte) 0x04, (byte) 0x00, (byte) 0x23, (byte) 0x00,
+                    (byte) 0x0b, (byte) 0x04, (byte) 0x00, (byte) 0x23, (byte) 0x01, (byte) 0x0b
     };
 
     // (module
@@ -601,6 +1077,25 @@ public class WasmJsApiSuite {
                     (byte) 0x00, (byte) 0x61, (byte) 0x73, (byte) 0x6d, (byte) 0x01, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x07, (byte) 0x04, (byte) 0x65, (byte) 0x76,
                     (byte) 0x65, (byte) 0x6e, (byte) 0x02, (byte) 0x04, (byte) 0x00, (byte) 0x07, (byte) 0x03, (byte) 0x6f, (byte) 0x64, (byte) 0x64, (byte) 0x01, (byte) 0x03, (byte) 0x05,
                     (byte) 0x00, (byte) 0x06, (byte) 0x04, (byte) 0x65, (byte) 0x76, (byte) 0x65, (byte) 0x6e, (byte) 0x06
+    };
+
+    // Module with an empty name (custom) section
+    private static final byte[] binaryWithEmptyNameSection = new byte[]{
+                    (byte) 0x00, (byte) 0x61, (byte) 0x73, (byte) 0x6d, (byte) 0x01, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x05, (byte) 0x04, (byte) 0x6e, (byte) 0x61,
+                    (byte) 0x6d, (byte) 0x65
+    };
+
+    // Module with a truncated name (custom) section
+    private static final byte[] binaryWithTruncatedNameSection = new byte[]{
+                    (byte) 0x00, (byte) 0x61, (byte) 0x73, (byte) 0x6d, (byte) 0x01, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x06, (byte) 0x04, (byte) 0x6e, (byte) 0x61,
+                    (byte) 0x6d, (byte) 0x65, (byte) 0x00
+    };
+
+    // Module with a name (custom) section with function names subsection
+    // with an invalid function index
+    private static final byte[] binaryWithNameSectionWithInvalidIndex = new byte[]{
+                    (byte) 0x00, (byte) 0x61, (byte) 0x73, (byte) 0x6d, (byte) 0x01, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x0a, (byte) 0x04, (byte) 0x6e, (byte) 0x61,
+                    (byte) 0x6d, (byte) 0x65, (byte) 0x01, (byte) 0x03, (byte) 0x01, (byte) 0x00, (byte) 0x00
     };
 
     // (module

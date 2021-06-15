@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,15 +31,14 @@ package com.oracle.truffle.llvm;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.llvm.runtime.IDGenerater.BitcodeID;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage.Loader;
-
-import java.util.concurrent.atomic.AtomicInteger;
 
 public final class DefaultLoader extends Loader {
 
     @Override
-    public CallTarget load(LLVMContext context, Source source, AtomicInteger id) {
+    public CallTarget load(LLVMContext context, Source source, BitcodeID id) {
         // per context, only one thread must do any parsing
         synchronized (context.getGlobalScope()) {
             return ParserDriver.parse(context, id, source);

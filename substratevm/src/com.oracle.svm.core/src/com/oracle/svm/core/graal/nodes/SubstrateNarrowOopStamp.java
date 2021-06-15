@@ -24,11 +24,6 @@
  */
 package com.oracle.svm.core.graal.nodes;
 
-import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.MemoryAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaType;
-
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
@@ -42,19 +37,24 @@ import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.meta.CompressedNullConstant;
 import com.oracle.svm.core.meta.CompressibleConstant;
 
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.MemoryAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaType;
+
 public final class SubstrateNarrowOopStamp extends NarrowOopStamp {
-    public SubstrateNarrowOopStamp(ResolvedJavaType type, boolean exactType, boolean nonNull, boolean alwaysNull, CompressEncoding encoding) {
-        super(type, exactType, nonNull, alwaysNull, encoding);
+    public SubstrateNarrowOopStamp(ResolvedJavaType type, boolean exactType, boolean nonNull, boolean alwaysNull, boolean alwaysArray, CompressEncoding encoding) {
+        super(type, exactType, nonNull, alwaysNull, alwaysArray, encoding);
         assert getEncoding().equals(ReferenceAccess.singleton().getCompressEncoding()) : "Using a non-default encoding is not supported: reference map support is needed.";
     }
 
     @Override
-    protected AbstractObjectStamp copyWith(ResolvedJavaType type, boolean exactType, boolean nonNull, boolean alwaysNull) {
-        return new SubstrateNarrowOopStamp(type, exactType, nonNull, alwaysNull, getEncoding());
+    protected AbstractObjectStamp copyWith(ResolvedJavaType type, boolean exactType, boolean nonNull, boolean alwaysNull, boolean alwaysArray) {
+        return new SubstrateNarrowOopStamp(type, exactType, nonNull, alwaysNull, alwaysArray, getEncoding());
     }
 
     public static AbstractObjectStamp compressed(AbstractObjectStamp stamp, CompressEncoding encoding) {
-        return new SubstrateNarrowOopStamp(stamp.type(), stamp.isExactType(), stamp.nonNull(), stamp.alwaysNull(), encoding);
+        return new SubstrateNarrowOopStamp(stamp.type(), stamp.isExactType(), stamp.nonNull(), stamp.alwaysNull(), stamp.isAlwaysArray(), encoding);
     }
 
     @Override

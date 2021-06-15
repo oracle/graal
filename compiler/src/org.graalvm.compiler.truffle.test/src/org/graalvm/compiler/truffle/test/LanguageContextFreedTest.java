@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -58,16 +58,22 @@ public class LanguageContextFreedTest {
     @Test
     public void testLanguageContexFreedNoSharing() {
         doTest(() -> {
-            return Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("engine.BackgroundCompilation", Boolean.FALSE.toString()).option("engine.CompilationThreshold",
-                            String.valueOf(COMPILATION_THRESHOLD)).option("engine.CompileImmediately", Boolean.FALSE.toString()).build();
+            return Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).//
+            option("engine.BackgroundCompilation", Boolean.FALSE.toString()).//
+            option("engine.MultiTier", Boolean.FALSE.toString()).//
+            option("engine.SingleTierCompilationThreshold", String.valueOf(COMPILATION_THRESHOLD)).//
+            option("engine.CompileImmediately", Boolean.FALSE.toString()).build();
         });
     }
 
     @Test
     public void testLanguageContexFreedSharedEngine() {
         doTest(() -> {
-            Engine engine = Engine.newBuilder().allowExperimentalOptions(true).option("engine.BackgroundCompilation", Boolean.FALSE.toString()).option("engine.CompilationThreshold",
-                            String.valueOf(COMPILATION_THRESHOLD)).option("engine.CompileImmediately", Boolean.FALSE.toString()).build();
+            Engine engine = Engine.newBuilder().allowExperimentalOptions(true).//
+            option("engine.BackgroundCompilation", Boolean.FALSE.toString()).//
+            option("engine.MultiTier", Boolean.FALSE.toString()).//
+            option("engine.SingleTierCompilationThreshold", String.valueOf(COMPILATION_THRESHOLD)).//
+            option("engine.CompileImmediately", Boolean.FALSE.toString()).build();
             return Context.newBuilder().engine(engine).allowAllAccess(true).build();
         });
     }
@@ -166,7 +172,7 @@ public class LanguageContextFreedTest {
             });
             getContext(request.getSource().getLanguage()).currentTarget = target;
 
-            assertEquals(COMPILATION_THRESHOLD, (int) target.getOptionValue(PolyglotCompilerOptions.CompilationThreshold));
+            assertEquals(COMPILATION_THRESHOLD, (int) target.getOptionValue(PolyglotCompilerOptions.SingleTierCompilationThreshold));
             return target;
         }
 

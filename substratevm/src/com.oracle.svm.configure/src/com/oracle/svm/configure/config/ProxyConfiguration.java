@@ -29,10 +29,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.oracle.svm.configure.json.JsonPrintable;
+import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.configure.json.JsonWriter;
 
-public class ProxyConfiguration implements JsonPrintable {
+public class ProxyConfiguration implements ConfigurationBase {
     private final ConcurrentHashMap.KeySetView<List<String>, Boolean> interfaceLists = ConcurrentHashMap.newKeySet();
 
     public void add(List<String> interfaceList) {
@@ -71,6 +71,12 @@ public class ProxyConfiguration implements JsonPrintable {
             prefix = ",";
         }
         writer.unindent().newline();
-        writer.append(']').newline();
+        writer.append(']');
     }
+
+    @Override
+    public boolean isEmpty() {
+        return interfaceLists.isEmpty();
+    }
+
 }

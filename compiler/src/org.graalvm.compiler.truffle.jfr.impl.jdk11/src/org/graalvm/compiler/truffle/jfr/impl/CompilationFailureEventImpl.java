@@ -28,8 +28,10 @@ import jdk.jfr.BooleanFlag;
 import jdk.jfr.Category;
 import jdk.jfr.Description;
 import jdk.jfr.Label;
+import jdk.jfr.Name;
 import jdk.jfr.StackTrace;
 
+@Name("org.graalvm.compiler.truffle.CompilationFailure")
 @Category("Truffle Compiler")
 @Label("Compilation Failure")
 @Description("Truffe Compilation Failures")

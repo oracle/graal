@@ -6,7 +6,7 @@ Dynamic proxy classes are generated from a list of interfaces.
 Native Image does not provide machinery for generating and interpreting bytecodes at run time.
 Therefore all dynamic proxy classes need to be generated at native image build time.
 
-See also the [guide on assisted configuration of Java resources and other dynamic features](Configuration.md#assisted-configuration-of-native-image-builds).
+See also the [guide on assisted configuration of Java resources and other dynamic features](BuildConfiguration.md#assisted-configuration-of-native-image-builds).
 
 ## Automatic Detection
 

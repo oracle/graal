@@ -25,21 +25,24 @@
 
 package org.graalvm.compiler.asm.aarch64.test;
 
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.TargetDescription;
 import org.graalvm.compiler.asm.AbstractAddress;
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.aarch64.AArch64Address;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
-
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.TargetDescription;
+import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler;
 
 /**
  * Cheat so that we can test protected functions of assembler.
  */
 class TestProtectedAssembler extends AArch64Assembler {
 
+    public final TestProtectedASIMDAssembler neon;
+
     TestProtectedAssembler(TargetDescription target) {
         super(target);
+        this.neon = new TestProtectedASIMDAssembler(this);
     }
 
     @Override
@@ -298,21 +301,6 @@ class TestProtectedAssembler extends AArch64Assembler {
     }
 
     @Override
-    protected void asr(int size, Register dst, Register src1, Register src2) {
-        super.asr(size, dst, src1, src2);
-    }
-
-    @Override
-    protected void lsl(int size, Register dst, Register src1, Register src2) {
-        super.lsl(size, dst, src1, src2);
-    }
-
-    @Override
-    protected void lsr(int size, Register dst, Register src1, Register src2) {
-        super.lsr(size, dst, src1, src2);
-    }
-
-    @Override
     protected void rorv(int size, Register dst, Register src1, Register src2) {
         super.rorv(size, dst, src1, src2);
     }
@@ -415,11 +403,6 @@ class TestProtectedAssembler extends AArch64Assembler {
     @Override
     public void scvtf(int targetSize, int srcSize, Register dst, Register src) {
         super.scvtf(targetSize, srcSize, dst, src);
-    }
-
-    @Override
-    protected void frintz(int size, Register dst, Register src) {
-        super.frintz(size, dst, src);
     }
 
     @Override
@@ -526,7 +509,7 @@ class TestProtectedAssembler extends AArch64Assembler {
     }
 
     @Override
-    public AbstractAddress makeAddress(Register base, int displacement) {
+    public AbstractAddress makeAddress(int transferSize, Register base, int displacement) {
         throw new UnsupportedOperationException();
     }
 
@@ -540,18 +523,25 @@ class TestProtectedAssembler extends AArch64Assembler {
         throw new UnsupportedOperationException();
     }
 
-    @Override
-    public void cnt(int size, Register dst, Register src) {
-        super.cnt(size, dst, src);
-    }
+    public static class TestProtectedASIMDAssembler extends AArch64ASIMDAssembler {
 
-    @Override
-    public void addv(int size, SIMDElementSize laneWidth, Register dst, Register src) {
-        super.addv(size, laneWidth, dst, src);
-    }
+        protected TestProtectedASIMDAssembler(AArch64Assembler asm) {
+            super(asm);
+        }
 
-    @Override
-    public void umov(int size, Register dst, int srcIdx, Register src) {
-        super.umov(size, dst, srcIdx, src);
+        @Override
+        public void cntVV(ASIMDSize size, Register dst, Register src) {
+            super.cntVV(size, dst, src);
+        }
+
+        @Override
+        public void addvSV(ASIMDSize size, ElementSize laneWidth, Register dst, Register src) {
+            super.addvSV(size, laneWidth, dst, src);
+        }
+
+        @Override
+        public void umovGX(ElementSize size, Register dst, Register src, int index) {
+            super.umovGX(size, dst, src, index);
+        }
     }
 }

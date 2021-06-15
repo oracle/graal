@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package org.graalvm.wasm.memory;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -49,39 +50,61 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
+import org.graalvm.wasm.collection.ByteArrayList;
+import org.graalvm.wasm.constants.Sizes;
+import org.graalvm.wasm.nodes.WasmNode;
+
+import java.nio.charset.StandardCharsets;
 
 import static com.oracle.truffle.api.CompilerDirectives.transferToInterpreter;
 import static java.lang.Math.toIntExact;
 
 @ExportLibrary(InteropLibrary.class)
 public abstract class WasmMemory implements TruffleObject {
-    static final int PAGE_SIZE = 1 << 16;
-    static final int LONG_SIZE = 8;
 
     public abstract void copy(Node node, int src, int dst, int n);
 
     /**
-     * The size of the memory, measured in number of pages.
+     * The current size of this memory instance (measured in number of {@link Sizes#MEMORY_PAGE_SIZE
+     * pages}).
      */
-    public abstract int pageSize();
+    public abstract int size();
 
     /**
-     * The size of the memory, measured in bytes.
+     * The current size of this memory instance (measured in bytes).
      */
     public abstract int byteSize();
 
-    public abstract boolean grow(int extraPageSize);
-
-    public boolean growToAddress(int address) {
-        final int requiredPageCount = address / PAGE_SIZE + 1;
-        final int extraPageCount = Math.max(0, requiredPageCount - pageSize());
-        return grow(extraPageCount);
-    }
+    /**
+     * The minimum size of this memory as declared in the binary (measured in number of
+     * {@link Sizes#MEMORY_PAGE_SIZE pages}).
+     * <p>
+     * This is a lower bound on this memory's size. This memory can only be imported with a lower or
+     * equal minimum size.
+     */
+    public abstract int declaredMinSize();
 
     /**
-     * The max size of the memory, measured in number of pages.
+     * The maximum size of this memory as declared in the binary (measured in number of
+     * {@link Sizes#MEMORY_PAGE_SIZE pages}).
+     * <p>
+     * This is an upper bound on this memory's size. This memory can only be imported with a greater
+     * or equal maximum size.
+     * <p>
+     * This is different from the internal maximum allowed size, which can be lower.
      */
-    public abstract int maxPageSize();
+    public abstract int declaredMaxSize();
+
+    public abstract boolean grow(int extraPageSize);
+
+    /**
+     * Shrinks this memory's size to its {@link #declaredMinSize()} initial size}, and sets all
+     * bytes to 0.
+     * <p>
+     * Note: this does not restore content from data section. For this, use
+     * {@link org.graalvm.wasm.BinaryParser#resetMemoryState}.
+     */
+    public abstract void reset();
 
     // Checkstyle: stop
     public abstract int load_i32(Node node, int address);
@@ -131,9 +154,86 @@ public abstract class WasmMemory implements TruffleObject {
     public abstract void store_i64_32(Node node, int address, int value);
     // Checkstyle: resume
 
-    public abstract void clear();
-
     public abstract WasmMemory duplicate();
+
+    /**
+     * Reads the null-terminated UTF-8 string starting at {@code startOffset}.
+     *
+     * @param startOffset memory index of the first character
+     * @param node a node indicating the location where this read occurred in the Truffle AST. It
+     *            may be {@code null} to indicate that the location is not available.
+     * @return the read {@code String}
+     */
+    @CompilerDirectives.TruffleBoundary
+    public String readString(int startOffset, WasmNode node) {
+        ByteArrayList bytes = new ByteArrayList();
+        byte currentByte;
+        int offset = startOffset;
+
+        while ((currentByte = (byte) load_i32_8u(node, offset)) != 0) {
+            bytes.add(currentByte);
+            ++offset;
+        }
+
+        return new String(bytes.toArray(), StandardCharsets.UTF_8);
+    }
+
+    /**
+     * Reads the UTF-8 string of length {@code length} starting at {@code startOffset}.
+     *
+     * @param startOffset memory index of the first character
+     * @param length length of the UTF-8 string to read in bytes
+     * @param node a node indicating the location where this read occurred in the Truffle AST. It
+     *            may be {@code null} to indicate that the location is not available.
+     * @return the read {@code String}
+     */
+    @CompilerDirectives.TruffleBoundary
+    public final String readString(int startOffset, int length, Node node) {
+        ByteArrayList bytes = new ByteArrayList();
+
+        for (int i = 0; i < length; ++i) {
+            bytes.add((byte) load_i32_8u(node, startOffset + i));
+        }
+
+        return new String(bytes.toArray(), StandardCharsets.UTF_8);
+    }
+
+    /**
+     * Writes a Java String at offset {@code offset}.
+     * <p>
+     * The written string is encoded as UTF-8 and <em>not</em> terminated with a null character.
+     *
+     * @param node a node indicating the location where this write occurred in the Truffle AST. It
+     *            may be {@code null} to indicate that the location is not available.
+     * @param string the string to write
+     * @param offset memory index where to write the string
+     * @param length the maximum number of bytes to write, including the trailing null character
+     * @return the number of bytes written, including the trailing null character
+     */
+    @CompilerDirectives.TruffleBoundary
+    public final int writeString(Node node, String string, int offset, int length) {
+        final byte[] bytes = string.getBytes(StandardCharsets.UTF_8);
+        int i = 0;
+        for (; i < bytes.length && i < length; ++i) {
+            store_i32_8(node, offset + i, bytes[i]);
+        }
+        return i;
+    }
+
+    public final int writeString(Node node, String string, int offset) {
+        return writeString(node, string, offset, Integer.MAX_VALUE);
+    }
+
+    /**
+     * Returns the number of bytes needed to write {@code string} with {@link #writeString}.
+     *
+     * @param string the string to write
+     * @return the number of bytes needed to write {@code string}
+     */
+    @CompilerDirectives.TruffleBoundary
+    public static int encodedStringLength(String string) {
+        return string.getBytes(StandardCharsets.UTF_8).length;
+    }
 
     long[] view(int address, int length) {
         long[] chunk = new long[length / 8];

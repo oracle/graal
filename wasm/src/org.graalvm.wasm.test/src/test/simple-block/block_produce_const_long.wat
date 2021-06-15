@@ -40,10 +40,10 @@
 ;;
 (module
     (func (export "_main") (result i64)
-        block $B0 (result i32)
-            i32.const 0x80000000
+        block $B0 (result i64)
+            i64.const 0x80000000
         end
-        i32.const 0x80000001
+        i64.const 0x80000001
         i64.add
     )
 )

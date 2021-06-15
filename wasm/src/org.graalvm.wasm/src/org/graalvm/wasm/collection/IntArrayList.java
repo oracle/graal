@@ -41,7 +41,7 @@
 package org.graalvm.wasm.collection;
 
 public final class IntArrayList {
-    private static final int[] EMPTY_INT_ARRAY = new int[0];
+    public static final int[] EMPTY_INT_ARRAY = new int[0];
 
     private int[] array;
     private int offset;

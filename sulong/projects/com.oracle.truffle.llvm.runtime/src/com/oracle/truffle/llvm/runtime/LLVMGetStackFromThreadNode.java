@@ -33,6 +33,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -59,7 +60,7 @@ public abstract class LLVMGetStackFromThreadNode extends LLVMNode {
      * @param currentThread
      * @see #executeWithTarget(LLVMThreadingStack, Thread)
      */
-    @Specialization(limit = "3", guards = "currentThread == cachedThread")
+    @Specialization(limit = "3", guards = "currentThread == cachedThread", assumptions = "singleContextAssumption()")
     protected LLVMStack cached(LLVMThreadingStack stack, Thread currentThread,
                     @Cached("currentThread") @SuppressWarnings("unused") Thread cachedThread,
                     @Cached("getStack(stack, cachedThread)") LLVMStack cachedStack) {
@@ -71,7 +72,8 @@ public abstract class LLVMGetStackFromThreadNode extends LLVMNode {
      * @see #executeWithTarget(LLVMThreadingStack, Thread)
      */
     @Specialization(replaces = "cached")
-    static LLVMStack generic(LLVMThreadingStack stack, Thread currentThread) {
-        return stack.getStack();
+    static LLVMStack generic(LLVMThreadingStack stack, Thread currentThread,
+                    @Cached ConditionProfile profile) {
+        return stack.getStackProfiled(currentThread, profile);
     }
 }

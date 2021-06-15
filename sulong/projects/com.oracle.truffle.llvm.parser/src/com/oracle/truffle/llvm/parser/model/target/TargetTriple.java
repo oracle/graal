@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -37,7 +37,8 @@ public final class TargetTriple implements TargetInformation {
         this.triple = triple;
     }
 
-    public String getTriple() {
+    @Override
+    public String toString() {
         return triple;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -51,7 +51,7 @@ public class AssumptionPartialEvaluationTest extends PartialEvaluationTest {
         Assumption assumption = Truffle.getRuntime().createAssumption();
         AbstractTestNode result = new ConstantWithAssumptionTestNode(assumption, 42);
         RootTestNode rootNode = new RootTestNode(new FrameDescriptor(), "constantValue", result);
-        OptimizedCallTarget callTarget = assertPartialEvalEquals("constant42", rootNode);
+        OptimizedCallTarget callTarget = assertPartialEvalEquals(AssumptionPartialEvaluationTest::constant42, rootNode);
         Assert.assertTrue(callTarget.isValid());
         assertDeepEquals(42, callTarget.call());
         Assert.assertTrue(callTarget.isValid());
@@ -90,7 +90,7 @@ public class AssumptionPartialEvaluationTest extends PartialEvaluationTest {
         boolean valid = true;
 
         @Override
-        public void invalidate() {
+        public void onAssumptionInvalidated(Object source, CharSequence reason) {
             valid = false;
         }
 
@@ -119,7 +119,7 @@ public class AssumptionPartialEvaluationTest extends PartialEvaluationTest {
         int invalidated = 0;
         for (int i = 0; i < deps.length; i++) {
             if (i % 2 == 0) {
-                deps[i].invalidate();
+                deps[i].onAssumptionInvalidated(assumption, null);
                 invalidated++;
             }
         }
@@ -127,7 +127,7 @@ public class AssumptionPartialEvaluationTest extends PartialEvaluationTest {
         Assert.assertEquals(invalidated, assumption.countDependencies());
 
         for (int i = 0; i < deps.length; i++) {
-            deps[i].invalidate();
+            deps[i].onAssumptionInvalidated(assumption, null);
         }
         assumption.removeInvalidDependencies();
         Assert.assertEquals(0, assumption.countDependencies());

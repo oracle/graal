@@ -55,9 +55,15 @@ public final class ClassInitializationInfo {
 
     /**
      * Singleton for classes that are already initialized during image building and do not need
-     * class initialization at runtime.
+     * class initialization at runtime, but have {@code <clinit>} methods.
      */
-    public static final ClassInitializationInfo INITIALIZED_INFO_SINGLETON = new ClassInitializationInfo(InitState.FullyInitialized);
+    public static final ClassInitializationInfo INITIALIZED_INFO_SINGLETON = new ClassInitializationInfo(InitState.FullyInitialized, true);
+
+    /**
+     * Singleton for classes that are already initialized during image building and do not need
+     * class initialization at runtime, and don't have {@code <clinit>} methods.
+     */
+    public static final ClassInitializationInfo NO_INITIALIZER_INFO_SINGLETON = new ClassInitializationInfo(InitState.FullyInitialized, false);
 
     /** Singleton for classes that failed to link during image building. */
     public static final ClassInitializationInfo FAILED_INFO_SINGLETON = new ClassInitializationInfo(InitState.InitializationError);
@@ -124,11 +130,24 @@ public final class ClassInitializationInfo {
      */
     private Condition initCondition;
 
+    /**
+     * Indicates if the class has a {@code <clinit>} method, no matter if it should be initialized
+     * at native image's build time or run time.
+     */
+    private boolean hasInitializer;
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private ClassInitializationInfo(InitState initState, boolean hasInitializer) {
+        this(initState);
+        this.hasInitializer = hasInitializer;
+    }
+
     @Platforms(Platform.HOSTED_ONLY.class)
     private ClassInitializationInfo(InitState initState) {
         this.classInitializer = null;
         this.initState = initState;
         this.initLock = initState == InitState.FullyInitialized ? null : new ReentrantLock();
+        this.hasInitializer = true;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -136,6 +155,11 @@ public final class ClassInitializationInfo {
         this.classInitializer = classInitializer == null || classInitializer.isNull() ? null : new ClassInitializerFunctionPointerHolder(classInitializer);
         this.initState = InitState.Linked;
         this.initLock = new ReentrantLock();
+        this.hasInitializer = classInitializer != null;
+    }
+
+    public boolean hasInitializer() {
+        return hasInitializer;
     }
 
     public boolean isInitialized() {

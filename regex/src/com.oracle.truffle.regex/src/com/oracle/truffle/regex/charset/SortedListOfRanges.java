@@ -596,6 +596,28 @@ public interface SortedListOfRanges extends CharacterSet {
     }
 
     /**
+     * Converts {@code target} to the intersection of {@code a} and {@code b}.
+     */
+    static void intersect(SortedListOfRanges a, SortedListOfRanges b, RangesBuffer target) {
+        target.clear();
+        for (int ia = 0; ia < a.size(); ia++) {
+            int search = b.binarySearch(a.getLo(ia));
+            if (b.binarySearchExactMatch(search, a, ia)) {
+                a.addRangeTo(target, ia);
+                continue;
+            }
+            int firstIntersection = b.binarySearchGetFirstIntersecting(search, a, ia);
+            for (int ib = firstIntersection; ib < b.size(); ib++) {
+                if (b.rightOf(ib, a, ia)) {
+                    break;
+                }
+                assert a.intersects(ia, b, ib);
+                target.appendRange(Math.max(a.getLo(ia), b.getLo(ib)), Math.min(a.getHi(ia), b.getHi(ib)));
+            }
+        }
+    }
+
+    /**
      * Returns {@code true} if this list is empty.
      */
     default boolean matchesNothing() {

@@ -43,6 +43,7 @@ package com.oracle.truffle.regex.charset;
 import java.util.Iterator;
 
 import com.oracle.truffle.regex.tregex.buffer.IntRangesBuffer;
+import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 
 public class CodePointSetAccumulator implements Iterable<Range> {
 
@@ -67,6 +68,10 @@ public class CodePointSetAccumulator implements Iterable<Range> {
         acc.addRange(lo, hi);
     }
 
+    public void addCodePoint(int cp) {
+        addRange(cp, cp);
+    }
+
     public void appendRange(Range r) {
         appendRange(r.lo, r.hi);
     }
@@ -75,7 +80,7 @@ public class CodePointSetAccumulator implements Iterable<Range> {
         acc.appendRange(lo, hi);
     }
 
-    public void addSet(CodePointSet set) {
+    public void addSet(SortedListOfRanges set) {
         IntRangesBuffer t = getTmp();
         tmp = acc;
         acc = t;
@@ -101,6 +106,29 @@ public class CodePointSetAccumulator implements Iterable<Range> {
 
     public CodePointSet toCodePointSet() {
         return CodePointSet.create(acc);
+    }
+
+    public void invert(CodePointSetAccumulator target, Encoding encoding) {
+        if (acc.isEmpty()) {
+            target.addRange(encoding.getMinValue(), encoding.getMaxValue());
+            return;
+        }
+        if (acc.getMin() > encoding.getMinValue()) {
+            target.addRange(encoding.getMinValue(), acc.getMin() - 1);
+        }
+        for (int i = 1; i < acc.size(); i++) {
+            target.addRange(acc.getHi(i - 1) + 1, acc.getLo(i) - 1);
+        }
+        if (acc.getMax() < encoding.getMaxValue()) {
+            target.addRange(acc.getMax() + 1, encoding.getMaxValue());
+        }
+    }
+
+    public void intersectWith(SortedListOfRanges other) {
+        IntRangesBuffer t = getTmp();
+        tmp = acc;
+        acc = t;
+        SortedListOfRanges.intersect(tmp, other, acc);
     }
 
     @Override

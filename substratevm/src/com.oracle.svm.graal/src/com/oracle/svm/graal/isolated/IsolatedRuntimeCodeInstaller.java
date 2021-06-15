@@ -52,23 +52,29 @@ public final class IsolatedRuntimeCodeInstaller extends RuntimeCodeInstaller {
      * compilation result in the {@linkplain IsolatedCompileClient compilation client's} isolate.
      */
     public static ClientHandle<SubstrateInstalledCode> installInClientIsolate(ImageHeapRef<SubstrateMethod> methodRef, CompilationResult compilationResult,
-                    ClientHandle<? extends SubstrateInstalledCode.Access> installedCodeAccessHandle) {
+                    ClientHandle<? extends SubstrateInstalledCode.Factory> installedCodeFactoryHandle) {
         SubstrateMethod method = ImageHeapObjects.deref(methodRef);
         ClientIsolateThread clientIsolate = IsolatedCompileContext.get().getClient();
         CodeInstallInfo installInfo = new IsolatedRuntimeCodeInstaller(clientIsolate, method, compilationResult).doPrepareInstall();
-        return installInClientIsolate0(clientIsolate, methodRef, installInfo, installedCodeAccessHandle);
+        return installInClientIsolate0(clientIsolate, methodRef, installInfo, installedCodeFactoryHandle);
     }
 
     @CEntryPoint
     @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
     private static ClientHandle<SubstrateInstalledCode> installInClientIsolate0(@SuppressWarnings("unused") @CEntryPoint.IsolateThreadContext ClientIsolateThread isolate,
-                    ImageHeapRef<SubstrateMethod> methodRef, CodeInstallInfo installInfo, ClientHandle<? extends SubstrateInstalledCode.Access> installedCodeAccessHandle) {
+                    ImageHeapRef<SubstrateMethod> methodRef, CodeInstallInfo installInfo, ClientHandle<? extends SubstrateInstalledCode.Factory> installedCodeFactoryHandle) {
 
         SubstrateMethod method = ImageHeapObjects.deref(methodRef);
-        SubstrateInstalledCode.Access installedCodeAccess = IsolatedCompileClient.get().unhand(installedCodeAccessHandle);
+        return installMethodCodeInClientIsolate(installInfo, installedCodeFactoryHandle, method);
+    }
+
+    private static ClientHandle<SubstrateInstalledCode> installMethodCodeInClientIsolate(CodeInstallInfo installInfo,
+                    ClientHandle<? extends SubstrateInstalledCode.Factory> installedCodeFactoryHandle, SharedRuntimeMethod method) {
+
+        SubstrateInstalledCode.Factory installedCodeFactory = IsolatedCompileClient.get().unhand(installedCodeFactoryHandle);
         SubstrateInstalledCode installedCode;
-        if (installedCodeAccess != null) {
-            installedCode = installedCodeAccess.getSubstrateInstalledCode();
+        if (installedCodeFactory != null) {
+            installedCode = installedCodeFactory.createSubstrateInstalledCode();
         } else {
             installedCode = new SubstrateInstalledCodeImpl(method);
         }
@@ -78,27 +84,19 @@ public final class IsolatedRuntimeCodeInstaller extends RuntimeCodeInstaller {
 
     public static ClientHandle<SubstrateInstalledCode> installInClientIsolate(SharedRuntimeMethod compilerMethod,
                     ClientHandle<? extends SharedRuntimeMethod> clientMethodHandle, CompilationResult compilationResult,
-                    ClientHandle<? extends SubstrateInstalledCode.Access> installedCodeAccessHandle) {
+                    ClientHandle<? extends SubstrateInstalledCode.Factory> installedCodeFactoryHandle) {
         ClientIsolateThread clientIsolate = IsolatedCompileContext.get().getClient();
         CodeInstallInfo installInfo = new IsolatedRuntimeCodeInstaller(clientIsolate, compilerMethod, compilationResult).doPrepareInstall();
-        return installInClientIsolate1(clientIsolate, clientMethodHandle, installInfo, installedCodeAccessHandle);
+        return installInClientIsolate1(clientIsolate, clientMethodHandle, installInfo, installedCodeFactoryHandle);
     }
 
     @CEntryPoint
     @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
     private static ClientHandle<SubstrateInstalledCode> installInClientIsolate1(@SuppressWarnings("unused") @CEntryPoint.IsolateThreadContext ClientIsolateThread isolate,
-                    ClientHandle<? extends SharedRuntimeMethod> methodHandle, CodeInstallInfo installInfo, ClientHandle<? extends SubstrateInstalledCode.Access> installedCodeAccessHandle) {
+                    ClientHandle<? extends SharedRuntimeMethod> methodHandle, CodeInstallInfo installInfo, ClientHandle<? extends SubstrateInstalledCode.Factory> installedCodeFactoryHandle) {
 
         SharedRuntimeMethod method = IsolatedCompileClient.get().unhand(methodHandle);
-        SubstrateInstalledCode.Access installedCodeAccess = IsolatedCompileClient.get().unhand(installedCodeAccessHandle);
-        SubstrateInstalledCode installedCode;
-        if (installedCodeAccess != null) {
-            installedCode = installedCodeAccess.getSubstrateInstalledCode();
-        } else {
-            installedCode = new SubstrateInstalledCodeImpl(method);
-        }
-        installPrepared(method, installInfo, installedCode);
-        return IsolatedCompileClient.get().hand(installedCode);
+        return installMethodCodeInClientIsolate(installInfo, installedCodeFactoryHandle, method);
     }
 
     @SuppressWarnings("try")

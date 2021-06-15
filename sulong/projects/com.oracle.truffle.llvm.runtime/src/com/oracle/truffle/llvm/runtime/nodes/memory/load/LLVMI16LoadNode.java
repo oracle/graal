@@ -38,14 +38,47 @@ import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI16LoadNodeGen.LLVMI16OffsetLoadNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-@GenerateUncached
 public abstract class LLVMI16LoadNode extends LLVMLoadNode {
 
     public static LLVMI16LoadNode create() {
         return LLVMI16LoadNodeGen.create((LLVMExpressionNode) null);
+    }
+
+    public abstract short executeWithTarget(Object address);
+
+    @GenerateUncached
+    public abstract static class LLVMI16OffsetLoadNode extends LLVMOffsetLoadNode {
+
+        public static LLVMI16OffsetLoadNode create() {
+            return LLVMI16OffsetLoadNodeGen.create();
+        }
+
+        public abstract short executeWithTarget(LLVMPointer receiver, long offset);
+
+        @Specialization(guards = "!isAutoDerefHandle(language, addr)")
+        protected short doShortNative(LLVMNativePointer addr, long offset,
+                        @CachedLanguage LLVMLanguage language) {
+            return language.getLLVMMemory().getI16(this, addr.asNative() + offset);
+        }
+
+        @Specialization(guards = "isAutoDerefHandle(language, addr)")
+        protected short doShortDerefHandle(LLVMNativePointer addr, long offset,
+                        @Cached LLVMDerefHandleGetReceiverNode getReceiver,
+                        @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
+                        @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) {
+            return doShortManaged(getReceiver.execute(addr), offset, nativeRead);
+        }
+
+        @Specialization(limit = "3")
+        protected short doShortManaged(LLVMManagedPointer addr, long offset,
+                        @CachedLibrary("addr.getObject()") LLVMManagedReadLibrary nativeRead) {
+            return nativeRead.readI16(addr.getObject(), addr.getOffset() + offset);
+        }
     }
 
     @Specialization(guards = "!isAutoDerefHandle(language, addr)")

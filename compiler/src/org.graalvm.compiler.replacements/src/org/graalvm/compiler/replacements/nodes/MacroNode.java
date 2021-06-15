@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -45,10 +45,10 @@ import org.graalvm.compiler.nodes.Invokable;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
+import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
-import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
@@ -159,6 +159,10 @@ public abstract class MacroNode extends FixedWithNextNode implements Lowerable, 
         assert method.getSignature().getParameterCount(!method.isStatic()) == args.length;
     }
 
+    public NodeInputList<ValueNode> getArguments() {
+        return arguments;
+    }
+
     public ValueNode getArgument(int i) {
         return arguments.get(i);
     }
@@ -220,8 +224,7 @@ public abstract class MacroNode extends FixedWithNextNode implements Lowerable, 
      */
     @SuppressWarnings("try")
     protected StructuredGraph lowerReplacement(final StructuredGraph replacementGraph, LoweringTool tool) {
-        final CoreProviders c = tool.getProviders();
-        if (!graph().hasValueProxies()) {
+        if (graph().isAfterStage(StageFlag.VALUE_PROXY_REMOVAL)) {
             new RemoveValueProxyPhase().apply(replacementGraph);
         }
         GuardsStage guardsStage = graph().getGuardsStage();
@@ -233,7 +236,7 @@ public abstract class MacroNode extends FixedWithNextNode implements Lowerable, 
         }
         DebugContext debug = replacementGraph.getDebug();
         try (DebugContext.Scope s = debug.scope("LoweringSnippetTemplate", replacementGraph)) {
-            new LoweringPhase(CanonicalizerPhase.create(), tool.getLoweringStage()).apply(replacementGraph, c);
+            new LoweringPhase(CanonicalizerPhase.create(), tool.getLoweringStage()).apply(replacementGraph, tool);
         } catch (Throwable e) {
             throw debug.handle(e);
         }

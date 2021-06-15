@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -207,6 +207,24 @@ public class TruffleExceptionTest extends AbstractPolyglotTest {
                         Pattern.quote("com.oracle.truffle.api.test.TruffleExceptionTest$TestRootNode.execute"),
                         "<proxyLanguage> test",
                         "(org.graalvm.sdk/)?org.graalvm.polyglot.Context.eval");
+    }
+
+    @Test
+    public void testExceptionFromCreateContext() {
+        String message = "Failed to create";
+        ExceptionType type = ExceptionType.EXIT;
+        assertFails(() -> setupEnv(Context.create(), new ProxyLanguage() {
+            @Override
+            protected LanguageContext createContext(Env env) {
+                throw new TruffleExceptionImpl(message, null, type, null);
+            }
+        }), PolyglotException.class, (pe) -> {
+            Assert.assertEquals(message, pe.getMessage());
+            Assert.assertTrue(pe.isExit());
+            Assert.assertFalse(pe.isInternalError());
+            Assert.assertEquals(0, pe.getExitStatus());
+            Assert.assertNull(pe.getGuestObject());
+        });
     }
 
     private void testStackTraceImpl(ProxyLanguage proxy, String... patterns) {

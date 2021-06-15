@@ -42,15 +42,25 @@ public interface CodeInfo extends UntetheredCodeInfo {
     /**
      * Indicates that the code is fully installed from the GC point of view, i.e., the GC must visit
      * the heap references that are directly embedded in the machine code.
+     *
+     * @see CodeInfoAccess#isAliveState
      */
     @DuplicatedInNativeCode //
     int STATE_CODE_CONSTANTS_LIVE = STATE_CREATED + 1;
+    /**
+     * Indicates that the code can no longer be newly invoked, so that if there are no activations
+     * remaining, this {@link CodeInfo} object can be freed.
+     *
+     * @see CodeInfoAccess#isAliveState
+     */
+    @DuplicatedInNativeCode //
+    int STATE_NON_ENTRANT = STATE_CODE_CONSTANTS_LIVE + 1;
     /**
      * This state is only possible when the VM is at a safepoint. It indicates that the GC will
      * invalidate and free this {@link CodeInfo} object during the current safepoint.
      */
     @DuplicatedInNativeCode //
-    int STATE_READY_FOR_INVALIDATION = STATE_CODE_CONSTANTS_LIVE + 1;
+    int STATE_READY_FOR_INVALIDATION = STATE_NON_ENTRANT + 1;
     /**
      * Indicates that this {@link CodeInfo} object was invalidated and parts of its data were freed.
      */
@@ -63,4 +73,5 @@ public interface CodeInfo extends UntetheredCodeInfo {
      */
     @DuplicatedInNativeCode //
     int STATE_UNREACHABLE = STATE_PARTIALLY_FREED + 1;
+
 }

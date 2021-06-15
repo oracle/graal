@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -58,6 +58,7 @@ import org.graalvm.compiler.nodes.type.NarrowOopStamp;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.DefaultJavaLoweringProvider;
+import org.graalvm.compiler.replacements.IsArraySnippets;
 import org.graalvm.compiler.replacements.SnippetCounter.Group;
 import org.graalvm.compiler.replacements.nodes.AssertionNode;
 import org.graalvm.nativeimage.Platform;
@@ -77,6 +78,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.core.snippets.SubstrateIsArraySnippets;
 
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.code.TargetDescription;
@@ -110,6 +112,7 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
                     SnippetReflectionProvider snippetReflection) {
         this.runtimeConfig = runtimeConfig;
         this.identityHashCodeSnippets = IdentityHashCodeSupport.createSnippetTemplates(options, factories, providers, target);
+        this.isArraySnippets = new IsArraySnippets.Templates(new SubstrateIsArraySnippets(), options, factories, providers, target);
         initialize(options, factories, Group.NullFactory, providers, snippetReflection);
     }
 
@@ -157,7 +160,7 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
     }
 
     @Override
-    protected ValueNode createReadArrayComponentHub(StructuredGraph graph, ValueNode arrayHub, FixedNode anchor) {
+    protected ValueNode createReadArrayComponentHub(StructuredGraph graph, ValueNode arrayHub, boolean isKnownObjectArray, FixedNode anchor) {
         ConstantNode componentHubOffset = ConstantNode.forIntegerKind(target.wordJavaKind, runtimeConfig.getComponentHubOffset(), graph);
         AddressNode componentHubAddress = graph.unique(new OffsetAddressNode(arrayHub, componentHubOffset));
         FloatingReadNode componentHubRef = graph.unique(new FloatingReadNode(componentHubAddress, NamedLocationIdentity.FINAL_LOCATION, null, hubStamp, null, BarrierType.NONE));

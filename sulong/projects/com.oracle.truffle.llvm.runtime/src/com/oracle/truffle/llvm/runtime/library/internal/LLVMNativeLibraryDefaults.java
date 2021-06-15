@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -116,12 +116,20 @@ abstract class LLVMNativeLibraryDefaults {
                 return LLVMNativePointer.createNull();
             }
 
-            @Specialization(guards = "!interop.isNull(receiver)")
+            @Specialization(guards = {"!interop.isNull(receiver)", "interop.isPointer(receiver)"}, rewriteOn = UnsupportedMessageException.class)
+            static LLVMNativePointer doAlreadyNative(Object receiver,
+                            @CachedLibrary("receiver") InteropLibrary interop) throws UnsupportedMessageException {
+                return LLVMNativePointer.create(interop.asPointer(receiver));
+            }
+
+            @Specialization(replaces = "doAlreadyNative", guards = "!interop.isNull(receiver)")
             static LLVMNativePointer doNotNull(Object receiver,
                             @CachedLibrary("receiver") InteropLibrary interop,
                             @Shared("exception") @Cached BranchProfile exceptionProfile) {
                 try {
-                    interop.toNative(receiver);
+                    if (!interop.isPointer(receiver)) {
+                        interop.toNative(receiver);
+                    }
                     return LLVMNativePointer.create(interop.asPointer(receiver));
                 } catch (UnsupportedMessageException ex) {
                     exceptionProfile.enter();

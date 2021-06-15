@@ -40,10 +40,6 @@
  */
 package org.graalvm.wasm.api;
 
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.library.ExportLibrary;
-
-@ExportLibrary(InteropLibrary.class)
 public class ModuleImportDescriptor extends Dictionary {
     private final String module;
     private final String name;

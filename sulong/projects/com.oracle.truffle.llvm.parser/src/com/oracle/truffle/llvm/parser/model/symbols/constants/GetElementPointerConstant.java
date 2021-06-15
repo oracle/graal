@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,23 +29,29 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.constants;
 
+import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
+import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
+import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
+import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
+import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class GetElementPointerConstant extends AbstractConstant {
 
     private final boolean isInbounds;
 
-    private SymbolImpl base;
+    private Constant base;
 
-    private final SymbolImpl[] indices;
+    private final Constant[] indices;
 
     private GetElementPointerConstant(Type type, boolean isInbounds, int size) {
         super(type);
         this.isInbounds = isInbounds;
-        indices = new SymbolImpl[size];
+        indices = new Constant[size];
     }
 
     @Override
@@ -68,11 +74,11 @@ public final class GetElementPointerConstant extends AbstractConstant {
     @Override
     public void replace(SymbolImpl original, SymbolImpl replacement) {
         if (base == original) {
-            base = replacement;
+            base = (Constant) replacement;
         }
         for (int i = 0; i < indices.length; i++) {
             if (indices[i] == original) {
-                indices[i] = replacement;
+                indices[i] = (Constant) replacement;
             }
         }
     }
@@ -80,10 +86,30 @@ public final class GetElementPointerConstant extends AbstractConstant {
     public static GetElementPointerConstant fromSymbols(SymbolTable symbols, Type type, int pointer, int[] indices, boolean isInbounds) {
         final GetElementPointerConstant constant = new GetElementPointerConstant(type, isInbounds, indices.length);
 
-        constant.base = symbols.getForwardReferenced(pointer, constant);
+        constant.base = (Constant) symbols.getForwardReferenced(pointer, constant);
         for (int i = 0; i < indices.length; i++) {
-            constant.indices[i] = symbols.getForwardReferenced(indices[i], constant);
+            constant.indices[i] = (Constant) symbols.getForwardReferenced(indices[i], constant);
         }
         return constant;
+    }
+
+    @Override
+    public LLVMExpressionNode createNode(LLVMParserRuntime runtime, DataLayout dataLayout, GetStackSpaceFactory stackFactory) {
+        LLVMExpressionNode[] indexNodes = new LLVMExpressionNode[indices.length];
+        Long[] indexConstants = new Long[indices.length];
+        Type[] indexTypes = new Type[indices.length];
+
+        for (int i = indices.length - 1; i >= 0; i--) {
+            Constant indexSymbol = indices[i];
+            indexConstants[i] = LLVMSymbolReadResolver.evaluateLongIntegerConstant(indexSymbol);
+            indexTypes[i] = indexSymbol.getType();
+            if (indexConstants[i] == null) {
+                indexNodes[i] = indexSymbol.createNode(runtime, dataLayout, stackFactory);
+            }
+        }
+
+        LLVMExpressionNode currentAddress = base.createNode(runtime, dataLayout, stackFactory);
+        Type currentType = base.getType();
+        return CommonNodeFactory.createNestedElementPointerNode(runtime.getNodeFactory(), dataLayout, indexNodes, indexConstants, indexTypes, currentAddress, currentType);
     }
 }

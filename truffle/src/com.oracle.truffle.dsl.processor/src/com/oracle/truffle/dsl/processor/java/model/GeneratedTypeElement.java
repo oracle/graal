@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,11 +45,15 @@ import java.util.Set;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.PackageElement;
+import javax.lang.model.type.TypeMirror;
 
 public final class GeneratedTypeElement extends CodeTypeElement {
 
-    public GeneratedTypeElement(Set<Modifier> modifiers, ElementKind kind, PackageElement packageElement, String simpleName) {
+    public GeneratedTypeElement(Set<Modifier> modifiers, ElementKind kind, PackageElement packageElement, String simpleName, TypeMirror superType) {
         super(modifiers, kind, packageElement, simpleName);
+        if (superType != null) {
+            setSuperClass(superType);
+        }
         setEnclosingElement(packageElement);
     }
 

@@ -188,7 +188,7 @@ final class PolyglotLimits {
                                 limit, actualCount);
                 boolean invalidated = context.invalidate(true, message);
                 if (invalidated) {
-                    context.close(context.creatorApi, true);
+                    context.close(true);
                     RuntimeException e = limits.notifyEvent(context);
                     if (e != null) {
                         throw e;
@@ -213,7 +213,6 @@ final class PolyglotLimits {
         };
 
         final PolyglotEngineImpl engine;
-        @CompilationFinal boolean timeLimitEnabled;
         @CompilationFinal long statementLimit = -1;
         @CompilationFinal Assumption sameStatementLimit;
         @CompilationFinal Predicate<Source> statementLimitSourcePredicate;
@@ -224,31 +223,33 @@ final class PolyglotLimits {
         }
 
         void validate(PolyglotLimits limits) {
-            Predicate<Source> newPredicate = limits != null ? limits.statementLimitSourcePredicate : null;
-            if (newPredicate == null) {
-                newPredicate = NO_PREDICATE;
+            if (limits != null && limits.statementLimit != 0) {
+                Predicate<Source> newPredicate = limits.statementLimitSourcePredicate;
+                if (newPredicate == null) {
+                    newPredicate = NO_PREDICATE;
+                }
+                if (this.statementLimitSourcePredicate != null && newPredicate != statementLimitSourcePredicate) {
+                    throw PolyglotEngineException.illegalArgument("Using multiple source predicates per engine is not supported. " +
+                                    "The same statement limit source predicate must be used for all polyglot contexts that are assigned to the same engine. " +
+                                    "Resolve this by using the same predicate instance when constructing the limits object with ResourceLimits.Builder.statementLimit(long, Predicate).");
+                }
             }
-            if (this.statementLimitSourcePredicate != null && newPredicate != statementLimitSourcePredicate) {
-                throw PolyglotEngineException.illegalArgument("Using multiple source predicates per engine is not supported. " +
-                                "The same statement limit source predicate must be used for all polyglot contexts that are assigned to the same engine. " +
-                                "Resolve this by using the same predicate instance when constructing the limits object with ResourceLimits.Builder.statementLimit(long, Predicate).");
-            }
-
         }
 
         void initialize(PolyglotLimits limits, PolyglotContextImpl context) {
             assert Thread.holdsLock(engine.lock);
-            Predicate<Source> newPredicate = limits.statementLimitSourcePredicate;
-            if (newPredicate == null) {
-                newPredicate = NO_PREDICATE;
-            }
-            if (this.statementLimitSourcePredicate == null) {
-                this.statementLimitSourcePredicate = newPredicate;
-            }
-            // ensured by validate
-            assert this.statementLimitSourcePredicate == newPredicate;
 
             if (limits.statementLimit != 0) {
+                Predicate<Source> newPredicate = limits.statementLimitSourcePredicate;
+                if (newPredicate == null) {
+                    newPredicate = NO_PREDICATE;
+                }
+                if (this.statementLimitSourcePredicate == null) {
+                    this.statementLimitSourcePredicate = newPredicate;
+                }
+                // ensured by validate
+                assert this.statementLimitSourcePredicate == newPredicate;
+
                 Assumption sameLimit = this.sameStatementLimit;
                 if (sameLimit != null && sameLimit.isValid() && limits.statementLimit != statementLimit) {
                     sameLimit.invalidate();
@@ -265,9 +266,9 @@ final class PolyglotLimits {
                             @Override
                             public boolean test(com.oracle.truffle.api.source.Source s) {
                                 try {
-                                    return statementLimitSourcePredicate.test(engine.getImpl().getOrCreatePolyglotSource(s));
+                                    return statementLimitSourcePredicate.test(PolyglotImpl.getOrCreatePolyglotSource(engine.getImpl(), s));
                                 } catch (Throwable e) {
-                                    throw PolyglotImpl.hostToGuestException(context, e);
+                                    throw context.engine.host.toHostException(context.getHostContextImpl(), e);
                                 }
                             }
                         });
@@ -296,10 +297,11 @@ final class PolyglotLimits {
             if (onEvent == null) {
                 return null;
             }
+            ResourceLimitEvent event = engine.getImpl().getAPIAccess().newResourceLimitsEvent(context.api);
             try {
-                onEvent.accept(engine.getImpl().getAPIAccess().newResourceLimitsEvent(context.creatorApi));
+                onEvent.accept(event);
             } catch (Throwable t) {
-                return PolyglotImpl.hostToGuestException(context, t);
+                throw context.engine.host.toHostException(context.getHostContextImpl(), t);
             }
             return null;
         }

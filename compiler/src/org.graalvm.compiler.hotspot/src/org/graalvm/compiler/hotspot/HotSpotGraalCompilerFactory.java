@@ -46,6 +46,7 @@ import jdk.vm.ci.hotspot.HotSpotJVMCICompilerFactory;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.meta.Signature;
+import jdk.vm.ci.runtime.JVMCICompilerFactory;
 import jdk.vm.ci.runtime.JVMCIRuntime;
 import jdk.vm.ci.services.Services;
 
@@ -72,11 +73,24 @@ public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFacto
      */
     private OptionValues options;
 
+    /**
+     * An exception thrown when {@linkplain HotSpotGraalOptionValues#defaultOptions() option
+     * parsing} fails. This will result in a call to {@link HotSpotGraalServices#exit}. Ideally,
+     * that would be done here but {@link JVMCICompilerFactory#onSelection()} does not pass in a
+     * {@link HotSpotJVMCIRuntime}.
+     */
+    private IllegalArgumentException optionsFailure;
+
     @Override
     public void onSelection() {
         JVMCIVersionCheck.check(Services.getSavedProperties(), false);
         assert options == null : "cannot select " + getClass() + " service more than once";
-        options = HotSpotGraalOptionValues.defaultOptions();
+        try {
+            options = HotSpotGraalOptionValues.defaultOptions();
+        } catch (IllegalArgumentException e) {
+            optionsFailure = e;
+            return;
+        }
         initializeGraalCompilePolicyFields(options);
         isGraalPredicate = compileGraalWithC1Only ? new IsGraalPredicate() : null;
         /*
@@ -108,6 +122,10 @@ public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFacto
     @Override
     public void printProperties(PrintStream out) {
         out.println("[Graal properties]");
+        if (optionsFailure != null) {
+            System.err.printf("Error parsing Graal options: %s%n", optionsFailure.getMessage());
+            return;
+        }
         options.printHelp(OptionsParser.getOptionsLoader(), out, GRAAL_OPTION_PROPERTY_PREFIX);
     }
 
@@ -127,9 +145,14 @@ public final class HotSpotGraalCompilerFactory extends HotSpotJVMCICompilerFacto
 
     @Override
     public HotSpotGraalCompiler createCompiler(JVMCIRuntime runtime) {
-        CompilerConfigurationFactory factory = CompilerConfigurationFactory.selectFactory(null, options);
+        HotSpotJVMCIRuntime hsRuntime = (HotSpotJVMCIRuntime) runtime;
+        if (optionsFailure != null) {
+            System.err.printf("Error parsing Graal options: %s%nError: A fatal exception has occurred. Program will exit.%n", optionsFailure.getMessage());
+            HotSpotGraalServices.exit(1, hsRuntime);
+        }
+        CompilerConfigurationFactory factory = CompilerConfigurationFactory.selectFactory(null, options, hsRuntime);
         if (isGraalPredicate != null) {
-            isGraalPredicate.onCompilerConfigurationFactorySelection((HotSpotJVMCIRuntime) runtime, factory);
+            isGraalPredicate.onCompilerConfigurationFactorySelection(hsRuntime, factory);
         }
         HotSpotGraalCompiler compiler = createCompiler("VM", runtime, options, factory);
         // Only the HotSpotGraalRuntime associated with the compiler created via

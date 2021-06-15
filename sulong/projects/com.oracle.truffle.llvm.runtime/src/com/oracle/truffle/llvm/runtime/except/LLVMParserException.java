@@ -29,10 +29,12 @@
  */
 package com.oracle.truffle.llvm.runtime.except;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.Node;
 
 /**
  * Exception during parsing of LLVM bitcode.
@@ -44,6 +46,11 @@ public class LLVMParserException extends LLVMException {
 
     public LLVMParserException(String message) {
         super(null, message);
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    public LLVMParserException(Node node, String message, Object... args) {
+        super(node, String.format(message, args));
     }
 
     @ExportMessage

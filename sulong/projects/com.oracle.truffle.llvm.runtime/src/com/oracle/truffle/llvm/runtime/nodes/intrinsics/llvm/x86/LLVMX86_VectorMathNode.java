@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,8 +28,6 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86;
-
-import java.util.function.IntPredicate;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
@@ -169,18 +167,23 @@ public abstract class LLVMX86_VectorMathNode {
             _CMP_GT_OQ(0x1e, cmp -> cmp > 0, true, false),
             _CMP_TRUE_US(0x1f, cmp -> true, false, true);
 
-            IntPredicate pred;
+            ComparatorPredicate pred;
             boolean ordered;
 
             // TODO: how do we map signaling behavior?
             boolean signaling;
 
             // Parameter i kept to document matching to intrinsic definition
-            Comparator(@SuppressWarnings("unused") int i, IntPredicate pred, boolean ordered, boolean signaling) {
+            Comparator(@SuppressWarnings("unused") int i, ComparatorPredicate pred, boolean ordered, boolean signaling) {
                 this.pred = pred;
                 this.ordered = ordered;
                 this.signaling = signaling;
             }
+        }
+
+        @FunctionalInterface
+        interface ComparatorPredicate {
+            boolean test(int value);
         }
 
         protected static final int cmpCnt = Comparator.values().length;

@@ -27,6 +27,8 @@
 
 package com.oracle.svm.core;
 
+import com.oracle.svm.core.heap.ReferenceInternals;
+
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 import java.util.AbstractCollection;
@@ -164,7 +166,7 @@ import java.util.function.Consumer;
  * <li>Copying in the declarations of {@link #keySet} and {@link #values}
  *     from {@link AbstractMap}, which are otherwise package-private.</li>
  * <li>Changing {@link #hash(Object)} to use {@link System#identityHashCode(Object)}.</li>
- * <li>Changing {@link #eq(Object, Object)} to compare objects with reference equality.</li>
+ * <li>Changing {@link #entryKeyIs(Entry, Object)} to compare objects with reference equality.</li>
  * <li>Changing {@link Entry#hashCode()} to use {@link System#identityHashCode(Object)}
  *     to contribute to the hash code of an {@link Entry}.</li>
  * <li>Changing {@link Entry#equals(Object)} to compare keys using reference equality
@@ -324,11 +326,10 @@ public class WeakIdentityHashMap<K,V>
     }
 
     /**
-     * Checks for equality of non-null reference x and possibly-null y.  By
-     * default uses Object.equals.
+     * Checks for equality of possibly-null reference x and non-null object y.
      */
-    private static boolean eq(Object x, Object y) {
-        return x == y;
+    private static boolean entryKeyIs(Entry<?,?> x, Object y) {
+        return ReferenceInternals.refersTo(x, y);
     }
 
     /**
@@ -442,7 +443,7 @@ public class WeakIdentityHashMap<K,V>
         int index = indexFor(h, tab.length);
         Entry<K,V> e = tab[index];
         while (e != null) {
-            if (e.hash == h && eq(k, e.get()))
+            if (e.hash == h && entryKeyIs(e, k))
                 return e.value;
             e = e.next;
         }
@@ -471,7 +472,7 @@ public class WeakIdentityHashMap<K,V>
         Entry<K,V>[] tab = getTable();
         int index = indexFor(h, tab.length);
         Entry<K,V> e = tab[index];
-        while (e != null && !(e.hash == h && eq(k, e.get())))
+        while (e != null && !(e.hash == h && entryKeyIs(e, k)))
             e = e.next;
         return e;
     }
@@ -495,7 +496,7 @@ public class WeakIdentityHashMap<K,V>
         int i = indexFor(h, tab.length);
 
         for (Entry<K,V> e = tab[i]; e != null; e = e.next) {
-            if (h == e.hash && eq(k, e.get())) {
+            if (h == e.hash && entryKeyIs(e, k)) {
                 V oldValue = e.value;
                 if (value != oldValue)
                     e.value = value;
@@ -640,7 +641,7 @@ public class WeakIdentityHashMap<K,V>
 
         while (e != null) {
             Entry<K,V> next = e.next;
-            if (h == e.hash && eq(k, e.get())) {
+            if (h == e.hash && entryKeyIs(e, k)) {
                 modCount++;
                 size--;
                 if (prev == e)

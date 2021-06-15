@@ -25,6 +25,7 @@
 package com.oracle.svm.graal.meta;
 
 import org.graalvm.compiler.core.common.CompressEncoding;
+import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.word.BarrieredAccess;
 import org.graalvm.compiler.word.Word;
@@ -124,7 +125,7 @@ public final class SubstrateMemoryAccessProviderImpl implements SubstrateMemoryA
         }
 
         if (type.isArray()) {
-            int length = KnownIntrinsics.readArrayLength(object);
+            int length = ArrayLengthNode.arrayLength(object);
             if (length < 1) {
                 throw new IllegalArgumentException("Unsafe array access: reading element of kind " + kind +
                                 " at offset " + displacement + " from zero-sized array " +

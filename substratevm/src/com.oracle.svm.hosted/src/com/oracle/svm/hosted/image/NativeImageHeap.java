@@ -243,7 +243,7 @@ public final class NativeImageHeap implements ImageHeap {
          * fields manually.
          */
         for (HostedField field : getUniverse().getFields()) {
-            if (Modifier.isStatic(field.getModifiers()) && field.hasLocation() && field.getType().getStorageKind() == JavaKind.Object) {
+            if (Modifier.isStatic(field.getModifiers()) && field.hasLocation() && field.getType().getStorageKind() == JavaKind.Object && field.isRead()) {
                 assert field.isWritten() || MaterializedConstantFields.singleton().contains(field.wrapped);
                 addObject(readObjectField(field, null), false, field);
             }
@@ -292,7 +292,7 @@ public final class NativeImageHeap implements ImageHeap {
 
         final ObjectInfo existing = objects.get(original);
         if (existing == null) {
-            addObjectToBootImageHeap(original, immutableFromParent, identityHashCode, reason);
+            addObjectToImageHeap(original, immutableFromParent, identityHashCode, reason);
         }
     }
 
@@ -362,7 +362,7 @@ public final class NativeImageHeap implements ImageHeap {
      * This is the mechanics of recursively adding the object and all its fields and array elements
      * to the model of the native image heap.
      */
-    private void addObjectToBootImageHeap(final Object object, boolean immutableFromParent, final int identityHashCode, final Object reason) {
+    private void addObjectToImageHeap(final Object object, boolean immutableFromParent, final int identityHashCode, final Object reason) {
 
         final Optional<HostedType> optionalType = getMetaAccess().optionalLookupJavaType(object.getClass());
         final HostedType type = requireType(optionalType, object, reason);
@@ -385,7 +385,6 @@ public final class NativeImageHeap implements ImageHeap {
 
             final JavaConstant con = SubstrateObjectConstant.forObject(object);
             HostedField hybridTypeIDSlotsField = null;
-            HostedField hybridBitsetField = null;
             HostedField hybridArrayField = null;
             Object hybridArray = null;
             final long size;
@@ -399,31 +398,22 @@ public final class NativeImageHeap implements ImageHeap {
 
                 /*
                  * The hybrid array, bit set, and typeID array are written within the hybrid object.
-                 * So they may not be written as separate objects. We use the blacklist to check
-                 * that.
+                 * If the hybrid object declares that they can never be duplicated, i.e. written as
+                 * a separate object, we ensure that they never are duplicated. We use the blacklist
+                 * to check that.
                  */
-                boolean containsTypeIDSlot = false;
+                boolean shouldBlacklist = !HybridLayout.canHybridFieldsBeDuplicated(clazz);
                 hybridTypeIDSlotsField = hybridLayout.getTypeIDSlotsField();
-                if (hybridTypeIDSlotsField != null) {
+                if (hybridTypeIDSlotsField != null && shouldBlacklist) {
                     Object typeIDSlots = readObjectField(hybridTypeIDSlotsField, con);
                     if (typeIDSlots != null) {
                         blacklist.add(typeIDSlots);
-                        containsTypeIDSlot = true;
-                    }
-                }
-
-                hybridBitsetField = hybridLayout.getBitsetField();
-                if (hybridBitsetField != null) {
-                    Object bitSet = readObjectField(hybridBitsetField, con);
-                    if (bitSet != null) {
-                        blacklist.add(bitSet);
-                        VMError.guarantee(!containsTypeIDSlot, "Hub cannot contain both a bitset and typeID slots.");
                     }
                 }
 
                 hybridArrayField = hybridLayout.getArrayField();
                 hybridArray = readObjectField(hybridArrayField, con);
-                if (hybridArray != null) {
+                if (hybridArray != null && shouldBlacklist) {
                     blacklist.add(hybridArray);
                     written = true;
                 }
@@ -439,11 +429,10 @@ public final class NativeImageHeap implements ImageHeap {
                 // Recursively add all the fields of the object.
                 final boolean fieldsAreImmutable = object instanceof String;
                 for (HostedField field : clazz.getInstanceFields(true)) {
-                    if (field.isInImageHeap() &&
+                    boolean fieldRelocatable = false;
+                    if (field.isRead() &&
                                     !field.equals(hybridArrayField) &&
-                                    !field.equals(hybridBitsetField) &&
                                     !field.equals(hybridTypeIDSlotsField)) {
-                        boolean fieldRelocatable = false;
                         if (field.getJavaKind() == JavaKind.Object) {
                             assert field.hasLocation();
                             JavaConstant fieldValueConstant = field.readValue(con);
@@ -462,9 +451,8 @@ public final class NativeImageHeap implements ImageHeap {
                          * be inlined. Relocatable pointers are read-only for our purposes, however.
                          */
                         relocatable = relocatable || fieldRelocatable;
-                        written = written || (field.isWritten() && !field.isFinal() && !fieldRelocatable);
                     }
-
+                    written = written || (field.isWritten() && !field.isFinal() && !fieldRelocatable);
                 }
                 if (hybridArray instanceof Object[]) {
                     relocatable = addArrayElements((Object[]) hybridArray, relocatable, info);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,7 +46,6 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
-import org.graalvm.compiler.nodes.java.ClassIsAssignableFromNode;
 import org.graalvm.compiler.nodes.java.InstanceOfDynamicNode;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
@@ -84,7 +83,7 @@ public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
     protected abstract Arguments makeArguments(InstanceOfUsageReplacer replacer, LoweringTool tool);
 
     public void lower(FloatingNode instanceOf, LoweringTool tool) {
-        assert instanceOf instanceof InstanceOfNode || instanceOf instanceof InstanceOfDynamicNode || instanceOf instanceof ClassIsAssignableFromNode;
+        assert instanceOf instanceof LogicNode;
         List<Node> usages = instanceOf.usages().snapshot();
 
         Instantiation instantiation = new Instantiation();
@@ -219,7 +218,6 @@ public abstract class InstanceOfSnippetsTemplates extends AbstractTemplates {
         public final ValueNode falseValue;
 
         public InstanceOfUsageReplacer(Instantiation instantiation, FloatingNode instanceOf, ValueNode trueValue, ValueNode falseValue) {
-            assert instanceOf instanceof InstanceOfNode || instanceOf instanceof InstanceOfDynamicNode || instanceOf instanceof ClassIsAssignableFromNode;
             this.instantiation = instantiation;
             this.instanceOf = instanceOf;
             this.trueValue = trueValue;

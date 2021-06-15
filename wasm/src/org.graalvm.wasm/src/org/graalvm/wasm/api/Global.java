@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -76,7 +76,7 @@ public class Global extends Dictionary {
 
     public void set(Object value) {
         if (!mutable) {
-            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Global is not mutable.");
+            throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Global is not mutable.");
         }
         setInternal(value);
     }
@@ -85,25 +85,25 @@ public class Global extends Dictionary {
         switch (valueType) {
             case i32:
                 if (!(value instanceof Integer)) {
-                    throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Global type " + valueType + ", value: " + value);
+                    throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Global type %s, value: %s", valueType, value);
                 }
                 this.value = value;
                 break;
             case i64:
                 if (!(value instanceof Long)) {
-                    throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Global type " + valueType + ", value: " + value);
+                    throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Global type %s, value: %s", valueType, value);
                 }
                 this.value = value;
                 break;
             case f32:
                 if (!(value instanceof Float)) {
-                    throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Global type " + valueType + ", value: " + value);
+                    throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Global type %s, value: %s", valueType, value);
                 }
                 this.value = value;
                 break;
             case f64:
                 if (!(value instanceof Double)) {
-                    throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Global type " + valueType + ", value: " + value);
+                    throw WasmJsApiException.format(WasmJsApiException.Kind.TypeError, "Global type %s, value: %s", valueType, value);
                 }
                 this.value = value;
                 break;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,12 +36,12 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.NodeIntrinsicFactory;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.spi.Canonicalizable;
-import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.memory.ReadNode;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.spi.ValueProxy;
@@ -340,7 +340,7 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
         }
 
         private PlaceholderStamp() {
-            super(null, false, false, false);
+            super(null, false, false, false, false);
         }
 
         @Override

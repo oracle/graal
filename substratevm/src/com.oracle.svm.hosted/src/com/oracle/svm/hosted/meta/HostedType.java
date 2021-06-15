@@ -28,7 +28,6 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.lang.annotation.Annotation;
 import java.util.Arrays;
-import java.util.BitSet;
 
 import org.graalvm.word.WordBase;
 
@@ -64,23 +63,7 @@ public abstract class HostedType implements SharedType, WrappedJavaType, Compara
 
     protected HostedMethod[] vtable;
 
-    /**
-     * @see SharedType#getInstanceOfFromTypeID()
-     */
-    protected int instanceOfFromTypeID;
-
-    /**
-     * @see SharedType#getInstanceOfNumTypeIDs()
-     */
-    protected int instanceOfNumTypeIDs;
-
-    /**
-     * Bits for instanceof checks. See {@link DynamicHub}.instanceOfBits.
-     */
-    protected BitSet instanceOfBits;
-
     protected int typeID;
-    protected int[] assignableFromMatches;
     protected HostedType uniqueConcreteImplementation;
     protected HostedMethod[] allDeclaredMethods;
 
@@ -131,11 +114,6 @@ public abstract class HostedType implements SharedType, WrappedJavaType, Compara
         return strengthenStampType;
     }
 
-    public void setInstanceOfRange(int instanceOfFromTypeID, int instanceOfNumTypeIDs) {
-        this.instanceOfFromTypeID = instanceOfFromTypeID;
-        this.instanceOfNumTypeIDs = instanceOfNumTypeIDs;
-    }
-
     public HostedType[] getSubTypes() {
         assert subTypes != null;
         return subTypes;
@@ -149,11 +127,6 @@ public abstract class HostedType implements SharedType, WrappedJavaType, Compara
     public int getTypeID() {
         assert typeID != -1;
         return typeID;
-    }
-
-    public int[] getAssignableFromMatches() {
-        assert assignableFromMatches != null;
-        return assignableFromMatches;
     }
 
     public void setTypeCheckRange(short typeCheckStart, short typeCheckRange) {
@@ -211,16 +184,6 @@ public abstract class HostedType implements SharedType, WrappedJavaType, Compara
     @Override
     public DynamicHub getHub() {
         return universe.hostVM().dynamicHub(wrapped);
-    }
-
-    @Override
-    public int getInstanceOfFromTypeID() {
-        return instanceOfFromTypeID;
-    }
-
-    @Override
-    public int getInstanceOfNumTypeIDs() {
-        return instanceOfNumTypeIDs;
     }
 
     @Override

@@ -24,12 +24,14 @@
  */
 package com.oracle.svm.core.thread;
 
+import com.oracle.svm.core.annotate.TargetElement;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.NotLoomJDK;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -37,11 +39,14 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 @TargetClass(ThreadGroup.class)
 final class Target_java_lang_ThreadGroup {
 
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadGroupNUnstartedThreadsRecomputation.class)//
+    @Alias @TargetElement(onlyWith = NotLoomJDK.class)//
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadGroupNUnstartedThreadsRecomputation.class)//
     private int nUnstartedThreads;
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadGroupNThreadsRecomputation.class)//
+    @Alias @TargetElement(onlyWith = NotLoomJDK.class)//
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadGroupNThreadsRecomputation.class)//
     private int nthreads;
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadGroupThreadsRecomputation.class)//
+    @Alias @TargetElement(onlyWith = NotLoomJDK.class)//
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadGroupThreadsRecomputation.class)//
     private Thread[] threads;
 
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadGroupNGroupsRecomputation.class)//
@@ -50,9 +55,11 @@ final class Target_java_lang_ThreadGroup {
     private ThreadGroup[] groups;
 
     @Alias
+    @TargetElement(onlyWith = NotLoomJDK.class)//
     native void addUnstarted();
 
     @Alias
+    @TargetElement(onlyWith = NotLoomJDK.class)//
     native void add(Thread t);
 }
 

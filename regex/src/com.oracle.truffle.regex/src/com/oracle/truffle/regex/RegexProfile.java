@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.regex;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
+import com.oracle.truffle.regex.tregex.nodes.TRegexExecNode;
 import com.oracle.truffle.regex.tregex.parser.Counter;
 
 /**
@@ -50,7 +51,7 @@ import com.oracle.truffle.regex.tregex.parser.Counter;
  * profiling information is used by TRegex for deciding whether a regular expression should match
  * capture groups in a lazy or eager way.
  *
- * @see com.oracle.truffle.regex.tregex.nodes.TRegexExecRootNode
+ * @see TRegexExecNode
  * @see com.oracle.truffle.regex.tregex.nodes.dfa.TRegexLazyCaptureGroupsRootNode
  */
 public final class RegexProfile {
@@ -60,6 +61,7 @@ public final class RegexProfile {
     private final Counter.ThreadSafeCounter calls = new Counter.ThreadSafeCounter();
     private final Counter.ThreadSafeCounter matches = new Counter.ThreadSafeCounter();
     private final Counter.ThreadSafeCounter captureGroupAccesses = new Counter.ThreadSafeCounter();
+    private final Counter.ThreadSafeCounter processedCharacters = new Counter.ThreadSafeCounter();
     private double avgMatchLength = 0;
     private double avgMatchedPortionOfSearchSpace = 0;
 
@@ -117,11 +119,16 @@ public final class RegexProfile {
     }
 
     /**
-     * Decides whether the regular expression was executed often enough to warrant the costly
-     * generation of a fully expanded DFA.
+     * Decides whether the regular expression was executed often enough or would process enough
+     * characters to warrant the costly generation of a fully expanded DFA.
      */
-    public boolean shouldGenerateDFA() {
-        return calls.getCount() >= TRegexOptions.TRegexGenerateDFAThreshold;
+    public boolean shouldGenerateDFA(int inputLength) {
+        return calls.getCount() >= TRegexOptions.TRegexGenerateDFAThresholdCalls ||
+                        Integer.toUnsignedLong(processedCharacters.getCount() + inputLength) >= TRegexOptions.TRegexGenerateDFAThresholdCharacters;
+    }
+
+    public void incProcessedCharacters(int numberOfCharacters) {
+        processedCharacters.inc(numberOfCharacters);
     }
 
     /**

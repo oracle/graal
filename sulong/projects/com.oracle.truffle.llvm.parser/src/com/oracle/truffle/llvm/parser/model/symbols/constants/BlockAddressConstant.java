@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,11 +29,18 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.constants;
 
+import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
+import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
+import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
+import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class BlockAddressConstant extends AbstractConstant {
@@ -56,10 +63,6 @@ public final class BlockAddressConstant extends AbstractConstant {
         return function;
     }
 
-    public int getBlockIndex() {
-        return block;
-    }
-
     @Override
     public void replace(SymbolImpl original, SymbolImpl replacement) {
         if (function == original) {
@@ -80,5 +83,12 @@ public final class BlockAddressConstant extends AbstractConstant {
             throw new LLVMParserException("Illegal symbol for function in BlockAddressConstant: " + functionSymbol);
         }
         return constant;
+    }
+
+    @Override
+    public LLVMExpressionNode createNode(LLVMParserRuntime runtime, DataLayout dataLayout, GetStackSpaceFactory stackFactory) {
+        LLVMNativePointer blockAddress = LLVMNativePointer.create(block);
+        PointerType type = new PointerType(null);
+        return CommonNodeFactory.createLiteral(blockAddress, type);
     }
 }

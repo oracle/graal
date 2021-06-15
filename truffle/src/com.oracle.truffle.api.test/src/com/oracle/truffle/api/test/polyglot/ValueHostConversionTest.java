@@ -40,33 +40,13 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
-import static com.oracle.truffle.tck.tests.ValueAssert.assertUnsupported;
-import static com.oracle.truffle.tck.tests.ValueAssert.assertValue;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.BOOLEAN;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.HOST_OBJECT;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.MEMBERS;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.NULL;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.NUMBER;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.PROXY_OBJECT;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.STRING;
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
-
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.math.BigDecimal;
-import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.function.Function;
-import java.util.function.Supplier;
-
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.examples.TargetMappings;
+import com.oracle.truffle.tck.tests.ValueAssert.Trait;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
@@ -79,13 +59,33 @@ import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.test.examples.TargetMappings;
-import com.oracle.truffle.tck.tests.ValueAssert.Trait;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.function.Function;
+import java.util.function.Supplier;
+
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.BOOLEAN;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.HOST_OBJECT;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.MEMBERS;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.NULL;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.NUMBER;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.PROXY_OBJECT;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.STRING;
+import static com.oracle.truffle.tck.tests.ValueAssert.assertUnsupported;
+import static com.oracle.truffle.tck.tests.ValueAssert.assertValue;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Tests class for {@link Context#asValue(Object)}.
@@ -182,6 +182,8 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
         assertTrue(context.asValue(new String[0]).hasArrayElements());
         assertTrue(context.asValue(new ArrayList<>()).isHostObject());
         assertTrue(context.asValue(new ArrayList<>()).hasArrayElements());
+        assertTrue(context.asValue(ByteBuffer.allocate(4)).isHostObject());
+        assertTrue(context.asValue(ByteBuffer.allocate(4)).hasBufferElements());
     }
 
     @Test

@@ -77,4 +77,7 @@ public class LibC {
 
     @CFunction(transition = CFunction.Transition.NO_TRANSITION)
     public static native UnsignedWord wcslen(WCharPointer varname);
+
+    @CFunction(transition = CFunction.Transition.NO_TRANSITION)
+    public static native WCharPointer wcsncat(WCharPointer strDest, WCharPointer strSource, UnsignedWord count);
 }

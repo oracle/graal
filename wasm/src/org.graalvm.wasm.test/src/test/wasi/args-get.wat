@@ -41,7 +41,7 @@
 
 (module
   (type (;0;) (func (result i32)))
-  (type (;1;) (func (param i32 i32)))
+  (type (;1;) (func (param i32 i32) (result i32)))
   (import "wasi_snapshot_preview1" "args_get" (func $__wasi_args_get (type 1)))
   (import "wasi_snapshot_preview1" "args_sizes_get" (func $__wasi_args_sizes_get (type 1)))
   (memory (;0;) 4)
@@ -51,13 +51,14 @@
     i32.const 0
     i32.const 4
     call $__wasi_args_sizes_get
+    drop
 
     ;; Number of arguments.
     i32.const 0
     i32.load
     local.set 1
     local.get 1
-    i32.const 3
+    i32.const 4
     i32.ne
     if $B0
       ;; Return wrong value if the buffer size is incorrect.
@@ -65,10 +66,10 @@
       return
     end
 
-    ;; Size of buffer is not required in this program, but should be 9.
+    ;; Size of buffer is not required in this program as we don't need to allocate the buffer, but it should be 10.
     i32.const 4
     i32.load
-    i32.const 9
+    i32.const 10
     i32.ne
     if $B0
       ;; Return wrong value if the buffer size is incorrect.
@@ -78,8 +79,9 @@
 
     ;; Store the arguments in memory.
     i32.const 8
-    i32.const 20
+    i32.const 24
     call $__wasi_args_get
+    drop
 
     ;; Iterate through the arguments, and sum-up their characters.
     ;; Declare the sum variable.

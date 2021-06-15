@@ -26,6 +26,7 @@ package com.oracle.svm.graal.hosted;
 
 import java.util.function.Function;
 
+import org.graalvm.compiler.nodes.spi.LoopsDataProvider;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
 
@@ -47,7 +48,7 @@ public interface RuntimeGraalSetup {
 
     SharedRuntimeConfigurationBuilder createRuntimeConfigurationBuilder(OptionValues options, SVMHost hostVM, AnalysisUniverse aUniverse,
                     MetaAccessProvider metaAccess, ConstantReflectionProvider originalReflectionProvider, Function<Providers, SubstrateBackend> backendProvider,
-                    NativeLibraries nativeLibraries, ClassInitializationSupport classInitializationSupport);
+                    NativeLibraries nativeLibraries, ClassInitializationSupport classInitializationSupport, LoopsDataProvider loopsDataProvider);
 
     GraalProviderObjectReplacements getProviderObjectReplacements(AnalysisMetaAccess aMetaAccess);
 }

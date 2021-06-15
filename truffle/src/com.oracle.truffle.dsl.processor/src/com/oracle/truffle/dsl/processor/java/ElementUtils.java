@@ -1348,6 +1348,14 @@ public class ElementUtils {
         return false;
     }
 
+    public static void setFinal(Set<Modifier> modifiers, boolean enabled) {
+        if (enabled) {
+            modifiers.add(Modifier.FINAL);
+        } else {
+            modifiers.remove(Modifier.FINAL);
+        }
+    }
+
     public static void setVisibility(Set<Modifier> modifiers, Modifier visibility) {
         Modifier current = getVisibility(modifiers);
         if (current != visibility) {

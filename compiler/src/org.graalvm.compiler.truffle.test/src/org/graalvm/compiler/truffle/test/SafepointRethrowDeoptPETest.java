@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -210,7 +210,7 @@ public class SafepointRethrowDeoptPETest extends PartialEvaluationTest {
                     /* spin */
                 }
                 /* Thread.sleep(100); */
-                compiledMethod.invalidate(cdl, "timed out");
+                compiledMethod.invalidate("timed out");
             } catch (InterruptedException e) {
                 Assert.fail("interrupted");
             }

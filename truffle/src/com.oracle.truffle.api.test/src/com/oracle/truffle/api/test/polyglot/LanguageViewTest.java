@@ -181,7 +181,6 @@ public class LanguageViewTest extends AbstractParametrizedLibraryTest {
         assertFails(() -> instrumentEnv.getLanguageView(null, ""), NullPointerException.class);
     }
 
-    @ExportLibrary(InteropLibrary.class)
     public static class LegacyLanguageView implements TruffleObject {
 
         final SourceSection section;

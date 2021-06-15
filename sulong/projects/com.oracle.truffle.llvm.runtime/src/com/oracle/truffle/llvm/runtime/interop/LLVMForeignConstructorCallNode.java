@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,19 +29,25 @@
  */
 package com.oracle.truffle.llvm.runtime.interop;
 
-import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.runtime.LLVMIntrinsicProvider;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceFunctionType;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNodeFactory.LLVMI64LiteralNodeGen;
+import com.oracle.truffle.llvm.runtime.types.PointerType;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
 
 public class LLVMForeignConstructorCallNode extends LLVMForeignCallNode {
-    private final LanguageReference<LLVMLanguage> languageReference;
+
+    @Child LLVMExpressionNode malloc;
 
     public static LLVMForeignConstructorCallNode create(LLVMLanguage language, LLVMFunctionDescriptor function, LLVMInteropType interopType, LLVMSourceFunctionType sourceType,
                     LLVMInteropType.Structured structuredType) {
@@ -53,17 +59,27 @@ public class LLVMForeignConstructorCallNode extends LLVMForeignCallNode {
     protected LLVMForeignConstructorCallNode(LLVMLanguage language, LLVMFunctionDescriptor function, LLVMInteropType interopType, LLVMSourceFunctionType sourceType,
                     LLVMInteropType.Structured structuredType, Type escapeType) {
         super(language, function, interopType, sourceType, structuredType, escapeType);
-        this.languageReference = lookupLanguageReference(LLVMLanguage.class);
+
+        /*
+         * TODO(rs): This should probably be a call to the C++ new operator instead of malloc. This
+         * makes a difference if the new operator is overloaded.
+         */
+        NodeFactory factory = language.getActiveConfiguration().createNodeFactory(language, language.getDefaultDataLayout());
+        LLVMExpressionNode stack = factory.createGetStackFromFrame();
+        LLVMExpressionNode size = LLVMI64LiteralNodeGen.create(returnBaseType.getSize());
+        malloc = language.getCapability(LLVMIntrinsicProvider.class).generateIntrinsicNode("malloc", new LLVMExpressionNode[]{stack, size}, new Type[]{PointerType.VOID, PrimitiveType.I64}, factory);
     }
 
     @Override
     protected Object doCall(VirtualFrame frame, LLVMStack stack) throws ArityException, TypeOverflowException {
         Object[] rawArguments = frame.getArguments();
-        rawArguments[0] = languageReference.get().getLLVMMemory().allocateMemory(this, returnBaseType.getSize());
+        rawArguments[0] = malloc.executeGeneric(frame);
         if (packArguments.toLLVM.length != rawArguments.length) {
             // arguments also contain 'self' object, thus -1 for argCount
-            throw ArityException.create(packArguments.toLLVM.length - 1, rawArguments.length - 1);
+            int arity = packArguments.toLLVM.length - 1;
+            throw ArityException.create(arity, arity, rawArguments.length - 1);
         }
+
         Object[] arguments = packArguments.execute(rawArguments, stack);
         callNode.call(arguments);
         /*

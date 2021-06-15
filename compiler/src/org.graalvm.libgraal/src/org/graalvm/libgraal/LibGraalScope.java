@@ -249,6 +249,19 @@ public final class LibGraalScope implements AutoCloseable {
     }
 
     /**
+     * Returns the nesting depth of this {@code LibGraalScope} object.
+     */
+    public int getDepth() {
+        int depth = 0;
+        LibGraalScope ancestor = parent;
+        while (ancestor != null) {
+            depth++;
+            ancestor = ancestor.parent;
+        }
+        return depth;
+    }
+
+    /**
      * Gets the method in {@code declaringClass} with the unique name {@code name}.
      *
      * @param sigs the signatures the method may have

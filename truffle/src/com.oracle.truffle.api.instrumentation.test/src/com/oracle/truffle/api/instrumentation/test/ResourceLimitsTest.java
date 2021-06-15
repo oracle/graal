@@ -64,9 +64,20 @@ import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.ResourceLimitEvent;
 import org.graalvm.polyglot.ResourceLimits;
 import org.graalvm.polyglot.Source;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestName;
 
 public class ResourceLimitsTest {
+
+    @Rule public TestName testNameRule = new TestName();
+
+    @After
+    public void checkInterrupted() {
+        Assert.assertFalse("Interrupted flag was left set by test: " + testNameRule.getMethodName(), Thread.interrupted());
+    }
 
     @Test
     public void testStatementLimit() {
@@ -554,6 +565,35 @@ public class ResourceLimitsTest {
         } catch (PolyglotException ex) {
             assertTrue(e.isCancelled());
             assertEquals(expectedMessage, e.getMessage());
+        }
+    }
+
+    @Test
+    public void testStatementLimitNoLimitCombination() {
+        try (Engine engine = Engine.create()) {
+            ResourceLimits limits = ResourceLimits.newBuilder().//
+                            statementLimit(50, s -> !s.isInternal()).//
+                            build();
+
+            try (Context context = Context.newBuilder().engine(engine).resourceLimits(limits).build()) {
+                context.eval(statements(50));
+                try {
+                    context.eval(statements(1));
+                    fail();
+                } catch (PolyglotException e) {
+                    assertStatementCountLimit(context, e, 50);
+                }
+            }
+
+            ResourceLimits limitsNoLimits = ResourceLimits.newBuilder().build();
+
+            try (Context context = Context.newBuilder().engine(engine).resourceLimits(limitsNoLimits).build()) {
+                context.eval(statements(100));
+            }
+
+            try (Context context = Context.newBuilder().engine(engine).build()) {
+                context.eval(statements(100));
+            }
         }
     }
 

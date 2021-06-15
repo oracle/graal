@@ -112,6 +112,9 @@ public class InstallCommand implements InstallerCommand {
         OPTIONS.put(Commands.LONG_OPTION_LOCAL_DEPENDENCIES, Commands.OPTION_LOCAL_DEPENDENCIES);
         OPTIONS.put(Commands.LONG_OPTION_NO_DEPENDENCIES, Commands.OPTION_NO_DEPENDENCIES);
 
+        OPTIONS.put(Commands.OPTION_USE_EDITION, "s");
+        OPTIONS.put(Commands.LONG_OPTION_USE_EDITION, Commands.OPTION_USE_EDITION);
+
         OPTIONS.putAll(ComponentInstaller.componentOptions);
     }
 
@@ -155,6 +158,11 @@ public class InstallCommand implements InstallerCommand {
      * Installers attached to individual parameters.
      */
     Map<ComponentParam, Installer> realInstallers = new LinkedHashMap<>();
+
+    /**
+     * Original (possibly catalog) ComponentInfos.
+     */
+    Map<ComponentParam, ComponentInfo> parameterInfos = new LinkedHashMap<>();
 
     private String current;
 
@@ -246,31 +254,40 @@ public class InstallCommand implements InstallerCommand {
                         allowUpgrades ? Version.Match.Type.INSTALLABLE : Version.Match.Type.COMPATIBLE);
     }
 
-    private void addLicenseToAccept(Installer inst, MetadataLoader ldr) {
+    public void addLicenseToAccept(Installer inst, MetadataLoader ldr) {
         if (ldr.getLicenseType() != null) {
             String path = ldr.getLicensePath();
-            if (path != null) {
-                inst.setLicenseRelativePath(SystemUtils.fromCommonRelative(ldr.getLicensePath()));
-            }
-            String licId = ldr.getLicenseID();
-            if (licId == null) {
-                String tp = ldr.getLicenseType();
-                if (Pattern.matches("[-_., 0-9A-Za-z]+", tp)) { // NOI18N
-                    licId = tp;
-                } else {
-                    // better make a digest
-                    try {
-                        MessageDigest dg = MessageDigest.getInstance("SHA-256"); // NOI18N
-                        byte[] result = dg.digest(tp.getBytes("UTF-8"));
-                        licId = SystemUtils.fingerPrint(result, false);
-                    } catch (NoSuchAlgorithmException | UnsupportedEncodingException ex) {
-                        feedback.error("INSTALL_CannotDigestLicense", ex, ex.getLocalizedMessage());
-                        licId = Integer.toHexString(tp.hashCode());
-                    }
+            if (inst != null && path != null) {
+                if (!SystemUtils.isRemotePath(path)) {
+                    inst.setLicenseRelativePath(SystemUtils.fromCommonRelative(ldr.getLicensePath()));
                 }
             }
-            addLicenseToAccept(licId, ldr);
+            addLicenseToAccept(ldr);
         }
+    }
+
+    public void addLicenseToAccept(MetadataLoader ldr) {
+        String licId = ldr.getLicenseID();
+        if (licId == null) {
+            String tp = ldr.getLicenseType();
+            if (tp == null) {
+                return;
+            }
+            if (Pattern.matches("[-_., 0-9A-Za-z]+", tp)) { // NOI18N
+                licId = tp;
+            } else {
+                // better make a digest
+                try {
+                    MessageDigest dg = MessageDigest.getInstance("SHA-256"); // NOI18N
+                    byte[] result = dg.digest(tp.getBytes("UTF-8"));
+                    licId = SystemUtils.fingerPrint(result, false);
+                } catch (NoSuchAlgorithmException | UnsupportedEncodingException ex) {
+                    feedback.error("INSTALL_CannotDigestLicense", ex, ex.getLocalizedMessage());
+                    licId = Integer.toHexString(tp.hashCode());
+                }
+            }
+        }
+        addLicenseToAccept(licId, ldr);
     }
 
     /**
@@ -624,6 +641,17 @@ public class InstallCommand implements InstallerCommand {
             Installer i = realInstallers.get(p);
             if (i == null) {
                 MetadataLoader floader = p.createFileLoader();
+                ComponentInfo initialInfo = parameterInfos.get(p);
+                ComponentInfo finfo = floader.getComponentInfo();
+                if (initialInfo != null && (!initialInfo.getId().equals(finfo.getId()) ||
+                                !initialInfo.getVersion().equals(finfo.getVersion()))) {
+                    String msg = String.format(
+                                    feedback.l10n("@INSTALL_Error_ComponentDiffers_Report"),
+                                    initialInfo.getId(), finfo.getId(),
+                                    initialInfo.getVersionString(), finfo.getVersionString());
+                    feedback.verbatimPart(msg, true, false);
+                    throw feedback.failure("INSTALL_Error_ComponentDiffers", null);
+                }
                 i = createInstaller(p, floader);
                 if (!verifyInstaller(i)) {
                     continue;
@@ -713,6 +741,7 @@ public class InstallCommand implements InstallerCommand {
     Installer createInstaller(ComponentParam p, MetadataLoader ldr) throws IOException {
         ComponentInfo partialInfo;
         partialInfo = ldr.getComponentInfo();
+        parameterInfos.putIfAbsent(p, partialInfo);
         feedback.verboseOutput("INSTALL_PrepareToInstall",
                         p.getDisplayName(),
                         partialInfo.getId(),
@@ -743,7 +772,7 @@ public class InstallCommand implements InstallerCommand {
         return feedback;
     }
 
-    Map<String, List<MetadataLoader>> getLicensesToAccept() {
+    protected Map<String, List<MetadataLoader>> getLicensesToAccept() {
         return licensesToAccept;
     }
 
@@ -760,9 +789,19 @@ public class InstallCommand implements InstallerCommand {
         if (licensesToAccept.isEmpty()) {
             return;
         }
+        Set<String> processed = new HashSet<>(licensesToAccept.keySet());
         createLicensePresenter().run();
-        processedLicenses.addAll(licensesToAccept.keySet());
+        processed.removeAll(licensesToAccept.keySet());
+        markLicensesProcessed(processed);
         licensesToAccept.clear();
+    }
+
+    public Set<String> getProcessedLicenses() {
+        return new HashSet<>(processedLicenses);
+    }
+
+    public void markLicensesProcessed(Collection<String> licenseIDs) {
+        processedLicenses.addAll(licenseIDs);
     }
 
     public Set<String> getUnresolvedDependencies() {

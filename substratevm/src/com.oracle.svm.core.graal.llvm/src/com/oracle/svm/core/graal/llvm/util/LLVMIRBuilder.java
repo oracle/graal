@@ -1211,8 +1211,8 @@ public class LLVMIRBuilder implements AutoCloseable {
 
     public LLVMValueRef buildCmpxchg(LLVMValueRef address, LLVMValueRef expectedValue, LLVMValueRef newValue, boolean returnValue) {
         LLVMTypeRef exchangeType = typeOf(expectedValue);
-        if (returnValue && isObjectType(typeOf(expectedValue))) {
-            return buildCall(helpers.getCmpxchgFunction(isCompressedPointerType(exchangeType)), address, expectedValue, newValue);
+        if (isObjectType(typeOf(expectedValue))) {
+            return buildCall(helpers.getCmpxchgFunction(isCompressedPointerType(exchangeType), returnValue), address, expectedValue, newValue);
         }
         return buildAtomicCmpXchg(address, expectedValue, newValue, returnValue);
     }
@@ -1245,5 +1245,10 @@ public class LLVMIRBuilder implements AutoCloseable {
         LLVMTypeRef valueType = LLVM.LLVMTypeOf(value);
         LLVMValueRef castedAddress = buildBitcast(address, pointerType(valueType, isObjectType(typeOf(address)), false));
         return LLVM.LLVMBuildAtomicRMW(builder, operation, castedAddress, value, LLVM.LLVMAtomicOrderingMonotonic, FALSE);
+    }
+
+    public void buildClearCache(LLVMValueRef start, LLVMValueRef end) {
+        LLVMTypeRef clearCacheType = functionType(voidType(), rawPointerType(), rawPointerType());
+        buildIntrinsicCall("llvm.clear_cache", clearCacheType, start, end);
     }
 }

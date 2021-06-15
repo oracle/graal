@@ -112,6 +112,17 @@ public class RestrictHeapAccessCalleesImpl implements RestrictHeapAccessCallees 
                 }
             }
         }
+
+        for (AnalysisMethod method : methods) {
+            /*
+             * Uninterruptible annotations must also be present on all callees of an annotated
+             * method, so there is no need to propagate information through the call tree.
+             */
+            if (method.isAnnotationPresent(Uninterruptible.class) && aggregation.get(method) == null) {
+                aggregation.put(method, new RestrictionInfo(Access.NO_ALLOCATION, null, null, method));
+            }
+        }
+
         calleeToCallerMap = Collections.unmodifiableMap(aggregation);
         initialized = true;
     }
@@ -153,50 +164,34 @@ public class RestrictHeapAccessCalleesImpl implements RestrictHeapAccessCallees 
         public VisitResult visitMethod(AnalysisMethod callee, AnalysisMethod caller, BytecodePosition invokePosition, int depth) {
             Access access = Access.UNRESTRICTED;
             boolean overridesCallers = false;
-            boolean fromUninterruptible = false;
-            if (callee.isAnnotationPresent(Uninterruptible.class)) {
-                access = Access.NO_ALLOCATION;
-                fromUninterruptible = true;
-            }
             RestrictHeapAccess annotation = callee.getAnnotation(RestrictHeapAccess.class);
             if (annotation != null) {
                 access = annotation.access();
                 overridesCallers = annotation.overridesCallers();
-                fromUninterruptible = false;
             }
-            if (overridesCallers || caller == null) {
-                if (access == Access.UNRESTRICTED) {
-                    return VisitResult.CUT;
+
+            if (!overridesCallers && caller != null) {
+                Access callerAccess = calleeToCallerMap.get(caller).getAccess();
+                if (callerAccess.isMoreRestrictiveThan(access)) {
+                    access = callerAccess;
                 }
-            } else {
-                RestrictionInfo callerInfo = calleeToCallerMap.get(caller);
-                Access callerAccess = callerInfo.getAccess();
-                if (callerAccess.equals(access) || callerAccess.isMoreRestrictiveThan(access)) {
-                    if (callerInfo.isFromUninterruptible()) {
-                        if (caller.getAnnotation(Uninterruptible.class) != null && caller.getAnnotation(Uninterruptible.class).calleeMustBe()) {
-                            access = callerAccess;
-                            fromUninterruptible = true;
-                        } else if (access == Access.UNRESTRICTED) {
-                            return VisitResult.CUT;
-                        }
-                    } else {
-                        access = callerAccess;
-                        fromUninterruptible = false;
-                    }
-                }
+            }
+
+            if (access == Access.UNRESTRICTED) {
+                /* No restriction anymore, so stop here. */
+                return VisitResult.CUT;
             }
             if (access == Access.NO_ALLOCATION && assertionErrorConstructorList != null && assertionErrorConstructorList.contains(callee)) {
                 /* Ignore AssertionError allocations: ImplicitExceptionsPlugin will replace them */
                 return VisitResult.CUT;
             }
-            RestrictionInfo restrictionInfo = calleeToCallerMap.get(callee);
-            if (restrictionInfo != null && !access.isMoreRestrictiveThan(restrictionInfo.getAccess())) {
+            RestrictionInfo existingRestrictionInfo = calleeToCallerMap.get(callee);
+            if (existingRestrictionInfo != null && !access.isMoreRestrictiveThan(existingRestrictionInfo.getAccess())) {
                 /* Earlier traversal with same or higher level of restriction, so stop here. */
                 return VisitResult.CUT;
             }
             StackTraceElement callerStackTraceElement = (invokePosition != null) ? invokePosition.getMethod().asStackTraceElement(invokePosition.getBCI()) : null;
-            restrictionInfo = new RestrictionInfo(access, caller, callerStackTraceElement, callee, fromUninterruptible);
-            calleeToCallerMap.put(callee, restrictionInfo);
+            calleeToCallerMap.put(callee, new RestrictionInfo(access, caller, callerStackTraceElement, callee));
             return VisitResult.CONTINUE;
         }
     }
@@ -212,15 +207,12 @@ public class RestrictHeapAccessCalleesImpl implements RestrictHeapAccessCallees 
         private final StackTraceElement invocationStackTraceElement;
         /** The method to which the restriction applies. */
         private final AnalysisMethod method;
-        /** Whether the restriction is <em>solely</em> due to @{@link Uninterruptible}. */
-        private final boolean fromUninterruptible;
 
-        RestrictionInfo(Access access, AnalysisMethod caller, StackTraceElement stackTraceElement, AnalysisMethod method, boolean fromUninterruptible) {
+        RestrictionInfo(Access access, AnalysisMethod caller, StackTraceElement stackTraceElement, AnalysisMethod method) {
             this.access = access;
             this.caller = caller;
             this.invocationStackTraceElement = stackTraceElement;
             this.method = method;
-            this.fromUninterruptible = fromUninterruptible;
         }
 
         public Access getAccess() {
@@ -237,10 +229,6 @@ public class RestrictHeapAccessCalleesImpl implements RestrictHeapAccessCallees 
 
         public AnalysisMethod getMethod() {
             return method;
-        }
-
-        public boolean isFromUninterruptible() {
-            return fromUninterruptible;
         }
     }
 }

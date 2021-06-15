@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -76,6 +76,7 @@ import org.junit.runners.parameterized.TestWithParameters;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
@@ -125,7 +126,7 @@ import com.oracle.truffle.tck.TruffleTestInvoker.TruffleTestClass;
  *
  * @since 0.25
  */
-public final class TruffleRunner extends BlockJUnit4ClassRunner {
+public class TruffleRunner extends BlockJUnit4ClassRunner {
 
     private static final TruffleTestInvoker<?, ?> truffleTestInvoker = TruffleTestInvoker.create();
 
@@ -234,6 +235,7 @@ public final class TruffleRunner extends BlockJUnit4ClassRunner {
         Context.Builder contextBuilder;
 
         Context context = null;
+        TruffleLanguage<?> testLanguage = null;
         Env testEnv = null;
 
         /**
@@ -289,6 +291,17 @@ public final class TruffleRunner extends BlockJUnit4ClassRunner {
             assert testEnv != null;
             return testEnv;
         }
+
+        /**
+         * Get an instance of the {@link TruffleLanguage} that this test is running under. Nodes
+         * that are used with {@link Inject} should pass this instance to their super constructor.
+         *
+         * @since 21.1
+         */
+        public TruffleLanguage<?> getTestLanguage() {
+            assert testLanguage != null;
+            return testLanguage;
+        }
     }
 
     private static final class ParameterizedRunner extends BlockJUnit4ClassRunnerWithParameters {
@@ -340,7 +353,7 @@ public final class TruffleRunner extends BlockJUnit4ClassRunner {
      * @since 0.25
      */
     @Override
-    protected Statement methodInvoker(FrameworkMethod method, Object test) {
+    protected final Statement methodInvoker(FrameworkMethod method, Object test) {
         Statement ret = truffleTestInvoker.createStatement(getTestClass().getJavaClass().getSimpleName() + "#" + testName(method), method, test);
         if (ret == null) {
             ret = super.methodInvoker(method, test);
@@ -354,7 +367,7 @@ public final class TruffleRunner extends BlockJUnit4ClassRunner {
      * @since 0.25
      */
     @Override
-    protected void validateTestMethods(List<Throwable> errors) {
+    protected final void validateTestMethods(List<Throwable> errors) {
         TruffleTestInvoker.validateTestMethods(getTestClass(), errors);
     }
 
@@ -364,12 +377,14 @@ public final class TruffleRunner extends BlockJUnit4ClassRunner {
      * @since 0.27
      */
     @Override
-    protected TestClass createTestClass(Class<?> testClass) {
+    protected final TestClass createTestClass(Class<?> testClass) {
         return new TruffleTestClass(testClass);
     }
 }
 
 class TruffleRunnerSnippets {
+
+    @Rule RunWithPolyglotRule runWithPolyglot;
 
     // Checkstyle: stop
     // BEGIN: TruffleRunnerSnippets#TestExecuteNode
@@ -378,7 +393,7 @@ class TruffleRunnerSnippets {
         @Child InteropLibrary interop;
 
         public TestExecuteNode() {
-            super(null);
+            super(runWithPolyglot.getTestLanguage());
             interop = InteropLibrary.getFactory().createDispatched(5);
         }
 

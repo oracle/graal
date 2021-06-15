@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,7 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.RandomAccess;
+import java.util.stream.Stream;
 
 import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
@@ -264,6 +265,11 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
         return false;
     }
 
+    @Override
+    public Stream<T> stream() {
+        return super.stream();
+    }
+
     @SuppressWarnings("unchecked")
     @Override
     public void clear() {
@@ -488,6 +494,11 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
         @Override
         public Iterator<R> iterator() {
             return new NodeListIterator<>(list, offset);
+        }
+
+        @Override
+        public Stream<R> stream() {
+            return super.stream();
         }
     }
 

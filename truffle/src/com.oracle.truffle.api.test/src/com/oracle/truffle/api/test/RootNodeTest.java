@@ -123,6 +123,7 @@ public class RootNodeTest {
         Object marker = new Object();
         try {
             Truffle.getRuntime().createCallTarget(rootNode).call(marker);
+            Assert.fail();
         } catch (TestException e) {
             List<TruffleStackTraceElement> stackTrace = TruffleStackTrace.getStackTrace(e);
             Assert.assertEquals(1, stackTrace.size());
@@ -138,6 +139,7 @@ public class RootNodeTest {
         Object marker = new Object();
         try {
             Truffle.getRuntime().createCallTarget(rootNode).call(marker);
+            Assert.fail();
         } catch (TestException e) {
             asserCapturedFrames(rootNode, marker, e, e.frame);
         }
@@ -149,6 +151,7 @@ public class RootNodeTest {
         Object marker = new Object();
         try {
             Truffle.getRuntime().createCallTarget(rootNode).call(marker);
+            Assert.fail();
         } catch (LegacyTestException e) {
             asserCapturedFrames(rootNode, marker, e, e.frame);
         }
@@ -159,6 +162,7 @@ public class RootNodeTest {
         RootNode rootNode = new TestRootNode3(true);
         try {
             Truffle.getRuntime().createCallTarget(rootNode).call();
+            Assert.fail();
         } catch (TestException e) {
             TruffleStackTraceElement stackTraceElement = getStackTraceElementFor(e, rootNode);
             Assert.assertNotNull(stackTraceElement);
@@ -173,6 +177,7 @@ public class RootNodeTest {
             RootNode rootNode = new TestRootNode3(true);
             try {
                 Truffle.getRuntime().createCallTarget(rootNode).call();
+                Assert.fail();
             } catch (TestException e) {
                 TruffleStackTraceElement stackTraceElement = getStackTraceElementFor(e, rootNode);
                 Assert.assertNotNull(stackTraceElement);
@@ -198,6 +203,7 @@ public class RootNodeTest {
         RootNode rootNode = new TestRootNode5(hasExecutableName, hasDeclaringMetaObject, isString, isMetaObject);
         try {
             Truffle.getRuntime().createCallTarget(rootNode).call();
+            Assert.fail();
         } catch (TestException e) {
             TruffleStackTraceElement stackTraceElement = getStackTraceElementFor(e, rootNode);
             Assert.assertNotNull(stackTraceElement);
@@ -220,6 +226,7 @@ public class RootNodeTest {
         RootNode rootNode = new TestRootNode5(hasExecutableName, hasDeclaringMetaObject, isString, isMetaObject);
         try {
             Truffle.getRuntime().createCallTarget(rootNode).call();
+            Assert.fail();
         } catch (TestException e) {
             TruffleStackTraceElement stackTraceElement = getStackTraceElementFor(e, rootNode);
             Assert.assertNotNull(stackTraceElement);

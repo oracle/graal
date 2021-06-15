@@ -60,6 +60,6 @@ public abstract class LLVMPolyglotAsTyped extends LLVMIntrinsic {
     @Specialization
     LLVMManagedPointer doError(@SuppressWarnings("unused") LLVMPointer object, LLVMInteropType.Value type) {
         CompilerDirectives.transferToInterpreter();
-        throw new LLVMPolyglotException(this, "polyglot_as_typed can not be used with primitive type (%s).", type.kind);
+        throw new LLVMPolyglotException(this, "polyglot_as_typed cannot be used with primitive type (%s).", type.kind);
     }
 }

@@ -47,11 +47,13 @@ import org.graalvm.nativeimage.Platform.AARCH64;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.ArithmeticSnippets;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
+import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
@@ -72,14 +74,17 @@ final class AArch64ArithmeticSnippets extends ArithmeticSnippets {
     private static final double ONE = 1.0;
     private static final double[] ZERO = new double[]{0.0, -0.0};
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static int highWord(double d) {
         return (int) (Double.doubleToRawLongBits(d) >> 32);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static int lowWord(double d) {
         return (int) (Double.doubleToRawLongBits(d) & 0xffffffff);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static double doubleFromHighLowWords(int high, int low) {
         long h = high;
         long l = low & 0xffffffffL; // convert without sign extension
@@ -96,7 +101,8 @@ final class AArch64ArithmeticSnippets extends ArithmeticSnippets {
      * Method: shift and subtract
      * </pre>
      */
-    @SubstrateForeignCallTarget(stubCallingConvention = false)
+    @Uninterruptible(reason = "Must not do a safepoint check.")
+    @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
     private static double fmod(double xx, double yy) {
         double x = xx;
         double y = yy;
@@ -130,7 +136,7 @@ final class AArch64ArithmeticSnippets extends ArithmeticSnippets {
             return (x * y) / (x * y);
         }
         if (hx <= hy) {
-            if ((hx < hy) || (Integer.compareUnsigned(lx, ly) < 0)) {
+            if ((hx < hy) || (UninterruptibleUtils.Integer.compareUnsigned(lx, ly) < 0)) {
                 return x; /* |x|<|y| return x */
             }
             if (lx == ly) {
@@ -199,7 +205,7 @@ final class AArch64ArithmeticSnippets extends ArithmeticSnippets {
         while (n-- != 0) {
             hz = hx - hy;
             lz = lx - ly;
-            if (Integer.compareUnsigned(lx, ly) < 0) {
+            if (UninterruptibleUtils.Integer.compareUnsigned(lx, ly) < 0) {
                 hz -= 1;
             }
             if (hz < 0) {
@@ -215,7 +221,7 @@ final class AArch64ArithmeticSnippets extends ArithmeticSnippets {
         }
         hz = hx - hy;
         lz = lx - ly;
-        if (Integer.compareUnsigned(lx, ly) < 0) {
+        if (UninterruptibleUtils.Integer.compareUnsigned(lx, ly) < 0) {
             hz -= 1;
         }
         if (hz >= 0) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,6 @@
  */
 package org.graalvm.polyglot;
 
-import java.time.Duration;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -86,10 +85,10 @@ public final class ResourceLimits {
 
     private static final ResourceLimits EMPTY = new ResourceLimits(null);
 
-    final Object impl;
+    final Object receiver;
 
-    ResourceLimits(Object impl) {
-        this.impl = impl;
+    ResourceLimits(Object receiver) {
+        this.receiver = receiver;
     }
 
     /**
@@ -111,8 +110,6 @@ public final class ResourceLimits {
 
         long statementLimit;
         Predicate<Source> statementLimitSourceFilter;
-        Duration timeLimit;
-        Duration timeLimitAccuracy;
         Consumer<ResourceLimitEvent> onLimit;
 
         Builder() {

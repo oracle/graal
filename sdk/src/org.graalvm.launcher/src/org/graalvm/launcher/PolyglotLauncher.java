@@ -304,7 +304,7 @@ public final class PolyglotLauncher extends LanguageLauncherBase {
     private static Class<AbstractLanguageLauncher> getLauncherClass(String launcherName, ClassLoader loader) {
         try {
             Class<?> launcherClass = Class.forName(launcherName, false, loader);
-            if (launcherClass != null && !AbstractLanguageLauncher.class.isAssignableFrom(launcherClass)) {
+            if (!AbstractLanguageLauncher.class.isAssignableFrom(launcherClass)) {
                 throw new RuntimeException("Launcher class " + launcherName + " does not extend AbstractLanguageLauncher");
             }
             return (Class<AbstractLanguageLauncher>) launcherClass;
@@ -338,9 +338,6 @@ public final class PolyglotLauncher extends LanguageLauncherBase {
             });
             URLClassLoader loader = new URLClassLoader(classpath.toArray(new URL[0]), PolyglotLauncher.class.getClassLoader());
             launcherClass = getLauncherClass(launcherName, loader);
-            if (launcherClass == null) {
-                throw abort("Could not find class '" + launcherName + "'.");
-            }
         }
         AbstractLanguageLauncher launcher;
         try {

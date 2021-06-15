@@ -59,10 +59,15 @@ public class ConfigurationType implements JsonPrintable {
         return qualifiedJavaName;
     }
 
-    public void addField(String name, ConfigurationMemberKind memberKind, boolean finalButWritable, boolean allowUnsafeAccess) {
-        if (!finalButWritable && !allowUnsafeAccess) {
+    public void addField(String name, ConfigurationMemberKind memberKind, boolean finalButWritable) {
+        if (!finalButWritable) {
             if ((memberKind.includes(ConfigurationMemberKind.DECLARED) && haveAllDeclaredFields()) || (memberKind.includes(ConfigurationMemberKind.PUBLIC) && haveAllPublicFields())) {
-                fields = maybeRemove(fields, map -> map.remove(name));
+                fields = maybeRemove(fields, map -> {
+                    FieldInfo fieldInfo = map.get(name);
+                    if (fieldInfo != null && !fieldInfo.isFinalButWritable()) {
+                        map.remove(name);
+                    }
+                });
                 return;
             }
         }
@@ -70,8 +75,8 @@ public class ConfigurationType implements JsonPrintable {
             fields = new HashMap<>();
         }
         fields.compute(name, (k, v) -> (v != null)
-                        ? FieldInfo.get(v.getKind().intersect(memberKind), v.isFinalButWritable() || finalButWritable, v.isUnsafeAccessible() || allowUnsafeAccess)
-                        : FieldInfo.get(memberKind, finalButWritable, allowUnsafeAccess));
+                        ? FieldInfo.get(v.getKind().intersect(memberKind), v.isFinalButWritable() || finalButWritable)
+                        : FieldInfo.get(memberKind, finalButWritable));
     }
 
     public void addMethodsWithName(String name, ConfigurationMemberKind memberKind) {
@@ -99,32 +104,6 @@ public class ConfigurationType implements JsonPrintable {
             methods.compute(method, (k, v) -> memberKind.intersect(v));
         }
         assert methods.containsKey(method);
-    }
-
-    public boolean hasIndividualMethod(String name, String internalSignature) {
-        if (methods != null && name != null && internalSignature != null) {
-            for (ConfigurationMethod method : methods.keySet()) {
-                if (method.matches(name, internalSignature)) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    public boolean hasIndividualField(String name) {
-        if (fields != null) {
-            return fields.containsKey(name);
-        }
-        return false;
-    }
-
-    public boolean hasIndividualUnsafeAccessField(String name) {
-        if (fields != null) {
-            FieldInfo fieldInfo = fields.get(name);
-            return fieldInfo != null && fieldInfo.isUnsafeAccessible();
-        }
-        return false;
     }
 
     public boolean haveAllDeclaredClasses() {
@@ -229,9 +208,6 @@ public class ConfigurationType implements JsonPrintable {
         if (entry.getValue().isFinalButWritable()) {
             w.append(", ").quote("allowWrite").append(':').append("true");
         }
-        if (entry.getValue().isUnsafeAccessible()) {
-            w.append(", ").quote("allowUnsafeAccess").append(':').append("true");
-        }
         w.append('}');
     }
 
@@ -242,7 +218,7 @@ public class ConfigurationType implements JsonPrintable {
     }
 
     private void removeFields(ConfigurationMemberKind memberKind) {
-        fields = maybeRemove(fields, map -> map.values().removeIf(v -> !v.isUnsafeAccessible() && memberKind.includes(v.getKind())));
+        fields = maybeRemove(fields, map -> map.values().removeIf(v -> memberKind.includes(v.getKind())));
     }
 
     private void removeMethods(ConfigurationMemberKind memberKind, boolean constructors) {

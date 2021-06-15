@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -83,14 +83,14 @@ public final class AgnosticInliningPhase extends BasePhase<CoreProviders> {
         if (optionsAllowInlining()) {
             policy.run(tree);
             tree.dumpBasic("After Inline");
-            tree.collectTargetsToDequeue(request.inliningPlan);
-            tree.updateTracingInfo(request.inliningPlan);
+            tree.collectTargetsToDequeue(request.task.inliningData());
+            tree.updateTracingInfo(request.task.inliningData());
         }
         tree.finalizeGraph();
         tree.trace();
     }
 
-    private Boolean optionsAllowInlining() {
+    private boolean optionsAllowInlining() {
         return request.options.get(PolyglotCompilerOptions.Inlining) &&
                         (request.options.get(PolyglotCompilerOptions.Mode) != PolyglotCompilerOptions.EngineModeEnum.LATENCY);
     }

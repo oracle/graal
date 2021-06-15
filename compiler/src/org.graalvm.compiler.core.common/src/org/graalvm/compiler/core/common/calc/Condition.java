@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -202,7 +202,7 @@ public enum Condition {
      * Returns true if the condition needs to be mirrored to get to a canonical condition. The
      * result of the mirroring operation might still need to be negated to achieve a canonical form.
      */
-    private boolean canonicalMirror() {
+    public boolean canonicalMirror() {
         switch (this) {
             case EQ:
                 return false;
@@ -232,7 +232,7 @@ public enum Condition {
      * Returns true if the condition needs to be negated to get to a canonical condition. The result
      * of the negation might still need to be mirrored to achieve a canonical form.
      */
-    private boolean canonicalNegate() {
+    public boolean canonicalNegate() {
         switch (this) {
             case EQ:
                 return false;

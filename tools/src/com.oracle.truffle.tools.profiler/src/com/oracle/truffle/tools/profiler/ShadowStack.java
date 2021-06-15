@@ -217,8 +217,7 @@ final class ShadowStack {
             Thread currentThread = Thread.currentThread();
             ThreadLocalStack stack = profilerStack.stacks.get(currentThread);
             if (stack == null) {
-                stack = profilerStack.new ThreadLocalStack(currentThread, profilerStack.stackLimit,
-                                compiledLocation.getInstrumentedNode());
+                stack = profilerStack.new ThreadLocalStack(currentThread);
                 ThreadLocalStack prevStack = profilerStack.stacks.putIfAbsent(currentThread, stack);
                 if (prevStack != null) {
                     stack = prevStack;
@@ -243,29 +242,36 @@ final class ShadowStack {
         private static final int CORRECTION_WINDOW = 5;
 
         private final Thread thread;
-        private final StackTraceEntry[] stack;
+        private @CompilationFinal(dimensions = 0) StackTraceEntry[] stack;
 
         private boolean stackOverflowed = false;
-        @CompilationFinal private Assumption noStackOverflowedAssumption = Truffle.getRuntime().createAssumption();
+        private final Assumption noStackOverflowedAssumption = Truffle.getRuntime().createAssumption();
 
         private int stackIndex;
         @CompilationFinal private int initialStackLength;
         @CompilationFinal private Assumption initialStackLengthStable;
 
-        ThreadLocalStack(Thread thread, int stackLimit, Node instrumentedNode) {
+        ThreadLocalStack(Thread thread) {
             this.thread = thread;
+            // The stack is uninitialized initially
+            this.stackIndex = -1;
+            this.initialStackLength = -1;
+        }
+
+        private void initStack(Node instrumentedNode) {
             ArrayList<StackTraceEntry> init = getInitialStack(instrumentedNode);
             this.initialStackLength = init.size();
             this.initialStackLengthStable = initialStackLength > 0 ? Truffle.getRuntime().createAssumption("initial stack length stable") : null;
             this.stack = init.toArray(new StackTraceEntry[stackLimit]);
             this.stackIndex = init.size() - 1;
-            // In case we are running in CompiledOnly mode, the assumption is never checked in the
-            // Interpreter so call is needed to resolve the method.
-            noStackOverflowedAssumption.isValid();
         }
 
         void push(StackTraceEntry element) {
             if (noStackOverflowedAssumption.isValid()) {
+                if (stack == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    initStack(element.getInstrumentedNode());
+                }
                 int index = stackIndex + 1;
                 if (index < stack.length) {
                     assert index >= 0;
@@ -281,6 +287,14 @@ final class ShadowStack {
 
         void pop(StackTraceEntry location) {
             if (noStackOverflowedAssumption.isValid()) {
+                if (stack == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    initStack(location.getInstrumentedNode());
+                    if (stackIndex < 0) {
+                        // no initial stack elements
+                        return;
+                    }
+                }
                 int index = stackIndex;
                 if (index >= 0 && index < stack.length) {
                     if (initialStackLength > 0 && index <= initialStackLength && initialStackLengthStable.isValid()) {
@@ -321,6 +335,10 @@ final class ShadowStack {
         }
 
         StackTraceEntry[] getStack() {
+            if (stack == null) {
+                // Nothing yet
+                return null;
+            }
             StackTraceEntry[] localStack = stack;
             int localStackIndex = stackIndex;
             if (localStackIndex == -1) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,12 +29,12 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.asm.syscall;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.PlatformCapability;
@@ -55,17 +55,41 @@ public abstract class LLVMSyscallNode extends LLVMExpressionNode {
         return LLVMLanguage.getLanguage().getCapability(PlatformCapability.class).createSyscallNode(syscallNum);
     }
 
-    @Specialization(guards = "syscallNum == cachedSyscallNum", limit = "NUM_SYSCALLS")
+    @Specialization(guards = "syscallNum == cachedSyscallNum", limit = "NUM_SYSCALLS", rewriteOn = UnexpectedResultException.class)
     protected long cachedSyscall(@SuppressWarnings("unused") long syscallNum, Object arg1, Object arg2, Object arg3, Object arg4, Object arg5, Object arg6,
+                    @Cached("syscallNum") @SuppressWarnings("unused") long cachedSyscallNum,
+                    @Cached("createNode(syscallNum)") LLVMSyscallOperationNode node,
+                    @CachedContext(LLVMLanguage.class) LLVMContext context) throws UnexpectedResultException {
+        if (context.syscallTraceStream() != null) {
+            trace(context, "[sulong] syscall: %s (%s, %s, %s, %s, %s, %s)\n", getNodeName(node), arg1, arg2, arg3, arg4, arg5, arg6);
+        }
+
+        try {
+            long result = node.executeLong(arg1, arg2, arg3, arg4, arg5, arg6);
+            if (context.syscallTraceStream() != null) {
+                trace(context, "         result: %d\n", result);
+            }
+            return result;
+        } catch (UnexpectedResultException ex) {
+            Object result = ex.getResult();
+            if (context.syscallTraceStream() != null) {
+                trace(context, "         result: %s\n", result);
+            }
+            throw ex;
+        }
+    }
+
+    @Specialization(guards = "syscallNum == cachedSyscallNum", limit = "NUM_SYSCALLS", replaces = "cachedSyscall")
+    protected Object cachedSyscallGeneric(@SuppressWarnings("unused") long syscallNum, Object arg1, Object arg2, Object arg3, Object arg4, Object arg5, Object arg6,
                     @Cached("syscallNum") @SuppressWarnings("unused") long cachedSyscallNum,
                     @Cached("createNode(syscallNum)") LLVMSyscallOperationNode node,
                     @CachedContext(LLVMLanguage.class) LLVMContext context) {
         if (context.syscallTraceStream() != null) {
             trace(context, "[sulong] syscall: %s (%s, %s, %s, %s, %s, %s)\n", getNodeName(node), arg1, arg2, arg3, arg4, arg5, arg6);
         }
-        long result = node.execute(arg1, arg2, arg3, arg4, arg5, arg6);
+        Object result = node.executeGeneric(arg1, arg2, arg3, arg4, arg5, arg6);
         if (context.syscallTraceStream() != null) {
-            trace(context, "         result: %d\n", result);
+            trace(context, "         result: %s\n", result);
         }
         return result;
     }
@@ -75,11 +99,11 @@ public abstract class LLVMSyscallNode extends LLVMExpressionNode {
         return node.getName();
     }
 
-    @Specialization(replaces = "cachedSyscall")
-    protected long doI64(long syscallNum, Object arg1, Object arg2, Object arg3, Object arg4, Object arg5, Object arg6) {
+    @TruffleBoundary
+    @Specialization(replaces = "cachedSyscallGeneric")
+    protected Object doGeneric(long syscallNum, Object arg1, Object arg2, Object arg3, Object arg4, Object arg5, Object arg6) {
         // TODO: implement big switch with type casts + logic + ...?
-        CompilerDirectives.transferToInterpreter();
-        return createNode(syscallNum).execute(arg1, arg2, arg3, arg4, arg5, arg6);
+        return createNode(syscallNum).executeGeneric(arg1, arg2, arg3, arg4, arg5, arg6);
     }
 
     @TruffleBoundary

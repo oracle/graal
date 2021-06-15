@@ -269,7 +269,6 @@ public class AnalysisUniverse implements Universe {
         try {
             JavaKind storageKind = getStorageKind(type, originalMetaAccess);
             AnalysisType newValue = new AnalysisType(this, type, storageKind, objectClass);
-            hostVM.registerType(newValue);
 
             synchronized (this) {
                 /*
@@ -291,6 +290,14 @@ public class AnalysisUniverse implements Universe {
                     objectClass = newValue;
                 }
             }
+
+            /*
+             * Registering the type can throw an exception. Doing it after the synchronized block
+             * ensures that typesById doesn't contain any null values. This could happen since the
+             * AnalysisType constructor increments the nextTypeId counter.
+             */
+            hostVM.registerType(newValue);
+
             /*
              * Now that our type is correctly registered in the id-to-type array, make it accessible
              * by other threads.
@@ -302,8 +309,8 @@ public class AnalysisUniverse implements Universe {
             ResolvedJavaType enclosingType = null;
             try {
                 enclosingType = newValue.getWrapped().getEnclosingType();
-            } catch (NoClassDefFoundError e) {
-                /* Ignore NoClassDefFoundError thrown by enclosing type resolution. */
+            } catch (LinkageError e) {
+                /* Ignore LinkageError thrown by enclosing type resolution. */
             }
             /* If not being currently constructed by this thread. */
             if (enclosingType != null && !types.containsKey(enclosingType)) {

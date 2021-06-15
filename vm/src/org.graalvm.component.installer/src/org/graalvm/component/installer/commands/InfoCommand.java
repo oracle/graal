@@ -78,6 +78,7 @@ public class InfoCommand extends QueryCommandBase {
     private boolean fullPath;
     private boolean suppressTable;
     private Version.Match versionFilter;
+    private boolean noComponentPath;
 
     private final List<ComponentParam> components = new ArrayList<>();
     private final Map<ComponentInfo, MetadataLoader> map = new HashMap<>();
@@ -132,6 +133,8 @@ public class InfoCommand extends QueryCommandBase {
         if (vf != null) {
             versionFilter = Version.versionFilter(vf);
         }
+
+        noComponentPath = !(input.hasOption(Commands.OPTION_FILES) || input.hasOption(Commands.OPTION_URLS));
     }
 
     void collectComponents() throws IOException {
@@ -235,6 +238,8 @@ public class InfoCommand extends QueryCommandBase {
         if (printTable) {
             if (fullPath) {
                 feedback.output("INFO_ComponentLongListHeader");
+            } else if (noComponentPath) {
+                feedback.output("INFO_ComponentNoFileHeader");
             } else {
                 feedback.output("INFO_ComponentShortListHeader");
             }
@@ -255,15 +260,22 @@ public class InfoCommand extends QueryCommandBase {
     @Override
     void printDetails(ComponentParam param, ComponentInfo info) {
         if (printTable) {
-            String line = String.format(feedback.l10n("INFO_ComponentShortList"),
-                            shortenComponentId(info), val(info.getVersion().displayString()), val(info.getName()),
-                            filePath(info));
+            String line;
+            if (fullPath) {
+                line = String.format(feedback.l10n("INFO_ComponentLongList"),
+                                shortenComponentId(info), val(info.getVersion().displayString()), val(info.getName()),
+                                filePath(info), info.getStability().displayName(feedback));
+            } else {
+                line = String.format(feedback.l10n(noComponentPath ? "INFO_ComponentShortListNoFile" : "INFO_ComponentShortList"),
+                                shortenComponentId(info), val(info.getVersion().displayString()), val(info.getName()),
+                                filePath(info), info.getStability().displayName(feedback));
+            }
             feedback.verbatimOut(line, false);
             return;
         } else {
             feedback.output("INFO_ComponentBasicInfo",
                             shortenComponentId(info), val(info.getVersion().displayString()), val(info.getName()),
-                            param.getFullPath(), findRequiredGraalVMVersion(info));
+                            param.getFullPath(), findRequiredGraalVMVersion(info), info.getStability().displayName(feedback));
             List<String> keys = new ArrayList<>(info.getRequiredGraalValues().keySet());
             keys.remove(CommonConstants.CAP_GRAALVM_VERSION);
             if (!keys.isEmpty() && feedback.verboseOutput("INFO_ComponentRequirementsHeader")) {
