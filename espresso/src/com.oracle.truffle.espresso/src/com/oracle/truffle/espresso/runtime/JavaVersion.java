@@ -61,6 +61,10 @@ public final class JavaVersion {
         return version >= 17;
     }
 
+    public boolean inRange(int low, int high) {
+        return version >= low && version <= high;
+    }
+
     public boolean modulesEnabled() {
         return java9OrLater();
     }
