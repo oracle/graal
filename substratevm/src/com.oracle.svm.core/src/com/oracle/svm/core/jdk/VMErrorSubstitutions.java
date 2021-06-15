@@ -34,7 +34,7 @@ import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.graal.nodes.UnreachableNode;
+import org.graalvm.compiler.nodes.UnreachableNode;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.log.LogHandlerExtension;
 import com.oracle.svm.core.snippets.KnownIntrinsics;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,17 +22,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.nodes;
+package org.graalvm.compiler.nodes;
 
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_IGNORED;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
 
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.spi.Simplifiable;
 import org.graalvm.compiler.nodes.spi.SimplifierTool;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
 
 @NodeInfo(size = SIZE_IGNORED, cycles = CYCLES_IGNORED)
 public final class UnreachableNode extends FixedWithNextNode implements Simplifiable {
@@ -45,7 +44,7 @@ public final class UnreachableNode extends FixedWithNextNode implements Simplifi
     @Override
     public void simplify(SimplifierTool tool) {
         tool.deleteBranch(next());
-        replaceAtPredecessor(graph().add(new LoweredDeadEndNode()));
+        replaceAtPredecessor(graph().add(new DeadEndNode()));
         safeDelete();
     }
 
