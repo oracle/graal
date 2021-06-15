@@ -681,7 +681,7 @@ public final class LLVMContext {
                 while (languageEntry.advance()) {
                     String paths = languageEntry.getKey();
                     BitcodeID bcID = languageEntry.getValue().id;
-                    sourceString = sourceString + " ***ID***: " + bcID + " ~~~matches the source~~~: " + paths + "\n";
+                    sourceString = sourceString + " ***ID***: " + bcID.getId() + " ~~~matches the source~~~: " + paths + "\n";
                 }
                 sourceString = sourceString + "\n\nContext entries: \n";
                 while (contextEntry.advance()) {
