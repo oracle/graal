@@ -26,7 +26,9 @@
     },
     plain_benchmark_cmd:: ["mx", "--kill-with-sigquit", "benchmark", "--fork-count-file=${FORK_COUNT_FILE}", "--extras=${BENCH_SERVER_EXTRAS}", "--results-file", "${BENCH_RESULTS_FILE_PATH}", "--machine-name=${MACHINE_NAME}", "--tracker=rss"],
     benchmark_cmd:: bench_common.hwlocIfNuma(self.should_use_hwloc, self.plain_benchmark_cmd, node=self.default_numa_node),
-    extra_vm_args:: ["--profiler=${MX_PROFILER}", "--jvm=${JVM}", "--jvm-config=${JVM_CONFIG}", "-Xmx${XMX}", "-Xms${XMS}", "-XX:+PrintConcurrentLocks", "-Dgraal.CompilationFailureAction=Diagnose"],
+    min_heap_size:: if std.objectHasAll(self.environment, 'XMS') then ["-Xms${XMS}"] else [],
+    max_heap_size:: if std.objectHasAll(self.environment, 'XMX') then ["-Xmx${XMX}"] else [],
+    extra_vm_args:: ["--profiler=${MX_PROFILER}", "--jvm=${JVM}", "--jvm-config=${JVM_CONFIG}", "-XX:+PrintConcurrentLocks", "-Dgraal.CompilationFailureAction=Diagnose"] + self.min_heap_size + self.max_heap_size,
     should_mx_build:: true,
     setup+: [
       ["cd", "./" + config.compiler.compiler_suite],
