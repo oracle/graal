@@ -76,6 +76,7 @@ import java.util.logging.LogRecord;
 
 import com.oracle.truffle.api.ContextLocal;
 import com.oracle.truffle.api.ContextThreadLocal;
+import com.oracle.truffle.api.ThreadLocalAction;
 import com.oracle.truffle.api.TruffleLogger;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
@@ -1803,6 +1804,30 @@ public class ContextPreInitializationTest {
         }
     }
 
+    @Test
+    public void testThreadLocalActions() throws Exception {
+        setPatchable(FIRST);
+        doContextPreinitialize(FIRST);
+        List<CountingContext> contexts = new ArrayList<>(emittedContexts);
+        assertEquals(1, contexts.size());
+        CountingContext firstLangCtx = findContext(FIRST, contexts);
+        assertNotNull(firstLangCtx);
+        assertEquals(1, firstLangCtx.createContextCount);
+        assertEquals(1, firstLangCtx.initializeContextCount);
+        TestHandler handler = new TestHandler("engine");
+        try (Context ctx = Context.newBuilder().allowExperimentalOptions(true).logHandler(handler).option("engine.TraceThreadLocalActions", "true").build()) {
+            Value res = ctx.eval(Source.create(FIRST, "test"));
+            assertEquals("test", res.asString());
+            contexts = new ArrayList<>(emittedContexts);
+            assertEquals(1, contexts.size());
+            assertEquals(1, firstLangCtx.createContextCount);
+            assertEquals(1, firstLangCtx.initializeContextCount);
+            assertEquals(1, firstLangCtx.patchContextCount);
+        }
+        Optional<String> message = handler.logs.stream().map((r) -> r.getMessage()).filter((m) -> m.contains("[tl]")).findAny();
+        assertTrue(message.isPresent());
+    }
+
     private static IsSameFileResult testIsSameFileImpl(boolean allowIO, FileSystem fs) throws ReflectiveOperationException {
         String path = Paths.get(".").toAbsolutePath().toString();
         setPatchable(FIRST);
@@ -2094,6 +2119,12 @@ public class ContextPreInitializationTest {
 
         @CompilerDirectives.TruffleBoundary
         private static void executeImpl(CountingContext ctx, LanguageInfo info) {
+            ctx.environment().submitThreadLocal(new Thread[]{Thread.currentThread()}, new ThreadLocalAction(false, false) {
+                @Override
+                protected void perform(Access access) {
+                    // Empty action just to do TraceStackTraceInterval logging
+                }
+            });
             String msg = parseStdOutOutput.get(info.getId());
             if (msg != null) {
                 write(ctx.environment().out(), msg);
