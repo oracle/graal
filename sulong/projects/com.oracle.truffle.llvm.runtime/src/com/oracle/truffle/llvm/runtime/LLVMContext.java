@@ -675,16 +675,23 @@ public final class LLVMContext {
                 return symbolDynamicStorage[id][index];
             } catch (ArrayIndexOutOfBoundsException e) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                MapCursor<BitcodeID, Source> entry = sourceCache.getEntries();
-                String sourceString = "";
-                while (entry.advance()) {
-                    BitcodeID sourceID = entry.getKey();
-                    String sourcePath = entry.getValue().getPath();
+                MapCursor<BitcodeID, Source> contextEntry = sourceCache.getEntries();
+                MapCursor<String, LLVMLanguage.LibraryCacheEntry> languageEntry = language.getLibraryCache();
+                String sourceString = "Language entries: \n";
+                while (languageEntry.advance()) {
+                    String paths = languageEntry.getKey();
+                    BitcodeID bcID = languageEntry.getValue().id;
+                    sourceString = sourceString + " ***ID***: " + bcID + " ~~~matches the source~~~: " + paths + "\n";
+                }
+                sourceString = sourceString + "\n\nContext entries: \n";
+                while (contextEntry.advance()) {
+                    BitcodeID sourceID = contextEntry.getKey();
+                    String sourcePath = contextEntry.getValue().getPath();
                     sourceString = sourceString + " ***ID***: " + sourceID.getId() + " ~~~matches the source~~~: " + sourcePath + "\n";
                 }
                 throw new IllegalStateException("id: " + id + ", index: " + index + ", id length: " + symbolDynamicStorage.length +
                                 ", symbol name: " + symbol.getName() + ", symbol kind: " + symbol.getKind() +
-                                ", symbol class: " + symbol.getClass() + "\n source strings: " + sourceString, e);
+                                ", source size: " + sourceCache.size() + "\n source strings: " + sourceString, e);
             }
         }
     }
