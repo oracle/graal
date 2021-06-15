@@ -258,7 +258,7 @@ final class AbortOnDisallowedNode extends Graph.NodeEventListener {
                 throw new ClassInitializerHasSideEffectsException("Access of static field from a different class: " + field.format("%H.%n"));
             }
         } else if (node instanceof VMThreadLocalAccess) {
-            throw new ClassInitalizerHasSideEffectsException("Access of thread-local value");
+            throw new ClassInitializerHasSideEffectsException("Access of thread-local value");
         } else if (node instanceof UnsafeAccessNode) {
             throw VMError.shouldNotReachHere("Intrinsification of Unsafe methods is not enabled during bytecode parsing");
         }
