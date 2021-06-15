@@ -668,6 +668,8 @@ public final class BytecodeNode extends EspressoMethodNode {
         CompilerAsserts.partialEvaluationConstant(slotCount);
         long[] primitives = new long[slotCount];
         Object[] refs = new Object[slotCount];
+        EspressoRootNode rootNode = getRoot();
+        rootNode.initMonitorStack(frame, rootNode.getMonitorStack(parentFrame));
         frame.setObject(primitivesSlot, primitives);
         frame.setObject(refsSlot, refs);
         try {

@@ -1,3 +1,27 @@
+/*
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
 package org.graalvm.compiler.truffle.test;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -135,8 +159,8 @@ public class OnStackReplaceableNodeTest extends TestWithSynchronousCompiling {
         osrNode.nodeReplaced(osrNode, new FixedIterationLoop(new FrameDescriptor()), "something changed");
         Assert.assertTrue(osrState.getOSRCompilations().isEmpty());
         Assert.assertFalse(osrTarget.isValid());
-        // Calling the node will eventually trigger OSR again (after polling interval)
-        Assert.assertEquals(FixedIterationLoop.OSR_RESULT, target.call(osrThreshold + 1));
+        // Calling the node will eventually trigger OSR again (after OSR_POLL_INTERVAL back-edges)
+        Assert.assertEquals(FixedIterationLoop.OSR_RESULT, target.call(OptimizedCallTarget.OSR_POLL_INTERVAL+1));
         osrTarget = osrState.getOSRCompilations().get(-1);
         Assert.assertNotNull(osrTarget);
         Assert.assertTrue(osrTarget.isValid());
@@ -152,6 +176,12 @@ public class OnStackReplaceableNodeTest extends TestWithSynchronousCompiling {
         RootNode rootNode = new MaterializedFrameProgram(osrNode, frameDescriptor);
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
         Assert.assertEquals(FixedIterationLoop.NORMAL_RESULT, target.call(osrThreshold + 1));
+        // Compiled call target is still valid.
+        OptimizedCallTarget.OSRState osrState = (OptimizedCallTarget.OSRState) osrNode.getOSRState();
+        OptimizedCallTarget osrTarget = osrState.getOSRCompilations().get(-1);
+        Assert.assertNotNull(osrTarget);
+        Assert.assertTrue(osrTarget.isValid());
+
     }
 
     /*
@@ -228,15 +258,18 @@ public class OnStackReplaceableNodeTest extends TestWithSynchronousCompiling {
         OptimizedCallTarget.OSRState osrState = (OptimizedCallTarget.OSRState) bytecodeNode.getOSRState();
         Assert.assertTrue(osrState.getOSRCompilations().containsKey(0));
         Assert.assertTrue(osrState.getOSRCompilations().get(0).isValid());
+    }
 
+    @Test
+    public void testNoOSRInBytecodeLoop() {
         // osrThreshold back-edges -> not compiled
-        frameDescriptor = new FrameDescriptor();
-        bytecodeNode = new BytecodeNode(3, frameDescriptor, tripleInput1);
-        rootNode = new Program(bytecodeNode, frameDescriptor);
-        target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
+        FrameDescriptor frameDescriptor = new FrameDescriptor();
+        BytecodeNode bytecodeNode = new BytecodeNode(3, frameDescriptor, tripleInput1);
+        RootNode rootNode = new Program(bytecodeNode, frameDescriptor);
+        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
         Assert.assertEquals(3 * osrThreshold, target.call(osrThreshold, 0));
         Assert.assertFalse(bytecodeNode.compiled);
-        osrState = (OptimizedCallTarget.OSRState) bytecodeNode.getOSRState();
+        OptimizedCallTarget.OSRState osrState = (OptimizedCallTarget.OSRState) bytecodeNode.getOSRState();
         Assert.assertTrue(osrState.getOSRCompilations().isEmpty());
     }
 
@@ -301,120 +334,6 @@ public class OnStackReplaceableNodeTest extends TestWithSynchronousCompiling {
         public Object execute(VirtualFrame frame) {
             this.frame = frame.materialize();
             return osrNode.execute(this.frame);
-        }
-    }
-
-    public static class BytecodeNode extends OnStackReplaceableNode {
-        @CompilationFinal(dimensions = 1) private final byte[] bytecodes;
-        @CompilationFinal(dimensions = 1) private final FrameSlot[] regs;
-
-        boolean compiled;
-
-        public static class Bytecode {
-            public static final byte RETURN = 0;
-            public static final byte INC = 1;
-            public static final byte DEC = 2;
-            public static final byte JMPNONZERO = 3;
-            public static final byte COPY = 4;
-        }
-
-        public BytecodeNode(int numLocals, FrameDescriptor frameDescriptor, byte[] bytecodes) {
-            super(null);
-            this.bytecodes = bytecodes;
-            this.regs = new FrameSlot[numLocals];
-            for (int i = 0; i < numLocals; i++) {
-                this.regs[i] = frameDescriptor.addFrameSlot("$" + i, FrameSlotKind.Int);
-            }
-            this.compiled = false;
-        }
-
-        protected void setInt(Frame frame, int stackIndex, int value) {
-            frame.setInt(regs[stackIndex], value);
-        }
-
-        protected int getInt(Frame frame, int stackIndex) {
-            try {
-                return frame.getInt(regs[stackIndex]);
-            } catch (FrameSlotTypeException e) {
-                throw new IllegalStateException("Error accessing stack slot " + stackIndex);
-            }
-        }
-
-        @Override
-        @ExplodeLoop
-        public Object execute(VirtualFrame frame) {
-            Object[] args = frame.getArguments();
-            for (int i = 0; i < regs.length; i++) {
-                if (i < args.length) {
-                    frame.setInt(regs[i], (Integer) args[i]);
-                } else {
-                    frame.setInt(regs[i], 0);
-                }
-            }
-
-            return executeFromBCI(frame, 0);
-        }
-
-        @Override
-        @ExplodeLoop
-        public Object doOSR(VirtualFrame innerFrame, Frame parentFrame, int target) {
-            for (int i = 0; i < regs.length; i++) {
-                setInt(innerFrame, i, getInt(parentFrame, i));
-            }
-            return executeFromBCI(innerFrame, target);
-        }
-
-        @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
-        public Object executeFromBCI(VirtualFrame frame, int startBCI) {
-            this.compiled = CompilerDirectives.inCompiledCode();
-            CompilerAsserts.partialEvaluationConstant(startBCI);
-            int bci = startBCI;
-            while (true) {
-                CompilerAsserts.partialEvaluationConstant(bci);
-                switch (bytecodes[bci]) {
-                    case Bytecode.RETURN: {
-                        byte idx = bytecodes[bci + 1];
-                        return getInt(frame, idx);
-                    }
-                    case Bytecode.INC: {
-                        byte idx = bytecodes[bci + 1];
-                        setInt(frame, idx, getInt(frame, idx) + 1);
-
-                        bci = bci + 2;
-                        continue;
-                    }
-                    case Bytecode.DEC: {
-                        byte idx = bytecodes[bci + 1];
-                        setInt(frame, idx, getInt(frame, idx) - 1);
-
-                        bci = bci + 2;
-                        continue;
-                    }
-                    case Bytecode.JMPNONZERO: {
-                        byte idx = bytecodes[bci + 1];
-                        int value = getInt(frame, idx);
-                        if (value != 0) {
-                            int target = bci + bytecodes[bci + 2];
-                            if (target < bci) { // back-edge
-                                Object result = reportOSRBackEdge(frame, target);
-                                if (result != null) {
-                                    return result;
-                                }
-                            }
-                            bci = target;
-                        } else {
-                            bci = bci + 3;
-                        }
-                        continue;
-                    }
-                    case Bytecode.COPY: {
-                        byte src = bytecodes[bci + 1];
-                        byte dest = bytecodes[bci + 2];
-                        setInt(frame, dest, getInt(frame, src));
-                        bci = bci + 3;
-                    }
-                }
-            }
         }
     }
 
@@ -568,6 +487,120 @@ public class OnStackReplaceableNodeTest extends TestWithSynchronousCompiling {
                 }
             }
             return CompilerDirectives.inCompiledCode() ? OSR_RESULT : NORMAL_RESULT;
+        }
+    }
+
+    public static class BytecodeNode extends OnStackReplaceableNode {
+        @CompilationFinal(dimensions = 1) private final byte[] bytecodes;
+        @CompilationFinal(dimensions = 1) private final FrameSlot[] regs;
+
+        boolean compiled;
+
+        public static class Bytecode {
+            public static final byte RETURN = 0;
+            public static final byte INC = 1;
+            public static final byte DEC = 2;
+            public static final byte JMPNONZERO = 3;
+            public static final byte COPY = 4;
+        }
+
+        public BytecodeNode(int numLocals, FrameDescriptor frameDescriptor, byte[] bytecodes) {
+            super(null);
+            this.bytecodes = bytecodes;
+            this.regs = new FrameSlot[numLocals];
+            for (int i = 0; i < numLocals; i++) {
+                this.regs[i] = frameDescriptor.addFrameSlot("$" + i, FrameSlotKind.Int);
+            }
+            this.compiled = false;
+        }
+
+        protected void setInt(Frame frame, int stackIndex, int value) {
+            frame.setInt(regs[stackIndex], value);
+        }
+
+        protected int getInt(Frame frame, int stackIndex) {
+            try {
+                return frame.getInt(regs[stackIndex]);
+            } catch (FrameSlotTypeException e) {
+                throw new IllegalStateException("Error accessing stack slot " + stackIndex);
+            }
+        }
+
+        @Override
+        @ExplodeLoop
+        public Object execute(VirtualFrame frame) {
+            Object[] args = frame.getArguments();
+            for (int i = 0; i < regs.length; i++) {
+                if (i < args.length) {
+                    frame.setInt(regs[i], (Integer) args[i]);
+                } else {
+                    frame.setInt(regs[i], 0);
+                }
+            }
+
+            return executeFromBCI(frame, 0);
+        }
+
+        @Override
+        @ExplodeLoop
+        public Object doOSR(VirtualFrame innerFrame, Frame parentFrame, int target) {
+            for (int i = 0; i < regs.length; i++) {
+                setInt(innerFrame, i, getInt(parentFrame, i));
+            }
+            return executeFromBCI(innerFrame, target);
+        }
+
+        @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
+        public Object executeFromBCI(VirtualFrame frame, int startBCI) {
+            this.compiled = CompilerDirectives.inCompiledCode();
+            CompilerAsserts.partialEvaluationConstant(startBCI);
+            int bci = startBCI;
+            while (true) {
+                CompilerAsserts.partialEvaluationConstant(bci);
+                switch (bytecodes[bci]) {
+                    case Bytecode.RETURN: {
+                        byte idx = bytecodes[bci + 1];
+                        return getInt(frame, idx);
+                    }
+                    case Bytecode.INC: {
+                        byte idx = bytecodes[bci + 1];
+                        setInt(frame, idx, getInt(frame, idx) + 1);
+
+                        bci = bci + 2;
+                        continue;
+                    }
+                    case Bytecode.DEC: {
+                        byte idx = bytecodes[bci + 1];
+                        setInt(frame, idx, getInt(frame, idx) - 1);
+
+                        bci = bci + 2;
+                        continue;
+                    }
+                    case Bytecode.JMPNONZERO: {
+                        byte idx = bytecodes[bci + 1];
+                        int value = getInt(frame, idx);
+                        if (value != 0) {
+                            int target = bci + bytecodes[bci + 2];
+                            if (target < bci) { // back-edge
+                                Object result = reportOSRBackEdge(frame, target);
+                                if (result != null) {
+                                    return result;
+                                }
+                            }
+                            bci = target;
+                        } else {
+                            bci = bci + 3;
+                        }
+                        continue;
+                    }
+                    case Bytecode.COPY: {
+                        byte src = bytecodes[bci + 1];
+                        byte dest = bytecodes[bci + 2];
+                        setInt(frame, dest, getInt(frame, src));
+                        bci = bci + 3;
+                    }
+                }
+            }
         }
     }
 }
