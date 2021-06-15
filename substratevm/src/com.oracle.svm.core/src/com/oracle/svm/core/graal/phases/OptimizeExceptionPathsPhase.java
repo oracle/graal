@@ -33,6 +33,7 @@ import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.ControlSinkNode;
 import org.graalvm.compiler.nodes.ControlSplitNode;
+import org.graalvm.compiler.nodes.DeadEndNode;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.ProfileData;
@@ -60,6 +61,9 @@ public class OptimizeExceptionPathsPhase extends Phase {
         NodeBitMap exceptionPaths = new NodeBitMap(graph);
         for (UnwindNode unwind : graph.getNodes().filter(UnwindNode.class)) {
             walkBack(unwind, exceptionPaths);
+        }
+        for (DeadEndNode deadEnd : graph.getNodes(DeadEndNode.TYPE)) {
+            walkBack(deadEnd, exceptionPaths);
         }
         for (LoweredDeadEndNode deadEnd : graph.getNodes(LoweredDeadEndNode.TYPE)) {
             walkBack(deadEnd, exceptionPaths);
