@@ -30,13 +30,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.Callable;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Supplier;
 
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.nodes.OnStackReplaceableNode;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
@@ -132,8 +130,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     private static final WeakReference<OptimizedDirectCallNode> MULTIPLE_CALLS = null;
     private static final String SPLIT_LOG_FORMAT = "[poly-event] %-70s %s";
     private static final int MAX_PROFILED_ARGUMENTS = 256;
-    // Note: must be a power of 2.
-    private static final int OSR_POLL_INTERVAL = 256;
+    public static final int OSR_POLL_INTERVAL = 1024; // must be a power of 2 (polling uses bit masks)
 
     /** The AST to be executed when this call target is called. */
     private final RootNode rootNode;
@@ -346,8 +343,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         this.rootNode = rootNode;
         this.engine = GraalTVMCI.getEngineData(rootNode);
         this.resetCompilationProfile();
-        // Do not adopt children of OSRRootNodes; we want to preserve the parent of the LoopNode.
-        this.uninitializedNodeCount = !(rootNode instanceof OptimizedOSRLoopNode.OSRRootNode) ? GraalRuntimeAccessor.NODES.adoptChildrenAndCount(rootNode) : -1;
+        // Do not adopt children of OSRRootNodes; we want to preserve the parent of the child node(s).
+        this.uninitializedNodeCount = !(rootNode instanceof BaseOSRRootNode) ? GraalRuntimeAccessor.NODES.adoptChildrenAndCount(rootNode) : -1;
         GraalRuntimeAccessor.NODES.setCallTarget(rootNode, this);
     }
 
@@ -579,10 +576,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return !compilationFailed //
                         && !isSubmittedForCompilation() //
                         /*
-                         * Compilation of OSR loop call target is scheduled in
-                         * OptimizedOSRLoopNode#compileImpl.
+                         * Compilation of OSR loop nodes is managed separately.
                          */
-                        && !(getRootNode() instanceof OptimizedOSRLoopNode.OSRRootNode) //
+                        && !(getRootNode() instanceof BaseOSRRootNode) //
                         && intCallCount >= engine.callThresholdInInterpreter //
                         && intLoopCallCount >= scaledThreshold(engine.callAndLoopThresholdInInterpreter); //
     }
@@ -1105,18 +1101,16 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
              *
              * This method is thread-safe, but could under-count.
              */
-            int newBackEdgeCount = backEdgeCount;
-            newBackEdgeCount = (newBackEdgeCount == Integer.MAX_VALUE) ? newBackEdgeCount : newBackEdgeCount + 1;
-            backEdgeCount = newBackEdgeCount;
-            return newBackEdgeCount >= osrThreshold && ((newBackEdgeCount - osrThreshold) & (OSR_POLL_INTERVAL - 1)) == 0;
+            int newBackEdgeCount = ++backEdgeCount; // omit overflow check; OSR should trigger long
+                                                    // before it happens
+            return newBackEdgeCount >= osrThreshold && (newBackEdgeCount & (OSR_POLL_INTERVAL - 1)) == 0;
         }
 
         private synchronized OptimizedCallTarget requestOSR(TruffleLanguage<?> language, OnStackReplaceableNode osrNode, int target) {
             assert !osrCompilations.containsKey(target);
             OptimizedCallTarget callTarget = GraalTruffleRuntime.getRuntime().createOSRCallTarget(new OSRRootNode(language, osrNode, target));
-            // TODO: do we want first or last tier compilation?
-            callTarget.compile(true);
-            if (callTarget.compilationFailed) {
+            callTarget.compile(false);
+            if (callTarget.isCompilationFailed()) {
                 osrEnabled = false;
                 return null;
             }
@@ -1152,11 +1146,14 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         public EconomicMap<Integer, OptimizedCallTarget> getOSRCompilations() {
             return osrCompilations;
         }
+
+        public int getBackEdgeCount() {
+            return backEdgeCount;
+        }
     }
 
-    private static final class OSRRootNode extends RootNode {
-        // TODO: do we want this marked @Child?
-        private final OnStackReplaceableNode onStackReplaceableNode;
+    private static final class OSRRootNode extends BaseOSRRootNode {
+        @Child private OnStackReplaceableNode onStackReplaceableNode;
         private final int target;
 
         OSRRootNode(TruffleLanguage<?> language, OnStackReplaceableNode onStackReplaceableNode, int target) {

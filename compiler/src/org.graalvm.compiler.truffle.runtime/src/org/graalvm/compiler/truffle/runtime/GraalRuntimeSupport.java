@@ -230,7 +230,7 @@ final class GraalRuntimeSupport extends RuntimeSupport {
 
     @Override
     public boolean isOSRRootNode(RootNode rootNode) {
-        return rootNode instanceof OptimizedOSRLoopNode.OSRRootNode;
+        return rootNode instanceof BaseOSRRootNode;
     }
 
     @Override

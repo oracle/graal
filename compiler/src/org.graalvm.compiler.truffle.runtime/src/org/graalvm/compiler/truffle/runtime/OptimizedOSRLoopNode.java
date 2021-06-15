@@ -452,7 +452,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
 
     }
 
-    public static class OSRRootNode extends RootNode {
+    public static class OSRRootNode extends BaseOSRRootNode {
 
         protected final Class<? extends VirtualFrame> clazz;
 
