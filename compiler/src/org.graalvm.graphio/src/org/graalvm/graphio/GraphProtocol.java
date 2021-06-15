@@ -903,7 +903,6 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
         Character get(Object key, int type) {
             Object value = map.get(key);
             if (value instanceof String) {
-                assert key.toString().equals(value);
                 value = map.get(value);
                 Character id = (Character) value;
                 if (id != null && keys[id] == value) {
