@@ -32,6 +32,7 @@ import static com.oracle.truffle.espresso.ffi.NativeType.POINTER;
 import java.nio.ByteBuffer;
 
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.espresso.ffi.NativeAccess;
 import com.oracle.truffle.espresso.ffi.RawPointer;
 import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
 import com.oracle.truffle.espresso.jni.JNIHandles;
@@ -751,6 +752,10 @@ public abstract class StructWrapper {
 
     public TruffleObject pointer() {
         return pointer;
+    }
+
+    public void free(NativeAccess nativeAccess) {
+        nativeAccess.freeMemory(pointer);
     }
 
     protected StructWrapper(JniEnv jni, TruffleObject pointer, long capacity) {

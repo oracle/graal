@@ -249,25 +249,30 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     private JavaVersion findJavaVersion(TruffleObject libJava) {
-        JdkVersionInfo.JdkVersionInfoWrapper wrapper = getStructs().jdkVersionInfo.allocate(getNativeAccess(), jni());
         // void JDK_GetVersionInfo0(jdk_version_info* info, size_t info_size);
         TruffleObject jdkGetVersionInfo = getNativeAccess().lookupAndBindSymbol(libJava, "JDK_GetVersionInfo0", NativeSignature.create(NativeType.VOID, NativeType.POINTER, NativeType.LONG));
         if (jdkGetVersionInfo != null) {
+            JdkVersionInfo.JdkVersionInfoWrapper wrapper = getStructs().jdkVersionInfo.allocate(getNativeAccess(), jni());
             try {
                 getUncached().execute(jdkGetVersionInfo, wrapper.pointer(), getStructs().jdkVersionInfo.structSize());
             } catch (UnsupportedTypeException | UnsupportedMessageException | ArityException e) {
                 throw EspressoError.shouldNotReachHere(e);
             }
-        }
-        int versionInfo = wrapper.jdkVersion();
-        getStructs().jdkVersionInfo.free(getNativeAccess(), wrapper);
+            int versionInfo = wrapper.jdkVersion();
+            wrapper.free(getNativeAccess());
 
-        int major = (versionInfo & 0xFF000000) >> 24;
-        int minor = (versionInfo & 0x00FF0000) >> 16;
-        if (major == 1) {
-            return new JavaVersion(minor);
+            int major = (versionInfo & 0xFF000000) >> 24;
+            if (major == 1) {
+                // Version 1.X
+                int minor = (versionInfo & 0x00FF0000) >> 16;
+                return new JavaVersion(minor);
+            } else {
+                // Version X.Y
+                return new JavaVersion(major);
+            }
         } else {
-            return new JavaVersion(major);
+            // JDK 14+
+            return new JavaVersion(JavaVersion.LATEST_SUPPORTED);
         }
     }
 
