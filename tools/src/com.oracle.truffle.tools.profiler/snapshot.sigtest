@@ -12,6 +12,9 @@ meth public boolean isGatherSelfHitTimes()
 meth public com.oracle.truffle.api.instrumentation.SourceSectionFilter getFilter()
 meth public int getStackLimit()
 meth public java.util.Collection<com.oracle.truffle.tools.profiler.ProfilerNode<com.oracle.truffle.tools.profiler.CPUSampler$Payload>> getRootNodes()
+meth public java.util.LongSummaryStatistics getBiasStatistics()
+meth public java.util.LongSummaryStatistics getSampleDuration()
+meth public java.util.Map<com.oracle.truffle.api.TruffleContext,com.oracle.truffle.tools.profiler.CPUSamplerData> getContextData()
 meth public java.util.Map<java.lang.Thread,java.util.Collection<com.oracle.truffle.tools.profiler.ProfilerNode<com.oracle.truffle.tools.profiler.CPUSampler$Payload>>> getThreadToNodesMap()
 meth public java.util.Map<java.lang.Thread,java.util.List<com.oracle.truffle.tools.profiler.StackTraceEntry>> takeSample()
 meth public long getPeriod()
@@ -22,13 +25,15 @@ meth public void close()
 meth public void setCollecting(boolean)
 meth public void setDelay(long)
 meth public void setDelaySamplingUntilNonInternalLangInit(boolean)
+ anno 0 java.lang.Deprecated()
 meth public void setFilter(com.oracle.truffle.api.instrumentation.SourceSectionFilter)
 meth public void setGatherSelfHitTimes(boolean)
 meth public void setMode(com.oracle.truffle.tools.profiler.CPUSampler$Mode)
+ anno 0 java.lang.Deprecated()
 meth public void setPeriod(long)
 meth public void setStackLimit(int)
 supr java.lang.Object
-hfds DEFAULT_FILTER,closed,collecting,copyPayload,delay,delaySamplingUntilNonInternalLangInit,env,filter,gatherSelfHitTimes,mergePayload,mode,nonInternalLanguageContextInitialized,payloadFactory,period,rootNodes,samplerTask,samplerThread,samplesTaken,shadowStack,stackLimit,stackOverflowed,stacksBinding
+hfds COPY_PAYLOAD,DEFAULT_FILTER,MERGE_PAYLOAD,PAYLOAD_FACTORY,activeContexts,closed,collecting,delay,env,filter,gatherSelfHitTimes,period,safepointStack,samplerTask,samplerThread,samplesTaken,stackLimit,syntheticFrames
 hcls SamplingTimerTask
 
 CLSS public final static !enum com.oracle.truffle.tools.profiler.CPUSampler$Mode
@@ -51,6 +56,17 @@ meth public int getSelfInterpretedHitCount()
 meth public java.util.List<java.lang.Long> getSelfHitTimes()
 supr java.lang.Object
 hfds compiledHitCount,interpretedHitCount,selfCompiledHitCount,selfHitTimes,selfInterpretedHitCount
+
+CLSS public final com.oracle.truffle.tools.profiler.CPUSamplerData
+cons public init(com.oracle.truffle.api.TruffleContext,java.util.Map<java.lang.Thread,java.util.Collection<com.oracle.truffle.tools.profiler.ProfilerNode<com.oracle.truffle.tools.profiler.CPUSampler$Payload>>>,java.util.LongSummaryStatistics,java.util.LongSummaryStatistics,long,long)
+meth public com.oracle.truffle.api.TruffleContext getContext()
+meth public java.util.LongSummaryStatistics getSampleBias()
+meth public java.util.LongSummaryStatistics getSampleDuration()
+meth public java.util.Map<java.lang.Thread,java.util.Collection<com.oracle.truffle.tools.profiler.ProfilerNode<com.oracle.truffle.tools.profiler.CPUSampler$Payload>>> getThreadData()
+meth public long getSampleInterval()
+meth public long getSamples()
+supr java.lang.Object
+hfds biasStatistics,context,durationStatistics,intervalMs,samplesTaken,threadData
 
 CLSS public final com.oracle.truffle.tools.profiler.CPUTracer
 innr public final static Payload
@@ -89,7 +105,7 @@ meth public void clearData()
 meth public void close()
 meth public void setCollecting(boolean)
 supr java.lang.Object
-hfds CLEAN_INTERVAL,RECURSIVE,activeBinding,closed,collecting,env,initializedLanguages,newReferences,processedReferences,referenceQueue,referenceThread,summaryData
+hfds CLEAN_INTERVAL,INTEROP,RECURSIVE,activeBinding,closed,collecting,env,initializedLanguages,newReferences,processedReferences,referenceQueue,referenceThread,summaryData
 hcls Listener,ObjectWeakReference
 
 CLSS public final com.oracle.truffle.tools.profiler.HeapSummary
@@ -118,7 +134,7 @@ meth public void setCollecting(boolean)
 meth public void setFilter(com.oracle.truffle.api.instrumentation.SourceSectionFilter)
 meth public void setStackLimit(int)
 supr java.lang.Object
-hfds DEFAULT_FILTER,activeBinding,closed,collecting,copyPayload,env,filter,mergePayload,payloadFactory,rootNodes,shadowStack,stackLimit,stackOverflowed,stacksBinding
+hfds DEFAULT_FILTER,INTEROP,activeBinding,closed,collecting,copyPayload,env,filter,mergePayload,payloadFactory,rootNodes,shadowStack,stackLimit,stackOverflowed,stacksBinding
 hcls Listener
 
 CLSS public final static com.oracle.truffle.tools.profiler.MemoryTracer$AllocationEventInfo
@@ -150,6 +166,7 @@ supr java.lang.Object
 hfds children,parent,payload,sourceLocation
 
 CLSS public final com.oracle.truffle.tools.profiler.StackTraceEntry
+cons public init(java.lang.String)
 meth public boolean equals(java.lang.Object)
 meth public boolean isCompiled()
 meth public boolean isInlined()
@@ -161,7 +178,7 @@ meth public java.lang.String getRootName()
 meth public java.lang.String toString()
 meth public java.util.Set<java.lang.Class<?>> getTags()
 supr java.lang.Object
-hfds STATE_COMPILATION_ROOT,STATE_COMPILED,STATE_INTERPRETED,STATE_UNKNOWN,instrumentedNode,rootName,sourceSection,stackTraceElement,state,tags
+hfds STATE_FIRST_TIER_COMPILATION_ROOT,STATE_FIRST_TIER_COMPILED,STATE_INTERPRETED,STATE_LAST_TIER_COMPILATION_ROOT,STATE_LAST_TIER_COMPILED,STATE_UNKNOWN,instrumentedNode,rootName,sourceSection,stackTraceElement,state,tags
 
 CLSS public abstract interface java.io.Closeable
 intf java.lang.AutoCloseable
