@@ -42,19 +42,12 @@ import org.graalvm.compiler.nodes.memory.address.AddressNode;
 public final class G1ReferentFieldReadBarrier extends ObjectWriteBarrier {
     public static final NodeClass<G1ReferentFieldReadBarrier> TYPE = NodeClass.create(G1ReferentFieldReadBarrier.class);
 
-    private final boolean dynamicCheck;
-
-    public G1ReferentFieldReadBarrier(AddressNode address, ValueNode expectedObject, boolean dynamicCheck) {
+    public G1ReferentFieldReadBarrier(AddressNode address, ValueNode expectedObject) {
         super(TYPE, address, expectedObject, true);
-        this.dynamicCheck = dynamicCheck;
     }
 
     public ValueNode getExpectedObject() {
         return getValue();
-    }
-
-    public boolean isDynamicCheck() {
-        return dynamicCheck;
     }
 
     @Override

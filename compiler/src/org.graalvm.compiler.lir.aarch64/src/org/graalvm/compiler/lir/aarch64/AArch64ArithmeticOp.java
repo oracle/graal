@@ -32,9 +32,9 @@ import static org.graalvm.compiler.lir.aarch64.AArch64ArithmeticOp.ARMv8Constant
 import static org.graalvm.compiler.lir.aarch64.AArch64ArithmeticOp.ARMv8ConstantCategory.NONE;
 import static org.graalvm.compiler.lir.aarch64.AArch64ArithmeticOp.ARMv8ConstantCategory.SHIFT;
 
-import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
-import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ElementSize;
 import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDSize;
+import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ElementSize;
+import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.debug.GraalError;
@@ -78,11 +78,10 @@ public enum AArch64ArithmeticOp {
     BIC,
     ORN,
     EON,
-    SHL(SHIFT),
-    LSHR(SHIFT),
-    ASHR(SHIFT),
+    LSL(SHIFT),
+    LSR(SHIFT),
+    ASR(SHIFT),
     ROR(SHIFT),
-    RORV(SHIFT),
     ABS,
     FADD,
     FSUB,
@@ -236,14 +235,14 @@ public enum AArch64ArithmeticOp {
                 case XOR:
                     masm.eor(size, dst, src, b.asLong());
                     break;
-                case SHL:
-                    masm.shl(size, dst, src, b.asLong());
+                case LSL:
+                    masm.lsl(size, dst, src, b.asLong());
                     break;
-                case LSHR:
-                    masm.lshr(size, dst, src, b.asLong());
+                case LSR:
+                    masm.lsr(size, dst, src, b.asLong());
                     break;
-                case ASHR:
-                    masm.ashr(size, dst, src, b.asLong());
+                case ASR:
+                    masm.asr(size, dst, src, b.asLong());
                     break;
                 case ROR:
                     masm.ror(size, dst, src, (int) b.asLong());
@@ -334,17 +333,17 @@ public enum AArch64ArithmeticOp {
                 case EON:
                     masm.eon(size, dst, src1, src2);
                     break;
-                case SHL:
-                    masm.shl(size, dst, src1, src2);
+                case LSL:
+                    masm.lsl(size, dst, src1, src2);
                     break;
-                case LSHR:
-                    masm.lshr(size, dst, src1, src2);
+                case LSR:
+                    masm.lsr(size, dst, src1, src2);
                     break;
-                case ASHR:
-                    masm.ashr(size, dst, src1, src2);
+                case ASR:
+                    masm.asr(size, dst, src1, src2);
                     break;
-                case RORV:
-                    masm.rorv(size, dst, src1, src2);
+                case ROR:
+                    masm.ror(size, dst, src1, src2);
                     break;
                 case FADD:
                     masm.fadd(size, dst, src1, src2);
@@ -609,6 +608,70 @@ public enum AArch64ArithmeticOp {
 
     }
 
+    public static AArch64LIRInstruction generateASIMDBinaryInstruction(AArch64ArithmeticOp op, AllocatableValue result, AllocatableValue a, AllocatableValue b) {
+        switch (op) {
+            case ASR:
+            case LSR:
+                return new ASIMDTwoStepBinaryOp(op, result, a, b);
+        }
+        return new ASIMDBinaryOp(op, result, a, b);
+    }
+
+    /**
+     * For ASIMD, some arithmetic operations require generating two instructions and eagerly use the
+     * result register. In this case, the input registers must be marked as ALIVE to guarantee they
+     * are not reused for the result reg.
+     */
+    public static class ASIMDTwoStepBinaryOp extends AArch64LIRInstruction {
+        private static final LIRInstructionClass<ASIMDTwoStepBinaryOp> TYPE = LIRInstructionClass.create(ASIMDTwoStepBinaryOp.class);
+
+        @Opcode private final AArch64ArithmeticOp op;
+        @Def({REG}) protected AllocatableValue result;
+        /*
+         * Note currently it is only necessary to keep the first register alive. However, this may
+         * change if more instructions are added here.
+         */
+        @Alive({REG}) protected AllocatableValue a;
+        @Use({REG}) protected AllocatableValue b;
+
+        ASIMDTwoStepBinaryOp(AArch64ArithmeticOp op, AllocatableValue result, AllocatableValue a, AllocatableValue b) {
+            super(TYPE);
+            this.op = op;
+            this.result = result;
+            this.a = a;
+            this.b = b;
+        }
+
+        @Override
+        protected void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
+            ASIMDSize size = ASIMDSize.fromVectorKind(result.getPlatformKind());
+            ElementSize eSize = ElementSize.fromKind(result.getPlatformKind());
+
+            Register dst = asRegister(result);
+            Register src1 = asRegister(a);
+            Register src2 = asRegister(b);
+            switch (op) {
+                case LSR:
+                    /*
+                     * On AArch64 right shifts are actually left shifts by a negative value.
+                     */
+                    masm.neon.negVV(size, eSize, dst, src2);
+                    masm.neon.ushlVVV(size, eSize, dst, src1, dst);
+                    break;
+                case ASR:
+                    /*
+                     * On AArch64 right shifts are actually left shifts by a negative value.
+                     */
+                    masm.neon.negVV(size, eSize, dst, src2);
+                    masm.neon.sshlVVV(size, eSize, dst, src1, dst);
+                    break;
+                default:
+                    throw GraalError.shouldNotReachHere("op=" + op.name());
+
+            }
+        }
+    }
+
     public static class ASIMDBinaryOp extends AArch64LIRInstruction {
         private static final LIRInstructionClass<ASIMDBinaryOp> TYPE = LIRInstructionClass.create(ASIMDBinaryOp.class);
 
@@ -617,7 +680,7 @@ public enum AArch64ArithmeticOp {
         @Use({REG}) protected AllocatableValue a;
         @Use({REG}) protected AllocatableValue b;
 
-        public ASIMDBinaryOp(AArch64ArithmeticOp op, AllocatableValue result, AllocatableValue a, AllocatableValue b) {
+        ASIMDBinaryOp(AArch64ArithmeticOp op, AllocatableValue result, AllocatableValue a, AllocatableValue b) {
             super(TYPE);
             this.op = op;
             this.result = result;
@@ -655,25 +718,17 @@ public enum AArch64ArithmeticOp {
                 case SUB:
                     masm.neon.subVVV(size, eSize, dst, src1, src2);
                     break;
-                case SHL:
+                case LSL:
                     masm.neon.ushlVVV(size, eSize, dst, src1, src2);
-                    break;
-                case LSHR:
-                    /*
-                     * On AArch64 right shifts are actually left shifts by a negative value.
-                     */
-                    masm.neon.negVV(size, eSize, dst, src2);
-                    masm.neon.ushlVVV(size, eSize, dst, src1, dst);
-                    break;
-                case ASHR:
-                    /*
-                     * On AArch64 right shifts are actually left shifts by a negative value.
-                     */
-                    masm.neon.negVV(size, eSize, dst, src2);
-                    masm.neon.sshlVVV(size, eSize, dst, src1, dst);
                     break;
                 case MUL:
                     masm.neon.mulVVV(size, eSize, dst, src1, src2);
+                    break;
+                case MNEG:
+                    /* First perform multiply. */
+                    masm.neon.mulVVV(size, eSize, dst, src1, src2);
+                    /* Next negate value. */
+                    masm.neon.negVV(size, eSize, dst, dst);
                     break;
                 case FADD:
                     masm.neon.faddVVV(size, eSize, dst, src1, src2);
@@ -723,23 +778,25 @@ public enum AArch64ArithmeticOp {
             Register dst = asRegister(result);
             Register src = asRegister(a);
 
+            long immValue = b.asLong();
+            int clampedShift = AArch64MacroAssembler.clampShiftAmt(eSize == ElementSize.DoubleWord ? 64 : 32, immValue);
             switch (op) {
                 case OR:
                     masm.neon.moveVV(size, dst, src);
-                    masm.neon.orrVI(size, eSize, dst, b.asLong());
+                    masm.neon.orrVI(size, eSize, dst, immValue);
                     break;
                 case BIC:
                     masm.neon.moveVV(size, dst, src);
-                    masm.neon.bicVI(size, eSize, dst, b.asLong());
+                    masm.neon.bicVI(size, eSize, dst, immValue);
                     break;
-                case SHL:
-                    masm.neon.shlVVI(size, eSize, dst, src, b.asInt());
+                case LSL:
+                    masm.neon.shlVVI(size, eSize, dst, src, clampedShift);
                     break;
-                case LSHR:
-                    masm.neon.ushrVVI(size, eSize, dst, src, b.asInt());
+                case LSR:
+                    masm.neon.ushrVVI(size, eSize, dst, src, clampedShift);
                     break;
-                case ASHR:
-                    masm.neon.sshrVVI(size, eSize, dst, src, b.asInt());
+                case ASR:
+                    masm.neon.sshrVVI(size, eSize, dst, src, clampedShift);
                     break;
 
                 default:
@@ -754,8 +811,12 @@ public enum AArch64ArithmeticOp {
 
         @Opcode private final AArch64ArithmeticOp op;
         @Def(REG) protected AllocatableValue result;
-        @Use(REG) protected AllocatableValue a;
-        @Use(REG) protected AllocatableValue b;
+        /*
+         * a & b cannot be assigned the same reg as the result reg, as c is moved into the result
+         * reg before a & b are used.
+         */
+        @Alive(REG) protected AllocatableValue a;
+        @Alive(REG) protected AllocatableValue b;
         @Use(REG) protected AllocatableValue c;
 
         /**

@@ -144,11 +144,6 @@ public abstract class StoreFieldTypeFlow extends AccessFieldTypeFlow {
              * and the field flows of the new objects.
              */
             TypeState objectState = objectFlow.getState();
-
-            if (objectState.isUnknown()) {
-                bb.reportIllegalUnknownUse(graphRef.getMethod(), source, "Illegal: Storing into UnknownTypeState objects. Field: " + field);
-                return;
-            }
             objectState = filterObjectState(bb, objectState);
             /* Iterate over the receiver objects. */
             for (AnalysisObject receiver : objectState.objects()) {

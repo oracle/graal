@@ -83,6 +83,9 @@ public final class ReverseBytesNode extends UnaryNode implements LIRLowerable {
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
+        if (forValue instanceof ReverseBytesNode) {
+            return ((ReverseBytesNode) forValue).getValue();
+        }
         JavaConstant c = forValue.asJavaConstant();
         if (c != null) {
             switch (c.getJavaKind()) {

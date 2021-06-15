@@ -22,6 +22,11 @@
  */
 package com.oracle.truffle.espresso.staticobject;
 
+/**
+ * Describes the kind of a {@link StaticProperty}. In
+ *
+ * @see StaticProperty
+ */
 public enum StaticPropertyKind {
     // The ordinal values of these enum types influences field scheduling in ArrayBasedStaticShape.
     // There, we want to schedule 'bigger' field types first (see `getBitCount()`).

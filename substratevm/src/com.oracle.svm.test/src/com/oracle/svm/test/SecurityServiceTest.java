@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.test;
 
+import java.security.NoSuchAlgorithmException;
 import java.security.Provider;
 import java.security.Security;
 
@@ -34,11 +35,21 @@ import org.hamcrest.CoreMatchers;
 import org.junit.Assert;
 import org.junit.Test;
 
+// Checkstyle: stop
+import sun.security.jca.GetInstance;
+
+// Checkstyle: resume
 /**
  * Tests the {@code SecurityServicesFeature}.
  */
 public class SecurityServiceTest {
     public static class TestFeature implements Feature {
+        @Override
+        public void afterRegistration(AfterRegistrationAccess access) {
+            // register the providers
+            Security.addProvider(new NoOpProvider());
+            Security.addProvider(new NoOpProviderTwo());
+        }
 
         @Override
         public void duringSetup(final DuringSetupAccess access) {
@@ -46,8 +57,6 @@ public class SecurityServiceTest {
             RuntimeClassInitialization.initializeAtBuildTime(NoOpService.class);
             RuntimeClassInitialization.initializeAtBuildTime(NoOpProvider.class);
 
-            // register the provider
-            Security.addProvider(new NoOpProvider());
             // register the service implementation for reflection explicitly,
             // non-standard services are not processed automatically
             RuntimeReflection.register(NoOpImpl.class);
@@ -63,12 +72,23 @@ public class SecurityServiceTest {
      * @see <a href="https://github.com/oracle/graal/issues/1883">issue-1883</a>
      */
     @Test
-    public void testUnKnownSecurityServices() throws Exception {
+    public void testUnknownSecurityServices() throws Exception {
         final Provider registered = Security.getProvider("no-op-provider");
         Assert.assertNotNull("Provider is not registered", registered);
         final Object impl = registered.getService("NoOp", "no-op-algo").newInstance(null);
         Assert.assertNotNull("No service instance was created", impl);
         Assert.assertThat("Unexpected service implementation class", impl, CoreMatchers.instanceOf(NoOpImpl.class));
+    }
+
+    @Test
+    public void testAutomaticSecurityServiceRegistration() {
+        try {
+            JCACompliantNoOpService service = JCACompliantNoOpService.getInstance("no-op-algo-two");
+            Assert.assertNotNull("No service instance was created", service);
+            Assert.assertThat("Unexpected service implementtation class", service, CoreMatchers.instanceOf(JcaCompliantNoOpServiceImpl.class));
+        } catch (NoSuchAlgorithmException e) {
+            Assert.fail("Failed to fetch noop service with exception: " + e);
+        }
     }
 
     private static final class NoOpProvider extends Provider {
@@ -96,5 +116,28 @@ public class SecurityServiceTest {
         public NoOpImpl() {
 
         }
+    }
+
+    private static final class NoOpProviderTwo extends Provider {
+        static final long serialVersionUID = 1234L;
+
+        @SuppressWarnings("deprecation")
+        protected NoOpProviderTwo() {
+            super("no-op-provider-two", 1.0, "No-op provider two used in " + SecurityServiceTest.class.getName());
+            putService(new Service(this, "JCACompliantNoOpService", "no-op-algo-two", JcaCompliantNoOpServiceImpl.class.getName(), null, null));
+        }
+    }
+
+    /*
+     * Service class' simple name must match its type. The service must also have a getInstance
+     * method used to obtain its' instance.
+     */
+    private abstract static class JCACompliantNoOpService {
+        public static JCACompliantNoOpService getInstance(String algorithm) throws NoSuchAlgorithmException {
+            return (JCACompliantNoOpService) GetInstance.getInstance("JCACompliantNoOpService", null, algorithm).impl;
+        }
+    }
+
+    public static class JcaCompliantNoOpServiceImpl extends JCACompliantNoOpService {
     }
 }

@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.dsl.test;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 
 import org.junit.Test;
@@ -48,9 +49,12 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
+import com.oracle.truffle.api.dsl.test.SharedCachedTestFactory.SharedStringInGuardNodeGen;
 import com.oracle.truffle.api.dsl.test.SharedCachedTestFactory.UnboundExclusiveObjectNodeGen;
 import com.oracle.truffle.api.dsl.test.SharedCachedTestFactory.UnboundSharedObjectNodeGen;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 
 @SuppressWarnings("unused")
 public class SharedCachedTest {
@@ -289,19 +293,21 @@ public class SharedCachedTest {
 
         @Specialization(guards = "node == arg")
         Object s0(int arg,
+                        @Cached("arg") int node,
                         @ExpectError("Could not share some of the cached parameters in group 'shared': %n" +
-                                        "  - s1(..., @Cached(...) int node) : The specialization 's0(int, int)' has multiple instances.%n" +
-                                        "Remove the @Shared annotation or resolve the described issues to allow sharing.") //
-                        @Shared("shared") @Cached("arg") int node) {
+                                        "  - s1(..., @Cached(...) int shared) : The specialization 's0(int, int, int)' has multiple instances.%n" +
+                                        "Remove the @Shared annotation or resolve the described issues to allow sharing.")//
+                        @Shared("shared") @Cached("arg") int shared) {
             return arg;
         }
 
         @Specialization(guards = "arg == node")
         Object s1(int arg,
+                        @Cached("arg") int node,
                         @ExpectError("Could not share some of the cached parameters in group 'shared': %n" +
-                                        "  - s0(..., @Cached(...) int node) : The specialization 's1(int, int)' has multiple instances.%n" +
-                                        "Remove the @Shared annotation or resolve the described issues to allow sharing.") //
-                        @Shared("shared") @Cached("arg") int node) {
+                                        "  - s0(..., @Cached(...) int shared) : The specialization 's1(int, int, int)' has multiple instances.%n" +
+                                        "Remove the @Shared annotation or resolve the described issues to allow sharing.")//
+                        @Shared("shared") @Cached("arg") int shared) {
             return arg;
         }
     }
@@ -324,6 +330,59 @@ public class SharedCachedTest {
             return arg;
         }
 
+    }
+
+    @SuppressWarnings("unused")
+    public abstract static class SharedStringInGuardNode extends Node {
+
+        public abstract Object execute(String arg0);
+
+        @Specialization(guards = "name == cachedName", limit = "1")
+        public Object s0(String name,
+                        @Cached("name") @Shared("name") String cachedName) {
+            return cachedName;
+        }
+
+        @Specialization(guards = "name == cachedName", limit = "1")
+        public Object s1(String name,
+                        @Cached("name") @Shared("name") String cachedName) {
+            return cachedName;
+        }
+    }
+
+    @Test
+    public void testObjectReference() {
+        SharedStringInGuardNode node = SharedStringInGuardNodeGen.create();
+        assertEquals("a", node.execute("a"));
+        AbstractPolyglotTest.assertFails(() -> node.execute("b"), UnsupportedSpecializationException.class);
+        assertEquals("a", node.execute("a"));
+
+        SharedStringInGuardNode errorNode = SharedStringInGuardNodeGen.create();
+        AbstractPolyglotTest.assertFails(() -> errorNode.execute(null), AssertionError.class, (e) -> {
+            assertEquals("Specialization 's0(String, String)' contains a shared cache with name 'cachedName' that returned a null value for the cached initializer. " +
+                            "Null values are not supported for shared cached initializers because null is reserved for the uninitialized state.",
+                            e.getMessage());
+        });
+    }
+
+    @SuppressWarnings("unused")
+    public abstract static class SharedPrimitiveInGuardNode extends Node {
+
+        public abstract Object execute(Object arg0);
+
+        @ExpectError("This guard references a @Shared cache with a primitive type. This is not supported.%")
+        @Specialization(guards = "value == cachedValue", limit = "1")
+        public Object s0(int value,
+                        @Cached("value") @Shared("value") int cachedValue) {
+            return cachedValue;
+        }
+
+        @ExpectError("This guard references a @Shared cache with a primitive type. This is not supported.%")
+        @Specialization(guards = "value == cachedValue", limit = "1")
+        public Object s1(int value,
+                        @Cached("value") @Shared("value") int cachedValue) {
+            return cachedValue;
+        }
     }
 
 }

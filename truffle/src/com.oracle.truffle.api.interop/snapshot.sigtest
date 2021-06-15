@@ -22,7 +22,6 @@ fld public final static com.oracle.truffle.api.interop.ExceptionType EXIT
 fld public final static com.oracle.truffle.api.interop.ExceptionType INTERRUPT
 fld public final static com.oracle.truffle.api.interop.ExceptionType PARSE_ERROR
 fld public final static com.oracle.truffle.api.interop.ExceptionType RUNTIME_ERROR
-intf com.oracle.truffle.api.interop.TruffleObject
 meth public static com.oracle.truffle.api.interop.ExceptionType valueOf(java.lang.String)
 meth public static com.oracle.truffle.api.interop.ExceptionType[] values()
 supr java.lang.Enum<com.oracle.truffle.api.interop.ExceptionType>

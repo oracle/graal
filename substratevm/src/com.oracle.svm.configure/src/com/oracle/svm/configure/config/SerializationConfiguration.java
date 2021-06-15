@@ -29,12 +29,12 @@ import java.io.IOException;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.oracle.svm.configure.json.JsonPrintable;
+import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.configure.SerializationConfigurationParser;
 
-public class SerializationConfiguration implements JsonPrintable {
+public class SerializationConfiguration implements ConfigurationBase {
 
     private static final String KEY_SEPARATOR = "|";
 
@@ -62,6 +62,12 @@ public class SerializationConfiguration implements JsonPrintable {
             prefix = ",";
         }
         writer.unindent().newline();
-        writer.append(']').newline();
+        writer.append(']');
     }
+
+    @Override
+    public boolean isEmpty() {
+        return serializations.isEmpty();
+    }
+
 }

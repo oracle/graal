@@ -39,7 +39,6 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.graalvm.compiler.debug.MethodFilter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.java.LambdaUtils;
 import org.graalvm.compiler.nodes.BreakpointNode;
@@ -50,7 +49,6 @@ import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
-import org.graalvm.util.GuardedAnnotationAccess;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
@@ -403,20 +401,6 @@ public class SubstrateUtil {
          */
         //@formatter:on
         return mangled;
-    }
-
-    /*
-     * This function loads JavaFunction through MethodFilter and this is not allowed in NativeImage.
-     * We put this functionality in a separate class.
-     */
-    public static class NativeImageLoadingShield {
-        @Platforms(Platform.HOSTED_ONLY.class)
-        public static boolean isNeverInline(ResolvedJavaMethod method) {
-            List<String> neverInline = SubstrateOptions.NeverInline.getValue().values();
-
-            return GuardedAnnotationAccess.isAnnotationPresent(method, com.oracle.svm.core.annotate.NeverInline.class) ||
-                            (neverInline != null && neverInline.stream().anyMatch(re -> MethodFilter.parse(re).matches(method)));
-        }
     }
 
     private static final Method isHiddenMethod = JavaVersionUtil.JAVA_SPEC >= 15 ? ReflectionUtil.lookupMethod(Class.class, "isHidden") : null;

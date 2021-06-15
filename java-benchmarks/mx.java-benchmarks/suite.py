@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.287.0",
+  "mxversion" : "5.301.0",
   "name": "java-benchmarks",
 
   "javac.lint.overrides": "none",
@@ -20,6 +20,24 @@ suite = {
     "SHOPCART_0.3.4": {
       "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/shopcart-0.3.4.zip"],
       "sha1": "d6e751800914747e2549e35f7e9facf00c190b4a",
+      "packedResource": True,
+    },
+
+    "SPRING_HW_1.0.0": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/spring-hello-world-1.0.0-SNAPSHOT.zip"],
+      "sha1": "6d158cd0294506edbaaea60ae98a5ee1169c8629",
+      "packedResource": True,
+    },
+
+    "QUARKUS_HW_1.0.0": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/quarkus-hello-world-1.0.0-SNAPSHOT.zip"],
+      "sha1": "754bb7aba3119b1e706e29c0cd2ab6d1b4829d5d",
+      "packedResource": True,
+    },
+
+    "MICRONAUT_HW_1.0.0": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/micronaut-hello-world-1.0.0.zip"],
+      "sha1": "c7d54e84fa65cc4b14e50dcba58998d389aa1fa3",
       "packedResource": True,
     },
 

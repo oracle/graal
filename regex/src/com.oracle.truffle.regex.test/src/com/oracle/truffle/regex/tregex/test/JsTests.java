@@ -99,4 +99,10 @@ public class JsTests extends RegexTestBase {
     public void gr29388() {
         test(".+(?=bar)|.+", "", "foobar", 0, true, 0, 3);
     }
+
+    @Test
+    public void gr28905() {
+        test("\\B", "y", "abc", 0, false);
+        test("(?<=[a-z])[A-Z]", "y", "aA", 0, false);
+    }
 }

@@ -40,8 +40,8 @@
  */
 package com.oracle.truffle.api.test.host;
 
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.util.AbstractMap;
@@ -54,9 +54,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import com.oracle.truffle.api.interop.StopIterationException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.junit.ComparisonFailure;
@@ -66,11 +63,14 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.StopIterationException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
 public class HostInteropErrorTest extends ProxyLanguageEnvTest {
@@ -198,15 +198,17 @@ public class HostInteropErrorTest extends ProxyLanguageEnvTest {
     }
 
     @Test
-    public void testClassCastExceptionInHostMethod() throws InteropException, ClassNotFoundException {
+    public void testClassCastExceptionInHostMethod() throws InteropException {
         Object hostObj = env.asGuestValue(new MyHostObj(42));
 
         Object foo = INTEROP.readMember(hostObj, "cce");
 
-        Class<? extends Exception> hostExceptionClass = Class.forName("com.oracle.truffle.polyglot.HostException").asSubclass(Exception.class);
-
-        assertFails(() -> INTEROP.invokeMember(hostObj, "cce", 42), hostExceptionClass, null);
-        assertFails(() -> INTEROP.execute(foo, 42), hostExceptionClass, null);
+        AbstractPolyglotTest.assertFails(() -> INTEROP.invokeMember(hostObj, "cce", 42), RuntimeException.class, (e) -> {
+            assertTrue(env.isHostException(e));
+        });
+        AbstractPolyglotTest.assertFails(() -> INTEROP.execute(foo, 42), RuntimeException.class, (e) -> {
+            assertTrue(env.isHostException(e));
+        });
     }
 
     @Test

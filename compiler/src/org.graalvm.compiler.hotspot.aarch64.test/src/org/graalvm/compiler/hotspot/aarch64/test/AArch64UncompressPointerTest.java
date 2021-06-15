@@ -83,7 +83,7 @@ public class AArch64UncompressPointerTest extends GraalCompilerTest {
     @Test
     public void testUncompressPointerWithZeroBase() {
         int shift = 3;
-        masm1.shl(64, result, input, shift);
+        masm1.lsl(64, result, input, shift);
         emitUncompressPointer(null, shift);
         compareAssembly();
     }

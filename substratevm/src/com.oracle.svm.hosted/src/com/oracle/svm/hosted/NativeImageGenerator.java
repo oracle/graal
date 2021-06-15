@@ -29,6 +29,7 @@ import static org.graalvm.compiler.hotspot.JVMCIVersionCheck.JVMCI8_RELEASES_URL
 import static org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.registerInvocationPlugins;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.lang.ref.Reference;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -53,6 +54,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinWorkerThread;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -299,7 +301,6 @@ public class NativeImageGenerator {
     protected final ImageClassLoader loader;
     protected final HostedOptionProvider optionProvider;
 
-    private ForkJoinPool buildExecutor;
     private DeadlockWatchdog watchdog;
     private AnalysisUniverse aUniverse;
     private HostedUniverse hUniverse;
@@ -309,6 +310,8 @@ public class NativeImageGenerator {
     private AtomicBoolean buildStarted = new AtomicBoolean();
 
     private Pair<Method, CEntryPointData> mainEntryPoint;
+
+    final Map<ArtifactType, List<Path>> buildArtifacts = new EnumMap<>(ArtifactType.class);
 
     public NativeImageGenerator(ImageClassLoader loader, HostedOptionProvider optionProvider, Pair<Method, CEntryPointData> mainEntryPoint) {
         this.loader = loader;
@@ -461,6 +464,7 @@ public class NativeImageGenerator {
                     SubstitutionProcessor harnessSubstitutions,
                     ForkJoinPool compilationExecutor, ForkJoinPool analysisExecutor,
                     EconomicSet<String> allOptionNames) {
+        ForkJoinPool executor = null;
         try {
             if (!buildStarted.compareAndSet(false, true)) {
                 throw UserError.abort("An image build has already been performed with this generator.");
@@ -480,9 +484,8 @@ public class NativeImageGenerator {
             setSystemPropertiesForImageLate(k);
 
             ImageSingletonsSupportImpl.HostedManagement.installInThread(new ImageSingletonsSupportImpl.HostedManagement());
-            this.buildExecutor = createForkJoinPool(compilationExecutor.getParallelism());
+            ForkJoinPool buildExecutor = executor = createForkJoinPool(compilationExecutor.getParallelism());
 
-            Map<ArtifactType, List<Path>> buildArtifacts = new EnumMap<>(ArtifactType.class);
             buildExecutor.submit(() -> {
                 ImageSingletons.add(BuildArtifacts.class, (type, artifact) -> buildArtifacts.computeIfAbsent(type, t -> new ArrayList<>()).add(artifact));
                 ImageSingletons.add(ClassLoaderQuery.class, new ClassLoaderQueryImpl(loader.getClassLoader()));
@@ -491,31 +494,20 @@ public class NativeImageGenerator {
                 watchdog = new DeadlockWatchdog();
                 try (TemporaryBuildDirectoryProviderImpl tempDirectoryProvider = new TemporaryBuildDirectoryProviderImpl()) {
                     ImageSingletons.add(TemporaryBuildDirectoryProvider.class, tempDirectoryProvider);
-                    doRun(entryPoints, javaMainSupport, imageName, k, harnessSubstitutions, compilationExecutor, analysisExecutor);
+                    doRun(entryPoints, javaMainSupport, imageName, k, harnessSubstitutions, compilationExecutor, analysisExecutor, buildExecutor);
                 } finally {
                     watchdog.close();
                 }
             }).get();
-
-            Path buildDir = generatedFiles(HostedOptionValues.singleton());
-            ReportUtils.report("build artifacts", buildDir.resolve(imageName + ".build_artifacts.txt"),
-                            writer -> buildArtifacts.forEach((artifactType, paths) -> {
-                                writer.println("[" + artifactType + "]");
-                                if (artifactType == ArtifactType.JDK_LIB_SHIM) {
-                                    writer.println("# Note that shim JDK libraries depend on this");
-                                    writer.println("# particular native image (including its name)");
-                                    writer.println("# and therefore cannot be used with others.");
-                                }
-                                paths.stream().map(buildDir::relativize).forEach(writer::println);
-                                writer.println();
-                            }));
         } catch (InterruptedException | CancellationException e) {
             System.out.println("Interrupted!");
             throw new InterruptImageBuilding(e);
         } catch (ExecutionException e) {
             rethrow(e.getCause());
         } finally {
-            shutdownBuildExecutor();
+            if (executor != null) {
+                executor.shutdownNow();
+            }
         }
     }
 
@@ -569,14 +561,14 @@ public class NativeImageGenerator {
     private void doRun(Map<Method, CEntryPointData> entryPoints,
                     JavaMainSupport javaMainSupport, String imageName, NativeImageKind k,
                     SubstitutionProcessor harnessSubstitutions,
-                    ForkJoinPool compilationExecutor, ForkJoinPool analysisExecutor) {
+                    ForkJoinPool compilationExecutor, ForkJoinPool analysisExecutor, ForkJoinPool buildExecutor) {
         List<HostedMethod> hostedEntryPoints = new ArrayList<>();
 
         OptionValues options = HostedOptionValues.singleton();
         SnippetReflectionProvider originalSnippetReflection = GraalAccess.getOriginalSnippetReflection();
         try (DebugContext debug = new Builder(options, new GraalDebugHandlersFactory(originalSnippetReflection)).build();
                         DebugCloseable featureCleanup = () -> featureHandler.forEachFeature(Feature::cleanup)) {
-            setupNativeImage(imageName, options, entryPoints, javaMainSupport, harnessSubstitutions, analysisExecutor, originalSnippetReflection, debug);
+            setupNativeImage(imageName, options, entryPoints, javaMainSupport, harnessSubstitutions, analysisExecutor, buildExecutor, originalSnippetReflection, debug);
 
             boolean returnAfterAnalysis = runPointsToAnalysis(imageName, options, debug);
             if (returnAfterAnalysis) {
@@ -717,6 +709,21 @@ public class NativeImageGenerator {
         }
     }
 
+    void reportBuildArtifacts(String imageName) {
+        Path buildDir = generatedFiles(HostedOptionValues.singleton());
+        Consumer<PrintWriter> writerConsumer = writer -> buildArtifacts.forEach((artifactType, paths) -> {
+            writer.println("[" + artifactType + "]");
+            if (artifactType == BuildArtifacts.ArtifactType.JDK_LIB_SHIM) {
+                writer.println("# Note that shim JDK libraries depend on this");
+                writer.println("# particular native image (including its name)");
+                writer.println("# and therefore cannot be used with others.");
+            }
+            paths.stream().map(Path::toAbsolutePath).map(buildDir::relativize).forEach(writer::println);
+            writer.println();
+        });
+        ReportUtils.report("build artifacts", buildDir.resolve(imageName + ".build_artifacts.txt"), writerConsumer);
+    }
+
     @SuppressWarnings("try")
     private boolean runPointsToAnalysis(String imageName, OptionValues options, DebugContext debug) {
         try (Indent ignored = debug.logAndIndent("run analysis")) {
@@ -773,6 +780,12 @@ public class NativeImageGenerator {
                         }
                     }
                 }
+
+                /*
+                 * This verification has quadratic complexity, so do it only once after the static
+                 * analysis has finished.
+                 */
+                assert AnalysisType.verifyAssignableTypes(bigbang) : "Verification of all-instantiated type flows failed";
 
                 /*
                  * Libraries defined via @CLibrary annotations are added at the end of the list of
@@ -847,7 +860,7 @@ public class NativeImageGenerator {
 
     @SuppressWarnings("try")
     private void setupNativeImage(String imageName, OptionValues options, Map<Method, CEntryPointData> entryPoints, JavaMainSupport javaMainSupport, SubstitutionProcessor harnessSubstitutions,
-                    ForkJoinPool analysisExecutor, SnippetReflectionProvider originalSnippetReflection, DebugContext debug) {
+                    ForkJoinPool analysisExecutor, ForkJoinPool buildExecutor, SnippetReflectionProvider originalSnippetReflection, DebugContext debug) {
         try (Indent ignored = debug.logAndIndent("setup native-image builder")) {
             try (StopTimer ignored1 = new Timer(imageName, "setup").start()) {
                 SubstrateTargetDescription target = createTarget(loader.platform);
@@ -1130,16 +1143,6 @@ public class NativeImageGenerator {
         ((RestrictHeapAccessCalleesImpl) ImageSingletons.lookup(RestrictHeapAccessCallees.class)).aggregateMethods(methods);
     }
 
-    public void interruptBuild() {
-        shutdownBuildExecutor();
-    }
-
-    private void shutdownBuildExecutor() {
-        if (buildExecutor != null) {
-            buildExecutor.shutdownNow();
-        }
-    }
-
     @Platforms(Platform.HOSTED_ONLY.class)
     static class SubstitutionInvocationPlugins extends InvocationPlugins {
 
@@ -1272,7 +1275,7 @@ public class NativeImageGenerator {
     }
 
     public static boolean nativeImageInlineDuringParsingEnabled() {
-        return ExperimentalNativeImageInlineDuringParsingPlugin.Options.InlineBeforeAnalysis.getValue() &&
+        return ExperimentalNativeImageInlineDuringParsingPlugin.Options.OldInlineBeforeAnalysis.getValue() &&
                         !ImageSingletons.lookup(ExperimentalNativeImageInlineDuringParsingSupport.class).isNativeImageInlineDuringParsingDisabled() &&
                         !DeoptTester.Options.DeoptimizeAll.getValue();
     }
@@ -1508,7 +1511,7 @@ public class NativeImageGenerator {
 
         if (SubstrateOptions.VerifyNamingConventions.getValue()) {
             for (AnalysisMethod method : aUniverse.getMethods()) {
-                if ((method.isInvoked() || method.isImplementationInvoked()) && method.getAnnotation(Fold.class) == null) {
+                if ((method.isInvoked() || method.isReachable()) && method.getAnnotation(Fold.class) == null) {
                     checkName(method.format("%H.%n(%p)"), method);
                 }
             }

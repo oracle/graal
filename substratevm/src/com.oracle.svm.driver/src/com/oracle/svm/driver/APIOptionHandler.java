@@ -70,12 +70,13 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         final boolean hasPathArguments;
         final boolean defaultFinal;
         final String deprecationWarning;
+        final boolean extra;
 
         final List<Function<Object, Object>> valueTransformers;
         final APIOptionGroup group;
 
         OptionInfo(String[] variants, char valueSeparator, String builderOption, String defaultValue, String helpText, boolean hasPathArguments, boolean defaultFinal, String deprecationWarning,
-                        List<Function<Object, Object>> valueTransformers, APIOptionGroup group) {
+                        List<Function<Object, Object>> valueTransformers, APIOptionGroup group, boolean extra) {
             this.variants = variants;
             this.valueSeparator = valueSeparator;
             this.builderOption = builderOption;
@@ -86,6 +87,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             this.deprecationWarning = deprecationWarning;
             this.valueTransformers = valueTransformers;
             this.group = group;
+            this.extra = extra;
         }
 
         boolean isDeprecated() {
@@ -115,8 +117,9 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         HostedOptionParser.collectOptions(optionsClasses, hostedOptions, runtimeOptions);
         SortedMap<String, OptionInfo> apiOptions = new TreeMap<>();
         Map<String, List<String>> groupDefaults = new HashMap<>();
-        hostedOptions.getValues().forEach(o -> extractOption(NativeImage.oH, o, apiOptions, groupDefaults));
-        runtimeOptions.getValues().forEach(o -> extractOption(NativeImage.oR, o, apiOptions, groupDefaults));
+        Map<Class<? extends APIOptionGroup>, APIOptionGroup> groupInstances = new HashMap<>();
+        hostedOptions.getValues().forEach(o -> extractOption(NativeImage.oH, o, apiOptions, groupDefaults, groupInstances));
+        runtimeOptions.getValues().forEach(o -> extractOption(NativeImage.oR, o, apiOptions, groupDefaults, groupInstances));
         groupDefaults.forEach((groupName, defaults) -> {
             if (defaults.size() > 1) {
                 VMError.shouldNotReachHere(String.format("APIOptionGroup %s must only have a single default (but has: %s)",
@@ -126,8 +129,8 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         return apiOptions;
     }
 
-    private static void extractOption(String optionPrefix, OptionDescriptor optionDescriptor,
-                    SortedMap<String, OptionInfo> apiOptions, Map<String, List<String>> groupDefaults) {
+    private static void extractOption(String optionPrefix, OptionDescriptor optionDescriptor, SortedMap<String, OptionInfo> apiOptions,
+                    Map<String, List<String>> groupDefaults, Map<Class<? extends APIOptionGroup>, APIOptionGroup> groupInstances) {
         try {
             Field optionField = optionDescriptor.getDeclaringClass().getDeclaredField(optionDescriptor.getFieldName());
             APIOption[] apiAnnotations = optionField.getAnnotationsByType(APIOption.class);
@@ -152,7 +155,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                     if (!apiAnnotation.group().equals(APIOption.NullGroup.class)) {
                         try {
                             Class<? extends APIOptionGroup> groupClass = apiAnnotation.group();
-                            group = ReflectionUtil.newInstance(groupClass);
+                            group = groupInstances.computeIfAbsent(groupClass, ReflectionUtil::newInstance);
                             String groupName = APIOption.Utils.groupName(group);
                             if (group.helpText() == null || group.helpText().isEmpty()) {
                                 VMError.shouldNotReachHere(String.format("APIOptionGroup %s(%s) needs to provide help text", groupClass.getName(), group.name()));
@@ -233,7 +236,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 apiOptions.put(apiOptionName,
                                 new APIOptionHandler.OptionInfo(apiAnnotation.name(), apiAnnotation.valueSeparator(), builderOption, defaultValue, helpText,
                                                 apiAnnotation.kind().equals(APIOptionKind.Paths),
-                                                booleanOption || apiAnnotation.fixedValue().length > 0, apiAnnotation.deprecated(), valueTransformers, group));
+                                                booleanOption || apiAnnotation.fixedValue().length > 0, apiAnnotation.deprecated(), valueTransformers, group, apiAnnotation.extra()));
             }
         } catch (NoSuchFieldException e) {
             /* Does not qualify as APIOption */
@@ -322,10 +325,10 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         }
     }
 
-    void printOptions(Consumer<String> println) {
+    void printOptions(Consumer<String> println, boolean extra) {
         SortedMap<String, List<OptionInfo>> optionInfo = new TreeMap<>();
         apiOptions.forEach((optionName, option) -> {
-            if (option.isDeprecated()) {
+            if (option.isDeprecated() || option.extra != extra) {
                 return;
             }
             String groupOrOptionName = option.group != null ? APIOption.Utils.groupName(option.group) : optionName;

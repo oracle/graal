@@ -114,7 +114,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
     @Override
     @SuppressWarnings("try")
     public StaticAnalysisResults makeOrApplyResults(AnalysisMethod method) {
-        StructuredGraph graph = method.parsedGraph();
+        StructuredGraph graph = method.getAnalyzedGraph();
         if (graph != null) {
             DebugContext debug = new DebugContext.Builder(bb.getOptions(), new GraalDebugHandlersFactory(bb.getProviders().getSnippetReflection())).build();
             graph.resetDebug(debug);
@@ -280,7 +280,10 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
             for (int i = 0; i < arguments.size(); i++) {
                 ValueNode argument = arguments.get(i);
                 Stamp newStamp = strengthenStampFromTypeFlow(argument, invokeFlow.getActualParameters()[i], beforeInvoke, tool);
-                if (newStamp != null) {
+                if (node.isDeleted()) {
+                    /* Parameter stamp was empty, so invoke is unreachable. */
+                    return;
+                } else if (newStamp != null) {
                     PiNode pi = insertPi(argument, newStamp, beforeInvoke);
                     if (pi != null) {
                         callTarget.replaceAllInputs(argument, pi);
@@ -327,6 +330,15 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
         private void optimizeReturnedParameter(Collection<AnalysisMethod> callees, NodeInputList<ValueNode> arguments, FixedNode invoke, SimplifierTool tool) {
             int returnedParameterIndex = -1;
             for (AnalysisMethod callee : callees) {
+                if (callee.hasNeverInlineDirective()) {
+                    /*
+                     * If the method is explicitly marked as "never inline", it might be an
+                     * intentional sink to prevent an optimization. Mostly, this is a pattern we use
+                     * in unit tests. So this reduces the surprise that tests are
+                     * "too well optimized" without doing any harm for real-world methods.
+                     */
+                    return;
+                }
                 ParameterNode returnedCalleeParameter = callee.getTypeFlow().getReturnedParameter();
                 if (returnedCalleeParameter == null) {
                     /* This callee does not return a parameter. */
@@ -448,10 +460,6 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
             }
 
             TypeState nodeTypeState = methodFlow.foldTypeFlow(bb, nodeFlow);
-            if (nodeTypeState.isUnknown()) {
-                return null;
-            }
-
             node.inferStamp();
             ObjectStamp oldStamp = (ObjectStamp) node.stamp(NodeView.DEFAULT);
             AnalysisType oldType = (AnalysisType) oldStamp.type();

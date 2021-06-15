@@ -59,28 +59,41 @@ import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestName;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
 public class ContextInterruptStandaloneTest extends AbstractPolyglotTest {
+
+    @Rule public TestName testNameRule = new TestName();
+
+    @After
+    public void checkInterrupted() {
+        Assert.assertFalse("Interrupted flag was left set by test: " + testNameRule.getMethodName(), Thread.interrupted());
+    }
 
     @Test
     public void testCancelDuringHostSleep() throws ExecutionException, InterruptedException {
@@ -216,6 +229,9 @@ public class ContextInterruptStandaloneTest extends AbstractPolyglotTest {
         }
     }
 
+    private static final Node DUMMY_NODE = new Node() {
+    };
+
     @Test
     public void testInterruptTimeout() throws InterruptedException, IOException, ExecutionException {
         ExecutorService executorService = Executors.newFixedThreadPool(1);
@@ -230,8 +246,24 @@ public class ContextInterruptStandaloneTest extends AbstractPolyglotTest {
                 passLatch.countDown();
                 while (!interruptFinished.get()) {
                     try {
-                        interruptFinishLatch.await();
-                    } catch (InterruptedException ie) {
+                        TruffleSafepoint.setBlockedThreadInterruptible(DUMMY_NODE, new TruffleSafepoint.Interruptible<CountDownLatch>() {
+                            @Override
+                            public void apply(CountDownLatch arg) throws InterruptedException {
+                                if (!interruptFinished.get()) {
+                                    arg.await();
+                                }
+                            }
+                        }, interruptFinishLatch);
+                    } catch (Exception ie) {
+                        if (InteropLibrary.getUncached().isException(ie)) {
+                            try {
+                                if (InteropLibrary.getUncached().getExceptionType(ie) != ExceptionType.INTERRUPT) {
+                                    throw ie;
+                                }
+                            } catch (UnsupportedMessageException ume) {
+                                throw new RuntimeException(ume);
+                            }
+                        }
                     }
                 }
             }, instrEnv);

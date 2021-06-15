@@ -24,11 +24,12 @@
  */
 package com.oracle.svm.core.util;
 
-import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicMapWrap;
+import org.graalvm.collections.MapCursor;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -59,22 +60,18 @@ public final class ImageHeapMap {
      */
     @Platforms(Platform.HOSTED_ONLY.class) //
     public static <K, V> EconomicMap<K, V> create() {
-        return new HostedImageHeapMap<>(new ConcurrentHashMap<>());
+        return new HostedImageHeapMap<>();
     }
 }
 
 @Platforms(Platform.HOSTED_ONLY.class) //
 final class HostedImageHeapMap<K, V> extends EconomicMapWrap<K, V> {
 
-    EconomicMap<K, V> runtimeMap;
+    final EconomicMap<Object, Object> runtimeMap;
 
-    HostedImageHeapMap(Map<K, V> map) {
-        super(map);
-    }
-
-    /** Initializing the run time map in an instance method avoids complicated casting. */
-    void initRuntimeMap() {
-        this.runtimeMap = EconomicMap.create(this);
+    HostedImageHeapMap() {
+        super(new ConcurrentHashMap<>());
+        this.runtimeMap = EconomicMap.create();
     }
 }
 
@@ -83,9 +80,34 @@ final class ImageHeapMapFeature implements Feature {
 
     private boolean afterAnalysis;
 
+    private final Set<HostedImageHeapMap<?, ?>> allInstances = ConcurrentHashMap.newKeySet();
+
     @Override
     public void duringSetup(DuringSetupAccess config) {
         config.registerObjectReplacer(this::imageHeapMapTransformer);
+    }
+
+    private Object imageHeapMapTransformer(Object obj) {
+        if (obj instanceof HostedImageHeapMap) {
+            HostedImageHeapMap<?, ?> hostedImageHeapMap = (HostedImageHeapMap<?, ?>) obj;
+            if (afterAnalysis) {
+                VMError.guarantee(allInstances.contains(hostedImageHeapMap), "ImageHeapMap reachable after analysis that was not seen during analysis");
+            } else {
+                allInstances.add(hostedImageHeapMap);
+            }
+            return hostedImageHeapMap.runtimeMap;
+        }
+        return obj;
+    }
+
+    @Override
+    public void duringAnalysis(DuringAnalysisAccess access) {
+        for (HostedImageHeapMap<?, ?> hostedImageHeapMap : allInstances) {
+            if (needsUpdate(hostedImageHeapMap)) {
+                update(hostedImageHeapMap);
+                access.requireAnalysisIteration();
+            }
+        }
     }
 
     @Override
@@ -93,16 +115,33 @@ final class ImageHeapMapFeature implements Feature {
         afterAnalysis = true;
     }
 
-    private Object imageHeapMapTransformer(Object obj) {
-        if (obj instanceof HostedImageHeapMap) {
-            HostedImageHeapMap<?, ?> hosted = (HostedImageHeapMap<?, ?>) obj;
-            if (afterAnalysis) {
-                VMError.guarantee(hosted.runtimeMap != null, "Discoverd object not seen during analysis: " + hosted);
-            } else {
-                hosted.initRuntimeMap();
+    @Override
+    public void afterImageWrite(AfterImageWriteAccess access) {
+        for (HostedImageHeapMap<?, ?> hostedImageHeapMap : allInstances) {
+            if (needsUpdate(hostedImageHeapMap)) {
+                throw VMError.shouldNotReachHere("ImageHeapMap modified after static analysis: " + hostedImageHeapMap + System.lineSeparator() + hostedImageHeapMap.runtimeMap);
             }
-            return hosted.runtimeMap;
         }
-        return obj;
+    }
+
+    private static boolean needsUpdate(HostedImageHeapMap<?, ?> hostedMap) {
+        EconomicMap<Object, Object> runtimeMap = hostedMap.runtimeMap;
+        if (hostedMap.size() != runtimeMap.size()) {
+            return true;
+        }
+        MapCursor<?, ?> hostedEntry = hostedMap.getEntries();
+        while (hostedEntry.advance()) {
+            Object hostedValue = hostedEntry.getValue();
+            Object runtimeValue = runtimeMap.get(hostedEntry.getKey());
+            if (hostedValue != runtimeValue) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static void update(HostedImageHeapMap<?, ?> hostedMap) {
+        hostedMap.runtimeMap.clear();
+        hostedMap.runtimeMap.putAll(hostedMap);
     }
 }

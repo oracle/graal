@@ -51,11 +51,15 @@ import com.oracle.truffle.regex.runtime.nodes.LazyCaptureGroupGetResultNode;
 import com.oracle.truffle.regex.runtime.nodes.TraceFinderGetResultNode;
 
 @GenerateUncached
-abstract class RegexResultGetStartNode extends Node {
+public abstract class RegexResultGetStartNode extends Node {
 
     private static final int INVALID_RESULT = -1;
 
-    abstract int execute(Object receiver, int groupNumber);
+    public static RegexResultGetStartNode create() {
+        return RegexResultGetStartNodeGen.create();
+    }
+
+    public abstract int execute(Object receiver, int groupNumber);
 
     @Specialization
     static int doNoMatch(@SuppressWarnings("unused") NoMatchResult receiver, @SuppressWarnings("unused") int groupNumber) {

@@ -27,12 +27,13 @@ package com.oracle.svm.core.graal.phases;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractEndNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.MergeNode;
+import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -69,7 +70,7 @@ public class RemoveUnwindPhase extends Phase {
         List<WithExceptionNode> withExceptionNodes = new ArrayList<>();
         List<BytecodeExceptionNode> bytecodeExceptionNodes = new ArrayList<>();
         for (UnwindNode node : graph.getNodes().filter(UnwindNode.class)) {
-            walkBack(node.predecessor(), node, withExceptionNodes, bytecodeExceptionNodes);
+            walkBack(node.predecessor(), node, withExceptionNodes, bytecodeExceptionNodes, GraphUtil.unproxify(node.exception()), graph);
         }
 
         /*
@@ -78,11 +79,13 @@ public class RemoveUnwindPhase extends Phase {
          */
         for (WithExceptionNode node : withExceptionNodes) {
             if (node.isAlive()) {
+                graph.getDebug().log(DebugContext.DETAILED_LEVEL, "Removing exception edge for: %s", node);
                 node.replaceWithNonThrowing();
             }
         }
         for (BytecodeExceptionNode bytecodeExceptionNode : bytecodeExceptionNodes) {
             if (bytecodeExceptionNode.isAlive()) {
+                graph.getDebug().log(DebugContext.DETAILED_LEVEL, "Converting a BytecodeException node to a ThrowBytecodeException node for: %s", bytecodeExceptionNode);
                 convertToThrow(bytecodeExceptionNode);
             }
         }
@@ -94,25 +97,41 @@ public class RemoveUnwindPhase extends Phase {
      * just forwards the exception to the {@link UnwindNode}. Such nodes are rewritten to a variant
      * without an exception edge, i.e., no exception handler entry is created for such invokes.
      */
-    protected static void walkBack(Node n, Node successor, List<WithExceptionNode> withExceptionNodes, List<BytecodeExceptionNode> bytecodeExceptionNodes) {
+    protected static void walkBack(Node n, Node successor, List<WithExceptionNode> withExceptionNodes, List<BytecodeExceptionNode> bytecodeExceptionNodes, ValueNode expectedExceptionNode,
+                    StructuredGraph graph) {
         if (n instanceof WithExceptionNode) {
             WithExceptionNode node = (WithExceptionNode) n;
             if (node.exceptionEdge() == successor) {
                 withExceptionNodes.add(node);
             }
-
-        } else if (n instanceof BytecodeExceptionNode) {
-            BytecodeExceptionNode node = (BytecodeExceptionNode) n;
-            bytecodeExceptionNodes.add(node);
-
+        } else if (n instanceof BytecodeExceptionNode || n instanceof ExceptionObjectNode) {
+            if (n == expectedExceptionNode) {
+                if (n instanceof BytecodeExceptionNode) {
+                    BytecodeExceptionNode node = (BytecodeExceptionNode) n;
+                    bytecodeExceptionNodes.add(node);
+                } else {
+                    walkBack(n.predecessor(), n, withExceptionNodes, bytecodeExceptionNodes, expectedExceptionNode, graph);
+                }
+            } else {
+                graph.getDebug().log(DebugContext.VERY_DETAILED_LEVEL, "Node %s does not flow to the corresponding Unwind. Bailing out.", n);
+            }
         } else if (n instanceof MergeNode) {
-            MergeNode node = (MergeNode) n;
-            for (ValueNode predecessor : node.cfgPredecessors()) {
-                walkBack(predecessor, node, withExceptionNodes, bytecodeExceptionNodes);
+            MergeNode merge = (MergeNode) n;
+            if (merge.isPhiAtMerge(expectedExceptionNode)) {
+                /* Propagate expected exception on each control path leading to the merge */
+                PhiNode expectedExceptionForInput = (PhiNode) expectedExceptionNode;
+                for (int input = 0; input < merge.forwardEndCount(); input++) {
+                    Node predecessor = merge.forwardEndAt(input);
+                    walkBack(predecessor, merge, withExceptionNodes, bytecodeExceptionNodes, GraphUtil.unproxify(expectedExceptionForInput.valueAt(input)), graph);
+                }
+            } else {
+                for (ValueNode predecessor : merge.cfgPredecessors()) {
+                    walkBack(predecessor, merge, withExceptionNodes, bytecodeExceptionNodes, expectedExceptionNode, graph);
+                }
             }
 
-        } else if (n instanceof AbstractBeginNode || n instanceof AbstractEndNode || n instanceof LoopExitNode || n instanceof ExceptionObjectNode) {
-            walkBack(n.predecessor(), n, withExceptionNodes, bytecodeExceptionNodes);
+        } else if (n instanceof AbstractBeginNode || n instanceof AbstractEndNode) {
+            walkBack(n.predecessor(), n, withExceptionNodes, bytecodeExceptionNodes, expectedExceptionNode, graph);
         }
     }
 

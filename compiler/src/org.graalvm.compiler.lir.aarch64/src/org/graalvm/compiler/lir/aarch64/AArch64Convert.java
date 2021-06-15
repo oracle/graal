@@ -132,8 +132,10 @@ public class AArch64Convert {
                 masm.neon.moveVV(ASIMDSize.fromVectorKind(resultValue.getPlatformKind()), result, input);
             } else {
                 do {
-                    masm.neon.xtnVV(currentESize, result, input);
                     currentESize = currentESize.narrow();
+                    masm.neon.xtnVV(currentESize, result, input);
+                    /* After first iteration, the input reg should be the result reg */
+                    input = result;
                 } while (currentESize != finalESize);
             }
         }
@@ -166,6 +168,8 @@ public class AArch64Convert {
                 do {
                     masm.neon.sxtlVV(currentESize, result, input);
                     currentESize = currentESize.expand();
+                    /* After first iteration, the input reg should be the result reg */
+                    input = result;
                 } while (currentESize != finalESize);
             }
         }
@@ -198,6 +202,8 @@ public class AArch64Convert {
                 do {
                     masm.neon.uxtlVV(currentESize, result, input);
                     currentESize = currentESize.expand();
+                    /* After first iteration, the input reg should be the result reg */
+                    input = result;
                 } while (currentESize != finalESize);
             }
         }
@@ -218,10 +224,34 @@ public class AArch64Convert {
             this.inputValue = inputValue;
         }
 
+        private boolean verifyConversionSizes(ElementSize dstESize, ElementSize srcESize) {
+            switch (op) {
+                case F2I:
+                case I2F:
+                    assert srcESize == ElementSize.Word && dstESize == ElementSize.Word;
+                    break;
+                case F2D:
+                case I2D:
+                    assert srcESize == ElementSize.Word && dstESize == ElementSize.DoubleWord;
+                    break;
+                case D2F:
+                case D2I:
+                    assert srcESize == ElementSize.DoubleWord && dstESize == ElementSize.Word;
+                    break;
+                case D2L:
+                case L2D:
+                    assert srcESize == ElementSize.DoubleWord && dstESize == ElementSize.DoubleWord;
+                    break;
+            }
+            return true;
+        }
+
         @Override
         public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
             ASIMDSize size = ASIMDSize.fromVectorKind(resultValue.getPlatformKind());
+            ElementSize dstESize = ElementSize.fromKind(resultValue.getPlatformKind());
             ElementSize srcESize = ElementSize.fromKind(inputValue.getPlatformKind());
+            assert verifyConversionSizes(dstESize, srcESize);
 
             Register result = asRegister(resultValue);
             Register input = asRegister(inputValue);
@@ -247,12 +277,12 @@ public class AArch64Convert {
                 case I2D:
                     /* First convert int to long, then to double */
                     masm.neon.sxtlVV(srcESize, result, input);
-                    masm.neon.scvtfVV(size, ElementSize.fromKind(resultValue.getPlatformKind()), result, input);
+                    masm.neon.scvtfVV(size, ElementSize.fromKind(resultValue.getPlatformKind()), result, result);
                     break;
                 case D2I:
                     /* First convert double to long, then to int */
                     masm.neon.fcvtzsVV(size, srcESize, result, input);
-                    masm.neon.xtnVV(srcESize, result, input);
+                    masm.neon.xtnVV(dstESize, result, result);
                     break;
                 /*
                  * It is not possible to handle these conversions correctly without losing fidelity.
@@ -260,7 +290,7 @@ public class AArch64Convert {
                 case F2L:
                 case L2F:
                 default:
-                    throw GraalError.shouldNotReachHere();
+                    throw GraalError.shouldNotReachHere("Unsupported conversion requested.");
             }
 
         }

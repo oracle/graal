@@ -49,13 +49,50 @@ public class MonitorIdNode extends ValueNode implements IterableNodeType, LIRLow
     protected int lockDepth;
     protected boolean eliminated;
 
-    public MonitorIdNode(int lockDepth) {
-        this(TYPE, lockDepth);
+    /**
+     * We use the BCI as an identity for balanced locking.
+     */
+    protected final int bci;
+
+    /**
+     * Specifies if this is a monitor that was entered on disjoint control flow paths.
+     */
+    protected boolean multipleEntry;
+
+    public MonitorIdNode(int lockDepth, int bci) {
+        this(TYPE, lockDepth, bci);
     }
 
-    protected MonitorIdNode(NodeClass<? extends MonitorIdNode> c, int lockDepth) {
+    public MonitorIdNode(int lockDepth, int bci, boolean multipleEntry) {
+        this(TYPE, lockDepth, bci);
+        this.multipleEntry = multipleEntry;
+    }
+
+    public MonitorIdNode(int lockDepth) {
+        this(TYPE, lockDepth, -1);
+    }
+
+    protected MonitorIdNode(NodeClass<? extends MonitorIdNode> c, int lockDepth, int bci) {
         super(c, StampFactory.forVoid());
         this.lockDepth = lockDepth;
+        this.bci = bci;
+    }
+
+    public int getBci() {
+        return bci;
+    }
+
+    public void setMultipleEntry() {
+        this.multipleEntry = true;
+    }
+
+    /**
+     * Indicates that the associated monitor operations might have multiple distinct monitorenter
+     * bytecodes for different objects. This violates some assumptions about well formed monitor
+     * operations and may inhibit some high level lock optimizations.
+     */
+    public boolean isMultipleEntry() {
+        return multipleEntry;
     }
 
     public int getLockDepth() {
@@ -78,4 +115,20 @@ public class MonitorIdNode extends ValueNode implements IterableNodeType, LIRLow
     public void generate(NodeLIRBuilderTool generator) {
         // nothing to do
     }
+
+    /**
+     * Determine if the two monitor ID nodes represent locking of the same bytecode location.
+     */
+    public static boolean monitorIdentityEquals(MonitorIdNode m1, MonitorIdNode m2) {
+        if (m1 == m2) {
+            return true;
+        }
+        if (m1.getLockDepth() == m2.getLockDepth()) {
+            if (m1.getBci() == m2.getBci()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
 }

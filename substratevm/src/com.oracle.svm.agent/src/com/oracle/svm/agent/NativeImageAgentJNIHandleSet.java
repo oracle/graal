@@ -46,6 +46,9 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
     final JNIMethodId javaUtilEnumerationHasMoreElements;
 
     final JNIObjectHandle javaLangClassLoader;
+    final JNIMethodId javaLangClassLoaderGetResource;
+
+    final JNIObjectHandle jdkInternalReflectDelegatingClassLoader;
 
     final JNIMethodId javaLangObjectGetClass;
 
@@ -56,14 +59,13 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
     final JNIObjectHandle javaLangIllegalArgumentException;
 
     private JNIMethodId javaUtilResourceBundleGetBundleImplSLCC;
+    private boolean queriedJavaUtilResourceBundleGetBundleImplSLCC;
 
     private JNIMethodId javaIoObjectStreamClassForClass;
     private JNIMethodId javaIoObjectStreamClassGetClassDataLayout0;
     private JNIObjectHandle javaIOObjectStreamClassClassDataSlot;
     private JNIFieldId javaIOObjectStreamClassClassDataSlotDesc;
     private JNIFieldId javaIOObjectStreamClassClassDataSlotHasData;
-
-    private boolean queriedJavaUtilResourceBundleGetBundleImplSLCC;
 
     NativeImageAgentJNIHandleSet(JNIEnvironment env) {
         super(env);
@@ -79,6 +81,13 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
         javaUtilEnumerationHasMoreElements = getMethodId(env, javaUtilEnumeration, "hasMoreElements", "()Z", false);
 
         javaLangClassLoader = newClassGlobalRef(env, "java/lang/ClassLoader");
+        javaLangClassLoaderGetResource = getMethodId(env, javaLangClassLoader, "getResource", "(Ljava/lang/String;)Ljava/net/URL;", false);
+
+        JNIObjectHandle reflectLoader = findClassOptional(env, "jdk/internal/reflect/DelegatingClassLoader"); // JDK11+
+        if (reflectLoader.equal(nullHandle())) {
+            reflectLoader = findClass(env, "sun/reflect/DelegatingClassLoader"); // JDK 8
+        }
+        jdkInternalReflectDelegatingClassLoader = newTrackedGlobalRef(env, reflectLoader);
 
         JNIObjectHandle javaLangObject = findClass(env, "java/lang/Object");
         javaLangObjectGetClass = getMethodId(env, javaLangObject, "getClass", "()Ljava/lang/Class;", false);

@@ -41,7 +41,6 @@ import com.oracle.svm.core.graal.meta.SharedConstantReflectionProvider;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
@@ -67,7 +66,7 @@ public class SubstrateConstantReflectionProvider extends SharedConstantReflectio
     @Override
     public ResolvedJavaType asJavaType(Constant constant) {
         if (constant instanceof SubstrateObjectConstant) {
-            Object obj = KnownIntrinsics.convertUnknownValue(SubstrateObjectConstant.asObject(constant), Object.class);
+            Object obj = SubstrateObjectConstant.asObject(constant);
             if (obj instanceof DynamicHub) {
                 return ((SubstrateMetaAccess) metaAccess).lookupJavaTypeFromHub(((DynamicHub) obj));
             }

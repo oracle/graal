@@ -44,6 +44,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Future;
 import java.util.function.Supplier;
 
 import org.graalvm.polyglot.PolyglotException;
@@ -260,6 +261,50 @@ public final class TruffleContext implements AutoCloseable {
     public boolean isCancelling() {
         try {
             return LanguageAccessor.engineAccess().isContextCancelling(polyglotContext);
+        } catch (Throwable t) {
+            throw Env.engineToLanguageException(t);
+        }
+    }
+
+    /**
+     * Pause execution on all threads for this context. This call does not wait for the threads to
+     * be actually paused. Instead, a future is returned that can be used to wait for the execution
+     * to be paused. The future is completed when all active threads are paused. New threads entered
+     * after this point are paused immediately after entering until
+     * {@link TruffleContext#resume(Future)} is called.
+     * 
+     * @return a future that can be used to wait for the execution to be paused. Also, the future is
+     *         used to resume execution by passing it to the {@link TruffleContext#resume(Future)}
+     *         method.
+     * 
+     * @since 21.2
+     */
+    @TruffleBoundary
+    public Future<Void> pause() {
+        try {
+            return LanguageAccessor.engineAccess().pause(polyglotContext);
+        } catch (Throwable t) {
+            throw Env.engineToLanguageException(t);
+        }
+    }
+
+    /**
+     * Resume previously paused execution on all threads for this context. The execution will not
+     * resume if {@link TruffleContext#pause()} was called multiple times and for some of the other
+     * calls resume was not called yet.
+     * 
+     * @param pauseFuture pause future returned by a previous call to
+     *            {@link TruffleContext#pause()}.
+     * 
+     * @throws IllegalArgumentException in case the passed pause future was not obtained by a
+     *             previous call to {@link TruffleContext#pause()} on this context.
+     * 
+     * @since 21.2
+     */
+    @TruffleBoundary
+    public void resume(Future<Void> pauseFuture) {
+        try {
+            LanguageAccessor.engineAccess().resume(polyglotContext, pauseFuture);
         } catch (Throwable t) {
             throw Env.engineToLanguageException(t);
         }

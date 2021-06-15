@@ -305,7 +305,7 @@ class PolyglotSourceDispatch extends AbstractSourceDispatch {
         builder.encoding(encoding);
 
         try {
-            return ((PolyglotImpl) engineImpl).getOrCreatePolyglotSource(builder.build());
+            return PolyglotImpl.getOrCreatePolyglotSource(engineImpl, builder.build());
         } catch (IOException e) {
             throw e;
         } catch (RuntimeException e) {

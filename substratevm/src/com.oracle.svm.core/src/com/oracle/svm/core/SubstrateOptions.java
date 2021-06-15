@@ -487,9 +487,6 @@ public class SubstrateOptions {
     @Option(help = "Omit generation of DebugLineInfo originating from inlined methods") //
     public static final HostedOptionKey<Boolean> OmitInlinedMethodDebugLineInfo = new HostedOptionKey<>(true);
 
-    /** Command line option to disable image build server. */
-    public static final String NO_SERVER = "--no-server";
-
     @Fold
     public static boolean supportCompileInIsolates() {
         UserError.guarantee(!ConcealedOptions.SupportCompileInIsolates.getValue() || SpawnIsolates.getValue(),
@@ -566,4 +563,13 @@ public class SubstrateOptions {
             return getValueOrDefault(values.getMap());
         }
     };
+
+    @Option(help = "Enable Java Flight Recorder.")//
+    public static final RuntimeOptionKey<Boolean> FlightRecorder = new RuntimeOptionKey<>(false);
+
+    @Option(help = "Start flight recording with options.")//
+    public static final RuntimeOptionKey<String> StartFlightRecording = new RuntimeOptionKey<>("");
+
+    @Option(help = "file:doc-files/FlightRecorderLoggingHelp.txt")//
+    public static final RuntimeOptionKey<String> FlightRecorderLogging = new RuntimeOptionKey<>("all=warning");
 }

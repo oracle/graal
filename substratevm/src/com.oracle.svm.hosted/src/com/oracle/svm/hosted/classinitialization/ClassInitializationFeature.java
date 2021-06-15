@@ -28,9 +28,13 @@ import static com.oracle.svm.hosted.classinitialization.InitKind.BUILD_TIME;
 import static com.oracle.svm.hosted.classinitialization.InitKind.RERUN;
 import static com.oracle.svm.hosted.classinitialization.InitKind.RUN_TIME;
 
+import java.io.PrintWriter;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -69,6 +73,7 @@ import com.oracle.svm.hosted.meta.MethodPointer;
 @AutomaticFeature
 public class ClassInitializationFeature implements GraalFeature {
 
+    public static final String REPORTS_PATH = Paths.get(Paths.get(SubstrateOptions.Path.getValue()).toString(), "reports").toAbsolutePath().toString();
     private ClassInitializationSupport classInitializationSupport;
     private AnalysisUniverse universe;
     private AnalysisMetaAccess metaAccess;
@@ -184,17 +189,16 @@ public class ClassInitializationFeature implements GraalFeature {
         try (Timer.StopTimer ignored = new Timer(imageName, "(clinit)").start()) {
             classInitializationSupport.setUnsupportedFeatures(null);
 
-            String path = Paths.get(Paths.get(SubstrateOptions.Path.getValue()).toString(), "reports").toAbsolutePath().toString();
+            String path = REPORTS_PATH;
             assert classInitializationSupport.checkDelayedInitialization();
 
             TypeInitializerGraph initGraph = new TypeInitializerGraph(universe);
             initGraph.computeInitializerSafety();
 
-            Set<AnalysisType> provenSafe = initializeSafeDelayedClasses(initGraph);
-
+            classInitializationSupport.setProvenSafeLate(initializeSafeDelayedClasses(initGraph));
             if (ClassInitializationOptions.PrintClassInitialization.getValue()) {
-                reportSafeTypeInitiazliation(universe, initGraph, path, provenSafe);
-                reportMethodInitializationInfo(path);
+                reportInitializerDependencies(universe, initGraph, path);
+                reportClassInitializationInfo(path);
             }
 
             if (SubstrateOptions.TraceClassInitialization.hasBeenSet()) {
@@ -203,9 +207,9 @@ public class ClassInitializationFeature implements GraalFeature {
         }
     }
 
-    private static void reportSafeTypeInitiazliation(AnalysisUniverse universe, TypeInitializerGraph initGraph, String path, Set<AnalysisType> provenSafe) {
-        ReportUtils.report("initializer dependencies", path, "initializer_dependencies", "dot", writer -> {
-            writer.println("digraph initializer_dependencies {");
+    private static void reportInitializerDependencies(AnalysisUniverse universe, TypeInitializerGraph initGraph, String path) {
+        ReportUtils.report("class initialization dependencies", path, "class_initialization_dependencies", "dot", writer -> {
+            writer.println("digraph class_initializer_dependencies {");
             universe.getTypes().stream()
                             .filter(ClassInitializationFeature::isRelevantForPrinting)
                             .forEach(t -> writer.println(quote(t.toClassName()) + "[fillcolor=" + (initGraph.isUnsafe(t) ? "red" : "green") + "]"));
@@ -215,24 +219,29 @@ public class ClassInitializationFeature implements GraalFeature {
                                             .forEach(t1 -> writer.println(quote(t.toClassName()) + " -> " + quote(t1.toClassName()))));
             writer.println("}");
         });
-
-        ReportUtils.report(provenSafe.size() + " classes that are considered as safe for build-time initialization", path, "safe_classes", "txt",
-                        printWriter -> provenSafe.forEach(t -> printWriter.println(t.toClassName())));
     }
 
     /**
      * Prints a file for every type of class initialization. Each file contains a list of classes
      * that belong to it.
      */
-    private void reportMethodInitializationInfo(String path) {
-        for (InitKind kind : InitKind.values()) {
-            Set<Class<?>> classes = classInitializationSupport.classesWithKind(kind);
-            ReportUtils.report(classes.size() + " classes of type " + kind, path, kind.toString().toLowerCase() + "_classes", "txt",
-                            writer -> classes.stream()
-                                            .map(Class::getTypeName)
-                                            .sorted()
-                                            .forEach(writer::println));
-        }
+    private void reportClassInitializationInfo(String path) {
+        ReportUtils.report("class initialization report", path, "class_initialization_report", "csv", writer -> {
+            writer.println("Class Name, Initialization Kind, Reason for Initialization");
+            reportKind(writer, BUILD_TIME);
+            reportKind(writer, RERUN);
+            reportKind(writer, RUN_TIME);
+        });
+    }
+
+    private void reportKind(PrintWriter writer, InitKind kind) {
+        List<Class<?>> allClasses = new ArrayList<>(classInitializationSupport.classesWithKind(kind));
+        allClasses.sort(Comparator.comparing(Class::getTypeName));
+        allClasses.forEach(clazz -> {
+            writer.print(clazz.getTypeName() + ", ");
+            writer.print(kind + ", ");
+            writer.println(classInitializationSupport.reasonForClass(clazz));
+        });
     }
 
     private static void reportTrackedClassInitializationTraces(String path) {
@@ -240,14 +249,12 @@ public class ClassInitializationFeature implements GraalFeature {
         int size = initializedClasses.size();
         if (size > 0) {
             ReportUtils.report(size + " class initialization trace(s) of class(es) traced by " + SubstrateOptions.TraceClassInitialization.getName(), path, "traced_class_initialization", "txt",
-                            writer -> {
-                                initializedClasses.forEach((k, v) -> {
-                                    writer.println(k.getName());
-                                    writer.println("---------------------------------------------");
-                                    writer.println(ConfigurableClassInitialization.getTraceString(v));
-                                    writer.println();
-                                });
-                            });
+                            writer -> initializedClasses.forEach((k, v) -> {
+                                writer.println(k.getName());
+                                writer.println("---------------------------------------------");
+                                writer.println(ConfigurableClassInitialization.getTraceString(v));
+                                writer.println();
+                            }));
         }
     }
 
@@ -263,8 +270,8 @@ public class ClassInitializationFeature implements GraalFeature {
      * Initializes all classes that are considered delayed by the system. Classes specified by the
      * user will not be delayed.
      */
-    private Set<AnalysisType> initializeSafeDelayedClasses(TypeInitializerGraph initGraph) {
-        Set<AnalysisType> provenSafe = new HashSet<>();
+    private Set<Class<?>> initializeSafeDelayedClasses(TypeInitializerGraph initGraph) {
+        Set<Class<?>> provenSafe = new HashSet<>();
         classInitializationSupport.setConfigurationSealed(false);
         classInitializationSupport.classesWithKind(RUN_TIME).stream()
                         .filter(t -> metaAccess.optionalLookupJavaType(t).isPresent())
@@ -279,7 +286,7 @@ public class ClassInitializationFeature implements GraalFeature {
                                  * exceptions.
                                  */
                                 if (!classInitializationSupport.shouldInitializeAtRuntime(c)) {
-                                    provenSafe.add(type);
+                                    provenSafe.add(c);
                                     ClassInitializationInfo initializationInfo = type.getClassInitializer() == null ? ClassInitializationInfo.NO_INITIALIZER_INFO_SINGLETON
                                                     : ClassInitializationInfo.INITIALIZED_INFO_SINGLETON;
                                     ((SVMHost) universe.hostVM()).dynamicHub(type).setClassInitializationInfo(initializationInfo);

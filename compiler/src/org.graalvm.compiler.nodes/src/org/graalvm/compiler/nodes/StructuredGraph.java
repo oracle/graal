@@ -682,6 +682,22 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         return copy(newName, rootMethod, getOptions(), duplicationMapCallback, compilationId, debugForCopy);
     }
 
+    /**
+     * Creates a copy of this graph with the new option values.
+     *
+     * If a node contains an array of objects, only shallow copy of the field is applied.
+     *
+     * @param newName the name of the copy, used for debugging purposes (can be null)
+     * @param duplicationMapCallback consumer of the duplication map created during the copying
+     * @param debugForCopy the debug context for the graph copy. This must not be the debug for this
+     *            graph if this graph can be accessed from multiple threads (e.g., it's in a cache
+     *            accessed by multiple threads).
+     * @param options the option values for the graph copy
+     */
+    public StructuredGraph copy(String newName, Consumer<UnmodifiableEconomicMap<Node, Node>> duplicationMapCallback, DebugContext debugForCopy, OptionValues options) {
+        return copy(newName, rootMethod, options, duplicationMapCallback, compilationId, debugForCopy);
+    }
+
     @SuppressWarnings("try")
     private StructuredGraph copy(String newName, ResolvedJavaMethod rootMethodForCopy, OptionValues optionsForCopy, Consumer<UnmodifiableEconomicMap<Node, Node>> duplicationMapCallback,
                     CompilationIdentifier newCompilationId, DebugContext debugForCopy) {

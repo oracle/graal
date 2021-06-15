@@ -230,10 +230,6 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
              * immutable and a later call to getState() can yield a different value.
              */
             TypeState receiverState = getReceiver().getState();
-            if (receiverState.isUnknown()) {
-                bb.reportIllegalUnknownUse(graphRef.getMethod(), source, "Illegal: Invoke on UnknownTypeState objects. Invoke: " + this);
-                return;
-            }
             receiverState = filterReceiverState(bb, receiverState);
 
             /* Use the tandem types - objects iterator. */

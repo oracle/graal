@@ -179,9 +179,16 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     public void attachThread(Thread hostThread) {
+        if (hostThread != Thread.currentThread()) {
+            getLogger().warning("unimplemented: attachThread for non-current thread: " + hostThread);
+            return;
+        }
         assert hostThread == Thread.currentThread();
         try {
             getUncached().execute(mokapotAttachThread, mokapotEnvPtr);
+            // Initialize external threads e.g. ctype TLS data must be initialized for threads
+            // created outside the isolated namespace using the nfi-dlmopen backend.
+            getNativeAccess().prepareThread();
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere("mokapotAttachThread failed", e);
         }

@@ -110,9 +110,10 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
                     String.class, boolean.class);
     private static final Method findResource = ReflectionUtil.lookupMethod(ClassLoader.class, "findResource",
                     String.class);
-
     private static final Method findResources = ReflectionUtil.lookupMethod(ClassLoader.class, "findResources",
                     String.class);
+    private static final Method defineClass = ReflectionUtil.lookupMethod(ClassLoader.class, "defineClass",
+                    String.class, byte[].class, int.class, int.class);
 
     static Class<?> loadClass(ClassLoader classLoader, String name, boolean resolve) throws ClassNotFoundException {
         Class<?> loadedClass = null;
@@ -153,6 +154,16 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
         return null;
     }
 
+    static Class<?> defineClass(ClassLoader classLoader, String name, byte[] b, int offset, int length) {
+        try {
+            return (Class<?>) defineClass.invoke(classLoader, name, b, offset, length);
+        } catch (ReflectiveOperationException e) {
+            String message = String.format("Cannot define class %s from byte[%d..%d] using class loader: %s", name, offset, offset + length, classLoader);
+            VMError.shouldNotReachHere(message, e);
+        }
+        return null;
+    }
+
     @Override
     protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
         return loadClass(getActiveClassLoader(), name, resolve);
@@ -166,6 +177,22 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
     @Override
     protected Enumeration<URL> findResources(String name) throws IOException {
         return findResources(getActiveClassLoader(), name);
+    }
+
+    public Class<?> forNameOrNull(String name, boolean initialize) {
+        try {
+            return Class.forName(name, initialize, getActiveClassLoader());
+        } catch (LinkageError | ClassNotFoundException ignored) {
+            return null;
+        }
+    }
+
+    public Class<?> predefineClass(String name, byte[] array, int offset, int length) {
+        VMError.guarantee(name != null, "The class name must be specified");
+        if (forNameOrNull(name, false) != null) {
+            throw VMError.shouldNotReachHere("The class loader hierarchy already provides a class with the same name as the class submitted for predefinition: " + name);
+        }
+        return defineClass(getActiveClassLoader(), name, array, offset, length);
     }
 
     @Override

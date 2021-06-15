@@ -109,7 +109,7 @@ abstract class PolyglotExecuteNode extends Node {
     Object doCached(PolyglotLanguageContext languageContext, Object function, Object[] functionArgs,
                     Class<?> resultClass, Type resultType,
                     @CachedLibrary("function") InteropLibrary interop,
-                    @Cached ToHostNode toHost,
+                    @Cached PolyglotToHostNode toHost,
                     @Cached ConditionProfile executableCondition,
                     @Cached ConditionProfile instantiableCondition,
                     @Cached BranchProfile unsupportedError,
@@ -124,27 +124,28 @@ abstract class PolyglotExecuteNode extends Node {
             } else if (instantiableCondition.profile(interop.isInstantiable(function))) {
                 result = interop.instantiate(function, functionArgs);
             } else {
-                throw HostInteropErrors.executeUnsupported(languageContext, function);
+                throw PolyglotInteropErrors.executeUnsupported(languageContext, function);
             }
         } catch (UnsupportedTypeException e) {
             unsupportedArgumentError.enter();
             if (executable) {
-                throw HostInteropErrors.invalidExecuteArgumentType(languageContext, function, functionArgs);
+                throw PolyglotInteropErrors.invalidExecuteArgumentType(languageContext, function, functionArgs);
             } else {
-                throw HostInteropErrors.invalidInstantiateArgumentType(languageContext, function, functionArgs);
+                throw PolyglotInteropErrors.invalidInstantiateArgumentType(languageContext, function, functionArgs);
             }
         } catch (ArityException e) {
             arityError.enter();
             if (executable) {
-                throw HostInteropErrors.invalidExecuteArity(languageContext, function, functionArgs, e.getExpectedMinArity(), e.getExpectedMaxArity(), e.getActualArity());
+                throw PolyglotInteropErrors.invalidExecuteArity(languageContext, function, functionArgs, e.getExpectedMinArity(), e.getExpectedMaxArity(), e.getActualArity());
             } else {
-                throw HostInteropErrors.invalidInstantiateArity(languageContext, function, functionArgs, e.getExpectedMinArity(), e.getExpectedMaxArity(), e.getActualArity());
+                throw PolyglotInteropErrors.invalidInstantiateArity(languageContext, function, functionArgs, e.getExpectedMinArity(), e.getExpectedMaxArity(),
+                                e.getActualArity());
             }
         } catch (UnsupportedMessageException e) {
             unsupportedError.enter();
-            throw HostInteropErrors.executeUnsupported(languageContext, function);
+            throw PolyglotInteropErrors.executeUnsupported(languageContext, function);
         }
-        return toHost.execute(result, resultClass, resultType, languageContext, true);
+        return toHost.execute(languageContext, result, resultClass, resultType);
     }
 
 }

@@ -2154,7 +2154,7 @@ public abstract class TruffleLanguage<C> {
         @SuppressWarnings("static-method")
         public boolean isHostObject(Object value) {
             try {
-                return LanguageAccessor.engineAccess().isHostObject(value);
+                return LanguageAccessor.engineAccess().isHostObject(polyglotLanguageContext, value);
             } catch (Throwable t) {
                 throw engineToLanguageException(t);
             }
@@ -2173,7 +2173,7 @@ public abstract class TruffleLanguage<C> {
                 throw new ClassCastException();
             }
             try {
-                return LanguageAccessor.engineAccess().asHostObject(value);
+                return LanguageAccessor.engineAccess().asHostObject(polyglotLanguageContext, value);
             } catch (Throwable t) {
                 throw engineToLanguageException(t);
             }
@@ -2235,7 +2235,7 @@ public abstract class TruffleLanguage<C> {
         @SuppressWarnings("static-method")
         public boolean isHostFunction(Object value) {
             try {
-                return LanguageAccessor.engineAccess().isHostFunction(value);
+                return LanguageAccessor.engineAccess().isHostFunction(polyglotLanguageContext, value);
             } catch (Throwable t) {
                 throw engineToLanguageException(t);
             }
@@ -2278,7 +2278,7 @@ public abstract class TruffleLanguage<C> {
         @SuppressWarnings("static-method")
         public boolean isHostException(Throwable exception) {
             try {
-                return LanguageAccessor.engineAccess().isHostException(exception);
+                return LanguageAccessor.engineAccess().isHostException(polyglotLanguageContext, exception);
             } catch (Throwable t) {
                 throw engineToLanguageException(t);
             }
@@ -2299,7 +2299,7 @@ public abstract class TruffleLanguage<C> {
         @SuppressWarnings("static-method")
         public Throwable asHostException(Throwable exception) {
             try {
-                return LanguageAccessor.engineAccess().asHostException(exception);
+                return LanguageAccessor.engineAccess().asHostException(polyglotLanguageContext, exception);
             } catch (Throwable t) {
                 throw engineToLanguageException(t);
             }
@@ -2315,7 +2315,7 @@ public abstract class TruffleLanguage<C> {
         @SuppressWarnings("static-method")
         public boolean isHostSymbol(Object guestObject) {
             try {
-                return LanguageAccessor.engineAccess().isHostSymbol(guestObject);
+                return LanguageAccessor.engineAccess().isHostSymbol(polyglotLanguageContext, guestObject);
             } catch (Throwable t) {
                 throw engineToLanguageException(t);
             }
@@ -3501,7 +3501,8 @@ public abstract class TruffleLanguage<C> {
          * {@link TruffleSafepoint#setBlocked(Node, Interrupter, Interruptible, Object, Runnable, Runnable)
          * blocking API} can be used to allow other thread local actions to be processed while the
          * current thread is waiting. The returned {@link Future#get()} method can be used as
-         * {@link Interruptible}.
+         * {@link Interruptible}. If the underlying polyglot context is already closed, the method
+         * returns a completed {@link Future}.
          *
          * @param threads the threads to execute the action on. <code>null</code> for all threads
          * @param action the action to perform on that thread.

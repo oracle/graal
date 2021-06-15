@@ -130,7 +130,7 @@ public final class StatisticsPrinter {
         int reachable = 0;
         int appReachable = 0;
         for (AnalysisMethod method : bb.getUniverse().getMethods()) {
-            if (method.isImplementationInvoked()) {
+            if (method.isReachable()) {
                 reachable++;
                 if (!isRuntimeLibraryType(method.getDeclaringClass())) {
                     appReachable++;

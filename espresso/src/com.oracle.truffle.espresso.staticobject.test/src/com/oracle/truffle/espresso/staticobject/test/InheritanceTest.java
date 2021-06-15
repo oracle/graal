@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.espresso.staticobject.test;
 
-import com.oracle.truffle.espresso.staticobject.DefaultStaticObject;
+import com.oracle.truffle.espresso.staticobject.DefaultStaticObjectFactory;
 import com.oracle.truffle.espresso.staticobject.DefaultStaticProperty;
 import com.oracle.truffle.espresso.staticobject.StaticProperty;
 import com.oracle.truffle.espresso.staticobject.StaticPropertyKind;
@@ -73,7 +73,7 @@ public class InheritanceTest extends StaticObjectTest {
         b1.property(s1p1);
         b1.property(s1p2);
         // StaticShape s1 declares 2 properties: s1p1 and s1p2
-        StaticShape<DefaultStaticObject.Factory> s1 = b1.build();
+        StaticShape<DefaultStaticObjectFactory> s1 = b1.build();
 
         StaticShape.Builder b2 = StaticShape.newBuilder(this);
         StaticProperty s2p1 = new DefaultStaticProperty("field1", StaticPropertyKind.Int, false);
@@ -82,8 +82,8 @@ public class InheritanceTest extends StaticObjectTest {
         // 1. extends s1
         // 2. declares one property: s2p1
         // 3. inherits one property from s1: s1p2
-        StaticShape<DefaultStaticObject.Factory> s2 = b2.build(s1);
-        DefaultStaticObject object = s2.getFactory().create();
+        StaticShape<DefaultStaticObjectFactory> s2 = b2.build(s1);
+        Object object = s2.getFactory().create();
 
         s1p1.setInt(object, 1);
         Assert.assertEquals(1, s1p1.getInt(object));

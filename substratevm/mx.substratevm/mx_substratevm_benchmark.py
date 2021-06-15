@@ -149,7 +149,7 @@ class RenaissanceNativeImageBenchmarkSuite(mx_java_benchmarks.RenaissanceBenchma
     def name(self):
         return 'renaissance-native-image'
 
-    def benchSuiteName(self):
+    def benchSuiteName(self, bmSuiteArgs=None):
         return 'renaissance'
 
     def renaissance_harness_lib_name(self):
@@ -438,7 +438,7 @@ class DaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.DaCapoBenchmarkSuite, B
     def daCapoSuiteTitle(self):
         return super(DaCapoNativeImageBenchmarkSuite, self).suite_title()
 
-    def benchSuiteName(self):
+    def benchSuiteName(self, bmSuiteArgs=None):
         return 'dacapo'
 
     def daCapoIterations(self):
@@ -571,7 +571,7 @@ class ScalaDaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.ScalaDaCapoBenchma
             return lib.get_path(True)
         return None
 
-    def benchSuiteName(self):
+    def benchSuiteName(self, bmSuiteArgs=None):
         return 'scala-dacapo'
 
     def daCapoIterations(self):
@@ -621,12 +621,10 @@ class ScalaDaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.ScalaDaCapoBenchma
                 cp += ':' +  super(ScalaDaCapoNativeImageBenchmarkSuite, self).additional_lib(lib)
         return cp
 
-
     def successPatterns(self):
         return super(ScalaDaCapoNativeImageBenchmarkSuite, self).successPatterns() + [
             _successful_stage_pattern
         ]
-
 
     @staticmethod
     def substitution_path():

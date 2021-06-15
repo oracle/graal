@@ -109,7 +109,7 @@ fastr: {
   }
   downloads: {
     F2C_BINARY: { name: "f2c-binary", version: "7", platformspecific: true },
-    FASTR_RECOMMENDED_BINARY: { name: "fastr-recommended-pkgs", version: "11", platformspecific: true },
+    FASTR_RECOMMENDED_BINARY: { name: "fastr-recommended-pkgs", version: "12", platformspecific: true },
   }
 }
 

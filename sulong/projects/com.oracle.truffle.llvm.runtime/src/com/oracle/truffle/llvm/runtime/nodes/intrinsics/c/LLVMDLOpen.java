@@ -63,7 +63,7 @@ import static com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMDLOpen.RTLD
 public abstract class LLVMDLOpen extends LLVMIntrinsic {
 
     public enum RTLDFlags {
-        RTLD_DEFAULT,       // Linux Max/Darwin
+        RTLD_OPEN_DEFAULT,       // Linux Max/Darwin
         RTLD_LAZY,          // 1 1
         RTLD_NOW,           // 2 2
         RTLD_GLOBAL,        // 256 8

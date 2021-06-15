@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.espresso.staticobject.test;
 
-import com.oracle.truffle.espresso.staticobject.DefaultStaticObject;
+import com.oracle.truffle.espresso.staticobject.DefaultStaticObjectFactory;
 import com.oracle.truffle.espresso.staticobject.DefaultStaticProperty;
 import com.oracle.truffle.espresso.staticobject.StaticProperty;
 import com.oracle.truffle.espresso.staticobject.StaticPropertyKind;
@@ -64,12 +64,12 @@ public class PropertyAccessTest extends StaticObjectTest {
 
     @FunctionalInterface
     interface PropertyGetter {
-        Object get(StaticProperty property, DefaultStaticObject receiver);
+        Object get(StaticProperty property, Object receiver);
     }
 
     @FunctionalInterface
     interface PropertySetter {
-        void set(StaticProperty property, DefaultStaticObject receiver, Object value);
+        void set(StaticProperty property, Object receiver, Object value);
     }
 
     @BeforeClass
@@ -162,8 +162,8 @@ public class PropertyAccessTest extends StaticObjectTest {
         StaticShape.Builder builder = StaticShape.newBuilder(this);
         StaticProperty property = new DefaultStaticProperty("property", descriptor.kind, false);
         builder.property(property);
-        StaticShape<DefaultStaticObject.Factory> shape = builder.build();
-        DefaultStaticObject object = shape.getFactory().create();
+        StaticShape<DefaultStaticObjectFactory> shape = builder.build();
+        Object object = shape.getFactory().create();
 
         // Check the default value
         Object actualValue = descriptor.getter.get(property, object);
@@ -181,8 +181,8 @@ public class PropertyAccessTest extends StaticObjectTest {
         StaticShape.Builder builder = StaticShape.newBuilder(this);
         StaticProperty property = new DefaultStaticProperty("property", expectedDescriptor.kind, false);
         builder.property(property);
-        StaticShape<DefaultStaticObject.Factory> shape = builder.build();
-        DefaultStaticObject object = shape.getFactory().create();
+        StaticShape<DefaultStaticObjectFactory> shape = builder.build();
+        Object object = shape.getFactory().create();
 
         // Check that wrong getters throw exceptions
         String expectedExceptionMessage = "Static property 'property' of kind '" + expectedDescriptor.kind.name() + "' cannot be accessed as '" + actualDescriptor.kind + "'";
@@ -206,26 +206,41 @@ public class PropertyAccessTest extends StaticObjectTest {
         StaticShape.Builder b1 = StaticShape.newBuilder(this);
         StaticProperty p1 = new DefaultStaticProperty("property", descriptor.kind, false);
         b1.property(p1);
-        StaticShape<DefaultStaticObject.Factory> s1 = b1.build();
+        StaticShape<DefaultStaticObjectFactory> s1 = b1.build();
 
         StaticShape.Builder b2 = StaticShape.newBuilder(this);
         StaticProperty p2 = new DefaultStaticProperty("property", descriptor.kind, false);
         b2.property(p2);
-        StaticShape<DefaultStaticObject.Factory> s2 = b2.build();
-        DefaultStaticObject o2 = s2.getFactory().create();
+        StaticShape<DefaultStaticObjectFactory> s2 = b2.build();
+        Object o2 = s2.getFactory().create();
 
         try {
             descriptor.setter.set(p1, o2, descriptor.testValue);
             Assert.fail();
-        } catch (ClassCastException e) {
-            Assert.assertTrue(!ARRAY_BASED_STORAGE);
-        } catch (RuntimeException e) {
-            Assert.assertTrue(e.getMessage().startsWith("Incompatible shape on property access."));
+        } catch (IllegalArgumentException e) {
+            if (ARRAY_BASED_STORAGE) {
+                Assert.assertTrue(e.getMessage().startsWith("Incompatible shape on property access."));
+            } else {
+                Assert.assertTrue(e.getMessage().matches("Object '.*' of class '.*' does not have the expected shape"));
+            }
         }
     }
 
     @Test
-    public void dummy() {
-        // to make sure this file is recognized as a test
+    @SuppressWarnings("unused")
+    public void wrongObject() {
+        StaticShape.Builder builder = StaticShape.newBuilder(this);
+        StaticProperty property = new DefaultStaticProperty("property", StaticPropertyKind.Int, false);
+        builder.property(property);
+        StaticShape<DefaultStaticObjectFactory> shape = builder.build();
+        Object staticObject = shape.getFactory().create();
+        Object wrongObject = new Object();
+
+        try {
+            property.setInt(wrongObject, 42);
+            Assert.fail();
+        } catch (IllegalArgumentException e) {
+            Assert.assertTrue(e.getMessage().matches("Object '.*' of class '.*' does not have the expected shape"));
+        }
     }
 }

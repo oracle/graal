@@ -409,13 +409,36 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
             Value aExt = a;
             Value bExt = b;
 
-            int compareBytes = cmpKind.getSizeInBytes();
-            // AArch64 compares 32 or 64 bits: sign extend a and b as required.
-            if (compareBytes < a.getPlatformKind().getSizeInBytes()) {
-                aExt = arithmeticLIRGen.emitSignExtend(a, compareBytes * 8, 64);
-            }
-            if (compareBytes < b.getPlatformKind().getSizeInBytes()) {
-                bExt = arithmeticLIRGen.emitSignExtend(b, compareBytes * 8, 64);
+            assert a.getPlatformKind() == b.getPlatformKind();
+            /*
+             * AArch64 compares 32 or 64 bits: sign extend a and b as required. Note currently the
+             * size of the comparison within AArch64Compare is based on the size of the operands,
+             * not the comparison size provided here.
+             */
+            int compareBits = cmpKind.getSizeInBytes() * Byte.SIZE;
+            int operandBits = a.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+            switch (compareBits) {
+                case 8:
+                case 16:
+                    /* Lower bits need to be sign extended. */
+                    aExt = arithmeticLIRGen.emitSignExtend(a, compareBits, 64);
+                    bExt = arithmeticLIRGen.emitSignExtend(b, compareBits, 64);
+                    break;
+                case 32:
+                case 64:
+                    /*
+                     * May need to extend operands to be at least 32 bits. If both operands are
+                     * 32-bits, it is unnecessary to extend them to 64 bits, even if compareBits is
+                     * 64.
+                     */
+                    if (operandBits < 32) {
+                        aExt = arithmeticLIRGen.emitSignExtend(a, operandBits, compareBits);
+                        bExt = arithmeticLIRGen.emitSignExtend(b, operandBits, compareBits);
+                    }
+                    break;
+                default:
+                    throw GraalError.shouldNotReachHere();
+
             }
 
             /*
@@ -427,7 +450,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
 
             if (aIsStackPointer && bIsStackPointer) {
                 /*
-                 * both a and b are sp, but this cannot be encoded in an AArch64 comparison. Hence,
+                 * If both a and b are sp, this cannot be encoded in an AArch64 comparison. Hence,
                  * sp must be moved to a register.
                  */
                 left = right = emitMove(aExt);
@@ -499,7 +522,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
                         maskedValue = longValue & 0xFFFF;
                         break;
                     case Int:
-                        maskedValue = longValue & 0xFFFF_FFFF;
+                        maskedValue = longValue & 0xFFFF_FFFFL;
                         break;
                     case Long:
                         maskedValue = longValue;

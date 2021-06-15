@@ -159,7 +159,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
     // assertions to ECMAScript word-boundary assertions. Furthermore, the notion of a word
     // character is dependent on whether the Ruby regular expression is set to use the ASCII range
     // only. These are helper constants that we use to implement word-boundary assertions.
-    // WORD_BOUNDARY and WORD_NON_BOUNDARY are templates for word-bounary and word-non-boundary
+    // WORD_BOUNDARY and WORD_NON_BOUNDARY are templates for word-boundary and word-non-boundary
     // assertions, respectively. These templates contain occurrences of \w and \W, which are
     // substituted with the correct notion of a word character during regexp transpilation time.
     public static final Pattern WORD_CHARS_PATTERN = Pattern.compile("\\\\[wW]");

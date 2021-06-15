@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.reflect.hosted;
 
+import com.oracle.svm.core.configure.ConfigurationFile;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.phases.util.Providers;
@@ -38,6 +39,7 @@ import com.oracle.svm.core.configure.ReflectionConfigurationParser;
 import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
+import com.oracle.svm.hosted.FeatureImpl.FeatureAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
@@ -60,6 +62,9 @@ public final class ReflectionFeature implements GraalFeature {
     public void afterRegistration(AfterRegistrationAccess access) {
         ModuleSupport.exportAndOpenPackageToUnnamed("java.base", "jdk.internal.reflect", false);
         ModuleSupport.openModuleByClass(ReflectionProxy.class, null);
+
+        reflectionData = new ReflectionDataBuilder((FeatureAccessImpl) access);
+        ImageSingletons.add(RuntimeReflectionSupport.class, reflectionData);
     }
 
     @Override
@@ -71,9 +76,6 @@ public final class ReflectionFeature implements GraalFeature {
         access.registerSubstitutionProcessor(subst);
         ImageSingletons.add(ReflectionSubstitution.class, subst);
 
-        reflectionData = new ReflectionDataBuilder(access);
-        ImageSingletons.add(RuntimeReflectionSupport.class, reflectionData);
-
         access.registerObjectReplacer(new ReflectionObjectReplacer(access.getMetaAccess()));
 
         if (!ImageSingletons.contains(ReflectionSubstitutionType.Factory.class)) {
@@ -83,7 +85,7 @@ public final class ReflectionFeature implements GraalFeature {
         ReflectionConfigurationParser<Class<?>> parser = ConfigurationParserUtils.create(reflectionData, access.getImageClassLoader());
         loadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurations(parser, access.getImageClassLoader(), "reflection",
                         ConfigurationFiles.Options.ReflectionConfigurationFiles, ConfigurationFiles.Options.ReflectionConfigurationResources,
-                        ConfigurationFiles.REFLECTION_NAME);
+                        ConfigurationFile.REFLECTION.getFileName());
 
         loader = access.getImageClassLoader();
         annotationSubstitutions = ((Inflation) access.getBigBang()).getAnnotationSubstitutionProcessor();

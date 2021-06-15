@@ -76,10 +76,6 @@ fi
 function common() {
     cmd_line+=("${graalvm_home}/bin/native-image")
 
-    if $(${graalvm_home}/bin/native-image --help-extra | grep -q "\-\-no\-server"); then
-        cmd_line+=("--no-server")
-    fi
-
     if [[ -f "${graalvm_home}/lib/svm/builder/svm-enterprise.jar" ]]; then
         cmd_line+=("-g")
     fi

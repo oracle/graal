@@ -22,15 +22,32 @@
  */
 package com.oracle.truffle.espresso.staticobject;
 
+/**
+ * A trivial default implementation of {@link StaticProperty}.
+ *
+ * @see StaticProperty
+ */
 public final class DefaultStaticProperty extends StaticProperty {
     private final String id;
 
-    public DefaultStaticProperty(String id, StaticPropertyKind kind, boolean isFinal) {
-        super(kind, isFinal);
+    /**
+     * Constructs a new DefaultStaticProperty.
+     *
+     * @see StaticProperty#StaticProperty(StaticPropertyKind, boolean)
+     * @param id the id of the static property, which must be immutable and unique for a given
+     *            shape.
+     * @param kind the {@link StaticPropertyKind} of the static property
+     * @param storeAsFinal if the static property value can be stored in a final field
+     */
+    public DefaultStaticProperty(String id, StaticPropertyKind kind, boolean storeAsFinal) {
+        super(kind, storeAsFinal);
         this.id = id;
     }
 
     @Override
+    /**
+     * {@inheritDoc}
+     */
     public String getId() {
         return id;
     }

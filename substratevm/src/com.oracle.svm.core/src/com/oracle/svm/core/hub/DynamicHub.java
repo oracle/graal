@@ -26,7 +26,6 @@ package com.oracle.svm.core.hub;
 
 //Checkstyle: allow reflection
 
-import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.InputStream;
 import java.io.Serializable;
@@ -54,6 +53,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.StringJoiner;
 
+import com.oracle.svm.core.jdk.Resources;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -81,8 +81,8 @@ import com.oracle.svm.core.jdk.JDK15OrLater;
 import com.oracle.svm.core.jdk.JDK16OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.jdk.Package_jdk_internal_reflect;
-import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.Target_java_lang_Module;
+import com.oracle.svm.core.jdk.Target_jdk_internal_reflect_Reflection;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.util.LazyFinalReference;
 import com.oracle.svm.core.util.VMError;
@@ -100,12 +100,12 @@ import sun.security.util.SecurityConstants;
 public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedElement, java.lang.reflect.Type, GenericDeclaration, Serializable,
                 Target_java_lang_invoke_TypeDescriptor_OfField<DynamicHub>, Target_java_lang_constant_Constable {
 
+    /** Marker that a value must be obtained from the companion object. */
+    private static final Object FROM_COMPANION = new Object();
+
     @Substitute //
     @TargetElement(onlyWith = JDK11OrLater.class) //
     private static final Class<?>[] EMPTY_CLASS_ARRAY = new Class<?>[0];
-
-    /* Value copied from java.lang.Class. */
-    private static final int SYNTHETIC = 0x00001000;
 
     @Platforms(Platform.HOSTED_ONLY.class) //
     private final Class<?> hostedJavaClass;
@@ -291,7 +291,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     /**
      * Classloader used for loading this class during image-build time.
      */
-    private final ClassLoader classLoader;
+    private final Object classLoader;
 
     /**
      * Array containing this type's type check id information. During a type check, a requested
@@ -328,7 +328,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
      * not annotated with @RecomputeFieldValue. Their name must not match a field in the original
      * class, i.e., allPermDomain.
      */
-    private static final LazyFinalReference<java.security.ProtectionDomain> allPermDomainReference = new LazyFinalReference<>(() -> {
+    static final LazyFinalReference<java.security.ProtectionDomain> allPermDomainReference = new LazyFinalReference<>(() -> {
         java.security.Permissions perms = new java.security.Permissions();
         perms.add(SecurityConstants.ALL_PERMISSION);
         CodeSource cs;
@@ -347,12 +347,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     public static final LazyFinalReference<Target_java_lang_Module> singleModuleReference = new LazyFinalReference<>(Target_java_lang_Module::new);
 
-    /**
-     * Final fields in subsituted classes are treated as implicitly RecomputeFieldValue even when
-     * not annotated with @RecomputeFieldValue. Their name must not match a field in the original
-     * class, i.e., packageName.
-     */
-    private final LazyFinalReference<String> packageNameReference = new LazyFinalReference<>(this::computePackageName);
+    private final LazyFinalReference<DynamicHubCompanion> companion = new LazyFinalReference<>(() -> new DynamicHubCompanion(this));
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public DynamicHub(Class<?> hostedJavaClass, String name, HubType hubType, ReferenceType referenceType, Object isLocalClass, Object isAnonymousClass, DynamicHub superType, DynamicHub componentHub,
@@ -367,7 +362,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         this.componentType = componentHub;
         this.sourceFileName = sourceFileName;
         this.modifiers = modifiers;
-        this.classLoader = classLoader;
+        this.classLoader = PredefinedClassesSupport.isPredefined(hostedJavaClass) ? FROM_COMPANION : classLoader;
         setFlag(IS_HIDDED_FLAG_BIT, isHidden);
         setFlag(IS_RECORD_FLAG_BIT, isRecord);
         this.nestHost = nestHost;
@@ -565,6 +560,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         return layoutEncoding;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public int getTypeID() {
         return typeID;
     }
@@ -605,6 +601,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         return isFlagSet(IS_INSTANTIATED_FLAG_BIT);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static DynamicHub fromClass(Class<?> clazz) {
         return SubstrateUtil.cast(clazz, DynamicHub.class);
     }
@@ -724,41 +721,34 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         return (Enum<?>[]) enumConstantsReference;
     }
 
-    @Substitute
-    private InputStream getResourceAsStream(String resourceName) {
-        final String path = resolveName(getName(), resourceName);
-        List<byte[]> arr = Resources.get(path);
-        return arr == null ? null : new ByteArrayInputStream(arr.get(0));
-    }
+    @KeepOriginal
+    public native URL getResource(String resourceName);
 
     @Substitute
-    private URL getResource(String resourceName) {
-        final String path = resolveName(getName(), resourceName);
-        List<byte[]> arr = Resources.get(path);
-        return arr == null ? null : Resources.createURL(path, arr.get(0));
+    public InputStream getResourceAsStream(String resourceName) {
+        return Resources.createInputStream(resolveName(resourceName));
     }
 
-    private String resolveName(String baseName, String resourceName) {
-        if (resourceName == null) {
-            return resourceName;
-        }
-        if (resourceName.startsWith("/")) {
-            return resourceName.substring(1);
-        }
-        int index = baseName.lastIndexOf('.');
-        if (index != -1) {
-            return baseName.substring(0, index).replace('.', '/') + "/" + resourceName;
-        } else {
-            return resourceName;
-        }
-    }
+    @KeepOriginal
+    private native String resolveName(String resourceName);
+
+    @KeepOriginal
+    @TargetElement(name = "isOpenToCaller", onlyWith = JDK11OrLater.class)
+    private native boolean isOpenToCaller(String resourceName, Class<?> caller);
 
     @KeepOriginal
     private native ClassLoader getClassLoader();
 
     @Substitute
     private ClassLoader getClassLoader0() {
-        return classLoader;
+        if (classLoader == FROM_COMPANION) {
+            return companion.get().getClassLoader();
+        }
+        return (ClassLoader) classLoader;
+    }
+
+    void setClassLoaderAtRuntime(ClassLoader loader) {
+        companion.get().setClassLoader(loader);
     }
 
     @KeepOriginal
@@ -1295,21 +1285,25 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     @Substitute
-    private static Class<?> forName(String className) throws ClassNotFoundException {
-        return ClassForNameSupport.forName(className, true);
+    public static Class<?> forName(String className) throws ClassNotFoundException {
+        Class<?> caller = Target_jdk_internal_reflect_Reflection.getCallerClass();
+        return forName(className, true, caller.getClassLoader());
     }
 
     @Substitute //
     @TargetElement(onlyWith = JDK11OrLater.class) //
-    @SuppressWarnings({"unused"})
-    public static Class<?> forName(Target_java_lang_Module module, String className) {
-        /* The module system is not supported for now, therefore the module parameter is ignored. */
-        return ClassForNameSupport.forNameOrNull(className, false);
+    public static Class<?> forName(@SuppressWarnings("unused") Target_java_lang_Module module, String className) {
+        /*
+         * The module system is not supported for now, therefore the module parameter is ignored and
+         * we use the class loader of the caller class instead of the module's loader.
+         */
+        Class<?> caller = Target_jdk_internal_reflect_Reflection.getCallerClass();
+        return ClassForNameSupport.forNameOrNull(className, false, caller.getClassLoader());
     }
 
     @Substitute
-    private static Class<?> forName(String name, @SuppressWarnings("unused") boolean initialize, @SuppressWarnings("unused") ClassLoader loader) throws ClassNotFoundException {
-        return ClassForNameSupport.forName(name, initialize);
+    public static Class<?> forName(String name, boolean initialize, ClassLoader loader) throws ClassNotFoundException {
+        return ClassForNameSupport.forName(name, initialize, loader);
     }
 
     @KeepOriginal
@@ -1318,10 +1312,13 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Substitute //
     @TargetElement(onlyWith = JDK11OrLater.class)
     public String getPackageName() {
-        return packageNameReference.get();
+        if (SubstrateUtil.HOSTED) { // avoid eager initialization in image heap
+            return computePackageName();
+        }
+        return companion.get().getPackageName();
     }
 
-    private String computePackageName() {
+    String computePackageName() {
         String pn = null;
         DynamicHub me = this;
         while (me.hubIsArray()) {
@@ -1356,7 +1353,11 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Substitute
     public ProtectionDomain getProtectionDomain() {
-        return allPermDomainReference.get();
+        return companion.get().getProtectionDomain();
+    }
+
+    void setProtectionDomainAtRuntime(ProtectionDomain protectionDomain) {
+        companion.get().setProtectionDomain(protectionDomain);
     }
 
     @Substitute

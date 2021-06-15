@@ -65,18 +65,19 @@ public abstract class LLVMAMD64SyscallArchPrctlNode extends LLVMSyscallOperation
 
     private long exec(long code, LLVMPointer addr, LLVMContext context, LLVMPointerStoreNode store) throws AssertionError {
         switch (profile.profile((int) code)) {
-            case LLVMAMD64ArchPrctl.ARCH_SET_FS:
+            case LLVMAMD64ArchPrctl.ARCH_SET_FS: {
                 context.setThreadLocalStorage(addr);
-                break;
+                return 0;
+            }
             case LLVMAMD64ArchPrctl.ARCH_GET_FS: {
                 LLVMPointer tls = context.getThreadLocalStorage();
                 store.executeWithTarget(addr, tls);
-                break;
+                return 0;
             }
-            default:
+            default: {
                 CompilerDirectives.transferToInterpreter();
                 throw new AssertionError(String.format("not implemented: arch_prcntl(0x%04x)", code));
+            }
         }
-        return 0;
     }
 }

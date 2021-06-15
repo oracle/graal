@@ -26,7 +26,6 @@ package com.oracle.svm.core.genscavenge;
 
 import java.lang.ref.Reference;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import org.graalvm.compiler.api.replacements.Fold;
@@ -69,7 +68,6 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.ThreadStatus;
 import com.oracle.svm.core.thread.VMOperation;
@@ -322,12 +320,13 @@ public final class HeapImpl extends Heap {
     }
 
     @Override
-    public List<Class<?>> getClassList() {
+    protected List<Class<?>> getAllClasses() {
         /* Two threads might race to set classList, but they compute the same result. */
         if (classList == null) {
-            List<Class<?>> list = new ArrayList<>(1024);
+            ArrayList<Class<?>> list = new ArrayList<>(1024);
             ImageHeapWalker.walkRegions(imageHeapInfo, new ClassListBuilderVisitor(list));
-            classList = Collections.unmodifiableList(list);
+            list.trimToSize();
+            classList = list;
         }
         assert classList.size() == imageHeapInfo.dynamicHubCount;
         return classList;
@@ -353,7 +352,7 @@ public final class HeapImpl extends Heap {
                         reason = "Allocation is fine: this method traverses only the image heap.")
         public boolean visitObject(Object o) {
             if (o instanceof Class<?>) {
-                list.add(KnownIntrinsics.convertUnknownValue(o, Class.class));
+                list.add((Class<?>) o);
             }
             return true;
         }

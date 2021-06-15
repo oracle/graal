@@ -65,7 +65,6 @@ import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
 import com.oracle.graal.pointsto.flow.OffsetLoadTypeFlow.AbstractUnsafeLoadTypeFlow;
 import com.oracle.graal.pointsto.flow.OffsetStoreTypeFlow.AbstractUnsafeStoreTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
-import com.oracle.graal.pointsto.flow.UnknownTypeFlow;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
 import com.oracle.graal.pointsto.flow.context.AnalysisContextPolicy;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -82,7 +81,6 @@ import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.Timer.StopTimer;
 import com.oracle.svm.util.ImageGeneratorThreadMarker;
 
-import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
@@ -101,7 +99,6 @@ public abstract class BigBang {
     /** The type of {@link java.lang.Object}. */
     private final AnalysisType objectType;
     private TypeFlow<?> allSynchronizedTypeFlow;
-    private UnknownTypeFlow unknownTypeFlow;
 
     protected final AnalysisUniverse universe;
     protected final AnalysisMetaAccess metaAccess;
@@ -156,7 +153,6 @@ public abstract class BigBang {
          */
         objectType.getTypeFlow(this, true);
         allSynchronizedTypeFlow = new AllSynchronizedTypeFlow();
-        unknownTypeFlow = new UnknownTypeFlow();
 
         trackTypeFlowInputs = PointstoOptions.TrackInputFlows.getValue(options);
         reportAnalysisStatistics = PointstoOptions.PrintPointsToStatistics.getValue(options);
@@ -221,12 +217,6 @@ public abstract class BigBang {
         unsafeStores.putIfAbsent(unsafeStore, true);
     }
 
-    public void reportIllegalUnknownUse(AnalysisMethod method, BytecodePosition source, String message) {
-        String trace = "Location: " + (source == null ? "[unknown]" : source.getMethod().asStackTraceElement(source.getBCI()).toString()) + "\n";
-        trace += "Call path:";
-        getUnsupportedFeatures().addMessage(method.format("%H.%n(%p)"), method, message, trace);
-    }
-
     /**
      * Force update of the unsafe loads and unsafe store type flows when a field is registered as
      * unsafe accessed 'on the fly', i.e., during the analysis.
@@ -286,7 +276,6 @@ public abstract class BigBang {
         allSynchronizedTypeFlow = null;
         unsafeLoads = null;
         unsafeStores = null;
-        unknownTypeFlow = null;
         scannedObjects = null;
 
         ConstantObjectsProfiler.constantTypes.clear();
@@ -366,10 +355,6 @@ public abstract class BigBang {
 
     public TypeFlow<?> getAllInstantiatedTypeFlow() {
         return objectType.getTypeFlow(this, true);
-    }
-
-    public TypeFlow<?> getUnknownTypeFlow() {
-        return unknownTypeFlow;
     }
 
     public TypeFlow<?> getAllSynchronizedTypeFlow() {

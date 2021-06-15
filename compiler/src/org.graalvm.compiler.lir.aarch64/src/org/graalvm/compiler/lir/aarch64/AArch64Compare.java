@@ -221,8 +221,8 @@ public class AArch64Compare {
                 case GE:
                     masm.neon.cmgeVVV(size, eSize, dst, left, right);
                     break;
-                case BT:
-                    masm.neon.cmhiVVV(size, eSize, dst, right, left);
+                case AE:
+                    masm.neon.cmhsVVV(size, eSize, dst, left, right);
                     break;
                 case BE:
                     masm.neon.cmhsVVV(size, eSize, dst, right, left);
@@ -230,8 +230,8 @@ public class AArch64Compare {
                 case AT:
                     masm.neon.cmhiVVV(size, eSize, dst, left, right);
                     break;
-                case AE:
-                    masm.neon.cmhsVVV(size, eSize, dst, left, right);
+                case BT:
+                    masm.neon.cmhiVVV(size, eSize, dst, right, left);
                     break;
                 default:
                     throw GraalError.unimplemented();
@@ -283,6 +283,18 @@ public class AArch64Compare {
                     break;
                 case GE:
                     masm.neon.fcmgeVVV(size, eSize, dst, left, right);
+                    break;
+                case AE:
+                    masm.neon.facgeVVV(size, eSize, dst, left, right);
+                    break;
+                case BE:
+                    masm.neon.facgeVVV(size, eSize, dst, right, left);
+                    break;
+                case AT:
+                    masm.neon.facgtVVV(size, eSize, dst, left, right);
+                    break;
+                case BT:
+                    masm.neon.facgtVVV(size, eSize, dst, right, left);
                     break;
                 default:
                     throw GraalError.unimplemented();

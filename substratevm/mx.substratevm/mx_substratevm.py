@@ -29,14 +29,12 @@
 from __future__ import print_function
 
 import os
-import time
 import re
 import tempfile
 from glob import glob
 from contextlib import contextmanager
 from distutils.dir_util import mkpath, remove_tree  # pylint: disable=no-name-in-module
-from os.path import join, exists, basename, dirname
-from shutil import move
+from os.path import join, exists, dirname
 import pipes
 from xml.dom.minidom import parse
 from argparse import ArgumentParser
@@ -73,18 +71,13 @@ def svm_java_compliance():
 def svm_java8():
     return svm_java_compliance() <= mx.JavaCompliance('1.8')
 
-def graal_compiler_flags(version_tag=None):
-    version_tag = version_tag or svm_java_compliance().value
-    config_path = mx.dependency('substratevm:svm-compiler-flags-builder').result_file_path(version_tag)
-    if not exists(config_path):
-        missing_flags_message = '''
-Missing graal-compiler-flags config-file {0}. Possible causes:
-* Forgot to run "mx build" before using SubstrateVM.
-* Generating config-file for Java {1} missing in SubstrateCompilerFlagsBuilder.compute_graal_compiler_flags_map().
-'''
-        mx.abort(missing_flags_message.format(config_path, version_tag))
-    with open(config_path, 'r') as config_file:
-        return config_file.read().splitlines()
+def graal_compiler_flags(all_unnamed=True):
+    version_tag = svm_java_compliance().value
+    compiler_flags = mx.dependency('substratevm:svm-compiler-flags-builder').compute_graal_compiler_flags_map(all_unnamed=all_unnamed)
+    if version_tag not in compiler_flags:
+        missing_flags_message = 'Missing graal-compiler-flags for {0}.\n Did you forget to run "mx build"?'
+        mx.abort(missing_flags_message.format(version_tag))
+    return compiler_flags[version_tag]
 
 def svm_unittest_config_participant(config):
     vmArgs, mainClass, mainClassArgs = config
@@ -241,14 +234,10 @@ def native_image_context(common_args=None, hosted_assertions=True, native_image_
     common_args = [] if common_args is None else common_args
     base_args = ['--no-fallback', '-H:+EnforceMaxRuntimeCompileMethods']
     base_args += ['-H:Path=' + svmbuild_dir()]
-    has_server = mx.get_os() != 'windows'
     if mx.get_opts().verbose:
         base_args += ['--verbose']
     if mx.get_opts().very_verbose:
-        if has_server:
-            base_args += ['--verbose-server']
-        else:
-            base_args += ['--verbose']
+        base_args += ['--verbose']
     if hosted_assertions:
         base_args += native_image_context.hosted_assertions
     if native_image_cmd:
@@ -301,30 +290,15 @@ def native_image_context(common_args=None, hosted_assertions=True, native_image_
 
         return result
 
-    server_use = set()
     def native_image_func(args, **kwargs):
         all_args = base_args + common_args + args
-        if '--experimental-build-server' in all_args:
-            server_use.add(True)
         path = query_native_image(all_args, r'^-H:Path(@[^=]*)?=')
         name = query_native_image(all_args, r'^-H:Name(@[^=]*)?=')
         image = join(path, name)
-        if not has_server and '--no-server' in all_args:
-            all_args = [arg for arg in all_args if arg != '--no-server']
-
         _native_image(all_args, **kwargs)
         return image
-    try:
-        if exists(native_image_cmd) and has_server and server_use:
-            _native_image(['--server-wipe'])
-        yield native_image_func
-    finally:
-        if exists(native_image_cmd) and has_server and server_use:
-            def timestr():
-                return time.strftime('%d %b %Y %H:%M:%S') + ' - '
-            mx.log(timestr() + 'Shutting down image build servers for ' + native_image_cmd)
-            _native_image(['--server-shutdown'])
-            mx.log(timestr() + 'Shutting down completed')
+
+    yield native_image_func
 
 native_image_context.hosted_assertions = ['-J-ea', '-J-esa']
 _native_unittest_features = '--features=com.oracle.svm.test.ImageInfoTest$TestFeature,com.oracle.svm.test.ServiceLoaderTest$TestFeature,com.oracle.svm.test.SecurityServiceTest$TestFeature'
@@ -441,7 +415,13 @@ def native_unittests_task():
         # GR-24075
         mx_unittest.add_global_ignore_glob('com.oracle.svm.test.ProcessPropertiesTest')
 
-    native_unittest(['--build-args', _native_unittest_features])
+    additional_build_args = [
+        '-H:AdditionalSecurityProviders=com.oracle.svm.test.SecurityServiceTest$NoOpProvider',
+        '-H:AdditionalSecurityServiceTypes=com.oracle.svm.test.SecurityServiceTest$JCACompliantNoOpService',
+        '-H:+AllowVMInspection'
+    ]
+
+    native_unittest(['--build-args', _native_unittest_features] + additional_build_args)
 
 
 def javac_image_command(javac_path):
@@ -465,29 +445,24 @@ def _native_junit(native_image, unittest_args, build_args=None, run_args=None, b
     run_args = run_args or ['--verbose']
     junit_native_dir = join(svmbuild_dir(), platform_name(), 'junit')
     mkpath(junit_native_dir)
-    junit_tmp_dir = tempfile.mkdtemp(dir=junit_native_dir)
+    junit_test_dir = junit_native_dir if preserve_image else tempfile.mkdtemp(dir=junit_native_dir)
     try:
         unittest_deps = []
         def dummy_harness(test_deps, vm_launcher, vm_args):
             unittest_deps.extend(test_deps)
-        unittest_file = join(junit_tmp_dir, 'svmjunit.tests')
+        unittest_file = join(junit_test_dir, 'svmjunit.tests')
         _run_tests(unittest_args, dummy_harness, _VMLauncher('dummy_launcher', None, mx_compiler.jdk), ['@Test', '@Parameters'], unittest_file, blacklist, whitelist, None, None)
         if not exists(unittest_file):
             mx.abort('No matching unit tests found. Skip image build and execution.')
         with open(unittest_file, 'r') as f:
             mx.log('Building junit image for matching: ' + ' '.join(l.rstrip() for l in f))
         extra_image_args = mx.get_runtime_jvm_args(unittest_deps, jdk=mx_compiler.jdk)
-        unittest_image = native_image(build_args + extra_image_args + ['--macro:junit=' + unittest_file, '-H:Path=' + junit_tmp_dir])
-        if preserve_image:
-            build_dir = join(svmbuild_dir(), 'junit')
-            mkpath(build_dir)
-            unittest_image_dst = join(build_dir, basename(unittest_image))
-            move(unittest_image, unittest_image_dst)
-            unittest_image = unittest_image_dst
+        unittest_image = native_image(build_args + extra_image_args + ['--macro:junit=' + unittest_file, '-H:Path=' + junit_test_dir])
         mx.log('Running: ' + ' '.join(map(pipes.quote, [unittest_image] + run_args)))
         mx.run([unittest_image] + run_args)
     finally:
-        remove_tree(junit_tmp_dir)
+        if not preserve_image:
+            remove_tree(junit_test_dir)
 
 _mask_str = '#'
 
@@ -570,7 +545,7 @@ def js_image_test(binary, bench_location, name, warmup_iterations, iterations, t
 
 
 def build_js(native_image):
-    return native_image(['--macro:js-launcher', '--no-server'])
+    return native_image(['--macro:js-launcher'])
 
 def test_js(js, benchmarks, bin_args=None):
     bench_location = join(suite.dir, '..', '..', 'js-benchmarks')
@@ -855,9 +830,10 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     support_distributions=['substratevm:NATIVE_IMAGE_GRAALVM_SUPPORT'],
     launcher_configs=[
         mx_sdk_vm.LauncherConfig(
-            is_module_launcher=not svm_java8(),
+            use_modules='image' if USE_NI_JPMS else 'launcher' if not svm_java8() else None,
             destination="bin/<exe:native-image>",
             jar_distributions=["substratevm:SVM_DRIVER"],
+            main_module="org.graalvm.nativeimage.driver",
             main_class=_native_image_launcher_main_class(),
             build_args=[],
             extra_jvm_args=_native_image_launcher_extra_jvm_args(),
@@ -1109,12 +1085,17 @@ def hellomodule(args):
     proj_dir = join(suite.dir, 'src', 'native-image-module-tests', 'hello.app')
     mx.run_maven(['-e', 'install'], cwd=proj_dir)
     module_path.append(join(proj_dir, 'target', 'hello-app-1.0-SNAPSHOT.jar'))
-    with native_image_context(hosted_assertions=False, build_if_missing=False) as native_image:
+    config = GraalVMConfig.build(native_images=['native-image'])
+    with native_image_context(hosted_assertions=False, config=config) as native_image:
         build_dir = join(svmbuild_dir(), 'hellomodule')
         # Build module into native image
         mx.log('Building image from java modules: ' + str(module_path))
         module_path_sep = ';' if mx.is_windows() else ':'
-        built_image = native_image(['--verbose', '-ea', '-H:Path=' + build_dir, '-p', module_path_sep.join(module_path), '-m', 'moduletests.hello.app'])
+        built_image = native_image([
+            '--verbose', '-ea', '-H:Path=' + build_dir,
+            '--add-exports=moduletests.hello.lib/hello.privateLib=moduletests.hello.app',
+            '--add-exports=moduletests.hello.lib/hello.privateLib2=moduletests.hello.app',
+            '-p', module_path_sep.join(module_path), '-m', 'moduletests.hello.app'])
         mx.log('Running image ' + built_image + ' built from module:')
         mx.run([built_image])
 
@@ -1141,26 +1122,35 @@ def clinittest(args):
 
         # Build and run the example
         native_image(
-            ['-H:Path=' + build_dir, '-cp', test_cp, '-H:Class=com.oracle.svm.test.TestClassInitializationMustBeSafe',
-             '-H:Features=com.oracle.svm.test.TestClassInitializationMustBeSafeFeature',
+            ['-H:Path=' + build_dir, '-cp', test_cp, '-H:Class=com.oracle.svm.test.clinit.TestClassInitializationMustBeSafeEarly',
+             '-H:Features=com.oracle.svm.test.clinit.TestClassInitializationMustBeSafeEarlyFeature',
              '-H:+PrintClassInitialization', '-H:Name=clinittest', '-H:+ReportExceptionStackTraces'] + args)
         mx.run([join(build_dir, 'clinittest')])
 
         # Check the reports for initialized classes
-        def check_class_initialization(classes_file_name, marker, prefix=''):
+        def check_class_initialization(classes_file_name):
             classes_file = os.path.join(build_dir, 'reports', classes_file_name)
+            wrongly_initialized_lines = []
+
+            def checkLine(line, marker, init_kind, msg, wrongly_initialized_lines):
+                if marker + "," in line and not ((init_kind + ",") in line and msg in line):
+                    wrongly_initialized_lines += [(line,
+                                                   "Classes marked with " + marker + " must have init kind " + init_kind + " and message " + msg)]
             with open(classes_file) as f:
-                wrongly_initialized_classes = [line.strip() for line in f if line.strip().startswith(prefix) and marker not in line.strip()]
-                if len(wrongly_initialized_classes) > 0:
-                    mx.abort("Only classes with marker " + marker + " must be in file " + classes_file + ". Found:\n" +
-                             str(wrongly_initialized_classes))
+                for line in f:
+                    checkLine(line, "MustBeDelayed", "RUN_TIME", "classes are initialized at run time by default", wrongly_initialized_lines)
+                    checkLine(line, "MustBeSafeEarly", "BUILD_TIME", "class proven as side-effect free before analysis", wrongly_initialized_lines)
+                    checkLine(line, "MustBeSafeLate", "BUILD_TIME", "class proven as side-effect free after analysis", wrongly_initialized_lines)
+                if len(wrongly_initialized_lines) > 0:
+                    msg = ""
+                    for (line, error) in wrongly_initialized_lines:
+                        msg += "In line \n" + line + error + "\n"
+                    mx.abort("Error in initialization reporting:\n" + msg)
 
         reports = os.listdir(os.path.join(build_dir, 'reports'))
-        delayed_classes = next(report for report in reports if report.startswith('run_time_classes'))
-        safe_classes = next(report for report in reports if report.startswith('safe_classes'))
+        all_classes_file = next(report for report in reports if report.startswith('class_initialization_report'))
 
-        check_class_initialization(delayed_classes, 'MustBeDelayed', prefix='com.oracle.svm.test')
-        check_class_initialization(safe_classes, 'MustBeSafe')
+        check_class_initialization(all_classes_file)
 
     native_image_context_run(build_and_test_clinittest_image, args)
 
@@ -1425,7 +1415,7 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
 
     # If renaming or moving this method, please update the error message in
     # com.oracle.svm.driver.NativeImage.BuildConfiguration.getBuilderJavaArgs().
-    def compute_graal_compiler_flags_map(self):
+    def compute_graal_compiler_flags_map(self, all_unnamed=not USE_NI_JPMS):
         graal_compiler_flags_map = dict()
         graal_compiler_flags_map[8] = [
             '-d64',
@@ -1442,7 +1432,7 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
             distributions_transitive = mx.classpath_entries(self.deps)
             jdk = mx.get_jdk(tag='default')
             required_exports = mx_javamodules.requiredExports(distributions_transitive, jdk)
-            target_module = None if USE_NI_JPMS else 'ALL-UNNAMED'
+            target_module = 'ALL-UNNAMED' if all_unnamed else None
             exports_flags = mx_sdk_vm.AbstractNativeImageConfig.get_add_exports_list(required_exports, target_module)
             graal_compiler_flags_map[11].extend(exports_flags)
 
