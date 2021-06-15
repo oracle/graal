@@ -40,6 +40,8 @@ import org.graalvm.compiler.nodes.spi.Lowerable;
  * {@link InvokeWithExceptionNode#exceptionEdge()}. In cases where the entire branch should be
  * removed, {@link UnreachableBeginNode} and {@link UnreachableControlSinkNode} might be more
  * appropriate.
+ *
+ * Use {@link UnreachableNode} to mark a code path in snippets as unreachable.
  */
 @NodeInfo(cycles = CYCLES_UNKNOWN, size = SIZE_UNKNOWN, cyclesRationale = DeadEndNode.RATIONALE, sizeRationale = DeadEndNode.RATIONALE)
 public final class DeadEndNode extends ControlSinkNode implements Lowerable, IterableNodeType {

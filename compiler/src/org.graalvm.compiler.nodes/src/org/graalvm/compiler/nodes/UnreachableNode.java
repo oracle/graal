@@ -33,6 +33,18 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.spi.Simplifiable;
 import org.graalvm.compiler.nodes.spi.SimplifierTool;
 
+/**
+ * Node for marking a branch in a snippet as unreachable. Usage example:
+ *
+ * <pre>
+ * void mySnippet() {
+ *     callThatNeverReturns();
+ *     throw UnreachableNode.unreachable();
+ * }
+ * </pre>
+ *
+ * See {@link DeadEndNode} for more details.
+ */
 @NodeInfo(size = SIZE_IGNORED, cycles = CYCLES_IGNORED)
 public final class UnreachableNode extends FixedWithNextNode implements Simplifiable {
     public static final NodeClass<UnreachableNode> TYPE = NodeClass.create(UnreachableNode.class);
