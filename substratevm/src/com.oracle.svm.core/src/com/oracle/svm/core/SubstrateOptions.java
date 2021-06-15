@@ -52,7 +52,6 @@ import com.oracle.svm.core.option.APIOptionGroup;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.RuntimeOptionKey;
-import com.oracle.svm.core.option.XOptions;
 import com.oracle.svm.core.util.UserError;
 
 public class SubstrateOptions {
@@ -188,14 +187,7 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> UseEpsilonGC = new HostedOptionKey<>(false);
 
     @Option(help = "The size of each thread stack at run-time, in bytes.", type = OptionType.User)//
-    public static final RuntimeOptionKey<Long> StackSize = new RuntimeOptionKey<Long>(0L) {
-        @Override
-        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
-            if (!SubstrateUtil.HOSTED) {
-                XOptions.getXss().setValue(newValue);
-            }
-        }
-    };
+    public static final RuntimeOptionKey<Long> StackSize = new RuntimeOptionKey<>(0L);
 
     @Option(help = "The maximum number of lines in the stack trace for Java exceptions (0 means all)", type = OptionType.User)//
     public static final RuntimeOptionKey<Integer> MaxJavaStackTraceDepth = new RuntimeOptionKey<>(1024);
