@@ -93,6 +93,8 @@ jobs:
               PRIMARY: "compiler"
           - env:
               JDK: "labsjdk-ce-11"
+              GATE: "build"
+              PRIMARY: "substratevm"
               WITHOUT_VCS: true
     steps:
     - uses: actions/checkout@v2
@@ -156,7 +158,6 @@ jobs:
         if [[ ${WITHOUT_VCS} ]]
         then
           rm -rf .git
-          ${MX_PATH}/mx --primary-suite-path substratevm native-image --help
-        else
-          ${MX_PATH}/mx --primary-suite-path ${PRIMARY} --J @"-Xmx2g" --java-home=${JAVA_HOME} gate --strict-mode --tags ${GATE}
         fi
+
+        ${MX_PATH}/mx --primary-suite-path ${PRIMARY} --J @"-Xmx2g" --java-home=${JAVA_HOME} gate --strict-mode --tags ${GATE}
