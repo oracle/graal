@@ -98,8 +98,6 @@ public class CompletionExecutor {
     }
 
     public void init(Timing newTiming) {
-        assert isSequential() || !(executorService instanceof ForkJoinPool) || !((ForkJoinPool) executorService).hasQueuedSubmissions();
-
         timing = newTiming;
         setState(State.BEFORE_START);
         postedOperations.reset();

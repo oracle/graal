@@ -49,10 +49,7 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.Set;
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.ForkJoinWorkerThread;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -464,57 +461,36 @@ public class NativeImageGenerator {
                     SubstitutionProcessor harnessSubstitutions,
                     ForkJoinPool compilationExecutor, ForkJoinPool analysisExecutor,
                     EconomicSet<String> allOptionNames) {
-        ForkJoinPool executor = null;
-        try {
-            if (!buildStarted.compareAndSet(false, true)) {
-                throw UserError.abort("An image build has already been performed with this generator.");
-            }
-
-            try {
-                /*
-                 * JVMCI 20.2-b01 introduced new methods for linking and querying whether an
-                 * interface has default methods. Fail early if these methods are missing.
-                 */
-                ResolvedJavaType.class.getDeclaredMethod("link");
-            } catch (ReflectiveOperationException ex) {
-                throw UserError.abort("JVMCI version provided %s is missing the 'ResolvedJavaType.link()' method added in jvmci-20.2-b01. " +
-                                "Please use the latest JVMCI JDK from %s or %s.", System.getProperty("java.home"), JVMCI8_RELEASES_URL, JVMCI11_RELEASES_URL);
-            }
-
-            setSystemPropertiesForImageLate(k);
-
-            ImageSingletonsSupportImpl.HostedManagement.install(new ImageSingletonsSupportImpl.HostedManagement());
-            ForkJoinPool buildExecutor = executor = createForkJoinPool(compilationExecutor.getParallelism());
-
-            buildExecutor.submit(() -> {
-                ImageSingletons.add(BuildArtifacts.class, (type, artifact) -> buildArtifacts.computeIfAbsent(type, t -> new ArrayList<>()).add(artifact));
-                ImageSingletons.add(ClassLoaderQuery.class, new ClassLoaderQueryImpl(loader.getClassLoader()));
-                ImageSingletons.add(HostedOptionValues.class, new HostedOptionValues(optionProvider.getHostedValues()));
-                ImageSingletons.add(RuntimeOptionValues.class, new RuntimeOptionValues(optionProvider.getRuntimeValues(), allOptionNames));
-                watchdog = new DeadlockWatchdog();
-                try (TemporaryBuildDirectoryProviderImpl tempDirectoryProvider = new TemporaryBuildDirectoryProviderImpl()) {
-                    ImageSingletons.add(TemporaryBuildDirectoryProvider.class, tempDirectoryProvider);
-                    doRun(entryPoints, javaMainSupport, imageName, k, harnessSubstitutions, compilationExecutor, analysisExecutor, buildExecutor);
-                } finally {
-                    watchdog.close();
-                }
-            }).get();
-        } catch (InterruptedException | CancellationException e) {
-            System.out.println("Interrupted!");
-            throw new InterruptImageBuilding(e);
-        } catch (ExecutionException e) {
-            rethrow(e.getCause());
-        } finally {
-            if (executor != null) {
-                executor.shutdownNow();
-            }
+        if (!buildStarted.compareAndSet(false, true)) {
+            throw UserError.abort("An image build has already been performed with this generator.");
         }
-    }
 
-    /** A version of "sneaky throw" to relay exceptions. */
-    @SuppressWarnings("unchecked")
-    private static <T extends Throwable> void rethrow(Throwable t) throws T {
-        throw (T) t;
+        try {
+            /*
+             * JVMCI 20.2-b01 introduced new methods for linking and querying whether an interface
+             * has default methods. Fail early if these methods are missing.
+             */
+            ResolvedJavaType.class.getDeclaredMethod("link");
+        } catch (ReflectiveOperationException ex) {
+            throw UserError.abort("JVMCI version provided %s is missing the 'ResolvedJavaType.link()' method added in jvmci-20.2-b01. " +
+                            "Please use the latest JVMCI JDK from %s or %s.", System.getProperty("java.home"), JVMCI8_RELEASES_URL, JVMCI11_RELEASES_URL);
+        }
+
+        setSystemPropertiesForImageLate(k);
+
+        ImageSingletonsSupportImpl.HostedManagement.install(new ImageSingletonsSupportImpl.HostedManagement());
+
+        ImageSingletons.add(BuildArtifacts.class, (type, artifact) -> buildArtifacts.computeIfAbsent(type, t -> new ArrayList<>()).add(artifact));
+        ImageSingletons.add(ClassLoaderQuery.class, new ClassLoaderQueryImpl(loader.getClassLoader()));
+        ImageSingletons.add(HostedOptionValues.class, new HostedOptionValues(optionProvider.getHostedValues()));
+        ImageSingletons.add(RuntimeOptionValues.class, new RuntimeOptionValues(optionProvider.getRuntimeValues(), allOptionNames));
+        watchdog = new DeadlockWatchdog();
+        try (TemporaryBuildDirectoryProviderImpl tempDirectoryProvider = new TemporaryBuildDirectoryProviderImpl()) {
+            ImageSingletons.add(TemporaryBuildDirectoryProvider.class, tempDirectoryProvider);
+            doRun(entryPoints, javaMainSupport, imageName, k, harnessSubstitutions, compilationExecutor, analysisExecutor);
+        } finally {
+            watchdog.close();
+        }
     }
 
     protected static void setSystemPropertiesForImageEarly() {
@@ -535,32 +511,18 @@ public class NativeImageGenerator {
         System.clearProperty(ImageInfo.PROPERTY_IMAGE_KIND_KEY);
     }
 
-    protected ForkJoinPool createForkJoinPool(int maxConcurrentThreads) {
-        return new ForkJoinPool(
-                        maxConcurrentThreads,
-                        pool -> new ForkJoinWorkerThread(pool) {
-                            @Override
-                            protected void onStart() {
-                                super.onStart();
-                                assert loader.getClassLoader().equals(getContextClassLoader());
-                            }
-                        },
-                        Thread.getDefaultUncaughtExceptionHandler(),
-                        false);
-    }
-
     @SuppressWarnings("try")
     private void doRun(Map<Method, CEntryPointData> entryPoints,
                     JavaMainSupport javaMainSupport, String imageName, NativeImageKind k,
                     SubstitutionProcessor harnessSubstitutions,
-                    ForkJoinPool compilationExecutor, ForkJoinPool analysisExecutor, ForkJoinPool buildExecutor) {
+                    ForkJoinPool compilationExecutor, ForkJoinPool analysisExecutor) {
         List<HostedMethod> hostedEntryPoints = new ArrayList<>();
 
         OptionValues options = HostedOptionValues.singleton();
         SnippetReflectionProvider originalSnippetReflection = GraalAccess.getOriginalSnippetReflection();
         try (DebugContext debug = new Builder(options, new GraalDebugHandlersFactory(originalSnippetReflection)).build();
                         DebugCloseable featureCleanup = () -> featureHandler.forEachFeature(Feature::cleanup)) {
-            setupNativeImage(imageName, options, entryPoints, javaMainSupport, harnessSubstitutions, analysisExecutor, buildExecutor, originalSnippetReflection, debug);
+            setupNativeImage(imageName, options, entryPoints, javaMainSupport, harnessSubstitutions, analysisExecutor, originalSnippetReflection, debug);
 
             boolean returnAfterAnalysis = runPointsToAnalysis(imageName, options, debug);
             if (returnAfterAnalysis) {
@@ -852,7 +814,7 @@ public class NativeImageGenerator {
 
     @SuppressWarnings("try")
     private void setupNativeImage(String imageName, OptionValues options, Map<Method, CEntryPointData> entryPoints, JavaMainSupport javaMainSupport, SubstitutionProcessor harnessSubstitutions,
-                    ForkJoinPool analysisExecutor, ForkJoinPool buildExecutor, SnippetReflectionProvider originalSnippetReflection, DebugContext debug) {
+                    ForkJoinPool analysisExecutor, SnippetReflectionProvider originalSnippetReflection, DebugContext debug) {
         try (Indent ignored = debug.logAndIndent("setup native-image builder")) {
             try (StopTimer ignored1 = new Timer(imageName, "setup").start()) {
                 SubstrateTargetDescription target = createTarget(loader.platform);
@@ -892,7 +854,7 @@ public class NativeImageGenerator {
                 AnnotationSubstitutionProcessor annotationSubstitutions = createDeclarativeSubstitutionProcessor(originalMetaAccess, loader, classInitializationSupport);
                 CEnumCallWrapperSubstitutionProcessor cEnumProcessor = new CEnumCallWrapperSubstitutionProcessor();
                 aUniverse = createAnalysisUniverse(options, target, loader, originalMetaAccess, originalSnippetReflection, annotationSubstitutions, cEnumProcessor,
-                                classInitializationSupport, Collections.singletonList(harnessSubstitutions), buildExecutor);
+                                classInitializationSupport, Collections.singletonList(harnessSubstitutions), analysisExecutor);
 
                 AnalysisMetaAccess aMetaAccess = new SVMAnalysisMetaAccess(aUniverse, originalMetaAccess);
                 AnalysisConstantReflectionProvider aConstantReflection = new AnalysisConstantReflectionProvider(
