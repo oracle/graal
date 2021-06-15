@@ -1090,6 +1090,7 @@ suite = {
                     "com.oracle.svm.hosted.agent                  to java.instrument",
                     "com.oracle.svm.core.graal.thread             to jdk.internal.vm.compiler",
                     "com.oracle.svm.core.classinitialization      to jdk.internal.vm.compiler",
+                    "com.oracle.svm.truffle.api                   to org.graalvm.truffle",
                     "* to org.graalvm.nativeimage.driver,org.graalvm.nativeimage.librarysupport,org.graalvm.nativeimage.llvm,com.oracle.svm.svm_enterprise",
                 ],
                 "opens" : [
@@ -1109,6 +1110,8 @@ suite = {
                 ],
                 "uses" : [
                     "org.graalvm.nativeimage.Platform",
+                    "com.oracle.truffle.api.TruffleLanguage.Provider",
+                    "com.oracle.truffle.api.instrumentation.TruffleInstrument.Provider",
                 ],
                 "requiresConcealed": {
                     "jdk.internal.vm.ci": [
