@@ -65,7 +65,6 @@ public class CPUSamplerTest extends AbstractProfilerTest {
         Assert.assertNotNull(sampler);
         synchronized (sampler) {
             sampler.setGatherSelfHitTimes(true);
-            sampler.setDelaySamplingUntilNonInternalLangInit(false);
         }
     }
 

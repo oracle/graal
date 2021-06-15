@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.tools.profiler;
 
+import java.util.Collections;
 import java.util.Objects;
 import java.util.Set;
 
@@ -66,6 +67,15 @@ public final class StackTraceEntry {
     private final Node instrumentedNode;
     private final byte state;
     private volatile StackTraceElement stackTraceElement;
+
+    public StackTraceEntry(String rootName) {
+        this.sourceSection = null;
+        this.rootName = rootName;
+        this.tags = Collections.emptySet();
+        this.instrumentedNode = null;
+        this.state = STATE_UNKNOWN;
+        this.stackTraceElement = null;
+    }
 
     StackTraceEntry(Instrumenter instrumenter, EventContext context, byte state) {
         this.tags = instrumenter.queryTags(context.getInstrumentedNode());
@@ -259,7 +269,7 @@ public final class StackTraceEntry {
      */
     @Override
     public int hashCode() {
-        return 31 * (31 + rootName.hashCode()) + sourceSection.hashCode();
+        return 31 * (31 + rootName.hashCode()) + (sourceSection != null ? sourceSection.hashCode() : 0);
     }
 
     /**

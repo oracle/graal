@@ -121,7 +121,7 @@ final class SafepointStack {
         return perThreadSamples;
     }
 
-    public boolean hasOverflowed() {
+    boolean hasOverflowed() {
         return overflowed;
     }
 
@@ -129,7 +129,7 @@ final class SafepointStack {
         this.overflowed |= visitorOverflowed;
     }
 
-    static class StackVisitor implements FrameInstanceVisitor<FrameInstance> {
+    private static class StackVisitor implements FrameInstanceVisitor<FrameInstance> {
 
         private static final Set<Class<?>> TAGS = new HashSet<>(Arrays.asList(StandardTags.RootTag.class));
         private final CallTarget[] targets;
