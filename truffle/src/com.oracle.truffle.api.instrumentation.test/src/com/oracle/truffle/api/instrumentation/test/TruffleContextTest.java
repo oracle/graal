@@ -49,6 +49,7 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.io.ByteArrayOutputStream;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
@@ -61,8 +62,14 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleSafepoint;
+import com.oracle.truffle.api.nodes.RootNode;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.Source;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Rule;
@@ -126,13 +133,14 @@ public class TruffleContextTest extends AbstractPolyglotTest {
 
     @Test
     public void testParallelForceClose() throws InterruptedException {
-        setupEnv(Context.newBuilder().allowAllAccess(true).build(), new ProxyLanguage() {
+        setupEnv(Context.newBuilder().allowAllAccess(true).option("engine.TriggerUncaughtExceptionHandlerForCancel", "true").build(),
+                        new ProxyLanguage() {
 
-            @Override
-            protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
-                return true;
-            }
-        });
+                            @Override
+                            protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
+                                return true;
+                            }
+                        });
 
         TruffleContext tc = languageEnv.newContextBuilder().build();
         List<Thread> threads = new ArrayList<>();
@@ -316,6 +324,31 @@ public class TruffleContextTest extends AbstractPolyglotTest {
     }
 
     @Test
+    public void testCancellingUncaughtExceptionHandler() {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        setupEnv(Context.newBuilder().allowAllAccess(true).err(out).build(), new ProxyLanguage() {
+            @Override
+            protected CallTarget parse(ParsingRequest request) {
+                RootNode rootNode;
+                String command = request.getSource().getCharacters().toString();
+                switch (command) {
+                    case "controller":
+                        rootNode = new ControllerNode(languageInstance);
+                        break;
+                    case "worker":
+                        rootNode = new WorkerNode(languageInstance);
+                        break;
+                    default:
+                        throw CompilerDirectives.shouldNotReachHere("Unknown request: " + command);
+                }
+                return Truffle.getRuntime().createCallTarget(rootNode);
+            }
+        });
+        context.eval(Source.newBuilder(ProxyLanguage.ID, "controller", "test").buildLiteral());
+        assertFalse(out.toString().contains(getCancelExecutionClass().getName()));
+    }
+
+    @Test
     public void testContextHierarchy() {
         setupEnv();
 
@@ -445,6 +478,64 @@ public class TruffleContextTest extends AbstractPolyglotTest {
             return (Node) m.invoke(t);
         } catch (ReflectiveOperationException e) {
             throw new AssertionError("Failed to invoke CancelExecution.getLocation.", e);
+        }
+    }
+
+    private static final class ControllerNode extends RootNode {
+
+        ControllerNode(TruffleLanguage<?> language) {
+            super(language);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return executeImpl();
+        }
+
+        @TruffleBoundary
+        private Object executeImpl() {
+            TruffleLanguage.Env env = lookupContextReference(ProxyLanguage.class).get().getEnv();
+            TruffleContext creatorContext = env.newContextBuilder().build();
+            CountDownLatch running = new CountDownLatch(1);
+            Thread t = env.createThread(() -> {
+                CallTarget target = ProxyLanguage.getCurrentContext().getEnv().parsePublic(com.oracle.truffle.api.source.Source.newBuilder(
+                                ProxyLanguage.ID, "worker", "worker").build());
+                running.countDown();
+                target.call();
+            }, creatorContext);
+            try {
+                t.start();
+                running.await();
+                creatorContext.closeCancelled(this, "Stopping");
+                t.join();
+                return true;
+            } catch (InterruptedException ie) {
+                return false;
+            }
+        }
+    }
+
+    private static final class WorkerNode extends RootNode {
+
+        WorkerNode(TruffleLanguage<?> language) {
+            super(language);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return executeImpl();
+        }
+
+        @TruffleBoundary
+        private Object executeImpl() {
+            while (true) {
+                try {
+                    Thread.sleep(1_000);
+                    TruffleSafepoint.poll(this);
+                } catch (InterruptedException ie) {
+                    // Ignore InterruptedException, wait for ThreadDeath.
+                }
+            }
         }
     }
 }
