@@ -49,6 +49,8 @@ import java.util.function.Predicate;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 
@@ -233,6 +235,52 @@ final class Target_javax_crypto_JceSecurityManager {
 final class Target_javax_crypto_CryptoAllPermission {
     @Alias //
     static Target_javax_crypto_CryptoAllPermission INSTANCE;
+}
+
+@Platforms(Platform.WINDOWS.class)
+@TargetClass(value = java.security.Provider.class)
+final class Target_java_security_Provider {
+    @Alias //
+    private transient boolean initialized;
+
+    @Alias //
+    String name;
+
+    /*
+     * `Provider.checkInitialized` is called from all other Provider API methods, before any
+     * computation, so it is a convenient location to do our own initialization, e.g., to ensure
+     * that the required native libraries are loaded.
+     */
+    @Substitute
+    private void checkInitialized() {
+        if (!initialized) {
+            throw new IllegalStateException();
+        }
+        /* Do our own initialization. */
+        ProviderUtil.initialize(this);
+    }
+}
+
+final class ProviderUtil {
+    private static volatile boolean initialized = false;
+
+    static void initialize(Target_java_security_Provider provider) {
+        if (initialized) {
+            return;
+        }
+
+        if (provider.name.equals("SunMSCAPI")) {
+            try {
+                System.loadLibrary("sunmscapi");
+            } catch (Throwable ignored) {
+                /*
+                 * If the loading fails, later calls to native methods will also fail. So, in order
+                 * not to confuse users with unexpected stack traces, we ignore the exceptions here.
+                 */
+            }
+            initialized = true;
+        }
+    }
 }
 
 @TargetClass(className = "javax.crypto.ProviderVerifier", onlyWith = JDK11OrLater.class)
