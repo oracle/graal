@@ -50,6 +50,7 @@ import java.util.jar.JarFile;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.core.util.ClasspathUtils;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
@@ -212,7 +213,7 @@ public final class ResourcesFeature implements Feature {
             try {
                 if (classpathFile.isDirectory()) {
                     scanDirectory(debugContext, classpathFile, includePatterns, excludePatterns);
-                } else {
+                } else if (ClasspathUtils.isJar(classpathFile.toPath())) {
                     scanJar(debugContext, classpathFile, includePatterns, excludePatterns);
                 }
             } catch (IOException ex) {
