@@ -88,6 +88,7 @@ import com.oracle.truffle.espresso.redefinition.plugins.api.InternalRedefinition
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
+import com.oracle.truffle.espresso.vm.UnsafeAccess;
 import com.oracle.truffle.espresso.vm.VM;
 
 import sun.misc.SignalHandler;
@@ -476,17 +477,28 @@ public final class EspressoContext {
                                 Type.java_lang_String,
                                 Type.java_lang_System,
                                 Type.java_lang_ThreadGroup,
-                                Type.java_lang_Thread,
-                                Type.java_lang_Class,
-                                Type.java_lang_reflect_Method)) {
+                                Type.java_lang_Thread)) {
                     initializeKnownClass(type);
                 }
             }
 
+            if (meta.jdk_internal_misc_UnsafeConstants != null) {
+                initializeKnownClass(Type.jdk_internal_misc_UnsafeConstants);
+                UnsafeAccess.initializeGuestUnsafeConstants(meta);
+            }
+
+            // Create main thread as soon as Thread class is initialized.
             threadManager.createMainThread(meta);
 
             try (DebugCloseable knownClassInit = KNOWN_CLASS_INIT.scope(timers)) {
-                initializeKnownClass(Type.java_lang_ref_Finalizer);
+                initializeKnownClass(Type.java_lang_Object);
+
+                for (Symbol<Type> type : Arrays.asList(
+                                Type.java_lang_Class,
+                                Type.java_lang_reflect_Method,
+                                Type.java_lang_ref_Finalizer)) {
+                    initializeKnownClass(type);
+                }
             }
 
             referenceDrainer.initReferenceDrain();

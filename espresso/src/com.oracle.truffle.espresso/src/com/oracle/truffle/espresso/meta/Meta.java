@@ -714,35 +714,21 @@ public final class Meta implements ContextAccess {
 
         java_util_NoSuchElementException = knownKlass(Type.java_util_NoSuchElementException);
 
-        interopDispatch = new InteropKlassesDispatch(this);
-
-        // used for class redefinition
-        java_lang_reflect_Proxy = knownKlass(Type.java_lang_reflect_Proxy);
-
-        // java.beans package only available if java.desktop module is present on JDK9+
-        java_beans_ThreadGroupContext = loadKlassWithBootClassLoader(Type.java_beans_ThreadGroupContext);
-        java_beans_Introspector = loadKlassWithBootClassLoader(Type.java_beans_Introspector);
-
-        java_beans_ThreadGroupContext_init = java_beans_ThreadGroupContext != null ? java_beans_ThreadGroupContext.requireDeclaredMethod(Name._init_, Signature._void) : null;
-        java_beans_ThreadGroupContext_removeBeanInfo = java_beans_ThreadGroupContext != null ? java_beans_ThreadGroupContext.requireDeclaredMethod(Name.removeBeanInfo, Signature._void_Class) : null;
-        java_beans_Introspector_flushFromCaches = java_beans_Introspector != null ? java_beans_Introspector.requireDeclaredMethod(Name.flushFromCaches, Signature._void_Class) : null;
-
-        // sun.misc.Proxygenerator -> java.lang.reflect.Proxygenerator in JDK 9
-        if (getJavaVersion().java8OrEarlier()) {
-            sun_misc_ProxyGenerator = knownKlass(Type.sun_misc_ProxyGenerator);
-            sun_misc_ProxyGenerator_generateProxyClass = sun_misc_ProxyGenerator.lookupDeclaredMethod(Name.generateProxyClass, Signature._byte_array_String_Class_array_int);
-
-            java_lang_reflect_ProxyGenerator = null;
-            java_lang_reflect_ProxyGenerator_generateProxyClass = null;
+        jdk_internal_misc_UnsafeConstants = diff() //
+                        .klass(higher(13), Type.jdk_internal_misc_UnsafeConstants) //
+                        .notRequiredKlass();
+        if (jdk_internal_misc_UnsafeConstants != null) {
+            jdk_internal_misc_UnsafeConstants_ADDRESS_SIZE0 = jdk_internal_misc_UnsafeConstants.requireDeclaredField(Name.ADDRESS_SIZE0, Type._int);
+            jdk_internal_misc_UnsafeConstants_PAGE_SIZE = jdk_internal_misc_UnsafeConstants.requireDeclaredField(Name.PAGE_SIZE, Type._int);
+            jdk_internal_misc_UnsafeConstants_BIG_ENDIAN = jdk_internal_misc_UnsafeConstants.requireDeclaredField(Name.BIG_ENDIAN, Type._boolean);
+            jdk_internal_misc_UnsafeConstants_UNALIGNED_ACCESS = jdk_internal_misc_UnsafeConstants.requireDeclaredField(Name.UNALIGNED_ACCESS, Type._boolean);
+            jdk_internal_misc_UnsafeConstants_DATA_CACHE_LINE_FLUSH_SIZE = jdk_internal_misc_UnsafeConstants.requireDeclaredField(Name.DATA_CACHE_LINE_FLUSH_SIZE, Type._int);
         } else {
-            sun_misc_ProxyGenerator = null;
-            sun_misc_ProxyGenerator_generateProxyClass = null;
-
-            java_lang_reflect_ProxyGenerator = knownKlass(Type.java_lang_reflect_ProxyGenerator);
-            java_lang_reflect_ProxyGenerator_generateProxyClass = diff() //
-                            .method(lower(13), Name.generateProxyClass, Signature._byte_array_String_Class_array_int) //
-                            .method(higher(14), Name.generateProxyClass, Signature._byte_array_ClassLoader_String_List_int) //
-                            .method(java_lang_reflect_ProxyGenerator);
+            jdk_internal_misc_UnsafeConstants_ADDRESS_SIZE0 = null;
+            jdk_internal_misc_UnsafeConstants_PAGE_SIZE = null;
+            jdk_internal_misc_UnsafeConstants_BIG_ENDIAN = null;
+            jdk_internal_misc_UnsafeConstants_UNALIGNED_ACCESS = null;
+            jdk_internal_misc_UnsafeConstants_DATA_CACHE_LINE_FLUSH_SIZE = null;
         }
 
         if (getJavaVersion().java9OrLater()) {
@@ -766,9 +752,15 @@ public final class Meta implements ContextAccess {
             java_lang_module_ModuleFinder = null;
             java_lang_module_ModuleFinder_compose = null;
         }
+
+        interopDispatch = new InteropKlassesDispatch(this);
     }
 
     /**
+     * This method registers known classes that are NOT in {@code java.base} module after VM
+     * initialization (/ex: {@code java.management}, {@code java.desktop}, etc...), or classes whose
+     * hierarchy loads classes to early in the boot process..
+     * <p>
      * Espresso's Polyglot API (polyglot.jar) is injected on the boot CP, must be loaded after
      * modules initialization.
      *
@@ -799,6 +791,35 @@ public final class Meta implements ContextAccess {
             sun_management_ManagementFactory_createMemoryManager = null;
             // GarbageCollectorMXBean createGarbageCollector(String var0, String var1)
             sun_management_ManagementFactory_createGarbageCollector = null;
+        }
+
+        // used for class redefinition
+        java_lang_reflect_Proxy = knownKlass(Type.java_lang_reflect_Proxy);
+
+        // java.beans package only available if java.desktop module is present on JDK9+
+        java_beans_ThreadGroupContext = loadKlassWithBootClassLoader(Type.java_beans_ThreadGroupContext);
+        java_beans_Introspector = loadKlassWithBootClassLoader(Type.java_beans_Introspector);
+
+        java_beans_ThreadGroupContext_init = java_beans_ThreadGroupContext != null ? java_beans_ThreadGroupContext.requireDeclaredMethod(Name._init_, Signature._void) : null;
+        java_beans_ThreadGroupContext_removeBeanInfo = java_beans_ThreadGroupContext != null ? java_beans_ThreadGroupContext.requireDeclaredMethod(Name.removeBeanInfo, Signature._void_Class) : null;
+        java_beans_Introspector_flushFromCaches = java_beans_Introspector != null ? java_beans_Introspector.requireDeclaredMethod(Name.flushFromCaches, Signature._void_Class) : null;
+
+        // sun.misc.Proxygenerator -> java.lang.reflect.Proxygenerator in JDK 9
+        if (getJavaVersion().java8OrEarlier()) {
+            sun_misc_ProxyGenerator = knownKlass(Type.sun_misc_ProxyGenerator);
+            sun_misc_ProxyGenerator_generateProxyClass = sun_misc_ProxyGenerator.lookupDeclaredMethod(Name.generateProxyClass, Signature._byte_array_String_Class_array_int);
+
+            java_lang_reflect_ProxyGenerator = null;
+            java_lang_reflect_ProxyGenerator_generateProxyClass = null;
+        } else {
+            sun_misc_ProxyGenerator = null;
+            sun_misc_ProxyGenerator_generateProxyClass = null;
+
+            java_lang_reflect_ProxyGenerator = knownKlass(Type.java_lang_reflect_ProxyGenerator);
+            java_lang_reflect_ProxyGenerator_generateProxyClass = diff() //
+                            .method(lower(13), Name.generateProxyClass, Signature._byte_array_String_Class_array_int) //
+                            .method(higher(14), Name.generateProxyClass, Signature._byte_array_ClassLoader_String_List_int) //
+                            .notRequiredMethod(java_lang_reflect_ProxyGenerator);
         }
 
         // Load Espresso's Polyglot API.
@@ -881,18 +902,6 @@ public final class Meta implements ContextAccess {
     public final Field java_lang_Integer_value;
     public final Field java_lang_Double_value;
     public final Field java_lang_Long_value;
-
-    // used by class redefinition
-    public final ObjectKlass java_lang_reflect_Proxy;
-    public final ObjectKlass sun_misc_ProxyGenerator;
-    public final Method sun_misc_ProxyGenerator_generateProxyClass;
-    public final ObjectKlass java_lang_reflect_ProxyGenerator;
-    public final Method java_lang_reflect_ProxyGenerator_generateProxyClass;
-    public final ObjectKlass java_beans_ThreadGroupContext;
-    public final Method java_beans_ThreadGroupContext_init;
-    public final Method java_beans_ThreadGroupContext_removeBeanInfo;
-    public final ObjectKlass java_beans_Introspector;
-    public final Method java_beans_Introspector_flushFromCaches;
 
     // Guest String.
     public final Field java_lang_String_value;
@@ -1291,12 +1300,31 @@ public final class Meta implements ContextAccess {
 
     public final ObjectKlass java_util_NoSuchElementException;
 
+    public final ObjectKlass jdk_internal_misc_UnsafeConstants;
+    public final Field jdk_internal_misc_UnsafeConstants_ADDRESS_SIZE0;
+    public final Field jdk_internal_misc_UnsafeConstants_PAGE_SIZE;
+    public final Field jdk_internal_misc_UnsafeConstants_BIG_ENDIAN;
+    public final Field jdk_internal_misc_UnsafeConstants_UNALIGNED_ACCESS;
+    public final Field jdk_internal_misc_UnsafeConstants_DATA_CACHE_LINE_FLUSH_SIZE;
+
     @CompilationFinal public ObjectKlass java_lang_management_MemoryUsage;
     @CompilationFinal public ObjectKlass sun_management_ManagementFactory;
     @CompilationFinal public Method sun_management_ManagementFactory_createMemoryPool;
     @CompilationFinal public Method sun_management_ManagementFactory_createMemoryManager;
     @CompilationFinal public Method sun_management_ManagementFactory_createGarbageCollector;
     @CompilationFinal public ObjectKlass java_lang_management_ThreadInfo;
+
+    // used by class redefinition
+    @CompilationFinal public ObjectKlass java_lang_reflect_Proxy;
+    @CompilationFinal public ObjectKlass sun_misc_ProxyGenerator;
+    @CompilationFinal public Method sun_misc_ProxyGenerator_generateProxyClass;
+    @CompilationFinal public ObjectKlass java_lang_reflect_ProxyGenerator;
+    @CompilationFinal public Method java_lang_reflect_ProxyGenerator_generateProxyClass;
+    @CompilationFinal public ObjectKlass java_beans_ThreadGroupContext;
+    @CompilationFinal public Method java_beans_ThreadGroupContext_init;
+    @CompilationFinal public Method java_beans_ThreadGroupContext_removeBeanInfo;
+    @CompilationFinal public ObjectKlass java_beans_Introspector;
+    @CompilationFinal public Method java_beans_Introspector_flushFromCaches;
 
     public final class PolyglotSupport {
         public final ObjectKlass UnknownIdentifierException;

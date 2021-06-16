@@ -36,6 +36,7 @@ import static com.oracle.truffle.espresso.runtime.Classpath.JAVA_BASE;
 import static com.oracle.truffle.espresso.runtime.EspressoContext.DEFAULT_STACK_SIZE;
 
 import java.io.File;
+import java.lang.ref.Reference;
 import java.lang.reflect.Array;
 import java.lang.reflect.Parameter;
 import java.nio.ByteBuffer;
@@ -46,6 +47,7 @@ import java.security.ProtectionDomain;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -134,6 +136,7 @@ import com.oracle.truffle.espresso.substitutions.Target_java_lang_Class;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_System;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread.State;
+import com.oracle.truffle.espresso.substitutions.Target_java_lang_ref_Reference;
 import com.oracle.truffle.espresso.substitutions.VMCollector;
 import com.oracle.truffle.espresso.vm.structs.JavaVMAttachArgs;
 import com.oracle.truffle.espresso.vm.structs.JdkVersionInfo;
@@ -919,6 +922,12 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @JniImpl
+    public static @Host(String.class) StaticObject JVM_GetExtendedNPEMessage(@SuppressWarnings("unused") @Host(Throwable.class) StaticObject throwable) {
+        return StaticObject.NULL;
+    }
+
+    @VmImpl
+    @JniImpl
     public @Host(Throwable.class) StaticObject JVM_FillInStackTrace(@Host(Throwable.class) StaticObject self, @SuppressWarnings("unused") int dummy) {
         return InterpreterToVM.fillInStackTrace(self, false, getMeta());
     }
@@ -1249,69 +1258,6 @@ public final class VM extends NativeEnv implements ContextAccess {
         // Unlike Halt, runs finalizers
     }
 
-    @VmImpl
-    @JniImpl
-    @TruffleBoundary
-    public @Host(Properties.class) StaticObject JVM_InitProperties(@Host(Properties.class) StaticObject properties) {
-        Method setProperty = properties.getKlass().lookupMethod(Name.setProperty, Signature.Object_String_String);
-
-        OptionValues options = getContext().getEnv().getOptions();
-
-        // Set user-defined system properties.
-        for (Map.Entry<String, String> entry : options.get(EspressoOptions.Properties).entrySet()) {
-            setProperty.invokeWithConversions(properties, entry.getKey(), entry.getValue());
-        }
-
-        EspressoProperties props = getContext().getVmProperties();
-
-        // Espresso uses VM properties, to ensure consistency the user-defined properties (that may
-        // differ in some cases) are overwritten.
-        setProperty.invokeWithConversions(properties, "java.class.path", stringify(props.classpath()));
-        setProperty.invokeWithConversions(properties, "java.home", props.javaHome().toString());
-        if (getJavaVersion().java8OrEarlier()) {
-            setProperty.invokeWithConversions(properties, "sun.boot.class.path", stringify(props.bootClasspath()));
-        } else {
-            setProperty.invokeWithConversions(properties, "jdk.boot.class.path.append", stringify(props.bootClasspath()));
-        }
-        setProperty.invokeWithConversions(properties, "java.library.path", stringify(props.javaLibraryPath()));
-        setProperty.invokeWithConversions(properties, "sun.boot.library.path", stringify(props.bootLibraryPath()));
-        setProperty.invokeWithConversions(properties, "java.ext.dirs", stringify(props.extDirs()));
-
-        // Modules properties.
-        if (getJavaVersion().modulesEnabled()) {
-            setPropertyIfExists(properties, setProperty, "jdk.module.main", getModuleMain(options));
-            setPropertyIfExists(properties, setProperty, "jdk.module.path", stringify(options.get(EspressoOptions.ModulePath)));
-            setNumberedProperty(setProperty, properties, "jdk.module.addreads", options.get(EspressoOptions.AddReads));
-            setNumberedProperty(setProperty, properties, "jdk.module.addexports", options.get(EspressoOptions.AddExports));
-            setNumberedProperty(setProperty, properties, "jdk.module.addopens", options.get(EspressoOptions.AddOpens));
-            setNumberedProperty(setProperty, properties, "jdk.module.addmods", options.get(EspressoOptions.AddModules));
-        }
-
-        // Applications expect different formats e.g. 1.8 vs. 11
-        String specVersion = getJavaVersion().java8OrEarlier()
-                        ? "1." + getJavaVersion()
-                        : getJavaVersion().toString();
-
-        // Set VM information.
-        setProperty.invokeWithConversions(properties, "java.vm.specification.version", specVersion);
-        setProperty.invokeWithConversions(properties, "java.vm.specification.name", EspressoLanguage.VM_SPECIFICATION_NAME);
-        setProperty.invokeWithConversions(properties, "java.vm.specification.vendor", EspressoLanguage.VM_SPECIFICATION_VENDOR);
-        setProperty.invokeWithConversions(properties, "java.vm.version", specVersion + "-" + EspressoLanguage.VM_VERSION);
-        setProperty.invokeWithConversions(properties, "java.vm.name", EspressoLanguage.VM_NAME);
-        setProperty.invokeWithConversions(properties, "java.vm.vendor", EspressoLanguage.VM_VENDOR);
-        setProperty.invokeWithConversions(properties, "java.vm.info", EspressoLanguage.VM_INFO);
-
-        setProperty.invokeWithConversions(properties, "sun.nio.MaxDirectMemorySize", Long.toString(options.get(EspressoOptions.MaxDirectMemorySize)));
-
-        return properties;
-    }
-
-    public static void setPropertyIfExists(@Host(Properties.class) StaticObject properties, Method setProperty, String propertyName, String value) {
-        if (value != null && value.length() > 0) {
-            setProperty.invokeWithConversions(properties, propertyName, value);
-        }
-    }
-
     private static String getModuleMain(OptionValues options) {
         String module = options.get(EspressoOptions.Module);
         if (module.length() > 0) {
@@ -1323,11 +1269,98 @@ public final class VM extends NativeEnv implements ContextAccess {
         return module;
     }
 
-    private static void setNumberedProperty(Method setProperty, StaticObject properties, String property, List<String> values) {
+    public static void setPropertyIfExists(Map<String, String> map, String propertyName, String value) {
+        if (value != null && value.length() > 0) {
+            map.put(propertyName, value);
+        }
+    }
+
+    private static void setNumberedProperty(Map<String, String> map, String property, List<String> values) {
         int count = 0;
         for (String value : values) {
-            setProperty.invokeWithConversions(properties, property + "." + count++, value);
+            map.put(property + "." + count++, value);
         }
+    }
+
+    private Map<String, String> buildPropertiesMap() {
+        Map<String, String> map = new HashMap<>();
+
+        OptionValues options = getContext().getEnv().getOptions();
+
+        // Set user-defined system properties.
+        for (Map.Entry<String, String> entry : options.get(EspressoOptions.Properties).entrySet()) {
+            if (!entry.getKey().equals("sun.nio.MaxDirectMemorySize")) {
+                map.put(entry.getKey(), entry.getValue());
+            }
+        }
+
+        EspressoProperties props = getContext().getVmProperties();
+
+        // Boot classpath setup requires special handling depending on the version.
+        String bootClassPathProperty = getJavaVersion().java8OrEarlier() ? "sun.boot.class.path" : "jdk.boot.class.path.append";
+
+        // Espresso uses VM properties, to ensure consistency the user-defined properties (that may
+        // differ in some cases) are overwritten.
+        map.put(bootClassPathProperty, stringify(props.bootClasspath()));
+        map.put("java.class.path", stringify(props.classpath()));
+        map.put("java.home", props.javaHome().toString());
+        map.put("java.library.path", stringify(props.javaLibraryPath()));
+        map.put("sun.boot.library.path", stringify(props.bootLibraryPath()));
+        map.put("java.ext.dirs", stringify(props.extDirs()));
+
+        // Modules properties.
+        if (getJavaVersion().modulesEnabled()) {
+            setPropertyIfExists(map, "jdk.module.main", getModuleMain(options));
+            setPropertyIfExists(map, "jdk.module.path", stringify(options.get(EspressoOptions.ModulePath)));
+            setNumberedProperty(map, "jdk.module.addreads", options.get(EspressoOptions.AddReads));
+            setNumberedProperty(map, "jdk.module.addexports", options.get(EspressoOptions.AddExports));
+            setNumberedProperty(map, "jdk.module.addopens", options.get(EspressoOptions.AddOpens));
+            setNumberedProperty(map, "jdk.module.addmods", options.get(EspressoOptions.AddModules));
+        }
+
+        // Applications expect different formats e.g. 1.8 vs. 11
+        String specVersion = getJavaVersion().java8OrEarlier()
+                        ? "1." + getJavaVersion()
+                        : getJavaVersion().toString();
+
+        // Set VM information.
+        map.put("java.vm.specification.version", specVersion);
+        map.put("java.vm.specification.name", EspressoLanguage.VM_SPECIFICATION_NAME);
+        map.put("java.vm.specification.vendor", EspressoLanguage.VM_SPECIFICATION_VENDOR);
+        map.put("java.vm.version", specVersion + "-" + EspressoLanguage.VM_VERSION);
+        map.put("java.vm.name", EspressoLanguage.VM_NAME);
+        map.put("java.vm.vendor", EspressoLanguage.VM_VENDOR);
+        map.put("java.vm.info", EspressoLanguage.VM_INFO);
+
+        map.put("sun.nio.MaxDirectMemorySize", Long.toString(options.get(EspressoOptions.MaxDirectMemorySize)));
+
+        return map;
+    }
+
+    @VmImpl
+    @JniImpl
+    @TruffleBoundary
+    public @Host(Properties.class) StaticObject JVM_InitProperties(@Host(Properties.class) StaticObject properties) {
+        Map<String, String> props = buildPropertiesMap();
+        Method setProperty = properties.getKlass().lookupMethod(Name.setProperty, Signature.Object_String_String);
+        for (Map.Entry<String, String> entry : props.entrySet()) {
+            setProperty.invokeWithConversions(properties, entry.getKey(), entry.getValue());
+        }
+        return properties;
+    }
+
+    @JniImpl
+    @VmImpl
+    public @Host(String[].class) StaticObject JVM_GetProperties() {
+        Map<String, String> props = buildPropertiesMap();
+        StaticObject array = getMeta().java_lang_String.allocateReferenceArray(props.size() * 2);
+        int index = 0;
+        for (Map.Entry<String, String> entry : props.entrySet()) {
+            getInterpreterToVM().setArrayObject(getMeta().toGuestString(entry.getKey()), index * 2, array);
+            getInterpreterToVM().setArrayObject(getMeta().toGuestString(entry.getValue()), index * 2 + 1, array);
+            index++;
+        }
+        return array;
     }
 
     @VmImpl
@@ -2308,7 +2341,11 @@ public final class VM extends NativeEnv implements ContextAccess {
             profiler.profile(6);
             throw getMeta().throwNullPointerException();
         }
-        ModulesHelperVM.addModuleExports(from_module, pkgName, to_module, getMeta(), getUncached(), profiler);
+        if (getUncached().isNull(pkgName)) {
+            profiler.profile(0);
+            throw getMeta().throwNullPointerException();
+        }
+        ModulesHelperVM.addModuleExports(from_module, NativeUtils.interopPointerToString(pkgName), to_module, getMeta(), profiler);
     }
 
     @VmImpl
@@ -2320,11 +2357,7 @@ public final class VM extends NativeEnv implements ContextAccess {
             profiler.profile(0);
             throw getMeta().throwNullPointerException();
         }
-        ModuleEntry fromModuleEntry = ModulesHelperVM.extractFromModuleEntry(from_module, getMeta(), profiler);
-        if (fromModuleEntry.isNamed()) { // No-op for unnamed module.
-            PackageEntry packageEntry = ModulesHelperVM.extractPackageEntry(pkgName, fromModuleEntry, getMeta(), profiler);
-            packageEntry.setExportedAllUnnamed();
-        }
+        ModulesHelperVM.addModuleExportsToAllUnnamed(from_module, NativeUtils.interopPointerToString(pkgName), profiler, getMeta());
     }
 
     @VmImpl
@@ -2332,7 +2365,11 @@ public final class VM extends NativeEnv implements ContextAccess {
     @TruffleBoundary
     public void JVM_AddModuleExportsToAll(@Host(typeName = "Ljava/lang/Module") StaticObject from_module, @Pointer TruffleObject pkgName,
                     @InjectProfile SubstitutionProfiler profiler) {
-        ModulesHelperVM.addModuleExports(from_module, pkgName, StaticObject.NULL, getMeta(), getUncached(), profiler);
+        if (getUncached().isNull(pkgName)) {
+            profiler.profile(0);
+            throw getMeta().throwNullPointerException();
+        }
+        ModulesHelperVM.addModuleExports(from_module, NativeUtils.interopPointerToString(pkgName), StaticObject.NULL, getMeta(), profiler);
     }
 
     @VmImpl
@@ -2386,19 +2423,18 @@ public final class VM extends NativeEnv implements ContextAccess {
         String hostName = meta.toHostString(guestName);
         if (hostName.equals(JAVA_BASE)) {
             profiler.profile(5);
-            defineJavaBaseModule(module, pkgs, num_package, profiler);
+            defineJavaBaseModule(module, extractNativePackages(pkgs, num_package, profiler), profiler);
             return;
         }
         profiler.profile(6);
-        defineModule(module, hostName, is_open, pkgs, num_package, profiler);
+        defineModule(module, hostName, is_open, extractNativePackages(pkgs, num_package, profiler), profiler);
     }
 
     @SuppressWarnings("try")
-    private void defineModule(StaticObject module,
+    public void defineModule(StaticObject module,
                     String moduleName,
                     boolean is_open,
-                    TruffleObject pkgs,
-                    int num_package,
+                    String[] packages,
                     SubstitutionProfiler profiler) {
         Meta meta = getMeta();
         StaticObject loader = meta.java_lang_Module_loader.getObject(module);
@@ -2416,7 +2452,6 @@ public final class VM extends NativeEnv implements ContextAccess {
         boolean loaderIsBootOrPlatform = ClassRegistry.loaderIsBootOrPlatform(loader, meta);
 
         ArrayList<Symbol<Name>> pkgSymbols = new ArrayList<>();
-        String[] packages = extractNativePackages(pkgs, num_package, profiler);
         try (EntryTable.BlockLock block = packageTable.write()) {
             for (String str : packages) {
                 // Extract the package symbols. Also checks for duplicates.
@@ -2489,8 +2524,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     @SuppressWarnings("try")
-    private void defineJavaBaseModule(StaticObject module, TruffleObject pkgs, int numPackages, SubstitutionProfiler profiler) {
-        String[] packages = extractNativePackages(pkgs, numPackages, profiler);
+    public void defineJavaBaseModule(StaticObject module, String[] packages, SubstitutionProfiler profiler) {
         Meta meta = getMeta();
         StaticObject loader = meta.java_lang_Module_loader.getObject(module);
         if (!StaticObject.isNull(loader)) {
@@ -2587,12 +2621,55 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @JniImpl
+    public boolean JVM_PhantomReferenceRefersTo(@Host(Reference.class) StaticObject ref, @SuppressWarnings("unused") @Host(Object.class) StaticObject object,
+                    @InjectProfile SubstitutionProfiler profiler) {
+        if (StaticObject.isNull(ref)) {
+            profiler.profile(0);
+            getMeta().throwNullPointerException();
+        }
+        assert InterpreterToVM.instanceOf(ref, getMeta().java_lang_ref_PhantomReference) : "Cannot call Reference.get on PhantomReference";
+        // At this point, we would need to call the host's PhantomReference.refersTo() method, but
+        // it is not available in Java 8 or 11.
+        return false;
+    }
+
+    @VmImpl
+    @JniImpl
+    public boolean JVM_ReferenceRefersTo(@Host(Reference.class) StaticObject ref, @Host(Object.class) StaticObject object,
+                    @InjectProfile SubstitutionProfiler profiler) {
+        if (StaticObject.isNull(ref)) {
+            profiler.profile(0);
+            getMeta().throwNullPointerException();
+        }
+        assert !InterpreterToVM.instanceOf(ref, getMeta().java_lang_ref_PhantomReference) : "Cannot call Reference.get on PhantomReference";
+        return Target_java_lang_ref_Reference.get(ref, getMeta()) == object;
+    }
+
+    @VmImpl
+    @JniImpl
+    public void JVM_ReferenceClear(@Host(Reference.class) StaticObject ref,
+                    @InjectProfile SubstitutionProfiler profiler) {
+        if (StaticObject.isNull(ref)) {
+            profiler.profile(0);
+            getMeta().throwNullPointerException();
+        }
+        Target_java_lang_ref_Reference.clear(ref, getMeta());
+    }
+
+    @VmImpl
+    @JniImpl
     @SuppressWarnings("unused")
     public void JVM_InitializeFromArchive(@Host(Class.class) StaticObject cls) {
         /*
          * Used to reduce boot time of certain initializations through CDS (/ex: module
          * initialization). Currently unsupported.
          */
+    }
+
+    @VmImpl
+    @JniImpl
+    public static boolean JVM_IsDumpingClassList() {
+        return false;
     }
 
     @VmImpl

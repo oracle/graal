@@ -337,7 +337,7 @@ public final class Target_sun_misc_Unsafe {
         return before;
     }
 
-    @Substitution(hasReceiver = true, nameProvider = Unsafe11.class)
+    @Substitution(hasReceiver = true, nameProvider = UnsafeObjectToReference.class)
     public static @Host(Object.class) StaticObject compareAndExchangeObject(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset,
                     @Host(Object.class) StaticObject before, @Host(Object.class) StaticObject after, @InjectMeta Meta meta) {
         if (isNullOrArray(holder)) {
@@ -530,7 +530,7 @@ public final class Target_sun_misc_Unsafe {
         return f.getAsByte(meta, holder, false);
     }
 
-    @Substitution(hasReceiver = true)
+    @Substitution(hasReceiver = true, nameProvider = SharedUnsafeObjectAccessToReference.class)
     public static @Host(Object.class) StaticObject getObject(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset,
                     @InjectMeta Meta meta) {
         if (isNullOrArray(holder)) {
@@ -705,7 +705,7 @@ public final class Target_sun_misc_Unsafe {
     }
 
     @TruffleBoundary(allowInlining = true)
-    @Substitution(hasReceiver = true)
+    @Substitution(hasReceiver = true, nameProvider = SharedUnsafeObjectAccessToReference.class)
     public static @Host(Object.class) StaticObject getObjectVolatile(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset,
                     @InjectMeta Meta meta) {
         if (isNullOrArray(holder)) {
@@ -758,7 +758,7 @@ public final class Target_sun_misc_Unsafe {
 
     // region put*Volatile(Object holder, long offset)
     @TruffleBoundary(allowInlining = true)
-    @Substitution(hasReceiver = true)
+    @Substitution(hasReceiver = true, nameProvider = SharedUnsafeObjectAccessToReference.class)
     public static void putObjectVolatile(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset,
                     @Host(Object.class) StaticObject value, @InjectMeta Meta meta) {
         if (isNullOrArray(holder)) {
@@ -915,7 +915,7 @@ public final class Target_sun_misc_Unsafe {
         clazz.getMirrorKlass().safeInitialize();
     }
 
-    @Substitution(hasReceiver = true)
+    @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
     public static void copyMemory(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject srcBase, long srcOffset,
                     @Host(Object.class) StaticObject destBase, long destOffset, long bytes, @InjectMeta Meta meta) {
         if (bytes == 0) {
@@ -971,7 +971,7 @@ public final class Target_sun_misc_Unsafe {
 
     // region put*(Object holder, long offset, * value)
 
-    @Substitution(hasReceiver = true)
+    @Substitution(hasReceiver = true, nameProvider = SharedUnsafeObjectAccessToReference.class)
     public static void putObject(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, @Host(Object.class) StaticObject value,
                     @InjectMeta Meta meta) {
         if (isNullOrArray(holder)) {
@@ -1442,7 +1442,7 @@ public final class Target_sun_misc_Unsafe {
         throw meta.throwException(meta.java_lang_InternalError);
     }
 
-    @Substitution(hasReceiver = true)
+    @Substitution(hasReceiver = true, nameProvider = SharedUnsafeObjectAccessToReference.class)
     public static boolean compareAndSetObject(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset,
                     @Host(Object.class) StaticObject before, @Host(Object.class) StaticObject after, @InjectMeta Meta meta) {
         return compareAndSwapObject(self, holder, offset, before, after, meta);
@@ -1482,6 +1482,29 @@ public final class Target_sun_misc_Unsafe {
         }
     }
 
+    public static class SharedUnsafeObjectAccessToReference extends SubstitutionNamesProvider {
+        private static String[] NAMES = new String[]{
+                        TARGET_SUN_MISC_UNSAFE,
+                        TARGET_JDK_INTERNAL_MISC_UNSAFE,
+                        TARGET_JDK_INTERNAL_MISC_UNSAFE
+        };
+        public static SubstitutionNamesProvider INSTANCE = new SharedUnsafeObjectAccessToReference();
+
+        @Override
+        public String[] substitutionClassNames() {
+            return NAMES;
+        }
+
+        @Override
+        public String[] getMethodNames(String name) {
+            String[] names = new String[3];
+            names[0] = name;
+            names[1] = name;
+            names[2] = name.replace("Object", "Reference");
+            return names;
+        }
+    }
+
     public static class Unsafe8 extends SubstitutionNamesProvider {
         private static String[] NAMES = new String[]{
                         TARGET_SUN_MISC_UNSAFE
@@ -1503,6 +1526,19 @@ public final class Target_sun_misc_Unsafe {
         @Override
         public String[] substitutionClassNames() {
             return NAMES;
+        }
+    }
+
+    public static class UnsafeObjectToReference extends Unsafe11 {
+        public static SubstitutionNamesProvider INSTANCE = new UnsafeObjectToReference();
+
+        @Override
+        public String[] getMethodNames(String name) {
+            String[] res = super.getMethodNames(name);
+            for (int i = 0; i < res.length; i++) {
+                res[i] = res[i].replace("Object", "Reference");
+            }
+            return res;
         }
     }
 }

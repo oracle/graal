@@ -90,6 +90,9 @@ final class DiffVersionLoadHelper {
         if (name == null || signature == null) {
             return null;
         }
+        if (klass == null) {
+            return null;
+        }
         return klass.lookupDeclaredMethod(name, signature);
     }
 
@@ -110,6 +113,9 @@ final class DiffVersionLoadHelper {
 
     Field notRequiredField(ObjectKlass klass) {
         if (name == null || type == null) {
+            return null;
+        }
+        if (klass == null) {
             return null;
         }
         return klass.lookupDeclaredField(name, type);
