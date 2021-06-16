@@ -52,7 +52,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 
-final class SafepointStack {
+final class SafepointStackSampler {
 
     private final int stackLimit;
     private final SourceSectionFilter sourceSectionFilter;
@@ -60,7 +60,7 @@ final class SafepointStack {
     private final AtomicReference<SampleAction> cachedAction = new AtomicReference<>();
     private boolean overflowed;
 
-    SafepointStack(int stackLimit, SourceSectionFilter sourceSectionFilter) {
+    SafepointStackSampler(int stackLimit, SourceSectionFilter sourceSectionFilter) {
         this.stackLimit = stackLimit;
         this.sourceSectionFilter = sourceSectionFilter;
     }
@@ -233,13 +233,13 @@ final class SafepointStack {
     private class SampleAction extends ThreadLocalAction {
 
         final ConcurrentHashMap<Thread, StackVisitor> completed = new ConcurrentHashMap<>();
-        private final SafepointStack safepointStack;
+        private final SafepointStackSampler safepointStackSampler;
 
         private volatile boolean cancelled;
 
-        protected SampleAction(SafepointStack safepointStack) {
+        protected SampleAction(SafepointStackSampler safepointStackSampler) {
             super(false, false);
-            this.safepointStack = safepointStack;
+            this.safepointStackSampler = safepointStackSampler;
         }
 
         @Override
@@ -252,7 +252,7 @@ final class SafepointStack {
             StackVisitor visitor = fetchStackVisitor();
             visitor.beforeVisit(access.getLocation());
             Truffle.getRuntime().iterateFrames(visitor);
-            safepointStack.stackOverflowed(visitor.overflowed);
+            safepointStackSampler.stackOverflowed(visitor.overflowed);
             if (cancelled) {
                 // did not complete on time
                 freeStackVisitor(visitor);

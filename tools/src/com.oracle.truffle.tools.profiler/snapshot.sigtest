@@ -33,7 +33,7 @@ meth public void setMode(com.oracle.truffle.tools.profiler.CPUSampler$Mode)
 meth public void setPeriod(long)
 meth public void setStackLimit(int)
 supr java.lang.Object
-hfds COPY_PAYLOAD,DEFAULT_FILTER,MERGE_PAYLOAD,PAYLOAD_FACTORY,activeContexts,closed,collecting,delay,env,filter,gatherSelfHitTimes,period,safepointStack,samplerTask,samplerThread,samplesTaken,stackLimit,syntheticFrames
+hfds COPY_PAYLOAD,DEFAULT_FILTER,MERGE_PAYLOAD,PAYLOAD_FACTORY,activeContexts,closed,collecting,delay,env,filter,gatherSelfHitTimes,period,safepointStackSampler,samplerTask,samplerThread,samplesTaken,stackLimit,syntheticFrames
 hcls SamplingTimerTask
 
 CLSS public final static !enum com.oracle.truffle.tools.profiler.CPUSampler$Mode

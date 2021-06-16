@@ -52,7 +52,7 @@ import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
 import com.oracle.truffle.api.nodes.LanguageInfo;
-import com.oracle.truffle.tools.profiler.SafepointStack.StackSample;
+import com.oracle.truffle.tools.profiler.SafepointStackSampler.StackSample;
 import com.oracle.truffle.tools.profiler.impl.CPUSamplerInstrument;
 import com.oracle.truffle.tools.profiler.impl.ProfilerToolFactory;
 
@@ -126,7 +126,7 @@ public final class CPUSampler implements Closeable {
     private Map<TruffleContext, AtomicLong> samplesTaken = new HashMap<>(0);
     private Timer samplerThread;
     private SamplingTimerTask samplerTask;
-    private volatile SafepointStack safepointStack;
+    private volatile SafepointStackSampler safepointStackSampler;
     private boolean gatherSelfHitTimes = false;
     private boolean sampleLanguageInit = false;
 
@@ -375,7 +375,7 @@ public final class CPUSampler implements Closeable {
      * @since 0.30
      */
     public boolean hasStackOverflowed() {
-        return safepointStack.hasOverflowed();
+        return safepointStackSampler.hasOverflowed();
     }
 
     /**
@@ -527,8 +527,8 @@ public final class CPUSampler implements Closeable {
      * @since 19.0
      */
     public Map<Thread, List<StackTraceEntry>> takeSample() {
-        if (safepointStack == null) {
-            this.safepointStack = new SafepointStack(stackLimit, filter);
+        if (safepointStackSampler == null) {
+            this.safepointStackSampler = new SafepointStackSampler(stackLimit, filter);
         }
         if (activeContexts.isEmpty()) {
             return Collections.emptyMap();
@@ -547,7 +547,7 @@ public final class CPUSampler implements Closeable {
         if (syntheticSample != null) {
             return syntheticSample;
         }
-        return safepointStack.sample(env, context);
+        return safepointStackSampler.sample(env, context);
     }
 
     private void resetSampling() {
@@ -560,7 +560,7 @@ public final class CPUSampler implements Closeable {
         if (samplerThread == null) {
             samplerThread = new Timer("Sampling thread", true);
         }
-        this.safepointStack = new SafepointStack(stackLimit, filter);
+        this.safepointStackSampler = new SafepointStackSampler(stackLimit, filter);
         this.samplerTask = new SamplingTimerTask();
         this.samplerThread.schedule(samplerTask, delay, period);
     }
