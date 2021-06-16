@@ -284,7 +284,7 @@ public class MultiTierCompilationTest extends PartialEvaluationTest {
         }
         rootTarget.call();
         Assert.assertEquals("break:second-tier", rootTarget.call());
-        Assert.assertEquals(9, rootNode.firstTierCallCount);
+        Assert.assertEquals(10, rootNode.firstTierCallCount);
     }
 
 }
