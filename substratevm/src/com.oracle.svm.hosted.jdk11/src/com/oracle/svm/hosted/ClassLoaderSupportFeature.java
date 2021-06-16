@@ -39,16 +39,32 @@ import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.Feature;
+
 import com.oracle.svm.core.ClassLoaderSupport;
+import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.internal.module.Modules;
 
-public final class ClassLoaderSupportImpl extends ClassLoaderSupport {
+@AutomaticFeature
+public class ClassLoaderSupportFeature implements Feature {
+    @Override
+    public void afterRegistration(AfterRegistrationAccess a) {
+        VMError.guarantee(JavaVersionUtil.JAVA_SPEC > 8);
+        FeatureImpl.AfterRegistrationAccessImpl access = (FeatureImpl.AfterRegistrationAccessImpl) a;
+        ImageSingletons.add(ClassLoaderSupport.class, new ClassLoaderSupportImpl11(access.getImageClassLoader().classLoaderSupport));
+    }
+}
+
+final class ClassLoaderSupportImpl11 extends ClassLoaderSupport {
 
     private final NativeImageClassLoaderSupport classLoaderSupport;
     private final Map<String, Set<Module>> packageToModules;
 
-    ClassLoaderSupportImpl(NativeImageClassLoaderSupport classLoaderSupport) {
+    ClassLoaderSupportImpl11(NativeImageClassLoaderSupport classLoaderSupport) {
         this.classLoaderSupport = classLoaderSupport;
         packageToModules = new HashMap<>();
         buildPackageToModulesMap(classLoaderSupport);
@@ -86,7 +102,7 @@ public final class ClassLoaderSupportImpl extends ClassLoaderSupport {
         }
         ArrayList<ResourceBundle> resourceBundles = new ArrayList<>();
         for (Module module : modules) {
-            Module exportTargetModule = ClassLoaderSupportImpl.class.getModule();
+            Module exportTargetModule = ClassLoaderSupportImpl8.class.getModule();
             if (!module.isExported(packageName, exportTargetModule)) {
                 Modules.addOpens(module, packageName, exportTargetModule);
             }
@@ -154,4 +170,5 @@ public final class ClassLoaderSupportImpl extends ClassLoaderSupport {
             prevValue.add(moduleName);
         }
     }
+
 }

@@ -30,13 +30,29 @@ import java.util.List;
 import java.util.Locale;
 import java.util.ResourceBundle;
 
-import com.oracle.svm.core.ClassLoaderSupport;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.Feature;
 
-public final class ClassLoaderSupportImpl extends ClassLoaderSupport {
+import com.oracle.svm.core.ClassLoaderSupport;
+import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.util.VMError;
+
+@AutomaticFeature
+public class ClassLoaderSupportFeature implements Feature {
+    @Override
+    public void afterRegistration(AfterRegistrationAccess a) {
+        VMError.guarantee(JavaVersionUtil.JAVA_SPEC <= 8);
+        FeatureImpl.AfterRegistrationAccessImpl access = (FeatureImpl.AfterRegistrationAccessImpl) a;
+        ImageSingletons.add(ClassLoaderSupport.class, new ClassLoaderSupportImpl8(access.getImageClassLoader().classLoaderSupport));
+    }
+}
+
+final class ClassLoaderSupportImpl8 extends ClassLoaderSupport {
 
     private final ClassLoader imageClassLoader;
 
-    ClassLoaderSupportImpl(NativeImageClassLoaderSupport classLoaderSupport) {
+    ClassLoaderSupportImpl8(NativeImageClassLoaderSupport classLoaderSupport) {
         this.imageClassLoader = classLoaderSupport.getClassLoader();
     }
 
