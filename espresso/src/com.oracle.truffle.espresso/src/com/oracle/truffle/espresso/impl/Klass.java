@@ -28,6 +28,7 @@ import static com.oracle.truffle.espresso.vm.InterpreterToVM.instanceOf;
 
 import java.util.Comparator;
 import java.util.function.IntFunction;
+import java.util.logging.Level;
 
 import org.graalvm.collections.EconomicSet;
 
