@@ -29,6 +29,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateGCOptions;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.UserError.UserException;
@@ -42,13 +43,8 @@ public final class HeapSizeVerifier {
         verifyMaxHeapSizeAgainstAddressSpace(maxHeapSize);
         verifyMinHeapSizeAgainstAddressSpace(minHeapSize);
         verifyMaxNewSizeAgainstAddressSpace(maxNewSize);
-
-        if (maxHeapSize.notEqual(0) && minHeapSize.aboveThan(maxHeapSize)) {
-            throw UserError.abort("The specified minimum heap size (" + format(minHeapSize) + ") is larger than the maximum heap size (" + format(maxHeapSize) + ")");
-        }
-        if (maxHeapSize.notEqual(0) && maxNewSize.aboveThan(maxHeapSize)) {
-            throw UserError.abort("The specified maximum new generation size (" + format(maxNewSize) + ") is larger than the maximum heap size (" + format(maxHeapSize) + ")");
-        }
+        verifyMinHeapSizeAgainstMaxHeapSize(minHeapSize);
+        verifyMaxNewSizeAgainstMaxHeapSize(maxHeapSize);
     }
 
     public static void verifyMinHeapSizeAgainstAddressSpace(UnsignedWord minHeapSize) throws UserException {
@@ -63,10 +59,33 @@ public final class HeapSizeVerifier {
         verifyAgainstAddressSpace(maxNewSize, "maximum new generation size");
     }
 
-    private static void verifyAgainstAddressSpace(UnsignedWord value, String valueName) throws UserException {
+    private static void verifyAgainstAddressSpace(UnsignedWord actualValue, String actualValueName) {
         UnsignedWord addressSpaceSize = ReferenceAccess.singleton().getAddressSpaceSize();
-        if (value.aboveThan(addressSpaceSize)) {
-            throw UserError.abort("The specified " + valueName + " (" + format(value) + ") is larger than the largest possible address space (" + format(addressSpaceSize) + ")");
+        if (actualValue.aboveThan(addressSpaceSize)) {
+            throwError(actualValue, actualValueName, addressSpaceSize, "largest possible address space");
+        }
+    }
+
+    private static void verifyMinHeapSizeAgainstMaxHeapSize(UnsignedWord minHeapSize) {
+        UnsignedWord maxHeapSize = WordFactory.unsigned(SubstrateGCOptions.MaxHeapSize.getValue());
+        if (maxHeapSize.notEqual(0) && minHeapSize.aboveThan(maxHeapSize)) {
+            throwError(minHeapSize, "minimum heap size", maxHeapSize, "maximum heap size");
+        }
+    }
+
+    private static void verifyMaxNewSizeAgainstMaxHeapSize(UnsignedWord maxNewSize) {
+        UnsignedWord maxHeapSize = WordFactory.unsigned(SubstrateGCOptions.MaxHeapSize.getValue());
+        if (maxHeapSize.notEqual(0) && maxNewSize.aboveThan(maxHeapSize)) {
+            throwError(maxNewSize, "maximum new generation size", maxHeapSize, "maximum heap size");
+        }
+    }
+
+    private static void throwError(UnsignedWord actualValue, String actualValueName, UnsignedWord maxValue, String maxValueName) throws UserException {
+        if (SubstrateUtil.HOSTED) {
+            throw UserError.abort("The specified %s (%s) is larger than the %s (%s).", actualValueName, format(actualValue), maxValueName, format(maxValue));
+        } else {
+            throw new IllegalArgumentException(
+                            "The specified " + actualValueName + " (" + format(actualValue) + ") is larger than the " + maxValueName + " (" + format(maxValue) + ").");
         }
     }
 
