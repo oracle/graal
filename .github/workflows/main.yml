@@ -94,7 +94,9 @@ jobs:
           - env:
               JDK: "labsjdk-ce-11"
               GATE: "build"
-              PRIMARY: "substratevm"
+              PRIMARY: "vm"
+              DYNAMIC_IMPORTS: "/tools,/substratevm,/sulong"
+              NATIVE_IMAGES: "polyglot"
               WITHOUT_VCS: true
     steps:
     - uses: actions/checkout@v2
