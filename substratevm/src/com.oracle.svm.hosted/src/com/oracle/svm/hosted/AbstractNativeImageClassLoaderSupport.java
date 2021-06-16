@@ -279,6 +279,8 @@ public abstract class AbstractNativeImageClassLoaderSupport {
             Class<?> clazz = null;
             try {
                 clazz = imageClassLoader.forName(className, module);
+            } catch (AssertionError error) {
+                VMError.shouldNotReachHere(error);
             } catch (Throwable t) {
                 ImageClassLoader.handleClassLoadingError(t);
             }
