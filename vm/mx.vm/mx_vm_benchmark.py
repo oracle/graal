@@ -874,10 +874,14 @@ def register_graalvm_vms():
     # We support only EE and CE configuration for native-image benchmarks
     for short_name, config_suffix in [('niee', 'ee'), ('ni', 'ce')]:
         if any(component.short_name == short_name for component in mx_sdk_vm_impl.registered_graalvm_components(stage1=False)):
-            mx_benchmark.add_java_vm(NativeImageVM('native-image', 'default-' + config_suffix, None, None, False, 0, False, False, False), _suite, 10)
-            mx_benchmark.add_java_vm(NativeImageVM('native-image', 'gate-' + config_suffix, None, None, False, 0, False, False, True), _suite, 10)
-            mx_benchmark.add_java_vm(NativeImageVM('native-image', 'llvm-' + config_suffix, None, None, False, 0, False, False, False, True), _suite, 10)
-            mx_benchmark.add_java_vm(NativeImageVM('native-image', 'native-architecture-' + config_suffix, None, None, False, 0, False, False, False, extra_image_build_arguments=['-H:+NativeArchitecture']), _suite, 10)
+            mx_benchmark.add_java_vm(NativeImageVM('native-image', 'default-' + config_suffix,
+              extra_java_args=None, extra_launcher_args=None, pgo_aot_inline=False, pgo_instrumented_iterations=0, pgo_inline_explored=False, hotspot_pgo=False, is_gate=False), _suite, 10)
+            mx_benchmark.add_java_vm(NativeImageVM('native-image', 'gate-' + config_suffix,
+              extra_java_args=None, extra_launcher_args=None, pgo_aot_inline=False, pgo_instrumented_iterations=0, pgo_inline_explored=False, hotspot_pgo=False, is_gate=True), _suite, 10)
+            mx_benchmark.add_java_vm(NativeImageVM('native-image', 'llvm-' + config_suffix,
+              extra_java_args=None, extra_launcher_args=None, pgo_aot_inline=False, pgo_instrumented_iterations=0, pgo_inline_explored=False, hotspot_pgo=False, is_gate=False, is_llvm=True), _suite, 10)
+            mx_benchmark.add_java_vm(NativeImageVM('native-image', 'native-architecture-' + config_suffix,
+              extra_java_args=None, extra_launcher_args=None, pgo_aot_inline=False, pgo_instrumented_iterations=0, pgo_inline_explored=False, hotspot_pgo=False, is_gate=False, extra_image_build_arguments=['-H:+NativeArchitecture']), _suite, 10)
             break
 
     # Add VMs for libgraal
