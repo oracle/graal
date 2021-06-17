@@ -48,16 +48,19 @@ import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
+import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 
 final class SafepointStackSampler {
 
+    private static final Set<Class<?>> VISITOR_TAGS = new HashSet<>(Arrays.asList(StandardTags.RootTag.class));
     private final int stackLimit;
     private final SourceSectionFilter sourceSectionFilter;
     private final ConcurrentLinkedQueue<StackVisitor> stackVisitorCache = new ConcurrentLinkedQueue<>();
     private final AtomicReference<SampleAction> cachedAction = new AtomicReference<>();
+    private ThreadLocal<SyntheticFrame> syntheticFrame = ThreadLocal.withInitial(() -> null);
     private boolean overflowed;
 
     SafepointStackSampler(int stackLimit, SourceSectionFilter sourceSectionFilter) {
@@ -73,11 +76,6 @@ final class SafepointStackSampler {
         return visitor;
     }
 
-    private void freeStackVisitor(StackVisitor visitor) {
-        visitor.reset();
-        stackVisitorCache.add(visitor);
-    }
-
     List<StackSample> sample(Env env, TruffleContext context) {
         if (context.isActive()) {
             throw new IllegalArgumentException("Cannot sample a context that is currently active on the current thread.");
@@ -87,7 +85,7 @@ final class SafepointStackSampler {
         }
         SampleAction action = cachedAction.getAndSet(null);
         if (action == null) {
-            action = new SampleAction(this);
+            action = new SampleAction();
         }
         long submitTime = System.nanoTime();
         Future<Void> future;
@@ -113,7 +111,7 @@ final class SafepointStackSampler {
             long overhead = stackVisitor.endTime - stackVisitor.startTime;
             perThreadSamples.add(new StackSample(stackVisitor.thread, stackVisitor.createEntries(sourceSectionFilter),
                             bias, overhead, stackVisitor.overflowed));
-            freeStackVisitor(stackVisitor);
+            stackVisitor.reset();
         }
         action.reset();
         cachedAction.set(action);
@@ -129,9 +127,37 @@ final class SafepointStackSampler {
         this.overflowed |= visitorOverflowed;
     }
 
-    private static class StackVisitor implements FrameInstanceVisitor<FrameInstance> {
+    public void pushSyntheticFrame(TruffleContext context, LanguageInfo language, String message) {
+        syntheticFrame.set(new SyntheticFrame(context, language, message, syntheticFrame.get()));
+    }
 
-        private static final Set<Class<?>> TAGS = new HashSet<>(Arrays.asList(StandardTags.RootTag.class));
+    public void popSyntheticFrame() {
+        SyntheticFrame toPop = this.syntheticFrame.get();
+        if (toPop.visitor != null) {
+            toPop.visitor.syntheticFrame = null;
+        }
+        this.syntheticFrame.set(toPop.parent);
+    }
+
+    static final class StackSample {
+
+        final Thread thread;
+        final List<StackTraceEntry> stack;
+        final long biasNs;
+        final long durationNs;
+        final boolean overflowed;
+
+        StackSample(Thread thread, List<StackTraceEntry> stack, long biasNs, long durationNs, boolean overflowed) {
+            this.thread = thread;
+            this.stack = stack;
+            this.biasNs = biasNs;
+            this.durationNs = durationNs;
+            this.overflowed = overflowed;
+        }
+    }
+
+    private class StackVisitor implements FrameInstanceVisitor<FrameInstance> {
+
         private final CallTarget[] targets;
         private final byte[] states;
         private Thread thread;
@@ -139,6 +165,7 @@ final class SafepointStackSampler {
         private long startTime;
         private long endTime;
         private boolean overflowed;
+        private SyntheticFrame syntheticFrame;
 
         StackVisitor(int stackLimit) {
             assert stackLimit > 0;
@@ -146,7 +173,7 @@ final class SafepointStackSampler {
             this.targets = new CallTarget[stackLimit];
         }
 
-        private static byte state(FrameInstance frameInstance) {
+        private byte state(FrameInstance frameInstance) {
             switch (frameInstance.getCompilationTier()) {
                 case 0:
                     return StackTraceEntry.STATE_INTERPRETED;
@@ -185,13 +212,16 @@ final class SafepointStackSampler {
         }
 
         void reset() {
-            Arrays.fill(states, 0, nextFrameIndex, (byte) 0);
-            Arrays.fill(targets, 0, nextFrameIndex, null);
-            nextFrameIndex = 0;
-            thread = null;
-            overflowed = false;
-            this.startTime = 0L;
-            this.endTime = 0L;
+            if (syntheticFrame == null) {
+                Arrays.fill(states, 0, nextFrameIndex, (byte) 0);
+                Arrays.fill(targets, 0, nextFrameIndex, null);
+                nextFrameIndex = 0;
+                thread = null;
+                overflowed = false;
+                this.startTime = 0L;
+                this.endTime = 0L;
+                stackVisitorCache.add(this);
+            }
         }
 
         @SuppressWarnings("unused")
@@ -202,8 +232,11 @@ final class SafepointStackSampler {
                 RootNode root = ((RootCallTarget) target).getRootNode();
                 SourceSection sourceSection = root.getSourceSection();
                 if (sourceSection != null && filter.includes(root, sourceSection)) {
-                    entries.add(new StackTraceEntry(TAGS, sourceSection, root, root, states[i]));
+                    entries.add(new StackTraceEntry(VISITOR_TAGS, sourceSection, root, root, states[i]));
                 }
+            }
+            if (syntheticFrame != null) {
+                entries.add(new StackTraceEntry(syntheticFrame.language.getName() + ":" + syntheticFrame.message));
             }
             return entries;
         }
@@ -213,33 +246,13 @@ final class SafepointStackSampler {
         }
     }
 
-    static final class StackSample {
-
-        final Thread thread;
-        final List<StackTraceEntry> stack;
-        final long biasNs;
-        final long durationNs;
-        final boolean overflowed;
-
-        StackSample(Thread thread, List<StackTraceEntry> stack, long biasNs, long durationNs, boolean overflowed) {
-            this.thread = thread;
-            this.stack = stack;
-            this.biasNs = biasNs;
-            this.durationNs = durationNs;
-            this.overflowed = overflowed;
-        }
-    }
-
     private class SampleAction extends ThreadLocalAction {
 
         final ConcurrentHashMap<Thread, StackVisitor> completed = new ConcurrentHashMap<>();
-        private final SafepointStackSampler safepointStackSampler;
-
         private volatile boolean cancelled;
 
-        protected SampleAction(SafepointStackSampler safepointStackSampler) {
+        protected SampleAction() {
             super(false, false);
-            this.safepointStackSampler = safepointStackSampler;
         }
 
         @Override
@@ -248,16 +261,25 @@ final class SafepointStackSampler {
                 // too late to do anything
                 return;
             }
+            SyntheticFrame syntheticFrame = SafepointStackSampler.this.syntheticFrame.get();
+            if (syntheticFrame != null && syntheticFrame.visitor == null) {
+                completed.put(access.getThread(), syntheticFrame.visitor);
+                return;
+            }
 
             StackVisitor visitor = fetchStackVisitor();
             visitor.beforeVisit(access.getLocation());
             Truffle.getRuntime().iterateFrames(visitor);
-            safepointStackSampler.stackOverflowed(visitor.overflowed);
+            stackOverflowed(visitor.overflowed);
             if (cancelled) {
                 // did not complete on time
-                freeStackVisitor(visitor);
+                visitor.reset();
             } else {
                 completed.put(access.getThread(), visitor);
+                if (syntheticFrame != null && syntheticFrame.visitor == null) {
+                    visitor.syntheticFrame = syntheticFrame;
+                    syntheticFrame.visitor = visitor;
+                }
             }
             visitor.afterVisit();
         }
@@ -270,6 +292,21 @@ final class SafepointStackSampler {
         void reset() {
             cancelled = false;
             completed.clear();
+        }
+    }
+
+    private class SyntheticFrame {
+        final TruffleContext context;
+        final LanguageInfo language;
+        final String message;
+        final SyntheticFrame parent;
+        StackVisitor visitor;
+
+        public SyntheticFrame(TruffleContext context, LanguageInfo language, String message, SyntheticFrame parent) {
+            this.context = context;
+            this.language = language;
+            this.message = message;
+            this.parent = parent;
         }
     }
 }
