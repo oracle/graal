@@ -1454,13 +1454,13 @@ JNIEXPORT jclass JNICALL JVM_LookupLambdaProxyClassFromArchive(JNIEnv* env, jcla
 }
 
 JNIEXPORT jboolean JNICALL JVM_IsCDSDumpingEnabled(JNIEnv* env) {
-  UNIMPLEMENTED(JVM_IsCDSDumpingEnabled);
-  return JNI_FALSE;
+  IMPLEMENTED(JVM_IsCDSDumpingEnabled);
+  return (*getEnv())->JVM_IsCDSDumpingEnabled(env);
 }
 
 JNIEXPORT jboolean JNICALL JVM_IsSharingEnabled(JNIEnv* env) {
-  UNIMPLEMENTED(JVM_IsSharingEnabled);
-  return JNI_FALSE;
+  IMPLEMENTED(JVM_IsSharingEnabled);
+  return (*getEnv())->JVM_IsSharingEnabled(env);
 }
 
 JNIEXPORT jboolean JNICALL JVM_IsDumpingClassList(JNIEnv* env) {
@@ -1479,8 +1479,8 @@ JNIEXPORT jobjectArray JNICALL JVM_GetProperties(JNIEnv *env) {
 }
 
 JNIEXPORT jlong JNICALL JVM_GetRandomSeedForDumping() {
-  UNIMPLEMENTED(JVM_GetRandomSeedForDumping);
-  return 0;
+  IMPLEMENTED(JVM_GetRandomSeedForDumping);
+  return (*getEnv())->JVM_GetRandomSeedForDumping();
 }
 
 JNIEXPORT void JNICALL JVM_LogLambdaFormInvoker(JNIEnv* env, jstring line) {

@@ -2674,6 +2674,24 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @JniImpl
+    public static boolean JVM_IsCDSDumpingEnabled() {
+        return false;
+    }
+
+    @VmImpl
+    @JniImpl
+    public static boolean JVM_IsSharingEnabled() {
+        return false;
+    }
+
+    @VmImpl
+    @JniImpl
+    public static long JVM_GetRandomSeedForDumping() {
+        return 0L;
+    }
+
+    @VmImpl
+    @JniImpl
     public void JVM_BeforeHalt() {
         /*
          * currently nop
