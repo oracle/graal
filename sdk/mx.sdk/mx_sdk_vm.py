@@ -95,7 +95,7 @@ _base_jdk = None
 
 
 class AbstractNativeImageConfig(_with_metaclass(ABCMeta, object)):
-    def __init__(self, destination, jar_distributions, build_args, use_modules=None, links=None, is_polyglot=False, dir_jars=False, home_finder=False, build_time=1):  # pylint: disable=super-init-not-called
+    def __init__(self, destination, jar_distributions, build_args, use_modules=None, main_module=None, links=None, is_polyglot=False, dir_jars=False, home_finder=False, build_time=1):  # pylint: disable=super-init-not-called
         """
         :type destination: str
         :type jar_distributions: list[str]
@@ -108,6 +108,7 @@ class AbstractNativeImageConfig(_with_metaclass(ABCMeta, object)):
         self.jar_distributions = jar_distributions
         self.build_args = build_args
         self.use_modules = use_modules
+        self.main_module = main_module
         self.links = [mx_subst.path_substitutions.substitute(link) for link in links] if links else []
         self.is_polyglot = is_polyglot
         self.dir_jars = dir_jars
@@ -147,11 +148,10 @@ class LauncherConfig(AbstractNativeImageConfig):
         :param str main_module: Specifies the main module. Mandatory if use_modules is not None
         :param str custom_launcher_script: Custom launcher script, to be used when not compiled as a native image
         """
-        super(LauncherConfig, self).__init__(destination, jar_distributions, build_args, use_modules, home_finder=home_finder, **kwargs)
+        super(LauncherConfig, self).__init__(destination, jar_distributions, build_args, use_modules, main_module, home_finder=home_finder, **kwargs)
+        assert self.use_modules is None or self.main_module
         self.main_class = main_class
         self.is_main_launcher = is_main_launcher
-        assert use_modules is None or main_module
-        self.main_module = main_module
         self.default_symlinks = default_symlinks
         self.is_sdk_launcher = is_sdk_launcher
         self.custom_launcher_script = custom_launcher_script
@@ -191,11 +191,11 @@ class LanguageLauncherConfig(LauncherConfig):
 
 
 class LibraryConfig(AbstractNativeImageConfig):
-    def __init__(self, destination, jar_distributions, build_args, jvm_library=False, **kwargs):
+    def __init__(self, destination, jar_distributions, build_args, jvm_library=False, use_modules=None, main_module=None, **kwargs):
         """
         :param bool jvm_library
         """
-        super(LibraryConfig, self).__init__(destination, jar_distributions, build_args, **kwargs)
+        super(LibraryConfig, self).__init__(destination, jar_distributions, build_args, use_modules, main_module, **kwargs)
         self.jvm_library = jvm_library
 
 

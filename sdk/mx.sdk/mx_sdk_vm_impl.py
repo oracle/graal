@@ -704,6 +704,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                     _add(layout, _component_base, 'dependency:{}/polyglot.config'.format(launcher_project), _component)
             for _library_config in sorted(_get_library_configs(_component), key=lambda c: c.destination):
                 graalvm_dists.update(_library_config.jar_distributions)
+                self.jimage_ignore_jars.update(_library_config.jar_distributions)
                 if _library_config.jvm_library:
                     assert isinstance(_component, (mx_sdk.GraalVmJdkComponent, mx_sdk.GraalVmJreComponent))
                     _svm_library_home = _jvm_library_dest
