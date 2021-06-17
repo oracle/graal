@@ -164,7 +164,9 @@ class NativeImageVM(GraalVm):
                 self.base_image_build_args += vm.extra_image_build_arguments
             self.base_image_build_args += self.extra_image_build_arguments
 
-    def __init__(self, name, config_name, extra_java_args, extra_launcher_args, pgo_aot_inline, pgo_instrumented_iterations, pgo_inline_explored, hotspot_pgo, is_gate, is_llvm=False, pgo_context_sensitive=True, gc=None, extra_image_build_arguments=None):
+    def __init__(self, name, config_name, extra_java_args=None, extra_launcher_args=None,
+                 pgo_aot_inline=False, pgo_instrumented_iterations=0, pgo_inline_explored=False, hotspot_pgo=False,
+                 is_gate=False, is_llvm=False, pgo_context_sensitive=True, gc=None, extra_image_build_arguments=None):
         super(NativeImageVM, self).__init__(name, config_name, extra_java_args, extra_launcher_args)
         self.pgo_aot_inline = pgo_aot_inline
         self.pgo_instrumented_iterations = pgo_instrumented_iterations
@@ -874,14 +876,11 @@ def register_graalvm_vms():
     # We support only EE and CE configuration for native-image benchmarks
     for short_name, config_suffix in [('niee', 'ee'), ('ni', 'ce')]:
         if any(component.short_name == short_name for component in mx_sdk_vm_impl.registered_graalvm_components(stage1=False)):
-            mx_benchmark.add_java_vm(NativeImageVM('native-image', 'default-' + config_suffix,
-              extra_java_args=None, extra_launcher_args=None, pgo_aot_inline=False, pgo_instrumented_iterations=0, pgo_inline_explored=False, hotspot_pgo=False, is_gate=False), _suite, 10)
-            mx_benchmark.add_java_vm(NativeImageVM('native-image', 'gate-' + config_suffix,
-              extra_java_args=None, extra_launcher_args=None, pgo_aot_inline=False, pgo_instrumented_iterations=0, pgo_inline_explored=False, hotspot_pgo=False, is_gate=True), _suite, 10)
-            mx_benchmark.add_java_vm(NativeImageVM('native-image', 'llvm-' + config_suffix,
-              extra_java_args=None, extra_launcher_args=None, pgo_aot_inline=False, pgo_instrumented_iterations=0, pgo_inline_explored=False, hotspot_pgo=False, is_gate=False, is_llvm=True), _suite, 10)
+            mx_benchmark.add_java_vm(NativeImageVM('native-image', 'default-' + config_suffix), _suite, 10)
+            mx_benchmark.add_java_vm(NativeImageVM('native-image', 'gate-' + config_suffix, is_gate=True), _suite, 10)
+            mx_benchmark.add_java_vm(NativeImageVM('native-image', 'llvm-' + config_suffix, is_llvm=True), _suite, 10)
             mx_benchmark.add_java_vm(NativeImageVM('native-image', 'native-architecture-' + config_suffix,
-              extra_java_args=None, extra_launcher_args=None, pgo_aot_inline=False, pgo_instrumented_iterations=0, pgo_inline_explored=False, hotspot_pgo=False, is_gate=False, extra_image_build_arguments=['-H:+NativeArchitecture']), _suite, 10)
+                                                   extra_image_build_arguments=['-H:+NativeArchitecture']), _suite, 10)
             break
 
     # Add VMs for libgraal
