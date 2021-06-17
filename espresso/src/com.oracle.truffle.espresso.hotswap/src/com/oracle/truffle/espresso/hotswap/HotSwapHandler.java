@@ -124,6 +124,7 @@ final class HotSwapHandler {
                     } catch (Throwable t) {
                         // don't let reload failures block all
                         // other hotswap actions to be fired
+                        t.printStackTrace();
                     }
                 }
             }
@@ -134,6 +135,7 @@ final class HotSwapHandler {
                 } catch (Throwable t) {
                     // don't let reload failures block all
                     // other plugins
+                    t.printStackTrace();
                 }
 
             }
@@ -144,6 +146,7 @@ final class HotSwapHandler {
                 } catch (Throwable t) {
                     // don't let reload failures block all
                     // other actions
+                    t.printStackTrace();
                 }
             }
         });
