@@ -71,12 +71,12 @@ final class ServiceWatcher {
 
     private static final String PREFIX = "META-INF/services/";
 
-    private final Map<String, Set<String>> services = Collections.synchronizedMap(new HashMap<>(4));
+    private final Map<String, Set<String>> services = new HashMap<>(4);
 
     private WatcherThread serviceWatcherThread;
     private URLWatcher urlWatcher;
 
-    public void addServiceWatcher(Class<?> service, ClassLoader loader, HotSwapAction callback) {
+    public synchronized void addServiceWatcher(Class<?> service, ClassLoader loader, HotSwapAction callback) {
         try {
             // cache initial service implementations
             Set<String> serviceImpl = Collections.synchronizedSet(new HashSet<>());
@@ -155,17 +155,16 @@ final class ServiceWatcher {
                 changedServiceImpl.add(o.getClass().getName());
                 if (!currentServiceImpl.contains(o.getClass().getName())) {
                     // new service implementation detected
-                    if (!callbackFired) {
-                        callback.fire();
-                        callbackFired = true;
-                    }
+                    callback.fire();
+                    callbackFired = true;
+                    break;
                 }
             } catch (ServiceConfigurationError e) {
                 // services that we're not able to instantiate are irrelevant
             }
         }
 
-        if (changedServiceImpl.size() != currentServiceImpl.size() && !callbackFired) {
+        if (!callbackFired && changedServiceImpl.size() != currentServiceImpl.size()) {
             // removed service implementation, fire callback
             callback.fire();
         }
