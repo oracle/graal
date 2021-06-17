@@ -33,14 +33,25 @@ public class Main {
     public static void main(String[] args) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
         Module helloAppModule = Main.class.getModule();
         assert helloAppModule.getName().equals("moduletests.hello.app");
-        assert helloAppModule.isExported("hello");
+        assert helloAppModule.isExported(Main.class.getPackageName());
+        assert helloAppModule.isNamed();
+        assert helloAppModule.getPackages().contains(Main.class.getPackageName());
 
         Module helloLibModule = Greeter.class.getModule();
         assert helloLibModule.getName().equals("moduletests.hello.lib");
-        assert helloLibModule.isExported("hello.lib");
+        assert helloLibModule.isExported(Greeter.class.getPackageName());
+        assert helloLibModule.isNamed();
+        assert helloLibModule.getPackages().contains(Greeter.class.getPackageName());
+
+        assert !helloAppModule.isOpen(Main.class.getPackageName(), helloLibModule);
+        assert helloLibModule.isOpen(hello.privateLib2.PrivateGreeter.class.getPackageName(), helloAppModule);
 
         assert helloAppModule.canRead(helloLibModule);
-        // assert !helloLibModule.canRead(helloAppModule); GR-30957
+        assert !helloLibModule.canRead(helloAppModule);
+
+        System.out.println("Now testing if user modules are part of the boot layer");
+        assert ModuleLayer.boot().modules().contains(helloAppModule);
+        assert ModuleLayer.boot().modules().contains(helloLibModule);
 
         System.out.println("Basic Module test involving " + helloAppModule + " and " + helloLibModule);
         Greeter.greet();
