@@ -26,7 +26,9 @@ package org.graalvm.compiler.truffle.runtime;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
+import jdk.vm.ci.code.stack.InspectedFrame;
 
 /**
  * Base class for on-stack replaced (OSR) root nodes.
@@ -35,4 +37,29 @@ public abstract class BaseOSRRootNode extends RootNode {
     protected BaseOSRRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
     }
+
+    @Override
+    public final Object execute(VirtualFrame frame) {
+        return callProxy(frame);
+    }
+
+    /**
+     * Proxy method for invoking OSR root nodes. This method is used as a marker to detect OSR root
+     * nodes when traversing stack frames.
+     *
+     * @see GraalTruffleRuntime.FrameVisitor#visitFrame(InspectedFrame)
+     */
+    private Object callProxy(VirtualFrame frame) {
+        try {
+            return executeOSR(frame);
+        } finally {
+            // this assertion is needed to keep the values from being cleared as non-live locals
+            assert frame != null && this != null;
+        }
+    }
+
+    /**
+     * Entrypoint for OSR root nodes.
+     */
+    protected abstract Object executeOSR(VirtualFrame frame);
 }

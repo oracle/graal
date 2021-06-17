@@ -473,11 +473,8 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
             return loopNode.getSourceSection();
         }
 
-        public static Object callProxy(OSRRootNode target, VirtualFrame frame) {
-            return target.executeImpl(frame);
-        }
-
-        protected Object executeImpl(VirtualFrame frame) {
+        @Override
+        protected Object executeOSR(VirtualFrame frame) {
             VirtualFrame parentFrame = clazz.cast(frame.getArguments()[0]);
             Object status;
             while (loopNode.repeatableNode.shouldContinue(status = loopNode.getRepeatingNode().executeRepeatingWithValue(parentFrame))) {
@@ -487,11 +484,6 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
                 TruffleSafepoint.poll(this);
             }
             return status;
-        }
-
-        @Override
-        public final Object execute(VirtualFrame frame) {
-            return callProxy(this, frame);
         }
 
         @Override
@@ -556,7 +548,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
         }
 
         @Override
-        protected Object executeImpl(VirtualFrame originalFrame) {
+        protected Object executeOSR(VirtualFrame originalFrame) {
             FrameWithoutBoxing loopFrame = (FrameWithoutBoxing) (originalFrame);
             FrameWithoutBoxing parentFrame = (FrameWithoutBoxing) (loopFrame.getArguments()[0]);
             executeTransfer(parentFrame, loopFrame, readFrameSlots, readFrameSlotsTags);

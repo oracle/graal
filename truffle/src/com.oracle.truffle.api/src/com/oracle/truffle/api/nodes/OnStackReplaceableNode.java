@@ -61,6 +61,24 @@ public abstract class OnStackReplaceableNode extends ExecutableNode implements R
         super(language);
     }
 
+    /**
+     * Entrypoint for invoking this node through OSR. Typically, this method will:
+     * <ul>
+     * <li>transfer state from the {@code parentFrame} into the {@code innerFrame} (if necessary)
+     * <li>execute this node from the {@code target} location
+     * <li>transfer state from the {@code innerFrame} back to the {@code parentFrame} (if necessary)
+     * </ul>
+     *
+     * NOTE: The result of {@link Frame#getArguments()} for {@code innerFrame} is undefined and
+     * should not be used. Additionally, since the parent frame could also come from an OSR call (in
+     * the situation where an OSR call deoptimizes), the arguments of {@code parentFrame} are also
+     * undefined.
+     *
+     * @param innerFrame the frame to use for OSR.
+     * @param parentFrame the frame of the previous invocation (which may itself be an OSR frame).
+     * @param target the target location to execute from (e.g., bytecode index).
+     * @return the result of execution.
+     */
     abstract public Object doOSR(VirtualFrame innerFrame, Frame parentFrame, int target);
 
     /**

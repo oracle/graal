@@ -551,6 +551,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
         private int skipFrames;
 
+        private InspectedFrame newestOSRFrame;
         private InspectedFrame callNodeFrame;
 
         FrameVisitor(FrameInstanceVisitor<T> visitor, CallMethods methods, int skip) {
@@ -562,14 +563,19 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         @Override
         public T visitFrame(InspectedFrame frame) {
             if (frame.isMethod(methods.callOSRMethod)) {
-                // we ignore OSR frames.
+                if (newestOSRFrame == null) {
+                    newestOSRFrame = frame;
+                }
+                // skip over the next frame, which calls into this OSR method.
                 skipFrames++;
                 return null;
             } else if (frame.isMethod(methods.callTargetMethod)) {
                 if (skipFrames == 0) {
                     try {
-                        return visitor.visitFrame(new GraalFrameInstance(frame, callNodeFrame));
+                        InspectedFrame newestCallTargetFrame = newestOSRFrame == null ? frame : newestOSRFrame;
+                        return visitor.visitFrame(new GraalFrameInstance(newestCallTargetFrame, frame, callNodeFrame));
                     } finally {
+                        newestOSRFrame = null;
                         callNodeFrame = null;
                     }
                 } else {

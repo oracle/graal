@@ -26,8 +26,6 @@ package org.graalvm.compiler.truffle.runtime;
 
 import java.lang.reflect.Method;
 
-import org.graalvm.compiler.truffle.runtime.OptimizedOSRLoopNode.OSRRootNode;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.Frame;
@@ -59,17 +57,32 @@ public final class GraalFrameInstance implements FrameInstance {
             CALL_INDIRECT = OptimizedCallTarget.class.getDeclaredMethod("callIndirect", Node.class, Object[].class);
 
             CALL_TARGET_METHOD = OptimizedCallTarget.class.getDeclaredMethod("executeRootNode", VirtualFrame.class);
-            CALL_OSR_METHOD = OptimizedOSRLoopNode.OSRRootNode.class.getDeclaredMethod("callProxy", OSRRootNode.class, VirtualFrame.class);
+            CALL_OSR_METHOD = BaseOSRRootNode.class.getDeclaredMethod("callProxy", VirtualFrame.class);
         } catch (NoSuchMethodException | SecurityException e) {
             throw new InternalError(e);
         }
     }
 
-    private final InspectedFrame callTargetFrame;
+    /*
+     * Note: newestCallTargetFrame and oldestCallTargetFrame are typically the same InspectedFrame,
+     * unless OSR is involved.
+     *
+     * In the presence of OSR, newestCallTargetFrame is the newest (OSR) frame which contains the
+     * most up-to-date Frame object, and oldestCallTargetFrame is the original (non-OSR) frame which
+     * contains the original non-OSR CallTarget. OSR should be transparent, so we want to hide OSR
+     * CallTargets during frame traversal.
+     */
+
+    // Contains the Frame object.
+    private final InspectedFrame newestCallTargetFrame;
+    // Contains the CallTarget object.
+    private final InspectedFrame oldestCallTargetFrame;
+    // Contains the CallNode object which invoked the next call target (in the frame above).
     private final InspectedFrame callNodeFrame;
 
-    public GraalFrameInstance(InspectedFrame callTargetFrame, InspectedFrame callNodeFrame) {
-        this.callTargetFrame = callTargetFrame;
+    public GraalFrameInstance(InspectedFrame newestCallTargetFrame, InspectedFrame oldestCallTargetFrame, InspectedFrame callNodeFrame) {
+        this.newestCallTargetFrame = newestCallTargetFrame;
+        this.oldestCallTargetFrame = oldestCallTargetFrame;
         this.callNodeFrame = callNodeFrame;
     }
 
@@ -77,11 +90,11 @@ public final class GraalFrameInstance implements FrameInstance {
     @TruffleBoundary
     public Frame getFrame(FrameAccess access) {
         if (access == FrameAccess.READ_WRITE || access == FrameAccess.MATERIALIZE) {
-            if (callTargetFrame.isVirtual(CALL_TARGET_FRAME_INDEX)) {
-                callTargetFrame.materializeVirtualObjects(false);
+            if (newestCallTargetFrame.isVirtual(CALL_TARGET_FRAME_INDEX)) {
+                newestCallTargetFrame.materializeVirtualObjects(false);
             }
         }
-        Frame frame = (Frame) callTargetFrame.getLocal(CALL_TARGET_FRAME_INDEX);
+        Frame frame = (Frame) newestCallTargetFrame.getLocal(CALL_TARGET_FRAME_INDEX);
         if (access == FrameAccess.MATERIALIZE) {
             frame = frame.materialize();
         }
@@ -90,12 +103,12 @@ public final class GraalFrameInstance implements FrameInstance {
 
     @Override
     public boolean isVirtualFrame() {
-        return callTargetFrame.isVirtual(CALL_TARGET_FRAME_INDEX);
+        return newestCallTargetFrame.isVirtual(CALL_TARGET_FRAME_INDEX);
     }
 
     @Override
     public CallTarget getCallTarget() {
-        return (CallTarget) callTargetFrame.getLocal(CALL_TARGET_INDEX);
+        return (CallTarget) oldestCallTargetFrame.getLocal(CALL_TARGET_INDEX);
     }
 
     @Override

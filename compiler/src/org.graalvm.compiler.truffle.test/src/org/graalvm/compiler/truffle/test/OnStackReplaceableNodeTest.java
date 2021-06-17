@@ -24,12 +24,17 @@
  */
 package org.graalvm.compiler.truffle.test;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameInstance;
+import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
@@ -54,7 +59,7 @@ public class OnStackReplaceableNodeTest extends TestWithSynchronousCompiling {
     private static final GraalTruffleRuntime runtime = (GraalTruffleRuntime) Truffle.getRuntime();
 
     // 20s timeout
-    @Rule public TestRule timeout = new Timeout(20, TimeUnit.SECONDS);
+//    @Rule public TestRule timeout = new Timeout(20, TimeUnit.SECONDS);
 
     private int osrThreshold;
 
@@ -152,7 +157,7 @@ public class OnStackReplaceableNodeTest extends TestWithSynchronousCompiling {
         RootNode rootNode = new Program(osrNode, frameDescriptor);
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
         Assert.assertEquals(FixedIterationLoop.OSR_RESULT, target.call(osrThreshold + 1));
-        OptimizedCallTarget.OSRState osrState = (OptimizedCallTarget.OSRState) osrNode.getOSRState();
+        OptimizedCallTarget.OSRState osrState = osrNode.getGraalOSRState();
         OptimizedCallTarget osrTarget = osrState.getOSRCompilations().get(-1);
         Assert.assertNotNull(osrTarget);
         Assert.assertTrue(osrTarget.isValid());
@@ -160,7 +165,7 @@ public class OnStackReplaceableNodeTest extends TestWithSynchronousCompiling {
         Assert.assertTrue(osrState.getOSRCompilations().isEmpty());
         Assert.assertFalse(osrTarget.isValid());
         // Calling the node will eventually trigger OSR again (after OSR_POLL_INTERVAL back-edges)
-        Assert.assertEquals(FixedIterationLoop.OSR_RESULT, target.call(OptimizedCallTarget.OSR_POLL_INTERVAL+1));
+        Assert.assertEquals(FixedIterationLoop.OSR_RESULT, target.call(OptimizedCallTarget.OSR_POLL_INTERVAL + 1));
         osrTarget = osrState.getOSRCompilations().get(-1);
         Assert.assertNotNull(osrTarget);
         Assert.assertTrue(osrTarget.isValid());
@@ -177,7 +182,7 @@ public class OnStackReplaceableNodeTest extends TestWithSynchronousCompiling {
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
         Assert.assertEquals(FixedIterationLoop.NORMAL_RESULT, target.call(osrThreshold + 1));
         // Compiled call target is still valid.
-        OptimizedCallTarget.OSRState osrState = (OptimizedCallTarget.OSRState) osrNode.getOSRState();
+        OptimizedCallTarget.OSRState osrState = osrNode.getGraalOSRState();
         OptimizedCallTarget osrTarget = osrState.getOSRCompilations().get(-1);
         Assert.assertNotNull(osrTarget);
         Assert.assertTrue(osrTarget.isValid());
@@ -190,19 +195,59 @@ public class OnStackReplaceableNodeTest extends TestWithSynchronousCompiling {
     @Test
     public void testOSRPolling() {
         setupContext(
-                "engine.MultiTier", "false",
-                "engine.OSR", "true",
-                "engine.OSRCompilationThreshold", String.valueOf(osrThreshold),
-                "engine.BackgroundCompilation", Boolean.TRUE.toString() // override defaults
+                        "engine.MultiTier", "false",
+                        "engine.OSR", "true",
+                        "engine.OSRCompilationThreshold", String.valueOf(osrThreshold),
+                        "engine.BackgroundCompilation", Boolean.TRUE.toString() // override defaults
         );
         InfiniteInterpreterLoop osrNode = new InfiniteInterpreterLoop();
         RootNode rootNode = new Program(osrNode, new FrameDescriptor());
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
         Assert.assertEquals(42, target.call());
-        OptimizedCallTarget.OSRState osrState = (OptimizedCallTarget.OSRState) osrNode.getOSRState();
+        OptimizedCallTarget.OSRState osrState = osrNode.getGraalOSRState();
         int backEdgeCount = osrState.getBackEdgeCount();
         Assert.assertTrue(backEdgeCount > osrThreshold);
         Assert.assertEquals(0, backEdgeCount % OptimizedCallTarget.OSR_POLL_INTERVAL);
+    }
+
+    /*
+     * Test that the OSR call target does not get included in the Truffle stack trace.
+     */
+    @Test
+    public void testStackTraceHidesOSRCallTarget() {
+        FrameDescriptor frameDescriptor = new FrameDescriptor();
+        CheckStackWalkCallTarget osrNode = new CheckStackWalkCallTarget(frameDescriptor);
+        RootNode rootNode = new Program(osrNode, frameDescriptor);
+        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
+        Assert.assertEquals(FixedIterationLoop.OSR_RESULT, target.call(2 * osrThreshold));
+    }
+
+    /*
+     * Test that the OSR frame is used in the Truffle stack trace.
+     */
+    @Test
+    public void testStackTraceUsesOSRFrame() {
+        FrameDescriptor frameDescriptor = new FrameDescriptor();
+        CheckStackWalkFrame osrNode = new CheckStackWalkFrame(frameDescriptor);
+        RootNode rootNode = new Program(osrNode, frameDescriptor);
+        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
+        osrNode.callTarget = target; // set the call target so stack walking can use it
+        Assert.assertEquals(FixedIterationLoop.OSR_RESULT, target.call(2 * osrThreshold));
+    }
+
+    /*
+     * Test that the topmost OSR frame is used in the Truffle stack trace when there are multiple
+     * levels of OSR.
+     */
+    @Test
+    public void testStackTraceUsesNewestOSRFrame() {
+        FrameDescriptor frameDescriptor = new FrameDescriptor();
+        CheckStackWalkFrameNested osrNode = new CheckStackWalkFrameNested(frameDescriptor);
+        RootNode rootNode = new Program(osrNode, frameDescriptor);
+        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
+        osrNode.callTarget = target; // set the call target so stack walking can use it
+        Assert.assertEquals(FixedIterationLoop.OSR_RESULT, target.call(3 * osrThreshold));
+        Assert.assertTrue(osrNode.hasDeoptimizedYet);
     }
 
     // Bytecode programs
@@ -306,9 +351,6 @@ public class OnStackReplaceableNodeTest extends TestWithSynchronousCompiling {
         Assert.assertTrue(osrState.getOSRCompilations().get(5).isValid());
     }
 
-    // TODO:
-    // test frame walking
-
     public static class Program extends RootNode {
         @Child OnStackReplaceableNode osrNode;
 
@@ -337,7 +379,31 @@ public class OnStackReplaceableNodeTest extends TestWithSynchronousCompiling {
         }
     }
 
-    public static class InfiniteInterpreterLoop extends OnStackReplaceableNode {
+    abstract static class OnStackReplaceableTestNode extends OnStackReplaceableNode {
+        public static final int DEFAULT_TARGET = -1;
+
+        protected OnStackReplaceableTestNode(TruffleLanguage<?> language) {
+            super(language);
+        }
+
+        OptimizedCallTarget.OSRState getGraalOSRState() {
+            return (OptimizedCallTarget.OSRState) super.getOSRState();
+        }
+
+        protected int getInt(Frame frame, FrameSlot frameSlot) {
+            try {
+                return frame.getInt(frameSlot);
+            } catch (FrameSlotTypeException e) {
+                throw new IllegalStateException("Error accessing frame slot " + frameSlot);
+            }
+        }
+
+        protected void setInt(Frame frame, FrameSlot frameSlot, int value) {
+            frame.setInt(frameSlot, value);
+        }
+    }
+
+    public static class InfiniteInterpreterLoop extends OnStackReplaceableTestNode {
         public InfiniteInterpreterLoop() {
             super(null);
         }
@@ -354,7 +420,7 @@ public class OnStackReplaceableNodeTest extends TestWithSynchronousCompiling {
                 if (CompilerDirectives.inCompiledCode()) {
                     return 42;
                 }
-                Object result = reportOSRBackEdge(frame, -1);
+                Object result = reportOSRBackEdge(frame, DEFAULT_TARGET);
                 if (result != null) {
                     return result;
                 }
@@ -362,8 +428,9 @@ public class OnStackReplaceableNodeTest extends TestWithSynchronousCompiling {
         }
     }
 
-    public static class FixedIterationLoop extends OnStackReplaceableNode {
+    public static class FixedIterationLoop extends OnStackReplaceableTestNode {
         @CompilationFinal FrameSlot indexSlot;
+        @CompilationFinal FrameSlot numIterationsSlot;
 
         static final String OSR_RESULT = "osr result";
         static final String NORMAL_RESULT = "normal result";
@@ -371,17 +438,14 @@ public class OnStackReplaceableNodeTest extends TestWithSynchronousCompiling {
         public FixedIterationLoop(FrameDescriptor frameDescriptor) {
             super(null);
             indexSlot = frameDescriptor.addFrameSlot("i", FrameSlotKind.Int);
+            numIterationsSlot = frameDescriptor.addFrameSlot("n", FrameSlotKind.Int);
         }
 
         @Override
         public Object doOSR(VirtualFrame innerFrame, Frame parentFrame, int target) {
-            try {
-                innerFrame.setInt(indexSlot, parentFrame.getInt(indexSlot));
-            } catch (FrameSlotTypeException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException("Error accessing index slot");
-            }
-            int numIterations = (Integer) parentFrame.getArguments()[0];
+            setInt(innerFrame, indexSlot, getInt(parentFrame, indexSlot));
+            int numIterations = getInt(parentFrame, numIterationsSlot);
+            setInt(innerFrame, numIterationsSlot, numIterations);
             return executeLoop(innerFrame, numIterations);
         }
 
@@ -389,6 +453,7 @@ public class OnStackReplaceableNodeTest extends TestWithSynchronousCompiling {
         public Object execute(VirtualFrame frame) {
             frame.setInt(indexSlot, 0);
             int numIterations = (Integer) frame.getArguments()[0];
+            frame.setInt(numIterationsSlot, numIterations);
             return executeLoop(frame, numIterations);
         }
 
@@ -397,7 +462,7 @@ public class OnStackReplaceableNodeTest extends TestWithSynchronousCompiling {
                 for (int i = frame.getInt(indexSlot); i < numIterations; i++) {
                     frame.setInt(indexSlot, i);
                     if (i + 1 < numIterations) { // back-edge will be taken
-                        Object result = reportOSRBackEdge(frame, -1);
+                        Object result = reportOSRBackEdge(frame, DEFAULT_TARGET);
                         if (result != null) {
                             return result;
                         }
@@ -411,43 +476,22 @@ public class OnStackReplaceableNodeTest extends TestWithSynchronousCompiling {
         }
     }
 
-    public static class TwoFixedIterationLoops extends OnStackReplaceableNode {
-        @CompilationFinal FrameSlot indexSlot;
-
+    public static class TwoFixedIterationLoops extends FixedIterationLoop {
         static final String NO_OSR = "no osr";
         static final String OSR_IN_FIRST_LOOP = "osr in first loop";
         static final String OSR_IN_SECOND_LOOP = "osr in second loop";
 
         public TwoFixedIterationLoops(FrameDescriptor frameDescriptor) {
-            super(null);
-            indexSlot = frameDescriptor.addFrameSlot("i", FrameSlotKind.Int);
+            super(frameDescriptor);
         }
 
         @Override
-        public Object doOSR(VirtualFrame innerFrame, Frame parentFrame, int target) {
-            try {
-                innerFrame.setInt(indexSlot, parentFrame.getInt(indexSlot));
-            } catch (FrameSlotTypeException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException("Error accessing index slot");
-            }
-            int numIterations = (Integer) parentFrame.getArguments()[0];
-            return executeLoop(innerFrame, numIterations);
-        }
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            frame.setInt(indexSlot, 0);
-            int numIterations = (Integer) frame.getArguments()[0];
-            return executeLoop(frame, numIterations);
-        }
-
-        private Object executeLoop(VirtualFrame frame, int numIterations) {
+        protected Object executeLoop(VirtualFrame frame, int numIterations) {
             try {
                 for (int i = frame.getInt(indexSlot); i < numIterations; i++) {
                     frame.setInt(indexSlot, i);
                     if (i + 1 < numIterations) { // back-edge will be taken
-                        Object result = reportOSRBackEdge(frame, -1);
+                        Object result = reportOSRBackEdge(frame, DEFAULT_TARGET);
                         if (result != null) {
                             return OSR_IN_FIRST_LOOP;
                         }
@@ -456,7 +500,7 @@ public class OnStackReplaceableNodeTest extends TestWithSynchronousCompiling {
                 for (int i = frame.getInt(indexSlot); i < 2 * numIterations; i++) {
                     frame.setInt(indexSlot, i);
                     if (i + 1 < 2 * numIterations) { // back-edge will be taken
-                        Object result = reportOSRBackEdge(frame, -1);
+                        Object result = reportOSRBackEdge(frame, DEFAULT_TARGET);
                         if (result != null) {
                             return OSR_IN_SECOND_LOOP;
                         }
@@ -480,13 +524,122 @@ public class OnStackReplaceableNodeTest extends TestWithSynchronousCompiling {
             for (int i = 0; i < numIterations; i++) {
                 CompilerAsserts.neverPartOfCompilation();
                 if (i + 1 < numIterations) { // back-edge will be taken
-                    Object result = reportOSRBackEdge(frame, -1);
+                    Object result = reportOSRBackEdge(frame, DEFAULT_TARGET);
                     if (result != null) {
                         return result;
                     }
                 }
             }
             return CompilerDirectives.inCompiledCode() ? OSR_RESULT : NORMAL_RESULT;
+        }
+    }
+
+    public abstract static class StackWalkingFixedIterationLoop extends FixedIterationLoop {
+        public StackWalkingFixedIterationLoop(FrameDescriptor frameDescriptor) {
+            super(frameDescriptor);
+        }
+
+        @Override
+        protected Object executeLoop(VirtualFrame frame, int numIterations) {
+            try {
+                for (int i = frame.getInt(indexSlot); i < numIterations; i++) {
+                    frame.setInt(indexSlot, i);
+                    checkStackTrace(i);
+                    if (i + 1 < numIterations) { // back-edge will be taken
+                        Object result = reportOSRBackEdge(frame, DEFAULT_TARGET);
+                        if (result != null) {
+                            return result;
+                        }
+                    }
+                }
+                return CompilerDirectives.inCompiledCode() ? OSR_RESULT : NORMAL_RESULT;
+            } catch (FrameSlotTypeException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException("Error accessing index slot");
+            }
+        }
+
+        abstract void checkStackTrace(int index);
+    }
+
+    public static class CheckStackWalkCallTarget extends StackWalkingFixedIterationLoop {
+        public CheckStackWalkCallTarget(FrameDescriptor frameDescriptor) {
+            super(frameDescriptor);
+        }
+
+        @Override
+        void checkStackTrace(int index) {
+            Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Void>() {
+                private boolean first = true;
+
+                @Override
+                public Void visitFrame(FrameInstance frameInstance) {
+                    if (getGraalOSRState() != null) {
+                        // We should never see the OSR call target in a stack trace.
+                        Assert.assertNotSame(getGraalOSRState().getOSRCompilations().get(DEFAULT_TARGET), frameInstance.getCallTarget());
+                    }
+                    if (first) {
+                        first = false;
+                    } else {
+                        Assert.assertNotNull(frameInstance.getCallNode());
+                    }
+                    return null;
+                }
+            });
+        }
+
+    }
+
+    public static class CheckStackWalkFrame extends StackWalkingFixedIterationLoop {
+        public CallTarget callTarget; // call target containing this node (must be set after
+                                      // construction due to circular dependence)
+
+        public CheckStackWalkFrame(FrameDescriptor frameDescriptor) {
+            super(frameDescriptor);
+        }
+
+        @Override
+        void checkStackTrace(int index) {
+            Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Void>() {
+                @Override
+                public Void visitFrame(FrameInstance frameInstance) {
+                    if (frameInstance.getCallTarget() == callTarget) {
+                        try {
+                            // The OSR frame will be up to date; the parent frame will not. We
+                            // should get the OSR frame here.
+                            int indexInFrame = frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY).getInt(indexSlot);
+                            Assert.assertEquals(index, indexInFrame);
+                        } catch (FrameSlotTypeException e) {
+                            throw new IllegalStateException("Error accessing index slot");
+                        }
+                    }
+                    return null;
+                }
+            });
+        }
+    }
+
+    public static class CheckStackWalkFrameNested extends CheckStackWalkFrame {
+        // Trigger a deoptimization once so that there are multiple OSR nodes in the call stack.
+        @CompilationFinal public boolean hasDeoptimizedYet;
+
+        public CheckStackWalkFrameNested(FrameDescriptor frameDescriptor) {
+            super(frameDescriptor);
+            hasDeoptimizedYet = false;
+        }
+
+        @TruffleBoundary
+        void boundaryCall() {}
+
+        @Override
+        void checkStackTrace(int index) {
+            if (CompilerDirectives.inCompiledCode() && !hasDeoptimizedYet) {
+                // TODO: without this boundary call, the code never runs, and we get stuck in a compile-interpret-deoptimize loop. Why?
+                boundaryCall();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                hasDeoptimizedYet = true;
+            }
+            super.checkStackTrace(index);
         }
     }
 
