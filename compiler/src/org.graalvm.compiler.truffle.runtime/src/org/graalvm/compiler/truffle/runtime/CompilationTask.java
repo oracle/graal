@@ -243,7 +243,9 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
             return compiledTier > otherCompileTier;
         }
         if (engineData.traversingFirstTierBonus > 0) {
-            return lastWeight * (1 + engineData.traversingFirstTierBonus) > other.lastWeight;
+            double thisWeight = lastWeight * (1 + (isFirstTier() ? engineData.traversingFirstTierBonus : 0));
+            double otherWeight = other.lastWeight * (1 + (other.isFirstTier() ? engineData.traversingFirstTierBonus : 0));
+            return thisWeight > otherWeight;
         }
         if (engineData.weightingBothTiers || isFirstTier()) {
             return lastWeight > other.lastWeight;
