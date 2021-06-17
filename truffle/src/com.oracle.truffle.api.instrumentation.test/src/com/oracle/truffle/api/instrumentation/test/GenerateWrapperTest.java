@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.instrumentation.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -135,20 +136,13 @@ public class GenerateWrapperTest extends AbstractPolyglotTest {
     @Test
     public void testDefaultWrapperIgnore() {
         setupEnv();
-        DefaultNode instrumentedNode = new DefaultNode();
-        Supplier<DefaultNode> node = adoptNode(instrumentedNode);
+        TestNodeWithIgnores instrumentedNode = new TestNodeWithIgnoresImpl();
+        Supplier<TestNodeWithIgnores> node = adoptNode(instrumentedNode);
 
         VirtualFrame testFrame = Truffle.getRuntime().createVirtualFrame(new Object[0], new FrameDescriptor());
-        assertNoExecutionEvent(() -> assertEquals(42, node.get().execute18(testFrame)));
-        assertNoExecutionEvent(() -> assertEquals("execute19", node.get().execute19(testFrame)));
-        assertNoExecutionEvent(() -> {
-            try {
-                node.get().execute20(testFrame);
-                fail();
-            } catch (UnexpectedResultException e) {
-                assertEquals(42, e.getResult());
-            }
-        });
+        assertNoExecutionEvent(() -> assertEquals(42, node.get().executeConcrete(testFrame)));
+        assertNoExecutionEvent(() -> assertEquals(42, node.get().executeIgnoredInt(testFrame)));
+        assertNoExecutionEvent(() -> assertEquals("executeIgnoredObject", node.get().executeIgnoredObject(testFrame)));
     }
 
     @Test
@@ -783,19 +777,47 @@ public class GenerateWrapperTest extends AbstractPolyglotTest {
             throw new UnexpectedResultException(42);
         }
 
+    }
+
+    @GenerateWrapper
+    public abstract static class TestNodeWithIgnores extends Node implements InstrumentableNode {
+        @Override
+        public boolean isInstrumentable() {
+            return true;
+        }
+
+        @Override
+        public WrapperNode createWrapper(ProbeNode probeNode) {
+            return new TestNodeWithIgnoresWrapper(this, probeNode);
+        }
+
+        public int executeWrapped(VirtualFrame frame) {
+            return 42;
+        };
+
         @GenerateWrapper.Ignore
-        public int execute18(VirtualFrame frame) {
+        public abstract int executeIgnoredInt(VirtualFrame frame);
+
+        @GenerateWrapper.Ignore
+        public abstract Object executeIgnoredObject(VirtualFrame frame);
+
+        @GenerateWrapper.Ignore
+        public int executeConcrete(VirtualFrame frame) {
+            // This method isn't abstract, so no delegation happens. The receiver type should be the wrapper class.
+            assertTrue(this.getClass().getName().endsWith("Wrapper"));
+            return 42;
+        }
+    }
+
+    public static class TestNodeWithIgnoresImpl extends TestNodeWithIgnores {
+        @Override
+        public int executeIgnoredInt(VirtualFrame frame) {
             return 42;
         }
 
-        @GenerateWrapper.Ignore
-        public Object execute19(VirtualFrame frame) {
-            return "execute19";
-        }
-
-        @GenerateWrapper.Ignore
-        public Object execute20(VirtualFrame frame) throws UnexpectedResultException {
-            throw new UnexpectedResultException(42);
+        @Override
+        public Object executeIgnoredObject(VirtualFrame frame) {
+            return "executeIgnoredObject";
         }
     }
 
