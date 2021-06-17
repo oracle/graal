@@ -57,6 +57,8 @@ long safeExecute(void *callback) {
 }
 
 int execute(int x) {
+	//prevent type ID of A being optimized away
+	polyglot_from_A(new A(30));
     if (x == 0) {
         throw new A(50);
     } else {
