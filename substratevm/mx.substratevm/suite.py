@@ -403,6 +403,7 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "com.oracle.svm.hosted",
+                "com.oracle.svm.core.jdk11"
             ],
             "requires" : ["java.instrument"],
             "requiresConcealed" : {

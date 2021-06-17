@@ -24,15 +24,16 @@
  */
 package com.oracle.svm.core.jdk;
 
-import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import java.util.Map;
-import java.util.Set;
 
+@SuppressWarnings("unused")
 @TargetClass(className = "java.lang.ModuleLayer", onlyWith = JDK11OrLater.class)
 final class Target_java_lang_ModuleLayer {
 
-    @Alias Map<String, Module> nameToModule;
-    @Alias volatile Set<Module> modules;
-
+    @SuppressWarnings("unused")
+    @Substitute
+    public static ModuleLayer boot() {
+        return BootModuleLayerSupport.instance().getBootLayer();
+    }
 }

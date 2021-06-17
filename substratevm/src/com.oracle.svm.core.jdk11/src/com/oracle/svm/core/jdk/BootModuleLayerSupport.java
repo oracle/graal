@@ -24,16 +24,9 @@
  */
 package com.oracle.svm.core.jdk;
 
-import com.oracle.svm.core.SubstrateUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 public final class BootModuleLayerSupport {
 
@@ -41,34 +34,14 @@ public final class BootModuleLayerSupport {
         return ImageSingletons.lookup(BootModuleLayerSupport.class);
     }
 
-    private final ModuleLayer bootLayer;
-    private final Set<Module> reachableModules;
-    private final Map<String, Module> nameToModule;
-    private boolean isAnalysisComplete;
+    private ModuleLayer bootLayer;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public BootModuleLayerSupport() {
-        bootLayer = ModuleLayer.boot();
-        reachableModules = new HashSet<>();
-        nameToModule = new HashMap<>();
+    public void setBootLayer(ModuleLayer bootLayer) {
+        this.bootLayer = bootLayer;
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void setReachableModules(Set<Object> modules) {
-        isAnalysisComplete = true;
-        reachableModules.addAll(modules
-                .stream()
-                .map(o -> (Module) o)
-                .collect(Collectors.toSet()));
-        nameToModule.putAll(reachableModules.stream().collect(Collectors.toMap(Module::getName, m -> m)));
-    }
-
-    public Object getBootLayer() {
-        Target_java_lang_ModuleLayer originalLayer = SubstrateUtil.cast(bootLayer, Target_java_lang_ModuleLayer.class);
-        if (isAnalysisComplete) {
-            originalLayer.nameToModule = nameToModule;
-            originalLayer.modules = reachableModules;
-        }
-        return originalLayer;
+    public ModuleLayer getBootLayer() {
+        return bootLayer;
     }
 }

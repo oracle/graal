@@ -38,14 +38,10 @@ public final class Target_java_lang_Module {
     @Substitute
     public InputStream getResourceAsStream(String name) {
         ResourceStorageEntry entry = Resources.get(name);
-        if (entry == null) {
-            return null;
-        } else {
-            return new ByteArrayInputStream(entry.getData().get(0));
-        }
+        return entry == null ? null : new ByteArrayInputStream(entry.getData().get(0));
     }
 
     @TargetClass(className = "java.lang.Module", innerClass = "ReflectionData", onlyWith = JDK11OrLater.class)
-    public static final class ReflectionData {
+    private static final class Target_java_lang_Module_ReflectionData {
     }
 }
