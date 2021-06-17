@@ -4785,7 +4785,8 @@ public class FlatNodeGenFactory {
             }
 
             CodeTree cacheReference = createCacheReference(frameState, specialization, cache);
-            if (cache.isUsedInGuard() && !cache.isEagerInitialize() && sharedCaches.containsKey(cache) && !ElementUtils.isPrimitive(cache.getParameter().getType())) {
+            if (cache.isUsedInGuard() && !cache.isEagerInitialize() && sharedCaches.containsKey(cache) &&
+                            !ElementUtils.isPrimitive(cache.getParameter().getType())) {
                 builder.startIf().tree(cacheReference).string(" == null").end().startBlock();
                 String localName = createCacheLocalName(specialization, cache) + "_check";
                 builder.declaration(cache.getParameter().getType(), localName, value);
@@ -4978,7 +4979,8 @@ public class FlatNodeGenFactory {
                 }
             }
             String sharedName;
-            if (frameState.getMode().isSlowPath() && !cache.isEagerInitialize() && (sharedName = sharedCaches.get(cache)) != null && !ElementUtils.isPrimitive(cache.getParameter().getType())) {
+            if (frameState.getMode().isSlowPath() && !frameState.getBoolean(AOT_STATE, false) && !cache.isEagerInitialize() && (sharedName = sharedCaches.get(cache)) != null &&
+                            !ElementUtils.isPrimitive(cache.getParameter().getType())) {
                 CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
                 builder.string("this.").string(sharedName).string(" == null ? (");
                 builder.tree(writeExpression(frameState, specialization, expression));
