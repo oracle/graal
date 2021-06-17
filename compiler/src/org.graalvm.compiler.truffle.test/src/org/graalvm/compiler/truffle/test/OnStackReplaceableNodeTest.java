@@ -59,7 +59,7 @@ public class OnStackReplaceableNodeTest extends TestWithSynchronousCompiling {
     private static final GraalTruffleRuntime runtime = (GraalTruffleRuntime) Truffle.getRuntime();
 
     // 20s timeout
-//    @Rule public TestRule timeout = new Timeout(20, TimeUnit.SECONDS);
+    @Rule public TestRule timeout = new Timeout(20, TimeUnit.SECONDS);
 
     private int osrThreshold;
 
@@ -634,7 +634,8 @@ public class OnStackReplaceableNodeTest extends TestWithSynchronousCompiling {
         @Override
         void checkStackTrace(int index) {
             if (CompilerDirectives.inCompiledCode() && !hasDeoptimizedYet) {
-                // TODO: without this boundary call, the code never runs, and we get stuck in a compile-interpret-deoptimize loop. Why?
+                // the boundary call prevents Truffle from moving the deopt earlier,
+                // which ensures this branch is taken.
                 boundaryCall();
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 hasDeoptimizedYet = true;
