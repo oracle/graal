@@ -103,9 +103,10 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
     private static void setPublicModifier(ResolvedJavaMethod m) {
         try {
             Class<?> method = m.getClass();
-            Method metaspaceMethodM = method.getDeclaredMethod("getMetaspaceMethod");
+            Method metaspaceMethodM = method.getDeclaredMethod("getMetaspacePointer");
             metaspaceMethodM.setAccessible(true);
             long metaspaceMethod = (Long) metaspaceMethodM.invoke(m);
+            VMError.guarantee(metaspaceMethod != 0);
             // Checkstyle: stop
             Class<?> hotSpotVMConfigC = Class.forName("jdk.vm.ci.hotspot.HotSpotVMConfig");
             // Checkstyle: resume
