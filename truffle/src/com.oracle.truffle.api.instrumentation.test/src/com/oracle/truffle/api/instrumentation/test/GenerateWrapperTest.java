@@ -133,6 +133,25 @@ public class GenerateWrapperTest extends AbstractPolyglotTest {
     }
 
     @Test
+    public void testDefaultWrapperIgnore() {
+        setupEnv();
+        DefaultNode instrumentedNode = new DefaultNode();
+        Supplier<DefaultNode> node = adoptNode(instrumentedNode);
+
+        VirtualFrame testFrame = Truffle.getRuntime().createVirtualFrame(new Object[0], new FrameDescriptor());
+        assertNoExecutionEvent(() -> assertEquals(42, node.get().execute18(testFrame)));
+        assertNoExecutionEvent(() -> assertEquals("execute19", node.get().execute19(testFrame)));
+        assertNoExecutionEvent(() -> {
+            try {
+                node.get().execute20(testFrame);
+                fail();
+            } catch (UnexpectedResultException e) {
+                assertEquals(42, e.getResult());
+            }
+        });
+    }
+
+    @Test
     public void testUnwindReturnValueInEnter() {
         if (System.getProperty("java.vm.name").contains("Graal:graal-enterprise")) {
             return; // GR-16755
@@ -313,6 +332,24 @@ public class GenerateWrapperTest extends AbstractPolyglotTest {
         });
         r.run();
         assertEquals("Execution event did not trigger.", Arrays.asList("onEnter", "onReturnValue"), events);
+        binding.dispose();
+    }
+
+    private void assertNoExecutionEvent(Runnable r) {
+        EventBinding<?> binding = instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
+            public void onEnter(EventContext c, VirtualFrame frame) {
+                throw new AssertionError("Probe should not be entered");
+            }
+
+            public void onReturnValue(EventContext c, VirtualFrame frame, Object result) {
+                throw new AssertionError("Probe should not be entered");
+            }
+
+            public void onReturnExceptional(EventContext c, VirtualFrame frame, Throwable exception) {
+                throw new AssertionError("Probe should not be entered");
+            }
+        });
+        r.run();
         binding.dispose();
     }
 
@@ -746,6 +783,20 @@ public class GenerateWrapperTest extends AbstractPolyglotTest {
             throw new UnexpectedResultException(42);
         }
 
+        @GenerateWrapper.Ignore
+        public int execute18(VirtualFrame frame) {
+            return 42;
+        }
+
+        @GenerateWrapper.Ignore
+        public Object execute19(VirtualFrame frame) {
+            return "execute19";
+        }
+
+        @GenerateWrapper.Ignore
+        public Object execute20(VirtualFrame frame) throws UnexpectedResultException {
+            throw new UnexpectedResultException(42);
+        }
     }
 
     // test constructor with source section
@@ -852,6 +903,10 @@ public class GenerateWrapperTest extends AbstractPolyglotTest {
 
         public final void execute3() {
         }
+
+        @GenerateWrapper.Ignore
+        public void execute4(VirtualFrame frame){
+        }
     }
 
     @GenerateWrapper
@@ -872,6 +927,7 @@ public class GenerateWrapperTest extends AbstractPolyglotTest {
         public abstract void foobar();
     }
 
+    @Test
     public void testDelegateAbstractMethod() {
         AtomicInteger foobarInvocations = new AtomicInteger();
         DelegateAbstractMethod node = new DelegateAbstractMethod() {
