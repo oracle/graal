@@ -1520,9 +1520,7 @@ public class FlatNodeGenFactory {
         return false;
     }
 
-    private Element createFallbackGuard() {
-        boolean frameUsed = false;
-
+    private List<SpecializationData> getFallbackSpecializations() {
         List<SpecializationData> specializations = new ArrayList<>(reachableSpecializations);
         for (ListIterator<SpecializationData> iterator = specializations.listIterator(); iterator.hasNext();) {
             SpecializationData specialization = iterator.next();
@@ -1530,15 +1528,22 @@ public class FlatNodeGenFactory {
                 iterator.remove();
             } else if (!specialization.isReachesFallback()) {
                 iterator.remove();
-            } else {
-                if (specialization.isFrameUsedByGuard()) {
-                    frameUsed = true;
-                }
+            }
+        }
+        return specializations;
+    }
+
+    private Element createFallbackGuard() {
+        boolean frameUsed = false;
+
+        List<SpecializationData> specializations = getFallbackSpecializations();
+        for (SpecializationData specialization : specializations) {
+            if (specialization.isFrameUsedByGuard()) {
+                frameUsed = true;
             }
         }
 
         SpecializationGroup group = SpecializationGroup.create(specializations);
-
         ExecutableTypeData executableType = node.findAnyGenericExecutableType(context, -1);
 
         CodeExecutableElement method = new CodeExecutableElement(modifiers(PRIVATE), getType(boolean.class), createFallbackName());
@@ -1549,7 +1554,8 @@ public class FlatNodeGenFactory {
 
         fallbackNeedsState = false;
         fallbackNeedsFrame = frameUsed;
-        multiState.createLoad(frameState); // already loaded
+
+        multiState.createLoad(frameState, specializations.toArray()); // already loaded
         multiState.addParametersTo(frameState, method);
         frameState.addParametersTo(method, Integer.MAX_VALUE, FRAME_VALUE);
 
@@ -3204,7 +3210,7 @@ public class FlatNodeGenFactory {
         if (specialization.isFallback()) {
             builder.startIf().startCall(createFallbackName());
             if (fallbackNeedsState) {
-                multiState.addReferencesTo(frameState, builder);
+                multiState.addReferencesTo(frameState, builder, getFallbackSpecializations().toArray());
             }
             if (fallbackNeedsFrame) {
                 if (frameState.get(FRAME_VALUE) != null) {
@@ -3535,9 +3541,6 @@ public class FlatNodeGenFactory {
                             group.getAllSpecializations().size() == allowedSpecializations.size();
             if (needsRewrites && (!group.isEmpty() || specialization != null)) {
                 CodeTree stateCheck = multiState.createContains(frameState, specializations);
-                if (stateCheck.isEmpty()) {
-                    System.out.println();
-                }
                 CodeTree stateGuard = null;
                 CodeTree assertCheck = null;
                 if (stateGuaranteed) {
@@ -5498,6 +5501,20 @@ public class FlatNodeGenFactory {
                 LocalVariable local = frameState.get(set.getName());
                 if (local != null) {
                     builder.tree(local.createReference());
+                }
+            }
+        }
+
+        void addReferencesTo(FrameState frameState, CodeTreeBuilder builder, Object... relevantObjects) {
+            for (BitSet set : getSets()) {
+                LocalVariable local = frameState.get(set.getName());
+                if (local != null) {
+                    for (Object object : relevantObjects) {
+                        if (set.contains(object)) {
+                            builder.tree(local.createReference());
+                            break;
+                        }
+                    }
                 }
             }
         }
