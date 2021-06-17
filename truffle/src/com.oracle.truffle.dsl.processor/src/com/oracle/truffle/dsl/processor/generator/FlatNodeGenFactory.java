@@ -2044,6 +2044,12 @@ public class FlatNodeGenFactory {
             builder.statement("lock.lock()");
         }
 
+        ReportPolymorphismAction reportPolymorphismAction = reportPolymorphismAction(node, reachableSpecializations);
+
+        if (needsSpecializeLocking) {
+            builder.startTryBlock();
+        }
+
         if (needsAOTReset()) {
             builder.startIf();
             builder.tree(allMultiState.createContains(frameState, new Object[]{AOT_PREPARED}));
@@ -2056,11 +2062,9 @@ public class FlatNodeGenFactory {
         if (requiresExclude()) {
             builder.tree(exclude.createLoad(frameState));
         }
-        ReportPolymorphismAction reportPolymorphismAction = reportPolymorphismAction(node, reachableSpecializations);
+
         if (reportPolymorphismAction.required()) {
             generateSaveOldPolymorphismState(builder, frameState, reportPolymorphismAction);
-        }
-        if (needsSpecializeLocking || reportPolymorphismAction.required()) {
             builder.startTryBlock();
         }
 
@@ -2074,16 +2078,19 @@ public class FlatNodeGenFactory {
             builder.tree(createThrowUnsupported(builder, originalFrameState));
         }
 
-        if (needsSpecializeLocking || reportPolymorphismAction.required()) {
+        if (reportPolymorphismAction.required()) {
             builder.end().startFinallyBlock();
             if (reportPolymorphismAction.required()) {
                 generateCheckNewPolymorphismState(builder, reportPolymorphismAction);
             }
-            if (needsSpecializeLocking) {
-                builder.startIf().string("hasLock").end().startBlock();
-                builder.statement("lock.unlock()");
-                builder.end();
-            }
+            builder.end();
+        }
+
+        if (needsSpecializeLocking) {
+            builder.end().startFinallyBlock();
+            builder.startIf().string("hasLock").end().startBlock();
+            builder.statement("lock.unlock()");
+            builder.end();
             builder.end();
         }
 
