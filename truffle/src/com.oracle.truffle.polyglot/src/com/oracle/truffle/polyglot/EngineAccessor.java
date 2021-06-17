@@ -1439,6 +1439,16 @@ final class EngineAccessor extends Accessor {
         public Object getContext(Object polyglotLanguageContext) {
             return ((PolyglotLanguageContext) polyglotLanguageContext).context;
         }
+
+        @Override
+        public ClassLoader getSomClassloader(Object polyglotLanguageInstance) {
+            return ((PolyglotLanguageInstance) polyglotLanguageInstance).somCl;
+        }
+
+        @Override
+        public void setSomClassloader(Object polyglotLanguageInstance, ClassLoader cl) {
+            ((PolyglotLanguageInstance) polyglotLanguageInstance).somCl = cl;
+        }
     }
 
     abstract static class AbstractClassLoaderSupplier implements Supplier<ClassLoader> {

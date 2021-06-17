@@ -603,6 +603,10 @@ public abstract class Accessor {
         public abstract Future<Void> submitThreadLocal(Object polyglotLanguageContext, Object sourcePolyglotObject, Thread[] threads, ThreadLocalAction action, boolean needsEnter);
 
         public abstract Object getContext(Object polyglotLanguageContext);
+
+        public abstract ClassLoader getSomClassloader(Object polyglotLanguageInstance);
+
+        public abstract void setSomClassloader(Object polyglotLanguageInstance, ClassLoader cl);
     }
 
     public abstract static class LanguageSupport extends Support {

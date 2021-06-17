@@ -116,6 +116,7 @@ public abstract class StaticShape<T> {
      *
      * @param language an instance of the {@link TruffleLanguage} that uses the Static Object Model
      * @return a new static shape builder
+     * @throws NullPointerException if language is null
      * 
      * @see StaticShape
      * @see StaticProperty
@@ -123,6 +124,7 @@ public abstract class StaticShape<T> {
      * @see DefaultStaticObjectFactory
      */
     public static Builder newBuilder(TruffleLanguage<?> language) {
+        Objects.requireNonNull(language);
         return new Builder(language);
     }
 

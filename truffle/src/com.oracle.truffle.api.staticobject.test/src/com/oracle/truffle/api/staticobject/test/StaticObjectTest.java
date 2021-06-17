@@ -41,9 +41,13 @@
 package com.oracle.truffle.api.staticobject.test;
 
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.staticobject.DefaultStaticProperty;
 import com.oracle.truffle.api.staticobject.StaticProperty;
+import org.graalvm.polyglot.Context;
+import org.junit.After;
+import org.junit.Before;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -51,12 +55,23 @@ import java.lang.reflect.Method;
 class StaticObjectTest {
     static final boolean ARRAY_BASED_STORAGE = TruffleOptions.AOT || Boolean.getBoolean("com.oracle.truffle.api.staticobject.ArrayBasedStorage");
     static final boolean SAFE = Boolean.getBoolean("com.oracle.truffle.api.staticobject.SafeCasts") && Boolean.getBoolean("com.oracle.truffle.api.staticobject.ShapeChecks");
-    final TruffleLanguage<?> testLanguage = new TruffleLanguage<Object>() {
-        @Override
-        protected Object createContext(Env env) {
-            throw new UnsupportedOperationException();
-        }
-    };
+
+    TruffleLanguage<?> testLanguage;
+    Context context;
+
+    @Before
+    public void setup() {
+        context = Context.newBuilder(SomTestLanguage.TEST_LANGUAGE_ID).build();
+        context.initialize(SomTestLanguage.TEST_LANGUAGE_ID);
+        context.enter();
+        testLanguage = SomTestLanguage.getCurrentContext().getLanguage();
+    }
+
+    @After
+    public void teardown() {
+        context.leave();
+        context.close();
+    }
 
     String guessGeneratedFieldName(StaticProperty property) {
         assert !ARRAY_BASED_STORAGE;
@@ -72,6 +87,33 @@ class StaticObjectTest {
             } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
                 throw new RuntimeException(e);
             }
+        }
+    }
+
+    @Registration(id = SomTestLanguage.TEST_LANGUAGE_ID, name = SomTestLanguage.TEST_LANGUAGE_NAME)
+    public static class SomTestLanguage extends TruffleLanguage<SomTestContext> {
+        static final String TEST_LANGUAGE_NAME = "Test Language for the Static Object Model";
+        static final String TEST_LANGUAGE_ID = "som-test";
+
+        @Override
+        protected SomTestContext createContext(Env env) {
+            return new SomTestContext(this);
+        }
+
+        static SomTestContext getCurrentContext() {
+            return getCurrentContext(SomTestLanguage.class);
+        }
+    }
+
+    static class SomTestContext {
+        private final SomTestLanguage language;
+
+        SomTestContext(SomTestLanguage language) {
+            this.language = language;
+        }
+
+        SomTestLanguage getLanguage() {
+            return language;
         }
     }
 }

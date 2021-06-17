@@ -476,11 +476,14 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.api.staticobject",
+        "TRUFFLE_API",
         "mx:JUNIT"
       ],
       "checkstyle": "com.oracle.truffle.api",
       "javaCompliance": "8+",
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "API,Truffle,Test",
+      "testProject" : True,
     },
 
     "com.oracle.truffle.api.profiles" : {

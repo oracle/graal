@@ -251,8 +251,6 @@ public abstract class TruffleLanguage<C> {
     List<ContextThreadLocal<?>> contextThreadLocals;
     List<ContextLocal<?>> contextLocals;
 
-    ClassLoader somCl;
-
     /**
      * Constructor to be called by subclasses. Language should not create any {@link RootNode}s in
      * its constructor. The RootNodes created in the language constructor are not associated with a
