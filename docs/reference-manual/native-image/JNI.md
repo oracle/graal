@@ -42,8 +42,7 @@ class JNIRegistrationFeature implements Feature {
   public void beforeAnalysis(BeforeAnalysisAccess access) {
     try {
       JNIRuntimeAccess.register(String.class);
-      JNIRuntimeAccess.reg
-      ister(String.class.getDeclaredField("value"));
+      JNIRuntimeAccess.register(String.class.getDeclaredField("value"));
       JNIRuntimeAccess.register(String.class.getDeclaredField("hash"));
       JNIRuntimeAccess.register(String.class.getDeclaredConstructor(char[].class));
       JNIRuntimeAccess.register(String.class.getDeclaredMethod("charAt", int.class));
