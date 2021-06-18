@@ -841,6 +841,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     ],
     library_configs=[
         mx_sdk_vm.LibraryConfig(
+            use_modules='image' if USE_NI_JPMS else 'launcher' if not svm_java8() else None,
             destination="<lib:native-image-agent>",
             jvm_library=True,
             jar_distributions=[

@@ -1091,7 +1091,7 @@ suite = {
                     "com.oracle.svm.core.graal.thread             to jdk.internal.vm.compiler",
                     "com.oracle.svm.core.classinitialization      to jdk.internal.vm.compiler",
                     "com.oracle.svm.truffle.api                   to org.graalvm.truffle",
-                    "* to org.graalvm.nativeimage.driver,org.graalvm.nativeimage.librarysupport,org.graalvm.nativeimage.llvm,com.oracle.svm.svm_enterprise",
+                    "* to org.graalvm.nativeimage.driver,org.graalvm.nativeimage.librarysupport,org.graalvm.nativeimage.llvm,org.graalvm.nativeimage.agent.jvmtibase,org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.agent.diagnostics,com.oracle.svm.svm_enterprise",
                 ],
                 "opens" : [
                     "com.oracle.svm.core.nodes                    to jdk.internal.vm.compiler",
@@ -1170,6 +1170,13 @@ suite = {
                 "LIBRARY_SUPPORT",
                 "SVM_DRIVER",
             ],
+            "moduleInfo" : {
+                "name" : "org.graalvm.nativeimage.agent.jvmtibase",
+                "exports" : [
+                    "com.oracle.svm.jvmtiagentbase",
+                    "com.oracle.svm.jvmtiagentbase.jvmti",
+                ],
+            },
         },
 
         "LIBRARY_SUPPORT": {
@@ -1311,6 +1318,17 @@ suite = {
             "overlaps" : [
                 "SVM_CONFIGURE",
             ],
+            "moduleInfo" : {
+                "name" : "org.graalvm.nativeimage.agent.tracing",
+                "exports" : [
+                    "com.oracle.svm.agent",
+                ],
+                "requiresConcealed" : {
+                    "jdk.internal.vm.ci" : [
+                        "jdk.vm.ci.meta",
+                    ],
+                }
+            },
             # vm: included as binary, tool descriptor intentionally not copied
         },
 
@@ -1324,6 +1342,12 @@ suite = {
                 "JVMTI_AGENT_BASE",
                 "LIBRARY_SUPPORT",
             ],
+            "moduleInfo" : {
+                "name" : "org.graalvm.nativeimage.agent.diagnostics",
+                "exports" : [
+                    "com.oracle.svm.diagnosticsagent",
+                ],
+            },
         },
 
         "SVM_CONFIGURE": {
