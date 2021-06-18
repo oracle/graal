@@ -24,6 +24,7 @@
  */
 package com.oracle.graal.pointsto.meta;
 
+import static com.oracle.graal.pointsto.util.AtomicUtils.atomicMark;
 import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
 import static jdk.vm.ci.common.JVMCIError.unimplemented;
 
@@ -36,6 +37,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
@@ -86,11 +88,11 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
     private MethodTypeFlow typeFlow;
     private final AnalysisType declaringClass;
 
-    private boolean isRootMethod;
+    private final AtomicBoolean isRootMethod = new AtomicBoolean();
     private boolean isIntrinsicMethod;
     private Object entryPointData;
-    private boolean isInvoked;
-    private boolean isImplementationInvoked;
+    private final AtomicBoolean isInvoked = new AtomicBoolean();
+    private final AtomicBoolean isImplementationInvoked = new AtomicBoolean();
     private boolean isInlined;
 
     private final AtomicReference<Object> parsedGraphCacheState = new AtomicReference<>(GRAPH_CACHE_UNPARSED);
@@ -217,25 +219,28 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
         startTrackInvocations();
     }
 
-    public void registerAsInvoked(InvokeTypeFlow invoke) {
-        isInvoked = true;
+    public boolean registerAsInvoked(InvokeTypeFlow invoke) {
         if (invokedBy != null && invoke != null) {
             invokedBy.put(invoke, Boolean.TRUE);
         }
+        return atomicMark(isInvoked);
     }
 
-    public void registerAsImplementationInvoked(InvokeTypeFlow invoke) {
+    public boolean registerAsImplementationInvoked(InvokeTypeFlow invoke) {
         assert !Modifier.isAbstract(getModifiers());
-        isImplementationInvoked = true;
         if (implementationInvokedBy != null && invoke != null) {
             implementationInvokedBy.put(invoke, Boolean.TRUE);
         }
 
-        /*
-         * The class constant of the declaring class is used for exception metadata, so marking a
-         * method as invoked also makes the declaring class reachable.
-         */
-        getDeclaringClass().registerAsReachable();
+        if (atomicMark(isImplementationInvoked)) {
+            /*
+             * The class constant of the declaring class is used for exception metadata, so marking
+             * a method as invoked also makes the declaring class reachable.
+             */
+            getDeclaringClass().registerAsReachable();
+            return true;
+        }
+        return false;
     }
 
     public void registerAsInlined() {
@@ -272,40 +277,42 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
         return isIntrinsicMethod;
     }
 
-    public void registerAsRootMethod() {
-        isRootMethod = true;
-
-        /*
-         * The class constant of the declaring class is used for exception metadata, so marking a
-         * method as invoked also makes the declaring class reachable.
-         */
-        getDeclaringClass().registerAsReachable();
+    public boolean registerAsRootMethod() {
+        if (atomicMark(isRootMethod)) {
+            /*
+             * The class constant of the declaring class is used for exception metadata, so marking
+             * a method as invoked also makes the declaring class reachable.
+             */
+            getDeclaringClass().registerAsReachable();
+            return true;
+        }
+        return false;
     }
 
     public boolean isRootMethod() {
-        return isRootMethod;
+        return isRootMethod.get();
     }
 
     public boolean isSimplyInvoked() {
-        return isInvoked;
+        return isInvoked.get();
     }
 
     public boolean isSimplyImplementationInvoked() {
-        return isImplementationInvoked;
+        return isImplementationInvoked.get();
     }
 
     /**
      * Returns true if this method is ever used as the target of a call site.
      */
     public boolean isInvoked() {
-        return isIntrinsicMethod || isRootMethod() || isInvoked;
+        return isIntrinsicMethod || isRootMethod() || isInvoked.get();
     }
 
     /**
      * Returns true if the method body can ever be executed.
      */
     public boolean isImplementationInvoked() {
-        return !Modifier.isAbstract(getModifiers()) && (isIntrinsicMethod || isRootMethod() || isImplementationInvoked);
+        return !Modifier.isAbstract(getModifiers()) && (isIntrinsicMethod || isRootMethod() || isImplementationInvoked.get());
     }
 
     public boolean isReachable() {

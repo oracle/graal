@@ -39,6 +39,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import org.graalvm.compiler.debug.GraalError;
@@ -73,6 +74,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 
+import static com.oracle.graal.pointsto.util.AtomicUtils.atomicMark;
+
 public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Comparable<AnalysisType> {
 
     @SuppressWarnings("rawtypes")//
@@ -89,9 +92,9 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     protected final AnalysisUniverse universe;
     private final ResolvedJavaType wrapped;
 
-    private boolean isInHeap;
-    private boolean isAllocated;
-    private boolean isReachable;
+    private final AtomicBoolean isInHeap = new AtomicBoolean();
+    private final AtomicBoolean isAllocated = new AtomicBoolean();
+    private final AtomicBoolean isReachable = new AtomicBoolean();
     private boolean reachabilityListenerNotified;
     private boolean unsafeFieldsRecomputed;
     private boolean unsafeAccessedFieldsRegistered;
@@ -174,7 +177,6 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
         this.wrapped = javaType;
         isArray = wrapped.isArray();
         this.storageKind = storageKind;
-        this.unsafeAccessedFieldsRegistered = false;
         if (universe.analysisPolicy().needsConstantCache()) {
             this.constantObjectsCache = new ConcurrentHashMap<>();
         }
@@ -542,33 +544,32 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
         }
     }
 
-    public void registerAsInHeap() {
-        if (!isInHeap) {
-            /* Races are not a problem because every thread is going to do the same steps. */
-            isInHeap = true;
-
+    public boolean registerAsInHeap() {
+        boolean firstAttempt = atomicMark(isInHeap);
+        if (firstAttempt) {
             assert isArray() || (isInstanceClass() && !Modifier.isAbstract(getModifiers())) : this;
             universe.hostVM.checkForbidden(this, UsageKind.InHeap);
         }
         registerAsReachable();
+        return firstAttempt;
     }
 
     /**
      * @param node For future use and debugging
      */
-    public void registerAsAllocated(Node node) {
-        if (!isAllocated) {
-            /* Races are not a problem because every thread is going to do the same steps. */
-            isAllocated = true;
+    public boolean registerAsAllocated(Node node) {
+        boolean firstAttempt = atomicMark(isAllocated);
+        if (firstAttempt) {
 
             assert isArray() || (isInstanceClass() && !Modifier.isAbstract(getModifiers())) : this;
             universe.hostVM.checkForbidden(this, UsageKind.Allocated);
         }
         registerAsReachable();
+        return firstAttempt;
     }
 
-    public void registerAsReachable() {
-        if (!isReachable) {
+    public boolean registerAsReachable() {
+        if (!isReachable.get()) {
             if (superClass != null) {
                 /*
                  * The super class must be registered as reachable before this class because other
@@ -580,41 +581,45 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
             for (AnalysisType iface : interfaces) {
                 iface.registerAsReachable();
             }
-            /* Races are not a problem because every thread is going to do the same steps. */
-            isReachable = true;
-            universe.hostVM.checkForbidden(this, UsageKind.Reachable);
-            if (isArray()) {
-                /*
-                 * For array types, distinguishing between "used" and "instantiated" does not
-                 * provide any benefits since array types do not implement new methods. Marking all
-                 * used array types as instantiated too allows more usages of Arrays.newInstance
-                 * without the need of explicit registration of types for reflection.
-                 */
-                registerAsAllocated(null);
+            if (atomicMark(isReachable)) {
+                universe.hostVM.checkForbidden(this, UsageKind.Reachable);
+                if (isArray()) {
+                    /*
+                     * For array types, distinguishing between "used" and "instantiated" does not
+                     * provide any benefits since array types do not implement new methods. Marking
+                     * all used array types as instantiated too allows more usages of
+                     * Arrays.newInstance without the need of explicit registration of types for
+                     * reflection.
+                     */
+                    registerAsAllocated(null);
 
-                componentType.registerAsReachable();
+                    componentType.registerAsReachable();
 
-                /*
-                 * For a class B extends A, the array type A[] is not a superclass of the array type
-                 * B[]. So there is no strict need to make A[] reachable when B[] is reachable. But
-                 * it turns out that this is puzzling for users, and there are frameworks that
-                 * instantiate such arrays programmatically using Array.newInstance(). To reduce the
-                 * amount of manual configuration that is necessary, we mark all array types of the
-                 * elemental supertypes and superinterfaces also as reachable.
-                 */
-                for (int i = 1; i <= dimension; i++) {
-                    if (elementalType.superClass != null) {
-                        elementalType.superClass.getArrayClass(i).registerAsReachable();
-                    }
-                    for (AnalysisType iface : elementalType.interfaces) {
-                        iface.getArrayClass(i).registerAsReachable();
+                    /*
+                     * For a class B extends A, the array type A[] is not a superclass of the array
+                     * type B[]. So there is no strict need to make A[] reachable when B[] is
+                     * reachable. But it turns out that this is puzzling for users, and there are
+                     * frameworks that instantiate such arrays programmatically using
+                     * Array.newInstance(). To reduce the amount of manual configuration that is
+                     * necessary, we mark all array types of the elemental supertypes and
+                     * superinterfaces also as reachable.
+                     */
+                    for (int i = 1; i <= dimension; i++) {
+                        if (elementalType.superClass != null) {
+                            elementalType.superClass.getArrayClass(i).registerAsReachable();
+                        }
+                        for (AnalysisType iface : elementalType.interfaces) {
+                            iface.getArrayClass(i).registerAsReachable();
+                        }
                     }
                 }
-            }
 
-            /* Schedule the registration task. */
-            universe.hostVM.executor().execute(initializationTask);
+                /* Schedule the registration task. */
+                universe.hostVM.executor().execute(initializationTask);
+                return true;
+            }
         }
+        return false;
     }
 
     public void ensureInitialized() {
@@ -728,8 +733,8 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     }
 
     public boolean isInstantiated() {
-        boolean instantiated = isInHeap || isAllocated;
-        assert !instantiated || isReachable;
+        boolean instantiated = isInHeap.get() || isAllocated.get();
+        assert !instantiated || isReachable.get();
         return instantiated;
     }
 
@@ -743,7 +748,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     }
 
     public boolean isReachable() {
-        return isReachable;
+        return isReachable.get();
     }
 
     /**
