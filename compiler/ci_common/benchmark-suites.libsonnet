@@ -162,7 +162,7 @@
   },
 
   // Microservice benchmarks
-  microservice_benchmarks: cc.compiler_benchmark + c.heap.default + {
+  microservice_benchmarks: cc.compiler_benchmark + {
     suite:: "microservices",
     packages+: {
       "python3": "==3.6.5",
@@ -170,9 +170,9 @@
     },
     local upload = ["bench-uploader.py", "bench-results.json"],
     run+: [
-      self.benchmark_cmd + ["shopcart-jmeter:large", "--"] +      self.extra_vm_args,
+      self.benchmark_cmd + ["shopcart-jmeter:large", "--"] +      self.extra_vm_args + ["-Xms8g",    "-Xmx8g"],
       upload,
-      self.benchmark_cmd + ["petclinic-jmeter:tiny", "--"] +      self.extra_vm_args,
+      self.benchmark_cmd + ["petclinic-jmeter:tiny", "--"] +      self.extra_vm_args + ["-Xms8g",    "-Xmx8g"],
       upload,
       self.benchmark_cmd + ["shopcart-wrk:mixed-tiny", "--"] +    self.extra_vm_args + ["-Xms32m",   "-Xmx112m",  "-XX:ActiveProcessorCount=1",  "-XX:MaxDirectMemorySize=256m"],
       upload,
@@ -196,15 +196,15 @@
       upload,
       self.benchmark_cmd + ["tika-wrk:pdf-medium", "--"] +        self.extra_vm_args + ["-Xms80m",   "-Xmx500m",  "-XX:ActiveProcessorCount=4"],
       upload,
-      self.benchmark_cmd + ["petclinic-wrk:mixed-tiny", "--"] +   self.extra_vm_args + ["-Xms32m",  "-Xmx100m",  "-XX:ActiveProcessorCount=1"],
+      self.benchmark_cmd + ["petclinic-wrk:mixed-tiny", "--"] +   self.extra_vm_args + ["-Xms32m",   "-Xmx100m",  "-XX:ActiveProcessorCount=1"],
       upload,
-      self.benchmark_cmd + ["petclinic-wrk:mixed-small", "--"] +  self.extra_vm_args + ["-Xms40m",  "-Xmx128m",  "-XX:ActiveProcessorCount=2"],
+      self.benchmark_cmd + ["petclinic-wrk:mixed-small", "--"] +  self.extra_vm_args + ["-Xms40m",   "-Xmx128m",  "-XX:ActiveProcessorCount=2"],
       upload,
-      self.benchmark_cmd + ["petclinic-wrk:mixed-medium", "--"] + self.extra_vm_args + ["-Xms80m",  "-Xmx256m",  "-XX:ActiveProcessorCount=4"],
+      self.benchmark_cmd + ["petclinic-wrk:mixed-medium", "--"] + self.extra_vm_args + ["-Xms80m",   "-Xmx256m",  "-XX:ActiveProcessorCount=4"],
       upload,
-      self.benchmark_cmd + ["petclinic-wrk:mixed-large", "--"] +  self.extra_vm_args + ["-Xms320m", "-Xmx1280m", "-XX:ActiveProcessorCount=16"],
+      self.benchmark_cmd + ["petclinic-wrk:mixed-large", "--"] +  self.extra_vm_args + ["-Xms320m",  "-Xmx1280m", "-XX:ActiveProcessorCount=16"],
       upload,
-      self.benchmark_cmd + ["petclinic-wrk:mixed-huge", "--"] +   self.extra_vm_args + ["-Xms640m", "-Xmx3072m", "-XX:ActiveProcessorCount=32"],
+      self.benchmark_cmd + ["petclinic-wrk:mixed-huge", "--"] +   self.extra_vm_args + ["-Xms640m",  "-Xmx3072m", "-XX:ActiveProcessorCount=32"],
       upload
     ],
     timelimit: "7:00:00"
