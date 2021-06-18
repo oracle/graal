@@ -1449,6 +1449,11 @@ final class EngineAccessor extends Accessor {
         public void setSomClassloader(Object polyglotLanguageInstance, ClassLoader cl) {
             ((PolyglotLanguageInstance) polyglotLanguageInstance).somCl = cl;
         }
+
+        @Override
+        public boolean areSomSafetyChecksRelaxed(Object polyglotLanguageInstance) {
+            return ((PolyglotLanguageInstance) polyglotLanguageInstance).getEngine().getEngineOptionValues().get(PolyglotEngineOptions.RelaxSomSafetyChecks);
+        }
     }
 
     abstract static class AbstractClassLoaderSupplier implements Supplier<ClassLoader> {

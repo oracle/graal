@@ -624,5 +624,10 @@ final class LanguageAccessor extends Accessor {
         public void setSomClassloader(TruffleLanguage<?> language, ClassLoader cl) {
             engineAccess().setSomClassloader(language.polyglotLanguageInstance, cl);
         }
+
+        @Override
+        public boolean areSomSafetyChecksRelaxed(TruffleLanguage<?> language) {
+            return engineAccess().areSomSafetyChecksRelaxed(language.polyglotLanguageInstance);
+        }
     }
 }
