@@ -187,6 +187,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
 
     /** Provider list that contains only used providers. */
     private ProviderList filteredProviderList;
+    /** List of providers deemed not to be used by this feature. */
+    private List<Provider> removedProviders;
 
     private boolean shouldFilterProviders = true;
 
@@ -342,9 +344,27 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
             filteredProviders.removeIf(this::shouldRemoveProvider);
             if (filteredProviderList == null || !filteredProviderList.providers().equals(filteredProviders)) {
                 filteredProviderList = ProviderList.newList(filteredProviders.toArray(new Provider[0]));
+                if (Options.TraceSecurityServices.getValue()) {
+                    removedProviders = new ArrayList<>(providerList.providers());
+                    removedProviders.removeIf(provider -> !shouldRemoveProvider(provider));
+                }
             }
         }
         return filteredProviderList;
+    }
+
+    private void traceRemovedProviders() {
+        if (removedProviders == null || removedProviders.isEmpty()) {
+            trace("No security providers have been removed.");
+        } else {
+            trace("The following security providers were deemed to be unused and removed:");
+            SecurityServicesPrinter.indent();
+            trace("ProviderName - ProviderClass");
+            for (Provider p : removedProviders) {
+                trace("%s - %s", p.getName(), p.getClass().getName());
+            }
+            SecurityServicesPrinter.dedent();
+        }
     }
 
     private static void linkSunEC(DuringAnalysisAccess a) {
@@ -638,6 +658,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
+        traceRemovedProviders();
         SecurityServicesPrinter.endTracing();
         shouldFilterProviders = false;
     }
