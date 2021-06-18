@@ -1351,6 +1351,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @JniImpl
     @VmImpl
+    @TruffleBoundary
     public @Host(String[].class) StaticObject JVM_GetProperties() {
         Map<String, String> props = buildPropertiesMap();
         StaticObject array = getMeta().java_lang_String.allocateReferenceArray(props.size() * 2);
@@ -2685,7 +2686,6 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     @VmImpl
-    @JniImpl
     public static long JVM_GetRandomSeedForDumping() {
         return 0L;
     }
