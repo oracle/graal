@@ -744,6 +744,13 @@ public class CompileQueue {
         if (aGraph == null) {
             throw VMError.shouldNotReachHere("Method not parsed during static analysis: " + aMethod.format("%r %H.%n(%p)") + ". Reachable from: " + reason);
         }
+
+        /*
+         * The graph in the analysis universe is no longer necessary once it is transplanted into
+         * the hosted universe.
+         */
+        aMethod.setAnalyzedGraph(null);
+
         StructuredGraph graph = aGraph.copy(universe.lookup(aGraph.method()), getCustomizedOptions(debug), debug);
 
         IdentityHashMap<Object, Object> replacements = new IdentityHashMap<>();
