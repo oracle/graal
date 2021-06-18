@@ -457,7 +457,7 @@ public final class InterpreterToVM implements ContextAccess {
         return field.getDouble(obj);
     }
 
-    public static StaticObject getFieldObject(StaticObject obj, Field field) {
+    public static StaticObject getFieldObject(StaticObject obj, Field.FieldVersion field) {
         return field.getObject(obj);
     }
 

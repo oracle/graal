@@ -163,11 +163,11 @@ public final class ObjectKlass extends Klass {
         System.arraycopy(skFieldTable, 0, fieldTable, 0, skFieldTable.length);
         localFieldTableIndex = skFieldTable.length;
         for (int i = 0; i < lkInstanceFields.length; i++) {
-            Field instanceField = new Field(this, lkInstanceFields[i]);
+            Field instanceField = new Field(this, lkInstanceFields[i], pool);
             fieldTable[localFieldTableIndex + i] = instanceField;
         }
         for (int i = 0; i < lkStaticFields.length; i++) {
-            Field staticField = new Field(this, lkStaticFields[i]);
+            Field staticField = new Field(this, lkStaticFields[i], pool);
             staticFieldTable[i] = staticField;
         }
 
@@ -1104,24 +1104,10 @@ public final class ObjectKlass extends Klass {
         }
         LinkedKlass linkedKlass = LinkedKlass.redefine(parserKlass, getSuperKlass().getLinkedKlass(), interfaces, getLinkedKlass());
 
-        // fields
-        if (!change.getOuterFields().isEmpty()) {
-            LinkedField[] instanceFields = linkedKlass.getInstanceFields();
-            for (Field outerField : change.getOuterFields()) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-
-                // we know that the special field is always at the same index
-                for (int i = 0; i < fieldTable.length; i++) {
-                    Field oldField = fieldTable[i];
-                    if (outerField == oldField) {
-                        for (LinkedField instanceField : instanceFields) {
-                            if (instanceField.getName().equals(outerField.getName())) {
-                                // replace with new field
-                                fieldTable[i] = new Field(this, instanceField);
-                            }
-                        }
-                    }
-                }
+        // changed object type fields handling
+        if (!change.getChangedObjectTypeFields().isEmpty()) {
+            for (Map.Entry<Field, ParserField> entry : change.getChangedObjectTypeFields().entrySet()) {
+                entry.getKey().redefineField(entry.getValue(), pool);
             }
         }
 
