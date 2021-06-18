@@ -135,6 +135,7 @@ public final class EngineData {
     @CompilationFinal public boolean profilingEnabled;
     @CompilationFinal public boolean traceTransferToInterpreter;
     @CompilationFinal public boolean compileAOTOnCreate;
+    @CompilationFinal public boolean firstTierOnly;
 
     // compilation queue options
     @CompilationFinal public boolean priorityQueue;
@@ -261,6 +262,7 @@ public final class EngineData {
         this.compileImmediately = options.get(CompileImmediately);
         this.multiTier = !compileImmediately && options.get(MultiTier);
         this.compileAOTOnCreate = options.get(CompileAOTOnCreate);
+        this.firstTierOnly = options.get(Mode) == EngineModeEnum.LATENCY;
 
         // compilation queue options
         priorityQueue = options.get(PriorityQueue);
