@@ -33,10 +33,10 @@ tar -xzf graalvm-ce-java<version>-linux-aarch64-<version>.tar.gz
 5. To check whether the installation was successful, run the `java -version` command.
 Optionally, you can specify GraalVM as the default JRE or JDK installation in your Java IDE.
 
-For Oracle GraalVM Enterprise Edition users, find the installation instructions [here](https://docs.oracle.com/en/graalvm/enterprise/{{ site.version }}/docs/getting-started/installation-linux-aarch64/).
+For Oracle GraalVM Enterprise Edition users, find the installation instructions [here](https://docs.oracle.com/en/graalvm/enterprise/21/docs/getting-started/installation-linux-aarch64/).
 
 ## Supported Functionalities
 
 The 64-bit GraalVM Community distribution for Linux platforms includes OpenJDK with the GraalVM compiler enabled, the [GraalVM Updater, `gu`](/reference-manual/graalvm-updater/), tool, the JavaScript runtime, and some developer tools (e.g., Chrome inspector based debugger, Visual VM).
-Support for [Native Image](/reference-manual/enterprise-native-image/), Node.js, LLVM and WebAssembly runtimes can be installed with `gu`.
+Support for [Native Image](/reference-manual/native-image/), Node.js, LLVM and WebAssembly runtimes can be installed with `gu`.
 Runtimes for Python, FastR, and Ruby languages are not available in this distribution yet.

@@ -62,4 +62,4 @@ This plugin is automatically configured by `mx ideinit`.
 * IntelliJ Save Actions to automatically format files before saving them.
   https://github.com/dubreuia/intellij-plugin-save-actions
 
-See the [documentation on IDE integration](../compiler/docs/IDEs.md) for further suggestions.
+See the [documentation on IDE integration](https://github.com/graalvm/mx/blob/master/docs/IDE.md) for further suggestions.

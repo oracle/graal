@@ -31,7 +31,7 @@ echo %PATH%
 echo %JAVA_HOME%
 ```
 
-For Oracle GraalVM Enterprise Edition users, find the installation instructions [here](https://docs.oracle.com/en/graalvm/enterprise/{{ site.version }}/docs/getting-started/installation-windows/).
+For Oracle GraalVM Enterprise Edition users, find the installation instructions [here](https://docs.oracle.com/en/graalvm/enterprise/21/docs/getting-started/installation-windows/).
 
 ## Installation Note
 

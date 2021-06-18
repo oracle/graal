@@ -68,20 +68,20 @@ The base distribution of GraalVM Enterprise for macOS platforms includes Oracle 
 The base installation can be extended with:
 
 Tools/Utilities:
-* [Native Image](/en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/enterprise-native-image/) -- a technology to compile an application ahead-of-time into a native executable
-* [LLVM toolchain](/en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/llvm/) -- a set of tools and APIs for compiling native programs to bitcode that can be executed on GraalVM Enterprise
-​* [Java on Truffle](/en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/java-on-truffle/) -- a Java Virtual Machine implementation based on a Truffle interpreter for GraalVM Enterprise
+* [Native Image](/reference-manual/native-image/) -- a technology to compile an application ahead-of-time into a native executable
+* [LLVM toolchain](/reference-manual/llvm/) -- a set of tools and APIs for compiling native programs to bitcode that can be executed on GraalVM Enterprise
+​* [Java on Truffle](/reference-manual/java-on-truffle/) -- a Java Virtual Machine implementation based on a Truffle interpreter for GraalVM Enterprise
 
 Runtimes:
-* [Node.js](/en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/js/) -- Node.js 14.16.1 compatible
-* [Python](/en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/python/) -- Python 3.8.5 compatible
-* [Ruby](/en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/ruby/) -- Ruby 2.7.2 compatible
-* [R](/en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/r/) -- GNU R 4.0.3 compatible
-* [Wasm](/en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/wasm/) -- WebAssembly (Wasm)
+* [Node.js](/reference-manual/js/) -- Node.js 14.16.1 compatible
+* [Python](/reference-manual/python/) -- Python 3.8.5 compatible
+* [Ruby](/reference-manual/ruby/) -- Ruby 2.7.2 compatible
+* [R](/reference-manual/r/) -- GNU R 4.0.3 compatible
+* [Wasm](/reference-manual/wasm/) -- WebAssembly (Wasm)
 ​
 These runtimes are not part of the GraalVM Enterprise base distribution and must be installed separately.
 
 To assist users with installation, GraalVM Enterprise includes
 **GraalVM Updater**, a command line utility to install and manage additional
-functionalities. Proceed to the [installation steps](/en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/graalvm-updater/#component-installation){:target="_blank"}
+functionalities. Proceed to the [installation steps](/reference-manual/graalvm-updater/#component-installation){:target="_blank"}
 to add any necessary language runtime or utility from above to the GraalVM Enterprise core.
