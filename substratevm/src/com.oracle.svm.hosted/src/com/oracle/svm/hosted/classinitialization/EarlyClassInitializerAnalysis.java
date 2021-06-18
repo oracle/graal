@@ -71,24 +71,24 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 /**
  * A simple analysis of class initializers to allow early class initialization before static
  * analysis for classes with simple class initializers.
- * 
+ *
  * This analysis runs before the call tree is completely built, so the scope is limited to the class
  * initializer itself, and methods that can be inlined into the class initializer. Method inlining
  * is an easy way to increase the scope. Two simple tests are used to determine if a class
  * initializer is side-effect free:
- * 
+ *
  * 1) No method calls remain after parsing. This automatically precludes any virtual calls (only
  * direct calls can be inlined during parsing) and any calls to native methods.
- * 
+ *
  * 2) No reads and writes of static fields apart from static fields of the class that is going to be
  * initialized. This ensures that there are no side effects. Note that we do not need to check for
  * instance fields: since no static fields are read, it is guaranteed that only instance fields of
  * newly allocated objects are accessed.
- * 
+ *
  * To avoid parsing a large class initializer graph just to find out that the class cannot be
- * initialized anyway, the parsing is aborted using a {@link ClassInitalizerHasSideEffectsException}
- * as soon as one of the tests fail.
- * 
+ * initialized anyway, the parsing is aborted using a
+ * {@link ClassInitializerHasSideEffectsException} as soon as one of the tests fail.
+ *
  * To make the analysis inter-procedural, {@link ConfigurableClassInitialization} is used when a
  * not-yet-initialized type is found. This can then lead to a recursive invocation of this early
  * class initializer analysis. To avoid infinite recursion when class initializers have cyclic
@@ -167,15 +167,15 @@ final class EarlyClassInitializerAnalysis {
         try (Graph.NodeEventScope nes = graph.trackNodeEvents(new AbortOnDisallowedNode())) {
             builderPhase.apply(graph, context);
             /*
-             * If parsing is not aborted by a ClassInitalizerHasSideEffectsException, it does not
+             * If parsing is not aborted by a ClassInitializerHasSideEffectsException, it does not
              * have any side effect.
              */
             return true;
 
-        } catch (ClassInitalizerHasSideEffectsException ex) {
+        } catch (ClassInitializerHasSideEffectsException ex) {
             return false;
         } catch (BytecodeParser.BytecodeParserError ex) {
-            if (ex.getCause() instanceof ClassInitalizerHasSideEffectsException) {
+            if (ex.getCause() instanceof ClassInitializerHasSideEffectsException) {
                 return false;
             }
             throw ex;
@@ -204,16 +204,16 @@ final class EarlyClassInitializerAnalysis {
                 assert type.isInitialized() : "Type must be initialized now";
                 return false;
             }
-            throw new ClassInitalizerHasSideEffectsException("Reference of class that is not initialized: " + type.toJavaName(true));
+            throw new ClassInitializerHasSideEffectsException("Reference of class that is not initialized: " + type.toJavaName(true));
         }
     }
 
 }
 
-final class ClassInitalizerHasSideEffectsException extends GraalBailoutException {
+final class ClassInitializerHasSideEffectsException extends GraalBailoutException {
     private static final long serialVersionUID = 1L;
 
-    ClassInitalizerHasSideEffectsException(String message) {
+    ClassInitializerHasSideEffectsException(String message) {
         super(message);
     }
 
@@ -249,16 +249,16 @@ final class AbortOnDisallowedNode extends Graph.NodeEventListener {
     @Override
     public void nodeAdded(Node node) {
         if (node instanceof Invoke) {
-            throw new ClassInitalizerHasSideEffectsException("Non-inlined invoke of method: " + ((Invoke) node).getTargetMethod().format("%H.%n(%p)"));
+            throw new ClassInitializerHasSideEffectsException("Non-inlined invoke of method: " + ((Invoke) node).getTargetMethod().format("%H.%n(%p)"));
 
         } else if (node instanceof AccessFieldNode) {
             ResolvedJavaField field = ((AccessFieldNode) node).field();
             ResolvedJavaMethod clinit = ((StructuredGraph) node.graph()).method();
             if (field.isStatic() && !field.getDeclaringClass().equals(clinit.getDeclaringClass())) {
-                throw new ClassInitalizerHasSideEffectsException("Access of static field from a different class: " + field.format("%H.%n"));
+                throw new ClassInitializerHasSideEffectsException("Access of static field from a different class: " + field.format("%H.%n"));
             }
         } else if (node instanceof VMThreadLocalAccess) {
-            throw new ClassInitalizerHasSideEffectsException("Access of thread-local value");
+            throw new ClassInitializerHasSideEffectsException("Access of thread-local value");
         } else if (node instanceof UnsafeAccessNode) {
             throw VMError.shouldNotReachHere("Intrinsification of Unsafe methods is not enabled during bytecode parsing");
         }
