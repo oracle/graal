@@ -134,6 +134,15 @@ class AbstractNativeImageConfig(_with_metaclass(ABCMeta, object)):
             add_exports.append('--add-exports=' + required_module_name + '/' + required_package_name + "=" + target_modules_str)
         return sorted(add_exports)
 
+    def get_add_exports(self, missing_jars):
+        if self.use_modules is None:
+            return ''
+        distributions = self.jar_distributions
+        distributions_transitive = mx.classpath_entries(distributions)
+        distributions_transitive_clean = [entry for entry in distributions_transitive if str(entry) not in missing_jars]
+        required_exports = mx_javamodules.requiredExports(distributions_transitive_clean, base_jdk())
+        return AbstractNativeImageConfig.get_add_exports_list(required_exports)
+
 
 class LauncherConfig(AbstractNativeImageConfig):
     def __init__(self, destination, jar_distributions, main_class, build_args, is_main_launcher=True,
@@ -165,15 +174,6 @@ class LauncherConfig(AbstractNativeImageConfig):
             raise Exception('the relative home path of {} is already set to {} and cannot also be set to {} for {}'.format(
                 language, self.relative_home_paths[language], path, self.destination))
         self.relative_home_paths[language] = path
-
-    def get_add_exports(self, missing_jars):
-        if self.use_modules is None:
-            return ''
-        distributions = self.jar_distributions
-        distributions_transitive = mx.classpath_entries(distributions)
-        distributions_transitive_clean = [entry for entry in distributions_transitive if str(entry) not in missing_jars]
-        required_exports = mx_javamodules.requiredExports(distributions_transitive_clean, base_jdk())
-        return ' '.join(AbstractNativeImageConfig.get_add_exports_list(required_exports))
 
 
 class LanguageLauncherConfig(LauncherConfig):

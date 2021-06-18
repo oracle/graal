@@ -1114,8 +1114,8 @@ class GraalVmNativeProperties(GraalVmProject):
         :type component: mx_sdk.GraalVmComponent | None
         :type image_config: mx_sdk.AbstractNativeImageConfig
         """
-        deps = []
         self.image_config = image_config
+        deps = list(image_config.jar_distributions) if _get_svm_support().is_supported() else []
         super(GraalVmNativeProperties, self).__init__(component, GraalVmNativeProperties.project_name(image_config), deps=deps, **kw_args)
 
     @staticmethod
@@ -1273,6 +1273,11 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
                     raise mx.abort("Profiles for an image must have unique filenames.\nThis is not the case for {}: {}.".format(canonical_name, profiles))
                 build_args += ['--pgo=' + ','.join(('${.}/' + n for n in basenames))]
 
+            build_with_module_path = image_config.use_modules == 'image'
+            if build_with_module_path:
+                export_deps_to_exclude = [str(dep) for dep in mx.classpath_entries(['substratevm:LIBRARY_SUPPORT'])] + list(_known_missing_jars)
+                build_args += image_config.get_add_exports(set(export_deps_to_exclude))
+
             requires = [arg[2:] for arg in build_args if arg.startswith('--language:') or arg.startswith('--tool:') or arg.startswith('--macro:')]
             build_args = [arg for arg in build_args if not (arg.startswith('--language:') or arg.startswith('--tool:') or arg.startswith('--macro:'))]
 
@@ -1292,7 +1297,6 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
             _write_ln(u'ImagePath=' + java_properties_escape("${.}/" + relpath(dirname(graalvm_image_destination), graalvm_location).replace(os.sep, '/')))
             if requires:
                 _write_ln(u'Requires=' + java_properties_escape(' '.join(requires), ' ', len('Requires')))
-            build_with_module_path = image_config.use_modules == 'image'
             if isinstance(image_config, mx_sdk.LauncherConfig):
                 _write_ln(u'ImageClass=' + java_properties_escape(image_config.main_class))
                 if build_with_module_path:
@@ -1899,7 +1903,7 @@ class GraalVmBashLauncherBuildTask(GraalVmNativeImageBuildTask):
             return ''
 
         def _get_add_exports():
-            res = self.subject.native_image_config.get_add_exports(_known_missing_jars)
+            res = ' '.join(self.subject.native_image_config.get_add_exports(_known_missing_jars))
             if mx.is_windows():
                 res = ' '.join(('"{}"'.format(a) for a in res.split()))
             return res
