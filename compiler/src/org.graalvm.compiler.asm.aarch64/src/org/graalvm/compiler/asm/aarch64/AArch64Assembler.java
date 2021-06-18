@@ -637,7 +637,9 @@ public abstract class AArch64Assembler extends Assembler {
 
     public enum SystemRegister {
         FPCR(0b11, 0b011, 0b0100, 0b0100, 0b000),
-        FPSR(0b11, 0b011, 0b0100, 0b0100, 0b001);
+        FPSR(0b11, 0b011, 0b0100, 0b0100, 0b001),
+        /* Counter-timer Virtual Count register */
+        CNTVCT_EL0(0b11, 0b011, 0b110, 0b0000, 0b010);
 
         SystemRegister(int op0, int op1, int crn, int crm, int op2) {
             this.op0 = op0;
@@ -3065,10 +3067,20 @@ public abstract class AArch64Assembler extends Assembler {
         emitInt(ISB.encoding | BarrierOp | BarrierKind.SYSTEM.encoding << BarrierKindOffset);
     }
 
+    /**
+     * C.6.2.194 Move System Register<br>
+     * <p>
+     * Reads an AArch64 System register into a general-purpose register.
+     */
     public void mrs(Register dst, SystemRegister systemRegister) {
         emitInt(MRS.encoding | systemRegister.encoding() | rt(dst));
     }
 
+    /**
+     * C.6.2.196 Move general-purpose register to System Register<br>
+     * <p>
+     * Writes an AArch64 System register from general-purpose register.
+     */
     public void msr(SystemRegister systemRegister, Register src) {
         emitInt(MRS.encoding | systemRegister.encoding() | rt(src));
     }
