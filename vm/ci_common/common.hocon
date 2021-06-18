@@ -17,7 +17,8 @@ common_vm_darwin: ${common_vm} ${darwin} {
   }
   environment: {
     LANG: en_US.UTF-8
-    MACOSX_DEPLOYMENT_TARGET: "10.11"
+    # for compatibility with macOS Sierra
+    MACOSX_DEPLOYMENT_TARGET: "10.12"
   }
   setup: ${common_vm.setup}
 }
