@@ -427,7 +427,10 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
                 }
             }
         }
-        return pass;
+        if (!pass) {
+            throw new AssertionError("Verification of all-instantiated type flows failed");
+        }
+        return true;
     }
 
     public static void updateAssignableTypes(BigBang bb) {

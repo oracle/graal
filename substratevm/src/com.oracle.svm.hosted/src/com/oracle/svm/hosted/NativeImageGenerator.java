@@ -734,12 +734,7 @@ public class NativeImageGenerator {
                         }
                     }
                 }
-
-                /*
-                 * This verification has quadratic complexity, so do it only once after the static
-                 * analysis has finished.
-                 */
-                assert AnalysisType.verifyAssignableTypes(bigbang) : "Verification of all-instantiated type flows failed";
+                assert verifyAssignableTypes(imageName);
 
                 /*
                  * Libraries defined via @CLibrary annotations are added at the end of the list of
@@ -810,6 +805,20 @@ public class NativeImageGenerator {
             throw new InterruptImageBuilding("Exiting image generation because of " + SubstrateOptionsParser.commandArgument(NativeImageOptions.ExitAfterAnalysis, "+"));
         }
         return false;
+    }
+
+    @SuppressWarnings("try")
+    private boolean verifyAssignableTypes(String imageName) {
+        /*
+         * This verification has quadratic complexity, so do it only once after the static analysis
+         * has finished, and can be disabled with an option.
+         */
+        if (SubstrateOptions.DisableTypeIdResultVerification.getValue()) {
+            return true;
+        }
+        try (StopTimer t = new Timer(imageName, "(verifyAssignableTypes)").start()) {
+            return AnalysisType.verifyAssignableTypes(bigbang);
+        }
     }
 
     @SuppressWarnings("try")
