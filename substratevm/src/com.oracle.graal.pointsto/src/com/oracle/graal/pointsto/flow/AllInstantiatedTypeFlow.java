@@ -26,11 +26,16 @@ package com.oracle.graal.pointsto.flow;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.typestate.TypeState;
 
 public final class AllInstantiatedTypeFlow extends TypeFlow<AnalysisType> {
 
     public AllInstantiatedTypeFlow(AnalysisType declaredType) {
         super(declaredType, declaredType);
+    }
+
+    public AllInstantiatedTypeFlow(AnalysisType declaredType, TypeState state) {
+        super(declaredType, declaredType, state);
     }
 
     @Override
