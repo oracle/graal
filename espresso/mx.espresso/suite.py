@@ -387,6 +387,12 @@ suite = {
             "description": "Espresso polyglot API",
             "license": "UPL",
             "javadocType": "api",
+            "moduleInfo" : {
+                "name" : "espresso.polyglot",
+                "exports" : [
+                    "com.oracle.truffle.espresso.polyglot",
+                ]
+            }
         },
 
         "HOTSWAP": {
@@ -397,6 +403,12 @@ suite = {
             "description": "Espresso HotSwap API",
             "license": "UPL",
             "javadocType": "api",
+            "moduleInfo" : {
+                "name" : "espresso.hotswap",
+                "exports" : [
+                    "com.oracle.truffle.espresso.hotswap",
+                ]
+            }
         },
 
         "DACAPO_SCALA_WARMUP": {

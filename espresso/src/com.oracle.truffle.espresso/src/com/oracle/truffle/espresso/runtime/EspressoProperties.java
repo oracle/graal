@@ -32,13 +32,13 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-import com.oracle.truffle.espresso.jdwp.impl.JDWP;
 import org.graalvm.home.HomeFinder;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
+import com.oracle.truffle.espresso.jdwp.impl.JDWP;
 import com.oracle.truffle.espresso.meta.EspressoError;
 
 /**
@@ -275,9 +275,8 @@ public interface EspressoProperties {
 
         Path espressoHome = HomeFinder.getInstance().getLanguageHomes().get(EspressoLanguage.ID);
 
-        // Inject hotswap.jar.
-        // Espresso HotSwap plugin support is currently only available in debugging mode
-        if (EspressoOptions.JDWPOptions != null) {
+        // Inject hotswap.jar
+        if (options.get(EspressoOptions.JDWPOptions) != null) {
             Path hotswapJar = espressoHome.resolve("lib").resolve("hotswap.jar");
             if (Files.isReadable(hotswapJar)) {
                 TruffleLogger.getLogger(EspressoLanguage.ID).fine("Adding HotSwap API to the boot classpath: " + hotswapJar);
@@ -289,7 +288,7 @@ public interface EspressoProperties {
             JDWP.LOGGER.fine(() -> "Espresso HotSwap Plugin support is disabled. HotSwap is only supported in debug mode.");
         }
 
-        // Inject polyglot.jar.
+        // Inject polyglot.jar
         if (options.get(EspressoOptions.Polyglot)) {
             Path polyglotJar = espressoHome.resolve("lib").resolve("polyglot.jar");
             if (Files.isReadable(polyglotJar)) {

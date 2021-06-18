@@ -1224,7 +1224,11 @@ public final class VM extends NativeEnv implements ContextAccess {
         // differ in some cases) are overwritten.
         setProperty.invokeWithConversions(properties, "java.class.path", stringify(props.classpath()));
         setProperty.invokeWithConversions(properties, "java.home", props.javaHome().toString());
-        setProperty.invokeWithConversions(properties, "sun.boot.class.path", stringify(props.bootClasspath()));
+        if (getJavaVersion().java8OrEarlier()) {
+            setProperty.invokeWithConversions(properties, "sun.boot.class.path", stringify(props.bootClasspath()));
+        } else {
+            setProperty.invokeWithConversions(properties, "jdk.boot.class.path.append", stringify(props.bootClasspath()));
+        }
         setProperty.invokeWithConversions(properties, "java.library.path", stringify(props.javaLibraryPath()));
         setProperty.invokeWithConversions(properties, "sun.boot.library.path", stringify(props.bootLibraryPath()));
         setProperty.invokeWithConversions(properties, "java.ext.dirs", stringify(props.extDirs()));
