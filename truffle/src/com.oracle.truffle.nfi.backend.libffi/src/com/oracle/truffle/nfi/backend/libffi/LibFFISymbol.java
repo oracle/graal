@@ -46,7 +46,6 @@ final class LibFFISymbol extends NativePointer {
     private final String name;
 
     static Object create(LibFFILanguage language, LibFFILibrary library, String name, long address) {
-        assert address != 0;
         return language.getTools().createBindableSymbol(new LibFFISymbol(library, name, address));
     }
 
