@@ -43,5 +43,4 @@ public abstract class LLVMDLClose extends LLVMIntrinsic {
         // Opened library can only be closed once the context contain the library has been closed.
         return 0;
     }
-
 }

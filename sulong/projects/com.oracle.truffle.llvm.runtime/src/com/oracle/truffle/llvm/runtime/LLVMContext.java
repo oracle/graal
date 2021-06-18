@@ -119,7 +119,13 @@ public final class LLVMContext {
 
     @CompilationFinal(dimensions = 1) private ContextExtension[] contextExtensions;
     @CompilationFinal private Env env;
-    private final LLVMScope globalScope;
+
+    // The first globalscope is for traversing and finding symbols
+    private final LLVMGlobalScope firstGlobalScope;
+    // The last globalscope is for adding symbols
+    private LLVMGlobalScope lastGlobalScope;
+    // the previous of first is always null, and the next of last is always null.
+
     private final ArrayList<LLVMLocalScope> localScopes;
 
     private final DynamicLinkChain dynamicLinkChain;
@@ -204,7 +210,8 @@ public final class LLVMContext {
         this.internalLibraryNames = Collections.unmodifiableList(Arrays.asList(language.getCapability(PlatformCapability.class).getSulongDefaultLibraries()));
         assert !internalLibraryNames.isEmpty() : "No internal libraries?";
 
-        this.globalScope = new LLVMScope();
+        this.firstGlobalScope = new LLVMGlobalScope();
+        this.lastGlobalScope = firstGlobalScope;
         this.localScopes = new ArrayList<>();
         this.dynamicLinkChain = new DynamicLinkChain();
         this.dynamicLinkChainForScopes = new DynamicLinkChain();
@@ -672,6 +679,27 @@ public final class LLVMContext {
 
     public LLVMScope getGlobalScope() {
         return globalScope;
+    }
+
+    // I need a first and last. Add to last, tranverse from first.
+    private synchronized void addGlobalScope(LLVMGlobalScope scope) {
+        assert scope.getPrev() == null && scope.getNext() == null;
+        if (firstGlobalScope == lastGlobalScope) {
+            firstGlobalScope.setNext(scope);
+            lastGlobalScope = scope;
+            lastGlobalScope.setPrev(firstGlobalScope);
+        } else {
+            lastGlobalScope.setNext(scope);
+            scope.setPrev(lastGlobalScope);
+            lastGlobalScope = scope;
+        }
+    }
+
+    private static synchronized void removeGlobalScope(LLVMGlobalScope scope) {
+        scope.getPrev().setNext(scope.getNext());
+        scope.getNext().setPrev(scope.getPrev());
+        scope.setNext(null);
+        scope.setPrev(null);
     }
 
     @TruffleBoundary
