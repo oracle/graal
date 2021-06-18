@@ -59,7 +59,7 @@ abstract class ShapeGenerator<T> {
     private static final String DELIMITER = "$$";
     private static final AtomicInteger counter = new AtomicInteger();
 
-    abstract StaticShape<T> generateShape(StaticShape<T> parentShape, Collection<StaticProperty> staticProperties);
+    abstract StaticShape<T> generateShape(StaticShape<T> parentShape, Collection<StaticProperty> staticProperties, boolean safetyChecks);
 
     static <T> ShapeGenerator<T> getShapeGenerator(GeneratorClassLoader gcl, StaticShape<T> parentShape) {
         Class<?> parentStorageClass = parentShape.getStorageClass();

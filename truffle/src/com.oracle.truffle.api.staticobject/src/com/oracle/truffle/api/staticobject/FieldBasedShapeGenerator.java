@@ -79,14 +79,14 @@ final class FieldBasedShapeGenerator<T> extends ShapeGenerator<T> {
     }
 
     @Override
-    StaticShape<T> generateShape(StaticShape<T> parentShape, Collection<StaticProperty> staticProperties) {
+    StaticShape<T> generateShape(StaticShape<T> parentShape, Collection<StaticProperty> staticProperties, boolean safetyChecks) {
         Class<?> generatedStorageClass = generateStorage(gcl, storageSuperClass, staticProperties);
         Class<? extends T> generatedFactoryClass = generateFactory(gcl, generatedStorageClass, storageFactoryInterface);
         for (StaticProperty staticProperty : staticProperties) {
             int offset = getObjectFieldOffset(generatedStorageClass, generateFieldName(staticProperty));
             staticProperty.initOffset(offset);
         }
-        return FieldBasedStaticShape.create(generatedStorageClass, generatedFactoryClass);
+        return FieldBasedStaticShape.create(generatedStorageClass, generatedFactoryClass, safetyChecks);
     }
 
     private static int getObjectFieldOffset(Class<?> c, String fieldName) {

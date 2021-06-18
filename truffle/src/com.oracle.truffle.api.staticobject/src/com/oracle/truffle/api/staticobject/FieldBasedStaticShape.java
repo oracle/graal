@@ -43,13 +43,13 @@ package com.oracle.truffle.api.staticobject;
 final class FieldBasedStaticShape<T> extends StaticShape<T> {
     private static final PrivilegedToken TOKEN = new FieldBasedPrivilegedToken();
 
-    private FieldBasedStaticShape(Class<?> storageClass) {
-        super(storageClass, TOKEN);
+    private FieldBasedStaticShape(Class<?> storageClass, boolean safetyChecks) {
+        super(storageClass, safetyChecks, TOKEN);
     }
 
-    static <T> FieldBasedStaticShape<T> create(Class<?> generatedStorageClass, Class<? extends T> generatedFactoryClass) {
+    static <T> FieldBasedStaticShape<T> create(Class<?> generatedStorageClass, Class<? extends T> generatedFactoryClass, boolean safetyChecks) {
         try {
-            FieldBasedStaticShape<T> shape = new FieldBasedStaticShape<>(generatedStorageClass);
+            FieldBasedStaticShape<T> shape = new FieldBasedStaticShape<>(generatedStorageClass, safetyChecks);
             T factory = generatedFactoryClass.cast(UNSAFE.allocateInstance(generatedFactoryClass));
             shape.setFactory(factory);
             return shape;

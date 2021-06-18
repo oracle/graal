@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
+import org.graalvm.options.OptionValues;
 import sun.misc.Unsafe;
 
 import java.lang.reflect.Field;
@@ -88,17 +89,17 @@ import java.util.Objects;
  */
 public abstract class StaticShape<T> {
     protected static final Unsafe UNSAFE = getUnsafe();
-    @CompilationFinal //
-    private static Boolean enableSafeCasts;
     protected final Class<?> storageClass;
+    protected final boolean safetyChecks;
     @CompilationFinal //
     protected T factory;
 
-    StaticShape(Class<?> storageClass, PrivilegedToken privilegedToken) {
-        this.storageClass = storageClass;
+    StaticShape(Class<?> storageClass, boolean safetyChecks, PrivilegedToken privilegedToken) {
         if (privilegedToken == null) {
             throw new AssertionError("Only known implementations can create subclasses of " + StaticShape.class.getName());
         }
+        this.storageClass = storageClass;
+        this.safetyChecks = safetyChecks;
     }
 
     /**
@@ -152,32 +153,15 @@ public abstract class StaticShape<T> {
 
     abstract Object getStorage(Object obj, boolean primitive);
 
-    static <T> T cast(Object obj, Class<T> type) {
-        try {
-            if (safeCasts()) {
+    final <U> U cast(Object obj, Class<U> type) {
+        if (safetyChecks) {
+            try {
                 return type.cast(obj);
-            } else {
-                return SomAccessor.RUNTIME.unsafeCast(obj, type, true, false, false);
+            } catch (ClassCastException e) {
+                throw new IllegalArgumentException("Object '" + obj + "' of class '" + obj.getClass().getName() + "' does not have the expected shape", e);
             }
-        } catch (ClassCastException e) {
-            throw new IllegalArgumentException("Object '" + obj + "' of class '" + obj.getClass().getName() + "' does not have the expected shape", e);
-        }
-    }
-
-    static boolean safeCasts() {
-        if (enableSafeCasts == null) {
-            initializeSafeCasts();
-        }
-        return enableSafeCasts;
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    static synchronized void initializeSafeCasts() {
-        if (enableSafeCasts == null) {
-            // Eventually this will become a context option.
-            // For now we store its value in a static field that is initialized on first usage to
-            // avoid that it gets initialized at native-image build time.
-            enableSafeCasts = Boolean.getBoolean("com.oracle.truffle.api.staticobject.SafeCasts");
+        } else {
+            return SomAccessor.RUNTIME.unsafeCast(obj, type, true, false, false);
         }
     }
 
@@ -318,7 +302,8 @@ public abstract class StaticShape<T> {
 
         private <T> StaticShape<T> build(ShapeGenerator<T> sg, StaticShape<T> parentShape) {
             CompilerAsserts.neverPartOfCompilation();
-            StaticShape<T> shape = sg.generateShape(parentShape, staticProperties.values());
+            boolean safetyChecks = !SomAccessor.LANGUAGE.areSomSafetyChecksRelaxed(language);
+            StaticShape<T> shape = sg.generateShape(parentShape, staticProperties.values(), safetyChecks);
             for (StaticProperty staticProperty : staticProperties.values()) {
                 staticProperty.initShape(shape);
             }

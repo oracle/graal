@@ -145,8 +145,8 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
     }
 
     @Override
-    StaticShape<T> generateShape(StaticShape<T> parentShape, Collection<StaticProperty> staticProperties) {
-        return ArrayBasedStaticShape.create(generatedStorageClass, generatedFactoryClass, (ArrayBasedStaticShape<T>) parentShape, staticProperties, byteArrayOffset, objectArrayOffset, shapeOffset);
+    StaticShape<T> generateShape(StaticShape<T> parentShape, Collection<StaticProperty> staticProperties, boolean safetyChecks) {
+        return ArrayBasedStaticShape.create(generatedStorageClass, generatedFactoryClass, (ArrayBasedStaticShape<T>) parentShape, staticProperties, byteArrayOffset, objectArrayOffset, shapeOffset, safetyChecks);
     }
 
     private static String getStorageConstructorDescriptor(Constructor<?> superConstructor) {
