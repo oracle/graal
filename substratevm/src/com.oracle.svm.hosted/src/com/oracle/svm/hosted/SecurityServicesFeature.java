@@ -243,6 +243,10 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
              * result of SeedGenerator.getSystemEntropy().
              */
             rci.rerunInitialization(clazz(access, "sun.security.provider.AbstractDrbg$SeederHolder"), "for substitutions");
+            if (isWindows()) {
+                /* PRNG.<clinit> creates a Cleaner (see JDK-8210476), which starts its thread. */
+                rci.rerunInitialization(clazz(access, "sun.security.mscapi.PRNG"), "for substitutions");
+            }
         }
 
         if (JavaVersionUtil.JAVA_SPEC > 8) {
