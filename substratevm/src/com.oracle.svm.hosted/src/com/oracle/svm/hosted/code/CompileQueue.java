@@ -370,9 +370,6 @@ public class CompileQueue {
             // Checking @RestrictHeapAccess annotations does not take long enough to justify a
             // timer.
             RestrictHeapAccessAnnotationChecker.check(debug, universe, universe.getMethods());
-            // Checking @MustNotSynchronize annotations does not take long enough to justify a
-            // timer.
-            MustNotSynchronizeAnnotationChecker.check(debug, universe.getMethods());
 
             if (SubstrateOptions.AOTInline.getValue() && SubstrateOptions.AOTTrivialInline.getValue()) {
                 try (StopTimer ignored = new Timer(imageName, "(inline)").start()) {
