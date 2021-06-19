@@ -53,6 +53,7 @@ import org.graalvm.compiler.code.DataSection;
 import org.graalvm.compiler.core.GraalCompiler;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.CompilationIdentifier.Verbosity;
+import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.spi.CodeGenProviders;
 import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
@@ -748,7 +749,13 @@ public class CompileQueue {
          */
         aMethod.setAnalyzedGraph(null);
 
-        StructuredGraph graph = aGraph.copy(universe.lookup(aGraph.method()), getCustomizedOptions(debug), debug);
+        OptionValues options = getCustomizedOptions(debug);
+        /*
+         * The static analysis always needs NodeSourcePosition. But for AOT compilation, we only
+         * need to preserve them when explicitly enabled, to reduce memory pressure.
+         */
+        boolean trackNodeSourcePosition = GraalOptions.TrackNodeSourcePosition.getValue(options);
+        StructuredGraph graph = aGraph.copy(universe.lookup(aGraph.method()), options, debug, trackNodeSourcePosition);
 
         IdentityHashMap<Object, Object> replacements = new IdentityHashMap<>();
         for (Node node : graph.getNodes()) {
@@ -765,7 +772,11 @@ public class CompileQueue {
              * The NodeSourcePosition is not part of the regular "data" fields, so we need to
              * process it manually.
              */
-            node.setNodeSourcePosition((NodeSourcePosition) replaceAnalysisObjects(node.getNodeSourcePosition(), node, replacements, universe));
+            if (trackNodeSourcePosition) {
+                node.setNodeSourcePosition((NodeSourcePosition) replaceAnalysisObjects(node.getNodeSourcePosition(), node, replacements, universe));
+            } else {
+                node.clearNodeSourcePosition();
+            }
         }
 
         return graph;
