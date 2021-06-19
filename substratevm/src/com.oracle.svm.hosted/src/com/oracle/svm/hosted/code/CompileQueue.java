@@ -53,6 +53,7 @@ import org.graalvm.compiler.code.DataSection;
 import org.graalvm.compiler.core.GraalCompiler;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.CompilationIdentifier.Verbosity;
+import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.spi.CodeGenProviders;
 import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
@@ -370,9 +371,6 @@ public class CompileQueue {
             // Checking @RestrictHeapAccess annotations does not take long enough to justify a
             // timer.
             RestrictHeapAccessAnnotationChecker.check(debug, universe, universe.getMethods());
-            // Checking @MustNotSynchronize annotations does not take long enough to justify a
-            // timer.
-            MustNotSynchronizeAnnotationChecker.check(debug, universe.getMethods());
 
             if (SubstrateOptions.AOTInline.getValue() && SubstrateOptions.AOTTrivialInline.getValue()) {
                 try (StopTimer ignored = new Timer(imageName, "(inline)").start()) {
@@ -744,7 +742,20 @@ public class CompileQueue {
         if (aGraph == null) {
             throw VMError.shouldNotReachHere("Method not parsed during static analysis: " + aMethod.format("%r %H.%n(%p)") + ". Reachable from: " + reason);
         }
-        StructuredGraph graph = aGraph.copy(universe.lookup(aGraph.method()), getCustomizedOptions(debug), debug);
+
+        /*
+         * The graph in the analysis universe is no longer necessary once it is transplanted into
+         * the hosted universe.
+         */
+        aMethod.setAnalyzedGraph(null);
+
+        OptionValues options = getCustomizedOptions(debug);
+        /*
+         * The static analysis always needs NodeSourcePosition. But for AOT compilation, we only
+         * need to preserve them when explicitly enabled, to reduce memory pressure.
+         */
+        boolean trackNodeSourcePosition = GraalOptions.TrackNodeSourcePosition.getValue(options);
+        StructuredGraph graph = aGraph.copy(universe.lookup(aGraph.method()), options, debug, trackNodeSourcePosition);
 
         IdentityHashMap<Object, Object> replacements = new IdentityHashMap<>();
         for (Node node : graph.getNodes()) {
@@ -761,7 +772,11 @@ public class CompileQueue {
              * The NodeSourcePosition is not part of the regular "data" fields, so we need to
              * process it manually.
              */
-            node.setNodeSourcePosition((NodeSourcePosition) replaceAnalysisObjects(node.getNodeSourcePosition(), node, replacements, universe));
+            if (trackNodeSourcePosition) {
+                node.setNodeSourcePosition((NodeSourcePosition) replaceAnalysisObjects(node.getNodeSourcePosition(), node, replacements, universe));
+            } else {
+                node.clearNodeSourcePosition();
+            }
         }
 
         return graph;

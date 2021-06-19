@@ -439,7 +439,7 @@ public class NativeImageGeneratorRunner {
                 generator.reportBuildArtifacts(imageName);
             }
             NativeImageGenerator.clearSystemPropertiesForImage();
-            ImageSingletonsSupportImpl.HostedManagement.clearInThread();
+            ImageSingletonsSupportImpl.HostedManagement.clear();
         }
         return 0;
     }
