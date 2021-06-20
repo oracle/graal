@@ -49,7 +49,7 @@ public class StackValueSlotAssignmentPhase extends Phase {
             RecursionAwareStackSlotIdentity slotIdentity = new RecursionAwareStackSlotIdentity(node.slotIdentity, node.getRecursionDepth());
             StackSlotHolder slotHolder = slots.get(slotIdentity);
             if (slotHolder == null) {
-                slotHolder = new StackSlotHolder(node.size);
+                slotHolder = new StackSlotHolder();
                 slots.put(slotIdentity, slotHolder);
             }
 
