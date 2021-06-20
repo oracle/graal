@@ -368,10 +368,31 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         return localEnv;
     }
 
-    boolean finalizeContext(boolean notifyInstruments) {
+    @SuppressWarnings("deprecation")
+    boolean finalizeContext(boolean cancelOperation, boolean notifyInstruments) {
         if (!finalized) {
             finalized = true;
-            LANGUAGE.finalizeContext(env);
+            try {
+                LANGUAGE.finalizeContext(env);
+            } catch (Throwable t) {
+                if (cancelOperation) {
+                    /*
+                     * finalizeContext can run guest code, and so truffle and cancel exceptions are
+                     * expected. However, they must not fail the cancel operation, and so we just
+                     * log them.
+                     */
+                    assert context.state.isClosing();
+                    assert context.state.isInvalidOrClosed();
+                    if (t instanceof com.oracle.truffle.api.TruffleException || t instanceof PolyglotEngineImpl.CancelExecution) {
+                        context.engine.getEngineLogger().log(Level.INFO,
+                                        "Exception was thrown while finalizing a polyglot context that is being cancelled. Such exceptions are expected during cancelling.", t);
+                    } else {
+                        throw t;
+                    }
+                } else {
+                    throw t;
+                }
+            }
             if (eventsEnabled && notifyInstruments) {
                 EngineAccessor.INSTRUMENT.notifyLanguageContextFinalized(context.engine, context.creatorTruffleContext, language.info);
             }
@@ -380,6 +401,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         return false;
     }
 
+    @SuppressWarnings("deprecation")
     boolean dispose() {
         assert Thread.holdsLock(context);
         Env localEnv = this.env;
@@ -388,17 +410,41 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                 // this should show up as internal error so it does not use PolyglotEngineException
                 throw new IllegalStateException("The language did not complete all polyglot threads but should have: " + lazy.activePolyglotThreads);
             }
-            for (PolyglotThreadInfo threadInfo : context.getSeenThreads().values()) {
-                assert threadInfo != PolyglotThreadInfo.NULL;
-                final Thread thread = threadInfo.getThread();
-                if (thread == null) {
-                    continue;
+            try {
+                for (PolyglotThreadInfo threadInfo : context.getSeenThreads().values()) {
+                    assert threadInfo != PolyglotThreadInfo.NULL;
+                    final Thread thread = threadInfo.getThread();
+                    if (thread == null) {
+                        continue;
+                    }
+                    assert !threadInfo.isPolyglotThread(context) : "Polyglot threads must no longer be active in TruffleLanguage.finalizeContext, but polyglot thread " + thread.getName() +
+                                    " is still active.";
+                    if (!threadInfo.isCurrent() && threadInfo.isActive() && !context.state.isInvalidOrClosed()) {
+                        /*
+                         * No other thread than the current thread should be active here. However,
+                         * we do this check only for non-invalid contexts for the following reasons.
+                         * enteredCount for a thread can be incremented on the fast-path even though
+                         * the thread is not allowed to enter in the end because the context is
+                         * invalid and so the enter falls back to the slow path which checks the
+                         * invalid flag. threadInfo.isActive() returns true in this case and we
+                         * cannot tell whether it is because the thread is before the fallback to
+                         * the slow path or it is already fully entered (which would be an error)
+                         * without adding further checks to the fast path, and so we don't perform
+                         * the check for invalid contexts. Non-invalid context can have the same
+                         * problem with the enteredCount of one of its threads, but closing
+                         * non-invalid context in that state is an user error.
+                         */
+                        throw PolyglotEngineException.illegalState("Another main thread was started while closing a polyglot context!");
+                    }
+                    LANGUAGE.disposeThread(localEnv, thread);
                 }
-                assert !threadInfo.isPolyglotThread(context) : "Polyglot threads must no longer be active in TruffleLanguage.finalizeContext, but polyglot thread " + thread.getName() +
-                                " is still active.";
-                LANGUAGE.disposeThread(localEnv, thread);
+                LANGUAGE.dispose(localEnv);
+            } catch (Throwable t) {
+                if (t instanceof com.oracle.truffle.api.TruffleException || t instanceof PolyglotEngineImpl.CancelExecution) {
+                    throw new IllegalStateException("Guest language code was run during language disposal!", t);
+                }
+                throw t;
             }
-            LANGUAGE.dispose(localEnv);
             return true;
         }
         return false;
@@ -415,7 +461,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         assert isInitialized();
         assert Thread.currentThread() == thread;
         synchronized (context) {
-            PolyglotContextImpl prev = context.engine.enter(context, language.engine.getUncachedLocation(), true);
+            PolyglotContextImpl prev = context.engine.enter(context, true, language.engine.getUncachedLocation(), true, false);
             lazy.activePolyglotThreads.add(thread);
             return prev;
         }
@@ -794,7 +840,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         @Override
         public void uncaughtException(Thread t, Throwable e) {
             Env currentEnv = env;
-            if (currentEnv != null) {
+            if (currentEnv != null && !(e instanceof ThreadDeath)) {
                 try {
                     e.printStackTrace(new PrintStream(currentEnv.err()));
                 } catch (Throwable exc) {

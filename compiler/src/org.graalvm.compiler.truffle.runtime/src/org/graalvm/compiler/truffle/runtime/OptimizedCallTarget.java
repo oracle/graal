@@ -625,7 +625,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     private Object executeRootNode(VirtualFrame frame) {
         final boolean inCompiled = CompilerDirectives.inCompilationRoot();
         try {
-            return rootNode.execute(frame);
+            Object toRet = rootNode.execute(frame);
+            TruffleSafepoint.poll(rootNode);
+            return toRet;
         } catch (ControlFlowException t) {
             throw rethrow(profileExceptionType(t));
         } catch (Throwable t) {
@@ -636,7 +638,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             if (CompilerDirectives.inInterpreter() && inCompiled) {
                 notifyDeoptimized(frame);
             }
-            TruffleSafepoint.poll(rootNode);
             // this assertion is needed to keep the values from being cleared as non-live locals
             assert frame != null && this != null;
         }

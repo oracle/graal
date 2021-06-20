@@ -101,17 +101,17 @@ final class PolyglotExceptionImpl {
     private final Value guestObject;
     private final String message;
 
-    PolyglotExceptionImpl(PolyglotEngineImpl engine, boolean polyglotContextCancellingOrCancelled, Throwable original) {
-        this(engine.impl, engine, polyglotContextCancellingOrCancelled, null, original, false, false);
+    PolyglotExceptionImpl(PolyglotEngineImpl engine, PolyglotContextImpl.State polyglotContextState, Throwable original) {
+        this(engine.impl, engine, polyglotContextState, null, original, false, false);
     }
 
     // Exception coming from an instrument
     PolyglotExceptionImpl(PolyglotImpl polyglot, Throwable original) {
-        this(polyglot, null, false, null, original, true, false);
+        this(polyglot, null, null, null, original, true, false);
     }
 
     @SuppressWarnings("deprecation")
-    PolyglotExceptionImpl(PolyglotImpl polyglot, PolyglotEngineImpl engine, boolean polyglotContextCancellingOrCancelled, PolyglotLanguageContext languageContext, Throwable original,
+    PolyglotExceptionImpl(PolyglotImpl polyglot, PolyglotEngineImpl engine, PolyglotContextImpl.State polyglotContextState, PolyglotLanguageContext languageContext, Throwable original,
                     boolean allowInterop,
                     boolean entered) {
         this.polyglot = polyglot;
@@ -127,7 +127,8 @@ final class PolyglotExceptionImpl {
             try {
                 ExceptionType exceptionType = interop.getExceptionType(exception);
                 this.internal = false;
-                this.cancelled = polyglotContextCancellingOrCancelled || isLegacyTruffleExceptionCancelled(exception);
+                this.cancelled = (polyglotContextState != null && (polyglotContextState.isCancelling() || polyglotContextState == PolyglotContextImpl.State.CLOSED_CANCELLED)) ||
+                                isLegacyTruffleExceptionCancelled(exception);
                 this.syntaxError = exceptionType == ExceptionType.PARSE_ERROR;
                 this.exit = exceptionType == ExceptionType.EXIT;
                 this.exitStatus = this.exit ? interop.getExceptionExitStatus(exception) : 0;
@@ -158,7 +159,9 @@ final class PolyglotExceptionImpl {
                 throw CompilerDirectives.shouldNotReachHere(ume);
             }
         } else {
-            this.cancelled = polyglotContextCancellingOrCancelled || (exception instanceof CancelExecution) || isLegacyTruffleExceptionCancelled(exception);
+            this.cancelled = (polyglotContextState != null && (polyglotContextState.isCancelling() || polyglotContextState == PolyglotContextImpl.State.CLOSED_CANCELLED)) ||
+                            (exception instanceof CancelExecution) ||
+                            isLegacyTruffleExceptionCancelled(exception);
             /*
              * When polyglot context is invalid, we cannot obtain the exception type from
              * InterruptExecution exception via interop. Please note that in this case the

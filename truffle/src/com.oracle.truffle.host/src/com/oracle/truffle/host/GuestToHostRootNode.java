@@ -74,7 +74,6 @@ abstract class GuestToHostRootNode extends RootNode {
         return boundaryName;
     }
 
-    @SuppressWarnings("deprecation")
     @Override
     public Object execute(VirtualFrame frame) {
         Object[] arguments = frame.getArguments();

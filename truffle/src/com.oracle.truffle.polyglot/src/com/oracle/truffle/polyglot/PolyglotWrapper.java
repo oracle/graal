@@ -103,10 +103,14 @@ interface PolyglotWrapper {
         } else if (receiver == obj) {
             return true;
         }
+
         PolyglotLanguageContext languageContext = (PolyglotLanguageContext) context;
 
-        if (languageContext != null && (languageContext.context.closed || languageContext.context.invalid)) {
-            return false;
+        if (languageContext != null) {
+            PolyglotContextImpl.State localContextState = languageContext.context.state;
+            if (localContextState.isInvalidOrClosed()) {
+                return false;
+            }
         }
         Object prev = null;
         try {
@@ -130,15 +134,17 @@ interface PolyglotWrapper {
                 // ignore errors leaving we cannot propagate them.
             }
         }
-
     }
 
     @TruffleBoundary
     static int hashCode(Object context, Object receiver) {
         PolyglotLanguageContext languageContext = (PolyglotLanguageContext) context;
 
-        if (languageContext != null && (languageContext.context.closed || languageContext.context.invalid)) {
-            return System.identityHashCode(receiver);
+        if (languageContext != null) {
+            PolyglotContextImpl.State localContextState = languageContext.context.state;
+            if (localContextState.isInvalidOrClosed()) {
+                return System.identityHashCode(receiver);
+            }
         }
         Object prev = null;
         try {

@@ -67,6 +67,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestName;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -76,7 +77,7 @@ import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 
-public class CancellationTest {
+public class InnerAndOuterContextCancellationTest {
 
     private Engine engine;
     private Context context;
@@ -234,6 +235,11 @@ public class CancellationTest {
         instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class).build(), new ExecutionEventListener() {
             @Override
             public void onEnter(EventContext c, VirtualFrame frame) {
+                onEnterBoundary();
+            }
+
+            @CompilerDirectives.TruffleBoundary
+            private void onEnterBoundary() {
                 TruffleLanguage.Env itlEnv = InstrumentationTestLanguage.currentEnv();
                 innerTruffleContext.set(itlEnv.getContext());
                 cancelLatch.countDown();
@@ -402,6 +408,7 @@ public class CancellationTest {
     }
 
     private static Source statements(int count) {
-        return Source.newBuilder(InstrumentationTestLanguage.ID, "LOOP(" + (count == Integer.MAX_VALUE ? "infinity" : count) + ", STATEMENT)", CancellationTest.class.getSimpleName()).buildLiteral();
+        return Source.newBuilder(InstrumentationTestLanguage.ID, "LOOP(" + (count == Integer.MAX_VALUE ? "infinity" : count) + ", STATEMENT)",
+                        InnerAndOuterContextCancellationTest.class.getSimpleName()).buildLiteral();
     }
 }

@@ -51,6 +51,7 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
@@ -184,17 +185,12 @@ final class PolyglotLimits {
                 }
             }
             if (limitReached) {
-                String message = String.format("Statement count limit of %s exceeded. Statements executed %s.",
-                                limit, actualCount);
-                boolean invalidated = context.invalidate(true, message);
-                if (invalidated) {
-                    context.close(true);
-                    RuntimeException e = limits.notifyEvent(context);
-                    if (e != null) {
-                        throw e;
-                    }
-                    throw context.createCancelException(eventContext.getInstrumentedNode());
+                context.cancel(true, String.format("Statement count limit of %s exceeded. Statements executed %s.", limit, actualCount));
+                RuntimeException e = limits.notifyEvent(context);
+                if (e != null) {
+                    throw e;
                 }
+                TruffleSafepoint.pollHere(eventContext.getInstrumentedNode());
             }
 
         }
