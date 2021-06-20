@@ -204,13 +204,13 @@ public final class ClassfileParser {
 
     void checkInvokeDynamicSupport(Tag tag) {
         if (majorVersion < INVOKEDYNAMIC_MAJOR_VERSION) {
-            stream.classFormatError("Class file version does not support constant tag %d", tag.getValue());
+            throw stream.classFormatError("Class file version does not support constant tag %d", tag.getValue());
         }
     }
 
     void checkDynamicConstantSupport(Tag tag) {
         if (majorVersion < DYNAMICCONSTANT_MAJOR_VERSION) {
-            stream.classFormatError("Class file version does not support constant tag %d", tag.getValue());
+            throw stream.classFormatError("Class file version does not support constant tag %d", tag.getValue());
         }
     }
 

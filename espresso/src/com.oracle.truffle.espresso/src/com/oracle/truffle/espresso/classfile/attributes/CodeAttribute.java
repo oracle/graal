@@ -26,9 +26,7 @@ package com.oracle.truffle.espresso.classfile.attributes;
 import static com.oracle.truffle.espresso.classfile.ClassfileParser.JAVA_6_VERSION;
 
 import java.io.PrintStream;
-import java.util.Arrays;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -46,9 +44,6 @@ public final class CodeAttribute extends Attribute {
 
     private final int maxStack;
     private final int maxLocals;
-
-    @CompilationFinal(dimensions = 1) //
-    private volatile byte[] code = null;
 
     @CompilationFinal(dimensions = 1) //
     private final byte[] originalCode; // no bytecode patching
@@ -84,18 +79,6 @@ public final class CodeAttribute extends Attribute {
 
     public Attribute[] getAttributes() {
         return attributes;
-    }
-
-    public byte[] getCode() {
-        if (code == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            synchronized (this) {
-                if (code == null) {
-                    code = Arrays.copyOf(originalCode, originalCode.length);
-                }
-            }
-        }
-        return code;
     }
 
     public byte[] getOriginalCode() {
@@ -158,11 +141,7 @@ public final class CodeAttribute extends Attribute {
         return majorVersion;
     }
 
-    public CodeAttribute forceSplit() {
-        return new CodeAttribute(getName(), maxStack, maxLocals, code.clone(), exceptionHandlerEntries, attributes, majorVersion);
-    }
-
-    public void print(Klass klass, PrintStream out) {
+    public void print(Klass klass, byte[] code, PrintStream out) {
         try {
             new BytecodeStream(code).printBytecode(klass, out);
         } catch (Throwable e) {

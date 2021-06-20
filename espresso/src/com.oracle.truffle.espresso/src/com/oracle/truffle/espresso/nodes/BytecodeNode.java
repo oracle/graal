@@ -271,7 +271,6 @@ import com.oracle.truffle.espresso.bytecode.MapperBCI;
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.classfile.attributes.BootstrapMethodsAttribute;
-import com.oracle.truffle.espresso.classfile.attributes.CodeAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.LineNumberTableAttribute;
 import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.DoubleConstant;
@@ -406,18 +405,18 @@ public final class BytecodeNode extends EspressoMethodNode {
 
     private final LivenessAnalysis livenessAnalysis;
 
-    public BytecodeNode(MethodVersion method, FrameDescriptor frameDescriptor) {
-        super(method);
+    public BytecodeNode(MethodVersion methodVersion, FrameDescriptor frameDescriptor) {
+        super(methodVersion);
         CompilerAsserts.neverPartOfCompilation();
-        CodeAttribute codeAttribute = method.getCodeAttribute();
-        this.bs = new BytecodeStream(codeAttribute.getCode());
-        this.stackOverflowErrorInfo = getMethod().getSOEHandlerInfo();
+        Method method = methodVersion.getMethod();
+        this.bs = new BytecodeStream(methodVersion.getCode());
+        this.stackOverflowErrorInfo = method.getSOEHandlerInfo();
         this.primitivesSlot = frameDescriptor.addFrameSlot("primitives", FrameSlotKind.Object);
         this.refsSlot = frameDescriptor.addFrameSlot("refs", FrameSlotKind.Object);
         this.bciSlot = frameDescriptor.addFrameSlot("bci", FrameSlotKind.Int);
         this.noForeignObjects = Truffle.getRuntime().createAssumption("noForeignObjects");
         this.implicitExceptionProfile = false;
-        this.livenessAnalysis = LivenessAnalysis.analyze(method.getMethod());
+        this.livenessAnalysis = LivenessAnalysis.analyze(method);
     }
 
     public BytecodeNode(BytecodeNode copy) {
@@ -1743,7 +1742,7 @@ public final class BytecodeNode extends EspressoMethodNode {
         CompilerAsserts.neverPartOfCompilation();
         Objects.requireNonNull(node);
         if (sparseNodes == QuickNode.EMPTY_ARRAY) {
-            sparseNodes = new QuickNode[getMethodVersion().getCodeAttribute().getCode().length];
+            sparseNodes = new QuickNode[getMethodVersion().getCode().length];
         }
         sparseNodes[curBCI] = insert(node);
     }
@@ -1751,7 +1750,7 @@ public final class BytecodeNode extends EspressoMethodNode {
     private void patchBci(int bci, byte opcode, char nodeIndex) {
         CompilerAsserts.neverPartOfCompilation();
         assert Bytecodes.isQuickened(opcode);
-        byte[] code = getMethodVersion().getCodeAttribute().getCode();
+        byte[] code = getMethodVersion().getCode();
 
         int oldBC = code[bci];
         if (opcode == (byte) QUICK) {
