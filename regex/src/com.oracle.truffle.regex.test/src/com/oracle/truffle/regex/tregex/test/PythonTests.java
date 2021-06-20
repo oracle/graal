@@ -157,4 +157,9 @@ public class PythonTests extends RegexTestBase {
         test("a(?<=(a))??", "", "aa", 0, true, 0, 1, -1, -1);
         test("a(?<=(a))??\\1", "", "aa", 0, true, 0, 2, 0, 1);
     }
+
+    @Test
+    public void gr32018() {
+        test("\\s*(?:#\\s*)?$", "y", new String(new char[1000000]).replace('\0', '\t') + "##", 0, false);
+    }
 }

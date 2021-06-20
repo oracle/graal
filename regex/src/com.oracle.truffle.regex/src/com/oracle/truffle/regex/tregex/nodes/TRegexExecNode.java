@@ -101,7 +101,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
         this.backtrackingMode = nfaExecutor instanceof TRegexBacktrackingNFAExecutorNode;
         this.regressionTestMode = !backtrackingMode && ast.getSource().getOptions().isRegressionTestMode();
         this.runnerNode = nfaNode;
-        if (ast.getFlags().isSticky() && ast.getWrappedPrefixLength() > 0) {
+        if (ast.getFlags().isSticky()) {
             this.stickyCheckNode = RegexResultGetStartNode.create();
         }
         if (this.regressionTestMode) {
