@@ -50,8 +50,8 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
 
   darwin: self.common + {
     environment+: {
-      // for compatibility with macOS El Capitan
-      MACOSX_DEPLOYMENT_TARGET: '10.11',
+      // for compatibility with macOS Sierra
+      MACOSX_DEPLOYMENT_TARGET: '10.12',
     },
     capabilities: ['darwin', 'amd64'],
   },
