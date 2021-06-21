@@ -24,13 +24,13 @@
  */
 package com.oracle.svm.hosted.classinitialization;
 
+import static com.oracle.svm.hosted.NativeImageOptions.DiagnosticMode;
+
 import java.util.Arrays;
 import java.util.Optional;
 import java.util.function.Consumer;
 
 import org.graalvm.collections.Pair;
-
-import static com.oracle.svm.hosted.NativeImageOptions.DiagnosticMode;
 
 /**
  * The initialization kind for a class. The order of the enum values matters, {@link #max} depends
@@ -71,8 +71,10 @@ public enum InitKind {
             return name -> {
                 if (name.equals("") && !DiagnosticMode.getValue()) {
                     System.err.println(
-                                    "--initialize-at-build-time without arguments has been deprecated when not using --diagnostics-mode. With GraalVM 22.0.0. --initialize-at-build-time will only work with --diagnostics-mode for debugging purposes.\n" +
-                                            "The reason for deprecation is that --initalize-at-build-time does not compose, i.e., a single library can make assumptions that the whole classpath can be safely initialized at build time; that assumption is often incorrect.");
+                                    "--initialize-at-build-time without arguments has been deprecated when not using --diagnostics-mode. With GraalVM 22.0.0." +
+                                                    " --initialize-at-build-time will only work with --diagnostics-mode for debugging purposes.\n" +
+                                                    "The reason for deprecation is that --initalize-at-build-time does not compose, i.e., a single library can make assumptions that the whole classpath can be safely initialized at build time;" +
+                                                    " that assumption is often incorrect.");
                 }
                 support.initializeAtBuildTime(name, reason(origin, name));
             };

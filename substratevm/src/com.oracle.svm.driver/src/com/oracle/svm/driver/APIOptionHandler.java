@@ -40,7 +40,6 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.core.SubstrateOptions;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.options.OptionDescriptor;
 import org.graalvm.compiler.options.OptionDescriptors;
@@ -260,8 +259,6 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     boolean consume(ArgumentQueue args) {
         String headArg = args.peek();
 
-        apiOptionDriverActions(headArg);
-
         String translatedOption = translateOption(headArg);
         if (translatedOption != null) {
             args.poll();
@@ -279,14 +276,6 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             }
         }
         return false;
-    }
-
-    private void apiOptionDriverActions(String headArg) {
-        if ("--diagnostics-mode".equals(headArg)) {
-            nativeImage.setDiagnostics(true);
-            nativeImage.addPlainImageBuilderArg("-H:DiagnosticsDir=" + nativeImage.diagnosticsDir);
-            System.out.println("# Diagnostic mode enabled: image-build reports are saved to " + nativeImage.diagnosticsDir);
-        }
     }
 
     String translateOption(String arg) {

@@ -189,7 +189,6 @@ public class NativeImageOptions {
     public static final HostedOptionKey<String> DiagnosticsDir = new HostedOptionKey<>(
                     Paths.get("reports", ReportUtils.timeStampedFileName("diagnostics", "")).toString());
 
-    @APIOption(name = "diagnostics-mode")//
     @Option(help = "Enables the diagnostic mode.")//
     public static final HostedOptionKey<Boolean> DiagnosticMode = new HostedOptionKey<Boolean>(false) {
         @Override

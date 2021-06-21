@@ -191,6 +191,12 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 }
                 nativeImage.addExcludeConfig(Pattern.compile(excludeJar), Pattern.compile(excludeConfig));
                 return true;
+            case "--diagnostics-mode":
+                args.poll();
+                nativeImage.setDiagnostics(true);
+                nativeImage.addPlainImageBuilderArg("-H:DiagnosticsDir=" + nativeImage.diagnosticsDir);
+                System.out.println("# Diagnostics mode enabled: image-build reports are saved to " + nativeImage.diagnosticsDir);
+                return true;
         }
 
         String debugAttach = "--debug-attach";

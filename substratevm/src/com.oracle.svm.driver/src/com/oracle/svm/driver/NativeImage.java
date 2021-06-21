@@ -1576,7 +1576,7 @@ public class NativeImage {
             List<String> leftoverArgs = new ArrayList<>();
             while (!args.isEmpty()) {
                 boolean consumed = false;
-                for (int index = 0; index < optionHandlers.size(); index++) {
+                for (int index = optionHandlers.size() - 1; index >= 0; --index) {
                     OptionHandler<? extends NativeImage> handler = optionHandlers.get(index);
                     int numArgs = args.size();
                     if (handler.consume(args)) {
