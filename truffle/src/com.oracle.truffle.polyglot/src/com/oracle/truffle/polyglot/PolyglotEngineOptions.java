@@ -45,6 +45,9 @@ import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionStability;
 
 import com.oracle.truffle.api.Option;
+import org.graalvm.options.OptionType;
+
+import java.util.function.Function;
 
 @Option.Group(PolyglotEngineImpl.OPTION_GROUP_ENGINE)
 final class PolyglotEngineOptions {
@@ -104,4 +107,28 @@ final class PolyglotEngineOptions {
     @Option(category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, help = "" +
                     "On property accesses, the Static Object Model does not perform shape checks and uses unsafe casts")//
     static final OptionKey<Boolean> RelaxSomSafetyChecks = new OptionKey<>(false);
+
+    enum SomStrategies {
+        DEFAULT,
+        ARRAY_BASED,
+        FIELD_BASED
+    }
+
+    @Option(category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, help = "" +
+                    "Set the storage strategy used by the Static Object Model.")//
+    static final OptionKey<SomStrategies> SomStorageStrategy = new OptionKey<>(SomStrategies.DEFAULT, new OptionType<>("strategy", new Function<String, SomStrategies>() {
+        @Override
+        public SomStrategies apply(String s) {
+            switch (s.toLowerCase().replace('_', '-')) {
+                case "default":
+                    return SomStrategies.DEFAULT;
+                case "array-based":
+                    return SomStrategies.ARRAY_BASED;
+                case "field-based":
+                    return SomStrategies.FIELD_BASED;
+                default:
+                    throw new IllegalArgumentException("Unexpected value for engine option 'SomStorageStrategy': '" + s + "'. Accepted values are: 'default', 'array-based', and 'field-based'.");
+            }
+        }
+    }));
 }
