@@ -90,8 +90,8 @@ public final class FinalizationSupport {
 
     static {
         try {
-            Class<?> PUBLIC_FINAL_REFERENCE = injectClassInBootClassLoader("java/lang/ref/PublicFinalReference", PUBLIC_FINAL_REFERENCE_BYTES);
-            EspressoError.guarantee("java.lang.ref.FinalReference".equals(PUBLIC_FINAL_REFERENCE.getSuperclass().getName()),
+            Class<?> publicFinalReference = injectClassInBootClassLoader("java/lang/ref/PublicFinalReference", PUBLIC_FINAL_REFERENCE_BYTES);
+            EspressoError.guarantee("java.lang.ref.FinalReference".equals(publicFinalReference.getSuperclass().getName()),
                             "Injected class does not subclass FinalReference");
         } catch (Exception e) {
             throw EspressoError.shouldNotReachHere("Error injecting PublicFinalReference in the host (version " + HostJavaVersionUtil.JAVA_SPEC + ")", e);
