@@ -58,6 +58,7 @@ import java.util.concurrent.Future;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ThreadLocalAction;
 import com.oracle.truffle.api.TruffleLogger;
@@ -72,14 +73,29 @@ final class PolyglotThreadLocalActions {
     private static final ThreadLocalHandshake TL_HANDSHAKE = EngineAccessor.ACCESSOR.runtimeSupport().getThreadLocalHandshake();
     private final PolyglotContextImpl context;
     private final Map<AbstractTLHandshake, Void> activeEvents = new LinkedHashMap<>();
-    private final TruffleLogger logger;
+    @CompilationFinal private TruffleLogger logger;
     private long idCounter;
-    private final boolean traceActions;
-    private final List<PolyglotStatisticsAction> statistics;
-    private final Timer intervalTimer;
+    @CompilationFinal private boolean traceActions;
+    private List<PolyglotStatisticsAction> statistics;  // final after context patching
+    private Timer intervalTimer;  // final after context patching
 
     PolyglotThreadLocalActions(PolyglotContextImpl context) {
         this.context = context;
+        initialize();
+    }
+
+    void prepareContextStore() {
+        if (intervalTimer != null) {
+            intervalTimer.cancel();
+            intervalTimer = null;
+        }
+    }
+
+    void onContextPatch() {
+        initialize();
+    }
+
+    private void initialize() {
         OptionValuesImpl options = this.context.engine.getEngineOptionValues();
         if (options.get(PolyglotEngineOptions.SafepointALot)) {
             statistics = new ArrayList<>();
