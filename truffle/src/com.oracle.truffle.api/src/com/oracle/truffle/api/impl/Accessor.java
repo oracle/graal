@@ -609,6 +609,8 @@ public abstract class Accessor {
         public abstract void setSomClassloader(Object polyglotLanguageInstance, ClassLoader cl);
 
         public abstract boolean areSomSafetyChecksRelaxed(Object polyglotLanguageInstance);
+
+        public abstract String getSomStorageStrategy(Object polyglotLanguageInstance);
     }
 
     public abstract static class LanguageSupport extends Support {
@@ -764,6 +766,8 @@ public abstract class Accessor {
         public abstract void setSomClassloader(TruffleLanguage<?> language, ClassLoader cl);
 
         public abstract boolean areSomSafetyChecksRelaxed(TruffleLanguage<?> language);
+
+        public abstract String getSomStorageStrategy(TruffleLanguage<?> language);
     }
 
     public abstract static class InstrumentSupport extends Support {

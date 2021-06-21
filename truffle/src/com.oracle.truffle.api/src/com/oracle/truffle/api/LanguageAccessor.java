@@ -629,5 +629,10 @@ final class LanguageAccessor extends Accessor {
         public boolean areSomSafetyChecksRelaxed(TruffleLanguage<?> language) {
             return engineAccess().areSomSafetyChecksRelaxed(language.polyglotLanguageInstance);
         }
+
+        @Override
+        public String getSomStorageStrategy(TruffleLanguage<?> language) {
+            return engineAccess().getSomStorageStrategy(language.polyglotLanguageInstance);
+        }
     }
 }

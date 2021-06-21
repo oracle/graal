@@ -1454,6 +1454,11 @@ final class EngineAccessor extends Accessor {
         public boolean areSomSafetyChecksRelaxed(Object polyglotLanguageInstance) {
             return ((PolyglotLanguageInstance) polyglotLanguageInstance).getEngine().getEngineOptionValues().get(PolyglotEngineOptions.RelaxSomSafetyChecks);
         }
+
+        @Override
+        public String getSomStorageStrategy(Object polyglotLanguageInstance) {
+            return ((PolyglotLanguageInstance) polyglotLanguageInstance).getEngine().getEngineOptionValues().get(PolyglotEngineOptions.SomStorageStrategy).name().toLowerCase().replace('_', '-');
+        }
     }
 
     abstract static class AbstractClassLoaderSupplier implements Supplier<ClassLoader> {
