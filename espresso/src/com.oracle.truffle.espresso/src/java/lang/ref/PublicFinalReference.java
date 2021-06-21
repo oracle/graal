@@ -32,11 +32,11 @@ import com.oracle.truffle.espresso.substitutions.Target_java_lang_ref_Reference;
  *
  * <p>
  * This class is just a placeholder, not usable as-is. A modified version without the throwing
- * static initializer is injected via {@link sun.misc.Unsafe#defineClass}. The injected version
- * subclasses {@link FinalReference}.
+ * static initializer is injected in the boot class loader. The injected version subclasses
+ * {@link FinalReference}.
  *
  * @see Target_java_lang_ref_Reference
- * @see com.oracle.truffle.espresso.FinalizationFeature
+ * @see com.oracle.truffle.espresso.FinalizationSupport
  * @see EspressoReference
  */
 public abstract class PublicFinalReference<T> {
