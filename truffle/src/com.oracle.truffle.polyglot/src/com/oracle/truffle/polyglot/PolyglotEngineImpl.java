@@ -1656,7 +1656,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                 synchronized (this.lock) {
                     removeContext(context);
                 }
-                if (patchResult) {
+                if (patchResult && arePreInitializedLanguagesCompatible(context, config)) {
                     Collection<PolyglotInstrument> toCreate = null;
                     for (PolyglotInstrument instrument : idToInstrument.values()) {
                         if (instrument.getOptionValuesIfExists() != null) {
@@ -1687,6 +1687,22 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             }
         }
         return context;
+    }
+
+    private static boolean arePreInitializedLanguagesCompatible(PolyglotContextImpl context, PolyglotContextConfig config) {
+        Map<String, PolyglotLanguageContext> preInitializedLanguages = new HashMap<>();
+        for (PolyglotLanguageContext languageContext : context.contexts) {
+            if (languageContext.isInitialized() && !languageContext.language.isHost()) {
+                preInitializedLanguages.put(languageContext.language.getId(), languageContext);
+            }
+        }
+        for (String allowedLanguage : config.allowedPublicLanguages) {
+            PolyglotLanguageContext languageContext = preInitializedLanguages.remove(allowedLanguage);
+            if (languageContext != null) {
+                preInitializedLanguages.keySet().removeAll(languageContext.getAccessibleLanguages(true).keySet());
+            }
+        }
+        return preInitializedLanguages.isEmpty();
     }
 
     private void checkTruffleRuntime() {
