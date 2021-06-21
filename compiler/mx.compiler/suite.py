@@ -2176,7 +2176,7 @@ suite = {
           "org.graalvm.compiler.options                to jdk.internal.vm.compiler.management,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.librarysupport",
           "org.graalvm.compiler.phases.common          to org.graalvm.nativeimage.agent.tracing",
           "org.graalvm.compiler.phases.common.jmx      to jdk.internal.vm.compiler.management",
-          "org.graalvm.compiler.serviceprovider        to jdk.internal.vm.compiler.management,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.agent.jvmtibase",
+          "org.graalvm.compiler.serviceprovider        to jdk.internal.vm.compiler.management,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.agent.jvmtibase,org.graalvm.nativeimage.agent.diagnostics",
           "org.graalvm.compiler.truffle.jfr            to jdk.internal.vm.compiler.truffle.jfr",
           "org.graalvm.libgraal                        to jdk.internal.vm.compiler.management",
           "org.graalvm.util                            to jdk.internal.vm.compiler.management",
