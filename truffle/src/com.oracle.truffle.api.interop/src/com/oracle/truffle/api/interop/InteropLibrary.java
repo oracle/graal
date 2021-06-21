@@ -56,6 +56,7 @@ import com.oracle.truffle.api.library.GenerateLibrary.Abstract;
 import com.oracle.truffle.api.library.GenerateLibrary.DefaultExport;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.LibraryFactory;
+import com.oracle.truffle.api.library.ReflectionLibrary;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LanguageInfo;
@@ -919,7 +920,7 @@ public abstract class InteropLibrary extends Library {
 
     /**
      * Reads the value for the specified key.
-     * 
+     *
      * @throws UnsupportedMessageException if the receiver does not support reading at all. An empty
      *             receiver with no readable hash entries supports the read operation (even though
      *             there is nothing to read), therefore it throws {@link UnknownKeyException} for
@@ -939,7 +940,7 @@ public abstract class InteropLibrary extends Library {
     /**
      * Reads the value for the specified key or returns the {@code defaultValue} when the mapping
      * for the specified key does not exist or is not readable.
-     * 
+     *
      * @throws UnsupportedMessageException if the receiver does not support reading at all. An empty
      *             receiver with no readable hash entries supports the read operation (even though
      *             there is nothing to read), therefore it returns the {@code defaultValue} for all
@@ -2141,7 +2142,7 @@ public abstract class InteropLibrary extends Library {
      * The following example shows how the {@link #hasIteratorNextElement(Object)
      * hasIteratorNextElement} message can be emulated in languages where iterators only have a next
      * method and throw an exception if there are no further elements.
-     * 
+     *
      * <pre>
      * &#64;ExportLibrary(InteropLibrary.class)
      * abstract class InteropIterator implements TruffleObject {
@@ -2874,6 +2875,47 @@ public abstract class InteropLibrary extends Library {
 
     static final LibraryFactory<InteropLibrary> FACTORY = LibraryFactory.resolve(InteropLibrary.class);
     static final InteropLibrary UNCACHED = FACTORY.getUncached();
+
+    /**
+     * Utility to detect valid interop value. An interop value is a value that can be passed for any
+     * Object typed parameter or return type. This method is intended to be used for assertions.
+     * This method will be extend with more checked types as the protocol grows.
+     * <p>
+     * It is not recommended to make assumptions about the types of interop values. It is
+     * recommended to exclusively use the interop protocol to check for types. However it sometimes
+     * is necessary to make such assumptions for performance reasons. To verify that these
+     * assumptions continue to hold this method can be used.
+     *
+     * @since 21.3
+     */
+    @TruffleBoundary
+    public static boolean isValidValue(Object receiver) {
+        return receiver instanceof TruffleObject || receiver instanceof Integer || receiver instanceof Double //
+                        || receiver instanceof Long || receiver instanceof Float //
+                        || receiver instanceof Boolean || receiver instanceof Character //
+                        || receiver instanceof Byte || receiver instanceof Short //
+                        || receiver instanceof String;
+    }
+
+    /**
+     * Utility to detect valid interop protocol value. An interop protocol value is a value that can
+     * be passed for any parameter or return type of the protocol. This method is intended to be
+     * used for assertions, in particular in combination with {@link ReflectionLibrary}. This method
+     * will be extend with more checked types as the protocol grows.
+     * <p>
+     * It is not recommended to make assumptions about the types of interop values. It is
+     * recommended to exclusively use the interop protocol to check for types. However it sometimes
+     * is necessary to make such assumptions for performance reasons. To verify that these
+     * assumptions continue to hold this method can be used.
+     *
+     * @since 21.3
+     */
+    @TruffleBoundary
+    public static boolean isValidProtocolValue(Object value) {
+        return isValidValue(value) || value instanceof ByteOrder || value instanceof Instant || value instanceof ZoneId || value instanceof LocalDate ||
+                        value instanceof LocalTime || value instanceof Duration || value instanceof ExceptionType || value instanceof SourceSection || value instanceof Class<?> ||
+                        value instanceof TriState || value instanceof InteropLibrary || value instanceof Object[];
+    }
 
     static class Asserts extends InteropLibrary {
 

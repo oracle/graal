@@ -149,7 +149,7 @@ final class HostProxy implements TruffleObject {
         if (proxy instanceof ProxyInstantiable) {
             Value[] convertedArguments = cache.language.access.toValues(context.internalContext, arguments);
             Object result = guestToHostCall(library, cache.instantiate, context, proxy, convertedArguments);
-            return context.toGuestValue(library, result);
+            return context.toGuestValue(result);
         }
         throw UnsupportedMessageException.create();
     }
@@ -167,7 +167,7 @@ final class HostProxy implements TruffleObject {
         if (proxy instanceof ProxyExecutable) {
             Value[] convertedArguments = context.language.access.toValues(context.internalContext, arguments);
             Object result = guestToHostCall(library, cache.execute, context, proxy, convertedArguments);
-            return context.toGuestValue(library, result);
+            return context.toGuestValue(result);
         }
         throw UnsupportedMessageException.create();
     }
@@ -199,7 +199,7 @@ final class HostProxy implements TruffleObject {
                     @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) throws UnsupportedMessageException {
         if (proxy instanceof ProxyArray) {
             Object result = guestToHostCall(library, cache.arrayGet, context, proxy, index);
-            return context.toGuestValue(library, result);
+            return context.toGuestValue(result);
         } else {
             throw UnsupportedMessageException.create();
         }
@@ -285,7 +285,7 @@ final class HostProxy implements TruffleObject {
             if (result == null) {
                 result = EMPTY;
             }
-            Object guestValue = context.toGuestValue(library, result);
+            Object guestValue = context.toGuestValue(result);
             InteropLibrary interop = InteropLibrary.getFactory().getUncached();
             if (!interop.hasArrayElements(guestValue)) {
                 throw illegalProxy(context, "getMemberKeys() returned invalid value %s but must return an array of member key Strings.",
@@ -327,7 +327,7 @@ final class HostProxy implements TruffleObject {
                 throw UnknownIdentifierException.create(member);
             }
             Object result = guestToHostCall(library, cache.getMember, context, proxy, member);
-            return context.toGuestValue(library, result);
+            return context.toGuestValue(result);
         } else {
             throw UnsupportedMessageException.create();
         }
@@ -362,7 +362,7 @@ final class HostProxy implements TruffleObject {
             } catch (UnsupportedOperationException e) {
                 throw UnsupportedMessageException.create();
             }
-            memberObject = context.toGuestValue(library, memberObject);
+            memberObject = context.toGuestValue(memberObject);
             if (executables.isExecutable(memberObject)) {
                 return executables.execute(memberObject, arguments);
             } else {
@@ -556,7 +556,7 @@ final class HostProxy implements TruffleObject {
                     @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) throws UnsupportedMessageException {
         if (proxy instanceof ProxyIterable) {
             Object result = guestToHostCall(library, cache.getIterator, context, proxy);
-            Object guestValue = context.toGuestValue(library, result);
+            Object guestValue = context.toGuestValue(result);
             InteropLibrary interop = InteropLibrary.getFactory().getUncached();
             if (!interop.isIterator(guestValue)) {
                 throw illegalProxy(context, "getIterator() returned an invalid value %s but must return an iterator.",
@@ -590,7 +590,7 @@ final class HostProxy implements TruffleObject {
                     @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) throws UnsupportedMessageException {
         if (proxy instanceof ProxyIterator) {
             Object result = guestToHostCall(library, cache.getIteratorNextElement, context, proxy);
-            return context.toGuestValue(library, result);
+            return context.toGuestValue(result);
         } else {
             throw UnsupportedMessageException.create();
         }
@@ -639,7 +639,7 @@ final class HostProxy implements TruffleObject {
             }
             Value keyValue = context.asValue(key);
             Object result = guestToHostCall(library, cache.getHashValue, context, proxy, keyValue);
-            return context.toGuestValue(library, result);
+            return context.toGuestValue(result);
         } else {
             throw UnsupportedMessageException.create();
         }
@@ -693,7 +693,7 @@ final class HostProxy implements TruffleObject {
                     @Shared("cache") @Cached(value = "this.context.getGuestToHostCache()", allowUncached = true) GuestToHostCodeCache cache) throws UnsupportedMessageException {
         if (proxy instanceof ProxyHashMap) {
             Object result = guestToHostCall(library, cache.getHashEntriesIterator, context, proxy);
-            Object guestValue = context.toGuestValue(library, result);
+            Object guestValue = context.toGuestValue(result);
             InteropLibrary interop = InteropLibrary.getFactory().getUncached();
             if (!interop.isIterator(guestValue)) {
                 throw illegalProxy(context, "getHashEntriesIterator() returned an invalid value %s but must return an iterator.",

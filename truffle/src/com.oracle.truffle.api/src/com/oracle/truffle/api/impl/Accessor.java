@@ -615,6 +615,8 @@ public abstract class Accessor {
         public abstract boolean areStaticObjectSafetyChecksRelaxed(Object polyglotLanguageInstance);
 
         public abstract String getStaticObjectStorageStrategy(Object polyglotLanguageInstance);
+
+        public abstract Object getHostContext(Object valueContext);
     }
 
     public abstract static class LanguageSupport extends Support {

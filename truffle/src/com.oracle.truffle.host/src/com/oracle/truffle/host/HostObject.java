@@ -151,6 +151,7 @@ final class HostObject implements TruffleObject {
     }
 
     static Object withContext(Object obj, HostContext context) {
+        assert context != null;
         if (obj instanceof HostObject) {
             HostObject hostObject = (HostObject) obj;
             return new HostObject(hostObject.obj, context, hostObject.extraInfo);
