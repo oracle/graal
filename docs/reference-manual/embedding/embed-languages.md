@@ -16,9 +16,11 @@ permalink: /reference-manual/embed-languages/
 * [Access Restrictions](#access-restrictions)
 * [Build Native Images from Polyglot Applications](#build-native-images-from-polyglot-applications)
 * [Code Caching Across Multiple Contexts](#code-caching-across-multiple-contexts)
+* [Embed languages in Guest Languages](#embed-languages-in-guest-languages)
 * [Step Through with Execution Listeners](#step-through-with-execution-listeners)
 * [Build a Shell for Many Languages](#build-a-shell-for-many-languages)
 * [Configure Sandbox Resource Limits](#configure-sandbox-resource-limits)
+
 
 The GraalVM Polyglot API lets you embed and run code from guest languages in JVM-based host applications.
 
@@ -401,9 +403,7 @@ Caching may be disabled explicitly by setting [cached(boolean cached)](https://
 
 Consider the following code snippet as an example:
 
-```java
-import org.graalvm.polyglot.*;
-
+```
 public class Main {
     public static void main(String[] args) {
         try (Engine engine = Engine.create()) {
@@ -433,6 +433,44 @@ with "js" language, which is the language identifier for JavaScript.
 - `Context.newBuilder().engine(engine).build()` builds a new context with
 an explicit engine assigned to it. All contexts associated with an engine share the code.
 - `context.eval(source).asInt()` evaluates the source and returns the result as `Value` instance.
+
+## Embed languages in Guest Languages
+
+The GraalVM Polyglot API can be used from within a guest language using Java interoperability.
+This can be useful if a script needs to run isolated from the parent context.
+Inside guest languages the `Value` API cannot be used. 
+Instead the language specific interoperoability API for foreign value is used.
+Please refer to the individual language documentation for details on how to interoperate with foreign values.
+
+Consider the following code snippet as an example:
+
+```java
+import org.graalvm.polyglot.*;
+
+public class Main {
+    public static void main(String[] args) {
+        try (Context outer = Context.newBuilder()
+                                   .allowAllAccess(true)
+                               .build()) {            
+            outer.eval("js", "inner = Java.type('org.graalvm.polyglot.Context').create()");
+            outer.eval("js", "value = inner.eval('js', '({data:42})')");
+            int result = outer.eval("js", "value.data").asInt();
+            outer.eval("js", "inner.close()");
+            
+            System.out.println("Valid " + (result == 42));
+        }
+    }
+}
+```
+
+In this code: 
+- `Context.newBuilder().allowAllAccess(true).build()` builds a new outer context with all privileges.
+- `outer.eval` evaluates a JavaScript snippet in the outer context.
+- `inner = Java.type('org.graalvm.polyglot.Context').create()` the first JS script line looks up the Java host type Context and creates a new inner context instance with no privileges (default).
+- `inner.eval('js', '({data:42})');` evaluates the JavaScript code `({data:42})` in the inner context and returns stores the result.
+- `"value.data"` this line reads the member `data` from the result of the inner context. Note that this result can only be read as long as the inner context is not yet closed.
+- `context.eval("js", "c.close()")` this snippet closes the inner context. It is recommended to always close inner contexts.
+- Finally the example is expected to print `Valid true` to the console.
 
 ## Build a Shell for Many Languages
 
