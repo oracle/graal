@@ -105,6 +105,12 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
                     case "partial-evaluation-time":
                         config.metric = new CompilationTimeMetric(CompilationTimeMetric.MetricType.PARTIAL_EVALUATION);
                         break;
+                    case "warmup-time":
+                        // Warmup time is approximated by the time needed to run the program once
+                        config.metric = new WarmupMetric();
+                        config.warmupIterations = 0;
+                        config.iterations = 1;
+                        break;
                     default:
                         throw new IllegalArgumentException("Unknown metric: " + value);
                 }
