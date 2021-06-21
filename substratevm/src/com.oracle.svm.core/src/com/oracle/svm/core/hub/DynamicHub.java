@@ -53,7 +53,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.StringJoiner;
 
-import com.oracle.svm.core.jdk.Resources;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -81,6 +80,7 @@ import com.oracle.svm.core.jdk.JDK15OrLater;
 import com.oracle.svm.core.jdk.JDK16OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.jdk.Package_jdk_internal_reflect;
+import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.Target_java_lang_Module;
 import com.oracle.svm.core.jdk.Target_jdk_internal_reflect_Reflection;
 import com.oracle.svm.core.meta.SharedType;
@@ -1021,6 +1021,26 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
      * This class stores similar information as the non-public class java.lang.Class.ReflectionData.
      */
     public static final class ReflectionData {
+        static final ReflectionData EMPTY = new ReflectionData(new Field[0], new Field[0], new Field[0], new Method[0], new Method[0], new Constructor<?>[0], new Constructor<?>[0], null, new Field[0],
+                        new Method[0], new Class<?>[0], new Class<?>[0], null, null);
+
+        public static ReflectionData get(Field[] declaredFields, Field[] publicFields, Field[] publicUnhiddenFields, Method[] declaredMethods, Method[] publicMethods,
+                        Constructor<?>[] declaredConstructors, Constructor<?>[] publicConstructors, Constructor<?> nullaryConstructor, Field[] declaredPublicFields,
+                        Method[] declaredPublicMethods, Class<?>[] declaredClasses, Class<?>[] publicClasses, Executable enclosingMethodOrConstructor, Object[] recordComponents) {
+
+            if (z(declaredFields) && z(publicFields) && z(publicUnhiddenFields) && z(declaredMethods) && z(publicMethods) && z(declaredConstructors) &&
+                            z(publicConstructors) && nullaryConstructor == null && z(declaredPublicFields) && z(declaredPublicMethods) && z(declaredClasses) &&
+                            z(publicClasses) && enclosingMethodOrConstructor == null && (recordComponents == null || z(recordComponents))) {
+                return EMPTY; // avoid redundant objects in image heap
+            }
+            return new ReflectionData(declaredFields, publicFields, publicUnhiddenFields, declaredMethods, publicMethods, declaredConstructors, publicConstructors, nullaryConstructor,
+                            declaredPublicFields, declaredPublicMethods, declaredClasses, publicClasses, enclosingMethodOrConstructor, recordComponents);
+        }
+
+        private static boolean z(Object[] array) { // for better readability above
+            return array.length == 0;
+        }
+
         final Field[] declaredFields;
         final Field[] publicFields;
         final Field[] publicUnhiddenFields;
@@ -1041,7 +1061,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
          */
         final Executable enclosingMethodOrConstructor;
 
-        public ReflectionData(Field[] declaredFields, Field[] publicFields, Field[] publicUnhiddenFields, Method[] declaredMethods, Method[] publicMethods, Constructor<?>[] declaredConstructors,
+        private ReflectionData(Field[] declaredFields, Field[] publicFields, Field[] publicUnhiddenFields, Method[] declaredMethods, Method[] publicMethods, Constructor<?>[] declaredConstructors,
                         Constructor<?>[] publicConstructors, Constructor<?> nullaryConstructor, Field[] declaredPublicFields, Method[] declaredPublicMethods, Class<?>[] declaredClasses,
                         Class<?>[] publicClasses, Executable enclosingMethodOrConstructor,
                         Object[] recordComponents) {
@@ -1066,10 +1086,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     static final class Target_java_lang_Class_MethodArray {
     }
 
-    private static final ReflectionData NO_REFLECTION_DATA = new ReflectionData(new Field[0], new Field[0], new Field[0], new Method[0], new Method[0], new Constructor<?>[0], new Constructor<?>[0],
-                    null, new Field[0], new Method[0], new Class<?>[0], new Class<?>[0], null, null);
-
-    private ReflectionData rd = NO_REFLECTION_DATA;
+    private ReflectionData rd = ReflectionData.EMPTY;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void setReflectionData(ReflectionData rd) {
@@ -1311,12 +1328,22 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
          * we use the class loader of the caller class instead of the module's loader.
          */
         Class<?> caller = Target_jdk_internal_reflect_Reflection.getCallerClass();
-        return ClassForNameSupport.forNameOrNull(className, false, caller.getClassLoader());
+        return ClassForNameSupport.forNameOrNull(className, caller.getClassLoader());
     }
 
     @Substitute
     public static Class<?> forName(String name, boolean initialize, ClassLoader loader) throws ClassNotFoundException {
-        return ClassForNameSupport.forName(name, initialize, loader);
+        Class<?> result = ClassForNameSupport.forNameOrNull(name, loader);
+        if (result == null && loader != null && PredefinedClassesSupport.supportsBytecodes()) {
+            result = loader.loadClass(name); // may throw
+        }
+        if (result == null) {
+            throw new ClassNotFoundException(name);
+        }
+        if (initialize) {
+            DynamicHub.fromClass(result).ensureInitialized();
+        }
+        return result;
     }
 
     @KeepOriginal

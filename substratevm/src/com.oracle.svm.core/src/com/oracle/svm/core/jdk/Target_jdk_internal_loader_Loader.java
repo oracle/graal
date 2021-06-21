@@ -37,6 +37,22 @@ import com.oracle.svm.core.annotate.TargetClass;
 final class Target_jdk_internal_loader_Loader {
 
     @Substitute
+    protected Class<?> findClass(String name) throws ClassNotFoundException {
+        // Reading class files from modules is currently not supported
+        throw new ClassNotFoundException(name);
+    }
+
+    @Substitute
+    protected Class<?> findClass(String moduleName, String name) throws ClassNotFoundException {
+        return null; // reading class files from modules is currently not supported
+    }
+
+    @Substitute
+    private Class<?> findClassInModuleOrNull(Target_jdk_internal_loader_Loader_LoadedModule loadedModule, String name) {
+        return null; // reading class files from modules is currently not supported
+    }
+
+    @Substitute
     protected URL findResource(String mn, String name) {
         return ResourcesHelper.nameToResourceURL(name);
     }
@@ -65,4 +81,8 @@ final class Target_jdk_internal_loader_Loader {
     private List<URL> findResourcesAsList(String name) {
         return ResourcesHelper.nameToResourceListURLs(name);
     }
+}
+
+@TargetClass(className = "jdk.internal.loader.Loader", innerClass = "LoadedModule", onlyWith = JDK11OrLater.class)
+final class Target_jdk_internal_loader_Loader_LoadedModule {
 }
