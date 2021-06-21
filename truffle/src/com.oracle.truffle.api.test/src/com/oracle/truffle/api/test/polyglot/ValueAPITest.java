@@ -1987,7 +1987,7 @@ public class ValueAPITest {
     }
 
     @Test
-    public void testHostObjectsAndPrimitivesNonSharable() {
+    public void testGuestObjectSharable() {
         Context context1 = context;
         Context context2 = Context.create();
         List<Object> nonSharables = new ArrayList<>();
@@ -2007,25 +2007,15 @@ public class ValueAPITest {
             if (nonSharableObject instanceof TruffleObject) {
                 nonSharableObject = context1.asValue(nonSharableObject);
             }
-            try {
-                context2.getPolyglotBindings().putMember("foo", nonSharableObject);
-                fail();
-            } catch (PolyglotException e) {
-                assertTrue(e.getMessage(), e.getMessage().contains("cannot be passed from one context to another"));
-            }
+            context2.getPolyglotBindings().putMember("foo", nonSharableObject);
+
             ProxyExecutable executable = new ProxyExecutable() {
                 public Object execute(Value... arguments) {
                     return 42;
                 }
             };
-            // supported
             assertEquals(42, context1.asValue(executable).execute(nonSharableObject).asInt());
-            try {
-                context2.asValue(executable).execute(nonSharableObject);
-                fail();
-            } catch (PolyglotException e) {
-                assertTrue(e.getMessage(), e.getMessage().contains("cannot be passed from one context to another"));
-            }
+            context2.asValue(executable).execute(nonSharableObject);
             nonSharableObject.toString(); // does not fails
             assertTrue(nonSharableObject.equals(nonSharableObject));
             assertTrue(nonSharableObject.hashCode() == nonSharableObject.hashCode());
