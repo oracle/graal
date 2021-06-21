@@ -49,7 +49,7 @@ import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 
-public class InheritanceTest extends StaticObjectTest {
+public class InheritanceTest extends StaticObjectModelTest {
     public static class CustomStaticObject {
         public byte field1;
         public boolean field2;

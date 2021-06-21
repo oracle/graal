@@ -52,7 +52,7 @@ import org.junit.Test;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 
-public class BuilderPropertyTest extends StaticObjectTest {
+public class BuilderPropertyTest extends StaticObjectModelTest {
     @Test
     public void sameBuilderSameProperty() {
         StaticShape.Builder builder = StaticShape.newBuilder(testLanguage);

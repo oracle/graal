@@ -55,7 +55,7 @@ import org.junit.experimental.theories.Theory;
 import org.junit.runner.RunWith;
 
 @RunWith(Theories.class)
-public class PropertyAccessTest extends StaticObjectTest {
+public class PropertyAccessTest extends StaticObjectModelTest {
     @DataPoints //
     public static TestDescriptor[] descriptors;
 

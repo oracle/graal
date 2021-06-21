@@ -46,7 +46,7 @@ import org.junit.Test;
 
 import java.util.regex.Pattern;
 
-public class ShapeAndFactoryTest extends StaticObjectTest {
+public class ShapeAndFactoryTest extends StaticObjectModelTest {
 
     @Test
     public void correct() {
