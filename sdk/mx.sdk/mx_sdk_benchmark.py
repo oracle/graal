@@ -52,6 +52,7 @@ import mx
 import mx_benchmark
 import datetime
 import re
+import copy
 
 def parse_prefixed_args(prefix, args):
     ret = []
@@ -81,6 +82,49 @@ def urllib():
         return urllib
     except ImportError:
         mx.abort("Failed to import dependency module: urllib")
+
+
+def convertValue(table, value, fromUnit, toUnit):
+    if fromUnit not in table:
+        mx.abort("Unexpected unit: " + fromUnit)
+    fromFactor = float(table[fromUnit])
+
+    if toUnit not in table:
+        mx.abort("Unexpected unit: " + fromUnit)
+    toFactor = float(table[toUnit])
+
+    return float((value * fromFactor) / toFactor)
+
+
+timeUnitTable = {
+    'ns':   1,
+    'us':   1000,
+    'ms':   1000 * 1000,
+    's':    1000 * 1000 * 1000,
+    'min':  60 * 1000 * 1000 * 1000,
+    'h':    60 * 60 * 1000 * 1000 * 1000
+}
+
+
+tputUnitTable = {
+    'op/ns':    1.0,
+    'op/us':    1.0/1000,
+    'op/ms':    1.0/(1000 * 1000),
+    'op/s':     1.0/(1000 * 1000 * 1000),
+    'op/min':   1.0/(60 * 1000 * 1000 * 1000),
+    'op/h':     1.0/(60 * 60 * 1000 * 1000 * 1000)
+}
+
+
+memUnitTable = {
+    'B':    1,
+    'kB':   1000,
+    'MB':   1000 * 1000,
+    'GB':   1000 * 1000 * 1000,
+    'KiB':  1024,
+    'MiB':  1024 * 1024,
+    'GiB':  1024 * 1024 * 1024
+}
 
 
 class NativeImageBenchmarkMixin(object):
@@ -388,6 +432,36 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
         ]
 
 
+    def computePeakThroughputRSS(self, datapoints):
+        tputDatapoint = None
+        rssDatapoint = None
+        for datapoint in datapoints:
+            if datapoint['metric.name'] == 'peak-throughput':
+                tputDatapoint = datapoint
+            if datapoint['metric.name'] == 'max-rss':
+                rssDatapoint = datapoint
+        if tputDatapoint and rssDatapoint:
+            newdatapoint = copy.deepcopy(tputDatapoint)
+            newdatapoint['metric.name'] = 'ops-per-GB-second'
+            newtput = convertValue(tputUnitTable, float(tputDatapoint['metric.value']), tputDatapoint['metric.unit'], "op/s")
+            newrss = convertValue(memUnitTable, float(rssDatapoint['metric.value']), rssDatapoint['metric.unit'], "GB")
+            newdatapoint['metric.value'] = newtput / newrss
+            newdatapoint['metric.unit'] = 'op/GB*s'
+            newdatapoint['metric.better'] = 'higher'
+            return newdatapoint
+        else:
+            return None
+
+    def validateStdoutWithDimensions(self, out, benchmarks, bmSuiteArgs, retcode=None, dims=None, extraRules=None):
+        datapoints = super(BaseMicroserviceBenchmarkSuite, self).validateStdoutWithDimensions(
+            out=out, benchmarks=benchmarks, bmSuiteArgs=bmSuiteArgs, retcode=retcode, dims=dims, extraRules=extraRules)
+
+        newdatapoint = self.computePeakThroughputRSS(datapoints)
+        if newdatapoint:
+            datapoints.append(newdatapoint)
+
+        return datapoints
+
     def run(self, benchmarks, bmSuiteArgs):
         if len(benchmarks) > 1:
             mx.abort("A single benchmark should be specified for {0}.".format(BaseMicroserviceBenchmarkSuite.__name__))
@@ -652,7 +726,7 @@ class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
             mx.abort("No latency results found in output")
 
         for match in matches:
-            val = self.convertValueToMs(float(match[1]), match[2])
+            val = convertValue(timeUnitTable, float(match[1]), match[2], 'ms')
             result[match[0]] = val
 
         return result
@@ -704,17 +778,10 @@ class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
             mx.abort("No latency results found in output")
 
         for match in matches:
-            val = self.convertValueToMs(float(match[1]), match[2])
+            val = convertValue(timeUnitTable, float(match[1]), match[2], 'ms')
             result.append(latencyPrefix + " {} {:f}ms".format(match[0], val))
 
         return '\n'.join(result)
-
-    def convertValueToMs(self, val, unit):
-        if unit == 's': return val * 1000
-        elif unit == 'ms': return val
-        elif unit == 'us': return val / 1000
-        elif unit == 'ns': return val / (1000 * 1000)
-        else: mx.abort("Unexpected unit: " + unit)
 
     def verifyWarmup(self, output, config):
         expectedThroughput = float(config['warmup-requests-per-second'])
