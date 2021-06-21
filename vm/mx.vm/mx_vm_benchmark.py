@@ -517,7 +517,8 @@ class NativeImageVM(GraalVm):
             hotspot_run_args += config.extra_agent_profile_run_args
         elif config.extra_agent_run_args:
             hotspot_run_args += config.extra_agent_run_args
-        hotspot_run_args += config.image_run_args
+        else:
+            hotspot_run_args += config.image_run_args
 
         hotspot_args = hotspot_vm_args + config.classpath_arguments + config.executable + config.system_properties + hotspot_run_args
         java_command = os.path.join(mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True), 'bin', 'java')
@@ -545,11 +546,10 @@ class NativeImageVM(GraalVm):
 
     def run_stage_instrument_run(self, config, stages, image_path, profile_path):
         image_run_cmd = [image_path, '-XX:ProfilesDumpFile=' + profile_path]
-        image_run_cmd += config.image_run_args
         if config.extra_profile_run_args:
             image_run_cmd += config.extra_profile_run_args
         else:
-            image_run_cmd += config.extra_run_args
+            image_run_cmd += config.image_run_args + config.extra_run_args
         with stages.set_command(image_run_cmd) as s:
             s.execute_command()
             if s.exit_code == 0:
