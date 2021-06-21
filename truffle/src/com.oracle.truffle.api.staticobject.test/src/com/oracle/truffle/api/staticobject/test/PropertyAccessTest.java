@@ -221,27 +221,25 @@ public class PropertyAccessTest extends StaticObjectModelTest {
     @Theory
     @SuppressWarnings("unused")
     public void wrongShape(TestDescriptor descriptor) {
-        if (SAFE) {
-            StaticShape.Builder b1 = StaticShape.newBuilder(testLanguage);
-            StaticProperty p1 = new DefaultStaticProperty("property", descriptor.kind, false);
-            b1.property(p1);
-            StaticShape<DefaultStaticObjectFactory> s1 = b1.build();
+        StaticShape.Builder b1 = StaticShape.newBuilder(testLanguage);
+        StaticProperty p1 = new DefaultStaticProperty("property", descriptor.kind, false);
+        b1.property(p1);
+        StaticShape<DefaultStaticObjectFactory> s1 = b1.build();
 
-            StaticShape.Builder b2 = StaticShape.newBuilder(testLanguage);
-            StaticProperty p2 = new DefaultStaticProperty("property", descriptor.kind, false);
-            b2.property(p2);
-            StaticShape<DefaultStaticObjectFactory> s2 = b2.build();
-            Object o2 = s2.getFactory().create();
+        StaticShape.Builder b2 = StaticShape.newBuilder(testLanguage);
+        StaticProperty p2 = new DefaultStaticProperty("property", descriptor.kind, false);
+        b2.property(p2);
+        StaticShape<DefaultStaticObjectFactory> s2 = b2.build();
+        Object o2 = s2.getFactory().create();
 
-            try {
-                descriptor.setter.set(p1, o2, descriptor.testValue);
-                Assert.fail();
-            } catch (IllegalArgumentException e) {
-                if (ARRAY_BASED_STORAGE) {
-                    Assert.assertTrue(e.getMessage().startsWith("Incompatible shape on property access."));
-                } else {
-                    Assert.assertTrue(e.getMessage().matches("Object '.*' of class '.*' does not have the expected shape"));
-                }
+        try {
+            descriptor.setter.set(p1, o2, descriptor.testValue);
+            Assert.fail();
+        } catch (IllegalArgumentException e) {
+            if (ARRAY_BASED_STORAGE) {
+                Assert.assertTrue(e.getMessage().startsWith("Incompatible shape on property access."));
+            } else {
+                Assert.assertTrue(e.getMessage().matches("Object '.*' of class '.*' does not have the expected shape"));
             }
         }
     }
@@ -249,7 +247,6 @@ public class PropertyAccessTest extends StaticObjectModelTest {
     @Test
     @SuppressWarnings("unused")
     public void wrongObject() {
-        Assume.assumeTrue(SAFE);
         StaticShape.Builder builder = StaticShape.newBuilder(testLanguage);
         StaticProperty property = new DefaultStaticProperty("property", StaticPropertyKind.Int, false);
         builder.property(property);

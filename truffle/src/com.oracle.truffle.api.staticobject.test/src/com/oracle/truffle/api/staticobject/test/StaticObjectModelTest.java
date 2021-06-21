@@ -54,7 +54,6 @@ import java.lang.reflect.Method;
 
 class StaticObjectModelTest {
     static final boolean ARRAY_BASED_STORAGE = TruffleOptions.AOT || Boolean.getBoolean("com.oracle.truffle.api.staticobject.ArrayBasedStorage");
-    static final boolean SAFE = Boolean.getBoolean("com.oracle.truffle.api.staticobject.SafeCasts") && Boolean.getBoolean("com.oracle.truffle.api.staticobject.ShapeChecks");
 
     TruffleLanguage<?> testLanguage;
     Context context;
