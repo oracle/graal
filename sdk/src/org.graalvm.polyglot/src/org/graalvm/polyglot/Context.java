@@ -308,10 +308,6 @@ import org.graalvm.polyglot.proxy.Proxy;
  * currently executing code. If the context is currently executing some code, a different thread may
  * kill the running execution and close the context using {@link #close(boolean)}.
  *
- * <h3>Creating contexts from within guest languages.</h3>
- *
- *
- *
  * <h3>Pre-Initialization</h3>
  *
  * The context pre-initialization can be used to perform expensive builtin creation in the time of
