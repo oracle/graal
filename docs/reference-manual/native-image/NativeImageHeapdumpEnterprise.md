@@ -228,4 +228,4 @@ Your command line options are: --heapdump
   Heap dump created /var/folders/hw/s9d78jts67gdc8cfyq5fjcdm0000gp/T/SVMHeapDump-6437252222863577987.hprof, size: 8051959
 ```
 
-The resulting heap dump can be then opened with the [VisualVM](https://www.graalvm.org/docs/tools/visualvm) tool like any other Java heap dump.
+The resulting heap dump can be then opened with the [VisualVM](/tools/visualvm/) tool like any other Java heap dump.
