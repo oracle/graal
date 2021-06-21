@@ -69,6 +69,8 @@ clojure --init generate_case_fold_table.clj --eval '(-main)' > dat/case-fold-tab
 
 ./update_case_fold_table.py
 
+./generate_ruby_case_folding.py > ../src/com/oracle/truffle/regex/tregex/parser/flavors/RubyCaseFoldingData.java
+
 rm -r ./dat
 
 mx build
