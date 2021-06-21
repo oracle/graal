@@ -44,6 +44,7 @@ import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.impl.asm.ClassVisitor;
 import com.oracle.truffle.api.impl.asm.FieldVisitor;
 import com.oracle.truffle.api.impl.asm.Type;
+import com.oracle.truffle.api.staticobject.StaticShape.StorageStrategy;
 
 import java.lang.reflect.Field;
 import java.util.Collection;
@@ -55,20 +56,19 @@ import static com.oracle.truffle.api.impl.asm.Opcodes.ACC_PUBLIC;
 
 abstract class ShapeGenerator<T> {
     protected static final Unsafe UNSAFE = getUnsafe();
-    private static final boolean ARRAY_BASED_STORAGE = TruffleOptions.AOT || Boolean.getBoolean("com.oracle.truffle.api.staticobject.ArrayBasedStorage");
     private static final String DELIMITER = "$$";
     private static final AtomicInteger counter = new AtomicInteger();
 
     abstract StaticShape<T> generateShape(StaticShape<T> parentShape, Collection<StaticProperty> staticProperties, boolean safetyChecks);
 
-    static <T> ShapeGenerator<T> getShapeGenerator(GeneratorClassLoader gcl, StaticShape<T> parentShape) {
+    static <T> ShapeGenerator<T> getShapeGenerator(GeneratorClassLoader gcl, StaticShape<T> parentShape, StorageStrategy strategy) {
         Class<?> parentStorageClass = parentShape.getStorageClass();
-        Class<?> storageSuperclass = ARRAY_BASED_STORAGE ? parentStorageClass.getSuperclass() : parentStorageClass;
-        return getShapeGenerator(gcl, storageSuperclass, parentShape.getFactoryInterface());
+        Class<?> storageSuperclass = strategy == StorageStrategy.ARRAY_BASED ? parentStorageClass.getSuperclass() : parentStorageClass;
+        return getShapeGenerator(gcl, storageSuperclass, parentShape.getFactoryInterface(), strategy);
     }
 
-    static <T> ShapeGenerator<T> getShapeGenerator(GeneratorClassLoader gcl, Class<?> storageSuperClass, Class<T> storageFactoryInterface) {
-        if (ARRAY_BASED_STORAGE) {
+    static <T> ShapeGenerator<T> getShapeGenerator(GeneratorClassLoader gcl, Class<?> storageSuperClass, Class<T> storageFactoryInterface, StorageStrategy strategy) {
+        if (strategy == StorageStrategy.ARRAY_BASED) {
             return ArrayBasedShapeGenerator.getShapeGenerator(gcl, storageSuperClass, storageFactoryInterface);
         } else {
             return FieldBasedShapeGenerator.getShapeGenerator(gcl, storageSuperClass, storageFactoryInterface);

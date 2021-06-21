@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleOptions;
 import org.graalvm.options.OptionValues;
 import sun.misc.Unsafe;
 
@@ -88,6 +89,11 @@ import java.util.Objects;
  *            allocate static objects
  */
 public abstract class StaticShape<T> {
+    enum StorageStrategy {
+        ARRAY_BASED,
+        FIELD_BASED
+    }
+
     protected static final Unsafe UNSAFE = getUnsafe();
     protected final Class<?> storageClass;
     protected final boolean safetyChecks;
@@ -257,7 +263,7 @@ public abstract class StaticShape<T> {
         public <T> StaticShape<T> build(StaticShape<T> parentShape) {
             Objects.requireNonNull(parentShape);
             GeneratorClassLoader gcl = getOrCreateClassLoader(parentShape.getFactoryInterface());
-            ShapeGenerator<T> sg = ShapeGenerator.getShapeGenerator(gcl, parentShape);
+            ShapeGenerator<T> sg = ShapeGenerator.getShapeGenerator(gcl, parentShape, getStorageStrategy());
             return build(sg, parentShape);
         }
 
@@ -296,7 +302,7 @@ public abstract class StaticShape<T> {
         public <T> StaticShape<T> build(Class<?> superClass, Class<T> factoryInterface) {
             validateClasses(factoryInterface, superClass);
             GeneratorClassLoader gcl = getOrCreateClassLoader(factoryInterface);
-            ShapeGenerator<T> sg = ShapeGenerator.getShapeGenerator(gcl, superClass, factoryInterface);
+            ShapeGenerator<T> sg = ShapeGenerator.getShapeGenerator(gcl, superClass, factoryInterface, getStorageStrategy());
             return build(sg, null);
         }
 
@@ -374,6 +380,23 @@ public abstract class StaticShape<T> {
                 }
             }
             return null;
+        }
+
+        private StorageStrategy getStorageStrategy() {
+            String strategy = SomAccessor.LANGUAGE.getSomStorageStrategy(language);
+            switch (strategy) {
+                case "default":
+                    return TruffleOptions.AOT ? StorageStrategy.ARRAY_BASED : StorageStrategy.FIELD_BASED;
+                case "array-based":
+                    return StorageStrategy.ARRAY_BASED;
+                case "field-based":
+                    if (TruffleOptions.AOT) {
+                        throw new IllegalArgumentException("The field-based storage strategy is not yet supported on Native Image");
+                    }
+                    return StorageStrategy.FIELD_BASED;
+                default:
+                    throw new IllegalArgumentException("Should not reach here. Unexpected storage strategy: " + strategy);
+            }
         }
     }
 
