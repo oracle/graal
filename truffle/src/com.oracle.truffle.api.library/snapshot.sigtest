@@ -164,6 +164,7 @@ meth public final com.oracle.truffle.api.library.LibraryFactory<?> getFactory()
 meth public final int getParameterCount()
 meth public final int hashCode()
 meth public final java.lang.Class<? extends com.oracle.truffle.api.library.Library> getLibraryClass()
+meth public final java.lang.Class<?> getParameterType(int)
 meth public final java.lang.Class<?> getReceiverType()
 meth public final java.lang.Class<?> getReturnType()
 meth public final java.lang.String getLibraryName()
@@ -174,7 +175,7 @@ meth public final java.util.List<java.lang.Class<?>> getParameterTypes()
 meth public static com.oracle.truffle.api.library.Message resolve(java.lang.Class<? extends com.oracle.truffle.api.library.Library>,java.lang.String)
 meth public static com.oracle.truffle.api.library.Message resolve(java.lang.Class<? extends com.oracle.truffle.api.library.Library>,java.lang.String,boolean)
 supr java.lang.Object
-hfds hash,library,libraryClass,parameterCount,parameterTypes,qualifiedName,returnType,simpleName
+hfds hash,library,libraryClass,parameterCount,parameterTypes,parameterTypesArray,qualifiedName,returnType,simpleName
 
 CLSS public abstract com.oracle.truffle.api.library.ReflectionLibrary
 cons protected init()
