@@ -80,7 +80,8 @@ final class ByteArraySupports {
     static {
         // We only use Unsafe for platforms that we know support it, and that support unaligned
         // accesses.
-        if (System.getProperty("os.arch").equals("x86_64") || System.getProperty("os.arch").equals("aarch64") || System.getProperty("os.arch").equals("amd64")) {
+        final String osArch = System.getProperty("os.arch");
+        if (osArch.equals("x86_64") || osArch.equals("aarch64") || osArch.equals("amd64")) {
             final ByteArraySupport nativeOrder = new CheckedByteArraySupport(new UnsafeByteArraySupport());
             if (ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN) {
                 BIG_ENDIAN = nativeOrder;
@@ -89,9 +90,12 @@ final class ByteArraySupports {
                 BIG_ENDIAN = new ReversedByteArraySupport(nativeOrder);
                 LITTLE_ENDIAN = nativeOrder;
             }
-        } else {
+        } else if (ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN) {
             BIG_ENDIAN = new SimpleByteArraySupport();
             LITTLE_ENDIAN = new ReversedByteArraySupport(BIG_ENDIAN);
+        } else {
+            LITTLE_ENDIAN = new SimpleByteArraySupport();
+            BIG_ENDIAN = new ReversedByteArraySupport(LITTLE_ENDIAN);
         }
     }
 }
