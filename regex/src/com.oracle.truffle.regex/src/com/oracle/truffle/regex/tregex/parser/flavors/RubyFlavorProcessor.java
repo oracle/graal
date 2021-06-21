@@ -64,6 +64,7 @@ import com.oracle.truffle.regex.charset.Range;
 import com.oracle.truffle.regex.charset.UnicodeProperties;
 import com.oracle.truffle.regex.errors.RbErrorMessages;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
+import com.oracle.truffle.regex.tregex.buffer.IntArrayBuffer;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 import com.oracle.truffle.regex.util.TBitSet;
 
@@ -364,6 +365,13 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
      */
     private final List<CodePointSetAccumulator> charClassPool = new ArrayList<>();
 
+    /**
+     * A reusable buffer for storing the codepoint contents of literal strings. We need to scan the
+     * entire string before case folding so that we correctly handle cases when several codepoints
+     * in sequence can case-unfold to a single codepoint.
+     */
+    private final IntArrayBuffer codepointsBuffer = new IntArrayBuffer();
+
     @TruffleBoundary
     public RubyFlavorProcessor(RegexSource source) {
         this.inSource = source;
@@ -516,19 +524,6 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
     }
 
     /**
-     * Emits the codepoint into the output pattern <em>verbatim</em>. This is a special case of
-     * {@link #emitSnippet} that avoids going through the trouble of converting a code point to a
-     * {@link String} in Java (i.e. no need for new String(Character.toChars(codepoint))).
-     *
-     * @param codepoint
-     */
-    private void emitRawCodepoint(int codepoint) {
-        if (!silent) {
-            outPattern.appendCodePoint(codepoint);
-        }
-    }
-
-    /**
      * Like {@link #emitChar(int)}, but does not do any case-folding.
      *
      * @param inCharClass are we emitting inside a character class?
@@ -539,7 +534,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
             if (syntaxChars.get(codepoint)) {
                 emitSnippet("\\");
             }
-            emitRawCodepoint(codepoint);
+            outPattern.appendCodePoint(codepoint);
         }
     }
 
@@ -556,22 +551,6 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                 emitCharSet(CodePointSet.create(codepoint, codepoint));
             } else {
                 emitCharNoCasing(codepoint, false);
-            }
-        }
-    }
-
-    /**
-     * Emits a series of matchers that would match the characters in {@code string}.
-     *
-     * This method treats the string as a sequence of literal character terms.
-     */
-    private void emitString(String string) {
-        if (!silent) {
-            for (int i = 0; i < string.length(); i = string.offsetByCodePoints(i, 1)) {
-                int outPosition = outPattern.length();
-                emitChar(string.codePointAt(i));
-                lastTerm = TermCategory.Atom;
-                lastTermOutPosition = outPosition;
             }
         }
     }
@@ -870,9 +849,147 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                 lastTermOutPosition = outPosition;
                 break;
             default:
-                emitChar(ch);
-                lastTerm = TermCategory.Atom;
-                lastTermOutPosition = outPosition;
+                string(ch);
+                // NB: string sets lastTerm and lastTermOutPosition itself
+        }
+    }
+
+    private void string(int firstCodepoint) {
+        codepointsBuffer.clear();
+        codepointsBuffer.add(firstCodepoint);
+        string();
+    }
+
+    private void string(String prefix) {
+        codepointsBuffer.clear();
+        prefix.codePoints().forEach(codepointsBuffer::add);
+        string();
+    }
+
+    /**
+     * Parses a string of literal characters. Should be called via {@link #string(int)} or
+     * {@link #string(String)}, which both clear the {@link #codepointsBuffer}.
+     */
+    private void string() {
+        int outPosition = outPattern.length();
+
+        stringLoop: while (!atEnd() && curChar() != '|' && curChar() != ')') {
+            int ch = consumeChar();
+
+            if (getLocalFlags().isExtended()) {
+                if (WHITESPACE.get(ch)) {
+                    continue;
+                }
+                if (ch == '#') {
+                    comment();
+                    continue;
+                }
+            }
+
+            switch (ch) {
+                case '\\':
+                    if (isProperEscapeNext()) {
+                        retreat();
+                        break stringLoop;
+                    }
+                    codepointsBuffer.add(fetchEscapedChar());
+                    break;
+                case '[':
+                case '*':
+                case '+':
+                case '?':
+                case '{':
+                case '.':
+                case '(':
+                case '^':
+                case '$':
+                    retreat();
+                    break stringLoop;
+                default:
+                    codepointsBuffer.add(ch);
+            }
+        }
+
+        boolean isQuantifierNext = isQuantifierNext();
+        int last = codepointsBuffer.get(codepointsBuffer.length() - 1);
+
+        if (!silent) {
+            if (isQuantifierNext) {
+                codepointsBuffer.setLength(codepointsBuffer.length() - 1);
+            }
+
+            if (getLocalFlags().isIgnoreCase()) {
+                String caseFoldSnippet = RubyCaseFolding.caseFoldString(codepointsBuffer.toArray());
+                emitSnippet(caseFoldSnippet);
+            } else {
+                for (int i = 0; i < codepointsBuffer.length(); i++) {
+                    emitCharNoCasing(codepointsBuffer.get(i), false);
+                }
+            }
+
+            if (isQuantifierNext) {
+                outPosition = outPattern.length();
+                emitChar(last);
+            }
+        }
+
+        lastTerm = TermCategory.Atom;
+        lastTermOutPosition = outPosition;
+    }
+
+    /**
+     * Indicates whether the following is a proper escape sequence, which cannot be a part of a
+     * string. Those are all escape sequences with the difference of those handled by
+     * {@link #fetchEscapedChar()}.
+     */
+    public boolean isProperEscapeNext() {
+        boolean oldSilent = silent;
+        int oldPosition = position;
+        try {
+            silent = true;
+            return assertionEscape() || categoryEscape(false) || backreference() || namedBackreference() || lineBreak() || extendedGraphemeCluster() || keepCommand() || subexpressionCall() ||
+                            stringEscape() || characterEscape().isPresent();
+        } finally {
+            silent = oldSilent;
+            position = oldPosition;
+        }
+    }
+
+    /**
+     * Indicates whether a quantifier is coming up next.
+     */
+    public boolean isQuantifierNext() {
+        if (atEnd()) {
+            return false;
+        }
+        switch (curChar()) {
+            case '*':
+            case '+':
+            case '?':
+                return true;
+            case '{':
+                int oldPosition = position;
+                try {
+                    advance();
+                    if (match("}") || match(",}")) {
+                        return false;
+                    } else {
+                        // lower bound
+                        getMany(RubyFlavorProcessor::isDecDigit);
+                        // upper bound
+                        if (match(",")) {
+                            getMany(RubyFlavorProcessor::isDecDigit);
+                        }
+                        if (!match("}")) {
+                            return false;
+                        }
+                        return true;
+                    }
+                } finally {
+                    position = oldPosition;
+                }
+            default:
+                return false;
         }
     }
 
@@ -913,32 +1030,47 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         int outPosition = outPattern.length();
         if (assertionEscape()) {
             lastTerm = TermCategory.OtherAssertion;
+            lastTermOutPosition = outPosition;
         } else if (categoryEscape(false)) {
             lastTerm = TermCategory.Atom;
+            lastTermOutPosition = outPosition;
         } else if (backreference()) {
             lastTerm = TermCategory.Atom;
+            lastTermOutPosition = outPosition;
         } else if (namedBackreference()) {
             lastTerm = TermCategory.Atom;
+            lastTermOutPosition = outPosition;
         } else if (lineBreak()) {
             lastTerm = TermCategory.Atom;
+            lastTermOutPosition = outPosition;
         } else if (extendedGraphemeCluster()) {
             lastTerm = TermCategory.Atom;
+            lastTermOutPosition = outPosition;
         } else if (keepCommand()) {
             lastTerm = TermCategory.OtherAssertion;
+            lastTermOutPosition = outPosition;
         } else if (subexpressionCall()) {
             lastTerm = TermCategory.Atom;
+            lastTermOutPosition = outPosition;
         } else if (stringEscape()) {
             lastTerm = TermCategory.Atom;
+            lastTermOutPosition = outPosition;
         } else {
             // characterEscape has to come after assertionEscape because of the ambiguity of \b,
             // which (outside of character classes) is resolved in the favor of the assertion.
             // characterEscape also has to come after backreference because of the ambiguity between
             // backreferences and octal character escapes which must be resolved in favor of
             // backreferences
-            characterEscape();
-            lastTerm = TermCategory.Atom;
+            Optional<Integer> characterEscape = characterEscape();
+            if (characterEscape.isPresent()) {
+                emitChar(characterEscape.get());
+                lastTerm = TermCategory.Atom;
+                lastTermOutPosition = outPosition;
+            } else {
+                string(fetchEscapedChar());
+                // NB: string sets lastTerm and lastTermOutPosition itself
+            }
         }
-        lastTermOutPosition = outPosition;
     }
 
     /**
@@ -1301,7 +1433,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
     }
 
     /**
-     * Parses a string escape, which is an escape sequenes that matches a series of characters. In
+     * Parses a string escape, which is an escape sequence that matches a series of characters. In
      * Ruby, this can be seen when using the \\u{... ... ...} syntax to escape a sequence of
      * characters using their Unicode codepoint values.
      * 
@@ -1331,25 +1463,23 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
     }
 
     /**
-     * Parses a character escape sequence. A character escape sequence can be one of the following:
+     * Parses an escaped codepoint. This definition is distinct from {@link #characterEscape()},
+     * because the escape sequences below do not break strings (i.e. they can be found inside
+     * strings and should be case-unfolded along with their surroundings).
+     *
+     * This method assumes that the leading backslash was already consumed.
+     *
+     * This method handles the following escape sequences:
      * <ul>
-     * <li>\a, \b, \e, \f, \n, \r, \t or \v</li>
-     * <li>\\</li>
-     * <li>an octal escape sequence</li>
-     * <li>a hexadecimal escape sequence</li>
-     * <li>a unicode escape sequence</li>
+     * <li>\a, \b, \e. \f, \n, \r, \t and \v</li>
+     * <li>\cX, \C-X and \M-X control characters</li>
+     * <li>syntax character escapes like \., \* or \\</li>
+     * <li>any superfluous uses of backslash, e.g. \: or \"</li>
      * </ul>
+     * 
+     * @return the escaped codepoint
      */
-    private void characterEscape() {
-        emitChar(silentCharacterEscape());
-    }
-
-    /**
-     * Like {@link #characterEscape}, but instead of emitting a matcher or a character class
-     * expression, it returns the escaped character. This is used when necessary when parsing
-     * character classes.
-     */
-    private int silentCharacterEscape() {
+    private int fetchEscapedChar() {
         int beginPos = position;
         int ch = consumeChar();
         switch (ch) {
@@ -1382,7 +1512,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                     return 0177;
                 }
                 if (c == '\\') {
-                    c = silentCharacterEscape();
+                    c = fetchEscapedChar();
                 }
                 return c & 0x9f;
             }
@@ -1398,11 +1528,28 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                 }
                 int c = consumeChar();
                 if (c == '\\') {
-                    c = silentCharacterEscape();
+                    c = fetchEscapedChar();
                 }
                 return (c & 0xff) | 0x80;
             }
+            default:
+                return ch;
+        }
+    }
+
+    /**
+     * Parses a character escape sequence. A character escape sequence can be one of the following:
+     * <ul>
+     * <li>a hexadecimal escape sequence</li>
+     * <li>a unicode escape sequence</li>
+     * <li>an octal escape sequence</li>
+     * </ul>
+     */
+    private Optional<Integer> characterEscape() {
+        int beginPos = position;
+        switch (curChar()) {
             case 'x': {
+                advance();
                 String code = getUpTo(2, RubyFlavorProcessor::isHexDigit);
                 int byteValue = Integer.parseInt(code, 16);
                 if (byteValue > 0x7F) {
@@ -1416,9 +1563,10 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                     // *) TruffleRuby's ClassicRegexp#preprocess emitted a non-ASCII \\x escape
                     bailOut("unsupported multibyte escape");
                 }
-                return byteValue;
+                return Optional.of(byteValue);
             }
             case 'u': {
+                advance();
                 String code;
                 if (match("{")) {
                     code = getMany(RubyFlavorProcessor::isHexDigit);
@@ -1434,23 +1582,28 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                     if (codePoint > 0x10FFFF) {
                         throw syntaxErrorAt(RbErrorMessages.invalidUnicodeEscape(code), beginPos);
                     }
-                    return codePoint;
+                    return Optional.of(codePoint);
                 } catch (NumberFormatException e) {
                     throw syntaxErrorAt(RbErrorMessages.badEscape(code), beginPos);
                 }
             }
-            default:
-                if (isOctDigit(ch)) {
-                    retreat();
-                    String code = getUpTo(3, RubyFlavorProcessor::isOctDigit);
-                    int codePoint = Integer.parseInt(code, 8);
-                    if (codePoint > 0xFF) {
-                        throw syntaxErrorAt(RbErrorMessages.TOO_BIG_NUMBER, beginPos);
-                    }
-                    return codePoint;
-                } else {
-                    return ch;
+            case '0':
+            case '1':
+            case '2':
+            case '3':
+            case '4':
+            case '5':
+            case '6':
+            case '7': {
+                String code = getUpTo(3, RubyFlavorProcessor::isOctDigit);
+                int codePoint = Integer.parseInt(code, 8);
+                if (codePoint > 0xFF) {
+                    throw syntaxErrorAt(RbErrorMessages.TOO_BIG_NUMBER, beginPos);
                 }
+                return Optional.of(codePoint);
+            }
+            default:
+                return Optional.empty();
         }
     }
 
@@ -1659,7 +1812,12 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         if (categoryEscape(true)) {
             return Optional.empty();
         }
-        return Optional.of(silentCharacterEscape());
+        Optional<Integer> characterEscape = characterEscape();
+        if (characterEscape.isPresent()) {
+            return characterEscape;
+        } else {
+            return Optional.of(fetchEscapedChar());
+        }
     }
 
     /**
@@ -1672,7 +1830,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
             if (match("}") || match(",}")) {
                 // We did not find a complete quantifier, so we should just emit a string of
                 // matchers the individual characters.
-                emitString(inPattern.substring(start, position));
+                string(inPattern.substring(start, position));
                 return;
             } else {
                 Optional<BigInteger> lowerBound = Optional.empty();
@@ -1694,7 +1852,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                 if (!match("}")) {
                     // We did not find a complete quantifier, so we should just emit a string of
                     // matchers the individual characters.
-                    emitString(inPattern.substring(start, position));
+                    string(inPattern.substring(start, position));
                     return;
                 }
                 if (lowerBound.isPresent() && upperBound.isPresent() && lowerBound.get().compareTo(upperBound.get()) > 0) {
