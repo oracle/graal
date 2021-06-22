@@ -45,17 +45,39 @@ import com.oracle.truffle.api.staticobject.DefaultStaticProperty;
 import com.oracle.truffle.api.staticobject.StaticProperty;
 import com.oracle.truffle.api.staticobject.StaticPropertyKind;
 import com.oracle.truffle.api.staticobject.StaticShape;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Assume;
+import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.experimental.theories.DataPoints;
+import org.junit.experimental.theories.Theories;
+import org.junit.experimental.theories.Theory;
+import org.junit.runner.RunWith;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 
+@RunWith(Theories.class)
 public class BuilderPropertyTest extends StaticObjectModelTest {
-    @Test
-    public void sameBuilderSameProperty() {
-        StaticShape.Builder builder = StaticShape.newBuilder(testLanguage);
+    @DataPoints //
+    public static TestEnvironment[] environments;
+
+    @BeforeClass
+    public static void setup() {
+        environments = new TestEnvironment[]{new TestEnvironment(true), new TestEnvironment(false)};
+    }
+
+    @AfterClass
+    public static void teardown() {
+        for (TestEnvironment env : environments) {
+            env.close();
+        }
+    }
+
+    @Theory
+    public void sameBuilderSameProperty(TestEnvironment te) {
+        StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
         StaticProperty property = new DefaultStaticProperty("property", StaticPropertyKind.Int, false);
         builder.property(property);
         try {
@@ -68,9 +90,9 @@ public class BuilderPropertyTest extends StaticObjectModelTest {
         }
     }
 
-    @Test
-    public void sameBuilderSameName() throws IllegalArgumentException {
-        StaticShape.Builder builder = StaticShape.newBuilder(testLanguage);
+    @Theory
+    public void sameBuilderSameName(TestEnvironment te) {
+        StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
         StaticProperty p1 = new DefaultStaticProperty("property", StaticPropertyKind.Int, false);
         StaticProperty p2 = new DefaultStaticProperty("property", StaticPropertyKind.Int, false);
         builder.property(p1);
@@ -83,10 +105,10 @@ public class BuilderPropertyTest extends StaticObjectModelTest {
         }
     }
 
-    @Test
-    public void differentBuildersSameProperty() {
-        StaticShape.Builder b1 = StaticShape.newBuilder(testLanguage);
-        StaticShape.Builder b2 = StaticShape.newBuilder(testLanguage);
+    @Theory
+    public void differentBuildersSameProperty(TestEnvironment te) {
+        StaticShape.Builder b1 = StaticShape.newBuilder(te.testLanguage);
+        StaticShape.Builder b2 = StaticShape.newBuilder(te.testLanguage);
         StaticProperty property = new DefaultStaticProperty("property", StaticPropertyKind.Int, false);
         b1.property(property);
         b2.property(property);
@@ -101,11 +123,11 @@ public class BuilderPropertyTest extends StaticObjectModelTest {
         }
     }
 
-    @Test
-    public void propertyName() throws NoSuchFieldException {
-        Assume.assumeFalse(ARRAY_BASED_STORAGE);
+    @Theory
+    public void propertyName(TestEnvironment te) throws NoSuchFieldException {
+        Assume.assumeFalse(te.arrayBased);
 
-        StaticShape.Builder builder = StaticShape.newBuilder(testLanguage);
+        StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
         StaticProperty property = new DefaultStaticProperty("property", StaticPropertyKind.Int, false);
         builder.property(property);
         StaticShape<DefaultStaticObjectFactory> shape = builder.build();
@@ -113,11 +135,11 @@ public class BuilderPropertyTest extends StaticObjectModelTest {
         object.getClass().getField(guessGeneratedFieldName(property));
     }
 
-    @Test
-    public void propertyFinal() throws NoSuchFieldException {
-        Assume.assumeFalse(ARRAY_BASED_STORAGE);
+    @Theory
+    public void propertyFinal(TestEnvironment te) throws NoSuchFieldException {
+        Assume.assumeFalse(te.arrayBased);
 
-        StaticShape.Builder builder = StaticShape.newBuilder(testLanguage);
+        StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
         StaticProperty p1 = new DefaultStaticProperty("p1", StaticPropertyKind.Int, true);
         StaticProperty p2 = new DefaultStaticProperty("p2", StaticPropertyKind.Int, false);
         builder.property(p1);
@@ -130,11 +152,11 @@ public class BuilderPropertyTest extends StaticObjectModelTest {
         Assert.assertFalse(Modifier.isFinal(f2.getModifiers()));
     }
 
-    @Test
-    public void propertyKind() throws NoSuchFieldException {
-        Assume.assumeFalse(ARRAY_BASED_STORAGE);
+    @Theory
+    public void propertyKind(TestEnvironment te) throws NoSuchFieldException {
+        Assume.assumeFalse(te.arrayBased);
 
-        StaticShape.Builder builder = StaticShape.newBuilder(testLanguage);
+        StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
         StaticPropertyKind[] kinds = StaticPropertyKind.values();
         StaticProperty[] properties = new StaticProperty[kinds.length];
         for (int i = 0; i < properties.length; i++) {
@@ -179,5 +201,10 @@ public class BuilderPropertyTest extends StaticObjectModelTest {
             }
             Assert.assertEquals(expectedType, object.getClass().getField(guessGeneratedFieldName(properties[i])).getType());
         }
+    }
+
+    @Test
+    public void dummy() {
+
     }
 }

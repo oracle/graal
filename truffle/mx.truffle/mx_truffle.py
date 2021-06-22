@@ -230,10 +230,8 @@ def _truffle_gate_runner(args, tasks):
         if t: sigtest(['--check', 'binary'])
     with Task('Truffle UnitTests', tasks) as t:
         if t: unittest(list(['--suite', 'truffle', '--enable-timing', '--verbose', '--fail-fast']))
-    with Task('Static Object Model UnitTests with safety checks', tasks) as t:
-        if t: unittest(list(['--suite', 'truffle', '--enable-timing', '--verbose', '--fail-fast', '--regex', 'com.oracle.truffle.api.staticobject.test', '--', '-Dcom.oracle.truffle.api.staticobject.ArrayBasedStorage=false', '-Dcom.oracle.truffle.api.staticobject.SafeCasts=true', '-Dcom.oracle.truffle.api.staticobject.ShapeChecks=true']))
-    with Task('Static Object Model UnitTests with safety checks and array-based storage', tasks) as t:
-        if t: unittest(list(['--suite', 'truffle', '--enable-timing', '--verbose', '--fail-fast', '--regex', 'com.oracle.truffle.api.staticobject.test', '--', '-Dcom.oracle.truffle.api.staticobject.ArrayBasedStorage=true', '-Dcom.oracle.truffle.api.staticobject.SafeCasts=true', '-Dcom.oracle.truffle.api.staticobject.ShapeChecks=true']))
+    with Task('Static Object Model UnitTests', tasks) as t:
+        if t: unittest(list(['--suite', 'truffle', '--enable-timing', '--verbose', '--fail-fast', '--regex', 'com.oracle.truffle.api.staticobject.test']))
     with Task('Truffle DSL max state bit tests', tasks) as t:
         if t:
             _truffle_gate_state_bitwidth_tests()

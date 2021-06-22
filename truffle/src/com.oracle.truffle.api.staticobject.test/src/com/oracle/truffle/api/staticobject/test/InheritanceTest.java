@@ -45,11 +45,33 @@ import com.oracle.truffle.api.staticobject.DefaultStaticProperty;
 import com.oracle.truffle.api.staticobject.StaticProperty;
 import com.oracle.truffle.api.staticobject.StaticPropertyKind;
 import com.oracle.truffle.api.staticobject.StaticShape;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Assume;
+import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.experimental.theories.DataPoints;
+import org.junit.experimental.theories.Theories;
+import org.junit.experimental.theories.Theory;
+import org.junit.runner.RunWith;
 
+@RunWith(Theories.class)
 public class InheritanceTest extends StaticObjectModelTest {
+    @DataPoints //
+    public static TestEnvironment[] environments;
+
+    @BeforeClass
+    public static void setup() {
+        environments = new TestEnvironment[]{new TestEnvironment(true), new TestEnvironment(false)};
+    }
+
+    @AfterClass
+    public static void teardown() {
+        for (TestEnvironment env : environments) {
+            env.close();
+        }
+    }
+
     public static class CustomStaticObject {
         public byte field1;
         public boolean field2;
@@ -59,9 +81,9 @@ public class InheritanceTest extends StaticObjectModelTest {
         CustomStaticObject create();
     }
 
-    @Test
-    public void baseClassInheritance() throws NoSuchFieldException {
-        StaticShape.Builder builder = StaticShape.newBuilder(testLanguage);
+    @Theory
+    public void baseClassInheritance(TestEnvironment te) throws NoSuchFieldException {
+        StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
         StaticProperty property = new DefaultStaticProperty("field1", StaticPropertyKind.Int, false);
         builder.property(property);
         StaticShape<CustomStaticObjectFactory> shape = builder.build(CustomStaticObject.class, CustomStaticObjectFactory.class);
@@ -76,16 +98,16 @@ public class InheritanceTest extends StaticObjectModelTest {
         // Get the value of the field declared in the generated class
         Assert.assertEquals(24, property.getInt(object));
 
-        Assume.assumeFalse(ARRAY_BASED_STORAGE);
+        Assume.assumeFalse(te.arrayBased);
         // `CustomStaticObject.field1` is shadowed
         Assert.assertEquals(int.class, object.getClass().getField("field1").getType());
         // `CustomStaticObject.field2` is visible
         Assert.assertEquals(boolean.class, object.getClass().getField("field2").getType());
     }
 
-    @Test
-    public void baseShapeInheritance() throws NoSuchFieldException, IllegalAccessException {
-        StaticShape.Builder b1 = StaticShape.newBuilder(testLanguage);
+    @Theory
+    public void baseShapeInheritance(TestEnvironment te) throws NoSuchFieldException, IllegalAccessException {
+        StaticShape.Builder b1 = StaticShape.newBuilder(te.testLanguage);
         StaticProperty s1p1 = new DefaultStaticProperty("field1", StaticPropertyKind.Int, false);
         StaticProperty s1p2 = new DefaultStaticProperty("field2", StaticPropertyKind.Int, false);
         b1.property(s1p1);
@@ -93,7 +115,7 @@ public class InheritanceTest extends StaticObjectModelTest {
         // StaticShape s1 declares 2 properties: s1p1 and s1p2
         StaticShape<DefaultStaticObjectFactory> s1 = b1.build();
 
-        StaticShape.Builder b2 = StaticShape.newBuilder(testLanguage);
+        StaticShape.Builder b2 = StaticShape.newBuilder(te.testLanguage);
         StaticProperty s2p1 = new DefaultStaticProperty("field1", StaticPropertyKind.Int, false);
         b2.property(s2p1);
         // StaticShape s2:
@@ -113,7 +135,12 @@ public class InheritanceTest extends StaticObjectModelTest {
         Assert.assertEquals(1, s1p1.getInt(object));
         Assert.assertEquals(3, s2p1.getInt(object));
 
-        Assume.assumeFalse(ARRAY_BASED_STORAGE);
+        Assume.assumeFalse(te.arrayBased);
         Assert.assertEquals(3, object.getClass().getField("field1").getInt(object));
+    }
+
+    @Test
+    public void dummy() {
+
     }
 }

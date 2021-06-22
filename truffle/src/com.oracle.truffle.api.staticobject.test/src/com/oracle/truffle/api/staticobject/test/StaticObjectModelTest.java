@@ -42,53 +42,14 @@ package com.oracle.truffle.api.staticobject.test;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
-import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.staticobject.DefaultStaticProperty;
 import com.oracle.truffle.api.staticobject.StaticProperty;
 import org.graalvm.polyglot.Context;
-import org.junit.After;
-import org.junit.Before;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 class StaticObjectModelTest {
-    static final boolean ARRAY_BASED_STORAGE = TruffleOptions.AOT || Boolean.getBoolean("com.oracle.truffle.api.staticobject.ArrayBasedStorage");
-
-    TruffleLanguage<?> testLanguage;
-    Context context;
-
-    @Before
-    public void setup() {
-        context = Context.newBuilder(SomTestLanguage.TEST_LANGUAGE_ID).build();
-        context.initialize(SomTestLanguage.TEST_LANGUAGE_ID);
-        context.enter();
-        testLanguage = SomTestLanguage.getCurrentContext().getLanguage();
-    }
-
-    @After
-    public void teardown() {
-        context.leave();
-        context.close();
-    }
-
-    String guessGeneratedFieldName(StaticProperty property) {
-        assert !ARRAY_BASED_STORAGE;
-        // The format of generated field names with the field-based storage might change at any
-        // time. Do not depend on it!
-        if (property instanceof DefaultStaticProperty) {
-            return ((DefaultStaticProperty) property).getId();
-        } else {
-            try {
-                Method getId = StaticProperty.class.getDeclaredMethod("getId");
-                getId.setAccessible(true);
-                return (String) getId.invoke(property);
-            } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
-                throw new RuntimeException(e);
-            }
-        }
-    }
-
     @Registration(id = SomTestLanguage.TEST_LANGUAGE_ID, name = SomTestLanguage.TEST_LANGUAGE_NAME)
     public static class SomTestLanguage extends TruffleLanguage<SomTestContext> {
         static final String TEST_LANGUAGE_NAME = "Test Language for the Static Object Model";
@@ -113,6 +74,49 @@ class StaticObjectModelTest {
 
         SomTestLanguage getLanguage() {
             return language;
+        }
+    }
+
+    static class TestEnvironment {
+        final boolean arrayBased;
+        final TruffleLanguage<?> testLanguage;
+        final Context context;
+
+        TestEnvironment(boolean arrayBased) {
+            this.arrayBased = arrayBased;
+            context = Context.newBuilder(SomTestLanguage.TEST_LANGUAGE_ID) //
+                            .allowExperimentalOptions(true) //
+                            .option("engine.SomStorageStrategy", this.arrayBased ? "array-based" : "field-based") //
+                            .build();
+            context.initialize(SomTestLanguage.TEST_LANGUAGE_ID);
+            context.enter();
+            testLanguage = SomTestLanguage.getCurrentContext().getLanguage();
+            context.leave();
+        }
+
+        public void close() {
+            context.close();
+        }
+
+        @Override
+        public String toString() {
+            return (arrayBased ? "Array-based" : "Field-based") + " storage";
+        }
+    }
+
+    String guessGeneratedFieldName(StaticProperty property) {
+        // The format of generated field names with the field-based storage might change at any
+        // time. Do not depend on it!
+        if (property instanceof DefaultStaticProperty) {
+            return ((DefaultStaticProperty) property).getId();
+        } else {
+            try {
+                Method getId = StaticProperty.class.getDeclaredMethod("getId");
+                getId.setAccessible(true);
+                return (String) getId.invoke(property);
+            } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 }
