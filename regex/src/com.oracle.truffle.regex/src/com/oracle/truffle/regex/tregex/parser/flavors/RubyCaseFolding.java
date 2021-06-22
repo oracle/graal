@@ -40,11 +40,27 @@
  */
 package com.oracle.truffle.regex.tregex.parser.flavors;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.oracle.truffle.regex.UnsupportedRegexException;
 
 public class RubyCaseFolding {
 
     public static String caseFoldString(int[] codepoints) {
+        List<Integer> caseFolded = new ArrayList<>();
+        for (int codepoint : codepoints) {
+            if (RubyCaseFoldingData.CASE_FOLD.containsKey(codepoint)) {
+                for (int caseFoldedCodepoint : RubyCaseFoldingData.CASE_FOLD.get(codepoint)) {
+                    caseFolded.add(caseFoldedCodepoint);
+                }
+            } else {
+                caseFolded.add(codepoint);
+            }
+        }
+
+        List<RubyCaseUnfoldingTrie.UnfoldingCandidate> unfoldings = RubyCaseUnfoldingTrie.findUnfoldings(caseFolded);
+
         throw new UnsupportedRegexException("case-folding not supported");
     }
 }

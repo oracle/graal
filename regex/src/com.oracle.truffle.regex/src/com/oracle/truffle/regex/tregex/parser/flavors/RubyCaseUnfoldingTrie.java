@@ -41,6 +41,7 @@
 package com.oracle.truffle.regex.tregex.parser.flavors;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
@@ -51,7 +52,7 @@ public final class RubyCaseUnfoldingTrie {
     public static final RubyCaseUnfoldingTrie CASE_UNFOLD;
 
     static {
-        CASE_UNFOLD = new RubyCaseUnfoldingTrie();
+        CASE_UNFOLD = new RubyCaseUnfoldingTrie(0);
 
         UnmodifiableMapCursor<Integer, int[]> caseFoldEntries = RubyCaseFoldingData.CASE_FOLD.getEntries();
         while (caseFoldEntries.advance()) {
@@ -61,10 +62,12 @@ public final class RubyCaseUnfoldingTrie {
 
     private final List<Integer> codepoints;
     private final EconomicMap<Integer, RubyCaseUnfoldingTrie> childNodes;
+    private final int depth;
 
-    public RubyCaseUnfoldingTrie() {
+    public RubyCaseUnfoldingTrie(int depth) {
         this.codepoints = new ArrayList<>();
         this.childNodes = EconomicMap.create();
+        this.depth = depth;
     }
 
     public void add(int codepoint, int[] caseFoldedString, int offset) {
@@ -74,7 +77,7 @@ public final class RubyCaseUnfoldingTrie {
         }
 
         if (!hasChildAt(caseFoldedString[offset])) {
-            childNodes.put(caseFoldedString[offset], new RubyCaseUnfoldingTrie());
+            childNodes.put(caseFoldedString[offset], new RubyCaseUnfoldingTrie(depth + 1));
         }
         getChildAt(caseFoldedString[offset]).add(codepoint, caseFoldedString, offset + 1);
     }
@@ -89,5 +92,65 @@ public final class RubyCaseUnfoldingTrie {
 
     public List<Integer> getCodepoints() {
         return codepoints;
+    }
+
+    public int getDepth() {
+        return depth;
+    }
+
+    public static final class UnfoldingCandidate {
+        private final int start;
+        private final int length;
+        private final int codepoint;
+
+        public UnfoldingCandidate(int start, int length, int codepoint) {
+            this.start = start;
+            this.length = length;
+            this.codepoint = codepoint;
+        }
+
+        public int getStart() {
+            return start;
+        }
+
+        public int getLength() {
+            return length;
+        }
+
+        public int getCodepoint() {
+            return codepoint;
+        }
+    }
+
+    public static List<UnfoldingCandidate> findUnfoldings(List<Integer> caseFolded) {
+        List<RubyCaseUnfoldingTrie> states = new ArrayList<>();
+        List<RubyCaseUnfoldingTrie> nextStates = new ArrayList<>();
+        List<UnfoldingCandidate> unfoldings = new ArrayList<>();
+
+        for (int i = 0; i < caseFolded.size(); i++) {
+            int codepoint = caseFolded.get(i);
+
+            states.add(RubyCaseUnfoldingTrie.CASE_UNFOLD);
+
+            for (RubyCaseUnfoldingTrie state : states) {
+                if (state.hasChildAt(codepoint)) {
+                    RubyCaseUnfoldingTrie newState = state.getChildAt(codepoint);
+                    nextStates.add(newState);
+                    for (int unfoldedCodepoint : newState.getCodepoints()) {
+                        unfoldings.add(new UnfoldingCandidate(i + 1 - newState.getDepth(), newState.getDepth(), unfoldedCodepoint));
+                    }
+                }
+            }
+
+            List<RubyCaseUnfoldingTrie> statesTmp = states;
+            states = nextStates;
+            nextStates = statesTmp;
+
+            nextStates.clear();
+        }
+
+        unfoldings.sort(Comparator.comparingInt(UnfoldingCandidate::getStart).thenComparing(Comparator.comparingInt(UnfoldingCandidate::getLength).reversed()));
+
+        return unfoldings;
     }
 }
