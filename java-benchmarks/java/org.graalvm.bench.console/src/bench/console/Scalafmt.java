@@ -22,11 +22,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package bench.misc;
+package bench.console;
 
-import org.openjdk.jmh.annotations.*;
-
-@State(Scope.Benchmark)
 public class Scalafmt {
 
     private static final String file =
@@ -130,8 +127,7 @@ public class Scalafmt {
                     "  }\n" +
                     "}\n";
 
-    @Benchmark
-    public static String bench() {
-        return org.scalafmt.Scalafmt.format(file, org.scalafmt.Scalafmt.format$default$2(), org.scalafmt.Scalafmt.format$default$3()).get();
+    public static void main(String[] args) {
+        org.scalafmt.Scalafmt.format(file, org.scalafmt.Scalafmt.format$default$2(), org.scalafmt.Scalafmt.format$default$3()).get();
     }
 }

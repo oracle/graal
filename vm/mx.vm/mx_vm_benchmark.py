@@ -525,7 +525,11 @@ class NativeImageVM(GraalVm):
         with stages.set_command([java_command] + hotspot_args) as s:
             s.execute_command()
             if self.hotspot_pgo and s.exit_code == 0:
-                mx.copyfile(profile_path, config.latest_profile_path)
+                # Hotspot instrumentation does not produce profiling information for the helloworld benchmark
+                if os.path.exists(profile_path):
+                    mx.copyfile(profile_path, config.latest_profile_path)
+                else:
+                    mx.warn("No profile information emitted during agent run.")
 
     def run_stage_instrument_image(self, config, stages, out, i, instrumentation_image_name, image_path, image_path_latest, instrumented_iterations):
         executable_name_args = ['-H:Name=' + instrumentation_image_name]
@@ -561,7 +565,7 @@ class NativeImageVM(GraalVm):
         pgo_args = ['--pgo=' + config.latest_profile_path, '-H:+VerifyPGOProfiles', '-H:VerificationDumpFile=' + pgo_verification_output_path]
         pgo_args += ['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'EnablePGOContextSensitivity']
         pgo_args += ['-H:+AOTInliner'] if self.pgo_aot_inline else ['-H:-AOTInliner']
-        final_image_command = config.base_image_build_args + executable_name_args + (pgo_args if self.pgo_instrumented_iterations > 0 or self.hotspot_pgo else [])
+        final_image_command = config.base_image_build_args + executable_name_args + (pgo_args if self.pgo_instrumented_iterations > 0 or (self.hotspot_pgo and os.path.exists(config.latest_profile_path)) else [])
         with stages.set_command(final_image_command) as s:
             s.execute_command()
 

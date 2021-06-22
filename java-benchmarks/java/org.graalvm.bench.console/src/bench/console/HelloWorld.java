@@ -22,15 +22,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package bench.misc;
+package bench.console;
 
-import org.openjdk.jmh.annotations.Benchmark;
-import org.openjdk.jmh.annotations.Scope;
-import org.openjdk.jmh.annotations.State;
-
-@State(Scope.Benchmark)
 public class HelloWorld {
-    @Benchmark
-    public static void helloWorld() {
+    public static void main(String[] args) {
+        System.out.println("Hello, World!");
     }
 }
