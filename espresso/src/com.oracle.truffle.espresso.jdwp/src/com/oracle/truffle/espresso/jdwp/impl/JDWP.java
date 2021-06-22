@@ -1666,7 +1666,7 @@ public final class JDWP {
                         if (activeThread == monitorOwnerThread) {
                             continue;
                         }
-                        Object contendedMonitor = context.getCurrentContendedMonitor(activeThread);
+                        Object contendedMonitor = controller.getEventListener().getCurrentContendedMonitor(activeThread);
                         if (contendedMonitor != null && contendedMonitor == monitor) {
                             waiters.add(activeThread);
                         }
@@ -2168,9 +2168,11 @@ public final class JDWP {
         static class CURRENT_CONTENDED_MONITOR {
             public static final int ID = 9;
 
-            static CommandResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet, DebuggerController controller) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+
+                JDWPContext context = controller.getContext();
 
                 Object thread = verifyThread(input.readLong(), reply, context, true);
 
@@ -2179,7 +2181,7 @@ public final class JDWP {
                     return new CommandResult(reply);
                 }
 
-                Object currentContendedMonitor = context.getCurrentContendedMonitor(thread);
+                Object currentContendedMonitor = controller.getEventListener().getCurrentContendedMonitor(thread);
                 if (currentContendedMonitor == null) {
                     reply.writeByte(TagConstants.OBJECT);
                     reply.writeLong(0);

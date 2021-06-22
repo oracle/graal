@@ -304,9 +304,9 @@ public final class ObjectKlass extends Klass {
 
                     initState = PREPARED;
                     if (getContext().isMainThreadCreated()) {
-                        if (getContext().getJDWPListener() != null) {
+                        if (getContext().shouldReportVMEvents()) {
                             prepareThread = getContext().getGuestThreadFromHost(Thread.currentThread());
-                            getContext().getJDWPListener().classPrepared(this, prepareThread);
+                            getContext().reportClassPrepared(this, prepareThread);
                         }
                     }
                     if (!isInterface()) {
