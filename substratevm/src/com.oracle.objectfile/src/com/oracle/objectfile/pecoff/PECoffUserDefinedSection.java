@@ -149,7 +149,11 @@ public class PECoffUserDefinedSection extends PECoffSection implements ObjectFil
         PECoffRelocationTable rs = (PECoffRelocationTable) getOrCreateRelocationElement(useImplicitAddend);
         assert symbolName != null;
         PECoffSymtab.Entry ent = syms.getSymbol(symbolName);
-        assert ent != null;
+        if (ent == null) {
+            warn("attempting to mark relocation site for non-existent symbol " + symbolName);
+            /* Return (but do not add to entry list) dummy relocation entry. It is never used (in GraalVM CE) */
+            return new PECoffRelocationTable.Entry(this, offset, PECoffMachine.getRelocation(getOwner().getMachine(), k), null, 0L);
+        }
 
         AssemblyBuffer sbb = new AssemblyBuffer(bb);
         sbb.setByteOrder(getOwner().getByteOrder());
@@ -195,5 +199,14 @@ public class PECoffUserDefinedSection extends PECoffSection implements ObjectFil
         sbb.pop();
 
         return rs.addEntry(this, offset, PECoffMachine.getRelocation(getOwner().getMachine(), k), ent, explicitAddend);
+    }
+
+    /**
+     * Report a warning message in SVM.
+     *
+     * @param msg warning message that is printed.
+     */
+    private static void warn(String msg) {
+        System.err.println("Warning: " + msg);
     }
 }
