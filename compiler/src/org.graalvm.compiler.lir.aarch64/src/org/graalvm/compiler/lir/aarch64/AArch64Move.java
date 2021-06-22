@@ -762,7 +762,7 @@ public class AArch64Move {
                 if (encoding.hasShift()) {
                     masm.lsr(64, resultRegister, ptr, encoding.getShift());
                 } else {
-                    masm.movx(resultRegister, ptr);
+                    masm.mov(64, resultRegister, ptr);
                 }
             } else if (nonNull) {
                 masm.sub(64, resultRegister, ptr, base);

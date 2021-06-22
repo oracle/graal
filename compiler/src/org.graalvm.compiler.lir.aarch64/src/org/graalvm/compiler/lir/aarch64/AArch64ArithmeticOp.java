@@ -149,7 +149,7 @@ public enum AArch64ArithmeticOp {
                     break;
                 case ABS:
                     masm.cmp(size, src, 0);
-                    masm.csneg(size, dst, src, ConditionFlag.LT);
+                    masm.csneg(size, dst, src, src, ConditionFlag.GE);
                     break;
                 case FABS:
                     masm.fabs(size, dst, src);
@@ -230,7 +230,7 @@ public enum AArch64ArithmeticOp {
                     masm.ands(size, dst, src, b.asLong());
                     break;
                 case OR:
-                    masm.or(size, dst, src, b.asLong());
+                    masm.orr(size, dst, src, b.asLong());
                     break;
                 case XOR:
                     masm.eor(size, dst, src, b.asLong());
@@ -274,97 +274,103 @@ public enum AArch64ArithmeticOp {
             Register dst = asRegister(result);
             Register src1 = asRegister(a);
             Register src2 = asRegister(b);
-            int size = result.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+            int dstSize = result.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+            int src1Size = a.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+            int src2Size = b.getPlatformKind().getSizeInBytes() * Byte.SIZE;
             switch (op) {
                 case ADD:
-                    masm.add(size, dst, src1, src2);
+                    masm.add(dstSize, dst, src1, src2);
                     break;
                 case ADDS:
-                    masm.adds(size, dst, src1, src2);
+                    masm.adds(dstSize, dst, src1, src2);
                     break;
                 case SUB:
-                    masm.sub(size, dst, src1, src2);
+                    masm.sub(dstSize, dst, src1, src2);
                     break;
                 case SUBS:
-                    masm.subs(size, dst, src1, src2);
+                    masm.subs(dstSize, dst, src1, src2);
                     break;
                 case MUL:
-                    masm.mul(size, dst, src1, src2);
+                    masm.mul(dstSize, dst, src1, src2);
                     break;
                 case UMULH:
-                    masm.umulh(size, dst, src1, src2);
+                    masm.umulh(dstSize, dst, src1, src2);
                     break;
                 case SMULH:
-                    masm.smulh(size, dst, src1, src2);
+                    masm.smulh(dstSize, dst, src1, src2);
                     break;
                 case MNEG:
-                    masm.mneg(size, dst, src1, src2);
+                    masm.mneg(dstSize, dst, src1, src2);
                     break;
                 case SMULL:
-                    masm.smull(size, dst, src1, src2);
+                    assert dstSize == 64;
+                    assert src1Size == 32 && src2Size == 32;
+                    masm.smull(dst, src1, src2);
                     break;
                 case SMNEGL:
-                    masm.smnegl(size, dst, src1, src2);
+                    assert dstSize == 64;
+                    assert src1Size == 32 && src2Size == 32;
+                    masm.smnegl(dst, src1, src2);
                     break;
                 case DIV:
-                    masm.sdiv(size, dst, src1, src2);
+                    masm.sdiv(dstSize, dst, src1, src2);
                     break;
                 case UDIV:
-                    masm.udiv(size, dst, src1, src2);
+                    masm.udiv(dstSize, dst, src1, src2);
                     break;
                 case AND:
-                    masm.and(size, dst, src1, src2);
+                    masm.and(dstSize, dst, src1, src2);
                     break;
                 case ANDS:
-                    masm.ands(size, dst, src1, src2);
+                    masm.ands(dstSize, dst, src1, src2);
                     break;
                 case OR:
-                    masm.or(size, dst, src1, src2);
+                    masm.orr(dstSize, dst, src1, src2);
                     break;
                 case XOR:
-                    masm.eor(size, dst, src1, src2);
+                    masm.eor(dstSize, dst, src1, src2);
                     break;
                 case BIC:
-                    masm.bic(size, dst, src1, src2);
+                    masm.bic(dstSize, dst, src1, src2);
                     break;
                 case ORN:
-                    masm.orn(size, dst, src1, src2);
+                    masm.orn(dstSize, dst, src1, src2);
                     break;
                 case EON:
-                    masm.eon(size, dst, src1, src2);
+                    masm.eon(dstSize, dst, src1, src2);
                     break;
                 case LSL:
-                    masm.lsl(size, dst, src1, src2);
+                    masm.lsl(dstSize, dst, src1, src2);
                     break;
                 case LSR:
-                    masm.lsr(size, dst, src1, src2);
+                    masm.lsr(dstSize, dst, src1, src2);
                     break;
                 case ASR:
-                    masm.asr(size, dst, src1, src2);
+                    masm.asr(dstSize, dst, src1, src2);
                     break;
                 case ROR:
-                    masm.ror(size, dst, src1, src2);
+                    masm.ror(dstSize, dst, src1, src2);
                     break;
                 case FADD:
-                    masm.fadd(size, dst, src1, src2);
+                    masm.fadd(dstSize, dst, src1, src2);
                     break;
                 case FSUB:
-                    masm.fsub(size, dst, src1, src2);
+                    masm.fsub(dstSize, dst, src1, src2);
                     break;
                 case FMUL:
-                    masm.fmul(size, dst, src1, src2);
+                    masm.fmul(dstSize, dst, src1, src2);
                     break;
                 case FDIV:
-                    masm.fdiv(size, dst, src1, src2);
+                    masm.fdiv(dstSize, dst, src1, src2);
                     break;
                 case FMAX:
-                    masm.fmax(size, dst, src1, src2);
+                    masm.fmax(dstSize, dst, src1, src2);
                     break;
                 case FMIN:
-                    masm.fmin(size, dst, src1, src2);
+                    masm.fmin(dstSize, dst, src1, src2);
                     break;
                 case MULVS:
-                    masm.mulvs(size, dst, src1, src2);
+                    masm.mulvs(dstSize, dst, src1, src2);
                     break;
                 default:
                     throw GraalError.shouldNotReachHere("op=" + op.name());
@@ -451,7 +457,7 @@ public enum AArch64ArithmeticOp {
                     masm.and(size, asRegister(result), asRegister(src1), asRegister(src2), shiftType, shiftAmt);
                     break;
                 case OR:
-                    masm.or(size, asRegister(result), asRegister(src1), asRegister(src2), shiftType, shiftAmt);
+                    masm.orr(size, asRegister(result), asRegister(src1), asRegister(src2), shiftType, shiftAmt);
                     break;
                 case XOR:
                     masm.eor(size, asRegister(result), asRegister(src1), asRegister(src2), shiftType, shiftAmt);
@@ -535,24 +541,30 @@ public enum AArch64ArithmeticOp {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-            int size = result.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+            assert src1.getPlatformKind() == src2.getPlatformKind();
+            int dstSize = result.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+            int src1Size = src1.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+            int src2Size = src2.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+            int src3Size = src3.getPlatformKind().getSizeInBytes() * Byte.SIZE;
             switch (op) {
                 case MADD:
-                    masm.madd(size, asRegister(result), asRegister(src1), asRegister(src2), asRegister(src3));
+                    masm.madd(dstSize, asRegister(result), asRegister(src1), asRegister(src2), asRegister(src3));
                     break;
                 case MSUB:
-                    masm.msub(size, asRegister(result), asRegister(src1), asRegister(src2), asRegister(src3));
+                    masm.msub(dstSize, asRegister(result), asRegister(src1), asRegister(src2), asRegister(src3));
                     break;
                 case FMADD:
-                    masm.fmadd(size, asRegister(result), asRegister(src1), asRegister(src2), asRegister(src3));
+                    masm.fmadd(dstSize, asRegister(result), asRegister(src1), asRegister(src2), asRegister(src3));
                     break;
                 case SMADDL:
-                    assert size == 64;
-                    masm.smaddl(size, asRegister(result), asRegister(src1), asRegister(src2), asRegister(src3));
+                    assert dstSize == 64 && src3Size == 64;
+                    assert src1Size == 32 && src2Size == 32;
+                    masm.smaddl(asRegister(result), asRegister(src1), asRegister(src2), asRegister(src3));
                     break;
                 case SMSUBL:
-                    assert size == 64;
-                    masm.smsubl(size, asRegister(result), asRegister(src1), asRegister(src2), asRegister(src3));
+                    assert dstSize == 64 && src3Size == 64;
+                    assert src1Size == 32 && src2Size == 32;
+                    masm.smsubl(asRegister(result), asRegister(src1), asRegister(src2), asRegister(src3));
                     break;
                 default:
                     throw GraalError.shouldNotReachHere();
