@@ -792,7 +792,7 @@ public class GenerateWrapperTest extends AbstractPolyglotTest {
 
         public int executeWrapped(VirtualFrame frame) {
             return 42;
-        };
+        }
 
         @GenerateWrapper.Ignore
         public abstract int executeIgnoredInt(VirtualFrame frame);
@@ -802,7 +802,8 @@ public class GenerateWrapperTest extends AbstractPolyglotTest {
 
         @GenerateWrapper.Ignore
         public int executeConcrete(VirtualFrame frame) {
-            // This method isn't abstract, so no delegation happens. The receiver type should be the wrapper class.
+            // This method isn't abstract, so no delegation happens. The receiver type should be the
+            // wrapper class.
             assertTrue(this.getClass().getName().endsWith("Wrapper"));
             return 42;
         }
@@ -926,7 +927,7 @@ public class GenerateWrapperTest extends AbstractPolyglotTest {
         }
 
         @GenerateWrapper.Ignore
-        public void execute4(VirtualFrame frame){
+        public void execute4(VirtualFrame frame) {
         }
     }
 
