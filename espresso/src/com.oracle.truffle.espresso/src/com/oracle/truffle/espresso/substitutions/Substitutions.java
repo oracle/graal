@@ -43,7 +43,6 @@ import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.jni.NativeEnv;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.IntrinsicSubstitutorNode;
@@ -149,7 +148,7 @@ public final class Substitutions implements ContextAccess {
     private final ConcurrentHashMap<MethodRef, EspressoRootNodeFactory> runtimeSubstitutions = new ConcurrentHashMap<>();
 
     static {
-        for (JavaSubstitution.Factory factory : NativeEnv.instantiateAs(SubstitutionCollector.get(), JavaSubstitution.Factory.class)) {
+        for (JavaSubstitution.Factory factory : SubstitutionCollector.getInstances(JavaSubstitution.Factory.class)) {
             registerStaticSubstitution(factory);
         }
     }

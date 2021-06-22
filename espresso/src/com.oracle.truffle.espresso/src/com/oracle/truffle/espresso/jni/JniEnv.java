@@ -130,7 +130,7 @@ public final class JniEnv extends NativeEnv {
 
     private final @Pointer TruffleObject getSizeMax;
 
-    private final static List<CallableFromNative.Factory> JNI_IMPL_FACTORIES = instantiateAs(JniImplCollector.get(), CallableFromNative.Factory.class);
+    private final static List<CallableFromNative.Factory> JNI_IMPL_FACTORIES = JniImplCollector.getInstances(CallableFromNative.Factory.class);
 
     @Override
     protected List<CallableFromNative.Factory> getCollector() {

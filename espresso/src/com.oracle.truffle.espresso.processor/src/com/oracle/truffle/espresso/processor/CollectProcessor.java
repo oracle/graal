@@ -115,10 +115,10 @@ public class CollectProcessor extends BaseProcessor {
                         anchorClass.getSimpleName()).append("})").append("\n");
         sb.append(" */\n");
         sb.append("public final class ").append(anchorClass.getSimpleName().toString() + "Collector").append(" {\n");
-        sb.append("    public static List<Class<?>> get() {\n");
-        sb.append("        List<Class<?>> classes = new ArrayList<>(").append(classes.length).append(");\n");
+        sb.append("    public static <T> List<T> getInstances(Class<? extends T> componentClass) {\n");
+        sb.append("        List<T> classes = new ArrayList<>(").append(classes.length).append(");\n");
         for (TypeElement clazz : classes) {
-            sb.append("        classes.add(").append(clazz.getQualifiedName().toString()).append(".class").append(");\n");
+            sb.append("        classes.add(").append("componentClass").append(".cast(").append("new ").append(clazz.getQualifiedName().toString()).append("()").append("));\n");
         }
         sb.append("        return classes;\n");
         sb.append("    }\n");

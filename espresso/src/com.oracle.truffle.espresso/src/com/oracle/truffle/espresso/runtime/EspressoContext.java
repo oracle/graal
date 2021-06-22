@@ -584,8 +584,7 @@ public final class EspressoContext {
         }
 
         List<String> available = new ArrayList<>();
-        List<NativeAccess.Provider> providers = NativeEnv.instantiateAs(NativeAccessCollector.get(), NativeAccess.Provider.class);
-        for (NativeAccess.Provider provider : providers) {
+        for (NativeAccess.Provider provider : NativeAccessCollector.getInstances(NativeAccess.Provider.class)) {
             available.add(provider.id());
             if (nativeBackend.equals(provider.id())) {
                 getLogger().fine("Native backend: " + nativeBackend);

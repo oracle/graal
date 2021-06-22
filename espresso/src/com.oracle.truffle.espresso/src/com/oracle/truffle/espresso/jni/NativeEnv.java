@@ -125,18 +125,6 @@ public abstract class NativeEnv implements ContextAccess {
         return res;
     }
 
-    public static <T> List<T> instantiateAs(List<Class<?>> classes, Class<T> target) {
-        List<T> factories = new ArrayList<>();
-        for (Class<?> clazz : classes) {
-            try {
-                factories.add(target.cast(clazz.getDeclaredConstructor().newInstance()));
-            } catch (InstantiationException | IllegalAccessException | NoSuchMethodException | InvocationTargetException e) {
-                throw EspressoError.shouldNotReachHere(e);
-            }
-        }
-        return factories;
-    }
-
     private Map<String, CallableFromNative.Factory> buildMethodsMap() {
         Map<String, CallableFromNative.Factory> map = new HashMap<>();
         for (CallableFromNative.Factory method : getCollector()) {
