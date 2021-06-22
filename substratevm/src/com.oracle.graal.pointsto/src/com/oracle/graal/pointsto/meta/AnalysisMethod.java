@@ -24,7 +24,6 @@
  */
 package com.oracle.graal.pointsto.meta;
 
-import static com.oracle.graal.pointsto.util.AtomicUtils.atomicMark;
 import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
 import static jdk.vm.ci.common.JVMCIError.unimplemented;
 
@@ -61,6 +60,7 @@ import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.infrastructure.WrappedSignature;
 import com.oracle.graal.pointsto.results.StaticAnalysisResults;
 import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.graal.pointsto.util.AtomicUtils;
 
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.Constant;
@@ -223,7 +223,7 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
         if (invokedBy != null && invoke != null) {
             invokedBy.put(invoke, Boolean.TRUE);
         }
-        return atomicMark(isInvoked);
+        return AtomicUtils.atomicMark(isInvoked);
     }
 
     public boolean registerAsImplementationInvoked(InvokeTypeFlow invoke) {
@@ -232,7 +232,7 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
             implementationInvokedBy.put(invoke, Boolean.TRUE);
         }
 
-        if (atomicMark(isImplementationInvoked)) {
+        if (AtomicUtils.atomicMark(isImplementationInvoked)) {
             /*
              * The class constant of the declaring class is used for exception metadata, so marking
              * a method as invoked also makes the declaring class reachable.
@@ -278,7 +278,7 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
     }
 
     public boolean registerAsRootMethod() {
-        if (atomicMark(isRootMethod)) {
+        if (AtomicUtils.atomicMark(isRootMethod)) {
             /*
              * The class constant of the declaring class is used for exception metadata, so marking
              * a method as invoked also makes the declaring class reachable.
