@@ -681,6 +681,9 @@ final class Target_java_lang_NullPointerException {
 final class Target_jdk_internal_loader_ClassLoaders {
     @Alias
     static native Target_jdk_internal_loader_BuiltinClassLoader bootLoader();
+
+    @Alias
+    public static native ClassLoader platformClassLoader();
 }
 
 @TargetClass(className = "jdk.internal.loader.BootLoader", onlyWith = JDK11OrLater.class)
@@ -715,7 +718,9 @@ final class Target_jdk_internal_loader_BootLoader {
     @SuppressWarnings("unused")
     @Substitute
     private static Class<?> loadClass(Target_java_lang_Module module, String name) {
-        /* The module system is not supported for now, therefore the module parameter is ignored. */
+        /*
+         * The module system is not supported for now, therefore the module parameter is ignored.
+         */
         return ClassForNameSupport.forNameOrNull(name, false, null);
     }
 

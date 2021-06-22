@@ -26,6 +26,7 @@ package com.oracle.svm.core.jdk;
 
 import java.util.ArrayList;
 
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.util.DirectAnnotationAccess;
 import org.graalvm.word.Pointer;
@@ -36,7 +37,6 @@ import com.oracle.svm.core.stack.JavaStackFrameVisitor;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.thread.JavaContinuations;
 import com.oracle.svm.core.thread.Target_java_lang_Continuation;
-import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -295,14 +295,8 @@ class GetLatestUserDefinedClassLoaderVisitor extends JavaStackFrameVisitor {
             return true;
         }
 
-        Class<?> clazz = frameInfo.getSourceClass();
-        if (Target_jdk_internal_reflect_MethodAccessorImpl.class.isAssignableFrom(clazz) || Target_jdk_internal_reflect_ConstructorAccessorImpl.class.isAssignableFrom(clazz)) {
-            // Skip certain reflection-related frames.
-            return true;
-        }
-
-        ClassLoader classLoader = clazz.getClassLoader();
-        if (classLoader == null || JDKSpecificClassLoaders.isExtensionOrPlatformLoader(classLoader)) {
+        ClassLoader classLoader = frameInfo.getSourceClass().getClassLoader();
+        if (classLoader == null || isExtensionOrPlatformLoader(classLoader)) {
             // Skip bootstrap and platform/extension class loader.
             return true;
         }
@@ -310,10 +304,13 @@ class GetLatestUserDefinedClassLoaderVisitor extends JavaStackFrameVisitor {
         result = classLoader;
         return false;
     }
-}
 
-class JDKSpecificClassLoaders {
-    public static boolean isExtensionOrPlatformLoader(@SuppressWarnings("unused") ClassLoader classLoader) {
-        throw VMError.shouldNotReachHere("Replaced with a JDK-specific implementation");
+    private static boolean isExtensionOrPlatformLoader(ClassLoader classLoader) {
+        if (JavaVersionUtil.JAVA_SPEC > 8) {
+            return classLoader == Target_jdk_internal_loader_ClassLoaders.platformClassLoader();
+        }
+
+        // We neither use sun.misc.Launcher nor ExtClassLoader in Native Image.
+        return false;
     }
 }
