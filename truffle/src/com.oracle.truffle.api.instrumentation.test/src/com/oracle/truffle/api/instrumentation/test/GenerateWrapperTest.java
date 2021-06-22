@@ -790,6 +790,7 @@ public class GenerateWrapperTest extends AbstractPolyglotTest {
             return new TestNodeWithIgnoresWrapper(this, probeNode);
         }
 
+        @SuppressWarnings("unused")
         public int executeWrapped(VirtualFrame frame) {
             return 42;
         }
@@ -800,6 +801,7 @@ public class GenerateWrapperTest extends AbstractPolyglotTest {
         @GenerateWrapper.Ignore
         public abstract Object executeIgnoredObject(VirtualFrame frame);
 
+        @SuppressWarnings("unused")
         @GenerateWrapper.Ignore
         public int executeConcrete(VirtualFrame frame) {
             // This method isn't abstract, so no delegation happens. The receiver type should be the
@@ -926,6 +928,7 @@ public class GenerateWrapperTest extends AbstractPolyglotTest {
         public final void execute3() {
         }
 
+        @SuppressWarnings("unused")
         @GenerateWrapper.Ignore
         public void execute4(VirtualFrame frame) {
         }
