@@ -29,6 +29,7 @@ concurrency:
 env:
   LANG: en_US.UTF-8
   MX_GIT_CACHE: refcache
+  MX_PYTHON_VERSION: 3
   JAVA_HOME: ${{ github.workspace }}/jdk
   MX_PATH: ${{ github.workspace }}/mx
 
