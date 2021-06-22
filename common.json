@@ -32,7 +32,7 @@
         "MX_PYTHON": "python3"
       },
       "packages": {
-        "pip:logilab-common ": "==1.4.4",
+        "pip:logilab-common": "==1.4.4",
         "pip:pylint": "==1.9.3",
         "pip:ninja_syntax": "==1.7.2"
       }
