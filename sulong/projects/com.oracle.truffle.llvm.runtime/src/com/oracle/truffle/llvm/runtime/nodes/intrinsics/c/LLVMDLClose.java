@@ -29,18 +29,37 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.c;
 
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 
 @NodeChild(type = LLVMExpressionNode.class)
 public abstract class LLVMDLClose extends LLVMIntrinsic {
 
-    @Specialization
-    protected int doOp(@SuppressWarnings("unused") LLVMPointer library) {
+    @Specialization(guards = "isLLVMLibrary(libraryHandle)")
+    protected int doOp(@SuppressWarnings("unused") LLVMManagedPointer libraryHandle,
+                       @CachedContext(LLVMLanguage.class) LLVMContext ctx) {
         // Opened library can only be closed once the context contain the library has been closed.
+        Object library = getLibrary(libraryHandle);
+        RootCallTarget[] targets = ctx.getDestructorFunctions();
+        // need to get the bitcodeID of library some how.
+
         return 0;
     }
+
+    // Being able to destruct a single library. Change how it is stored within the context is the first step.
+    protected Object getLibrary(LLVMManagedPointer pointer) {
+        return ((LLVMDLOpen.LLVMDLHandler) pointer.getObject()).getLibrary();
+    }
+
+    protected boolean isLLVMLibrary(LLVMManagedPointer library) {
+        return library.getObject() instanceof LLVMDLOpen.LLVMDLHandler;
+    }
+
 }

@@ -29,12 +29,6 @@
  */
 package com.oracle.truffle.llvm.initialization;
 
-import static com.oracle.truffle.llvm.parser.model.GlobalSymbol.CONSTRUCTORS_VARNAME;
-import static com.oracle.truffle.llvm.parser.model.GlobalSymbol.DESTRUCTORS_VARNAME;
-
-import java.util.ArrayList;
-import java.util.Comparator;
-
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -46,6 +40,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
 import com.oracle.truffle.llvm.parser.util.Pair;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
+import com.oracle.truffle.llvm.runtime.IDGenerater.BitcodeID;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMScope;
@@ -63,6 +58,12 @@ import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+
+import static com.oracle.truffle.llvm.parser.model.GlobalSymbol.CONSTRUCTORS_VARNAME;
+import static com.oracle.truffle.llvm.parser.model.GlobalSymbol.DESTRUCTORS_VARNAME;
 
 /**
  * Registers the destructor and executes the constructor of a module. This happens after
@@ -83,19 +84,20 @@ public final class InitializeModuleNode extends LLVMNode implements LLVMHasDatal
 
     private final RootCallTarget destructor;
     private final DataLayout dataLayout;
+    private final BitcodeID bitcodeID;
 
     @Child private StaticInitsNode constructor;
 
     public InitializeModuleNode(LLVMLanguage language, LLVMParserResult parserResult, String moduleName) {
         this.destructor = createDestructor(parserResult, moduleName, language);
         this.dataLayout = parserResult.getDataLayout();
-
+        this.bitcodeID = parserResult.getRuntime().getBitcodeID();
         this.constructor = createConstructor(parserResult, moduleName);
     }
 
     public void execute(VirtualFrame frame, LLVMContext ctx) {
         if (destructor != null) {
-            ctx.registerDestructorFunctions(destructor);
+            ctx.registerDestructorFunctions(bitcodeID, destructor);
         }
         constructor.execute(frame);
     }

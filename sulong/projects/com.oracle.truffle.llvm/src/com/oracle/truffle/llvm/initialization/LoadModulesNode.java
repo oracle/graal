@@ -206,7 +206,7 @@ public final class LoadModulesNode extends LLVMRootNode {
 
             // Only the root library (not a dependency) will have a non-null scope.
             if (scope != null) {
-                SulongLibrary library = new SulongLibrary(sourceName, scope, main, context, parserRuntime.getLocator());
+                SulongLibrary library = new SulongLibrary(sourceName, scope, main, context, parserRuntime.getLocator(), parserRuntime.getBitcodeID());
                 if (main != null) {
                     context.setMainLibrary(library);
                 }
@@ -293,6 +293,7 @@ public final class LoadModulesNode extends LLVMRootNode {
                 }
             }
 
+            //
             if (context.isLibraryAlreadyLoaded(bitcodeID)) {
                 if (RTLDFlags.RTLD_OPEN_DEFAULT.isActive(localOrGlobal)) {
                     return resultScope;
@@ -347,13 +348,6 @@ public final class LoadModulesNode extends LLVMRootNode {
                     visited.clear();
                 }
                 executeInitialiseModule(context, visited, frame);
-            }
-
-            if (LLVMLoadingPhase.INIT_DONE.isActive(phase)) {
-                if (LLVMLoadingPhase.ALL == phase) {
-                    visited.clear();
-                }
-                executeDone(context, visited);
             }
 
             if (LLVMLoadingPhase.ALL == phase) {
@@ -421,8 +415,8 @@ public final class LoadModulesNode extends LLVMRootNode {
                     callDependencies.call(d, LLVMLoadingPhase.INIT_OVERWRITE, visited, localScope, rtldFlags);
                 }
             }
+            initOverwrite.execute(context, localScope, rtldFlags);
         }
-        initOverwrite.execute(context, localScope, rtldFlags);
     }
 
     private void executeInitialiseContext(BitSet visited, VirtualFrame frame) {
@@ -448,20 +442,6 @@ public final class LoadModulesNode extends LLVMRootNode {
                 }
             }
             initModules.execute(frame, context);
-        }
-    }
-
-    @TruffleBoundary
-    private void executeDone(LLVMContext context, BitSet visited) {
-        int id = bitcodeID.getId();
-        if (!visited.get(id)) {
-            visited.set(id);
-            for (CallTarget d : dependencies) {
-                if (d != null) {
-                    callDependencies.call(d, LLVMLoadingPhase.INIT_DONE, visited);
-                }
-            }
-            context.markLibraryLoaded(bitcodeID);
         }
     }
 

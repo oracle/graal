@@ -130,7 +130,9 @@ public final class LLVMContext {
 
     private final DynamicLinkChain dynamicLinkChain;
     private final DynamicLinkChain dynamicLinkChainForScopes;
-    private final List<RootCallTarget> destructorFunctions;
+
+    // Change this to a map, library id -> destructorCallTarget
+    //private final List<RootCallTarget> destructorFunctions;
     private final LLVMFunctionPointerRegistry functionPointerRegistry;
 
     // we are not able to clean up ThreadLocals properly, so we are using maps instead
@@ -143,7 +145,8 @@ public final class LLVMContext {
     // Assumptions that get invalidated whenever an entry in the above array changes:
     @CompilationFinal(dimensions = 2) private Assumption[][] symbolAssumptions;
 
-    private boolean[] libraryLoaded;
+    private RootCallTarget[] destructorFunctions;
+
     // Source cache (for reusing bitcode IDs).
     protected final EconomicMap<BitcodeID, Source> sourceCache = EconomicMap.create();
 
@@ -195,7 +198,7 @@ public final class LLVMContext {
         this.env = env;
         this.initialized = false;
         this.cleanupNecessary = false;
-        this.destructorFunctions = new ArrayList<>();
+        //this.destructorFunctions = new ArrayList<>();
         this.nativeCallStatistics = SulongEngineOption.optionEnabled(env.getOptions().get(SulongEngineOption.NATIVE_CALL_STATS)) ? new ConcurrentHashMap<>() : null;
         this.sigDfl = LLVMNativePointer.create(0);
         this.sigIgn = LLVMNativePointer.create(1);
@@ -227,7 +230,7 @@ public final class LLVMContext {
         symbolAssumptions = new Assumption[10][];
         // These two fields contain the same value, but have different CompilationFinal annotations:
         symbolFinalStorage = symbolDynamicStorage = new LLVMPointer[10][];
-        libraryLoaded = new boolean[10];
+        destructorFunctions = new RootCallTarget[10];
     }
 
     boolean patchContext(Env newEnv) {
@@ -648,18 +651,19 @@ public final class LLVMContext {
 
     public boolean isLibraryAlreadyLoaded(BitcodeID bitcodeID) {
         int id = bitcodeID.getId();
-        return id < libraryLoaded.length && libraryLoaded[id];
+        return id < destructorFunctions.length && destructorFunctions[id] != null;
     }
 
-    public void markLibraryLoaded(BitcodeID bitcodeID) {
+    public void registerDestructorFunctions(BitcodeID bitcodeID, RootCallTarget destructor) {
+        assert destructor != null;
         int id = bitcodeID.getId();
-        if (id >= libraryLoaded.length) {
+        if (id >= destructorFunctions.length) {
             int newLength = (id + 1) + ((id + 1) / 2);
-            boolean[] temp = new boolean[newLength];
-            System.arraycopy(libraryLoaded, 0, temp, 0, libraryLoaded.length);
-            libraryLoaded = temp;
+            RootCallTarget[] temp = new RootCallTarget[newLength];
+            System.arraycopy(destructorFunctions, 0, temp, 0, destructorFunctions.length);
+            destructorFunctions = temp;
         }
-        libraryLoaded[id] = true;
+        destructorFunctions[id] = destructor;
     }
 
     @TruffleBoundary
@@ -677,27 +681,25 @@ public final class LLVMContext {
         return env;
     }
 
-    public LLVMScope getGlobalScope() {
-        return globalScope;
+    public LLVMGlobalScope getGlobalScope() {
+        return firstGlobalScope;
     }
 
-    // I need a first and last. Add to last, tranverse from first.
-    private synchronized void addGlobalScope(LLVMGlobalScope scope) {
+    public synchronized void addGlobalScope(LLVMGlobalScope scope) {
         assert scope.getPrev() == null && scope.getNext() == null;
-        if (firstGlobalScope == lastGlobalScope) {
-            firstGlobalScope.setNext(scope);
-            lastGlobalScope = scope;
-            lastGlobalScope.setPrev(firstGlobalScope);
-        } else {
-            lastGlobalScope.setNext(scope);
-            scope.setPrev(lastGlobalScope);
-            lastGlobalScope = scope;
-        }
+        lastGlobalScope.setNext(scope);
+        scope.setPrev(lastGlobalScope);
+        lastGlobalScope = scope;
     }
 
-    private static synchronized void removeGlobalScope(LLVMGlobalScope scope) {
+    public synchronized void removeGlobalScope(LLVMGlobalScope scope) {
+        assert scope != firstGlobalScope;
         scope.getPrev().setNext(scope.getNext());
-        scope.getNext().setPrev(scope.getPrev());
+        if (lastGlobalScope == scope) {
+            lastGlobalScope = scope.getPrev();
+        } else {
+            scope.getNext().setPrev(scope.getPrev());
+        }
         scope.setNext(null);
         scope.setPrev(null);
     }
@@ -896,11 +898,11 @@ public final class LLVMContext {
         return threadingStack;
     }
 
-    public void registerDestructorFunctions(RootCallTarget destructor) {
+    /*public void registerDestructorFunctions(RootCallTarget destructor) {
         assert destructor != null;
         assert !destructorFunctions.contains(destructor);
         destructorFunctions.add(destructor);
-    }
+    }*/
 
     @TruffleBoundary
     public boolean isScopeLoaded(LLVMScope scope) {
@@ -952,7 +954,7 @@ public final class LLVMContext {
     }
 
     public RootCallTarget[] getDestructorFunctions() {
-        return destructorFunctions.toArray(new RootCallTarget[destructorFunctions.size()]);
+        return destructorFunctions;
     }
 
     public synchronized List<LLVMThread> getRunningThreads() {
