@@ -386,7 +386,7 @@ public final class NativeEnvProcessor extends EspressoProcessor {
         }
         String nodeMethodName = null;
         if (helper.isNodeTarget()) {
-            ExecutableElement nodeExecute = findNodeExecute(processingEnv.getMessager(), helper.getNodeTarget());
+            ExecutableElement nodeExecute = findNodeExecute(helper.getNodeTarget());
             nodeMethodName = nodeExecute.getSimpleName().toString();
         }
         switch (h.jniNativeSignature[0]) {

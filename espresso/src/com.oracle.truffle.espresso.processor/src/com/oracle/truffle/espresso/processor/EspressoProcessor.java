@@ -316,7 +316,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
      */
     protected ExecutableElement getTargetMethod(Element targetElement) {
         if (targetElement.getKind() == ElementKind.CLASS) {
-            return findNodeExecute(processingEnv.getMessager(), (TypeElement) targetElement);
+            return findNodeExecute((TypeElement) targetElement);
         }
         return (ExecutableElement) targetElement;
     }
@@ -376,7 +376,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
     /**
      * For substitutions that use a node, find the execute* (abstract) method.
      */
-    static ExecutableElement findNodeExecute(Messager messager, TypeElement node) {
+    ExecutableElement findNodeExecute(TypeElement node) {
         for (Element method : node.getEnclosedElements()) {
             if (method.getKind() == ElementKind.METHOD) {
                 if (method.getModifiers().contains(Modifier.ABSTRACT)) {
@@ -384,7 +384,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
                 }
             }
         }
-        messager.printMessage(Diagnostic.Kind.ERROR, "Node abstract execute* method not found", node);
+        getMessager().printMessage(Diagnostic.Kind.ERROR, "Node abstract execute* method not found", node);
         return null;
     }
 

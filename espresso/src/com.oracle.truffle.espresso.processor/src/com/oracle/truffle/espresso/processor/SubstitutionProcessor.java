@@ -209,7 +209,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
             if (modifiers.contains(Modifier.PRIVATE) || modifiers.contains(Modifier.PROTECTED)) {
                 processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Method substitution cannot be private nor protected", element);
             }
-            ExecutableElement targetMethod = findNodeExecute(processingEnv.getMessager(), typeElement);
+            ExecutableElement targetMethod = findNodeExecute(typeElement);
             if (targetMethod == null) {
                 processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Cannot find Node abstract execute method ", element);
             }
@@ -613,7 +613,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         }
         String nodeMethodName = null;
         if (helper.isNodeTarget()) {
-            ExecutableElement nodeExecute = findNodeExecute(processingEnv.getMessager(), helper.getNodeTarget());
+            ExecutableElement nodeExecute = findNodeExecute(helper.getNodeTarget());
             nodeMethodName = nodeExecute.getSimpleName().toString();
         }
         if (h.returnType.equals("V")) {
