@@ -217,7 +217,10 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         }
     }
 
-    private static String camelCase(String s) {
+    /**
+     * Converts from CamelCase to lowerCamelCase.
+     */
+    private static String toLowerCamelCase(String s) {
         if (s.isEmpty()) {
             return s;
         }
@@ -238,7 +241,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
                 // If methodName is not specified, use camel case version of the class name.
                 // e.g. IsNull node -> isNull.
                 String elementName = targetElement.getSimpleName().toString();
-                name = camelCase(elementName);
+                name = toLowerCamelCase(elementName);
             } else if (targetElement.getKind() == ElementKind.METHOD) {
                 // If methodName is not specified, use the target method name.
                 name = targetElement.getSimpleName().toString();
