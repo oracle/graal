@@ -385,28 +385,33 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
             return super(BaseMicroserviceBenchmarkSuite, self).run_stage(vm, stage, server_command, out, err, cwd, nonZeroIsFatal)
         else:
             if stage == 'run':
+                serverCommandWithTracker = self.apply_command_mapper_hooks(server_command, vm)
+
+                mx_benchmark.disable_tracker()
+                serverCommandWithoutTracker = self.apply_command_mapper_hooks(server_command, vm)
+                mx_benchmark.enable_tracker()
+
                 # Do all benchmarking (startup, peak, latency) on a single image that is started and shut down multiple times.
                 threading.Thread(target=BaseMicroserviceBenchmarkSuite.testStartupPerformanceInBackground, args=[self]).start()
-                returnCode = mx.run(server_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
+                returnCode = mx.run(serverCommandWithoutTracker, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
                 if not self.validateReturnCode(returnCode):
-                    mx.abort("The server application unexpectedly ended with return code " + returnCode)
+                    mx.abort("The server application unexpectedly ended with return code " + str(returnCode))
 
-                serverCommandAfterHooks = self.apply_command_mapper_hooks(server_command, vm)
                 threading.Thread(target=BaseMicroserviceBenchmarkSuite.testPeakPerformanceInBackground, args=[self]).start()
-                returnCode = mx.run(serverCommandAfterHooks, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
+                returnCode = mx.run(serverCommandWithTracker, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
                 if not self.validateReturnCode(returnCode):
-                    mx.abort("The server application unexpectedly ended with return code " + returnCode)
+                    mx.abort("The server application unexpectedly ended with return code " + str(returnCode))
 
                 if self.measureLatency:
                     threading.Thread(target=BaseMicroserviceBenchmarkSuite.calibrateLatencyTestInBackground, args=[self]).start()
-                    returnCode = mx.run(server_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
+                    returnCode = mx.run(serverCommandWithoutTracker, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
                     if not self.validateReturnCode(returnCode):
-                        mx.abort("The server application unexpectedly ended with return code " + returnCode)
+                        mx.abort("The server application unexpectedly ended with return code " + str(returnCode))
 
                     threading.Thread(target=BaseMicroserviceBenchmarkSuite.testLatencyInBackground, args=[self]).start()
-                    returnCode = mx.run(server_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
+                    returnCode = mx.run(serverCommandWithoutTracker, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
                     if not self.validateReturnCode(returnCode):
-                        mx.abort("The server application unexpectedly ended with return code " + returnCode)
+                        mx.abort("The server application unexpectedly ended with return code " + str(returnCode))
 
                 return returnCode
             elif stage == 'agent' or 'instrument-run' in stage:
@@ -472,22 +477,22 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
         self.measureLatency = not args.skip_latency_measurements
 
         if not self.inNativeMode():
-            mx.disable_command_mapper_hooks()
+            mx_benchmark.disable_tracker()
             threading.Thread(target=BaseMicroserviceBenchmarkSuite.testStartupPerformanceInBackground, args=[self]).start()
             datapoints = super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
-            mx.enable_command_mapper_hooks()
+            mx_benchmark.enable_tracker()
 
             threading.Thread(target=BaseMicroserviceBenchmarkSuite.testPeakPerformanceInBackground, args=[self]).start()
             datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
 
             if self.measureLatency:
-                mx.disable_command_mapper_hooks()
+                mx_benchmark.disable_tracker()
                 threading.Thread(target=BaseMicroserviceBenchmarkSuite.calibrateLatencyTestInBackground, args=[self]).start()
                 datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
 
                 threading.Thread(target=BaseMicroserviceBenchmarkSuite.testLatencyInBackground, args=[self]).start()
                 datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
-                mx.enable_command_mapper_hooks()
+                mx_benchmark.enable_tracker()
 
             return datapoints
         else:
