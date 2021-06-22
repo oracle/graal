@@ -27,16 +27,16 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.element.AnnotationMirror;
-import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
+import javax.lang.model.element.Name;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeKind;
@@ -56,23 +56,6 @@ public final class SubstitutionProcessor extends EspressoProcessor {
     // NoFilter.class
     private TypeElement noFilter;
 
-    // @Substitutions.java11()
-    private ExecutableElement espressoSubstitutionsClassNameProvider;
-
-    // @Substitution.hasReceiver()
-    private ExecutableElement hasReceiverElement;
-    // @Substitution.methodName()
-    private ExecutableElement methodNameElement;
-    // @Substitution.classNameProvider()
-    private ExecutableElement substitutionClassNameProvider;
-    // @Substitution.versionFilter()
-    private ExecutableElement versionFilterElement;
-
-    // @JavaType.value()
-    private ExecutableElement javaTypeValueElement;
-    // @JavaType.internalName()
-    private ExecutableElement javaTypeInternalNameElement;
-
     // StaticObject
     private TypeElement staticObjectElement;
 
@@ -81,15 +64,13 @@ public final class SubstitutionProcessor extends EspressoProcessor {
     private static final String SUBSTITUTION_PACKAGE = "com.oracle.truffle.espresso.substitutions";
 
     private static final String ESPRESSO_SUBSTITUTIONS = SUBSTITUTION_PACKAGE + "." + "EspressoSubstitutions";
-    private static final String METHOD_SUBSTITUTION = SUBSTITUTION_PACKAGE + "." + "Substitution";
+    private static final String SUBSTITUTION = SUBSTITUTION_PACKAGE + "." + "Substitution";
     private static final String STATIC_OBJECT = "com.oracle.truffle.espresso.runtime.StaticObject";
     private static final String JAVA_TYPE = SUBSTITUTION_PACKAGE + "." + "JavaType";
     private static final String NO_PROVIDER = SUBSTITUTION_PACKAGE + "." + "SubstitutionNamesProvider" + "." + "NoProvider";
     private static final String NO_FILTER = SUBSTITUTION_PACKAGE + "." + "VersionFilter" + "." + "NoFilter";
 
-    private static final String SUBSTITUTOR = "Substitutor";
-    private static final String COLLECTOR = "SubstitutorCollector";
-
+    private static final String SUBSTITUTOR = "JavaSubstitution";
     private static final String INVOKE = "invoke(Object[] " + ARGS_NAME + ") {\n";
 
     private static final String GET_METHOD_NAME = "getMethodNames";
@@ -114,7 +95,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
 
         public SubstitutorHelper(EspressoProcessor processor, Element target, String targetClassName, String guestMethodName, List<String> guestTypeNames, String returnType,
                         boolean hasReceiver, TypeMirror nameProvider, TypeMirror versionFilter) {
-            super(processor, target);
+            super(processor, target, processor.getTypeElement(SUBSTITUTION));
             this.targetClassName = targetClassName;
             this.guestMethodName = guestMethodName;
             this.guestTypeNames = guestTypeNames;
@@ -174,7 +155,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         // Extract the class name. (Of the form Target_[...]).
         String className = typeElement.getSimpleName().toString();
         // Extract the default name provider, if it is specified.
-        TypeMirror defaultNameProvider = getNameProvider(getAnnotation(substitution, espressoSubstitutions), espressoSubstitutionsClassNameProvider);
+        TypeMirror defaultNameProvider = getNameProvider(getAnnotation(substitution, espressoSubstitutions));
 
         for (Element element : substitution.getEnclosedElements()) {
             processSubstitution(element, className, defaultNameProvider);
@@ -251,9 +232,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
     @Override
     protected String getSubstutitutedMethodName(Element targetElement) {
         AnnotationMirror subst = getAnnotation(targetElement, substitutionAnnotation);
-        AnnotationValue methodNameValue = getAttribute(subst, methodNameElement);
-        assert methodNameValue.getValue() instanceof String;
-        String name = (String) methodNameValue.getValue();
+        String name = getAnnotationValue(subst, "methodName", String.class);
         if (name.isEmpty()) {
             if (targetElement.getKind() == ElementKind.CLASS) {
                 // If methodName is not specified, use camel case version of the class name.
@@ -304,14 +283,12 @@ public final class SubstitutionProcessor extends EspressoProcessor {
                 List<String> guestTypes = getGuestTypes(targetMethod);
 
                 // Obtain the hasReceiver() value from the @Substitution annotation.
-                AnnotationValue hasReceiverValue = getAttribute(subst, hasReceiverElement);
-                assert hasReceiverValue != null;
-                boolean hasReceiver = (boolean) hasReceiverValue.getValue();
+                boolean hasReceiver = getAnnotationValue(subst, "hasReceiver", Boolean.class);
 
                 // Obtain the fully qualified guest return type of the element.
                 String returnType = getReturnTypeFromHost(targetMethod);
 
-                TypeMirror nameProvider = getNameProvider(subst, substitutionClassNameProvider);
+                TypeMirror nameProvider = getNameProvider(subst);
                 nameProvider = nameProvider == null ? defaultNameProvider : nameProvider;
 
                 TypeMirror versionFilter = getVersionFilter(subst);
@@ -328,25 +305,21 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         }
     }
 
-    private TypeMirror getNameProvider(AnnotationMirror annotation, ExecutableElement attribute) {
-        AnnotationValue provider = getAttribute(annotation, attribute);
+    private TypeMirror getNameProvider(AnnotationMirror annotation) {
+        TypeMirror provider = getAnnotationValue(annotation, "nameProvider", TypeMirror.class);
         if (provider != null) {
-            assert provider.getValue() instanceof TypeMirror;
-            TypeMirror value = (TypeMirror) provider.getValue();
-            if (!processingEnv.getTypeUtils().isSameType(value, noProvider.asType())) {
-                return value;
+            if (!processingEnv.getTypeUtils().isSameType(provider, noProvider.asType())) {
+                return provider;
             }
         }
         return null;
     }
 
     private TypeMirror getVersionFilter(AnnotationMirror annotation) {
-        AnnotationValue provider = getAttribute(annotation, versionFilterElement);
-        if (provider != null) {
-            assert provider.getValue() instanceof TypeMirror;
-            TypeMirror value = (TypeMirror) provider.getValue();
-            if (!processingEnv.getTypeUtils().isSameType(value, noFilter.asType())) {
-                return value;
+        TypeMirror versionFilter = getAnnotationValue(annotation, "versionFilter", TypeMirror.class);
+        if (versionFilter != null) {
+            if (!processingEnv.getTypeUtils().isSameType(versionFilter, noFilter.asType())) {
+                return versionFilter;
             }
         }
         return null;
@@ -356,7 +329,9 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         TypeMirror returnType = method.getReturnType();
         AnnotationMirror a = getAnnotation(returnType, javaType);
         if (a != null) {
-            return getClassFromJavaType(a, methodNameElement);
+            // The return type element points to the actual return type, not the specific usage,
+            // passing the method as anchor for reporting errors instead.
+            return getClassFromJavaType(a, method);
         }
         return getInternalName(returnType.toString());
     }
@@ -367,9 +342,13 @@ public final class SubstitutionProcessor extends EspressoProcessor {
             if (isActualParameter(parameter)) {
                 AnnotationMirror mirror = getAnnotation(parameter.asType(), javaType);
                 if (mirror != null) {
-                    parameterTypeNames.add(getClassFromJavaType(mirror, inner));
+                    parameterTypeNames.add(getClassFromJavaType(mirror, parameter));
                 } else {
                     // @JavaType annotation not found -> primitive or j.l.Object
+                    // All StaticObject(s) parameters must be annotated with @JavaType.
+                    if (processingEnv.getTypeUtils().isSameType(parameter.asType(), staticObjectElement.asType())) {
+                        processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "StaticObject parameters require the @JavaType annotation", parameter);
+                    }
                     String arg = getInternalName(parameter.asType().toString());
                     parameterTypeNames.add(arg);
                 }
@@ -405,32 +384,32 @@ public final class SubstitutionProcessor extends EspressoProcessor {
     }
 
     /**
-     * @param a an @JavaType annotation
+     * @param annotation @JavaType annotation
+     * @param element element containing the @JavaType annotation for error reporting
+     *
      * @return the fully qualified internal name of the guest class.
      */
-    private String getClassFromJavaType(AnnotationMirror a, Element element) {
-        Map<? extends ExecutableElement, ? extends AnnotationValue> members = processingEnv.getElementUtils().getElementValuesWithDefaults(a);
-        AnnotationValue v = members.get(javaTypeValueElement);
-        if (v != null) {
-            assert v.getValue() instanceof TypeMirror;
-            TypeMirror value = (TypeMirror) v.getValue();
-            String internalName = null;
+    private String getClassFromJavaType(AnnotationMirror annotation, Element element) {
+        String internalName = getAnnotationValue(annotation, "internalName", String.class);
+        // .internalName overrides .value .
+        if (internalName == null || internalName.isEmpty()) {
+            TypeMirror value = getAnnotationValue(annotation, "value", TypeMirror.class);
+            internalName = getInternalName(value.toString());
+            // JavaType.value = JavaType.class is used as the "no type" type, forbid accidental
+            // usages.
             if (processingEnv.getTypeUtils().isSameType(value, javaType.asType())) {
-                internalName = (String) members.get(javaTypeInternalNameElement).getValue();
-            } else {
-                internalName = getInternalName(value.toString());
+                processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Empty @JavaType, must specify a type", element, annotation);
             }
-            if (!isValidInternalType(internalName)) {
-                processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Invalid internalName: " + internalName, element);
-            }
-            // . is allowed in type names by the spec, as part of the name, not as separator.
-            // This avoids a common error e.g. using . instead of / as separator.
-            if (internalName.contains(".")) {
-                processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Invalid . in internalName: '" + internalName + "'. Use / instead e.g. Ljava/lang/String;", element, a);
-            }
-            return internalName;
         }
-        throw new AssertionError("unreachable");
+        if (!isValidInternalType(internalName)) {
+            processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Invalid internalName: " + internalName, element, annotation);
+        }
+        // . is allowed in type names by the spec, as part of the name, not as separator.
+        // This avoids a common error e.g. using . instead of / as separator.
+        if (internalName.contains(".")) {
+            processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Invalid . in internalName: '" + internalName + "'. Use / instead e.g. Ljava/lang/String;", element, annotation);
+        }
+        return internalName;
     }
 
     private static String getArraySubstring(int nbDim) {
@@ -520,56 +499,35 @@ public final class SubstitutionProcessor extends EspressoProcessor {
     @Override
     void processImpl(RoundEnvironment env) {
         // Set up the different annotations, along with their values, that we will need.
-        this.espressoSubstitutions = processingEnv.getElementUtils().getTypeElement(ESPRESSO_SUBSTITUTIONS);
-        this.substitutionAnnotation = processingEnv.getElementUtils().getTypeElement(METHOD_SUBSTITUTION);
-        this.staticObjectElement = processingEnv.getElementUtils().getTypeElement(STATIC_OBJECT);
-        this.javaType = processingEnv.getElementUtils().getTypeElement(JAVA_TYPE);
-        this.noProvider = processingEnv.getElementUtils().getTypeElement(NO_PROVIDER);
-        this.noFilter = processingEnv.getElementUtils().getTypeElement(NO_FILTER);
-        for (Element e : espressoSubstitutions.getEnclosedElements()) {
-            if (e.getKind() == ElementKind.METHOD) {
-                if (e.getSimpleName().contentEquals("nameProvider")) {
-                    this.espressoSubstitutionsClassNameProvider = (ExecutableElement) e;
-                }
-            }
-        }
+        this.espressoSubstitutions = getTypeElement(ESPRESSO_SUBSTITUTIONS);
+        this.substitutionAnnotation = getTypeElement(SUBSTITUTION);
+        this.staticObjectElement = getTypeElement(STATIC_OBJECT);
+        this.javaType = getTypeElement(JAVA_TYPE);
+        this.noProvider = getTypeElement(NO_PROVIDER);
+        this.noFilter = getTypeElement(NO_FILTER);
 
-        // @Substitution
-        for (Element e : substitutionAnnotation.getEnclosedElements()) {
-            if (e.getKind() == ElementKind.METHOD) {
-                if (e.getSimpleName().contentEquals("methodName")) {
-                    this.methodNameElement = (ExecutableElement) e;
-                }
-                if (e.getSimpleName().contentEquals("hasReceiver")) {
-                    this.hasReceiverElement = (ExecutableElement) e;
-                }
-                if (e.getSimpleName().contentEquals("nameProvider")) {
-                    this.substitutionClassNameProvider = (ExecutableElement) e;
-                }
-                if (e.getSimpleName().contentEquals("versionFilter")) {
-                    this.versionFilterElement = (ExecutableElement) e;
-                }
-            }
-        }
+        verifyAnnotationMembers(espressoSubstitutions, "value", "nameProvider");
+        verifyAnnotationMembers(substitutionAnnotation, "methodName", "nameProvider", "versionFilter");
+        verifyAnnotationMembers(javaType, "value", "internalName");
 
-        for (Element e : javaType.getEnclosedElements()) {
-            if (e.getKind() == ElementKind.METHOD) {
-                if (e.getSimpleName().contentEquals("value")) {
-                    this.javaTypeValueElement = (ExecutableElement) e;
-                }
-                if (e.getSimpleName().contentEquals("internalName")) {
-                    this.javaTypeInternalNameElement = (ExecutableElement) e;
-                }
-            }
-        }
         // Actual process
         // Initialize the collector.
-        initCollector(SUBSTITUTION_PACKAGE, COLLECTOR);
+        initCollector(SUBSTITUTION_PACKAGE);
         for (Element e : env.getElementsAnnotatedWith(espressoSubstitutions)) {
             if (!e.getModifiers().contains(Modifier.FINAL)) {
                 processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Enclosing class for substitutions must be final", e);
             }
             processElement(e);
+        }
+    }
+
+    private void verifyAnnotationMembers(TypeElement annotation, String... methods) {
+        List<Name> enclosedMethods = annotation.getEnclosedElements().stream().filter(e -> e.getKind() == ElementKind.METHOD).map(Element::getSimpleName).collect(Collectors.toList());
+
+        for (String methodName : methods) {
+            if (enclosedMethods.stream().noneMatch(em -> em.contentEquals(methodName))) {
+                processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Annotation is missing member: " + methodName, annotation);
+            }
         }
     }
 

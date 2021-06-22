@@ -45,11 +45,7 @@ public @interface GenerateNativeEnv {
     Class<?> target();
 
     /**
-     * Annotate a class that already has {@link GenerateNativeEnv} so that a native env pointer is
-     * artificially added to the signature.
+     * Prepend the native env pointer to the signature.
      */
-    @Retention(RetentionPolicy.CLASS)
-    @Target(ElementType.TYPE)
-    @interface PrependEnv {
-    }
+    boolean prependEnv() default false;
 }

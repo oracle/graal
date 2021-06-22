@@ -27,10 +27,10 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.JavaVersion;
 
-public abstract class Substitutor extends SubstitutionProfiler {
+public abstract class JavaSubstitution extends SubstitutionProfiler {
 
     public abstract static class Factory {
-        public abstract Substitutor create(Meta meta);
+        public abstract JavaSubstitution create(Meta meta);
 
         private final String[] methodName;
         private final String[] substitutionClassName;
@@ -69,15 +69,19 @@ public abstract class Substitutor extends SubstitutionProfiler {
         public boolean isValidFor(@SuppressWarnings("unused") JavaVersion version) {
             return true;
         }
+
+        public Class<?> generatedBy() {
+            return Substitution.class;
+        }
     }
 
-    Substitutor() {
+    JavaSubstitution() {
     }
 
     public abstract Object invoke(Object[] args);
 
     @Override
-    public Substitutor split() {
+    public JavaSubstitution split() {
         throw EspressoError.shouldNotReachHere();
     }
 }

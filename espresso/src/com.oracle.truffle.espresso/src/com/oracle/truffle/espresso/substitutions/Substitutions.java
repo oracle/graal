@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.substitutions;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.ServiceLoader;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 import java.util.logging.Level;
@@ -42,6 +43,7 @@ import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.jni.NativeEnv;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.IntrinsicSubstitutorNode;
@@ -52,12 +54,10 @@ import com.oracle.truffle.espresso.runtime.dispatch.EspressoInterop;
 /**
  * Substitutions/intrinsics for Espresso.
  * <p>
- * Some substitutions are statically defined, others runtime-dependent. The static ones are
- * collected by Espresso's annotation processor, and registered in the generated class
- * {@link com.oracle.truffle.espresso.substitutions.SubstitutorCollector}. Iterating over the
- * collection in this class allows to register them directly, and assign to each of them a node,
- * which will dispatch them directly, without the need for reflection. In practice, this allows
- * inlining.
+ * Some substitutions are statically defined, others runtime-dependent. The static ones are loaded
+ * via {@link ServiceLoader}. Iterating over the collection in this class allows to register them
+ * directly, and assign to each of them a node, which will dispatch them directly, without the need
+ * for reflection. In practice, this allows inlining.
  * <p>
  * To register a substitution in Espresso:
  * <li>Create a class annotated with {@link EspressoSubstitutions}. Its name must be the fully
@@ -149,8 +149,8 @@ public final class Substitutions implements ContextAccess {
     private final ConcurrentHashMap<MethodRef, EspressoRootNodeFactory> runtimeSubstitutions = new ConcurrentHashMap<>();
 
     static {
-        for (Substitutor.Factory substitutor : SubstitutorCollector.getCollector()) {
-            registerStaticSubstitution(substitutor);
+        for (JavaSubstitution.Factory factory : NativeEnv.instantiateAs(SubstitutionCollector.get(), JavaSubstitution.Factory.class)) {
+            registerStaticSubstitution(factory);
         }
     }
 
@@ -204,7 +204,7 @@ public final class Substitutions implements ContextAccess {
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private static void registerStaticSubstitution(Substitutor.Factory substitutorFactory) {
+    private static void registerStaticSubstitution(JavaSubstitution.Factory substitutorFactory) {
         List<Symbol<Type>> parameterTypes = new ArrayList<>();
         for (int i = substitutorFactory.hasReceiver() ? 1 : 0; i < substitutorFactory.parameterTypes().length; i++) {
             String type = substitutorFactory.parameterTypes()[i];

@@ -39,12 +39,10 @@ import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
 import com.oracle.truffle.espresso.jni.NativeEnv;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.substitutions.CallableFromNative;
 import com.oracle.truffle.espresso.substitutions.GenerateNativeEnv;
-import com.oracle.truffle.espresso.substitutions.GenerateNativeEnv.PrependEnv;
-import com.oracle.truffle.espresso.substitutions.IntrinsicSubstitutor;
 
-@GenerateNativeEnv(target = JvmtiImpl.class)
-@PrependEnv
+@GenerateNativeEnv(target = JvmtiImpl.class, prependEnv = true)
 public final class JVMTIEnv extends NativeEnv {
 
     private final EspressoContext context;
@@ -80,9 +78,11 @@ public final class JVMTIEnv extends NativeEnv {
         return jvmtiEnvPtr;
     }
 
+    private final static List<CallableFromNative.Factory> JVMTI_IMPL_FACTORIES = instantiateAs(JvmtiImplCollector.get(), CallableFromNative.Factory.class);
+
     @Override
-    protected List<IntrinsicSubstitutor.Factory> getCollector() {
-        return JVMTIEnvCollector.getCollector();
+    protected List<CallableFromNative.Factory> getCollector() {
+        return JVMTI_IMPL_FACTORIES;
     }
 
     @Override
