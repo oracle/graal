@@ -55,7 +55,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class EspressoLanguageCache {
 
     private boolean isParserKlassCacheEnabled = EspressoOptions.UseParserKlassCache.getDefaultValue();
-    private boolean isLinkedKlassCacheEnabled = EspressoOptions.UseParserKlassCache.getDefaultValue();
+    private boolean isLinkedKlassCacheEnabled = EspressoOptions.UseLinkedKlassCache.getDefaultValue();
 
     private final Map<String, ParserKlass> bootParserKlassCache = new ConcurrentHashMap<>();
     private final Map<ParserKlassCacheKey, ParserKlass> appParserKlassCache = new ConcurrentHashMap<>();
@@ -64,8 +64,13 @@ public final class EspressoLanguageCache {
     private boolean sealed = false;
 
     public void updateEnv(final TruffleLanguage.Env env) {
-        isParserKlassCacheEnabled = env.getOptions().get(EspressoOptions.UseParserKlassCache);
-        isLinkedKlassCacheEnabled = env.getOptions().get(EspressoOptions.UseLinkedKlassCache);
+        boolean isParserKlassCacheEnabledNew = env.getOptions().get(EspressoOptions.UseParserKlassCache);
+        boolean isLinkedKlassCacheEnabledNew = env.getOptions().get(EspressoOptions.UseLinkedKlassCache);
+        if (isParserKlassCacheEnabled != isParserKlassCacheEnabledNew || isLinkedKlassCacheEnabled != isParserKlassCacheEnabledNew) {
+            reset();
+            isParserKlassCacheEnabled = isParserKlassCacheEnabledNew;
+            isLinkedKlassCacheEnabled = isLinkedKlassCacheEnabledNew;
+        }
     }
 
     public ParserKlass getOrCreateParserKlass(StaticObject loader, String name, byte[] bytes, EspressoContext context, ClassRegistry.ClassDefinitionInfo info) {
