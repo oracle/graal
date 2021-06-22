@@ -232,15 +232,16 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
             implementationInvokedBy.put(invoke, Boolean.TRUE);
         }
 
-        if (AtomicUtils.atomicMark(isImplementationInvoked)) {
-            /*
-             * The class constant of the declaring class is used for exception metadata, so marking
-             * a method as invoked also makes the declaring class reachable.
-             */
-            getDeclaringClass().registerAsReachable();
-            return true;
-        }
-        return false;
+        /*
+         * The class constant of the declaring class is used for exception metadata, so marking a
+         * method as invoked also makes the declaring class reachable.
+         *
+         * Even though the class could in theory be marked as reachable only if we successfully mark
+         * the method as invoked, it would have an unwanted side effect, where this method could
+         * return before the class gets marked as reachable.
+         */
+        getDeclaringClass().registerAsReachable();
+        return AtomicUtils.atomicMark(isImplementationInvoked);
     }
 
     public void registerAsInlined() {
@@ -277,16 +278,18 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
         return isIntrinsicMethod;
     }
 
+    /**
+     * Registers this method as a root for the analysis.
+     *
+     * The class constant of the declaring class is used for exception metadata, so marking a method
+     * as invoked also makes the declaring class reachable.
+     *
+     * Class is always marked as reachable regardless of the success of the atomic mark, same reason
+     * as in {@link AnalysisMethod#registerAsImplementationInvoked(InvokeTypeFlow)}.
+     */
     public boolean registerAsRootMethod() {
-        if (AtomicUtils.atomicMark(isRootMethod)) {
-            /*
-             * The class constant of the declaring class is used for exception metadata, so marking
-             * a method as invoked also makes the declaring class reachable.
-             */
-            getDeclaringClass().registerAsReachable();
-            return true;
-        }
-        return false;
+        getDeclaringClass().registerAsReachable();
+        return AtomicUtils.atomicMark(isRootMethod);
     }
 
     public boolean isRootMethod() {
