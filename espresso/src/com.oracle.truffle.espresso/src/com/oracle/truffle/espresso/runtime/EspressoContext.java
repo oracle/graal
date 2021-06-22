@@ -44,6 +44,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
+
+import com.oracle.truffle.espresso.ffi.NativeAccessCollector;
+import com.oracle.truffle.espresso.jni.NativeEnv;
+import com.oracle.truffle.espresso.redefinition.plugins.api.InternalRedefinitionPlugin;
 import org.graalvm.options.OptionMap;
 import org.graalvm.polyglot.Engine;
 
@@ -580,9 +584,8 @@ public final class EspressoContext {
         }
 
         List<String> available = new ArrayList<>();
-        // TODO(peterssen): Investigate which class loader is needed here and why.
-        ServiceLoader<NativeAccess.Provider> loader = ServiceLoader.load(NativeAccess.Provider.class, getClass().getClassLoader());
-        for (NativeAccess.Provider provider : loader) {
+        List<NativeAccess.Provider> providers = NativeEnv.instantiateAs(NativeAccessCollector.get(), NativeAccess.Provider.class);
+        for (NativeAccess.Provider provider : providers) {
             available.add(provider.id());
             if (nativeBackend.equals(provider.id())) {
                 getLogger().fine("Native backend: " + nativeBackend);
