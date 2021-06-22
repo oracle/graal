@@ -52,6 +52,7 @@ import com.oracle.truffle.api.OptimizationFailedException;
 import com.oracle.truffle.api.ReplaceObserver;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -557,8 +558,11 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
              * entry stub again then this leads to an inconvenient stack overflow error. In order to
              * avoid this we just do not return true and wait for the second execution to jump to
              * the optimized code. In practice the installed code should rarely be bypassed.
+             *
+             * This is only important for HotSpot. We can safely ignore this behavior for SVM as
+             * there is no regular JDWP debugging supported.
              */
-            return isCompiled && !bypassedInstalledCode;
+            return isCompiled && (TruffleOptions.AOT || !bypassedInstalledCode);
         }
         return false;
     }
