@@ -27,6 +27,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.espresso.classfile.Constants;
+import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.classfile.attributes.SignatureAttribute;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.ModifiedUTF8;
@@ -37,6 +38,7 @@ import com.oracle.truffle.espresso.jdwp.api.FieldRef;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
@@ -49,13 +51,14 @@ public final class Field extends Member<Type> implements FieldRef {
 
     private final LinkedField linkedField;
     private final ObjectKlass holder;
-    private volatile Klass typeKlassCache;
 
-    @CompilationFinal private Symbol<ModifiedUTF8> genericSignature = null;
+    @CompilationFinal private FieldVersion fieldVersion;
+    @CompilationFinal private boolean changedByRedefinition = false;
 
-    public Field(ObjectKlass holder, LinkedField linkedField) {
+    public Field(ObjectKlass holder, LinkedField linkedField, RuntimeConstantPool pool) {
         this.linkedField = linkedField;
         this.holder = holder;
+        this.fieldVersion = new FieldVersion(linkedField.getType(), pool);
     }
 
     @Override
@@ -72,15 +75,32 @@ public final class Field extends Member<Type> implements FieldRef {
     }
 
     public Symbol<ModifiedUTF8> getGenericSignature() {
-        if (genericSignature == null) {
-            SignatureAttribute attr = (SignatureAttribute) linkedField.getAttribute(SignatureAttribute.NAME);
-            if (attr == null) {
-                genericSignature = ModifiedUTF8.fromSymbol(getType());
-            } else {
-                genericSignature = holder.getConstantPool().symbolAt(attr.getSignatureIndex());
-            }
+        return getFieldVersion().getGenericSignature();
+    }
+
+    public FieldVersion getFieldVersion() {
+        // block execution during class redefinition
+        ClassRedefinition.check();
+
+        FieldVersion version = fieldVersion;
+        if (!version.getAssumption().isValid()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            do {
+                version = fieldVersion;
+            } while (!version.getAssumption().isValid());
         }
-        return genericSignature;
+        return version;
+    }
+
+    public void redefineField(ParserField parserField, RuntimeConstantPool pool) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        // first, redefine the underlying parserField
+        linkedField.redefine(parserField);
+        // update the field version and invalidate old version
+        FieldVersion old = fieldVersion;
+        fieldVersion = new FieldVersion(parserField.getType(), pool);
+        old.getAssumption().invalidate();
+        changedByRedefinition = true;
     }
 
     public boolean isHidden() {
@@ -114,19 +134,7 @@ public final class Field extends Member<Type> implements FieldRef {
     }
 
     public Klass resolveTypeKlass() {
-        Klass tk = typeKlassCache;
-        if (tk == null) {
-            synchronized (this) {
-                tk = typeKlassCache;
-                if (tk == null) {
-                    tk = getDeclaringKlass().getMeta().resolveSymbolOrFail(getType(),
-                                    getDeclaringKlass().getDefiningClassLoader(),
-                                    getDeclaringKlass().protectionDomain());
-                    typeKlassCache = tk;
-                }
-            }
-        }
-        return typeKlassCache;
+        return getFieldVersion().resolveTypeKlass();
     }
 
     public Attribute getAttribute(Symbol<Name> attrName) {
@@ -302,12 +310,11 @@ public final class Field extends Member<Type> implements FieldRef {
 
     // To access hidden fields, use the dedicated `(g|s)etHiddenObjectField` methods
     public StaticObject getObject(StaticObject obj) {
-        return getObject(obj, false);
+        return getFieldVersion().getObject(obj, false);
     }
 
     public StaticObject getObject(StaticObject obj, boolean forceVolatile) {
-        assert !isHidden() : this + " is hidden, use getHiddenObject";
-        return (StaticObject) getObjectHelper(obj, forceVolatile);
+        return getFieldVersion().getObject(obj, forceVolatile);
     }
 
     public void setObject(StaticObject obj, Object value) {
@@ -316,6 +323,19 @@ public final class Field extends Member<Type> implements FieldRef {
 
     public void setObject(StaticObject obj, Object value, boolean forceVolatile) {
         assert !isHidden() : this + " is hidden, use setHiddenObject";
+        if (changedByRedefinition) {
+            // for changed fields we put in a type guard on the field value against the current type
+            StaticObject staticObject = (StaticObject) value;
+            if (staticObject == StaticObject.NULL || resolveTypeKlass().isAssignableFrom((((StaticObject) value).getKlass()))) {
+                setObjectHelper(obj, value, forceVolatile);
+            } else {
+                // we don't allow to write a value that is incompatible
+                // with the current declared field type
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                Meta meta = resolveTypeKlass().getContext().getMeta();
+                throw meta.throwException(meta.java_lang_IncompatibleClassChangeError);
+            }
+        }
         setObjectHelper(obj, value, forceVolatile);
     }
 
@@ -741,6 +761,79 @@ public final class Field extends Member<Type> implements FieldRef {
             }
         }
     }
-
     // endregion jdwp-specific
+
+    public final class FieldVersion {
+        private final Assumption assumption;
+        private final Symbol<Symbol.Type> type;
+        private final RuntimeConstantPool pool;
+        private volatile Klass typeKlassCache;
+        @CompilationFinal private Symbol<ModifiedUTF8> genericSignature;
+
+        FieldVersion(Symbol<Symbol.Type> type, RuntimeConstantPool pool) {
+            this.assumption = Truffle.getRuntime().createAssumption();
+            this.type = type;
+            this.pool = pool;
+        }
+
+        public Assumption getAssumption() {
+            return assumption;
+        }
+
+        // To access hidden fields, use the dedicated `(g|s)etHiddenObjectField` methods
+        public StaticObject getObject(StaticObject obj) {
+            return getObject(obj, false);
+        }
+
+        private StaticObject getObject(StaticObject obj, boolean forceVolatile) {
+            assert !isHidden() : this + " is hidden, use getHiddenObject";
+            if (changedByRedefinition) {
+                // for changed fields we put in a type guard on the field value against the new type
+                StaticObject value = (StaticObject) getObjectHelper(obj, forceVolatile);
+
+                if (resolveTypeKlass().isAssignableFrom(value.getKlass())) {
+                    return value;
+                } else {
+                    return StaticObject.NULL;
+                }
+            }
+            return (StaticObject) getObjectHelper(obj, forceVolatile);
+        }
+
+        public Symbol<ModifiedUTF8> getGenericSignature() {
+            if (genericSignature == null) {
+                SignatureAttribute attr = (SignatureAttribute) linkedField.getAttribute(SignatureAttribute.NAME);
+                if (attr == null) {
+                    genericSignature = ModifiedUTF8.fromSymbol(type);
+                } else {
+                    genericSignature = pool.symbolAt(attr.getSignatureIndex());
+                }
+            }
+            return genericSignature;
+        }
+
+        public Klass resolveTypeKlass() {
+            Klass tk = typeKlassCache;
+            if (tk == null) {
+                synchronized (this) {
+                    tk = typeKlassCache;
+                    if (tk == null) {
+                        tk = holder.getMeta().resolveSymbolOrFail(type,
+                                        holder.getDefiningClassLoader(),
+                                        holder.protectionDomain());
+                        typeKlassCache = tk;
+                    }
+                }
+            }
+            return typeKlassCache;
+        }
+
+        public Field getField() {
+            return Field.this;
+        }
+
+        public Symbol<Type> getType() {
+            return type;
+        }
+    }
 }

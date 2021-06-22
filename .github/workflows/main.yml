@@ -93,6 +93,10 @@ jobs:
               PRIMARY: "compiler"
           - env:
               JDK: "labsjdk-ce-11"
+              GATE: "build"
+              PRIMARY: "vm"
+              DYNAMIC_IMPORTS: "/tools,/substratevm,/sulong"
+              NATIVE_IMAGES: "polyglot"
               WITHOUT_VCS: true
     steps:
     - uses: actions/checkout@v2
@@ -124,8 +128,9 @@ jobs:
       if: ${{ contains(matrix.env.GATE, 'style') }}
       run: |
         sudo apt install python-pip python-setuptools 
-        sudo pip install astroid==1.1.0
-        sudo pip install pylint==1.1.0
+        cat common.json |
+          jq -r '.deps.common.packages | to_entries[] | select(.key | startswith("pip:")) | (.key | split(":")[1]) + .value' |
+          xargs sudo pip install
     - name: Build GraalVM and run gate
       env: ${{ matrix.env }}
       run: |
@@ -155,7 +160,6 @@ jobs:
         if [[ ${WITHOUT_VCS} ]]
         then
           rm -rf .git
-          ${MX_PATH}/mx --primary-suite-path substratevm native-image --help
-        else
-          ${MX_PATH}/mx --primary-suite-path ${PRIMARY} --J @"-Xmx2g" --java-home=${JAVA_HOME} gate --strict-mode --tags ${GATE}
         fi
+
+        ${MX_PATH}/mx --primary-suite-path ${PRIMARY} --J @"-Xmx2g" --java-home=${JAVA_HOME} gate --strict-mode --tags ${GATE}

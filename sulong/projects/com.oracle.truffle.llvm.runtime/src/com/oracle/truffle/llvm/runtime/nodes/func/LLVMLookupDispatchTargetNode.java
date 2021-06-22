@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -106,14 +106,14 @@ public abstract class LLVMLookupDispatchTargetNode extends LLVMExpressionNode {
                     "doNativeFunctionCached"}, rewriteOn = LLVMIllegalSymbolIndexException.class)
     protected Object doLookupNativeFunctionCachedSymbol(VirtualFrame frame, LLVMNativePointer pointer,
                     @Cached("lookupFunctionSymbol(pointer)") LLVMAccessSymbolNode cachedSymbol) {
-        LLVMPointer symbolPointer;
-        try {
-            symbolPointer = cachedSymbol.executeGeneric(frame);
-        } catch (NullPointerException e) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            // guard against uninitialized symbols in multi-context cases
-            symbolPointer = null;
-        }
+        /*
+         * The cache will be invalidated if the symbol cannot be found in the symbol table. In which
+         * case the entire specialisation will be rewritten when the context throws an
+         * LLVMIllegalSymbolIndexException.
+         */
+        LLVMPointer symbolPointer = cachedSymbol.executeGeneric(frame);
+
+        // guard against uninitialized symbols in multi-context cases
         if (LLVMManagedPointer.isInstance(symbolPointer)) {
             LLVMManagedPointer managedPointer = LLVMManagedPointer.cast(symbolPointer);
             if (managedPointer.getOffset() == 0 && managedPointer.getObject() instanceof LLVMFunctionDescriptor) {

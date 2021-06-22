@@ -196,10 +196,10 @@ public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
 
         // 1. Duplicate the searchChar to 64-bits
         if (!isUTF16) {
-            masm.or(64, searchChar, searchChar, searchChar, ShiftType.LSL, Byte.SIZE);
+            masm.orr(64, searchChar, searchChar, searchChar, ShiftType.LSL, Byte.SIZE);
         }
-        masm.or(64, searchChar, searchChar, searchChar, ShiftType.LSL, Byte.SIZE * 2);
-        masm.or(64, searchChar, searchChar, searchChar, ShiftType.LSL, Byte.SIZE * 4);
+        masm.orr(64, searchChar, searchChar, searchChar, ShiftType.LSL, Byte.SIZE * 2);
+        masm.orr(64, searchChar, searchChar, searchChar, ShiftType.LSL, Byte.SIZE * 4);
 
         // 2.1 Set end index at the starting position of the last chunk
         masm.sub(64, endIndex, arrayLength, chunkSize / charSize);
@@ -222,7 +222,7 @@ public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
             masm.bind(chunkedReadLoop);
             masm.ldr(64, curChar, AArch64Address.createRegisterOffsetAddress(baseAddress, curIndex, false));
             masm.eor(64, curChar, searchChar, curChar);
-            masm.or(64, tmp2, curChar, bitMask7f);
+            masm.orr(64, tmp2, curChar, bitMask7f);
             masm.sub(64, curChar, curChar, bitMask01Reg);
             masm.bics(64, curChar, curChar, tmp2);
             masm.branchConditionally(ConditionFlag.NE, charInChunk);

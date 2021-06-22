@@ -21,6 +21,8 @@ New features:
 
 * Support passing pointers as operands to inline assembly instructions.
 
+* Support C++ virtual calls via interop.
+
 # Version 21.1.0
 
 New features:

@@ -241,12 +241,53 @@ public class LanguageSPITest {
         Engine engine = Engine.create();
         langContext = null;
         Context context = Context.newBuilder(LanguageSPITestLanguage.ID).engine(engine).build();
-        eval(context, new Function<Env, Object>() {
-            public Object apply(Env t) {
-                context.close(true);
-                return null;
+        try {
+            eval(context, new Function<Env, Object>() {
+                public Object apply(Env t) {
+                    context.close(true);
+                    return null;
+                }
+            });
+            fail();
+        } catch (PolyglotException pe) {
+            if (!pe.isCancelled()) {
+                throw pe;
             }
-        });
+        }
+        engine.close();
+        assertEquals(1, langContext.disposeCalled);
+    }
+
+    @Test
+    public void testContextCloseInsideFromSameThreadCancelExecutionNestedEval() {
+        Engine engine = Engine.create();
+        langContext = null;
+        Context context = Context.newBuilder(LanguageSPITestLanguage.ID).engine(engine).build();
+        try {
+            eval(context, new Function<Env, Object>() {
+                public Object apply(Env t) {
+                    try {
+                        eval(context, new Function<Env, Object>() {
+                            public Object apply(Env t2) {
+                                context.close(true);
+                                return null;
+                            }
+                        });
+                        fail();
+                    } catch (PolyglotException pe) {
+                        if (!pe.isCancelled()) {
+                            throw pe;
+                        }
+                    }
+                    return null;
+                }
+            });
+            fail();
+        } catch (PolyglotException pe) {
+            if (!pe.isCancelled()) {
+                throw pe;
+            }
+        }
         engine.close();
         assertEquals(1, langContext.disposeCalled);
     }
@@ -271,12 +312,53 @@ public class LanguageSPITest {
         Engine engine = Engine.create();
         langContext = null;
         Context context = Context.newBuilder(LanguageSPITestLanguage.ID).engine(engine).build();
-        eval(context, new Function<Env, Object>() {
-            public Object apply(Env t) {
-                engine.close(true);
-                return null;
+        try {
+            eval(context, new Function<Env, Object>() {
+                public Object apply(Env t) {
+                    engine.close(true);
+                    return null;
+                }
+            });
+            fail();
+        } catch (PolyglotException pe) {
+            if (!pe.isCancelled()) {
+                throw pe;
             }
-        });
+        }
+        assertEquals(1, langContext.disposeCalled);
+        engine.close();
+    }
+
+    @Test
+    public void testEngineCloseInsideFromSameThreadCancelExecutionNestedEval() {
+        Engine engine = Engine.create();
+        langContext = null;
+        Context context = Context.newBuilder(LanguageSPITestLanguage.ID).engine(engine).build();
+        try {
+            eval(context, new Function<Env, Object>() {
+                public Object apply(Env t) {
+                    try {
+                        eval(context, new Function<Env, Object>() {
+                            public Object apply(Env t2) {
+                                engine.close(true);
+                                return null;
+                            }
+                        });
+                        fail();
+                    } catch (PolyglotException pe) {
+                        if (!pe.isCancelled()) {
+                            throw pe;
+                        }
+                    }
+                    return null;
+                }
+            });
+            fail();
+        } catch (PolyglotException pe) {
+            if (!pe.isCancelled()) {
+                throw pe;
+            }
+        }
         assertEquals(1, langContext.disposeCalled);
         engine.close();
     }

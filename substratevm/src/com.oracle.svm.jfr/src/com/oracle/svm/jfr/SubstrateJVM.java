@@ -385,12 +385,6 @@ class SubstrateJVM {
         }
     }
 
-    /** See {@link JVM#addStringConstant}. */
-    public boolean addStringConstant(boolean expectedEpoch, @SuppressWarnings("unused") long id, @SuppressWarnings("unused") String value) {
-        // This 'implementation' will cause the EventWriter to always write strings by value.
-        return !expectedEpoch;
-    }
-
     /** See {@link JVM#log}. */
     public void log(int tagSetId, int level, String message) {
         jfrLogging.log(tagSetId, level, message);

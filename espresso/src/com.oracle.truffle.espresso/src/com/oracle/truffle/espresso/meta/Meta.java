@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.meta;
 
 import static com.oracle.truffle.espresso.EspressoOptions.SpecCompliancyMode.HOTSPOT;
+import static com.oracle.truffle.espresso.descriptors.Symbol.Name.platformClassLoader;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -58,6 +59,7 @@ public final class Meta implements ContextAccess {
     private final ExceptionDispatch dispatch;
     private final StringConversion stringConversion;
     private final InteropKlassesDispatch interopDispatch;
+    private StaticObject cachedPlatformClassLoader;
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     public Meta(EspressoContext context) {
@@ -281,6 +283,9 @@ public final class Meta implements ContextAccess {
         java_io_InputStream_close = java_io_InputStream.requireDeclaredMethod(Name.close, Signature._void);
         java_io_PrintStream = knownKlass(Type.java_io_PrintStream);
         java_io_PrintStream_println = java_io_PrintStream.requireDeclaredMethod(Name.println, Signature._void_String);
+        java_nio_file_Path = knownKlass(Type.java_nio_file_Path);
+        java_nio_file_Paths = knownKlass(Type.java_nio_file_Paths);
+        java_nio_file_Paths_get = java_nio_file_Paths.requireDeclaredMethod(Name.get, Signature.Path_String_String_array);
 
         sun_launcher_LauncherHelper = knownKlass(Type.sun_launcher_LauncherHelper);
         sun_launcher_LauncherHelper_printHelpMessage = sun_launcher_LauncherHelper.requireDeclaredMethod(Name.printHelpMessage, Signature._void_boolean);
@@ -468,6 +473,8 @@ public final class Meta implements ContextAccess {
 
         if (getJavaVersion().java9OrLater()) {
             java_lang_System_initializeSystemClass = null;
+            jdk_internal_loader_ClassLoaders = knownKlass(Type.jdk_internal_loader_ClassLoaders);
+            jdk_internal_loader_ClassLoaders_platformClassLoader = jdk_internal_loader_ClassLoaders.requireDeclaredMethod(platformClassLoader, Signature.ClassLoader);
             jdk_internal_loader_ClassLoaders$PlatformClassLoader = knownKlass(Type.jdk_internal_loader_ClassLoaders$PlatformClassLoader);
             java_lang_StackWalker = knownKlass(Type.java_lang_StackWalker);
             java_lang_AbstractStackWalker = knownKlass(Type.java_lang_AbstractStackWalker);
@@ -484,6 +491,8 @@ public final class Meta implements ContextAccess {
             java_lang_System_initPhase3 = java_lang_System.requireDeclaredMethod(Name.initPhase3, Signature._void);
         } else {
             java_lang_System_initializeSystemClass = java_lang_System.requireDeclaredMethod(Name.initializeSystemClass, Signature._void);
+            jdk_internal_loader_ClassLoaders = null;
+            jdk_internal_loader_ClassLoaders_platformClassLoader = null;
             jdk_internal_loader_ClassLoaders$PlatformClassLoader = null;
             java_lang_StackWalker = null;
             java_lang_AbstractStackWalker = null;
@@ -633,6 +642,10 @@ public final class Meta implements ContextAccess {
         java_util_List_size = java_util_List.requireDeclaredMethod(Name.size, Signature._int);
         assert java_util_List.isInterface();
 
+        java_util_Set = knownKlass(Type.java_util_Set);
+        java_util_Set_add = java_util_Set.requireDeclaredMethod(Name.add, Signature._boolean_Object);
+        assert java_util_Set.isInterface();
+
         java_lang_Iterable = knownKlass(Type.java_lang_Iterable);
         java_lang_Iterable_iterator = java_lang_Iterable.requireDeclaredMethod(Name.iterator, Signature.java_util_Iterator);
         assert java_lang_Iterable.isInterface();
@@ -672,12 +685,34 @@ public final class Meta implements ContextAccess {
             java_lang_reflect_ProxyGenerator = knownKlass(Type.java_lang_reflect_ProxyGenerator);
             java_lang_reflect_ProxyGenerator_generateProxyClass = java_lang_reflect_ProxyGenerator.requireDeclaredMethod(Name.generateProxyClass, Signature._byte_array_String_Class_array_int);
         }
+
+        if (getJavaVersion().java9OrLater()) {
+            jdk_internal_module_ModuleLoaderMap = knownKlass(Type.jdk_internal_module_ModuleLoaderMap);
+            jdk_internal_module_ModuleLoaderMap_bootModules = jdk_internal_module_ModuleLoaderMap.requireDeclaredMethod(Name.bootModules, Signature.java_util_Set);
+            jdk_internal_module_SystemModuleFinders = knownKlass(Type.jdk_internal_module_SystemModuleFinders);
+            jdk_internal_module_SystemModuleFinders_of = jdk_internal_module_SystemModuleFinders.requireDeclaredMethod(Name.of, Signature.ModuleFinder_SystemModules);
+            jdk_internal_module_SystemModuleFinders_ofSystem = jdk_internal_module_SystemModuleFinders.requireDeclaredMethod(Name.ofSystem, Signature.ModuleFinder);
+            jdk_internal_module_ModulePath = knownKlass(Type.jdk_internal_module_ModulePath);
+            jdk_internal_module_ModulePath_of = jdk_internal_module_ModulePath.requireDeclaredMethod(Name.of, Signature.ModuleFinder_Path_array);
+            java_lang_module_ModuleFinder = knownKlass(Type.java_lang_module_ModuleFinder);
+            java_lang_module_ModuleFinder_compose = java_lang_module_ModuleFinder.requireDeclaredMethod(Name.compose, Signature.ModuleFinder_ModuleFinder_array);
+        } else {
+            jdk_internal_module_ModuleLoaderMap = null;
+            jdk_internal_module_ModuleLoaderMap_bootModules = null;
+            jdk_internal_module_SystemModuleFinders = null;
+            jdk_internal_module_SystemModuleFinders_of = null;
+            jdk_internal_module_SystemModuleFinders_ofSystem = null;
+            jdk_internal_module_ModulePath = null;
+            jdk_internal_module_ModulePath_of = null;
+            java_lang_module_ModuleFinder = null;
+            java_lang_module_ModuleFinder_compose = null;
+        }
     }
 
     /**
      * Espresso's Polyglot API (polyglot.jar) is injected on the boot CP, must be loaded after
      * modules initialization.
-     * 
+     *
      * The classes in module java.management become known after modules initialization.
      */
     public void postSystemInit() {
@@ -861,6 +896,8 @@ public final class Meta implements ContextAccess {
     public final Method sun_launcher_LauncherHelper_printHelpMessage;
     public final Field sun_launcher_LauncherHelper_ostream;
 
+    public final ObjectKlass jdk_internal_loader_ClassLoaders;
+    public final Method jdk_internal_loader_ClassLoaders_platformClassLoader;
     public final ObjectKlass jdk_internal_loader_ClassLoaders$PlatformClassLoader;
 
     public final ObjectKlass java_lang_Module;
@@ -983,6 +1020,10 @@ public final class Meta implements ContextAccess {
 
     public final ObjectKlass java_io_PrintStream;
     public final Method java_io_PrintStream_println;
+
+    public final ObjectKlass java_nio_file_Path;
+    public final ObjectKlass java_nio_file_Paths;
+    public final Method java_nio_file_Paths_get;
 
     // Array support.
     public final ObjectKlass java_lang_Cloneable;
@@ -1145,6 +1186,17 @@ public final class Meta implements ContextAccess {
     public final Field java_lang_StackFrameInfo_memberName;
     public final Field java_lang_StackFrameInfo_bci;
 
+    // Module system
+    public final ObjectKlass jdk_internal_module_ModuleLoaderMap;
+    public final Method jdk_internal_module_ModuleLoaderMap_bootModules;
+    public final ObjectKlass jdk_internal_module_SystemModuleFinders;
+    public final Method jdk_internal_module_SystemModuleFinders_of;
+    public final Method jdk_internal_module_SystemModuleFinders_ofSystem;
+    public final ObjectKlass jdk_internal_module_ModulePath;
+    public final Method jdk_internal_module_ModulePath_of;
+    public final ObjectKlass java_lang_module_ModuleFinder;
+    public final Method java_lang_module_ModuleFinder_compose;
+
     // Interop conversions.
     public final ObjectKlass java_time_Duration;
     public final Field java_time_Duration_seconds;
@@ -1199,6 +1251,9 @@ public final class Meta implements ContextAccess {
     public final Method java_util_List_set;
     public final Method java_util_List_size;
 
+    public final ObjectKlass java_util_Set;
+    public final Method java_util_Set_add;
+
     public final ObjectKlass java_lang_Iterable;
     public final Method java_lang_Iterable_iterator;
 
@@ -1247,31 +1302,39 @@ public final class Meta implements ContextAccess {
         private PolyglotSupport() {
             boolean polyglotSupport = getContext().getEnv().getOptions().get(EspressoOptions.Polyglot);
             EspressoError.guarantee(polyglotSupport, "--java.Polyglot must be enabled");
-            EspressoError.guarantee(loadKlassWithBootClassLoader(Type.com_oracle_truffle_espresso_polyglot_Polyglot) != null,
-                            "polyglot.jar (Polyglot API) is not accessible");
-            ArityException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_ArityException);
+            // polyglot.jar is either on boot class path (JDK 8)
+            // or defined by a platform module (JDK 11+)
+            if (getJavaVersion().java8OrEarlier()) {
+                EspressoError.guarantee(loadKlassWithBootClassLoader(Type.com_oracle_truffle_espresso_polyglot_Polyglot) != null,
+                                "polyglot.jar (Polyglot API) is not accessible");
+            } else {
+                EspressoError.guarantee(loadKlassOrNull(Type.com_oracle_truffle_espresso_polyglot_Polyglot, getPlatformClassLoader()) != null,
+                                "polyglot.jar (Polyglot API) is not accessible");
+            }
+
+            ArityException = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_ArityException);
             ArityException_create_int_int = ArityException.requireDeclaredMethod(Name.create, Signature.ArityException_int_int);
             ArityException_create_int_int_Throwable = ArityException.requireDeclaredMethod(Name.create, Signature.ArityException_int_int_Throwable);
 
-            UnknownIdentifierException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_UnknownIdentifierException);
+            UnknownIdentifierException = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_UnknownIdentifierException);
             UnknownIdentifierException_create_String = UnknownIdentifierException.requireDeclaredMethod(Name.create, Signature.UnknownIdentifierException_String);
             UnknownIdentifierException_create_String_Throwable = UnknownIdentifierException.requireDeclaredMethod(Name.create, Signature.UnknownIdentifierException_String_Throwable);
 
-            UnsupportedMessageException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_UnsupportedMessageException);
+            UnsupportedMessageException = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_UnsupportedMessageException);
             UnsupportedMessageException_create = UnsupportedMessageException.requireDeclaredMethod(Name.create, Signature.UnsupportedMessageException);
             UnsupportedMessageException_create_Throwable = UnsupportedMessageException.requireDeclaredMethod(Name.create, Signature.UnsupportedMessageException_Throwable);
 
-            UnsupportedTypeException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_UnsupportedTypeException);
+            UnsupportedTypeException = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_UnsupportedTypeException);
             UnsupportedTypeException_create_Object_array_String = UnsupportedTypeException.requireDeclaredMethod(Name.create, Signature.UnsupportedTypeException_Object_array_String);
             UnsupportedTypeException_create_Object_array_String_Throwable = UnsupportedTypeException.requireDeclaredMethod(Name.create,
                             Signature.UnsupportedTypeException_Object_array_String_Throwable);
 
-            InvalidArrayIndexException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_InvalidArrayIndexException);
+            InvalidArrayIndexException = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_InvalidArrayIndexException);
             InvalidArrayIndexException_create_long = InvalidArrayIndexException.requireDeclaredMethod(Name.create, Signature.InvalidArrayIndexException_long);
             InvalidArrayIndexException_create_long_Throwable = InvalidArrayIndexException.requireDeclaredMethod(Name.create, Signature.InvalidArrayIndexException_long_Throwable);
 
-            ForeignException = knownKlass(Type.com_oracle_truffle_espresso_polyglot_ForeignException);
-            ExceptionType = knownKlass(Type.com_oracle_truffle_espresso_polyglot_ExceptionType);
+            ForeignException = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_ForeignException);
+            ExceptionType = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_ExceptionType);
 
             ExceptionType_EXIT = ExceptionType.requireDeclaredField(Name.EXIT,
                             Type.com_oracle_truffle_espresso_polyglot_ExceptionType);
@@ -1469,10 +1532,20 @@ public final class Meta implements ContextAccess {
     // endregion Guest exception handling (throw)
 
     private ObjectKlass knownKlass(Symbol<Type> type) {
+        return knownKlass(type, StaticObject.NULL);
+    }
+
+    private ObjectKlass knownPlatformKlass(Symbol<Type> type) {
+        // known platform classes are loaded by the platform loader on JDK 11 and
+        // by the boot classloader on JDK 8
+        return knownKlass(type, getJavaVersion().java8OrEarlier() ? StaticObject.NULL : getPlatformClassLoader());
+    }
+
+    private ObjectKlass knownKlass(Symbol<Type> type, StaticObject classLoader) {
         CompilerAsserts.neverPartOfCompilation();
         assert !Types.isArray(type);
         assert !Types.isPrimitive(type);
-        ObjectKlass k = loadKlassWithBootClassLoader(type);
+        ObjectKlass k = loadKlassOrNull(type, classLoader);
         if (k == null) {
             throw EspressoError.shouldNotReachHere("Failed loading known class: ", type, ", discovered java version: ", getJavaVersion());
         }
@@ -1517,8 +1590,20 @@ public final class Meta implements ContextAccess {
     }
 
     @TruffleBoundary
+    private ObjectKlass loadKlassOrNull(Symbol<Type> type, @Host(ClassLoader.class) StaticObject classLoader) {
+        return (ObjectKlass) loadKlassOrNull(type, classLoader, StaticObject.NULL);
+    }
+
+    @TruffleBoundary
     private ObjectKlass loadKlassWithBootClassLoader(Symbol<Type> type) {
-        return (ObjectKlass) getRegistries().loadKlass(type, StaticObject.NULL, StaticObject.NULL);
+        return loadKlassOrNull(type, StaticObject.NULL);
+    }
+
+    private StaticObject getPlatformClassLoader() {
+        if (cachedPlatformClassLoader == null) {
+            cachedPlatformClassLoader = (StaticObject) jdk_internal_loader_ClassLoaders_platformClassLoader.invokeDirect(StaticObject.NULL);
+        }
+        return cachedPlatformClassLoader;
     }
 
     public Klass resolvePrimitive(Symbol<Type> type) {

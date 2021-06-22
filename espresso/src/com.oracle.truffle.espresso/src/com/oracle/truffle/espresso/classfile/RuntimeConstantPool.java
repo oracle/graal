@@ -123,9 +123,9 @@ public final class RuntimeConstantPool extends ConstantPool {
         return (Klass) resolved.value();
     }
 
-    public Field resolvedFieldAt(Klass accessingKlass, int index) {
+    public Field.FieldVersion resolvedFieldAt(Klass accessingKlass, int index) {
         Resolvable.ResolvedConstant resolved = resolvedAt(accessingKlass, index, "field");
-        return (Field) resolved.value();
+        return ((Field.FieldVersion) resolved.value());
     }
 
     public Method resolvedMethodAt(Klass accessingKlass, int index) {

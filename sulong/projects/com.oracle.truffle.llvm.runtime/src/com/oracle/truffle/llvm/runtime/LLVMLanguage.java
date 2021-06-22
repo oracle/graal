@@ -68,6 +68,7 @@ import com.oracle.truffle.llvm.runtime.target.TargetTriple;
 import com.oracle.truffle.llvm.toolchain.config.LLVMConfig;
 import java.lang.ref.ReferenceQueue;
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.MapCursor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
@@ -137,13 +138,15 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     private final EconomicMap<String, LLVMScope> internalFileScopes = EconomicMap.create();
 
-    private static final class LibraryCacheEntry extends WeakReference<CallTarget> {
+    static final class LibraryCacheEntry extends WeakReference<CallTarget> {
 
         final String path;
+        final WeakReference<BitcodeID> id;
 
-        LibraryCacheEntry(LLVMLanguage language, String path, CallTarget callTarget) {
+        LibraryCacheEntry(LLVMLanguage language, String path, CallTarget callTarget, BitcodeID id) {
             super(callTarget, language.libraryCacheQueue);
             this.path = path;
+            this.id = new WeakReference<>(id);
         }
     }
 
@@ -526,9 +529,9 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
                 CallTarget cached = getCachedLibrary(path);
                 if (cached == null) {
                     assert !libraryCache.containsKey(path) : "racy insertion despite lock?";
-
-                    cached = getCapability(Loader.class).load(getContext(), source, idGenerater.generateID());
-                    LibraryCacheEntry entry = new LibraryCacheEntry(this, path, cached);
+                    BitcodeID id = idGenerater.generateID();
+                    cached = getCapability(Loader.class).load(getContext(), source, id);
+                    LibraryCacheEntry entry = new LibraryCacheEntry(this, path, cached, id);
                     libraryCache.put(path, entry);
                 }
                 return cached;
@@ -537,6 +540,10 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
             // just get the id here and give it to the parserDriver
             return getCapability(Loader.class).load(getContext(), source, idGenerater.generateID());
         }
+    }
+
+    public MapCursor<String, LibraryCacheEntry> getLibraryCache() {
+        return libraryCache.getEntries();
     }
 
     private void lazyCacheCleanup() {

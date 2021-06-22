@@ -229,7 +229,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
                 add(64, dst, address.getBase(), address.getOffset(), address.getExtendType(), address.isRegisterOffsetScaled() ? shiftAmt : 0);
                 break;
             case BASE_REGISTER_ONLY:
-                movx(dst, address.getBase());
+                mov(64, dst, address.getBase());
                 break;
             default:
                 throw GraalError.shouldNotReachHere();
@@ -382,10 +382,6 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         return isImmLoadStoreMerged;
     }
 
-    public void movx(Register dst, Register src) {
-        mov(64, dst, src);
-    }
-
     /**
      * Generates a move between two general purpose registers.
      *
@@ -395,7 +391,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         if (dst.equals(sp) || src.equals(sp)) {
             add(size, dst, src, 0);
         } else {
-            or(size, dst, zr, src);
+            orr(size, dst, zr, src);
         }
     }
 
@@ -610,7 +606,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         if (!needsImmAnnotation && imm == 0) {
             mov(32, dst, zr);
         } else if (!needsImmAnnotation && isLogicalImmediate(32, imm)) {
-            or(32, dst, zr, imm);
+            orr(32, dst, zr, imm);
         } else {
             mov32(dst, imm, needsImmAnnotation);
         }
@@ -626,9 +622,9 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     public void mov(Register dst, long imm, boolean needsImmAnnotation) {
         assert dst.getRegisterCategory().equals(CPU);
         if (!needsImmAnnotation && imm == 0L) {
-            movx(dst, zr);
+            mov(64, dst, zr);
         } else if (!needsImmAnnotation && isLogicalImmediate(64, imm)) {
-            or(64, dst, zr, imm);
+            orr(64, dst, zr, imm);
         } else {
             mov64(dst, imm, needsImmAnnotation);
         }
@@ -822,20 +818,6 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         } else {
             stxr(size, rs, rt, rn);
         }
-    }
-
-    /**
-     * Conditional select. dst = src1 if condition else src2.
-     *
-     * @param size register size. Has to be 32 or 64.
-     * @param result general purpose register. May not be null or the stackpointer.
-     * @param trueValue general purpose register. May not be null or the stackpointer.
-     * @param falseValue general purpose register. May not be null or the stackpointer.
-     * @param cond any condition flag. May not be null.
-     */
-    @Override
-    public void csel(int size, Register result, Register trueValue, Register falseValue, ConditionFlag cond) {
-        super.csel(size, result, trueValue, falseValue, cond);
     }
 
     /**
@@ -1154,34 +1136,6 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
-     * dst = src3 + src1 * src2.
-     *
-     * @param size register size. Has to be 32 or 64.
-     * @param dst general purpose register. May not be null or the stackpointer.
-     * @param src1 general purpose register. May not be null or the stackpointer.
-     * @param src2 general purpose register. May not be null or the stackpointer.
-     * @param src3 general purpose register. May not be null or the stackpointer.
-     */
-    @Override
-    public void madd(int size, Register dst, Register src1, Register src2, Register src3) {
-        super.madd(size, dst, src1, src2, src3);
-    }
-
-    /**
-     * dst = src3 - src1 * src2.
-     *
-     * @param size register size. Has to be 32 or 64.
-     * @param dst general purpose register. May not be null or the stackpointer.
-     * @param src1 general purpose register. May not be null or the stackpointer.
-     * @param src2 general purpose register. May not be null or the stackpointer.
-     * @param src3 general purpose register. May not be null or the stackpointer.
-     */
-    @Override
-    public void msub(int size, Register dst, Register src1, Register src2, Register src3) {
-        super.msub(size, dst, src1, src2, src3);
-    }
-
-    /**
      * dst = 0 - src1 * src2.
      *
      * @param size register size. Has to be 32 or 64.
@@ -1238,55 +1192,23 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     /**
      * Signed multiply long. xDst = wSrc1 * wSrc2
      *
-     * @param size destination register size. Has to be 64.
      * @param dst 64-bit general purpose register. May not be null or the stackpointer.
      * @param src1 32-bit general purpose register. May not be null or the stackpointer.
      * @param src2 32-bit general purpose register. May not be null or the stackpointer.
      */
-    public void smull(int size, Register dst, Register src1, Register src2) {
-        this.smaddl(size, dst, src1, src2, zr);
+    public void smull(Register dst, Register src1, Register src2) {
+        this.smaddl(dst, src1, src2, zr);
     }
 
     /**
      * Signed multiply-negate long. xDst = -(wSrc1 * wSrc2)
      *
-     * @param size destination register size. Has to be 64.
      * @param dst 64-bit general purpose register. May not be null or the stackpointer.
      * @param src1 32-bit general purpose register. May not be null or the stackpointer.
      * @param src2 32-bit general purpose register. May not be null or the stackpointer.
      */
-    public void smnegl(int size, Register dst, Register src1, Register src2) {
-        this.smsubl(size, dst, src1, src2, zr);
-    }
-
-    /**
-     * Signed multiply-add long. xDst = xSrc3 + (wSrc1 * wSrc2)
-     *
-     * @param size destination register size. Has to be 64.
-     * @param dst 64-bit general purpose register. May not be null or the stackpointer.
-     * @param src1 32-bit general purpose register. May not be null or the stackpointer.
-     * @param src2 32-bit general purpose register. May not be null or the stackpointer.
-     * @param src3 64-bit general purpose register. May not be null or the stackpointer.
-     */
-    public void smaddl(int size, Register dst, Register src1, Register src2, Register src3) {
-        assert (!dst.equals(sp) && !src1.equals(sp) && !src2.equals(sp) && !src3.equals(sp));
-        assert size == 64;
-        super.smaddl(dst, src1, src2, src3);
-    }
-
-    /**
-     * Signed multiply-sub long. xDst = xSrc3 - (wSrc1 * wSrc2)
-     *
-     * @param size destination register size. Has to be 64.
-     * @param dst 64-bit general purpose register. May not be null or the stackpointer.
-     * @param src1 32-bit general purpose register. May not be null or the stackpointer.
-     * @param src2 32-bit general purpose register. May not be null or the stackpointer.
-     * @param src3 64-bit general purpose register. May not be null or the stackpointer.
-     */
-    public void smsubl(int size, Register dst, Register src1, Register src2, Register src3) {
-        assert (!dst.equals(sp) && !src1.equals(sp) && !src2.equals(sp) && !src3.equals(sp));
-        assert size == 64;
-        super.smsubl(dst, src1, src2, src3);
+    public void smnegl(Register dst, Register src1, Register src2) {
+        this.smsubl(dst, src1, src2, zr);
     }
 
     /**
@@ -1494,21 +1416,8 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param src1 general purpose register. May not be null or stackpointer.
      * @param src2 general purpose register. May not be null or stackpointer.
      */
-    public void or(int size, Register dst, Register src1, Register src2) {
+    public void orr(int size, Register dst, Register src1, Register src2) {
         super.orr(size, dst, src1, src2, ShiftType.LSL, 0);
-    }
-
-    /**
-     * dst = src | bimm.
-     *
-     * @param size register size. Has to be 32 or 64.
-     * @param dst general purpose register. May not be null or zero-register.
-     * @param src general purpose register. May not be null or stack-pointer.
-     * @param bimm logical immediate. See {@link AArch64Assembler.LogicalBitmaskImmediateEncoding}
-     *            for exact definition.
-     */
-    public void or(int size, Register dst, Register src, long bimm) {
-        super.orr(size, dst, src, bimm);
     }
 
     /**
@@ -1559,65 +1468,6 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
-     * dst = src1 & shiftType(src2, imm).
-     *
-     * @param size register size. Has to be 32 or 64.
-     * @param dst general purpose register. May not be null or stackpointer.
-     * @param src1 general purpose register. May not be null or stackpointer.
-     * @param src2 general purpose register. May not be null or stackpointer.
-     * @param shiftType all types allowed, may not be null.
-     * @param shiftAmt must be in range 0 to size - 1.
-     */
-    @Override
-    public void and(int size, Register dst, Register src1, Register src2, ShiftType shiftType, int shiftAmt) {
-        super.and(size, dst, src1, src2, shiftType, shiftAmt);
-    }
-
-    /**
-     * dst = src1 ^ shiftType(src2, imm).
-     *
-     * @param size register size. Has to be 32 or 64.
-     * @param dst general purpose register. May not be null or stackpointer.
-     * @param src1 general purpose register. May not be null or stackpointer.
-     * @param src2 general purpose register. May not be null or stackpointer.
-     * @param shiftType all types allowed, may not be null.
-     * @param shiftAmt must be in range 0 to size - 1.
-     */
-    @Override
-    public void eor(int size, Register dst, Register src1, Register src2, ShiftType shiftType, int shiftAmt) {
-        super.eor(size, dst, src1, src2, shiftType, shiftAmt);
-    }
-
-    /**
-     * dst = src1 | shiftType(src2, imm).
-     *
-     * @param size register size. Has to be 32 or 64.
-     * @param dst general purpose register. May not be null or stackpointer.
-     * @param src1 general purpose register. May not be null or stackpointer.
-     * @param src2 general purpose register. May not be null or stackpointer.
-     * @param shiftType all types allowed, may not be null.
-     * @param shiftAmt must be in range 0 to size - 1.
-     */
-    public void or(int size, Register dst, Register src1, Register src2, ShiftType shiftType, int shiftAmt) {
-        super.orr(size, dst, src1, src2, shiftType, shiftAmt);
-    }
-
-    /**
-     * dst = src1 & ~(shiftType(src2, imm)).
-     *
-     * @param size register size. Has to be 32 or 64.
-     * @param dst general purpose register. May not be null or stackpointer.
-     * @param src1 general purpose register. May not be null or stackpointer.
-     * @param src2 general purpose register. May not be null or stackpointer.
-     * @param shiftType all types allowed, may not be null.
-     * @param shiftAmt must be in range 0 to size - 1.
-     */
-    @Override
-    public void bic(int size, Register dst, Register src1, Register src2, ShiftType shiftType, int shiftAmt) {
-        super.bic(size, dst, src1, src2, shiftType, shiftAmt);
-    }
-
-    /**
      * dst = src1 & ~(src2) and sets condition flags.
      *
      * @param size register size. Has to be 32 or 64.
@@ -1627,36 +1477,6 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     public void bics(int size, Register dst, Register src1, Register src2) {
         super.bics(size, dst, src1, src2, ShiftType.LSL, 0);
-    }
-
-    /**
-     * dst = src1 ^ ~(shiftType(src2, imm)).
-     *
-     * @param size register size. Has to be 32 or 64.
-     * @param dst general purpose register. May not be null or stackpointer.
-     * @param src1 general purpose register. May not be null or stackpointer.
-     * @param src2 general purpose register. May not be null or stackpointer.
-     * @param shiftType all types allowed, may not be null.
-     * @param shiftAmt must be in range 0 to size - 1.
-     */
-    @Override
-    public void eon(int size, Register dst, Register src1, Register src2, ShiftType shiftType, int shiftAmt) {
-        super.eon(size, dst, src1, src2, shiftType, shiftAmt);
-    }
-
-    /**
-     * dst = src1 | ~(shiftType(src2, imm)).
-     *
-     * @param size register size. Has to be 32 or 64.
-     * @param dst general purpose register. May not be null or stackpointer.
-     * @param src1 general purpose register. May not be null or stackpointer.
-     * @param src2 general purpose register. May not be null or stackpointer.
-     * @param shiftType all types allowed, may not be null.
-     * @param shiftAmt must be in range 0 to size - 1.
-     */
-    @Override
-    public void orn(int size, Register dst, Register src1, Register src2, ShiftType shiftType, int shiftAmt) {
-        super.orn(size, dst, src1, src2, shiftType, shiftAmt);
     }
 
     /**
@@ -1670,18 +1490,6 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     public void sxt(int destSize, int srcSize, Register dst, Register src) {
         assert (srcSize < destSize && srcSize > 0);
         super.sbfm(destSize, dst, src, 0, srcSize - 1);
-    }
-
-    /**
-     * dst = src if condition else -src.
-     *
-     * @param size register size. Must be 32 or 64.
-     * @param dst general purpose register. May not be null or the stackpointer.
-     * @param src general purpose register. May not be null or the stackpointer.
-     * @param condition any condition except AV or NV. May not be null.
-     */
-    public void csneg(int size, Register dst, Register src, ConditionFlag condition) {
-        super.csneg(size, dst, src, src, condition.negate());
     }
 
     /**
@@ -1757,34 +1565,6 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     public static boolean isFloatImmediate(float imm) {
         return Float.floatToRawIntBits(imm) == 0 || AArch64Assembler.isFloatImmediate(imm);
-    }
-
-    /**
-     * Conditional select. dst = src1 if condition else src2.
-     *
-     * @param size register size.
-     * @param result floating point register. May not be null.
-     * @param trueValue floating point register. May not be null.
-     * @param falseValue floating point register. May not be null.
-     * @param condition every condition allowed. May not be null.
-     */
-    @Override
-    public void fcsel(int size, Register result, Register trueValue, Register falseValue, ConditionFlag condition) {
-        super.fcsel(size, result, trueValue, falseValue, condition);
-    }
-
-    /**
-     * dst = src1 * src2 + src3.
-     *
-     * @param size register size.
-     * @param dst floating point register. May not be null.
-     * @param src1 floating point register. May not be null.
-     * @param src2 floating point register. May not be null.
-     * @param src3 floating point register. May not be null.
-     */
-    @Override
-    public void fmadd(int size, Register dst, Register src1, Register src2, Register src3) {
-        super.fmadd(size, dst, src1, src2, src3);
     }
 
     /* Branches */

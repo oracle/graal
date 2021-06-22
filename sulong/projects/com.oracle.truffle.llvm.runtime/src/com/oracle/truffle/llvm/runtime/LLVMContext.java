@@ -29,22 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.security.SecureRandom;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
-
-import org.graalvm.collections.EconomicMap;
-
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -58,6 +42,7 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.api.Toolchain;
+import com.oracle.truffle.llvm.runtime.IDGenerater.BitcodeID;
 import com.oracle.truffle.llvm.runtime.LLVMArgumentBuffer.LLVMArgumentArray;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
 import com.oracle.truffle.llvm.runtime.except.LLVMIllegalSymbolIndexException;
@@ -75,7 +60,21 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.pthread.LLVMPThreadContext;
-import com.oracle.truffle.llvm.runtime.IDGenerater.BitcodeID;
+import org.graalvm.collections.EconomicMap;
+
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.security.SecureRandom;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 public final class LLVMContext {
 
@@ -610,7 +609,6 @@ public final class LLVMContext {
                 }
             }
         }
-
         // TODO (chaeubl): we should throw an exception in this case but this will cause gate
         // failures at the moment, because the library path is not always set correctly
     }
@@ -670,9 +668,19 @@ public final class LLVMContext {
             if (!symbolAssumptions[id][index].isValid()) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
             }
-            return symbolFinalStorage[id][index];
+            try {
+                return symbolFinalStorage[id][index];
+            } catch (ArrayIndexOutOfBoundsException | NullPointerException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw new LLVMIllegalSymbolIndexException("cannot find symbol");
+            }
         } else {
-            return symbolDynamicStorage[id][index];
+            try {
+                return symbolDynamicStorage[id][index];
+            } catch (ArrayIndexOutOfBoundsException | NullPointerException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw new LLVMIllegalSymbolIndexException("cannot find symbol");
+            }
         }
     }
 

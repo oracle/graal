@@ -22,7 +22,9 @@
  */
 package com.oracle.truffle.espresso.impl;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
@@ -36,6 +38,8 @@ import java.lang.reflect.Modifier;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINALIZER;
 
 public final class ParserField {
+
+    private final Assumption redefineAssumption = Truffle.getRuntime().createAssumption();
 
     public static final ParserField[] EMPTY_ARRAY = new ParserField[0];
     // re-use the Constants.ACC_FINALIZER flag to mark hidden fields
@@ -60,6 +64,10 @@ public final class ParserField {
 
     public Symbol<Type> getType() {
         return type;
+    }
+
+    public Assumption getRedefineAssumption() {
+        return redefineAssumption;
     }
 
     public Attribute[] getAttributes() {

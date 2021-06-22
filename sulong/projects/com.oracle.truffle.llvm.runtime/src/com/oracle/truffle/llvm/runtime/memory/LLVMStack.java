@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -306,7 +306,7 @@ public final class LLVMStack {
                     return;
                 }
             } catch (FrameSlotTypeException e) {
-                // frame slot is not initalized
+                // frame slot is not initialized
             }
             CompilerDirectives.transferToInterpreter();
             // The slot was added from the outside while this method executed,

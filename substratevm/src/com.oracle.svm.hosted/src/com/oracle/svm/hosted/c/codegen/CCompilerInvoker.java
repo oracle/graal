@@ -229,7 +229,7 @@ public abstract class CCompilerInvoker {
                 }
 
                 if (scanner.findInLine("clang version ") != null) {
-                    scanner.useDelimiter("[. ]");
+                    scanner.useDelimiter("[. -]");
                     int major = scanner.nextInt();
                     int minor0 = scanner.nextInt();
                     int minor1 = scanner.nextInt();

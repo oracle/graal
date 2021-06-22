@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.graal.stackvalue;
 
-import static org.graalvm.compiler.core.common.NumUtil.roundUp;
-
 import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.core.common.calc.UnsignedMath;
 import org.graalvm.compiler.graph.IterableNodeType;
@@ -36,11 +34,15 @@ import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.AbstractStateSplit;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+import org.graalvm.nativeimage.StackValue;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.config.ConfigurationValues;
 
 import jdk.vm.ci.meta.JavaConstant;
 
@@ -70,7 +72,8 @@ public final class StackValueNode extends AbstractStateSplit implements LIRLower
      */
     private static final int MAX_SIZE = 10 * 1024 * 1024;
 
-    protected final int size;
+    protected final int sizeInBytes;
+    protected final int alignmentInBytes;
     protected final StackSlotIdentity slotIdentity;
     private int recursionDepth;
     protected StackSlotHolder stackSlotHolder;
@@ -96,25 +99,35 @@ public final class StackValueNode extends AbstractStateSplit implements LIRLower
 
     protected static class StackSlotHolder {
         protected VirtualStackSlot slot;
-        protected final int size;
         protected NodeLIRBuilderTool gen;
-
-        public StackSlotHolder(int size) {
-            this.size = size;
-        }
     }
 
-    public StackValueNode(long numElements, long elementSize, StackSlotIdentity slotIdentity) {
-        super(TYPE, FrameAccess.getWordStamp());
-
+    /**
+     * Factory method used for intrinsifying {@link StackValue} API methods. This method therefore
+     * must follow the API specification.
+     */
+    public static ValueNode create(long numElements, long elementSize, GraphBuilderContext b) {
         /*
          * Do a careful overflow check, ensuring that the multiplication does not overflow to a
          * small value that seems to be in range.
          */
+        String name = b.getGraph().method().asStackTraceElement(b.bci()).toString();
         if (UnsignedMath.aboveOrEqual(numElements, MAX_SIZE) || UnsignedMath.aboveOrEqual(elementSize, MAX_SIZE) || UnsignedMath.aboveOrEqual(numElements * elementSize, MAX_SIZE)) {
-            throw new PermanentBailoutException("stack value has illegal size " + numElements + " * " + elementSize + ": " + slotIdentity.name);
+            throw new PermanentBailoutException("stack value has illegal size " + numElements + " * " + elementSize + ": " + name);
         }
-        this.size = (int) (numElements * elementSize);
+
+        int sizeInBytes = (int) (numElements * elementSize);
+        /* Alignment is specified by StackValue API methods as "alignment used for stack frames". */
+        int alignmentInBytes = ConfigurationValues.getTarget().stackAlignment;
+        StackSlotIdentity slotIdentity = new StackSlotIdentity(name, false);
+
+        return new StackValueNode(sizeInBytes, alignmentInBytes, slotIdentity);
+    }
+
+    protected StackValueNode(int sizeInBytes, int alignmentInBytes, StackSlotIdentity slotIdentity) {
+        super(TYPE, FrameAccess.getWordStamp());
+        this.sizeInBytes = sizeInBytes;
+        this.alignmentInBytes = alignmentInBytes;
         this.slotIdentity = slotIdentity;
         this.recursionDepth = slotIdentity.shared ? 0 : -1;
     }
@@ -134,14 +147,12 @@ public final class StackValueNode extends AbstractStateSplit implements LIRLower
         assert stackSlotHolder.gen == null || stackSlotHolder.gen == gen : "Same stack slot holder used during multiple compilations, therefore caching a wrong value";
         stackSlotHolder.gen = gen;
 
-        if (size == 0) {
+        if (sizeInBytes == 0) {
             gen.setResult(this, new ConstantValue(gen.getLIRGeneratorTool().getLIRKind(FrameAccess.getWordStamp()), JavaConstant.forIntegerKind(FrameAccess.getWordKind(), 0)));
         } else {
             VirtualStackSlot slot = stackSlotHolder.slot;
             if (slot == null) {
-                int wordSize = gen.getLIRGeneratorTool().target().wordSize;
-                int slots = roundUp(size, wordSize) / wordSize;
-                slot = gen.getLIRGeneratorTool().allocateStackSlots(slots);
+                slot = gen.getLIRGeneratorTool().allocateStackMemory(sizeInBytes, alignmentInBytes);
                 stackSlotHolder.slot = slot;
             }
             gen.setResult(this, gen.getLIRGeneratorTool().emitAddress(slot));
@@ -149,5 +160,5 @@ public final class StackValueNode extends AbstractStateSplit implements LIRLower
     }
 
     @NodeIntrinsic
-    public static native WordBase stackValue(@ConstantNodeParameter long numElements, @ConstantNodeParameter long elementSize, @ConstantNodeParameter StackSlotIdentity slotIdentifier);
+    public static native WordBase stackValue(@ConstantNodeParameter int sizeInBytes, @ConstantNodeParameter int alignmentInBytes, @ConstantNodeParameter StackSlotIdentity slotIdentifier);
 }

@@ -427,7 +427,10 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
                 }
             }
         }
-        return pass;
+        if (!pass) {
+            throw new AssertionError("Verification of all-instantiated type flows failed");
+        }
+        return true;
     }
 
     public static void updateAssignableTypes(BigBang bb) {
@@ -455,20 +458,26 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
             }
         }
         for (AnalysisType type : allTypes) {
-            if (type.assignableTypes != null) {
-                TypeState assignableTypeState = TypeState.forNull();
-                if (newAssignableTypes.get(type.getId()) != null) {
-                    BitSet assignableTypes = newAssignableTypes.get(type.getId());
-                    if (type.assignableTypes.getState().hasExactTypes(assignableTypes)) {
-                        /* Avoid creation of the expensive type state. */
-                        continue;
-                    }
-                    assignableTypeState = TypeState.forExactTypes(bb, newAssignableTypes.get(type.getId()), true);
-                }
-
-                updateFlow(bb, type.assignableTypes, assignableTypeState, changedFlows);
-                updateFlow(bb, type.assignableTypesNonNull, assignableTypeState.forNonNull(bb), changedFlows);
+            if (type.assignableTypes == null) {
+                /*
+                 * Computing assignable types in bulk here is much cheaper than doing it
+                 * individually when needed in updateTypeFlows.
+                 */
+                type.assignableTypes = new AllInstantiatedTypeFlow(type, TypeState.forNull());
+                type.assignableTypesNonNull = new AllInstantiatedTypeFlow(type, TypeState.forEmpty());
             }
+            TypeState assignableTypeState = TypeState.forNull();
+            if (newAssignableTypes.get(type.getId()) != null) {
+                BitSet assignableTypes = newAssignableTypes.get(type.getId());
+                if (type.assignableTypes.getState().hasExactTypes(assignableTypes)) {
+                    /* Avoid creation of the expensive type state. */
+                    continue;
+                }
+                assignableTypeState = TypeState.forExactTypes(bb, newAssignableTypes.get(type.getId()), true);
+            }
+
+            updateFlow(bb, type.assignableTypes, assignableTypeState, changedFlows);
+            updateFlow(bb, type.assignableTypesNonNull, assignableTypeState.forNonNull(bb), changedFlows);
         }
 
         for (TypeFlow<?> changedFlow : changedFlows) {

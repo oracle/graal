@@ -1628,6 +1628,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                     }
                 }
             });
+            t.setUncaughtExceptionHandler(getPolyglotThreadUncaughtExceptionHandler(context));
             synchronized (context.spawnedThreads) {
                 context.spawnedThreads.add(t);
             }
@@ -1638,6 +1639,35 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
         protected BaseNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
             return new SpawnNode(identifier, cloneUninitialized(children, materializedTags));
         }
+    }
+
+    private static Thread.UncaughtExceptionHandler getPolyglotThreadUncaughtExceptionHandler(InstrumentContext context) {
+        return (t, e) -> {
+            InteropLibrary interop = InteropLibrary.getUncached();
+            boolean interrupted;
+            boolean cancelled = false;
+            if (interop.isException(e)) {
+                try {
+                    ExceptionType exceptionType = interop.getExceptionType(e);
+                    interrupted = exceptionType == ExceptionType.INTERRUPT;
+                } catch (UnsupportedMessageException ume) {
+                    throw CompilerDirectives.shouldNotReachHere(ume);
+                }
+            } else {
+                interrupted = e != null && e.getCause() instanceof InterruptedException;
+                cancelled = e instanceof ThreadDeath;
+            }
+            if (e != null && !interrupted && !cancelled) {
+                Env currentEnv = context.env;
+                try {
+                    e.printStackTrace(new PrintStream(currentEnv.err()));
+                } catch (Throwable exc) {
+                    // Still show the original error if printing on Env.err() fails for some
+                    // reason
+                    e.printStackTrace();
+                }
+            }
+        };
     }
 
     private static final class AsyncStackInfo {
@@ -3197,39 +3227,6 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
     @Override
     protected void finalizeContext(InstrumentContext context) {
         joinSpawnedThreads(context, true);
-    }
-
-    @Override
-    protected void initializeThread(InstrumentContext context, Thread thread) {
-        Thread.UncaughtExceptionHandler currentHandler = thread.getUncaughtExceptionHandler();
-        if (currentHandler != null && "com.oracle.truffle.polyglot.PolyglotLanguageContext$PolyglotUncaughtExceptionHandler".equals(currentHandler.getClass().getName())) {
-            thread.setUncaughtExceptionHandler((t, e) -> {
-                InteropLibrary interop = InteropLibrary.getUncached();
-                boolean interrupted;
-                boolean cancelled = false;
-                if (interop.isException(e)) {
-                    try {
-                        ExceptionType exceptionType = interop.getExceptionType(e);
-                        interrupted = exceptionType == ExceptionType.INTERRUPT;
-                    } catch (UnsupportedMessageException ume) {
-                        throw CompilerDirectives.shouldNotReachHere(ume);
-                    }
-                } else {
-                    interrupted = e != null && e.getCause() instanceof InterruptedException;
-                    cancelled = e instanceof ThreadDeath;
-                }
-                if (!interrupted && !cancelled) {
-                    Env currentEnv = context.env;
-                    try {
-                        e.printStackTrace(new PrintStream(currentEnv.err()));
-                    } catch (Throwable exc) {
-                        // Still show the original error if printing on Env.err() fails for some
-                        // reason
-                        e.printStackTrace();
-                    }
-                }
-            });
-        }
     }
 }
 

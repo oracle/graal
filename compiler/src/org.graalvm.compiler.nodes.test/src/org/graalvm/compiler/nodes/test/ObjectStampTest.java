@@ -24,13 +24,15 @@
  */
 package org.graalvm.compiler.nodes.test;
 
-import org.junit.Assert;
-import org.junit.Test;
-
 import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
+import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
+import org.junit.Assert;
+import org.junit.Test;
+
+import jdk.vm.ci.meta.JavaKind;
 
 public class ObjectStampTest extends AbstractObjectStampTest {
     @Test
@@ -51,5 +53,58 @@ public class ObjectStampTest extends AbstractObjectStampTest {
         AbstractObjectStamp trustedObjectStamp = (AbstractObjectStamp) trusted;
         Assert.assertNotNull(trustedObjectStamp.type());
         Assert.assertTrue("Should be an interface", trustedObjectStamp.type().isInterface());
+    }
+
+    @Test
+    public void testEquals() {
+        Stamp empty = StampFactory.empty(JavaKind.Object);
+        Stamp object = StampFactory.objectNonNull();
+
+        Stamp exactObject = new ObjectStamp(getMetaAccess().lookupJavaType(java.lang.Object.class), true, true, false, false);
+        ObjectStamp exactObject2 = new ObjectStamp(getMetaAccess().lookupJavaType(Object.class), true, true, false, false);
+        Assert.assertFalse(empty.equals(exactObject));
+        Assert.assertFalse(exactObject.equals(empty));
+        Assert.assertTrue(exactObject.equals(exactObject2));
+        Assert.assertFalse(exactObject.equals(object));
+
+        Stamp inexactObject = new ObjectStamp(getMetaAccess().lookupJavaType(java.lang.Object.class), false, true, false, false);
+        ObjectStamp inexactObject2 = new ObjectStamp(getMetaAccess().lookupJavaType(Object.class), false, true, false, false);
+        Assert.assertFalse(empty.equals(inexactObject));
+        Assert.assertFalse(inexactObject.equals(empty));
+        Assert.assertTrue(inexactObject.equals(inexactObject2));
+        Assert.assertTrue(inexactObject.equals(object));
+
+        /* type==null and exact==true means "empty". */
+        Stamp exactNull = new ObjectStamp(null, true, true, false, false);
+        ObjectStamp exactNull2 = new ObjectStamp(null, true, true, false, false);
+        Assert.assertTrue(empty.equals(exactNull));
+        Assert.assertTrue(exactNull.equals(empty));
+        Assert.assertTrue(exactNull.equals(exactNull2));
+        Assert.assertFalse(exactNull.equals(object));
+        Assert.assertFalse(exactObject.equals(exactNull));
+
+        /* type==null and exact==false means "java.lang.Object". */
+        Stamp inexactNull = new ObjectStamp(null, false, true, false, false);
+        ObjectStamp inexactNull2 = new ObjectStamp(null, false, true, false, false);
+        Assert.assertFalse(empty.equals(inexactNull));
+        Assert.assertFalse(inexactNull.equals(empty));
+        Assert.assertTrue(inexactNull.equals(inexactNull2));
+        Assert.assertTrue(inexactNull.equals(object));
+        Assert.assertTrue(inexactObject.equals(inexactNull));
+
+        /*
+         * For all assertions that equals==true, we also check the hashCode. Ideally, equals==false
+         * would also mean that the hashCode is different, but we cannot guarantee it because we do
+         * not control the hashCode of a ResolvedJavaType.
+         */
+        Assert.assertTrue(exactObject.hashCode() == exactObject2.hashCode());
+        Assert.assertTrue(inexactObject.hashCode() == inexactObject2.hashCode());
+        Assert.assertTrue(inexactObject.hashCode() == object.hashCode());
+        Assert.assertTrue(empty.hashCode() == exactNull.hashCode());
+        Assert.assertTrue(exactNull.hashCode() == empty.hashCode());
+        Assert.assertTrue(exactNull.hashCode() == exactNull2.hashCode());
+        Assert.assertTrue(inexactNull.hashCode() == inexactNull2.hashCode());
+        Assert.assertTrue(inexactNull.hashCode() == object.hashCode());
+        Assert.assertTrue(inexactObject.hashCode() == inexactNull.hashCode());
     }
 }
