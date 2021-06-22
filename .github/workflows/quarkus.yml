@@ -63,7 +63,7 @@ jobs:
     - name: Get JDK
       run: |
         mkdir jdk-dl
-        ${MX_PATH}/mx fetch-jdk --java-distribution labsjdk-ce-11 --to jdk-dl --alias ${JAVA_HOME}
+        ${MX_PATH}/mx fetch-jdk --jdk-id labsjdk-ce-11 --to jdk-dl --alias ${JAVA_HOME}
     - name: Build graalvm native-image
       run: |
         cd substratevm
