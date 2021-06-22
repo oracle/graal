@@ -71,4 +71,139 @@ public class RubyTests extends RegexTestBase {
                                         "      $\n" +
                                         "    ", "x").getMember("groupCount").asInt());
     }
+
+    @Test
+    public void caseInsensitiveLigatures() {
+        // https://bugs.ruby-lang.org/issues/17989
+
+        // LATIN SMALL LIGATURE FF
+        test("\ufb00", "i", "FF", 0, true, 0, 2);
+        // LATIN SMALL LIGATURE FI
+        test("\ufb01", "i", "FI", 0, true, 0, 2);
+        // LATIN SMALL LIGATURE FL
+        test("\ufb02", "i", "FL", 0, true, 0, 2);
+        // LATIN SMALL LIGATURE FFI
+        test("\ufb03", "i", "FFI", 0, true, 0, 3);
+        // LATIN SMALL LIGATURE FFL
+        test("\ufb04", "i", "FFL", 0, true, 0, 3);
+
+        // (ff)i = (ffi)
+        test("\ufb00I", "i", "\ufb03", 0, true, 0, 1);
+        // (ffi) = (ff)i
+        test("\ufb03", "i", "\ufb00I", 0, true, 0, 2);
+        // f(fi) = (ffi)
+        test("F\ufb01", "i", "\ufb03", 0, true, 0, 1);
+        // (ffi) = f(fi)
+        test("\ufb03", "i", "F\ufb01", 0, true, 0, 2);
+
+        // (ff)l = (ffl)
+        test("\ufb00L", "i", "\ufb04", 0, true, 0, 1);
+        // (ffl) = (ff)l
+        test("\ufb04", "i", "\ufb00L", 0, true, 0, 2);
+        // f(fl) = (ffl)
+        test("F\ufb02", "i", "\ufb04", 0, true, 0, 1);
+        // (ffl) = f(fl)
+        test("\ufb04", "i", "F\ufb02", 0, true, 0, 2);
+    }
+
+    @Test
+    public void caseInsensitiveFFIExhaustive() {
+        String[] variants = new String[]{"ffi", "ffI", "fFi", "fFI", "Ffi", "FfI", "FFi", "FFI", "\ufb00i", "\ufb00I", "f\ufb01", "F\ufb01", "\ufb03"};
+        for (String pattern : variants) {
+            for (String input : variants) {
+                test(pattern, "i", input, 0, true, 0, input.length());
+            }
+        }
+    }
+
+    @Test
+    public void greekCaseIgnore() {
+        // https://bugs.ruby-lang.org/issues/17989
+
+        // GREEK SMALL LETTER UPSILON WITH PSILI
+        test("\u1f50", "i", "\u03c5\u0313", 0, true, 0, 2);
+        // GREEK SMALL LETTER UPSILON WITH PSILI AND VARIA
+        test("\u1f52", "i", "\u03c5\u0313\u0300", 0, true, 0, 3);
+        // GREEK SMALL LETTER UPSILON WITH PSILI AND OXIA
+        test("\u1f54", "i", "\u03c5\u0313\u0301", 0, true, 0, 3);
+        // GREEK SMALL LETTER UPSILON WITH PSILI AND PERISPOMENI
+        test("\u1f56", "i", "\u03c5\u0313\u0342", 0, true, 0, 3);
+
+        // (upsilon psili) varia = (upsilon psili varia)
+        test("\u1f50\u0300", "i", "\u1f52", 0, true, 0, 1);
+        // (upsilon psili varia) = (upsilon psili) varia
+        test("\u1f52", "i", "\u1f50\u0300", 0, true, 0, 2);
+
+        // (upsilon psili) oxia = (upsilon psili oxia)
+        test("\u1f50\u0301", "i", "\u1f54", 0, true, 0, 1);
+        // (upsilon psili oxia) = (upsilon psili) oxia
+        test("\u1f54", "i", "\u1f50\u0301", 0, true, 0, 2);
+
+        // (upsilon psili) perispomeni = (upsilon psili perispomeni)
+        test("\u1f50\u0342", "i", "\u1f56", 0, true, 0, 1);
+        // (upsilon psili perispomeni) = (upsilon psili) perispomeni
+        test("\u1f56", "i", "\u1f50\u0342", 0, true, 0, 2);
+
+        // GREEK SMALL LETTER ALPHA WITH PERISPOMENI
+        test("\u1fb6", "i", "\u03b1\u0342", 0, true, 0, 2);
+        // GREEK SMALL LETTER ALPHA WITH PERISPOMENI AND YPOGEGRAMMENI
+        test("\u1fb7", "i", "\u03b1\u0342\u03b9", 0, true, 0, 3);
+
+        // (alpha perispomeni) ypogegrammeni == (alpha perispomeni ypogegrammeni)
+        test("\u1fb6\u03b9", "i", "\u1fb7", 0, true, 0, 1);
+        // (alpha perispomeni ypogegrammeni) == (alpha perispomeni) ypogegrammeni
+        test("\u1fb7", "i", "\u1fb6\u03b9", 0, true, 0, 2);
+
+        // GREEK SMALL LETTER ETA WITH PERISPOMENI
+        test("\u1fc6", "i", "\u03b7\u0342", 0, true, 0, 2);
+        // GREEK SMALL LETTER ETA WITH PERISPOMENI AND YPOGEGRAMMENI
+        test("\u1fc7", "i", "\u03b7\u0342\u03b9", 0, true, 0, 3);
+
+        // (eta perispomeni) ypogegrammeni == (eta perispomeni ypogegrammeni)
+        test("\u1fc6\u03b9", "i", "\u1fc7", 0, true, 0, 1);
+        // (eta perispomeni ypogegrammeni) == (eta perispomeni) ypogegrammeni
+        test("\u1fc7", "i", "\u1fc6\u03b9", 0, true, 0, 2);
+
+        // GREEK SMALL LETTER OMEGA WITH PERISPOMENI
+        test("\u1ff6", "i", "\u03c9\u0342", 0, true, 0, 2);
+        // GREEK SMALL LETTER OMEGA WITH PERISPOMENI AND YPOGEGRAMMENI
+        test("\u1ff7", "i", "\u03c9\u0342\u03b9", 0, true, 0, 3);
+
+        // (omega perispomeni) ypogegrammeni == (omega perispomeni ypogegrammeni)
+        test("\u1ff6\u03b9", "i", "\u1ff7", 0, true, 0, 1);
+        // (omega perispomeni ypogegrammeni) == (omega perispomeni) ypogegrammeni
+        test("\u1ff7", "i", "\u1ff6\u03b9", 0, true, 0, 2);
+    }
+
+    @Test
+    public void caseInsensitiveQuantifiers() {
+        // https://bugs.ruby-lang.org/issues/17990
+
+        test("f*", "i", "ff", 0, true, 0, 2);
+        test("f*", "i", "\ufb00", 0, true, 0, 0);
+
+        test("f+", "i", "ff", 0, true, 0, 2);
+        test("f+", "i", "\ufb00", 0, false);
+
+        test("f{1,}", "i", "ff", 0, true, 0, 2);
+        test("f{1,}", "i", "\ufb00", 0, false);
+
+        test("f{1,2}", "i", "ff", 0, true, 0, 2);
+        test("f{1,2}", "i", "\ufb00", 0, false);
+
+        test("f{,2}", "i", "ff", 0, true, 0, 2);
+        test("f{,2}", "i", "\ufb00", 0, true, 0, 0);
+
+        test("ff?", "i", "ff", 0, true, 0, 2);
+        test("ff?", "i", "\ufb00", 0, false);
+
+        test("f{2}", "i", "ff", 0, true, 0, 2);
+        test("f{2}", "i", "\ufb00", 0, false);
+
+        test("f{2,2}", "i", "ff", 0, true, 0, 2);
+        test("f{2,2}", "i", "\ufb00", 0, false);
+
+        // Test that we bail out on strings with complex unfoldings.
+        Assert.assertTrue(compileRegex(new String(new char[100]).replace('\0', 'f'), "i").isNull());
+    }
 }

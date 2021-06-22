@@ -44,10 +44,50 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.truffle.regex.UnsupportedRegexException;
+import com.oracle.truffle.regex.tregex.parser.flavors.RubyCaseUnfoldingTrie.Unfolding;
+import com.oracle.truffle.regex.util.TBitSet;
 
 public class RubyCaseFolding {
 
-    public static String caseFoldString(int[] codepoints) {
+    public static String caseFoldUnfoldString(int[] codepoints) {
+        List<Integer> caseFolded = caseFold(codepoints);
+
+        List<Unfolding> unfoldings = RubyCaseUnfoldingTrie.findUnfoldings(caseFolded);
+
+        StringBuilder out = new StringBuilder();
+        out.append("(?:");
+
+        // We identify segments of the string which are independent, i.e. there is no unfolding
+        // that crosses the boundary of a segment. We the unfold each segment separately, which
+        // helps to avoid unnecessary combinatorial explosions.
+        int start = 0;
+        int end = 0;
+        int unfoldingsStartIndex = 0;
+        int unfoldingsEndIndex = 0;
+        for (int i = 0; i < unfoldings.size(); i++) {
+            Unfolding unfolding = unfoldings.get(i);
+            if (unfolding.getStart() >= end) {
+                unfoldSegment(out, caseFolded, unfoldings.subList(unfoldingsStartIndex, unfoldingsEndIndex), start, end, 0);
+                if (unfolding.getStart() > end) {
+                    emitString(out, caseFolded.subList(end, unfolding.getStart()));
+                }
+                start = unfolding.getStart();
+                unfoldingsStartIndex = i;
+            }
+            end = Math.max(end, unfolding.getEnd());
+            unfoldingsEndIndex = i + 1;
+        }
+
+        unfoldSegment(out, caseFolded, unfoldings.subList(unfoldingsStartIndex, unfoldingsEndIndex), start, end, 0);
+        if (end < caseFolded.size()) {
+            emitString(out, caseFolded.subList(end, caseFolded.size()));
+        }
+
+        out.append(')');
+        return out.toString();
+    }
+
+    private static List<Integer> caseFold(int[] codepoints) {
         List<Integer> caseFolded = new ArrayList<>();
         for (int codepoint : codepoints) {
             if (RubyCaseFoldingData.CASE_FOLD.containsKey(codepoint)) {
@@ -58,9 +98,86 @@ public class RubyCaseFolding {
                 caseFolded.add(codepoint);
             }
         }
+        return caseFolded;
+    }
 
-        List<RubyCaseUnfoldingTrie.UnfoldingCandidate> unfoldings = RubyCaseUnfoldingTrie.findUnfoldings(caseFolded);
+    private static void emitChar(StringBuilder out, int codepoint, boolean inCharClass) {
+        TBitSet syntaxChars = inCharClass ? RubyFlavorProcessor.CHAR_CLASS_SYNTAX_CHARACTERS : RubyFlavorProcessor.SYNTAX_CHARACTERS;
+        if (syntaxChars.get(codepoint)) {
+            out.append('\\');
+        }
+        out.appendCodePoint(codepoint);
+    }
 
-        throw new UnsupportedRegexException("case-folding not supported");
+    private static void emitString(StringBuilder out, List<Integer> codepoints) {
+        for (int codepoint : codepoints) {
+            if (RubyFlavorProcessor.SYNTAX_CHARACTERS.get(codepoint)) {
+                out.append('\\');
+            }
+            out.appendCodePoint(codepoint);
+        }
+    }
+
+    private static void unfoldSegment(StringBuilder out, List<Integer> caseFolded, List<Unfolding> unfoldings, int start, int end, int backtrackingDepth) {
+        if (backtrackingDepth > 8) {
+            throw new UnsupportedRegexException("case-unfolding of case-insensitive string is too complex");
+        }
+        // The terminating condition of this recursion. This is reached when we have generated
+        // an alternative that covers the entire case-folded segment given by `start` and `end`.
+        if (start == end) {
+            return;
+        }
+
+        // This shouldn't happen in our current use case, but its included for completeness.
+        if (unfoldings.isEmpty()) {
+            emitString(out, caseFolded.subList(start, end));
+            return;
+        }
+
+        Unfolding unfolding = unfoldings.get(0);
+
+        // Fast-forward to the next possible unfolding.
+        if (unfolding.getStart() > start) {
+            emitString(out, caseFolded.subList(start, unfolding.getStart()));
+            unfoldSegment(out, caseFolded, unfoldings, unfolding.getStart(), end, backtrackingDepth);
+            return;
+        }
+
+        // The unfolding has length > 1. We will generate two alternatives, one with the sequence
+        // unfolded and one with the sequence folded.
+        if (unfolding.getLength() > 1) {
+            // If we do the unfolding, we will advance the `start` position. We will therefore
+            // also clean up the `unfoldings` list so that we drop unfoldings that will be ruled
+            // out by the current unfolding.
+            int unfoldingsNextIndex = 1;
+            while (unfoldingsNextIndex < unfoldings.size() && unfoldings.get(unfoldingsNextIndex).getStart() < unfolding.getEnd()) {
+                unfoldingsNextIndex++;
+            }
+            // We include parentheses so that we limit the scope of the alternation operator (|).
+            out.append("(?:");
+            emitChar(out, unfolding.getCodepoint(), false);
+            unfoldSegment(out, caseFolded, unfoldings.subList(unfoldingsNextIndex, unfoldings.size()), unfolding.getEnd(), end, backtrackingDepth + 1);
+            out.append('|');
+            // In the second alternative, where we decide not to pursue the unfolding, we just drop
+            // it from the `unfoldings` list.
+            unfoldSegment(out, caseFolded, unfoldings.subList(1, unfoldings.size()), start, end, backtrackingDepth + 1);
+            out.append(')');
+            return;
+        }
+
+        // The only possible unfoldings at this position have length == 1. We can express all the
+        // choices by using a character class.
+        out.append("[");
+        emitChar(out, caseFolded.get(start), true);
+        int unfoldingsNextIndex = 0;
+        while (unfoldingsNextIndex < unfoldings.size() && unfoldings.get(unfoldingsNextIndex).getStart() == start) {
+            // The `unfoldings` are sorted by length in descending order and all unfoldings have
+            // length > 0.
+            assert unfoldings.get(unfoldingsNextIndex).getLength() == 1;
+            emitChar(out, unfoldings.get(unfoldingsNextIndex).getCodepoint(), true);
+            unfoldingsNextIndex++;
+        }
+        out.append("]");
+        unfoldSegment(out, caseFolded, unfoldings.subList(unfoldingsNextIndex, unfoldings.size()), start + 1, end, backtrackingDepth);
     }
 }

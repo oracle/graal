@@ -80,11 +80,11 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
      * Characters that are considered special in ECMAScript regexes. To match these characters, they
      * need to be escaped using a backslash.
      */
-    private static final TBitSet SYNTAX_CHARACTERS = TBitSet.valueOf('$', '(', ')', '*', '+', '.', '?', '[', '\\', ']', '^', '{', '|', '}');
+    static final TBitSet SYNTAX_CHARACTERS = TBitSet.valueOf('$', '(', ')', '*', '+', '.', '?', '[', '\\', ']', '^', '{', '|', '}');
     /**
      * Characters that are considered special in ECMAScript regex character classes.
      */
-    private static final TBitSet CHAR_CLASS_SYNTAX_CHARACTERS = TBitSet.valueOf('-', '\\', ']', '^');
+    static final TBitSet CHAR_CLASS_SYNTAX_CHARACTERS = TBitSet.valueOf('-', '\\', ']', '^');
 
     // Ruby's predefined character classes.
     // This one is for classes like \w, \s or \d...
@@ -548,7 +548,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
     private void emitChar(int codepoint) {
         if (!silent) {
             if (getLocalFlags().isIgnoreCase()) {
-                emitCharSet(CodePointSet.create(codepoint, codepoint));
+                emitSnippet(RubyCaseFolding.caseFoldUnfoldString(new int[]{codepoint}));
             } else {
                 emitCharNoCasing(codepoint, false);
             }
@@ -919,7 +919,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
             }
 
             if (getLocalFlags().isIgnoreCase()) {
-                String caseFoldSnippet = RubyCaseFolding.caseFoldString(codepointsBuffer.toArray());
+                String caseFoldSnippet = RubyCaseFolding.caseFoldUnfoldString(codepointsBuffer.toArray());
                 emitSnippet(caseFoldSnippet);
             } else {
                 for (int i = 0; i < codepointsBuffer.length(); i++) {
