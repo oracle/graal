@@ -192,7 +192,7 @@ public @interface GenerateWrapper {
      * generated wrapper can still delegate to this method if it is abstract and can be overridden.
      *
      * @see GenerateWrapper for usage examples
-     * @since 21.2
+     * @since 21.3
      */
     @Retention(RetentionPolicy.CLASS)
     @Target({ElementType.METHOD})

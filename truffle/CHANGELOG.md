@@ -2,6 +2,9 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 21.3.0
+* Added a `@GenerateWrapper.Ignore` annotation to prevent methods from being instrumented in wrapper classes.
+
 ## Version 21.2.0
 * Added `TypeDescriptor.subtract(TypeDescriptor)` creating a new `TypeDescriptor` by removing the given type from a union or intersection type.
 * Added `CompilerDirectives.blackhole(value)` which can be helpful for benchmarking.
