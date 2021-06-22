@@ -231,7 +231,7 @@ final class SerializationBuilder {
         }
         stubConstructor = newConstructorForSerialization(SerializationSupport.StubForAbstractClass.class, null);
 
-        serializationSupport = new SerializationSupport();
+        serializationSupport = new SerializationSupport(stubConstructor);
         ImageSingletons.add(SerializationRegistry.class, serializationSupport);
     }
 
