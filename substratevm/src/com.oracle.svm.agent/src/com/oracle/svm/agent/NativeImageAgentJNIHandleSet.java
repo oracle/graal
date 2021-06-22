@@ -39,6 +39,7 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
     final JNIObjectHandle javaLangClass;
     final JNIMethodId javaLangClassForName3;
     final JNIMethodId javaLangClassGetName;
+    final JNIMethodId javaLangClassGetInterfaces;
 
     final JNIMethodId javaLangReflectMemberGetName;
     final JNIMethodId javaLangReflectMemberGetDeclaringClass;
@@ -73,6 +74,9 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
 
     private JNIMethodId javaLangReflectConstructorDeclaringClassName;
 
+    private JNIObjectHandle javaLangReflectProxy = WordFactory.nullPointer();
+    private JNIMethodId javaLangReflectProxyIsProxyClass = WordFactory.nullPointer();
+
     private JNIMethodId javaUtilLocaleToLanguageTag;
     private JNIFieldId javaUtilResourceBundleParentField;
     private JNIMethodId javaUtilResourceBundleGetLocale;
@@ -82,6 +86,7 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
         javaLangClass = newClassGlobalRef(env, "java/lang/Class");
         javaLangClassForName3 = getMethodId(env, javaLangClass, "forName", "(Ljava/lang/String;ZLjava/lang/ClassLoader;)Ljava/lang/Class;", true);
         javaLangClassGetName = getMethodId(env, javaLangClass, "getName", "()Ljava/lang/String;", false);
+        javaLangClassGetInterfaces = getMethodId(env, javaLangClass, "getInterfaces", "()[Ljava/lang/Class;", false);
 
         JNIObjectHandle javaLangReflectMember = findClass(env, "java/lang/reflect/Member");
         javaLangReflectMemberGetName = getMethodId(env, javaLangReflectMember, "getName", "()Ljava/lang/String;", false);
@@ -184,6 +189,20 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
             javaLangReflectConstructorDeclaringClassName = getMethodId(env, customSerializationConstructorClass, "getName", "()Ljava/lang/String;", false);
         }
         return javaLangReflectConstructorDeclaringClassName;
+    }
+
+    JNIObjectHandle getJavaLangReflectProxy(JNIEnvironment env) {
+        if (javaLangReflectProxy.equal(nullHandle())) {
+            javaLangReflectProxy = newClassGlobalRef(env, "java/lang/reflect/Proxy");
+        }
+        return javaLangReflectProxy;
+    }
+
+    JNIMethodId getJavaLangReflectProxyIsProxyClass(JNIEnvironment env) {
+        if (javaLangReflectProxyIsProxyClass.equal(nullHandle())) {
+            javaLangReflectProxyIsProxyClass = getMethodId(env, getJavaLangReflectProxy(env), "isProxyClass", "(Ljava/lang/Class;)Z", true);
+        }
+        return javaLangReflectProxyIsProxyClass;
     }
 
     public JNIMethodId getJavaUtilLocaleToLanguageTag(JNIEnvironment env) {
