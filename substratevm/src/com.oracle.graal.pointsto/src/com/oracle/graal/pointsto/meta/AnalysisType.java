@@ -544,27 +544,26 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     }
 
     public boolean registerAsInHeap() {
-        boolean firstAttempt = AtomicUtils.atomicMark(isInHeap);
-        if (firstAttempt) {
+        registerAsReachable();
+        if (AtomicUtils.atomicMark(isInHeap)) {
             assert isArray() || (isInstanceClass() && !Modifier.isAbstract(getModifiers())) : this;
             universe.hostVM.checkForbidden(this, UsageKind.InHeap);
+            return true;
         }
-        registerAsReachable();
-        return firstAttempt;
+        return false;
     }
 
     /**
      * @param node For future use and debugging
      */
     public boolean registerAsAllocated(Node node) {
-        boolean firstAttempt = AtomicUtils.atomicMark(isAllocated);
-        if (firstAttempt) {
-
+        registerAsReachable();
+        if (AtomicUtils.atomicMark(isAllocated)) {
             assert isArray() || (isInstanceClass() && !Modifier.isAbstract(getModifiers())) : this;
             universe.hostVM.checkForbidden(this, UsageKind.Allocated);
+            return true;
         }
-        registerAsReachable();
-        return firstAttempt;
+        return false;
     }
 
     public boolean registerAsReachable() {
