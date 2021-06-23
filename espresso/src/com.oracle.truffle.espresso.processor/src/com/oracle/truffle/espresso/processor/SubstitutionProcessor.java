@@ -281,32 +281,30 @@ public final class SubstitutionProcessor extends EspressoProcessor {
             // Spawn the name of the Substitutor we will create.
             String substitutorName = getSubstitutorClassName(className, elementName, espressoTypes);
 
-            if (!classes.contains(substitutorName)) {
-                String actualMethodName = getSubstutitutedMethodName(element);
+            String actualMethodName = getSubstutitutedMethodName(element);
 
-                // Obtain the (fully qualified) guest types parameters of the element.
-                List<String> guestTypes = getGuestTypes(targetMethod);
+            // Obtain the (fully qualified) guest types parameters of the element.
+            List<String> guestTypes = getGuestTypes(targetMethod);
 
-                // Obtain the hasReceiver() value from the @Substitution annotation.
-                boolean hasReceiver = getAnnotationValue(subst, "hasReceiver", Boolean.class);
+            // Obtain the hasReceiver() value from the @Substitution annotation.
+            boolean hasReceiver = getAnnotationValue(subst, "hasReceiver", Boolean.class);
 
-                // Obtain the fully qualified guest return type of the element.
-                String returnType = getReturnTypeFromHost(targetMethod);
+            // Obtain the fully qualified guest return type of the element.
+            String returnType = getReturnTypeFromHost(targetMethod);
 
-                TypeMirror nameProvider = getNameProvider(subst);
-                nameProvider = nameProvider == null ? defaultNameProvider : nameProvider;
+            TypeMirror nameProvider = getNameProvider(subst);
+            nameProvider = nameProvider == null ? defaultNameProvider : nameProvider;
 
-                TypeMirror versionFilter = getVersionFilter(subst);
-                SubstitutorHelper helper = new SubstitutorHelper(this, element, className, actualMethodName, guestTypes, returnType, hasReceiver, nameProvider, versionFilter);
+            TypeMirror versionFilter = getVersionFilter(subst);
+            SubstitutorHelper helper = new SubstitutorHelper(this, element, className, actualMethodName, guestTypes, returnType, hasReceiver, nameProvider, versionFilter);
 
-                // Create the contents of the source file
-                String classFile = spawnSubstitutor(
-                                targetPackage,
-                                className,
-                                elementName,
-                                espressoTypes, helper);
-                commitSubstitution(substitutionAnnotation, targetPackage, substitutorName, classFile);
-            }
+            // Create the contents of the source file
+            String classFile = spawnSubstitutor(
+                            targetPackage,
+                            className,
+                            elementName,
+                            espressoTypes, helper);
+            commitSubstitution(substitutionAnnotation, targetPackage, substitutorName, classFile);
         }
     }
 

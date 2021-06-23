@@ -185,34 +185,32 @@ public final class NativeEnvProcessor extends EspressoProcessor {
         AnnotationMirror genIntrisification = getAnnotation(declaringClass, generateIntrinsification);
         boolean prependEnvValue = getAnnotationValue(genIntrisification, "prependEnv", Boolean.class);
         boolean prependEnv = prependEnvValue || isJni(element, implAnnotation);
-            String className = envClassName;
-            // Obtain the name of the method to be substituted in.
-            String substitutedMethodName = getSubstutitutedMethodName(element);
+        String className = envClassName;
+        // Obtain the name of the method to be substituted in.
+        String substitutedMethodName = getSubstutitutedMethodName(element);
 
-            // This is the actual method that will be called by the substitution.
-            ExecutableElement targetMethod = getTargetMethod(element);
+        // This is the actual method that will be called by the substitution.
+        ExecutableElement targetMethod = getTargetMethod(element);
 
-            // Obtain the host types of the parameters
-            List<String> espressoTypes = new ArrayList<>();
-            List<Boolean> referenceTypes = new ArrayList<>();
-            boolean needsHandlify = getEspressoTypes(targetMethod, espressoTypes, referenceTypes);
-            // Spawn the name of the Substitutor we will create.
-            String substitutorName = getSubstitutorClassName(className, substitutedMethodName, espressoTypes);
-            if (!classes.contains(substitutorName)) {
-                // Obtain the jniNativeSignature
-                NativeType[] jniNativeSignature = jniNativeSignature(targetMethod, prependEnv);
-                // Check if we need to call an instance method
-                boolean isStatic = element.getKind() == ElementKind.METHOD && targetMethod.getModifiers().contains(Modifier.STATIC);
-                // Spawn helper
-                IntrinsincsHelper h = new IntrinsincsHelper(this, element, implAnnotation, jniNativeSignature, referenceTypes, isStatic, prependEnv, needsHandlify);
-                // Create the contents of the source file
-                String classFile = spawnSubstitutor(
-                                targetPackage,
-                                className,
-                                substitutedMethodName,
-                                espressoTypes, h);
-                commitSubstitution(element, targetPackage, substitutorName, classFile);
-            }
+        // Obtain the host types of the parameters
+        List<String> espressoTypes = new ArrayList<>();
+        List<Boolean> referenceTypes = new ArrayList<>();
+        boolean needsHandlify = getEspressoTypes(targetMethod, espressoTypes, referenceTypes);
+        // Spawn the name of the Substitutor we will create.
+        String substitutorName = getSubstitutorClassName(className, substitutedMethodName, espressoTypes);
+        // Obtain the jniNativeSignature
+        NativeType[] jniNativeSignature = jniNativeSignature(targetMethod, prependEnv);
+        // Check if we need to call an instance method
+        boolean isStatic = element.getKind() == ElementKind.METHOD && targetMethod.getModifiers().contains(Modifier.STATIC);
+        // Spawn helper
+        IntrinsincsHelper h = new IntrinsincsHelper(this, element, implAnnotation, jniNativeSignature, referenceTypes, isStatic, prependEnv, needsHandlify);
+        // Create the contents of the source file
+        String classFile = spawnSubstitutor(
+                        targetPackage,
+                        className,
+                        substitutedMethodName,
+                        espressoTypes, h);
+        commitSubstitution(element, targetPackage, substitutorName, classFile);
     }
 
     boolean isJni(Element vmElement, TypeElement implAnnotation) {
