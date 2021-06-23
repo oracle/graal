@@ -1036,7 +1036,7 @@ def _check_latest_jvmci_version():
             jvmci_version_str(latest))
         msg += os.linesep + 'This poses the risk of hitting JVMCI bugs that have already been fixed.'
         msg += os.linesep + 'Consider using {}, which you can get via:'.format(jvmci_version_str(latest))
-        msg += os.linesep + 'mx fetch-jdk --configuration {} --to ~/.mx/cache/jdks'.format(common_path)
+        msg += os.linesep + 'mx fetch-jdk --configuration {}'.format(common_path)
         mx.warn(msg)
 
 class GraalArchiveParticipant:
