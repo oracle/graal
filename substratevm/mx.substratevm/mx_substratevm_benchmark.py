@@ -175,25 +175,25 @@ class RenaissanceNativeImageBenchmarkSuite(mx_java_benchmarks.RenaissanceBenchma
         return mx.library(lib).get_path(True)
 
     def extra_agent_run_arg(self, benchmark, args, image_run_args):
-        user_args = super(RenaissanceNativeImageBenchmarkSuite, self).extra_agent_run_arg(benchmark, args, image_run_args)
+        user_args = super(RenaissanceNativeImageBenchmarkSuite, self).extra_agent_run_arg(benchmark, args, [])
         if user_args:
-            return user_args + [benchmark]
+            return image_run_args + user_args + [benchmark]
         else:
-            return ['-r', '1'] + [benchmark]
+            return image_run_args + ['-r', '1'] + [benchmark]
 
     def extra_profile_run_arg(self, benchmark, args, image_run_args):
-        user_args = super(RenaissanceNativeImageBenchmarkSuite, self).extra_profile_run_arg(benchmark, args, image_run_args)
+        user_args = super(RenaissanceNativeImageBenchmarkSuite, self).extra_profile_run_arg(benchmark, args, [])
         if user_args:
-            return user_args + [benchmark]
+            return image_run_args + user_args + [benchmark]
         else:
-            return ['-r', '1'] + [benchmark]
+            return image_run_args + ['-r', '1'] + [benchmark]
 
     def extra_agent_profile_run_arg(self, benchmark, args, image_run_args):
-        user_args = super(RenaissanceNativeImageBenchmarkSuite, self).extra_agent_profile_run_arg(benchmark, args, image_run_args)
+        user_args = super(RenaissanceNativeImageBenchmarkSuite, self).extra_agent_profile_run_arg(benchmark, args, [])
         if user_args:
-            return user_args + [benchmark]
+            return image_run_args + user_args + [benchmark]
         else:
-            return ['-r', '10'] + [benchmark]
+            return image_run_args + ['-r', '10'] + [benchmark]
 
     def skip_agent_assertions(self, benchmark, args):
         user_args = super(RenaissanceNativeImageBenchmarkSuite, self).skip_agent_assertions(benchmark, args)
@@ -448,27 +448,27 @@ class DaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.DaCapoBenchmarkSuite, B
         return _dacapo_resources[benchmark]
 
     def extra_agent_run_arg(self, benchmark, args, image_run_args):
-        user_args = super(DaCapoNativeImageBenchmarkSuite, self).extra_agent_run_arg(benchmark, args, image_run_args)
+        user_args = super(DaCapoNativeImageBenchmarkSuite, self).extra_agent_run_arg(benchmark, args, [])
         if user_args:
-            return [benchmark] + user_args
+            return image_run_args + [benchmark] + user_args
         else:
-            return [benchmark] + ['-n', '1']
+            return image_run_args + [benchmark] + ['-n', '1']
 
     def extra_profile_run_arg(self, benchmark, args, image_run_args):
-        user_args = super(DaCapoNativeImageBenchmarkSuite, self).extra_profile_run_arg(benchmark, args, image_run_args)
+        user_args = super(DaCapoNativeImageBenchmarkSuite, self).extra_profile_run_arg(benchmark, args, [])
         if user_args:
-            return [benchmark] + user_args
+            return image_run_args + [benchmark] + user_args
         else:
             # extra-profile-run-arg is used to pass a number of instrumentation image run iterations
-            return [benchmark] + ['-n', '1']
+            return image_run_args + [benchmark] + ['-n', '1']
 
     def extra_agent_profile_run_arg(self, benchmark, args, image_run_args):
-        user_args = super(DaCapoNativeImageBenchmarkSuite, self).extra_agent_profile_run_arg(benchmark, args, image_run_args)
+        user_args = super(DaCapoNativeImageBenchmarkSuite, self).extra_agent_profile_run_arg(benchmark, args, [])
         if user_args:
-            return [benchmark] + user_args
+            return image_run_args + [benchmark] + user_args
         else:
             # extra-agent-profile-run-arg is used to pass a number of agent runs to provide profiles
-            return [benchmark] + ['-n', '10']
+            return image_run_args + [benchmark] + ['-n', '10']
 
     def skip_agent_assertions(self, benchmark, args):
         default_args = _DACAPO_SKIP_AGENT_ASSERTIONS[benchmark] if benchmark in _DACAPO_SKIP_AGENT_ASSERTIONS else []
