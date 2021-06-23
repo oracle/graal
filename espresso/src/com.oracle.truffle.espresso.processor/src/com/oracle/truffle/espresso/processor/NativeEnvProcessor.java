@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.processor;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Set;
 
 import javax.annotation.processing.RoundEnvironment;
@@ -154,9 +155,6 @@ public final class NativeEnvProcessor extends EspressoProcessor {
 
         this.envName = envClassName.toLowerCase();
         this.imports = "import " + envPackage + "." + envClassName + ";\n";
-
-        // Generate collector in the same package as env annotation.
-        initCollector(envPackage);
     }
 
     private void findIntrisificationTarget(Element e) {
@@ -182,11 +180,11 @@ public final class NativeEnvProcessor extends EspressoProcessor {
         assert element.getKind() == ElementKind.METHOD || element.getKind() == ElementKind.CLASS;
         assert element.getEnclosingElement().getKind() == ElementKind.CLASS;
         TypeElement declaringClass = (TypeElement) element.getEnclosingElement();
+        String targetPackage = env().getElementUtils().getPackageOf(declaringClass).toString();
 
         AnnotationMirror genIntrisification = getAnnotation(declaringClass, generateIntrinsification);
         boolean prependEnvValue = getAnnotationValue(genIntrisification, "prependEnv", Boolean.class);
-        boolean prependEnv = prependEnvValue || isJni(element);
-        if (declaringClass.getQualifiedName().toString().equals(envPackage + "." + envClassName)) {
+        boolean prependEnv = prependEnvValue || isJni(element, implAnnotation);
             String className = envClassName;
             // Obtain the name of the method to be substituted in.
             String substitutedMethodName = getSubstutitutedMethodName(element);
@@ -209,18 +207,22 @@ public final class NativeEnvProcessor extends EspressoProcessor {
                 IntrinsincsHelper h = new IntrinsincsHelper(this, element, implAnnotation, jniNativeSignature, referenceTypes, isStatic, prependEnv, needsHandlify);
                 // Create the contents of the source file
                 String classFile = spawnSubstitutor(
-                                envPackage,
+                                targetPackage,
                                 className,
                                 substitutedMethodName,
                                 espressoTypes, h);
-                commitSubstitution(element, substitutorName, classFile);
+                commitSubstitution(element, targetPackage, substitutorName, classFile);
             }
-        }
     }
 
-    boolean isJni(Element vmElement) {
-        // Check if this VM method has the @JniImpl annotation
-        return getAnnotation(vmElement, jniImpl) != null;
+    boolean isJni(Element vmElement, TypeElement implAnnotation) {
+        AnnotationMirror mirror = getAnnotation(vmElement, implAnnotation);
+        try {
+            Boolean value = getAnnotationValue(mirror, "isJni", Boolean.class);
+            return value != null && value;
+        } catch (NoSuchElementException e) {
+            return false;
+        }
     }
 
     boolean getEspressoTypes(ExecutableElement inner, List<String> parameterTypeNames, List<Boolean> referenceTypes) {
@@ -305,7 +307,7 @@ public final class NativeEnvProcessor extends EspressoProcessor {
     String extractInvocation(String className, String methodName, String nodeMethodName, int nParameters, boolean isStatic, SubstitutionHelper helper) {
         StringBuilder str = new StringBuilder();
         if (helper.isNodeTarget()) {
-            str.append("this.node").append(".").append(nodeMethodName).append("(");
+            str.append("this.node.").append(nodeMethodName).append("(");
         } else {
             if (isStatic) {
                 str.append(className).append(".").append(methodName).append("(");

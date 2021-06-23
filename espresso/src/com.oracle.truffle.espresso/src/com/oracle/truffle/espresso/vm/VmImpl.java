@@ -30,4 +30,5 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.CLASS)
 @Target(ElementType.METHOD)
 public @interface VmImpl {
+    boolean isJni() default false;
 }

@@ -114,7 +114,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
     private static String extractInvocation(String className, String methodName, String nodeMethodName, int nParameters, SubstitutionHelper helper) {
         StringBuilder str = new StringBuilder();
         if (helper.isNodeTarget()) {
-            str.append("this.node").append(".").append(nodeMethodName).append("(");
+            str.append("this.node.").append(nodeMethodName).append("(");
         } else {
             str.append(className).append(".").append(methodName).append("(");
         }
@@ -255,6 +255,8 @@ public final class SubstitutionProcessor extends EspressoProcessor {
 
     void processSubstitution(Element element, String className, TypeMirror defaultNameProvider) {
         assert element.getKind() == ElementKind.METHOD || element.getKind() == ElementKind.CLASS;
+        TypeElement declaringClass = (TypeElement) element.getEnclosingElement();
+        String targetPackage = env().getElementUtils().getPackageOf(declaringClass).toString();
 
         // Find the methods annotated with @Substitution.
         AnnotationMirror subst = getAnnotation(element, substitutionAnnotation);
@@ -299,11 +301,11 @@ public final class SubstitutionProcessor extends EspressoProcessor {
 
                 // Create the contents of the source file
                 String classFile = spawnSubstitutor(
-                                SUBSTITUTION_PACKAGE,
+                                targetPackage,
                                 className,
                                 elementName,
                                 espressoTypes, helper);
-                commitSubstitution(substitutionAnnotation, substitutorName, classFile);
+                commitSubstitution(substitutionAnnotation, targetPackage, substitutorName, classFile);
             }
         }
     }
@@ -514,8 +516,6 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         verifyAnnotationMembers(javaType, "value", "internalName");
 
         // Actual process
-        // Initialize the collector.
-        initCollector(SUBSTITUTION_PACKAGE);
         for (Element e : env.getElementsAnnotatedWith(espressoSubstitutions)) {
             if (!e.getModifiers().contains(Modifier.FINAL)) {
                 processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Enclosing class for substitutions must be final", e);
