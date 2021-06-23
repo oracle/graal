@@ -34,7 +34,6 @@ import com.oracle.objectfile.ElementImpl;
 import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.ObjectFile.Element;
-import com.oracle.objectfile.ObjectFile.RelocationRecord;
 import com.oracle.objectfile.elf.ELFObjectFile.ELFSection;
 import com.oracle.objectfile.elf.ELFObjectFile.ELFSectionFlag;
 import com.oracle.objectfile.elf.ELFObjectFile.SectionType;
@@ -148,7 +147,7 @@ public class ELFUserDefinedSection extends ELFSection implements ObjectFile.Relo
     }
 
     @Override
-    public RelocationRecord markRelocationSite(int offset, ByteBuffer bb, ObjectFile.RelocationKind k, String symbolName, boolean useImplicitAddend, Long explicitAddend) {
+    public void markRelocationSite(int offset, ByteBuffer bb, ObjectFile.RelocationKind k, String symbolName, boolean useImplicitAddend, Long explicitAddend) {
         if (useImplicitAddend != (explicitAddend == null)) {
             throw new IllegalArgumentException("must have either an explicit or implicit addend");
         }
@@ -157,6 +156,6 @@ public class ELFUserDefinedSection extends ELFSection implements ObjectFile.Relo
         assert symbolName != null;
         ELFSymtab.Entry ent = syms.getSymbol(symbolName);
         assert ent != null;
-        return rs.addEntry(this, offset, ELFMachine.getRelocation(getOwner().getMachine(), k), ent, explicitAddend);
+        rs.addEntry(this, offset, ELFMachine.getRelocation(getOwner().getMachine(), k), ent, explicitAddend);
     }
 }

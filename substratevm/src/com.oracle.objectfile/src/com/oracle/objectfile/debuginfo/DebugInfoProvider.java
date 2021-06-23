@@ -228,9 +228,16 @@ public interface DebugInfoProvider {
     }
 
     /**
+     * Access details of a compiled method producing the code in a specific
+     * {@link com.oracle.objectfile.debugentry.Range}.
+     */
+    interface DebugRangeInfo extends DebugMethodInfo {
+    }
+
+    /**
      * Access details of a specific compiled method.
      */
-    interface DebugCodeInfo extends DebugMethodInfo {
+    interface DebugCodeInfo extends DebugRangeInfo {
         void debugContext(Consumer<DebugContext> action);
 
         /**
@@ -291,7 +298,7 @@ public interface DebugInfoProvider {
      * Access details of code generated for a specific outer or inlined method at a given line
      * number.
      */
-    interface DebugLineInfo extends DebugMethodInfo {
+    interface DebugLineInfo extends DebugRangeInfo {
         /**
          * @return the lowest address containing code generated for an outer or inlined code segment
          *         reported at this line represented as an offset into the code segment.

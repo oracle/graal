@@ -408,9 +408,8 @@ public abstract class ObjectFile {
          *            bytes
          * @param useImplicitAddend whether the current bytes are to be used as an addend
          * @param explicitAddend a full-width addend, or null if useImplicitAddend is true
-         * @return the relocation record created (or found, if it exists already)
          */
-        RelocationRecord markRelocationSite(int offset, ByteBuffer bb, RelocationKind k, String symbolName, boolean useImplicitAddend, Long explicitAddend);
+        void markRelocationSite(int offset, ByteBuffer bb, RelocationKind k, String symbolName, boolean useImplicitAddend, Long explicitAddend);
 
         /**
          * Force the creation of a relocation section/element for this section, and return it. This
@@ -441,7 +440,7 @@ public abstract class ObjectFile {
          * passed a buffer. It uses the byte array accessed by {@link #getContent} and
          * {@link #setContent}.
          */
-        RelocationRecord markRelocationSite(int offset, RelocationKind k, String symbolName, boolean useImplicitAddend, Long explicitAddend);
+        void markRelocationSite(int offset, RelocationKind k, String symbolName, boolean useImplicitAddend, Long explicitAddend);
     }
 
     public interface NobitsSectionImpl extends ElementImpl {
