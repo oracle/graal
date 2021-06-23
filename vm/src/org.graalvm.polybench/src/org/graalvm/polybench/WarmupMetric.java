@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,13 @@ import java.util.concurrent.atomic.DoubleAdder;
 import java.util.logging.Handler;
 import java.util.logging.LogRecord;
 
+/**
+ * WarmupMetric measures the warmup speed of Truffle-language implementations.
+ *
+ * Warmup time is approximated by measuring the time required to run a program once.
+ *
+ * To reduce variance, we run the program multiple times, each in a different fork (see `ci_common/benchmark-forks.json`).
+ */
 final class WarmupMetric implements Metric {
     long startTime;
     long endTime;
