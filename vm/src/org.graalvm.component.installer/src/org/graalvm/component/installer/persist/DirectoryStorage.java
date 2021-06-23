@@ -398,13 +398,32 @@ public class DirectoryStorage implements ManagementStorage {
         if (graalCore != null) {
             return graalCore;
         }
-        Version v = getGraalVMVersion();
-        ComponentInfo ci = new ComponentInfo(BundleConstants.GRAAL_COMPONENT_ID, feedback.l10n("NAME_GraalCoreComponent"),
-                        v.originalString());
+
+        ComponentInfo ci = null;
+        try {
+            Path cmpFile = registryPath.resolve(SystemUtils.fileName(BundleConstants.GRAAL_COMPONENT_ID + COMPONENT_FILE_SUFFIX));
+            if (Files.isReadable(cmpFile)) {
+                ci = doLoadComponentMetadata(cmpFile, false);
+                if (ci != null && !BundleConstants.GRAAL_COMPONENT_ID.equals(ci.getId())) {
+                    // invalid definition
+                    ci = null;
+                }
+            }
+        } catch (IOException ex) {
+            // ignore
+        }
+        if (ci == null) {
+            Version v = getGraalVMVersion();
+            ci = new ComponentInfo(BundleConstants.GRAAL_COMPONENT_ID,
+                            feedback.l10n("NAME_GraalCoreComponent"), v.originalString());
+            // set defaults: bundled, supported.
+            ci.setStability(StabilityLevel.Supported);
+        }
         Path cmpFile = registryPath.resolve(SystemUtils.fileName(BundleConstants.GRAAL_COMPONENT_ID + NATIVE_COMPONENT_FILE_SUFFIX));
         if (Files.exists(cmpFile)) {
             ci.setNativeComponent(true);
         }
+        ci.setDistributionType(DistributionType.BUNDLED);
         graalCore = ci;
         return graalCore;
     }
@@ -413,21 +432,25 @@ public class DirectoryStorage implements ManagementStorage {
     public Set<ComponentInfo> loadComponentMetadata(String tag) throws IOException {
         Path cmpFile = registryPath.resolve(SystemUtils.fileName(tag + COMPONENT_FILE_SUFFIX));
         boolean nc = false;
+        if (BundleConstants.GRAAL_COMPONENT_ID.equals(tag)) {
+            return Collections.singleton(getCoreInfo());
+        }
         if (!Files.exists(cmpFile)) {
-            if (BundleConstants.GRAAL_COMPONENT_ID.equals(tag)) {
-                return Collections.singleton(getCoreInfo());
-            }
             cmpFile = registryPath.resolve(SystemUtils.fileName(tag + NATIVE_COMPONENT_FILE_SUFFIX));
             if (!Files.exists(cmpFile)) {
                 return null;
             }
             nc = true;
         }
+        return Collections.singleton(doLoadComponentMetadata(cmpFile, nc));
+    }
+
+    private ComponentInfo doLoadComponentMetadata(Path cmpFile, boolean nc) throws IOException {
         try (InputStream fileStream = Files.newInputStream(cmpFile)) {
             ComponentInfo info = loadMetadataFrom(fileStream);
             info.setInfoPath(cmpFile.toString());
             info.setNativeComponent(nc);
-            return Collections.singleton(info);
+            return info;
         }
     }
 
