@@ -42,8 +42,10 @@ public @interface Collect {
      *
      * <p>
      * One collector class will generated per anchor class, in the same package. The generated
-     * collector provides a public static method {@code List<Class<?>> get()} to list all annotated
-     * classes.
+     * collector provides a public static method
+     * {@code <T> List<T> AnchorClassCollector.getInstances(Class<? extends T> componentType)} to
+     * gather instances of all annotated classes. An empty constructor is required.
+     * 
      * <h3>Example:</h3>
      *
      * <pre>
@@ -53,7 +55,8 @@ public @interface Collect {
      * 
      * Will generate a class {@code AnchorClassCollector} in the same package as
      * {@code AnchorClass}. <br>
-     * {@code AnchorClassCollector.get()} will return list containing the {@code MyClass} class.
+     * {@code <T> List<T> AnchorClassCollector.getInstances(Class<? extends T> componentType)} will
+     * return list containing an instance of {@code MyClass}.
      */
     Class<?>[] value();
 }
