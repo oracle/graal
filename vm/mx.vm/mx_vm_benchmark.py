@@ -121,11 +121,13 @@ class NativeImageVM(GraalVm):
             self.bmSuite = bm_suite
             self.benchmark_suite_name = bm_suite.benchSuiteName(args) if len(inspect.getargspec(bm_suite.benchSuiteName).args) > 1 else bm_suite.benchSuiteName() # pylint: disable=deprecated-method
             self.benchmark_name = bm_suite.benchmarkName()
+            self.executable, self.classpath_arguments, self.system_properties, self.image_run_args = NativeImageVM.extract_benchmark_arguments(args)
             self.extra_image_build_arguments = bm_suite.extra_image_build_argument(self.benchmark_name, args)
-            self.extra_run_args = bm_suite.extra_run_arg(self.benchmark_name, args)
-            self.extra_agent_run_args = bm_suite.extra_agent_run_arg(self.benchmark_name, args)
-            self.extra_profile_run_args = bm_suite.extra_profile_run_arg(self.benchmark_name, args)
-            self.extra_agent_profile_run_args = bm_suite.extra_agent_profile_run_arg(self.benchmark_name, args)
+            cmd_line_image_run_args = self.image_run_args
+            self.extra_run_args = bm_suite.extra_run_arg(self.benchmark_name, args, cmd_line_image_run_args)
+            self.extra_agent_run_args = bm_suite.extra_agent_run_arg(self.benchmark_name, args, cmd_line_image_run_args)
+            self.extra_profile_run_args = bm_suite.extra_profile_run_arg(self.benchmark_name, args, cmd_line_image_run_args)
+            self.extra_agent_profile_run_args = bm_suite.extra_agent_profile_run_arg(self.benchmark_name, args, cmd_line_image_run_args)
             self.benchmark_output_dir = bm_suite.benchmark_output_dir(self.benchmark_name, args)
             self.pgo_iteration_num = None
             self.params = ['extra-image-build-argument', 'extra-run-arg', 'extra-agent-run-arg', 'extra-profile-run-arg',
@@ -136,7 +138,6 @@ class NativeImageVM(GraalVm):
             self.skip_agent_assertions = bm_suite.skip_agent_assertions(self.benchmark_name, args)
             self.root_dir = self.benchmark_output_dir if self.benchmark_output_dir else mx.suite('vm').get_output_root(platformDependent=False, jdkDependent=False)
             self.executable_suffix = ('-' + self.benchmark_name) if self.benchmark_name else ''
-            self.executable, self.classpath_arguments, self.system_properties, self.image_run_args = NativeImageVM.extract_benchmark_arguments(args)
             self.executable_name = (os.path.splitext(os.path.basename(self.executable[1]))[0] + self.executable_suffix if self.executable[0] == '-jar' else self.executable[0] + self.executable_suffix).lower()
             self.final_image_name = self.executable_name + '-' + vm.config_name()
             self.output_dir = mx.join(os.path.abspath(self.root_dir), 'native-image-benchmarks', self.executable_name + '-' + vm.config_name())
