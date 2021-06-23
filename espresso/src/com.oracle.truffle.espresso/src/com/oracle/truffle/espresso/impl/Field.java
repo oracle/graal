@@ -767,7 +767,7 @@ public final class Field extends Member<Type> implements FieldRef {
         private final Assumption assumption;
         private final Symbol<Symbol.Type> type;
         private final RuntimeConstantPool pool;
-        private volatile Klass typeKlassCache;
+        @CompilationFinal private volatile Klass typeKlassCache;
         @CompilationFinal private Symbol<ModifiedUTF8> genericSignature;
 
         FieldVersion(Symbol<Symbol.Type> type, RuntimeConstantPool pool) {
@@ -815,6 +815,7 @@ public final class Field extends Member<Type> implements FieldRef {
         public Klass resolveTypeKlass() {
             Klass tk = typeKlassCache;
             if (tk == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 synchronized (this) {
                     tk = typeKlassCache;
                     if (tk == null) {
