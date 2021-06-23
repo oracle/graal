@@ -201,7 +201,7 @@ public final class Management extends NativeEnv {
         }
     }
 
-    private final static List<CallableFromNative.Factory> MANAGEMENT_IMPL_FACTORIES = ManagementImplCollector.getInstances(CallableFromNative.Factory.class);
+    private static final List<CallableFromNative.Factory> MANAGEMENT_IMPL_FACTORIES = ManagementImplCollector.getInstances(CallableFromNative.Factory.class);
 
     @Override
     protected List<CallableFromNative.Factory> getCollector() {

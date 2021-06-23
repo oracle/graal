@@ -36,7 +36,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 public final class Target_java_beans_ThreadGroupContext {
 
     @Substitution(hasReceiver = true, methodName = "<init>")
-    static abstract class Init extends Node {
+    abstract static class Init extends Node {
 
         abstract void execute(@JavaType(Class.class) StaticObject context);
 

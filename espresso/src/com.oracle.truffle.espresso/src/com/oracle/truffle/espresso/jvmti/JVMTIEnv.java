@@ -78,7 +78,7 @@ public final class JVMTIEnv extends NativeEnv {
         return jvmtiEnvPtr;
     }
 
-    private final static List<CallableFromNative.Factory> JVMTI_IMPL_FACTORIES = JvmtiImplCollector.getInstances(CallableFromNative.Factory.class);
+    private static final List<CallableFromNative.Factory> JVMTI_IMPL_FACTORIES = JvmtiImplCollector.getInstances(CallableFromNative.Factory.class);
 
     @Override
     protected List<CallableFromNative.Factory> getCollector() {

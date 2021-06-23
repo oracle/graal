@@ -542,8 +542,8 @@ public abstract class EspressoProcessor extends BaseProcessor {
     }
 
     /**
-     * Injects meta data in the substitutor's field, so the Meta be passed along
-     * during substitution invocation.
+     * Injects meta data in the substitutor's field, so the Meta be passed along during substitution
+     * invocation.
      */
     static private String generateInstanceFields(SubstitutionHelper helper) {
         if (!helper.isNodeTarget() && !helper.hasMetaInjection && !helper.hasProfileInjection) {

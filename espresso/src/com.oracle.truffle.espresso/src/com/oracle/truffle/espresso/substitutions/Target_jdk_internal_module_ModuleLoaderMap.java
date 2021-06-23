@@ -44,7 +44,7 @@ final class Target_jdk_internal_module_ModuleLoaderMap {
     public static final String POLYGLOT_MODULE_NAME = "espresso.polyglot";
 
     @Substitution
-    static abstract class BootModules extends Node {
+    abstract static class BootModules extends Node {
 
         abstract @JavaType(Set.class) StaticObject execute();
 

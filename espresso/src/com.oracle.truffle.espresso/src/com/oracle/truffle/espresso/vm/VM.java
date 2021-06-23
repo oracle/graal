@@ -369,7 +369,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         return jvmti;
     }
 
-    private final static List<CallableFromNative.Factory> VM_IMPL_FACTORIES = VmImplCollector.getInstances(CallableFromNative.Factory.class);
+    private static final List<CallableFromNative.Factory> VM_IMPL_FACTORIES = VmImplCollector.getInstances(CallableFromNative.Factory.class);
 
     @Override
     protected List<CallableFromNative.Factory> getCollector() {

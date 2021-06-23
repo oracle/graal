@@ -48,7 +48,7 @@ final class Target_jdk_internal_module_SystemModuleFinders {
                     new ModuleExtension("polyglot.jar", (meta) -> meta.getContext().Polyglot)};
 
     @Substitution
-    static abstract class Of extends Node {
+    abstract static class Of extends Node {
 
         abstract @JavaType(internalName = "Ljava/lang/module/ModuleFinder;") StaticObject execute(
                         @JavaType(internalName = "Ljdk/internal/module/SystemModules;") StaticObject systemModules);
@@ -72,7 +72,7 @@ final class Target_jdk_internal_module_SystemModuleFinders {
     }
 
     @Substitution
-    static abstract class OfSystem extends Node {
+    abstract static class OfSystem extends Node {
 
         abstract @JavaType(internalName = "Ljava/lang/module/ModuleFinder;") StaticObject execute();
 
