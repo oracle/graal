@@ -831,9 +831,9 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     launcher_configs=[
         mx_sdk_vm.LauncherConfig(
             use_modules='image' if USE_NI_JPMS else 'launcher' if not svm_java8() else None,
+            main_module="org.graalvm.nativeimage.driver",
             destination="bin/<exe:native-image>",
             jar_distributions=["substratevm:SVM_DRIVER"],
-            main_module="org.graalvm.nativeimage.driver",
             main_class=_native_image_launcher_main_class(),
             build_args=[],
             extra_jvm_args=_native_image_launcher_extra_jvm_args(),
@@ -1008,6 +1008,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     support_distributions=[],
     launcher_configs=[
         mx_sdk_vm.LauncherConfig(
+            use_modules='image' if USE_NI_JPMS else 'launcher' if not svm_java8() else None,
+            main_module="org.graalvm.nativeimage.configure",
             destination="bin/<exe:native-image-configure>",
             jar_distributions=["substratevm:SVM_CONFIGURE"],
             main_class="com.oracle.svm.configure.ConfigurationTool",

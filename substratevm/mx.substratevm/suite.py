@@ -1091,7 +1091,7 @@ suite = {
                     "com.oracle.svm.core.graal.thread             to jdk.internal.vm.compiler",
                     "com.oracle.svm.core.classinitialization      to jdk.internal.vm.compiler",
                     "com.oracle.svm.truffle.api                   to org.graalvm.truffle",
-                    "* to org.graalvm.nativeimage.driver,org.graalvm.nativeimage.librarysupport,org.graalvm.nativeimage.llvm,org.graalvm.nativeimage.agent.jvmtibase,org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.agent.diagnostics,com.oracle.svm.svm_enterprise",
+                    "* to org.graalvm.nativeimage.driver,org.graalvm.nativeimage.configure,org.graalvm.nativeimage.librarysupport,org.graalvm.nativeimage.llvm,org.graalvm.nativeimage.agent.jvmtibase,org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.agent.diagnostics,com.oracle.svm.svm_enterprise",
                 ],
                 "opens" : [
                     "com.oracle.svm.core.nodes                    to jdk.internal.vm.compiler",
@@ -1315,9 +1315,7 @@ suite = {
                 "JVMTI_AGENT_BASE",
                 "LIBRARY_SUPPORT",
                 "SVM_DRIVER",
-            ],
-            "overlaps" : [
-                "SVM_CONFIGURE",
+                "SVM_CONFIGURE"
             ],
             "moduleInfo" : {
                 "name" : "org.graalvm.nativeimage.agent.tracing",
@@ -1361,6 +1359,13 @@ suite = {
             "distDependencies": [
                 "LIBRARY_SUPPORT",
             ],
+            "moduleInfo" : {
+                "name" : "org.graalvm.nativeimage.configure",
+                "exports" : [
+                    "* to org.graalvm.nativeimage.agent.tracing",
+                    "com.oracle.svm.configure",
+                ],
+            },
         },
 
 
