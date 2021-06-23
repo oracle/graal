@@ -154,13 +154,15 @@ class NativeImageBenchmarkMixin(object):
         return image_run_args + parse_prefixed_args('-Dnative-image.benchmark.extra-run-arg=', args)
 
     def extra_agent_run_arg(self, benchmark, args, image_run_args):
-        return parse_prefixed_args('-Dnative-image.benchmark.extra-agent-run-arg=', args)
+        return image_run_args + parse_prefixed_args('-Dnative-image.benchmark.extra-agent-run-arg=', args)
 
     def extra_profile_run_arg(self, benchmark, args, image_run_args):
-        return parse_prefixed_args('-Dnative-image.benchmark.extra-profile-run-arg=', args)
+        # either use extra profile run args if set or otherwise the extra run args
+        extra_profile_run_args = parse_prefixed_args('-Dnative-image.benchmark.extra-profile-run-arg=', args) or parse_prefixed_args('-Dnative-image.benchmark.extra-run-arg=', args)
+        return image_run_args + extra_profile_run_args
 
     def extra_agent_profile_run_arg(self, benchmark, args, image_run_args):
-        return parse_prefixed_args('-Dnative-image.benchmark.extra-agent-profile-run-arg=', args)
+        return image_run_args + parse_prefixed_args('-Dnative-image.benchmark.extra-agent-profile-run-arg=', args)
 
     def benchmark_output_dir(self, _, args):
         parsed_args = parse_prefixed_args('-Dnative-image.benchmark.benchmark-output-dir=', args)
