@@ -1288,6 +1288,7 @@ suite = {
               "name" : "org.graalvm.nativeimage.driver",
               "exports" : [
                 "com.oracle.svm.driver",
+                "com.oracle.svm.driver.metainf",
               ],
               "uses" : [
                 "org.graalvm.compiler.options.OptionDescriptors",
