@@ -180,7 +180,7 @@ public final class NativeEnvProcessor extends EspressoProcessor {
         assert element.getKind() == ElementKind.METHOD || element.getKind() == ElementKind.CLASS;
         assert element.getEnclosingElement().getKind() == ElementKind.CLASS;
         TypeElement declaringClass = (TypeElement) element.getEnclosingElement();
-        String targetPackage = env().getElementUtils().getPackageOf(declaringClass).toString();
+        String targetPackage = env().getElementUtils().getPackageOf(declaringClass).getQualifiedName().toString();
 
         AnnotationMirror genIntrisification = getAnnotation(declaringClass, generateIntrinsification);
         boolean prependEnvValue = getAnnotationValue(genIntrisification, "prependEnv", Boolean.class);

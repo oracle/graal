@@ -256,7 +256,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
     void processSubstitution(Element element, String className, TypeMirror defaultNameProvider) {
         assert element.getKind() == ElementKind.METHOD || element.getKind() == ElementKind.CLASS;
         TypeElement declaringClass = (TypeElement) element.getEnclosingElement();
-        String targetPackage = env().getElementUtils().getPackageOf(declaringClass).toString();
+        String targetPackage = env().getElementUtils().getPackageOf(declaringClass).getQualifiedName().toString();
 
         // Find the methods annotated with @Substitution.
         AnnotationMirror subst = getAnnotation(element, substitutionAnnotation);
