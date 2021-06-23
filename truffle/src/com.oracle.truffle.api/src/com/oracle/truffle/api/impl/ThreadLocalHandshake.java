@@ -370,7 +370,11 @@ public abstract class ThreadLocalHandshake {
             try {
                 HandshakeEntry current = lookupEntry(handshake);
                 if (current != null) {
-                    assert !current.reactivated : "Reactivated handshake was not processed!";
+                    /*
+                     * We cannot guarantee that side-effecting events are processed as they can be
+                     * disabled.
+                     */
+                    assert !current.reactivated || current.handshake.sideEffecting : "Reactivated handshake was not processed!";
                     handshake.deactivateThread();
                     claimEntry(current);
                     /*
