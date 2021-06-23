@@ -230,8 +230,6 @@ def _truffle_gate_runner(args, tasks):
         if t: sigtest(['--check', 'binary'])
     with Task('Truffle UnitTests', tasks) as t:
         if t: unittest(list(['--suite', 'truffle', '--enable-timing', '--verbose', '--fail-fast']))
-    with Task('Static Object Model UnitTests', tasks) as t:
-        if t: unittest(list(['--suite', 'truffle', '--enable-timing', '--verbose', '--fail-fast', '--regex', 'com.oracle.truffle.api.staticobject.test']))
     with Task('Truffle DSL max state bit tests', tasks) as t:
         if t:
             _truffle_gate_state_bitwidth_tests()
