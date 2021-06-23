@@ -25,7 +25,6 @@ package com.oracle.truffle.espresso.processor;
 import java.io.IOException;
 import java.io.Writer;
 import java.time.Year;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -163,7 +162,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
      * Generates the string corresponding to the Constructor for the current substitutor. In
      * particular, it should call its super class substitutor's constructor.
      *
-     * @see EspressoProcessor#SUBSTITUTOR
+     * @see EspressoProcessor#substitutor
      */
     abstract String generateFactoryConstructorAndBody(String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper);
 
@@ -180,14 +179,14 @@ public abstract class EspressoProcessor extends BaseProcessor {
      */
     abstract String generateInvoke(String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper);
 
-    EspressoProcessor(String SUBSTITUTION_PACKAGE, String SUBSTITUTOR) {
-        this.SUBSTITUTOR_PACKAGE = SUBSTITUTION_PACKAGE;
-        this.SUBSTITUTOR = SUBSTITUTOR;
+    EspressoProcessor(String substitutionPackage, String substitutor) {
+        this.substitutorPackage = substitutionPackage;
+        this.substitutor = substitutor;
     }
 
     // Instance specific constants
-    protected final String SUBSTITUTOR_PACKAGE;
-    private final String SUBSTITUTOR;
+    protected final String substitutorPackage;
+    private final String substitutor;
 
     // Processor local info
     protected boolean done = false;
@@ -503,37 +502,37 @@ public abstract class EspressoProcessor extends BaseProcessor {
 
     // @formatter:off
     /**
-     * Generate the following:
-     *     @Collect(ImplAnnotation.class)
-     *     public static final class Factory extends SUBSTITUTOR.Factory {
-     *         private Factory() {
-     *             super(
-     *                 "SUBSTITUTED_METHOD",
-     *                 "SUBSTITUTION_CLASS",
-     *                 "RETURN_TYPE",
-     *                 new String[]{
-     *                     SIGNATURE
-     *                 },
-     *                 HAS_RECEIVER
-     *             );
-     *         }
+     * Generates the following.
      * 
-     *         @Override
-     *         public final SUBSTITUTOR create(Meta meta) {
-     *             return new className(meta);
-     *         }
+     * @Collect(ImplAnnotation.class)
+     * public static final class Factory extends SUBSTITUTOR.Factory {
+     *     private Factory() {
+     *         super(
+     *             "SUBSTITUTED_METHOD",
+     *             "SUBSTITUTION_CLASS",
+     *             "RETURN_TYPE",
+     *             new String[]{
+     *                 SIGNATURE
+     *             },
+     *             HAS_RECEIVER
+     *         );
      *     }
+     *     @Override
+     *     public final SUBSTITUTOR create(Meta meta) {
+     *         return new className(meta);
+     *     }
+     * }
      */
     // @formatter:on
     private String generateFactory(String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
         StringBuilder str = new StringBuilder();
         str.append("\n");
         str.append(TAB_1).append("@Collect(").append(helper.getImplAnnotation().getQualifiedName()).append(".class").append(")\n");
-        str.append(TAB_1).append(PUBLIC_STATIC_FINAL_CLASS).append(FACTORY).append(" extends ").append(SUBSTITUTOR).append(".").append(FACTORY).append(" {\n");
+        str.append(TAB_1).append(PUBLIC_STATIC_FINAL_CLASS).append(FACTORY).append(" extends ").append(substitutor).append(".").append(FACTORY).append(" {\n");
         str.append(TAB_2).append("public ").append(FACTORY).append("() {\n");
         str.append(generateFactoryConstructorAndBody(className, targetMethodName, parameterTypeName, helper)).append("\n");
         str.append(TAB_2).append(OVERRIDE).append("\n");
-        str.append(TAB_2).append(PUBLIC_FINAL).append(" ").append(SUBSTITUTOR).append(" ").append(CREATE).append("(");
+        str.append(TAB_2).append(PUBLIC_FINAL).append(" ").append(substitutor).append(" ").append(CREATE).append("(");
         str.append(META_CLASS).append(META_VAR).append(") {\n");
         str.append(TAB_3).append("return new ").append(className).append("(").append(META_VAR).append(");\n");
         str.append(TAB_2).append("}\n");
@@ -545,7 +544,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
      * Injects meta data in the substitutor's field, so the Meta be passed along during substitution
      * invocation.
      */
-    static private String generateInstanceFields(SubstitutionHelper helper) {
+    private static String generateInstanceFields(SubstitutionHelper helper) {
         if (!helper.isNodeTarget() && !helper.hasMetaInjection && !helper.hasProfileInjection) {
             return "";
         }
@@ -610,7 +609,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
 
         // Class
         classFile.append(generateGeneratedBy(className, targetMethodName, parameterTypeName, helper)).append("\n");
-        classFile.append(PUBLIC_FINAL_CLASS).append(substitutorName).append(" extends " + SUBSTITUTOR + " {\n");
+        classFile.append(PUBLIC_FINAL_CLASS).append(substitutorName).append(" extends " + substitutor + " {\n");
 
         // Instance Provider
         classFile.append(generateFactory(substitutorName, targetMethodName, parameterTypeName, helper)).append("\n");
@@ -666,7 +665,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
     private String generateSplit() {
         StringBuilder str = new StringBuilder();
 
-        str.append(TAB_1).append(PUBLIC_FINAL).append(" ").append(SUBSTITUTOR).append(" ").append(SPLIT).append("() {\n");
+        str.append(TAB_1).append(PUBLIC_FINAL).append(" ").append(substitutor).append(" ").append(SPLIT).append("() {\n");
         str.append(TAB_2).append("return new ").append(FACTORY).append("()").append(".").append(CREATE).append("(").append(META_VAR).append(");\n");
         str.append(TAB_1).append("}\n");
 

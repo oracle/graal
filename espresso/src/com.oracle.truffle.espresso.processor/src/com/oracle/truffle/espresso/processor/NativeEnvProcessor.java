@@ -90,7 +90,7 @@ public final class NativeEnvProcessor extends EspressoProcessor {
         // The annotation supported by the target intrinsified class.
         private final TypeElement intrinsicAnnotation;
 
-        public IntrinsificationTarget(String envPackage, String envClassName, TypeElement intrinsicAnnotation) {
+        IntrinsificationTarget(String envPackage, String envClassName, TypeElement intrinsicAnnotation) {
             this.envPackage = envPackage;
             this.envClassName = envClassName;
             this.intrinsicAnnotation = intrinsicAnnotation;
@@ -337,7 +337,7 @@ public final class NativeEnvProcessor extends EspressoProcessor {
         str.append(imports);
         str.append(IMPORT_NATIVE_SIGNATURE);
         str.append(IMPORT_NATIVE_TYPE);
-        str.append("import " + SUBSTITUTOR_PACKAGE + "." + SUBSTITUTOR + ";\n");
+        str.append("import " + substitutorPackage + "." + SUBSTITUTOR + ";\n");
         if (helper.isNodeTarget()) {
             str.append("import ").append(helper.getNodeTarget().getQualifiedName()).append(";\n");
         }

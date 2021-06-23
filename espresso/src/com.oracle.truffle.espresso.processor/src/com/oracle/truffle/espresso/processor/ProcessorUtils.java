@@ -54,12 +54,12 @@ public final class ProcessorUtils {
         return className + " " + argName;
     }
 
-    /** "varName = value;" */
+    /** "varName = value;". */
     public static String assignment(String varName, String value) {
         return varName + " = " + value + ";";
     }
 
-    /** "[receiver.]methodName(comma-separated args)" */
+    /** "[receiver.]methodName(comma-separated args)". */
     public static String call(String receiver, String methodName, String[] args) {
         StringBuilder str = new StringBuilder();
         if (receiver != null) {
@@ -72,7 +72,7 @@ public final class ProcessorUtils {
         return str.toString();
     }
 
-    /** Returns the given string whose first letter is upper case */
+    /** Returns the given string whose first letter is upper case. */
     public static String capitalize(String str) {
         if (str.length() > 0) {
             char[] c = str.toCharArray();
@@ -82,7 +82,7 @@ public final class ProcessorUtils {
         return "";
     }
 
-    /** Returns the given string whose first letter is lower case */
+    /** Returns the given string whose first letter is lower case. */
     public static String decapitalize(String str) {
         if (str.length() > 0) {
             char[] c = str.toCharArray();

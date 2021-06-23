@@ -150,7 +150,7 @@ suite = {
             "dependencies": [
             ],
             "javaCompliance": "1.8+",
-            "checkstyle": "com.oracle.truffle.espresso.processor",
+            "checkstyle": "com.oracle.truffle.espresso",
         },
 
         "com.oracle.truffle.espresso.launcher": {
