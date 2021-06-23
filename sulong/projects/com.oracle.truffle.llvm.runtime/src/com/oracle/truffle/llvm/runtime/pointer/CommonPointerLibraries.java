@@ -64,8 +64,8 @@ import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMAddressEqualsNode;
 
 @ExportLibrary(value = InteropLibrary.class, receiverType = LLVMPointerImpl.class)
-@ExportLibrary(value = LLVMManagedWriteLibrary.class, receiverType = LLVMPointerImpl.class, useForAOT = true, useForAOTPriority = 0)
-@ExportLibrary(value = LLVMManagedReadLibrary.class, receiverType = LLVMPointerImpl.class, useForAOT = true, useForAOTPriority = 1)
+@ExportLibrary(value = LLVMManagedWriteLibrary.class, receiverType = LLVMPointerImpl.class, useForAOT = true, useForAOTPriority = 1)
+@ExportLibrary(value = LLVMManagedReadLibrary.class, receiverType = LLVMPointerImpl.class, useForAOT = true, useForAOTPriority = 2)
 @ExportLibrary(value = com.oracle.truffle.llvm.spi.ReferenceLibrary.class, receiverType = LLVMPointerImpl.class)
 @SuppressWarnings({"static-method", "deprecation"})
 

@@ -82,7 +82,7 @@ import static com.oracle.truffle.nfi.backend.libffi.LibFFISignature.SignatureBui
  * {@link CachedSignatureInfo}. Two {@link LibFFISignature} objects that have the same
  * {@link CachedSignatureInfo} are guaranteed to behave the same semantically.
  */
-@ExportLibrary(value = NFIBackendSignatureLibrary.class, useForAOT = true, useForAOTPriority = 0)
+@ExportLibrary(value = NFIBackendSignatureLibrary.class, useForAOT = true, useForAOTPriority = 1)
 final class LibFFISignature {
 
     @TruffleBoundary
@@ -107,31 +107,25 @@ final class LibFFISignature {
         return ret;
     }
 
-    // Turned into a class message export due to a DSL processor issue
-    @ExportMessage
-    static class Call {
-
-        @Specialization(limit = "3")
-        @GenerateAOT.Exclude
-        static Object call(LibFFISignature self, Object functionPointer, Object[] args,
-                        @CachedLibrary("functionPointer") InteropLibrary interop,
-                        @Cached BranchProfile toNative,
-                        @Cached BranchProfile error,
-                        @Cached FunctionExecuteNode functionExecute) throws ArityException, UnsupportedTypeException {
-            if (!interop.isPointer(functionPointer)) {
-                toNative.enter();
-                interop.toNative(functionPointer);
-            }
-            long pointer;
-            try {
-                pointer = interop.asPointer(functionPointer);
-            } catch (UnsupportedMessageException e) {
-                error.enter();
-                throw UnsupportedTypeException.create(new Object[]{functionPointer}, "functionPointer", e);
-            }
-            return functionExecute.execute(pointer, self, args);
+    @ExportMessage(limit = "3")
+    @GenerateAOT.Exclude
+    static Object call(LibFFISignature self, Object functionPointer, Object[] args,
+                    @CachedLibrary("functionPointer") InteropLibrary interop,
+                    @Cached BranchProfile toNative,
+                    @Cached BranchProfile error,
+                    @Cached FunctionExecuteNode functionExecute) throws ArityException, UnsupportedTypeException {
+        if (!interop.isPointer(functionPointer)) {
+            toNative.enter();
+            interop.toNative(functionPointer);
         }
-
+        long pointer;
+        try {
+            pointer = interop.asPointer(functionPointer);
+        } catch (UnsupportedMessageException e) {
+            error.enter();
+            throw UnsupportedTypeException.create(new Object[]{functionPointer}, "functionPointer", e);
+        }
+        return functionExecute.execute(pointer, self, args);
     }
 
     @ExportMessage

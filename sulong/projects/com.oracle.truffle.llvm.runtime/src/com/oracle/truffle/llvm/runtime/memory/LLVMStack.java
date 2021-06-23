@@ -34,7 +34,9 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -43,6 +45,7 @@ import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.except.LLVMAllocationFailureException;
 import com.oracle.truffle.llvm.runtime.except.LLVMMemoryException;
@@ -166,7 +169,7 @@ public final class LLVMStack {
         }
     }
 
-    public abstract static class LLVMStackAccess extends Node {
+    public abstract static class LLVMStackAccess extends Node implements GenerateAOT.Provider {
 
         /**
          * To be called when entering into a new {@link VirtualFrame}. Takes the stack instance from
@@ -223,17 +226,22 @@ public final class LLVMStack {
         private final LLVMMemory memory;
         private final FrameSlot stackSlot;
         private final Assumption noBasePointerAssumption;
+        private final FrameDescriptor frameDescriptor;
         @CompilationFinal private FrameSlot basePointerSlot;
         @CompilationFinal private boolean hasAllocatedStack;
 
         public LLVMNativeStackAccess(FrameDescriptor frameDescriptor, LLVMMemory memory) {
             this.memory = memory;
+            this.frameDescriptor = frameDescriptor;
             this.stackSlot = getStackSlot(frameDescriptor);
-            // this.basePointerSlot = getBasePointerSlot(frameDescriptor, false);
-            // TODO: a AOT hot fix
-            this.basePointerSlot = getBasePointerSlot(frameDescriptor, true);
+            this.basePointerSlot = getBasePointerSlot(frameDescriptor, false);
             this.noBasePointerAssumption = basePointerSlot == null ? frameDescriptor.getNotInFrameAssumption(BASE_POINTER_ID) : null;
             this.hasAllocatedStack = false;
+        }
+
+        @Override
+        public void prepareForAOT(TruffleLanguage<?> language, RootNode root) {
+            this.basePointerSlot = getBasePointerSlot(frameDescriptor, true);
         }
 
         protected FrameSlot ensureBasePointerSlot(VirtualFrame frame, LLVMStack llvmStack, boolean createSlot) {

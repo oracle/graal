@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.nfi;
 
 import com.oracle.truffle.api.dsl.GenerateAOT;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -47,17 +46,11 @@ final class SulongNFISignature {
 
     static final SignatureBuilder BUILDER = new SignatureBuilder();
 
-    // Turned into a class message export due to a DSL processor issue
-    @ExportMessage
-    static class Call {
-
-        @Specialization(limit = "1")
-        @GenerateAOT.Exclude
-        static Object call(@SuppressWarnings("unused") SulongNFISignature self, Object function, Object[] args,
-                        @CachedLibrary("function") InteropLibrary interop) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
-            return interop.execute(function, args);
-        }
-
+    @ExportMessage(limit = "1")
+    @GenerateAOT.Exclude
+    static Object call(@SuppressWarnings("unused") SulongNFISignature self, Object function, Object[] args,
+                    @CachedLibrary("function") InteropLibrary interop) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
+        return interop.execute(function, args);
     }
 
     @ExportMessage

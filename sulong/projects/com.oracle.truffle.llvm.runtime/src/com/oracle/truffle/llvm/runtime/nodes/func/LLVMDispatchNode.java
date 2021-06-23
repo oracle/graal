@@ -82,7 +82,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
     @CompilationFinal private ContextExtension.Key<NativeContextExtension> nativeCtxExtKey;
 
     private final LLVMFunction llvmFunction;
-    @CompilationFinal private Object tmpSignature;
+    @CompilationFinal private Object signature;
 
     protected LLVMDispatchNode(FunctionType type, LLVMFunction llvmFunction) {
         this.type = type;
@@ -90,13 +90,19 @@ public abstract class LLVMDispatchNode extends LLVMNode {
 
         LLVMContext context = LLVMLanguage.getContext();
         if (llvmFunction != null && context != null) {
+            // Early parsing of the function's signature. It makes sense only when the function is
+            // known (llvmFunction != null).
+            // The signature is bound with the native symbol later, as it is not known at this
+            // point. See createNativeSymbolExecutorNode.
             try {
                 nativeCtxExtKey = LLVMLanguage.getLanguage().lookupContextExtension(NativeContextExtension.class);
-                NativeContextExtension nativeContextExtension = nativeCtxExtKey.get(context);
-                signatureSource = nativeContextExtension.getNativeSignatureSourceSkipStackArg(type);
-                tmpSignature = nativeContextExtension.createSignature(signatureSource);
-            } catch (Exception e) {
-                // throw new RuntimeException(e);
+                if (nativeCtxExtKey != null) {
+                    NativeContextExtension nativeContextExtension = nativeCtxExtKey.get(context);
+                    signatureSource = nativeContextExtension.getNativeSignatureSourceSkipStackArg(type);
+                    signature = nativeContextExtension.createSignature(signatureSource);
+                }
+            } catch (UnsupportedNativeTypeException e) {
+                // ignore it
             }
         }
     }
@@ -107,12 +113,8 @@ public abstract class LLVMDispatchNode extends LLVMNode {
     }
 
     boolean haveNativeCtxExt() {
-        return haveNativeCtxExt(LLVMLanguage.getLanguage());
-    }
-
-    boolean haveNativeCtxExt(LLVMLanguage language) {
         CompilerAsserts.neverPartOfCompilation();
-        return language.lookupContextExtension(NativeContextExtension.class) != null;
+        return LLVMLanguage.getLanguage().lookupContextExtension(NativeContextExtension.class) != null;
     }
 
     NativeContextExtension getNativeCtxExt(ContextReference<LLVMContext> ctxRef) {
@@ -202,25 +204,29 @@ public abstract class LLVMDispatchNode extends LLVMNode {
         return callNode.call(descriptor.getFunctionCode().getIntrinsic(resolve).cachedCallTarget(type), arguments);
     }
 
-    /*
-     * Function is not defined in the user program (not available as LLVM IR). No intrinsic
-     * available. We do a native call.
-     */
-
     NativeSymbolExecutorNode createNativeSymbolExecutorNode(LLVMLanguage language) {
-        if (llvmFunction != null && tmpSignature != null) {
+        if (llvmFunction != null && signature != null) {
+            // Attempt to create FixedNativeSymbolExecutorNode to execute the known function symbol
+
+            // Get the NFI symbol of the function. N.B. It is associated with llvmFunction in
+            // AllocExternalFunctionNode.
             Object nfiSymbol = llvmFunction.getNFISymbol();
             if (nfiSymbol != null && llvmFunction.getFixedCodeAssumption().isValid() && llvmFunction.getFixedCode() != null &&
                             llvmFunction.getFixedCode().isNativeFunction(LLVMFunctionCodeFactory.ResolveFunctionNodeGen.getUncached())) {
                 ToolchainConfig tcCap = language.getCapability(ToolchainConfig.class);
-                Object tmpNativeBoundSymbol = tcCap.bind(tmpSignature, nfiSymbol);
+                Object tmpNativeBoundSymbol = tcCap.bind(signature, nfiSymbol);
                 if (tmpNativeBoundSymbol != null) {
-                    return LLVMDispatchNodeGen.NativeSymbolExecutorNodeGen.create(tmpNativeBoundSymbol);
+                    return new FixedNativeSymbolExecutorNode(tmpNativeBoundSymbol);
                 }
             }
         }
-        return LLVMDispatchNodeGen.NativeSymbolExecutorNodeGen.create(null);
+        return LLVMDispatchNodeGen.NonFixedNativeSymbolExecutorNodeGen.create();
     }
+
+    /*
+     * Function is not defined in the user program (not available as LLVM IR). No intrinsic
+     * available. We do a native call.
+     */
 
     @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"descriptor == cachedDescriptor", "cachedFunctionCode.isNativeFunctionSlowPath()",
                     "haveNativeCtxExt()"}, assumptions = "singleContextAssumption()")
@@ -289,7 +295,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
         return fromNative.executeConvert(returnValue);
     }
 
-    @Specialization(guards = {"descriptor.getFunctionCode().isNativeFunction(resolve)", "nativeSymbolExecutorNode.nativeSymbol != null"})
+    @Specialization(guards = {"descriptor.getFunctionCode().isNativeFunction(resolve)", "nativeSymbolExecutorNode.hasFixedSymbol()"})
     protected Object doNativeAOT(LLVMFunctionDescriptor descriptor, Object[] arguments,
                     @Cached("createToNativeNodes()") LLVMNativeConvertNode[] toNative,
                     @Cached("createFromNativeNode()") LLVMNativeConvertNode fromNative,
@@ -461,28 +467,47 @@ public abstract class LLVMDispatchNode extends LLVMNode {
     }
 
     public abstract static class NativeSymbolExecutorNode extends LLVMNode {
-        final Object nativeSymbol;
-        @Child InteropLibrary fixedInterop;
-
-        NativeSymbolExecutorNode(Object nativeSymbol) {
-            this.nativeSymbol = nativeSymbol;
-            if (this.nativeSymbol != null) {
-                fixedInterop = InteropLibrary.getFactory().create(this.nativeSymbol);
-            }
-        }
 
         abstract Object execute(Object receiver, Object[] args) throws InteropException;
 
-        @Specialization(guards = "nativeSymbol == null")
+        abstract boolean hasFixedSymbol();
+
+    }
+
+    public static final class FixedNativeSymbolExecutorNode extends NativeSymbolExecutorNode {
+        final Object nativeSymbol;
+        @Child InteropLibrary fixedInterop;
+
+        FixedNativeSymbolExecutorNode(Object nativeSymbol) {
+            this.nativeSymbol = nativeSymbol;
+            this.fixedInterop = InteropLibrary.getFactory().create(this.nativeSymbol);
+        }
+
+        @Override
+        Object execute(Object receiver, Object[] args) throws InteropException {
+            return fixedInterop.execute(receiver, args);
+        }
+
+        @Override
+        boolean hasFixedSymbol() {
+            return true;
+        }
+
+    }
+
+    public abstract static class NonFixedNativeSymbolExecutorNode extends NativeSymbolExecutorNode {
+
+        @Specialization
         @GenerateAOT.Exclude
         Object executeDynamic(Object receiver, Object[] args,
                         @CachedLibrary(limit = "3") InteropLibrary interop) throws InteropException {
             return interop.execute(receiver, args);
         }
 
-        @Specialization(guards = "nativeSymbol != null")
-        Object executeFixed(Object receiver, Object[] args) throws InteropException {
-            return fixedInterop.execute(receiver, args);
+        @Override
+        boolean hasFixedSymbol() {
+            return false;
         }
     }
+
 }

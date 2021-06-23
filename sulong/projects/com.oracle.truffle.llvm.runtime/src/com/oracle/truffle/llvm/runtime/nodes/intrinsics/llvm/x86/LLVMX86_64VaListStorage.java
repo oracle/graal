@@ -937,7 +937,7 @@ public final class LLVMX86_64VaListStorage extends LLVMVaListStorage {
      * index for the input offset and uses the <code>gpIdx</code> and <code>fpIdx</code> arrays to
      * translate <code>reg_save_area</code> index to the real arguments index.
      */
-    @ExportLibrary(value = NativeTypeLibrary.class, useForAOT = true, useForAOTPriority = 0)
+    @ExportLibrary(value = NativeTypeLibrary.class, useForAOT = true, useForAOTPriority = 1)
     public static final class RegSaveArea extends ArgsArea {
 
         // TODO: consider removing NativeTypeLibrary
@@ -997,7 +997,7 @@ public final class LLVMX86_64VaListStorage extends LLVMVaListStorage {
 
     }
 
-    @ExportLibrary(value = NativeTypeLibrary.class, useForAOT = true, useForAOTPriority = 0)
+    @ExportLibrary(value = NativeTypeLibrary.class, useForAOT = true, useForAOTPriority = 1)
     public static final class OverflowArgArea extends AbstractOverflowArgArea {
 
         // TODO: consider removing NativeTypeLibrary

@@ -139,7 +139,7 @@ abstract class LLVMNativeLibraryDefaults {
 
     }
 
-    @ExportLibrary(value = LLVMNativeLibrary.class, receiverType = Long.class, useForAOT = true, useForAOTPriority = 0)
+    @ExportLibrary(value = LLVMNativeLibrary.class, receiverType = Long.class, useForAOT = true, useForAOTPriority = 1)
     static class LongLibrary {
 
         /**
@@ -162,7 +162,7 @@ abstract class LLVMNativeLibraryDefaults {
         }
     }
 
-    @ExportLibrary(value = LLVMNativeLibrary.class, receiverType = byte[].class, useForAOTPriority = 0)
+    @ExportLibrary(value = LLVMNativeLibrary.class, receiverType = byte[].class, useForAOTPriority = 1)
     static class ArrayLibrary {
 
         /**

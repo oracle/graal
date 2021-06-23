@@ -194,12 +194,12 @@ public abstract class LLVMX86_VectorMathNode {
         }
 
         @Specialization(guards = {"v1.getLength() == 2", "v2.getLength() == 2"})
-        protected LLVMDoubleVector doCmpAOT(LLVMDoubleVector v1, LLVMDoubleVector v2, @SuppressWarnings("unused") int predicate) {
+        protected LLVMDoubleVector doCmpAOT(LLVMDoubleVector v1, LLVMDoubleVector v2, int predicate) {
             return compare(v1, v2, getComparator(predicate));
         }
 
         @Specialization(guards = {"v1.getLength() == 2", "v2.getLength() == 2"})
-        protected LLVMDoubleVector doCmpAOT(LLVMDoubleVector v1, LLVMDoubleVector v2, @SuppressWarnings("unused") byte predicate) {
+        protected LLVMDoubleVector doCmpAOT(LLVMDoubleVector v1, LLVMDoubleVector v2, byte predicate) {
             return compare(v1, v2, getComparator(predicate));
         }
 

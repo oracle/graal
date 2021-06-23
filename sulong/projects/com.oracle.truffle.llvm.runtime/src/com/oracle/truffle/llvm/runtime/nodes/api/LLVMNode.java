@@ -227,6 +227,40 @@ public abstract class LLVMNode extends Node {
         return LLVMLanguage.getLanguage().singleContextAssumption;
     }
 
+    /**
+     * Allows for a custom AOT preparation of an abstract DSL node class that cannot be fully
+     * prepared in its generated companion class.
+     *
+     * <pre>
+     *     public abstract class AllocatingNode extends Node {
+     *
+     *         &#64;CompilationFinal Allocator allocator = null;
+     *
+     *         &#64;Child private AOTInitHelper aotInitHelper = new AOTInitHelper(new GenerateAOT.Provider() {
+     *              &#64;Override
+     *              public void prepareForAOT(TruffleLanguage<?> language, RootNode root) {
+     *                  // As no context is available, pick the generic allocator
+     *                  defaultValue = GenericAllocator.INSTANCE;
+     *              }
+     *         });
+     *
+     *         public abstract LLVMManagedPointer execute(int size);
+     *
+     *         private Allocator getAllocator(LLVMContext context) {
+     *             if (allocator == null) {
+     *                 CompilerDirectives.transferToInterpreterAndInvalidate();
+     *                 allocator = context.getAllocator(); // get a context specific allocator
+     *             }
+     *             return allocator;
+     *         }
+     *
+     *         &#64;Specialization
+     *         LLVMManagedPointer allocate(int size, @CachedContext(LLVMLanguage.class) LLVMContext context) {
+     *              return getAllocator(context).allocate(size);
+     *         }
+     *
+     * </pre>
+     */
     public static final class AOTInitHelper extends Node implements GenerateAOT.Provider {
 
         private final GenerateAOT.Provider delegate;
