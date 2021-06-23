@@ -23,8 +23,8 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicLong;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -61,33 +61,23 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 // @formatter:on
 @EspressoSubstitutions
 public final class Target_java_lang_Thread {
-    private static final java.lang.reflect.Method isInterrupted;
-    static {
-        try {
-            isInterrupted = Thread.class.getDeclaredMethod("isInterrupted", boolean.class);
-            isInterrupted.setAccessible(true);
-        } catch (Throwable e) {
-            throw EspressoError.shouldNotReachHere();
-        }
-    }
 
     public static void incrementThreadCounter(StaticObject thread, Field hiddenField) {
         assert hiddenField.isHidden();
-        Long counter = (Long) hiddenField.getHiddenObject(thread);
-        if (counter == null) {
-            counter = 0L;
+        AtomicLong atomicCounter = (AtomicLong) hiddenField.getHiddenObject(thread);
+        if (atomicCounter == null) {
+            hiddenField.setHiddenObject(thread, atomicCounter = new AtomicLong());
         }
-        ++counter;
-        hiddenField.setHiddenObject(thread, counter);
+        atomicCounter.incrementAndGet();
     }
 
     public static long getThreadCounter(StaticObject thread, Field hiddenField) {
         assert hiddenField.isHidden();
-        Long counter = (Long) hiddenField.getHiddenObject(thread);
-        if (counter == null) {
-            counter = 0L;
+        AtomicLong atomicCounter = (AtomicLong) hiddenField.getHiddenObject(thread);
+        if (atomicCounter == null) {
+            return 0L;
         }
-        return counter;
+        return atomicCounter.get();
     }
 
     public enum State {
@@ -405,26 +395,19 @@ public final class Target_java_lang_Thread {
         hostThread.interrupt();
     }
 
+    @TruffleBoundary
     @Substitution(hasReceiver = true)
     public static boolean isInterrupted(@Host(Thread.class) StaticObject self, boolean clear) {
         boolean result = checkInterrupt(self);
         if (clear) {
             Thread hostThread = getHostFromGuestThread(self);
+            EspressoError.guarantee(hostThread == Thread.currentThread(), "Thread#isInterrupted(true) is only supported for the current thread.");
             if (hostThread != null && hostThread.isInterrupted()) {
-                try {
-                    callHostThreadIsInterrupted(hostThread);
-                } catch (Throwable e) {
-                    throw EspressoError.shouldNotReachHere(e);
-                }
+                Thread.interrupted();
             }
             setInterrupt(self, false);
         }
         return result;
-    }
-
-    @TruffleBoundary
-    private static void callHostThreadIsInterrupted(Thread hostThread) throws IllegalAccessException, InvocationTargetException {
-        isInterrupted.invoke(hostThread, true);
     }
 
     @TruffleBoundary
