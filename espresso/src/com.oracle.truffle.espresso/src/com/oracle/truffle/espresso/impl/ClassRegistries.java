@@ -217,7 +217,7 @@ public final class ClassRegistries {
     }
 
     @TruffleBoundary
-    public Klass defineKlass(Symbol<Type> type, byte[] bytes, StaticObject classLoader) {
+    public ObjectKlass defineKlass(Symbol<Type> type, byte[] bytes, StaticObject classLoader) {
         assert classLoader != null;
         ClassRegistry registry = getClassRegistry(classLoader);
         return registry.defineKlass(type, bytes);

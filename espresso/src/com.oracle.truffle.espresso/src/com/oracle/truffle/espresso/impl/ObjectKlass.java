@@ -111,7 +111,7 @@ public final class ObjectKlass extends Klass {
     private final Klass hostKlass;
 
     @CompilationFinal //
-    private Klass nest;
+    private volatile Klass nest;
 
     @CompilationFinal //
     private PackageEntry packageEntry;
@@ -122,6 +122,9 @@ public final class ObjectKlass extends Klass {
 
     @CompilationFinal //
     boolean hasDeclaredDefaultMethods = false;
+
+    @CompilationFinal //
+    boolean isHidden = false;
 
     @CompilationFinal private int computedModifiers = -1;
 
@@ -553,6 +556,11 @@ public final class ObjectKlass extends Klass {
         return nest;
     }
 
+    public void setNest(Klass host) {
+        assert nest == null;
+        nest = host;
+    }
+
     @Override
     public boolean nestMembersCheck(Klass k) {
         NestMembersAttribute nestMembers = (NestMembersAttribute) getAttribute(NestMembersAttribute.NAME);
@@ -606,12 +614,19 @@ public final class ObjectKlass extends Klass {
             return EMPTY_ARRAY;
         }
         RuntimeConstantPool pool = getConstantPool();
-        Klass[] result = new Klass[nestMembers.getClasses().length];
-        for (int i = 0; i < result.length; i++) {
+        ArrayList<Klass> klasses = new ArrayList<>();
+        for (int i = 0; i < nestMembers.getClasses().length; i++) {
             int index = nestMembers.getClasses()[i];
-            result[i] = pool.resolvedKlassAt(this, index);
+            try {
+                klasses.add(pool.resolvedKlassAt(this, index));
+            } catch (EspressoException e) {
+                /*
+                 * Don't allow badly constructed nest members to break execution here, only report
+                 * well-constructed entries.
+                 */
+            }
         }
-        return result;
+        return klasses.toArray(Klass.EMPTY_ARRAY);
     }
 
     Field lookupFieldTableImpl(int slot) {
@@ -1074,6 +1089,24 @@ public final class ObjectKlass extends Klass {
     private boolean hasDeclaredDefaultMethods() {
         assert !hasDeclaredDefaultMethods || isInterface();
         return hasDeclaredDefaultMethods;
+    }
+
+    public void initSelfReferenceInPool() {
+        getConstantPool().setKlassAt(getLinkedKlass().getParserKlass().getThisKlassIndex(), this);
+    }
+
+    public void markHidden() {
+        isHidden = true;
+    }
+
+    public boolean isHidden() {
+        return isHidden;
+    }
+
+    @SuppressWarnings("static-method")
+    public boolean isRecord() {
+        // TODO:
+        return false;
     }
 
     @Override

@@ -1284,8 +1284,8 @@ public final class ClassfileParser {
     private Attribute[] parseRecordComponentAttributes() {
         final int size = stream.readU2();
         Attribute[] componentAttributes = new Attribute[size];
+        CommonAttributeParser commonAttributeParser = new CommonAttributeParser(InfoType.Record);
         for (int j = 0; j < size; j++) {
-            CommonAttributeParser commonAttributeParser = new CommonAttributeParser(InfoType.Record);
             final int attributeNameIndex = stream.readU2();
             final Symbol<Name> attributeName = pool.symbolAt(attributeNameIndex, "attribute name");
             final int attributeSize = stream.readS4();

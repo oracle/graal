@@ -34,18 +34,16 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.ClassfileStream;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.ffi.Buffer;
 import com.oracle.truffle.espresso.ffi.RawPointer;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
+import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
-import com.oracle.truffle.espresso.impl.LinkedKlass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
-import com.oracle.truffle.espresso.impl.ParserKlass;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
@@ -102,53 +100,23 @@ public final class Target_sun_misc_Unsafe {
         Klass hostKlass = hostClass.getMirrorKlass();
         ClassfileStream cfs = new ClassfileStream(bytes, null);
         StaticObject classLoader = hostKlass.getDefiningClassLoader();
-        ParserKlass parserKlass = ClassfileParser.parse(cfs, classLoader, null, context, patches);
+        ClassRegistry registry = meta.getRegistries().getClassRegistry(classLoader);
 
+        ObjectKlass k = registry.defineKlass(null, bytes, true);
+        k.initSelfReferenceInPool();
+
+        StaticObject clazz = k.mirror();
         // Inherit host class's protection domain.
-        StaticObject clazz = defineAnonymousKlass(parserKlass, context, classLoader, hostKlass).mirror();
         StaticObject pd = (StaticObject) meta.HIDDEN_PROTECTION_DOMAIN.getHiddenObject(hostClass);
         if (pd == null) {
             pd = StaticObject.NULL;
         }
         meta.HIDDEN_PROTECTION_DOMAIN.setHiddenObject(clazz, pd);
 
+        // Initialize, because no one else will.
+        k.safeInitialize();
+
         return clazz;
-    }
-
-    private static ObjectKlass defineAnonymousKlass(ParserKlass parserKlass, EspressoContext context, StaticObject classLoader, Klass hostKlass) {
-        Symbol<Type> superKlassType = parserKlass.getSuperKlass();
-
-        // TODO(garcia): Superclass must be a class, and non-final.
-        ObjectKlass superKlass = superKlassType != null
-                        ? (ObjectKlass) context.getMeta().loadKlassOrFail(superKlassType, classLoader, StaticObject.NULL)
-                        : null;
-
-        assert superKlass == null || !superKlass.isInterface();
-
-        final Symbol<Type>[] superInterfacesTypes = parserKlass.getSuperInterfaces();
-
-        LinkedKlass[] linkedInterfaces = superInterfacesTypes.length == 0
-                        ? LinkedKlass.EMPTY_ARRAY
-                        : new LinkedKlass[superInterfacesTypes.length];
-
-        ObjectKlass[] superInterfaces = superInterfacesTypes.length == 0
-                        ? ObjectKlass.EMPTY_ARRAY
-                        : new ObjectKlass[superInterfacesTypes.length];
-
-        // TODO(garcia): Superinterfaces must be interfaces.
-        for (int i = 0; i < superInterfacesTypes.length; ++i) {
-            ObjectKlass interf = (ObjectKlass) context.getMeta().loadKlassOrFail(superInterfacesTypes[i], classLoader, StaticObject.NULL);
-            superInterfaces[i] = interf;
-            linkedInterfaces[i] = interf.getLinkedKlass();
-        }
-
-        LinkedKlass linkedKlass = LinkedKlass.create(context.getLanguage(), parserKlass, superKlass == null ? null : superKlass.getLinkedKlass(), linkedInterfaces);
-
-        ObjectKlass klass = new ObjectKlass(context, linkedKlass, superKlass, superInterfaces, classLoader, hostKlass);
-
-        klass.getConstantPool().setKlassAt(parserKlass.getThisKlassIndex(), klass);
-
-        return klass;
     }
 
     /**

@@ -250,8 +250,12 @@ public abstract class ClassRegistry implements ContextAccess {
         return entry.klass();
     }
 
+    public final ObjectKlass defineKlass(Symbol<Type> typeOrNull, final byte[] bytes) {
+        return defineKlass(typeOrNull, bytes, false);
+    }
+
     @SuppressWarnings("try")
-    public ObjectKlass defineKlass(Symbol<Type> typeOrNull, final byte[] bytes) {
+    public ObjectKlass defineKlass(Symbol<Type> typeOrNull, final byte[] bytes, boolean anonymousOrHidden) {
         Meta meta = getMeta();
         String strType = typeOrNull == null ? null : typeOrNull.toString();
         ParserKlass parserKlass;
@@ -260,14 +264,20 @@ public abstract class ClassRegistry implements ContextAccess {
         }
         Symbol<Type> type = typeOrNull == null ? parserKlass.getType() : typeOrNull;
 
-        Klass maybeLoaded = findLoadedKlass(type);
-        if (maybeLoaded != null) {
-            throw meta.throwExceptionWithMessage(meta.java_lang_LinkageError, "Class " + type + " already defined");
+        if (!anonymousOrHidden) {
+            Klass maybeLoaded = findLoadedKlass(type);
+            if (maybeLoaded != null) {
+                throw meta.throwExceptionWithMessage(meta.java_lang_LinkageError, "Class " + type + " already defined");
+            }
         }
 
         Symbol<Type> superKlassType = parserKlass.getSuperKlass();
 
-        return createAndPutKlass(meta, parserKlass, type, superKlassType);
+        ObjectKlass klass = createKlass(meta, parserKlass, type, superKlassType);
+        if (!anonymousOrHidden) {
+            registerKlass(klass, type);
+        }
+        return klass;
     }
 
     private ParserKlass getParserKlass(byte[] bytes, String strType) {
@@ -286,7 +296,7 @@ public abstract class ClassRegistry implements ContextAccess {
     }
 
     @SuppressWarnings("try")
-    private ObjectKlass createAndPutKlass(Meta meta, ParserKlass parserKlass, Symbol<Type> type, Symbol<Type> superKlassType) {
+    private ObjectKlass createKlass(Meta meta, ParserKlass parserKlass, Symbol<Type> type, Symbol<Type> superKlassType) {
         TypeStack chain = stack.get();
 
         ObjectKlass superKlass = null;
@@ -359,6 +369,10 @@ public abstract class ClassRegistry implements ContextAccess {
             }
         }
 
+        return klass;
+    }
+
+    private void registerKlass(ObjectKlass klass, Symbol<Type> type) {
         ClassRegistries.RegistryEntry entry = new ClassRegistries.RegistryEntry(klass);
         ClassRegistries.RegistryEntry previous = classes.putIfAbsent(type, entry);
 
@@ -369,7 +383,6 @@ public abstract class ClassRegistry implements ContextAccess {
         if (defineKlassListener != null) {
             defineKlassListener.onKlassDefined(klass);
         }
-        return klass;
     }
 
     private ObjectKlass loadKlassRecursively(Meta meta, Symbol<Type> type, boolean notInterface) {
