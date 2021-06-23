@@ -81,7 +81,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.nodes.NewStoredContinuationNode;
 import com.oracle.svm.core.graal.nodes.SubstrateNewHybridInstanceNode;
-import com.oracle.svm.core.graal.nodes.UnreachableNode;
+import org.graalvm.compiler.nodes.UnreachableNode;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.hub.DynamicHub;

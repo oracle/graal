@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,31 +24,31 @@
  */
 package com.oracle.svm.core.graal.nodes;
 
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_IGNORED;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
-
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.Simplifiable;
-import org.graalvm.compiler.nodes.spi.SimplifierTool;
+import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodeinfo.NodeSize;
+import org.graalvm.compiler.nodes.ControlSinkNode;
+import org.graalvm.compiler.nodes.spi.LIRLowerable;
+import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
-@NodeInfo(size = SIZE_IGNORED, cycles = CYCLES_IGNORED)
-public final class UnreachableNode extends FixedWithNextNode implements Simplifiable {
-    public static final NodeClass<UnreachableNode> TYPE = NodeClass.create(UnreachableNode.class);
+import com.oracle.svm.core.graal.code.SubstrateLIRGenerator;
 
-    public UnreachableNode() {
-        super(TYPE, StampFactory.object());
+/**
+ * Lowered version of {@link org.graalvm.compiler.nodes.DeadEndNode}.
+ */
+@NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
+public final class LoweredDeadEndNode extends ControlSinkNode implements LIRLowerable, IterableNodeType {
+    public static final NodeClass<LoweredDeadEndNode> TYPE = NodeClass.create(LoweredDeadEndNode.class);
+
+    public LoweredDeadEndNode() {
+        super(TYPE, StampFactory.forVoid());
     }
 
     @Override
-    public void simplify(SimplifierTool tool) {
-        tool.deleteBranch(next());
-        replaceAtPredecessor(graph().add(new DeadEndNode()));
-        safeDelete();
+    public void generate(NodeLIRBuilderTool gen) {
+        ((SubstrateLIRGenerator) gen.getLIRGeneratorTool()).emitDeadEnd();
     }
-
-    @NodeIntrinsic
-    public static native RuntimeException unreachable();
 }

@@ -39,7 +39,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 
-import com.oracle.svm.core.graal.nodes.DeadEndNode;
+import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.util.VMError;
@@ -122,7 +122,7 @@ public final class ExceptionSynthesizer {
         MethodCallTargetNode callTarget = b.add(new SubstrateMethodCallTargetNode(InvokeKind.Static, exceptionMethod, new ValueNode[]{messageNode}, returnStamp, null, null));
         b.add(new InvokeWithExceptionNode(callTarget, null, b.bci()));
         /* The invoked method always throws an exception, i.e., never returns. */
-        b.add(new DeadEndNode());
+        b.add(new LoweredDeadEndNode());
     }
 
     /**

@@ -69,6 +69,7 @@ import org.graalvm.compiler.hotspot.nodes.HotSpotCompressionNode;
 import org.graalvm.compiler.hotspot.nodes.HotSpotDirectCallTargetNode;
 import org.graalvm.compiler.hotspot.nodes.HotSpotIndirectCallTargetNode;
 import org.graalvm.compiler.hotspot.nodes.KlassBeingInitializedCheckNode;
+import org.graalvm.compiler.hotspot.nodes.VMErrorNode;
 import org.graalvm.compiler.hotspot.nodes.aot.InitializeKlassNode;
 import org.graalvm.compiler.hotspot.nodes.aot.ResolveConstantNode;
 import org.graalvm.compiler.hotspot.nodes.aot.ResolveDynamicConstantNode;
@@ -108,6 +109,7 @@ import org.graalvm.compiler.nodes.AbstractDeoptimizeNode;
 import org.graalvm.compiler.nodes.CompressionNode.CompressionOp;
 import org.graalvm.compiler.nodes.ComputeObjectAddressNode;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.GetObjectAddressNode;
 import org.graalvm.compiler.nodes.Invoke;
@@ -131,6 +133,7 @@ import org.graalvm.compiler.nodes.debug.VerifyHeapNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
+import org.graalvm.compiler.nodes.DeadEndNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.extended.GetClassNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
@@ -182,6 +185,7 @@ import org.graalvm.compiler.replacements.arraycopy.ArrayCopyNode;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopySnippets;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopyWithDelayedLoweringNode;
 import org.graalvm.compiler.replacements.nodes.AssertionNode;
+import org.graalvm.compiler.replacements.nodes.CStringConstant;
 import org.graalvm.compiler.replacements.nodes.LogNode;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -192,6 +196,8 @@ import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
 import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaField;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
@@ -527,6 +533,8 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
             }
         } else if (n instanceof RegisterFinalizerNode) {
             lowerRegisterFinalizer((RegisterFinalizerNode) n, tool);
+        } else if (n instanceof DeadEndNode) {
+            lowerDeadEnd((DeadEndNode) n);
         } else {
             return false;
         }
@@ -893,6 +901,14 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         // Keep a proper stateAfter for use by FSA
         foreignCallNode.setStateAfter(node.stateAfter());
         graph.replaceFixedWithFixed(node, foreignCallNode);
+    }
+
+    protected void lowerDeadEnd(DeadEndNode deadEnd) {
+        StructuredGraph graph = deadEnd.graph();
+        VMErrorNode vmErrorNode = graph.add(new VMErrorNode(new CStringConstant("DeadEnd"), graph.unique(ConstantNode.forLong(0))));
+        DeoptimizeNode deopt = graph.add(new DeoptimizeNode(DeoptimizationAction.None, DeoptimizationReason.UnreachedCode));
+        vmErrorNode.setNext(deopt);
+        deadEnd.replaceAndDelete(vmErrorNode);
     }
 
     private ReadNode createReadVirtualMethod(StructuredGraph graph, ValueNode hub, HotSpotResolvedJavaMethod method, ResolvedJavaType receiverType) {

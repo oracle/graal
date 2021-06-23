@@ -65,7 +65,7 @@ import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.phases.SubstrateIntrinsicGraphBuilder;
-import com.oracle.svm.core.graal.nodes.DeadEndNode;
+import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.invoke.MethodHandleUtils;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.util.ExceptionHelpers;
@@ -173,7 +173,7 @@ public class ReflectionSubstitutionType extends CustomSubstitutionType<CustomSub
         ValueNode expectedNode = graphKit.createConstant(expected, JavaKind.Object);
 
         graphKit.createJavaCallWithExceptionAndUnwind(InvokeKind.Static, throwFailedCast, expectedNode, actual);
-        graphKit.append(new DeadEndNode());
+        graphKit.append(new LoweredDeadEndNode());
     }
 
     private static ValueNode createCheckcast(HostedGraphKit graphKit, ValueNode value, ResolvedJavaType type, boolean nonNull) {
@@ -252,7 +252,7 @@ public class ReflectionSubstitutionType extends CustomSubstitutionType<CustomSub
         ValueNode msgNode = graphKit.createConstant(msg, JavaKind.Object);
 
         graphKit.createJavaCallWithExceptionAndUnwind(InvokeKind.Static, throwIllegalArgumentException, msgNode);
-        graphKit.append(new DeadEndNode());
+        graphKit.append(new LoweredDeadEndNode());
     }
 
     private static class ReflectiveInvokeMethod extends ReflectionSubstitutionMethod {

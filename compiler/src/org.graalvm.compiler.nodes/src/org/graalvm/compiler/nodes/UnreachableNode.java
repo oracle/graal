@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,33 +22,44 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.nodes;
+package org.graalvm.compiler.nodes;
+
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_IGNORED;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
 
 import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodeinfo.NodeSize;
-import org.graalvm.compiler.nodes.ControlSinkNode;
-import org.graalvm.compiler.nodes.spi.LIRLowerable;
-import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
-
-import com.oracle.svm.core.graal.code.SubstrateLIRGenerator;
+import org.graalvm.compiler.nodes.spi.Simplifiable;
+import org.graalvm.compiler.nodes.spi.SimplifierTool;
 
 /**
- * Simplified from {@link UnreachableNode}.
+ * Node for marking a branch in a snippet as unreachable. Usage example:
+ *
+ * <pre>
+ * void mySnippet() {
+ *     callThatNeverReturns();
+ *     throw UnreachableNode.unreachable();
+ * }
+ * </pre>
+ *
+ * See {@link DeadEndNode} for more details.
  */
-@NodeInfo(cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
-public final class DeadEndNode extends ControlSinkNode implements LIRLowerable, IterableNodeType {
-    public static final NodeClass<DeadEndNode> TYPE = NodeClass.create(DeadEndNode.class);
+@NodeInfo(size = SIZE_IGNORED, cycles = CYCLES_IGNORED)
+public final class UnreachableNode extends FixedWithNextNode implements Simplifiable {
+    public static final NodeClass<UnreachableNode> TYPE = NodeClass.create(UnreachableNode.class);
 
-    public DeadEndNode() {
-        super(TYPE, StampFactory.forVoid());
+    public UnreachableNode() {
+        super(TYPE, StampFactory.object());
     }
 
     @Override
-    public void generate(NodeLIRBuilderTool gen) {
-        ((SubstrateLIRGenerator) gen.getLIRGeneratorTool()).emitDeadEnd();
+    public void simplify(SimplifierTool tool) {
+        tool.deleteBranch(next());
+        replaceAtPredecessor(graph().add(new DeadEndNode()));
+        safeDelete();
     }
+
+    @NodeIntrinsic
+    public static native RuntimeException unreachable();
 }
