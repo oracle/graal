@@ -347,8 +347,15 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
             return False
 
     @staticmethod
-    def testStartupPerformanceInBackground(benchmarkSuite):
+    def testTimeToFirstResponseInBackground(benchmarkSuite):
         measureTimeToFirstResponse(benchmarkSuite)
+        if not BaseMicroserviceBenchmarkSuite.waitForPort(benchmarkSuite.servicePort()):
+            mx.abort("Failed to find server application in {0}".format(BaseMicroserviceBenchmarkSuite.__name__))
+        if not BaseMicroserviceBenchmarkSuite.terminateApplication(benchmarkSuite.servicePort()):
+            mx.abort("Failed to terminate server application in {0}".format(BaseMicroserviceBenchmarkSuite.__name__))
+
+    @staticmethod
+    def testStartupPerformanceInBackground(benchmarkSuite):
         if not BaseMicroserviceBenchmarkSuite.waitForPort(benchmarkSuite.servicePort()):
             mx.abort("Failed to find server application in {0}".format(BaseMicroserviceBenchmarkSuite.__name__))
         benchmarkSuite.testStartupPerformance()
@@ -391,23 +398,32 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
                 serverCommandWithoutTracker = self.apply_command_mapper_hooks(server_command, vm)
                 mx_benchmark.enable_tracker()
 
-                # Do all benchmarking (startup, peak, latency) on a single image that is started and shut down multiple times.
+                # Measure time-to-first-response (without any command mapper hooks as those affect the measurement significantly)
+                threading.Thread(target=BaseMicroserviceBenchmarkSuite.testTimeToFirstResponseInBackground, args=[self]).start()
+                returnCode = mx.run(server_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
+                if not self.validateReturnCode(returnCode):
+                    mx.abort("The server application unexpectedly ended with return code " + str(returnCode))
+
+                # Measure startup performance (without RSS tracker)
                 threading.Thread(target=BaseMicroserviceBenchmarkSuite.testStartupPerformanceInBackground, args=[self]).start()
                 returnCode = mx.run(serverCommandWithoutTracker, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
                 if not self.validateReturnCode(returnCode):
                     mx.abort("The server application unexpectedly ended with return code " + str(returnCode))
 
+                # Measure peak performance (with all command mapper hooks)
                 threading.Thread(target=BaseMicroserviceBenchmarkSuite.testPeakPerformanceInBackground, args=[self]).start()
                 returnCode = mx.run(serverCommandWithTracker, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
                 if not self.validateReturnCode(returnCode):
                     mx.abort("The server application unexpectedly ended with return code " + str(returnCode))
 
                 if self.measureLatency:
+                    # Calibrate for latency measurements (without RSS tracker)
                     threading.Thread(target=BaseMicroserviceBenchmarkSuite.calibrateLatencyTestInBackground, args=[self]).start()
                     returnCode = mx.run(serverCommandWithoutTracker, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
                     if not self.validateReturnCode(returnCode):
                         mx.abort("The server application unexpectedly ended with return code " + str(returnCode))
 
+                    # Measure latency (without RSS tracker)
                     threading.Thread(target=BaseMicroserviceBenchmarkSuite.testLatencyInBackground, args=[self]).start()
                     returnCode = mx.run(serverCommandWithoutTracker, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
                     if not self.validateReturnCode(returnCode):
@@ -477,19 +493,29 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
         self.measureLatency = not args.skip_latency_measurements
 
         if not self.inNativeMode():
+            # Measure time-to-first-response (without any command mapper hooks as those affect the measurement significantly)
+            mx.disable_command_mapper_hooks()
+            threading.Thread(target=BaseMicroserviceBenchmarkSuite.testTimeToFirstResponseInBackground, args=[self]).start()
+            datapoints = super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
+            mx.enable_command_mapper_hooks()
+
+            # Measure startup performance (without RSS tracker)
             mx_benchmark.disable_tracker()
             threading.Thread(target=BaseMicroserviceBenchmarkSuite.testStartupPerformanceInBackground, args=[self]).start()
             datapoints = super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
             mx_benchmark.enable_tracker()
 
+            # Measure peak performance (with all command mapper hooks)
             threading.Thread(target=BaseMicroserviceBenchmarkSuite.testPeakPerformanceInBackground, args=[self]).start()
             datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
 
             if self.measureLatency:
+                # Calibrate for latency measurements (without RSS tracker)
                 mx_benchmark.disable_tracker()
                 threading.Thread(target=BaseMicroserviceBenchmarkSuite.calibrateLatencyTestInBackground, args=[self]).start()
                 datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
 
+                # Measure latency (without RSS tracker)
                 threading.Thread(target=BaseMicroserviceBenchmarkSuite.testLatencyInBackground, args=[self]).start()
                 datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
                 mx_benchmark.enable_tracker()
