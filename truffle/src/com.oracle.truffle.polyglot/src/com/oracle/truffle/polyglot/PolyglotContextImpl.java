@@ -889,8 +889,9 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
 
     void setCachedThreadInfo(PolyglotThreadInfo info) {
         assert Thread.holdsLock(this);
-        if (!state.shouldCacheThreadInfo()) {
-            // never set the cached thread when closed closing or invalid
+        if (!state.shouldCacheThreadInfo() || threadLocalActions.hasActiveEvents()) {
+            // never set the cached thread when closed closing, invalid or active thread local
+            // actions that require thread activation or deactivation
             cachedThreadInfo = PolyglotThreadInfo.NULL;
         } else {
             cachedThreadInfo = info;
@@ -973,7 +974,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                 }
             }
 
-            if (entered && state.shouldCacheThreadInfo() && !somePauseThreadLocalActionIsActive) {
+            if (entered && !somePauseThreadLocalActionIsActive) {
                 /*
                  * Must not cache thread info when this synchronized leave was called as a slow-path
                  * fallback (entered == false). The slow-path fallback does not perform enteredCount
@@ -2762,12 +2763,19 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             // already disposed
             return;
         }
+
         for (PolyglotLanguageContext languageContext : contexts) {
             if (languageContext.isInitialized()) {
                 LANGUAGE.disposeThread(languageContext.env, thread);
             }
         }
+
         engine.leave(prev, this, true);
+        assert !info.isActive();
+
+        if (cachedThreadInfo.getThread() == thread) {
+            setCachedThreadInfo(PolyglotThreadInfo.NULL);
+        }
         info.setContextThreadLocals(DISPOSED_CONTEXT_THREAD_LOCALS);
         setCurrentThreadLocals(DISPOSED_CONTEXT_THREAD_LOCALS);
         seenThreads.remove(thread);
