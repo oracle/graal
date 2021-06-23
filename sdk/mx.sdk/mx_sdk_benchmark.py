@@ -151,7 +151,7 @@ class NativeImageBenchmarkMixin(object):
         return parse_prefixed_args('-Dnative-image.benchmark.extra-image-build-argument=', args)
 
     def extra_run_arg(self, benchmark, args, image_run_args):
-        return parse_prefixed_args('-Dnative-image.benchmark.extra-run-arg=', args)
+        return image_run_args + parse_prefixed_args('-Dnative-image.benchmark.extra-run-arg=', args)
 
     def extra_agent_run_arg(self, benchmark, args, image_run_args):
         return parse_prefixed_args('-Dnative-image.benchmark.extra-agent-run-arg=', args)

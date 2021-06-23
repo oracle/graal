@@ -554,7 +554,7 @@ class NativeImageVM(GraalVm):
         if config.extra_profile_run_args:
             image_run_cmd += config.extra_profile_run_args
         else:
-            image_run_cmd += config.image_run_args + config.extra_run_args
+            image_run_cmd += config.extra_run_args
         with stages.set_command(image_run_cmd) as s:
             s.execute_command()
             if s.exit_code == 0:
@@ -572,7 +572,7 @@ class NativeImageVM(GraalVm):
 
     def run_stage_run(self, config, stages, out):
         image_path = os.path.join(config.output_dir, config.final_image_name)
-        with stages.set_command([image_path] + config.image_run_args + config.extra_run_args) as s:
+        with stages.set_command([image_path] + config.extra_run_args) as s:
             s.execute_command(vm=self)
             if s.exit_code == 0:
                 # The image size for benchmarks is tracked by printing on stdout and matching the rule.
