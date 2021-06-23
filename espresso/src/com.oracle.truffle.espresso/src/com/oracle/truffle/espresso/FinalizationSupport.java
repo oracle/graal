@@ -22,42 +22,41 @@
  */
 package com.oracle.truffle.espresso;
 
+import java.lang.ref.PublicFinalReference;
+import java.lang.reflect.AccessibleObject;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.security.ProtectionDomain;
+
+import org.graalvm.nativeimage.hosted.Feature;
+
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.substitutions.HostJavaVersionUtil;
 import com.oracle.truffle.espresso.vm.UnsafeAccess;
-import org.graalvm.nativeimage.hosted.Feature;
-import sun.misc.Unsafe;
 
-import java.lang.ref.PublicFinalReference;
-import java.lang.reflect.InvocationTargetException;
-import java.security.ProtectionDomain;
+import sun.misc.Unsafe;
 
 /**
  * Support for finalizers (FinalReference) in Espresso.
- * 
+ *
  * <p>
  * Espresso implements non-strong references e.g. {@link java.lang.ref.WeakReference} by using the
  * host equivalents, inheriting the same semantics and behavior as the host VM.
- * 
+ *
  * Since FinalReference is package private, Espresso injects {@link PublicFinalReference} in the
  * boot class loader of the host VM to open the hierarchy. This mechanism is very fragile, but
  * allows Espresso to share the same implementation for HotSpot and SubstrateVM.
  */
-public final class FinalizationFeature implements Feature {
+public final class FinalizationSupport {
 
-    @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        ensureInitialized();
-    }
-
-    static final Class<?> PUBLIC_FINAL_REFERENCE;
+    private static final boolean UnsafeOverride = "true".equalsIgnoreCase(System.getProperty("espresso.finalization.UnsafeOverride", "true"));
 
     /**
      * Compiled {@link java.lang.ref.PublicFinalReference} without the poisoned static initializer.
-     * 
+     *
      * <p>
      * To examine the contents, execute the following commands:
-     * 
+     *
      * <pre>
      * jshell &#60;&#60;EOF
      * try (var fos = new FileOutputStream("PublicFinalReference.class")) {
@@ -90,41 +89,62 @@ public final class FinalizationFeature implements Feature {
                     0, 18, 0, 0, 0, 2, 0, 25, 0, 0, 0, 2, 0, 26, 0, 7, 0, 0, 0, 2, 0, 27};
 
     static {
-        PUBLIC_FINAL_REFERENCE = injectClassInBootClassLoader("java/lang/ref/PublicFinalReference", PUBLIC_FINAL_REFERENCE_BYTES);
+        try {
+            Class<?> publicFinalReference = injectClassInBootClassLoader("java/lang/ref/PublicFinalReference", PUBLIC_FINAL_REFERENCE_BYTES);
+            EspressoError.guarantee("java.lang.ref.FinalReference".equals(publicFinalReference.getSuperclass().getName()),
+                            "Injected class does not subclass FinalReference");
+        } catch (Exception e) {
+            throw EspressoError.shouldNotReachHere("Error injecting PublicFinalReference in the host (version " + HostJavaVersionUtil.JAVA_SPEC + ")", e);
+        }
     }
 
     public static void ensureInitialized() {
         /* nop */
     }
 
-    /**
-     * Inject raw class in the host boot class loader.
-     */
-    private static Class<?> injectClassInBootClassLoader(String className, byte[] classBytes) {
-        EspressoError.guarantee(HostJavaVersionUtil.JAVA_SPEC == 8 || HostJavaVersionUtil.JAVA_SPEC == 11, "Unsupported host Java version: {}", HostJavaVersionUtil.JAVA_SPEC);
+    private static Class<?> injectClassInBootClassLoader(String className, byte[] classBytes) throws Exception {
         if (HostJavaVersionUtil.JAVA_SPEC == 8) {
             // Inject class via sun.misc.Unsafe#defineClass.
             // The use of reflection here is deliberate, so the code compiles with both Java 8/11.
-            try {
-                java.lang.reflect.Method defineClass = Unsafe.class.getDeclaredMethod("defineClass",
-                                String.class, byte[].class, int.class, int.class, ClassLoader.class, ProtectionDomain.class);
-                defineClass.setAccessible(true);
-                return (Class<?>) defineClass.invoke(UnsafeAccess.get(), className, classBytes, 0, classBytes.length, null, null);
-            } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
-                throw EspressoError.shouldNotReachHere(e);
-            }
-        } else if (HostJavaVersionUtil.JAVA_SPEC >= 11 /* removal of sun.misc.Unsafe#defineClass */) {
+            Method defineClass = Unsafe.class.getDeclaredMethod("defineClass",
+                            String.class, byte[].class, int.class, int.class, ClassLoader.class, ProtectionDomain.class);
+            defineClass.setAccessible(true);
+            return (Class<?>) defineClass.invoke(UnsafeAccess.get(), className, classBytes, 0, classBytes.length, null, null);
+        } else if (HostJavaVersionUtil.JAVA_SPEC == 11) {
             // Inject class via j.l.ClassLoader#defineClass1.
-            try {
-                java.lang.reflect.Method defineClass1 = ClassLoader.class.getDeclaredMethod("defineClass1",
-                                ClassLoader.class, String.class, byte[].class, int.class, int.class, ProtectionDomain.class, String.class);
-                defineClass1.setAccessible(true);
-                return (Class<?>) defineClass1.invoke(null, null, className, classBytes, 0, classBytes.length, null, null);
-            } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
-                throw EspressoError.shouldNotReachHere(e);
+            Method defineClass1 = ClassLoader.class.getDeclaredMethod("defineClass1",
+                            ClassLoader.class, String.class, byte[].class, int.class, int.class, ProtectionDomain.class, String.class);
+
+            if (UnsafeOverride) {
+                /*
+                 * Overwrites the AccessibleObject.override field via Unsafe to force-enable
+                 * reflection access and get rid of illegal access warnings.
+                 */
+                Object unsafeInstance = UnsafeAccess.get();
+                Method putBoolean = unsafeInstance.getClass().getMethod("putBoolean", Object.class, long.class, boolean.class);
+                Method objectFieldOffset = unsafeInstance.getClass().getMethod("objectFieldOffset", Field.class);
+
+                Field overrideField = AccessibleObject.class.getDeclaredField("override");
+                long overrideFieldOffset = (long) objectFieldOffset.invoke(unsafeInstance, overrideField);
+
+                // Force-enable access to j.l.ClassLoader#defineClass1.
+                putBoolean.invoke(unsafeInstance, defineClass1, overrideFieldOffset, true);
             }
+
+            return (Class<?>) defineClass1.invoke(null, null, className, classBytes, 0, classBytes.length, null, null);
         } else {
-            throw EspressoError.shouldNotReachHere("Java version not supported: " + HostJavaVersionUtil.JAVA_SPEC);
+            throw EspressoError.shouldNotReachHere("Class injection not supported for host Java " + HostJavaVersionUtil.JAVA_SPEC);
         }
+    }
+}
+
+/**
+ * Ensures that SVM initializes the finalization support before loading any classes.
+ */
+final class FinalizationFeature implements Feature {
+
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        FinalizationSupport.ensureInitialized();
     }
 }

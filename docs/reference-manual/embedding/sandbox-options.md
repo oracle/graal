@@ -178,9 +178,7 @@ try (Context context = Context.newBuilder("js")
 #### Implementation details and expert options
 
 The limit is checked by retained size computation triggered either based on [allocated](https://docs.oracle.com/en/java/javase/11/docs/api/jdk.management/com/sun/management/ThreadMXBean.html#getThreadAllocatedBytes\(long\)) bytes or on
-[low memory notification](https://docs.oracle.com/en/java/javase/11/docs/api/java.management/java/lang/management/MemoryMXBean.html). The heap memory limit enforcement schema is depicted in the figure below.
-
-![Heap memory limit enforcement schema](./heapmemorylimitsschema.png "Heap memory limit enforcement schema")
+[low memory notification](https://docs.oracle.com/en/java/javase/11/docs/api/java.management/java/lang/management/MemoryMXBean.html).
 
 The allocated bytes are checked by a separate high-priority thread that will be woken regularly. There is one such thread for each memory-limited context (one with `sandbox.MaxHeapMemory` set).
 The retained bytes computation is done by yet another high-priority thread that is started from the allocated bytes checking thread as needed. The retained bytes computation thread also cancels the context if the heap memory limit is exeeded. Additionaly, when low memory trigger is invoked,

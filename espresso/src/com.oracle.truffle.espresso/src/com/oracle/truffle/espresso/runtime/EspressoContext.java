@@ -44,8 +44,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
-
-import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionMap;
 import org.graalvm.polyglot.Engine;
 
@@ -65,7 +63,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.EspressoBindings;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
-import com.oracle.truffle.espresso.FinalizationFeature;
+import com.oracle.truffle.espresso.FinalizationSupport;
 import com.oracle.truffle.espresso.descriptors.Names;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -403,11 +401,10 @@ public final class EspressoContext {
                         "Native access is not allowed by the host environment but it's required to load Espresso/Java native libraries. " +
                                         "Allow native access on context creation e.g. contextBuilder.allowNativeAccess(true)");
         assert !this.initialized;
-        // eventListener = new EmptyListener();
-        if (!ImageInfo.inImageRuntimeCode()) {
-            // Setup finalization support in the host VM.
-            FinalizationFeature.ensureInitialized();
-        }
+
+        // Setup finalization support in the host VM.
+        FinalizationSupport.ensureInitialized();
+
         spawnVM();
         this.initialized = true;
         // enable JDWP instrumenter only if options are set (assumed valid if non-null)

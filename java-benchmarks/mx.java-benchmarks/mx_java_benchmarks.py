@@ -2033,3 +2033,73 @@ class AWFYBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Averaging
 
 
 mx_benchmark.add_bm_suite(AWFYBenchmarkSuite())
+
+
+_consoleConfig = {
+    "helloworld": {
+        "mainClass": "bench.console.HelloWorld",
+        "args": []
+    },
+    "scalafmt": {
+        "mainClass": "bench.console.Scalafmt",
+        "args": []
+    }
+}
+
+class ConsoleBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
+    """Hello World benchmark suite implementation.
+    """
+    def name(self):
+        return "console"
+
+    def group(self):
+        return "Graal"
+
+    def subgroup(self):
+        return "graal-compiler"
+
+    def benchSuiteName(self, bmSuiteArgs=None):
+        return self.name()
+
+    def helloWorldPath(self):
+            helloWorld = mx.distribution("GRAAL_BENCH_CONSOLE")
+            if helloWorld:
+                return helloWorld.path
+            return None
+
+    def classpathAndMainClass(self, benchmark):
+        main_class = _consoleConfig.get(benchmark)["mainClass"]
+        return ["-cp", self.helloWorldPath(), main_class]
+
+    def appArgs(self, benchmark):
+        return _consoleConfig.get(benchmark)["args"]
+
+    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
+        if benchmarks is None:
+            mx.abort("Suite can only run a single benchmark per VM instance.")
+        elif len(benchmarks) != 1:
+            mx.abort("Must specify exactly one benchmark to run.")
+        elif benchmarks[0] not in self.benchmarkList(bmSuiteArgs):
+            mx.abort("The specified benchmark doesn't exist. Possible values are: " + ", ".join(self.benchmarkList(bmSuiteArgs)))
+        vmArgs = self.runArgs(bmSuiteArgs)
+        runArgs = self.runArgs(bmSuiteArgs)
+        appArgs = self.appArgs(benchmarks[0])
+        return (vmArgs + self.classpathAndMainClass(benchmarks[0]) + runArgs + appArgs)
+
+    def benchmarkList(self, bmSuiteArgs):
+        return sorted(_consoleConfig.keys())
+
+    def successPatterns(self):
+        return []
+
+    def failurePatterns(self):
+        return [
+            re.compile(
+                r"^\[\[\[Graal compilation failure\]\]\]", # pylint: disable=line-too-long
+                re.MULTILINE)
+        ]
+
+    def rules(self, output, benchmarks, bmSuiteArgs):
+        return []
+
+mx_benchmark.add_bm_suite(ConsoleBenchmarkSuite())

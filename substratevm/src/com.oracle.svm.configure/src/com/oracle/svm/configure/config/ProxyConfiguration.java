@@ -26,6 +26,7 @@ package com.oracle.svm.configure.config;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -35,12 +36,29 @@ import com.oracle.svm.configure.json.JsonWriter;
 public class ProxyConfiguration implements ConfigurationBase {
     private final ConcurrentHashMap.KeySetView<List<String>, Boolean> interfaceLists = ConcurrentHashMap.newKeySet();
 
+    public ProxyConfiguration() {
+    }
+
+    public ProxyConfiguration(ProxyConfiguration other) {
+        for (List<String> interfaceList : other.interfaceLists) {
+            interfaceLists.add(new ArrayList<>(interfaceList));
+        }
+    }
+
     public void add(List<String> interfaceList) {
         interfaceLists.add(interfaceList);
     }
 
     public boolean contains(List<String> interfaceList) {
         return interfaceLists.contains(interfaceList);
+    }
+
+    public boolean contains(String... interfaces) {
+        return contains(Arrays.asList(interfaces));
+    }
+
+    public void removeAll(ProxyConfiguration other) {
+        interfaceLists.removeAll(other.interfaceLists);
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,15 +22,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package bench.misc;
+package com.oracle.svm.driver.metainf;
 
-import org.openjdk.jmh.annotations.Benchmark;
-import org.openjdk.jmh.annotations.Scope;
-import org.openjdk.jmh.annotations.State;
+import java.nio.file.Path;
 
-@State(Scope.Benchmark)
-public class HelloWorld {
-    @Benchmark
-    public static void helloWorld() {
-    }
+public interface NativeImageMetaInfResourceProcessor {
+    /**
+     * Process a single file located under the native-image META-INF directory.
+     *
+     * @param classpathEntry Classpath entry from which the file originated.
+     * @param resourceRoot Parent of the META-INF/native-image directory from which the file
+     *            originated.
+     * @param resourcePath Path to the file.
+     * @param type Type of the file.
+     */
+    void processMetaInfResource(Path classpathEntry, Path resourceRoot, Path resourcePath, MetaInfFileType type) throws Exception;
+
+    void showWarning(String message);
+
+    void showVerboseMessage(String message);
+
+    boolean isExcluded(Path resourcePath, Path classpathEntry);
 }

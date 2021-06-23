@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -39,6 +40,28 @@ import jdk.vm.ci.meta.JavaKind;
 
 public class TypeConfiguration implements ConfigurationBase {
     private final ConcurrentMap<String, ConfigurationType> types = new ConcurrentHashMap<>();
+
+    public TypeConfiguration() {
+    }
+
+    public TypeConfiguration(TypeConfiguration other) {
+        for (ConfigurationType configurationType : other.types.values()) {
+            types.put(configurationType.getQualifiedJavaName(), new ConfigurationType(configurationType));
+        }
+    }
+
+    public void removeAll(TypeConfiguration other) {
+        for (Map.Entry<String, ConfigurationType> typeEntry : other.types.entrySet()) {
+            types.computeIfPresent(typeEntry.getKey(), (key, value) -> {
+                if (value.equals(typeEntry.getValue())) {
+                    return null;
+                }
+                assert value.getQualifiedJavaName().equals(typeEntry.getValue().getQualifiedJavaName());
+                value.removeAll(typeEntry.getValue());
+                return value.isEmpty() ? null : value;
+            });
+        }
+    }
 
     public ConfigurationType get(String qualifiedJavaName) {
         return types.get(qualifiedJavaName);

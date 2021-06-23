@@ -58,7 +58,7 @@ import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode.LeaveAction;
 import com.oracle.svm.core.graal.nodes.CEntryPointPrologueBailoutNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointUtilityNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointUtilityNode.UtilityAction;
-import com.oracle.svm.core.graal.nodes.DeadEndNode;
+import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.graal.nodes.ReadReservedRegister;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -169,7 +169,7 @@ public class CEntryPointSupport implements GraalFeature {
                  * FailFatally does not return, so we can cut out any control flow afterwards and
                  * set the probability of the IfNode that leads to this branch.
                  */
-                DeadEndNode deadEndNode = b.add(new DeadEndNode());
+                LoweredDeadEndNode deadEndNode = b.add(new LoweredDeadEndNode());
                 AbstractBeginNode prevBegin = AbstractBeginNode.prevBegin(deadEndNode);
                 if (prevBegin != null && prevBegin.predecessor() instanceof IfNode) {
                     ((IfNode) prevBegin.predecessor()).setProbability(prevBegin, BranchProbabilityNode.EXTREMELY_SLOW_PATH_PROFILE);
