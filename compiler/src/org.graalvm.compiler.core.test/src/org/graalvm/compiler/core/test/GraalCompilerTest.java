@@ -483,7 +483,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected void assertOptimizedAway(StructuredGraph g) {
-        Assert.assertEquals(0, g.getNodes().filter(NotOptimizedNode.class).count());
+        Assert.assertEquals("nodes to be optimized away", 0, g.getNodes().filter(NotOptimizedNode.class).count());
     }
 
     protected void assertConstantReturn(StructuredGraph graph, int value) {
