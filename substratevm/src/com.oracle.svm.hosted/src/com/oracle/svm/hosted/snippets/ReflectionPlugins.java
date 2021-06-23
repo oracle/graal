@@ -63,6 +63,7 @@ import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.TypeResult;
 import com.oracle.svm.core.annotate.Delete;
+import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ExceptionSynthesizer;
@@ -286,6 +287,9 @@ public final class ReflectionPlugins {
             return throwException(b, targetMethod, targetParameters, e.getClass(), e.getMessage());
         }
         Class<?> clazz = typeResult.get();
+        if (!ClassForNameSupport.canBeFolded(clazz)) {
+            return false;
+        }
 
         JavaConstant classConstant = pushConstant(b, targetMethod, targetParameters, JavaKind.Object, clazz);
         if (classConstant == null) {
