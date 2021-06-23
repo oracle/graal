@@ -133,9 +133,9 @@ mx_benchmark.java_vm_registry.add_vm(EspressoVm('single-tier', ['--experimental-
 mx_benchmark.java_vm_registry.add_vm(EspressoVm('multi-tier', ['--experimental-options', '--engine.MultiTier=true']), _suite)
 mx_benchmark.java_vm_registry.add_vm(EspressoVm('multi-tier-inline-accessors', ['--experimental-options', '--engine.MultiTier', '--java.InlineFieldAccessors']), _suite)
 mx_benchmark.java_vm_registry.add_vm(EspressoVm('no-inlining', ['--experimental-options', '--engine.Inlining=false']), _suite)
-mx_benchmark.java_vm_registry.add_vm(EspressoVm('safe', ['--vm.Dcom.oracle.truffle.api.staticobject.SafeCasts=true', '--vm.Dcom.oracle.truffle.api.staticobject.ShapeChecks=true']), _suite)
-mx_benchmark.java_vm_registry.add_vm(EspressoVm('array-based', ['--vm.Dcom.oracle.truffle.api.staticobject.ArrayBasedStorage=true']), _suite)
-mx_benchmark.java_vm_registry.add_vm(EspressoVm('array-based-safe', ['--vm.Dcom.oracle.truffle.api.staticobject.ArrayBasedStorage=true', '--vm.Dcom.oracle.truffle.api.staticobject.SafeCasts=true', '--vm.Dcom.oracle.truffle.api.staticobject.ShapeChecks=true']), _suite)
+mx_benchmark.java_vm_registry.add_vm(EspressoVm('safe', ['--engine.RelaxSomSafetyChecks=false']), _suite)
+mx_benchmark.java_vm_registry.add_vm(EspressoVm('array-based', ['--engine.SomStorageStrategy=array-based']), _suite)
+mx_benchmark.java_vm_registry.add_vm(EspressoVm('array-based-safe', ['--engine.SomStorageStrategy=array-based', '--engine.RelaxSomSafetyChecks=false']), _suite)
 
 mx_benchmark.java_vm_registry.add_vm(EspressoMinHeapVm(0, 0, 64, 'infinite-overhead', []), _suite)
 mx_benchmark.java_vm_registry.add_vm(EspressoMinHeapVm(1.5, 0, 2048, '1.5-overhead', []), _suite)
