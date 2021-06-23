@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2020, 2021, Alibaba Group Holding Limited. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,34 +22,37 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.configure.config;
+package com.oracle.svm.agent.ignoredconfig;
 
-import java.io.IOException;
+import java.nio.file.Path;
 
-import com.oracle.svm.configure.json.JsonPrintable;
-import com.oracle.svm.configure.json.JsonWriter;
+import com.oracle.svm.configure.config.ConfigurationSet;
+import com.oracle.svm.driver.metainf.MetaInfFileType;
+import com.oracle.svm.driver.metainf.NativeImageMetaInfResourceProcessor;
 
-public final class ConfigurationPredefinedClass implements JsonPrintable {
+public class AgentMetaInfProcessor implements NativeImageMetaInfResourceProcessor {
 
-    private final String nameInfo;
-    private final String hash;
+    private ConfigurationSet ignoredConfigSet;
 
-    public ConfigurationPredefinedClass(String nameInfo, String hash) {
-        this.nameInfo = nameInfo;
-        this.hash = hash;
-    }
-
-    public String getNameInfo() {
-        return nameInfo;
+    public AgentMetaInfProcessor(ConfigurationSet ignoredConfigSet) {
+        this.ignoredConfigSet = ignoredConfigSet;
     }
 
     @Override
-    public void printJson(JsonWriter writer) throws IOException {
-        writer.append("{ ");
-        if (nameInfo != null) {
-            writer.quote("nameInfo").append(':').quote(nameInfo).append(", ");
-        }
-        writer.quote("hash").append(':').quote(hash);
-        writer.append(" }");
+    public void processMetaInfResource(Path classpathEntry, Path resourceRoot, Path resourcePath, MetaInfFileType type) throws Exception {
+        ignoredConfigSet.addDirectory(resourcePath.getParent());
+    }
+
+    @Override
+    public void showWarning(String message) {
+    }
+
+    @Override
+    public void showVerboseMessage(String message) {
+    }
+
+    @Override
+    public boolean isExcluded(Path resourcePath, Path classpathEntry) {
+        return false;
     }
 }

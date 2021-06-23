@@ -64,6 +64,21 @@ public class ResourceConfiguration implements ConfigurationBase {
     private final ConcurrentMap<String, Pattern> ignoredResources = new ConcurrentHashMap<>();
     private final ConcurrentHashMap.KeySetView<String, Boolean> bundles = ConcurrentHashMap.newKeySet();
 
+    public ResourceConfiguration() {
+    }
+
+    public ResourceConfiguration(ResourceConfiguration other) {
+        addedResources.putAll(other.addedResources);
+        ignoredResources.putAll(other.ignoredResources);
+        bundles.addAll(other.bundles);
+    }
+
+    public void removeAll(ResourceConfiguration other) {
+        addedResources.keySet().removeAll(other.addedResources.keySet());
+        ignoredResources.keySet().removeAll(other.ignoredResources.keySet());
+        bundles.removeAll(other.bundles);
+    }
+
     public void addResourcePattern(String pattern) {
         addedResources.computeIfAbsent(pattern, Pattern::compile);
     }
