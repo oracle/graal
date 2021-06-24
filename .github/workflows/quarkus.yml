@@ -19,6 +19,7 @@ env:
   COMMON_MAVEN_ARGS: "-e -B --settings .github/mvn-settings.xml --fail-at-end"
   NATIVE_TEST_MAVEN_ARGS: "-Dtest-containers -Dstart-containers -Dquarkus.native.native-image-xmx=5g -Dnative -Dnative.surefire.skip -Dformat.skip -Dno-descriptor-tests install -DskipDocs"
   MX_GIT_CACHE: refcache
+  MX_PYTHON_VERSION: 3
   MX_PATH: ${{ github.workspace }}/mx
   JAVA_HOME: ${{ github.workspace }}/jdk
   QUARKUS_PATH: ${{ github.workspace }}/quarkus
@@ -62,7 +63,7 @@ jobs:
     - name: Get JDK
       run: |
         mkdir jdk-dl
-        ${MX_PATH}/mx fetch-jdk --java-distribution labsjdk-ce-11 --to jdk-dl --alias ${JAVA_HOME}
+        ${MX_PATH}/mx fetch-jdk --jdk-id labsjdk-ce-11 --to jdk-dl --alias ${JAVA_HOME}
     - name: Build graalvm native-image
       run: |
         cd substratevm

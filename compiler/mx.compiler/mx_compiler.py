@@ -28,7 +28,7 @@
 
 from __future__ import print_function
 import os
-from os.path import join, exists, getmtime, basename, dirname, isdir
+from os.path import join, exists, getmtime, basename, dirname, isdir, islink
 from argparse import ArgumentParser, RawDescriptionHelpFormatter, REMAINDER
 import re
 import stat
@@ -99,6 +99,9 @@ def get_vm_prefix(asList=True):
 #: The JDK used to build and run Graal.
 jdk = mx.get_jdk(tag='default')
 
+#: 3-tuple (major, minor, build) of JVMCI version, if any, denoted by `jdk`
+_jdk_jvmci_version = None
+
 if jdk.javaCompliance < '1.8':
     mx.abort('Graal requires JDK8 or later, got ' + str(jdk))
 
@@ -142,7 +145,14 @@ def _check_jvmci_version(jdk):
             with open(unqualified_source_path, 'w') as fp:
                 fp.write(source_supplier().replace('package org.graalvm.compiler.hotspot;', ''))
             mx.run([jdk.javac, '-d', sdu.directory, unqualified_source_path])
-    mx.run([jdk.java, '-cp', binDir, unqualified_name])
+
+    jvmci_version_file = join(binDir, 'jvmci_version.' + str(os.getpid()))
+    mx.run([jdk.java, '-DJVMCIVersionCheck.jvmci.version.file=' + jvmci_version_file, '-cp', binDir, unqualified_name])
+    if exists(jvmci_version_file):
+        with open(jvmci_version_file) as fp:
+            global _jdk_jvmci_version
+            _jdk_jvmci_version = tuple((int(n) for n in fp.read().split(',')))
+        os.remove(jvmci_version_file)
 
 if os.environ.get('JVMCI_VERSION_CHECK', None) != 'ignore':
     _check_jvmci_version(jdk)
@@ -982,26 +992,18 @@ def run_vm_with_jvmci_compiler(args, nonZeroIsFatal=True, out=None, err=None, cw
     jvmci_args = ['-XX:+UseJVMCICompiler'] + args
     return run_vm(jvmci_args, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd, timeout=timeout, debugLevel=debugLevel, vmbuild=vmbuild)
 
-def _check_latest_jvmci_version(jdk):
+def _check_latest_jvmci_version():
     """
-    If `jdk` is a JVMCI JDK, checks that its JVMCI version is the same as
-    the JVMCI version as the JVMCI JDKs in "jdks" section in the top level
-    ``common.json`` file and issues a warning if it is not.
+    If `_jdk_jvmci_version` is not None, checks that it is the same as
+    the JVMCI version of the JVMCI JDKs in the "jdks" section of the
+    ``common.json`` file and issues a warning if not.
     """
     jvmci_re = re.compile(r'.*-jvmci-(\d+)\.(\d+)-b(\d+)')
     common_path = join(_suite.dir, '..', 'common.json')
 
-    def get_current_jvmci_version():
-        out = mx.LinesOutputCapture()
-        mx.run([jdk.java, '-XshowSettings:properties', '-version'], out=out, err=out)
-        for line in out.lines:
-            if 'java.vm.version = ' in line:
-                version = line.split('=', 1)[1].strip()
-                m = jvmci_re.match(version)
-                if m:
-                    return tuple(int(n) for n in m.group(1, 2, 3))
-                break
-        return None
+    if _jdk_jvmci_version is None:
+        # Not using a JVMCI JDK
+        return
 
     def get_latest_jvmci_version():
         with open(common_path) as common_file:
@@ -1025,16 +1027,16 @@ def _check_latest_jvmci_version(jdk):
         major, minor, build = version
         return 'jvmci-{}.{}-b{:02d}'.format(major, minor, build)
 
-    current, latest = get_current_jvmci_version(), get_latest_jvmci_version()
-    if current is not None and latest is not None and current < latest:
+    latest = get_latest_jvmci_version()
+    if latest is not None and _jdk_jvmci_version < latest:
         common_path = os.path.normpath(common_path)
         msg = 'JVMCI version of JAVA_HOME is older than in {}: {} < {} '.format(
             common_path,
-            jvmci_version_str(current),
+            jvmci_version_str(_jdk_jvmci_version),
             jvmci_version_str(latest))
         msg += os.linesep + 'This poses the risk of hitting JVMCI bugs that have already been fixed.'
         msg += os.linesep + 'Consider using {}, which you can get via:'.format(jvmci_version_str(latest))
-        msg += os.linesep + 'mx fetch-jdk --configuration {} --to ~/.mx/cache/jdks'.format(common_path)
+        msg += os.linesep + 'mx fetch-jdk --configuration {}'.format(common_path)
         mx.warn(msg)
 
 class GraalArchiveParticipant:
@@ -1048,8 +1050,9 @@ class GraalArchiveParticipant:
         self.services = services
         self.arc = arc
 
-    def __add__(self, arcname, contents): # pylint: disable=unexpected-special-method-signature
-
+    def __process__(self, arcname, contents_supplier, is_source):
+        if is_source:
+            return False
         def add_serviceprovider(service, provider, version):
             if version is None:
                 # Non-versioned service
@@ -1068,7 +1071,7 @@ class GraalArchiveParticipant:
                 pass
             else:
                 provider = m.group(2)
-                for service in _decode(contents).strip().split(os.linesep):
+                for service in _decode(contents_supplier()).strip().split(os.linesep):
                     assert service
                     version = m.group(1)
                     add_serviceprovider(service, provider, version)
@@ -1092,16 +1095,13 @@ class GraalArchiveParticipant:
                 add_serviceprovider(service, provider, version)
         return False
 
-    def __addsrc__(self, arcname, contents):
-        return False
-
     def __closing__(self):
         _record_last_updated_jar(self.dist, self.arc.path)
         if self.dist.name == 'GRAAL':
             # Check if we're using the same JVMCI JDK as the CI system does.
             # This only done when building the GRAAL distribution so as to
             # not be too intrusive.
-            _check_latest_jvmci_version(jdk)
+            _check_latest_jvmci_version()
 
 mx.add_argument('--vmprefix', action='store', dest='vm_prefix', help='prefix for running the VM (e.g. "gdb --args")', metavar='<prefix>')
 mx.add_argument('--gdb', action='store_const', const='gdb --args', dest='vm_prefix', help='alias for --vmprefix "gdb --args"')
@@ -1311,7 +1311,12 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
         mx.log('Updating/creating {} from {} using intermediate directory {} since {}'.format(dst_jdk_dir, src_jdk.home, tmp_dst_jdk_dir, update_reason))
         def _copy_file(src, dst):
             mx.log('Copying {} to {}'.format(src, dst))
-            shutil.copyfile(src, dst)
+            if mx.can_symlink():
+                if exists(dst) and islink(dst):
+                    os.remove(dst)
+                os.symlink(src, dst)
+            else:
+                shutil.copyfile(src, dst)
 
         vm_name = 'Server VM Graal'
         for d in _graal_config().jvmci_dists:
@@ -1344,7 +1349,8 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
                 boot_jars += _graal_config().jvmci_parent_jars
 
             for src_jar in boot_jars:
-                _copy_file(src_jar, join(boot_dir, basename(src_jar)))
+                dst_jar = join(boot_dir, basename(src_jar))
+                _copy_file(src_jar, dst_jar)
 
         else:
             module_dists = _graal_config().dists

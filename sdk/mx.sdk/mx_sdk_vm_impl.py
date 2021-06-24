@@ -1506,7 +1506,6 @@ class GraalVmJImage(mx.Project):
                 for name in files:
                     yield join(root, name), relpath(join(root, name), logical_root)
 
-
 class GraalVmJImageBuildTask(mx.ProjectBuildTask):
     def __init__(self, subject, args):
         super(GraalVmJImageBuildTask, self).__init__(args, 1, subject)
@@ -1515,14 +1514,25 @@ class GraalVmJImageBuildTask(mx.ProjectBuildTask):
         def with_source(dep):
             return not isinstance(dep, mx.Dependency) or (_include_sources(dep.qualifiedName()) and dep.isJARDistribution() and not dep.is_stripped())
         vendor_info = {'vendor-version': graalvm_vendor_version(get_final_graalvm_distribution())}
+        out_dir = self.subject.output_directory()
 
         if _jlink_libraries():
-            mx_sdk.jlink_new_jdk(_src_jdk, self.subject.output_directory(), self.subject.deps, self.subject.jimage_ignore_jars, with_source=with_source, vendor_info=vendor_info)
+            use_upgrade_module_path = mx.get_env('MX_BUILD_EXPLODED') == 'true'
+            built = mx_sdk.jlink_new_jdk(_src_jdk,
+                                 out_dir,
+                                 self.subject.deps,
+                                 self.subject.jimage_ignore_jars,
+                                 with_source=with_source,
+                                 vendor_info=vendor_info,
+                                 use_upgrade_module_path=use_upgrade_module_path)
         else:
             mx.warn("--no-jlinking flag used. The resulting VM will be HotSpot, not GraalVM")
-            shutil.copytree(_src_jdk.home, self.subject.output_directory(), symlinks=True)
+            if exists(out_dir):
+                mx.rmtree(out_dir)
+            shutil.copytree(_src_jdk.home, out_dir, symlinks=True)
+            built = True
 
-        release_file = join(self.subject.output_directory(), 'release')
+        release_file = join(out_dir, 'release')
         _sorted_suites = sorted(mx.suites(), key=lambda s: s.name)
         _metadata = BaseGraalVmLayoutDistribution._get_metadata(_sorted_suites, release_file)
         with open(release_file, 'w') as f:
@@ -1530,6 +1540,7 @@ class GraalVmJImageBuildTask(mx.ProjectBuildTask):
 
         with open(self._config_file(), 'w') as f:
             f.write('\n'.join(self._config()))
+        return built
 
     def needsBuild(self, newestInput):
         sup = super(GraalVmJImageBuildTask, self).needsBuild(newestInput)
@@ -1540,19 +1551,24 @@ class GraalVmJImageBuildTask(mx.ProjectBuildTask):
             return True, '{} does not exist'.format(out_file.path)
         if newestInput and out_file.isOlderThan(newestInput):
             return True, '{} is older than {}'.format(out_file, newestInput)
-        with open(self._config_file(), 'r') as f:
-            old_config = [l.strip() for l in f.readlines()]
-            if set(old_config) != set(self._config()):
-                return True, 'the configuration changed'
+        if exists(self._config_file()):
+            with open(self._config_file(), 'r') as f:
+                old_config = [l.strip() for l in f.readlines()]
+                if set(old_config) != set(self._config()):
+                    return True, 'the configuration changed'
         return False, None
 
     def newestOutput(self):
         return mx.TimeStampFile(self.subject.output_witness())
 
     def clean(self, forBuild=False):
-        out_dir = self.subject.output_directory()
-        if exists(out_dir):
-            mx.rmtree(out_dir)
+        if not forBuild:
+            out_dir = self.subject.output_directory()
+            if exists(out_dir):
+                mx.rmtree(out_dir)
+        else:
+            # Cleaning will be done by self.build() if necessary
+            pass
 
     def __str__(self):
         return 'Building {}'.format(self.subject.name)
@@ -1563,6 +1579,8 @@ class GraalVmJImageBuildTask(mx.ProjectBuildTask):
             'include sources: {}'.format(_include_sources_str()),
             'strip jars: {}'.format(mx.get_opts().strip_jars),
             'vendor-version: {}'.format(graalvm_vendor_version(get_final_graalvm_distribution())),
+            'source JDK: {}'.format(_src_jdk.home),
+            'use_upgrade_module_path: {}'.format(mx.get_env('GRAALVM_JIMAGE_USE_UPGRADE_MODULE_PATH', None))
         ]
 
     def _config_file(self):
