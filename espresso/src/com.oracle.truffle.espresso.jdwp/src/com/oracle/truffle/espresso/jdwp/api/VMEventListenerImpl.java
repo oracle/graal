@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.jdwp.impl;
+package com.oracle.truffle.espresso.jdwp.api;
 
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
@@ -37,16 +37,23 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.espresso.jdwp.api.CallFrame;
-import com.oracle.truffle.espresso.jdwp.api.FieldBreakpoint;
-import com.oracle.truffle.espresso.jdwp.api.FieldRef;
-import com.oracle.truffle.espresso.jdwp.api.Ids;
-import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
-import com.oracle.truffle.espresso.jdwp.api.KlassRef;
-import com.oracle.truffle.espresso.jdwp.api.MethodHook;
-import com.oracle.truffle.espresso.jdwp.api.MethodRef;
-import com.oracle.truffle.espresso.jdwp.api.MethodVariable;
-import com.oracle.truffle.espresso.jdwp.api.TagConstants;
+import com.oracle.truffle.espresso.jdwp.impl.BreakpointInfo;
+import com.oracle.truffle.espresso.jdwp.impl.ClassPrepareRequest;
+import com.oracle.truffle.espresso.jdwp.impl.DebuggerController;
+import com.oracle.truffle.espresso.jdwp.impl.FieldBreakpointEvent;
+import com.oracle.truffle.espresso.jdwp.impl.FieldBreakpointInfo;
+import com.oracle.truffle.espresso.jdwp.impl.JDWP;
+import com.oracle.truffle.espresso.jdwp.impl.MethodBreakpointEvent;
+import com.oracle.truffle.espresso.jdwp.impl.MethodBreakpointInfo;
+import com.oracle.truffle.espresso.jdwp.impl.MonitorEvent;
+import com.oracle.truffle.espresso.jdwp.impl.PacketStream;
+import com.oracle.truffle.espresso.jdwp.impl.RequestFilter;
+import com.oracle.truffle.espresso.jdwp.impl.RequestedJDWPEvents;
+import com.oracle.truffle.espresso.jdwp.impl.SocketConnection;
+import com.oracle.truffle.espresso.jdwp.impl.SteppingInfo;
+import com.oracle.truffle.espresso.jdwp.impl.SuspendStrategy;
+import com.oracle.truffle.espresso.jdwp.impl.SuspendedInfo;
+import com.oracle.truffle.espresso.jdwp.impl.TypeTag;
 
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
@@ -54,9 +61,6 @@ public final class VMEventListenerImpl implements VMEventListener {
 
     public static final InteropLibrary UNCACHED = InteropLibrary.getUncached();
 
-    private final Ids<Object> ids;
-    private final JDWPContext context;
-    private final DebuggerController debuggerController;
     private final HashMap<Integer, ClassPrepareRequest> classPrepareRequests = new HashMap<>();
     private final HashMap<Integer, BreakpointInfo> breakpointRequests = new HashMap<>();
     private final HashMap<Integer, RequestFilter> monitorContendedRequests = new HashMap<>();
@@ -64,6 +68,9 @@ public final class VMEventListenerImpl implements VMEventListener {
     private final HashMap<Integer, RequestFilter> monitorWaitRequests = new HashMap<>();
     private final HashMap<Integer, RequestFilter> monitorWaitedRequests = new HashMap<>();
     private SocketConnection connection;
+    private JDWPContext context;
+    private Ids<Object> ids;
+    private DebuggerController debuggerController;
     private volatile boolean holdEvents;
 
     private int threadStartedRequestId;
@@ -74,13 +81,13 @@ public final class VMEventListenerImpl implements VMEventListener {
     private int vmStartRequestId;
     private final List<PacketStream> heldEvents = new ArrayList<>();
     private final Map<Object, Object> currentContendedMonitor = new HashMap<>();
-    private final Object initialThread;
+    private Object initialThread;
 
-    public VMEventListenerImpl(DebuggerController controller, Object initialThread) {
-        this.debuggerController = controller;
-        this.context = controller.getContext();
+    public void activate(Object mainThread, DebuggerController control, JDWPContext jdwpContext) {
+        this.initialThread = mainThread;
+        this.debuggerController = control;
+        this.context = jdwpContext;
         this.ids = context.getIds();
-        this.initialThread = initialThread;
     }
 
     public void setConnection(SocketConnection connection) {
@@ -648,6 +655,9 @@ public final class VMEventListenerImpl implements VMEventListener {
     @Override
     @TruffleBoundary
     public void monitorWait(Object monitor, long timeout) {
+        if (context == null) {
+            return;
+        }
         Object guestThread = context.asGuestThread(Thread.currentThread());
         // a call to wait marks the monitor as contended
         currentContendedMonitor.put(guestThread, monitor);
@@ -722,6 +732,9 @@ public final class VMEventListenerImpl implements VMEventListener {
     @Override
     @TruffleBoundary
     public void monitorWaited(Object monitor, boolean timedOut) {
+        if (context == null) {
+            return;
+        }
         Object currentThread = context.asGuestThread(Thread.currentThread());
         // remove contended monitor from the thread
         currentContendedMonitor.remove(currentThread);
@@ -751,6 +764,9 @@ public final class VMEventListenerImpl implements VMEventListener {
     @Override
     @TruffleBoundary
     public void onContendedMonitorEnter(Object monitor) {
+        if (context == null) {
+            return;
+        }
         Object guestThread = context.asGuestThread(Thread.currentThread());
         currentContendedMonitor.put(guestThread, monitor);
 
@@ -781,6 +797,9 @@ public final class VMEventListenerImpl implements VMEventListener {
     @Override
     @TruffleBoundary
     public void onContendedMonitorEntered(Object monitor) {
+        if (context == null) {
+            return;
+        }
         Object guestThread = context.asGuestThread(Thread.currentThread());
         currentContendedMonitor.remove(guestThread);
 
@@ -859,7 +878,6 @@ public final class VMEventListenerImpl implements VMEventListener {
         }
     }
 
-    @Override
     public void vmStarted(boolean suspend) {
         PacketStream stream = new PacketStream().commandPacket().commandSet(64).command(100);
         stream.writeByte(suspend ? SuspendStrategy.ALL : SuspendStrategy.NONE);

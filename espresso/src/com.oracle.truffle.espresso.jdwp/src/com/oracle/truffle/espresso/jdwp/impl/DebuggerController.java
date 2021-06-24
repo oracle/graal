@@ -61,6 +61,7 @@ import com.oracle.truffle.espresso.jdwp.api.JDWPOptions;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.jdwp.api.MonitorStackInfo;
+import com.oracle.truffle.espresso.jdwp.api.VMEventListener;
 
 public final class DebuggerController implements ContextsListener {
 
@@ -98,12 +99,12 @@ public final class DebuggerController implements ContextsListener {
         this.eventFilters = new EventFilters();
     }
 
-    public void initialize(Debugger debug, JDWPOptions jdwpOptions, JDWPContext jdwpContext, Object thread) {
+    public void initialize(Debugger debug, JDWPOptions jdwpOptions, JDWPContext jdwpContext, Object thread, VMEventListener vmEventListener) {
         this.debugger = debug;
         this.options = jdwpOptions;
         this.context = jdwpContext;
         this.ids = jdwpContext.getIds();
-        this.eventListener = new VMEventListenerImpl(this, thread);
+        this.eventListener = vmEventListener;
         this.initialThread = thread;
 
         // setup the debug session object early to make sure instrumentable nodes are materialized
@@ -114,7 +115,7 @@ public final class DebuggerController implements ContextsListener {
     }
 
     public void reInitialize() {
-        initialize(debugger, options, context, initialThread);
+        initialize(debugger, options, context, initialThread, eventListener);
     }
 
     public JDWPContext getContext() {

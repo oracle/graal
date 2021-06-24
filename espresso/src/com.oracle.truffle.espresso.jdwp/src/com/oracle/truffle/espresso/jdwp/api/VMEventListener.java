@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,11 +20,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.jdwp.impl;
+package com.oracle.truffle.espresso.jdwp.api;
 
-import com.oracle.truffle.espresso.jdwp.api.CallFrame;
-import com.oracle.truffle.espresso.jdwp.api.VMListener;
-import com.oracle.truffle.espresso.jdwp.api.KlassRef;
+import com.oracle.truffle.espresso.jdwp.impl.BreakpointInfo;
+import com.oracle.truffle.espresso.jdwp.impl.ClassPrepareRequest;
+import com.oracle.truffle.espresso.jdwp.impl.FieldBreakpointEvent;
+import com.oracle.truffle.espresso.jdwp.impl.MethodBreakpointEvent;
+import com.oracle.truffle.espresso.jdwp.impl.RequestFilter;
+import com.oracle.truffle.espresso.jdwp.impl.SocketConnection;
+import com.oracle.truffle.espresso.jdwp.impl.SteppingInfo;
 
 public interface VMEventListener extends VMListener {
     void setConnection(SocketConnection connection);

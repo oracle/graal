@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -594,9 +594,14 @@ public final class VM extends NativeEnv implements ContextAccess {
                 meta.HIDDEN_THREAD_BLOCKED_OBJECT.setHiddenObject(currentThread, self);
                 Target_java_lang_Thread.incrementThreadCounter(currentThread, meta.HIDDEN_THREAD_WAITED_COUNT);
             }
-            context.getJDWPListener().monitorWait(self, timeout);
+            final boolean report = context.shouldReportVMEvents();
+            if (report) {
+                context.reportMonitorWait(self, timeout);
+            }
             boolean timedOut = !InterpreterToVM.monitorWait(self.getLock(), timeout);
-            context.getJDWPListener().monitorWaited(self, timedOut);
+            if (report) {
+                context.reportMonitorWaited(self, timedOut);
+            }
         } catch (InterruptedException e) {
             profiler.profile(0);
             Target_java_lang_Thread.setInterrupt(currentThread, false);

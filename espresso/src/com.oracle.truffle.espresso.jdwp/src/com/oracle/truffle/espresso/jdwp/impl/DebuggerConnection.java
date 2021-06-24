@@ -486,7 +486,7 @@ public final class DebuggerConnection implements Commands {
                                     result = JDWP.ThreadReference.OWNED_MONITORS.createReply(packet, controller);
                                     break;
                                 case JDWP.ThreadReference.CURRENT_CONTENDED_MONITOR.ID:
-                                    result = JDWP.ThreadReference.CURRENT_CONTENDED_MONITOR.createReply(packet, context);
+                                    result = JDWP.ThreadReference.CURRENT_CONTENDED_MONITOR.createReply(packet, controller);
                                     break;
                                 case JDWP.ThreadReference.STOP.ID:
                                     result = JDWP.ThreadReference.STOP.createReply(packet, context);
