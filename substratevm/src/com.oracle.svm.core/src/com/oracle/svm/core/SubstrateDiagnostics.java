@@ -64,6 +64,8 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfos;
 import com.oracle.svm.core.util.Counter;
 
+import jdk.vm.ci.code.CodeUtil;
+
 public class SubstrateDiagnostics {
     private static final int REGISTERS = 1;
     private static final int FRAME_ANCHORS = REGISTERS << 1;
@@ -77,15 +79,13 @@ public class SubstrateDiagnostics {
     private static final int CURRENT_THREAD_RAW_STACKTRACE = COUNTERS << 1;
     private static final int CURRENT_THREAD_DECODED_STACKTRACE = CURRENT_THREAD_RAW_STACKTRACE << 1;
     private static final int OTHER_STACK_TRACES = CURRENT_THREAD_DECODED_STACKTRACE << 1;
+    private static final int NUM_NAMED_SECTIONS = CodeUtil.log2(OTHER_STACK_TRACES << 1);
 
     private static final Stage0StackFramePrintVisitor[] PRINT_VISITORS = new Stage0StackFramePrintVisitor[]{Stage0StackFramePrintVisitor.SINGLETON, Stage1StackFramePrintVisitor.SINGLETON,
                     StackFramePrintVisitor.SINGLETON};
 
-    private static final AtomicWord<IsolateThread> diagnosticThread = new AtomicWord<>();
     private static final FastThreadLocalBytes<CCharPointer> threadOnlyAttachedForCrashHandler = FastThreadLocalFactory.createBytes(() -> 1);
-
-    private static volatile int diagnosticSections = 0;
-    private static volatile int diagnosticThunkIndex = 0;
+    private static final PrintDiagnosticsState state = new PrintDiagnosticsState();
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void setOnlyAttachedForCrashHandler(IsolateThread thread) {
@@ -97,7 +97,15 @@ public class SubstrateDiagnostics {
     }
 
     public static boolean isInProgress() {
-        return diagnosticThread.get().isNonNull();
+        return state.diagnosticThread.get().isNonNull();
+    }
+
+    public static boolean isInProgressByCurrentThread() {
+        return state.diagnosticThread.get() == CurrentIsolate.getCurrentThread();
+    }
+
+    public static int getSectionCount() {
+        return NUM_NAMED_SECTIONS + DiagnosticThunkRegister.getSingleton().size();
     }
 
     /** Prints extensive diagnostic information to the given Log. */
@@ -112,14 +120,26 @@ public class SubstrateDiagnostics {
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate during printing diagnostics.")
     static void print(Log log, Pointer sp, CodePointer ip, RegisterDumper.Context context) {
         log.newline();
-        IsolateThread currentThread = CurrentIsolate.getCurrentThread();
-        if (!diagnosticThread.compareAndSet(WordFactory.nullPointer(), currentThread) && diagnosticThread.get().notEqual(currentThread)) {
+        // Save the state of the initial error so that this state is consistently used, even if
+        // further errors occur while printing diagnostics.
+        if (!state.trySet(log, sp, ip, context) && !isInProgressByCurrentThread()) {
             log.string("Error: printDiagnostics already in progress by another thread.").newline();
             log.newline();
             return;
         }
 
-        if (diagnosticSections > 0) {
+        printDiagnosticsForCurrentState();
+    }
+
+    private static void printDiagnosticsForCurrentState() {
+        assert isInProgressByCurrentThread();
+
+        Log log = state.log;
+        Pointer sp = state.sp;
+        CodePointer ip = state.ip;
+        IsolateThread currentThread = CurrentIsolate.getCurrentThread();
+
+        if (state.diagnosticSections > 0) {
             log.newline();
             log.string("An error occurred while printing diagnostics. The remaining part of this section will be skipped.").newline();
             log.resetIndentation();
@@ -129,7 +149,7 @@ public class SubstrateDiagnostics {
         // printed earlier.
         if (shouldPrint(REGISTERS)) {
             try {
-                dumpRegisters(log, context);
+                dumpRegisters(log, state.context);
             } catch (Exception e) {
                 dumpException(log, "dumpRegisters", e);
             }
@@ -209,10 +229,7 @@ public class SubstrateDiagnostics {
 
         if (shouldPrint(OTHER_STACK_TRACES)) {
             if (VMOperation.isInProgressAtSafepoint()) {
-                /*
-                 * Only used for diagnostics - iterate all threads without locking the threads
-                 * mutex.
-                 */
+                // Iterate all threads without locking the threads.
                 for (IsolateThread vmThread = VMThreads.firstThreadUnsafe(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
                     if (vmThread == currentThread) {
                         continue;
@@ -227,23 +244,21 @@ public class SubstrateDiagnostics {
         }
 
         int numDiagnosticThunks = DiagnosticThunkRegister.getSingleton().size();
-        while (diagnosticThunkIndex < numDiagnosticThunks) {
+        while (state.diagnosticThunkIndex < numDiagnosticThunks) {
             try {
-                int index = diagnosticThunkIndex++;
+                int index = state.diagnosticThunkIndex++;
                 DiagnosticThunkRegister.getSingleton().callDiagnosticThunk(log, index);
             } catch (Exception e) {
                 dumpException(log, "callThunks", e);
             }
         }
 
-        diagnosticThunkIndex = 0;
-        diagnosticSections = 0;
-        diagnosticThread.set(WordFactory.nullPointer());
+        state.clear();
     }
 
     private static boolean shouldPrint(int sectionBit) {
-        if ((diagnosticSections & sectionBit) == 0) {
-            diagnosticSections |= sectionBit;
+        if ((state.diagnosticSections & sectionBit) == 0) {
+            state.diagnosticSections |= sectionBit;
             return true;
         }
         return false;
@@ -438,6 +453,43 @@ public class SubstrateDiagnostics {
         log.indent(true);
         JavaStackWalker.walkThread(vmThread, StackFramePrintVisitor.SINGLETON, log);
         log.indent(false);
+    }
+
+    private static class PrintDiagnosticsState {
+        AtomicWord<IsolateThread> diagnosticThread = new AtomicWord<>();
+        volatile int diagnosticSections;
+        volatile int diagnosticThunkIndex;
+
+        Log log;
+        Pointer sp;
+        CodePointer ip;
+        RegisterDumper.Context context;
+
+        @SuppressWarnings("hiding")
+        public boolean trySet(Log log, Pointer sp, CodePointer ip, RegisterDumper.Context context) {
+            if (diagnosticThread.compareAndSet(WordFactory.nullPointer(), CurrentIsolate.getCurrentThread())) {
+                assert diagnosticSections == 0;
+                assert diagnosticThunkIndex == 0;
+                this.log = log;
+                this.sp = sp;
+                this.ip = ip;
+                this.context = context;
+                return true;
+            }
+            return false;
+        }
+
+        public void clear() {
+            log = null;
+            sp = WordFactory.nullPointer();
+            ip = WordFactory.nullPointer();
+            context = WordFactory.nullPointer();
+
+            diagnosticThunkIndex = 0;
+            diagnosticSections = 0;
+
+            diagnosticThread.set(WordFactory.nullPointer());
+        }
     }
 
     /** The functional interface for a "thunk" that does not allocate. */
