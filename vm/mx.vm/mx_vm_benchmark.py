@@ -851,8 +851,8 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
             return "compile-time"
         elif metric == "partial-evaluation-time":
             return "pe-time"
-        elif metric == "warmup-time":
-            return "warmup-time"
+        elif metric == "one-shot":
+            return "one-shot"
         else:
             return "time"
 

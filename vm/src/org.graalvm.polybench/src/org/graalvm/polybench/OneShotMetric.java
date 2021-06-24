@@ -28,13 +28,13 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * WarmupMetric measures the warmup speed of Truffle-language implementations.
+ * OneShotMetric indicates the time required to run a program once.
  *
- * Warmup time is approximated by measuring the time required to run a program once.
+ * To reduce variance, we run the program multiple times, each in a different fork.
  *
- * To reduce variance, we run the program multiple times, each in a different fork (see `ci_common/benchmark-forks.json`).
+ * See ci_common/benchmark-forks.json
  */
-final class WarmupMetric implements Metric {
+final class OneShotMetric implements Metric {
     long startTime;
     long endTime;
 
@@ -45,7 +45,7 @@ final class WarmupMetric implements Metric {
 
     @Override
     public String name() {
-        return "warmup time";
+        return "one-shot time";
     }
 
     @Override
@@ -71,11 +71,11 @@ final class WarmupMetric implements Metric {
     @Override
     public void validateConfig(Config config, Map<String, String> polyglotOptions) {
         if (config.iterations != 1) {
-            throw new IllegalStateException("The Warmup Time Metric may only allow `-i 1`.");
+            throw new IllegalStateException("The One-Shot Metric may only allow `-i 1`.");
         }
 
         if (config.warmupIterations != 0) {
-            throw new IllegalStateException("The Warmup Time Metric may only allow `-w 0`.");
+            throw new IllegalStateException("The One-Shot Metric may only allow `-w 0`.");
         }
     }
 

@@ -121,8 +121,10 @@ suite = {
     },
 
     "libraries" : {
-        "AOTJS_SPECJBB2005" : {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/aotjs/specjbb2005-0.1.tar.gz"],
+        # Note: small warmup benchmarks can be placed directly under `graal/vm/benchmarks/warmup`
+        # and uncomment the corresponding line for the `layout` of `POLYBENCH_BENCHMARKS` in current suite.
+        "WARMUP_BENCHMARKS" : {
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/polybench/warmup-benchmarks-0.1.tar.gz"],
             "sha1" : "4e4a81c096ecc4ba7c4de9ab8ca5180e93c85e60"
         }
     },
@@ -202,7 +204,12 @@ suite = {
                 "./compiler/": [
                     "file:benchmarks/compiler/*",
                 ],
-                "./warmup/specjbb2005.js": "extracted-dependency:AOTJS_SPECJBB2005/specjbb2005.js"
+                "./warmup/": [
+                    # "file:benchmarks/warmup/*.js",
+                    # "file:benchmarks/warmup/*.rb",
+                    # "file:benchmarks/warmup/*.py",
+                    "extracted-dependency:WARMUP_BENCHMARKS/*"
+                ]
             },
             "defaultBuild": False,
         },
