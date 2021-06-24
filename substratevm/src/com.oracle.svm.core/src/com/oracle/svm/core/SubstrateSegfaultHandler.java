@@ -97,6 +97,8 @@ public abstract class SubstrateSegfaultHandler {
     /** Installs the platform dependent segfault handler. */
     protected abstract void install();
 
+    protected abstract void printSignalInfo(Log log, PointerBase signalInfo);
+
     /** Called from the platform dependent segfault handler to enter the isolate. */
     @Uninterruptible(reason = "Called from uninterruptible code.")
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in segfault handler.", overridesCallers = true)
@@ -134,14 +136,14 @@ public abstract class SubstrateSegfaultHandler {
     /** Called from the platform dependent segfault handler to print diagnostics. */
     @Uninterruptible(reason = "Must be uninterruptible until we get immune to safepoints.", calleeMustBe = false)
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in segfault handler.", overridesCallers = true)
-    protected static void dump(RegisterDumper.Context context) {
+    protected static void dump(PointerBase signalInfo, RegisterDumper.Context context) {
         VMThreads.StatusSupport.setStatusIgnoreSafepoints();
         StackOverflowCheck.singleton().disableStackOverflowChecksForFatalError();
 
-        dumpInterruptibly(context);
+        dumpInterruptibly(signalInfo, context);
     }
 
-    private static void dumpInterruptibly(RegisterDumper.Context context) {
+    private static void dumpInterruptibly(PointerBase signalInfo, RegisterDumper.Context context) {
         PointerBase callerIP = RegisterDumper.singleton().getIP(context);
         LogHandler logHandler = ImageSingletons.lookup(LogHandler.class);
         String msg = "[ [ SubstrateSegfaultHandler caught a segfault. ] ]";
@@ -149,6 +151,8 @@ public abstract class SubstrateSegfaultHandler {
         if (log != null) {
             log.newline();
             log.string(msg).newline();
+
+            ImageSingletons.lookup(SubstrateSegfaultHandler.class).printSignalInfo(log, signalInfo);
 
             PointerBase sp = RegisterDumper.singleton().getSP(context);
             PointerBase ip = RegisterDumper.singleton().getIP(context);

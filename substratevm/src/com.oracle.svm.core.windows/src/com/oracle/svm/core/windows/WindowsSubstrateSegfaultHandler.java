@@ -26,12 +26,15 @@ package com.oracle.svm.core.windows;
 
 import static com.oracle.svm.core.annotate.RestrictHeapAccess.Access.NO_ALLOCATION;
 import static com.oracle.svm.core.annotate.RestrictHeapAccess.Access.NO_HEAP_ACCESS;
+import static com.oracle.svm.core.windows.headers.ErrHandlingAPI.EXCEPTION_ACCESS_VIOLATION;
+import static com.oracle.svm.core.windows.headers.ErrHandlingAPI.EXCEPTION_IN_PAGE_ERROR;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.SubstrateSegfaultHandler;
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -42,6 +45,7 @@ import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NotIncludedAutomatically;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
+import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.windows.headers.ErrHandlingAPI;
 
@@ -93,11 +97,42 @@ class WindowsSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
 
         ErrHandlingAPI.CONTEXT context = exceptionInfo.ContextRecord();
         if (tryEnterIsolate(context)) {
-            dump(context);
+            dump(exceptionInfo, context);
             throw shouldNotReachHere();
         }
         /* Nothing we can do. */
         return ErrHandlingAPI.EXCEPTION_CONTINUE_SEARCH();
+    }
+
+    @Override
+    protected void printSignalInfo(Log log, PointerBase signalInfo) {
+        ErrHandlingAPI.EXCEPTION_POINTERS exceptionInfo = (ErrHandlingAPI.EXCEPTION_POINTERS) signalInfo;
+        ErrHandlingAPI.EXCEPTION_RECORD exceptionRecord = exceptionInfo.ExceptionRecord();
+
+        int exceptionCode = exceptionRecord.ExceptionCode();
+        log.string("siginfo: ExceptionCode: ").signed(exceptionCode);
+
+        int numParameters = exceptionRecord.NumberParameters();
+        if ((exceptionCode == EXCEPTION_ACCESS_VIOLATION() || exceptionCode == EXCEPTION_IN_PAGE_ERROR()) && numParameters >= 2) {
+            long exParam0 = exceptionRecord.ExceptionInformation(0).read();
+            if (exParam0 == 0) {
+                log.string(", reading address");
+            } else if (exParam0 == 1) {
+                log.string(", writing address");
+            } else if (exParam0 == 8) {
+                log.string(", data execution prevention violation at address");
+            } else {
+                log.string(", ExceptionInformation=").zhex(exParam0);
+            }
+            log.string(" ").zhex(exceptionRecord.ExceptionInformation(1).read());
+        } else {
+            if (numParameters > 0) {
+                log.string(", ExceptionInformation=");
+                for (int i = 0; i < numParameters; i++) {
+                    log.string(" ").zhex(exceptionRecord.ExceptionInformation(i).read());
+                }
+            }
+        }
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
