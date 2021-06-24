@@ -43,6 +43,7 @@ import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.UntetheredCodeInfo;
+import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
@@ -79,7 +80,8 @@ public class SubstrateDiagnostics {
     private static final int CURRENT_THREAD_RAW_STACKTRACE = COUNTERS << 1;
     private static final int CURRENT_THREAD_DECODED_STACKTRACE = CURRENT_THREAD_RAW_STACKTRACE << 1;
     private static final int OTHER_STACK_TRACES = CURRENT_THREAD_DECODED_STACKTRACE << 1;
-    private static final int NUM_NAMED_SECTIONS = CodeUtil.log2(OTHER_STACK_TRACES << 1);
+    private static final int INSTRUCTIONS = OTHER_STACK_TRACES << 1;
+    private static final int NUM_NAMED_SECTIONS = CodeUtil.log2(INSTRUCTIONS << 1);
 
     private static final Stage0StackFramePrintVisitor[] PRINT_VISITORS = new Stage0StackFramePrintVisitor[]{Stage0StackFramePrintVisitor.SINGLETON, Stage1StackFramePrintVisitor.SINGLETON,
                     StackFramePrintVisitor.SINGLETON};
@@ -241,6 +243,10 @@ public class SubstrateDiagnostics {
                     }
                 }
             }
+        }
+
+        if (shouldPrint(INSTRUCTIONS)) {
+            dumpInstructions(log, ip);
         }
 
         int numDiagnosticThunks = DiagnosticThunkRegister.getSingleton().size();
@@ -452,6 +458,13 @@ public class SubstrateDiagnostics {
         log.string("Full Stacktrace for VMThread ").zhex(vmThread.rawValue()).string(":").newline();
         log.indent(true);
         JavaStackWalker.walkThread(vmThread, StackFramePrintVisitor.SINGLETON, log);
+        log.indent(false);
+    }
+
+    private static void dumpInstructions(Log log, CodePointer ip) {
+        log.string("Instructions (ip=").hex(ip).string(")").newline();
+        log.indent(true);
+        log.hexdump(((Pointer) ip).subtract(32), 1, 64);
         log.indent(false);
     }
 
