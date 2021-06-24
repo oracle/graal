@@ -65,7 +65,7 @@ public class JfrTypeRepository implements JfrConstantPool {
 
     private TypeInfo collectTypeInfo() {
         TypeInfo typeInfo = new TypeInfo();
-        for (Class<?> clazz : Heap.getHeap().getInitializedClasses()) {
+        for (Class<?> clazz : Heap.getHeap().getLoadedClasses()) {
             if (JfrTraceId.isUsedPreviousEpoch(clazz)) {
                 JfrTraceId.clearUsedPreviousEpoch(clazz);
                 visitClass(typeInfo, clazz);
