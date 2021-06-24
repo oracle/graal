@@ -826,7 +826,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     installable_id='native-image',
     license_files=[],
     third_party_license_files=[],
-    dependencies=['SubstrateVM', 'nil'],
+    dependencies=['SubstrateVM', 'nil', 'nic'],
     support_distributions=['substratevm:NATIVE_IMAGE_GRAALVM_SUPPORT'],
     launcher_configs=[
         mx_sdk_vm.LauncherConfig(
@@ -845,6 +845,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
             destination="<lib:native-image-agent>",
             jvm_library=True,
             jar_distributions=[
+                'substratevm:SVM_CONFIGURE',
                 'substratevm:JVMTI_AGENT_BASE',
                 'substratevm:SVM_AGENT',
             ],
