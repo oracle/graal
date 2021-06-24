@@ -571,8 +571,7 @@ class NativeImageVM(GraalVm):
 
     def run_stage_run(self, config, stages, out):
         image_path = os.path.join(config.output_dir, config.final_image_name)
-        heap_args = ['-XX:MaxHeapSize=24G', '-Xmn4G']
-        with stages.set_command([image_path] + config.image_run_args + config.extra_run_args + heap_args) as s:
+        with stages.set_command([image_path] + config.image_run_args + config.extra_run_args) as s:
             s.execute_command(vm=self)
             if s.exit_code == 0:
                 # The image size for benchmarks is tracked by printing on stdout and matching the rule.
