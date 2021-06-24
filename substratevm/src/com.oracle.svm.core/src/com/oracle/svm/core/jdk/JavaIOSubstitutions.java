@@ -44,24 +44,6 @@ final class Target_java_io_FileDescriptor {
     private List<Closeable> otherParents;
 }
 
-@TargetClass(java.io.ObjectInputStream.class)
-@SuppressWarnings({"static-method"})
-final class Target_java_io_ObjectInputStream {
-    /**
-     * Private method latestUserDefinedLoader is called by
-     * java.io.ObjectInputStream.resolveProxyClass and java.io.ObjectInputStream.resolveClass. The
-     * returned classloader is eventually used in Class.forName and Proxy.getProxyClass0 which are
-     * substituted by Substrate VM and the classloader is ignored. Therefore, this substitution is
-     * safe.
-     *
-     * @return The only classloader in native image
-     */
-    @Substitute
-    private static ClassLoader latestUserDefinedLoader() {
-        return Target_java_io_ObjectInputStream.class.getClassLoader();
-    }
-}
-
 @TargetClass(java.io.ObjectStreamClass.class)
 final class Target_java_io_ObjectStreamClass {
 

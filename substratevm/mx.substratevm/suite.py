@@ -210,7 +210,8 @@ suite = {
                     "sun.util.resources",
                     "sun.text.spi",
                     "jdk.internal.perf",
-                    "sun.util.locale.provider"
+                    "sun.util.locale.provider",
+                    "jdk.internal.loader"
                 ],
             },
             "javaCompliance": "11+",
