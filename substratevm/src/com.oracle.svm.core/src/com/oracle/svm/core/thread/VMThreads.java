@@ -139,6 +139,12 @@ public abstract class VMThreads {
     private static final FastThreadLocalWord<OSThreadId> OSThreadIdTL = FastThreadLocalFactory.createWord();
     protected static final FastThreadLocalWord<OSThreadHandle> OSThreadHandleTL = FastThreadLocalFactory.createWord();
     public static final FastThreadLocalWord<Isolate> IsolateTL = FastThreadLocalFactory.createWord();
+    public static final FastThreadLocalWord<UnsignedWord> StackBase = FastThreadLocalFactory.createWord();
+    /**
+     * The end of the stack. Note that this value does not necessarily match the value that is used
+     * for the stack overflow check.
+     */
+    public static final FastThreadLocalWord<UnsignedWord> StackEnd = FastThreadLocalFactory.createWord();
 
     private static final int STATE_UNINITIALIZED = 1;
     private static final int STATE_INITIALIZING = 2;

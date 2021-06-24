@@ -442,6 +442,11 @@ public class RealLog extends Log {
         rawBytes(value, 0, value.length);
     }
 
+    @Override
+    public Log zhex(WordBase value) {
+        return zhex(value.rawValue());
+    }
+
     @NeverInline("Logging is always slow-path code")
     @Override
     public Log zhex(long value) {

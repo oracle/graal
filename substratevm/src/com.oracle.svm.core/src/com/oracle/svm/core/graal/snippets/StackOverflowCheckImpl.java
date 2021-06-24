@@ -85,6 +85,7 @@ import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescripto
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.ThreadingSupportImpl;
+import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
@@ -94,7 +95,7 @@ import com.oracle.svm.core.util.VMError;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 final class StackOverflowCheckImpl implements StackOverflowCheck {
-
+    // The stack boundary for the stack overflow check
     static final FastThreadLocalWord<UnsignedWord> stackBoundaryTL = FastThreadLocalFactory.createWord().setMaxOffset(FastThreadLocal.FIRST_CACHE_LINE);
 
     /**
@@ -126,7 +127,15 @@ final class StackOverflowCheckImpl implements StackOverflowCheck {
         /*
          * Get the real physical end of the stack. Everything past this point is memory-protected.
          */
-        UnsignedWord stackEnd = ImageSingletons.lookup(StackOverflowCheck.OSSupport.class).lookupStackEnd();
+        OSSupport osSupport = ImageSingletons.lookup(StackOverflowCheck.OSSupport.class);
+        UnsignedWord stackBase = osSupport.lookupStackBase();
+        UnsignedWord stackEnd = osSupport.lookupStackEnd();
+
+        // TEMP (chaeubl): this should be moved somewhere else... - also OSSupport should be named
+        // differently.
+        // Initialize the stack base and the stack end.
+        VMThreads.StackBase.set(thread, stackBase);
+        VMThreads.StackEnd.set(thread, stackEnd);
 
         /*
          * Set up our yellow and red zones. That memory is not memory protected, it is a soft limit

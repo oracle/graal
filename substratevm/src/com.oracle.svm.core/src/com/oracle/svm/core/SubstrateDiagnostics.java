@@ -71,8 +71,9 @@ public class SubstrateDiagnostics {
     private static final int FRAME_ANCHORS = REGISTERS << 1;
     private static final int DEOPT_STUB_POINTERS = FRAME_ANCHORS << 1;
     private static final int TOP_FRAME = DEOPT_STUB_POINTERS << 1;
-    private static final int THREADS = TOP_FRAME << 1;
-    private static final int THREAD_STATES = THREADS << 1;
+    private static final int THREADS_FULL = TOP_FRAME << 1;
+    private static final int THREADS_REDUCED = TOP_FRAME << 1;
+    private static final int THREAD_STATES = THREADS_REDUCED << 1;
     private static final int VM_OPERATIONS = THREAD_STATES << 1;
     private static final int RUNTIME_COMPILATIONS = VM_OPERATIONS << 1;
     private static final int COUNTERS = RUNTIME_COMPILATIONS << 1;
@@ -185,9 +186,18 @@ public class SubstrateDiagnostics {
             }
         }
 
-        if (shouldPrint(THREADS)) {
+        if (shouldPrint(THREADS_FULL)) {
             try {
-                dumpVMThreads(log);
+                dumpVMThreads(log, true);
+                skip(THREADS_REDUCED);
+            } catch (Exception e) {
+                dumpException(log, "dumpVMThreads", e);
+            }
+        }
+
+        if (shouldPrint(THREADS_REDUCED)) {
+            try {
+                dumpVMThreads(log, false);
             } catch (Exception e) {
                 dumpException(log, "dumpVMThreads", e);
             }
@@ -272,6 +282,10 @@ public class SubstrateDiagnostics {
             return true;
         }
         return false;
+    }
+
+    private static void skip(int sectionBit) {
+        state.diagnosticSections |= sectionBit;
     }
 
     private static void dumpException(Log log, String context, Exception e) {
@@ -365,13 +379,21 @@ public class SubstrateDiagnostics {
         return CodeInfoAccess.lookupTotalFrameSize(codeInfo, CodeInfoAccess.relativeIP(codeInfo, ip));
     }
 
-    private static void dumpVMThreads(Log log) {
-        log.string("VMThreads info:").newline();
+    private static void dumpVMThreads(Log log, String prefix, boolean accessThreadObject) {
+        log.string(prefix).string(" VMThreads info:").newline();
         log.indent(true);
         /* Only used for diagnostics - iterate all threads without locking the threads mutex. */
-        for (IsolateThread vmThread = VMThreads.firstThreadUnsafe(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
-            log.string("VMThread ").zhex(vmThread.rawValue()).spaces(2).string(VMThreads.StatusSupport.getStatusString(vmThread))
-                            .spaces(2).object(JavaThreads.fromVMThread(vmThread)).newline();
+        for (IsolateThread thread = VMThreads.firstThreadUnsafe(); thread.isNonNull(); thread = VMThreads.nextThread(thread)) {
+            log.zhex(thread.rawValue()).string(VMThreads.StatusSupport.getStatusString(thread));
+            if (accessThreadObject) {
+                Thread threadObj = JavaThreads.fromVMThread(thread);
+                log.string(" \"").string(threadObj.getName()).string("\" - ").object(threadObj).string(")");
+                if (threadObj.isDaemon()) {
+                    log.string(" daemon ");
+                }
+            }
+            log.string(", stack(").zhex(VMThreads.StackEnd.get(thread)).string(",").zhex(VMThreads.StackBase.get(thread)).string(")");
+            log.newline();
         }
         log.indent(false);
     }
