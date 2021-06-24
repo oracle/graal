@@ -268,7 +268,7 @@ public final class HeapImpl extends Heap {
     }
 
     Log report(Log log, boolean traceHeapChunks) {
-        log.newline().string("[Heap:").indent(true);
+        log.string("[Heap:").indent(true);
         getYoungGeneration().report(log, traceHeapChunks).newline();
         getOldGeneration().report(log, traceHeapChunks).newline();
         getChunkProvider().report(log, traceHeapChunks);
