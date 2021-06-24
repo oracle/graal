@@ -747,7 +747,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         return (ClassLoader) classLoader;
     }
 
-    boolean hasClassLoader() {
+    public boolean isLoaded() {
         return classLoader != FROM_COMPANION || (companion.isPresent() && companion.get().hasClassLoader());
     }
 
