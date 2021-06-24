@@ -24,12 +24,8 @@
  */
 package org.graalvm.polybench;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.atomic.DoubleAdder;
-import java.util.logging.Handler;
-import java.util.logging.LogRecord;
 
 /**
  * WarmupMetric measures the warmup speed of Truffle-language implementations.
