@@ -43,7 +43,6 @@ import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.UntetheredCodeInfo;
-import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
@@ -106,7 +105,12 @@ public class SubstrateDiagnostics {
         return state.diagnosticThread.get() == CurrentIsolate.getCurrentThread();
     }
 
-    public static int getSectionCount() {
+    /**
+     * The segfault handler will invoke {@link #print} recursively if a fatal error happens while
+     * printing diagnostics. The value returned by this method can be used to limit the maximum
+     * recursion depth if necessary.
+     */
+    public static int maxRetries() {
         return NUM_NAMED_SECTIONS + DiagnosticThunkRegister.getSingleton().size();
     }
 
