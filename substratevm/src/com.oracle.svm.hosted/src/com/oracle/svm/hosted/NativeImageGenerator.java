@@ -30,6 +30,7 @@ import static org.graalvm.compiler.hotspot.JVMCIVersionCheck.JVMCI11_RELEASES_UR
 import static org.graalvm.compiler.hotspot.JVMCIVersionCheck.JVMCI8_RELEASES_URL;
 import static org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.registerInvocationPlugins;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.ref.Reference;
@@ -265,6 +266,7 @@ import com.oracle.svm.hosted.option.HostedOptionProvider;
 import com.oracle.svm.hosted.phases.CInterfaceInvocationPlugin;
 import com.oracle.svm.hosted.phases.ConstantFoldLoadFieldPlugin;
 import com.oracle.svm.hosted.phases.EarlyConstantFoldLoadFieldPlugin;
+import com.oracle.svm.hosted.phases.ImageBuildStatisticsCounterPhase;
 import com.oracle.svm.hosted.phases.InjectedAccessorsPlugin;
 import com.oracle.svm.hosted.phases.IntrinsifyMethodHandlesInvocationPlugin;
 import com.oracle.svm.hosted.phases.SubstrateClassInitializationPlugin;
@@ -275,6 +277,7 @@ import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.DeclarativeSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.DeletedFieldsPlugin;
 import com.oracle.svm.hosted.substitute.UnsafeAutomaticSubstitutionProcessor;
+import com.oracle.svm.util.ImageBuildStatistics;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
@@ -847,6 +850,10 @@ public class NativeImageGenerator {
                 ImageSingletons.add(RuntimeClassInitializationSupport.class, classInitializationSupport);
                 ClassInitializationFeature.processClassInitializationOptions(classInitializationSupport);
 
+                if (ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(options)) {
+                    ImageSingletons.add(ImageBuildStatistics.class, new ImageBuildStatistics());
+                }
+
                 featureHandler.registerFeatures(loader, debug);
                 AfterRegistrationAccessImpl access = new AfterRegistrationAccessImpl(featureHandler, loader, originalMetaAccess, mainEntryPoint, debug);
                 featureHandler.forEachFeature(feature -> feature.afterRegistration(access));
@@ -1383,6 +1390,14 @@ public class NativeImageGenerator {
         }
 
         featureHandler.forEachGraalFeature(feature -> feature.registerGraalPhases(runtimeCallProviders, snippetReflection, suites, hosted));
+
+        if (hosted && ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(HostedOptionValues.singleton())) {
+            highTier.prependPhase(new ImageBuildStatisticsCounterPhase(ImageBuildStatistics.CheckCountLocation.BEFORE_HIGH_TIER));
+            highTier.prependPhase(CanonicalizerPhase.create());
+            highTier.findLastPhase().add(CanonicalizerPhase.create());
+            highTier.findLastPhase().add(new ImageBuildStatisticsCounterPhase(ImageBuildStatistics.CheckCountLocation.AFTER_HIGH_TIER));
+        }
+
         return suites;
     }
 
@@ -1689,6 +1704,19 @@ public class NativeImageGenerator {
             }
         }
         System.out.println("]");
+    }
+
+    void printImageBuildStatistics(String imageName) {
+        Consumer<PrintWriter> reporter = ImageSingletons.lookup(ImageBuildStatistics.class).getReporter();
+        String description = "image build statistics";
+        if (ImageBuildStatistics.Options.ImageBuildStatisticsFile.hasBeenSet(bigbang.getOptions())) {
+            final File file = new File(ImageBuildStatistics.Options.ImageBuildStatisticsFile.getValue(bigbang.getOptions()));
+            ReportUtils.report(description, file.getAbsoluteFile().toPath(), reporter);
+        } else {
+            String name = "image_build_statistics_" + ReportUtils.extractImageName(imageName);
+            String path = SubstrateOptions.Path.getValue() + File.separatorChar + "reports";
+            ReportUtils.report(description, path, name, "json", reporter);
+        }
     }
 
     private static String slotsToString(short[] slots) {

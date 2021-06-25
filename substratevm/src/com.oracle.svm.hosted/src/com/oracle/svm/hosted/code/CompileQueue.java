@@ -154,9 +154,11 @@ import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.phases.DevirtualizeCallsPhase;
 import com.oracle.svm.hosted.phases.HostedGraphBuilderPhase;
+import com.oracle.svm.hosted.phases.ImageBuildStatisticsCounterPhase;
 import com.oracle.svm.hosted.phases.ImplicitAssertionsPhase;
 import com.oracle.svm.hosted.phases.StrengthenStampsPhase;
 import com.oracle.svm.hosted.substitute.DeletedMethod;
+import com.oracle.svm.util.ImageBuildStatistics;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.BytecodePosition;
@@ -420,6 +422,10 @@ public class CompileQueue {
         phaseSuite.appendPhase(new StrengthenStampsPhase());
         phaseSuite.appendPhase(CanonicalizerPhase.create());
         phaseSuite.appendPhase(new OptimizeExceptionPathsPhase());
+        if (ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(universe.hostVM().options())) {
+            phaseSuite.appendPhase(CanonicalizerPhase.create());
+            phaseSuite.appendPhase(new ImageBuildStatisticsCounterPhase(ImageBuildStatistics.CheckCountLocation.AFTER_PARSE_CANONICALIZATION));
+        }
         return phaseSuite;
     }
 
