@@ -26,18 +26,31 @@
 
 package com.oracle.objectfile.debugentry;
 
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugRangeInfo;
+
+import java.util.Arrays;
+import java.util.stream.Collectors;
+
 public class MethodEntry extends MemberEntry implements Comparable<MethodEntry> {
     final TypeEntry[] paramTypes;
     final String[] paramNames;
-    final boolean isDeoptTarget;
+    public final boolean isDeoptTarget;
+    boolean isInRange;
 
-    public MethodEntry(FileEntry fileEntry, String methodName, ClassEntry ownerType, TypeEntry valueType, TypeEntry[] paramTypes, String[] paramNames, int modifiers, boolean isDeoptTarget) {
+    final String symbolName;
+    private String signature;
+
+    public MethodEntry(FileEntry fileEntry, String symbolName, String methodName, ClassEntry ownerType,
+                    TypeEntry valueType, TypeEntry[] paramTypes, String[] paramNames, int modifiers,
+                    boolean isDeoptTarget, boolean isInRange) {
         super(fileEntry, methodName, ownerType, valueType, modifiers);
         assert ((paramTypes == null && paramNames == null) ||
                         (paramTypes != null && paramNames != null && paramTypes.length == paramNames.length));
         this.paramTypes = paramTypes;
         this.paramNames = paramNames;
         this.isDeoptTarget = isDeoptTarget;
+        this.isInRange = isInRange;
+        this.symbolName = symbolName;
     }
 
     public String methodName() {
@@ -60,6 +73,10 @@ public class MethodEntry extends MemberEntry implements Comparable<MethodEntry> 
         return paramTypes[idx];
     }
 
+    public TypeEntry[] getParamTypes() {
+        return paramTypes;
+    }
+
     public String getParamTypeName(int idx) {
         assert paramTypes != null;
         assert idx < paramTypes.length;
@@ -74,6 +91,46 @@ public class MethodEntry extends MemberEntry implements Comparable<MethodEntry> 
         return paramNames[idx];
     }
 
+    public boolean isInRange() {
+        return isInRange;
+    }
+
+    /**
+     * Sets {@code isInRange} and ensures that the {@code fileEntry} is up to date. If the
+     * MethodEntry was added by traversing the DeclaredMethods of a Class its fileEntry will point
+     * to the original source file, thus it will be wrong for substituted methods. As a result when
+     * setting a MethodEntry as isInRange we also make sure that its fileEntry reflects the file
+     * info associated with the corresponding Range.
+     *
+     * @param debugInfoBase
+     * @param debugRangeInfo
+     */
+    public void setInRangeAndUpdateFileEntry(DebugInfoBase debugInfoBase, DebugRangeInfo debugRangeInfo) {
+        if (isInRange) {
+            assert fileEntry == debugInfoBase.ensureFileEntry(debugRangeInfo);
+            return;
+        }
+        isInRange = true;
+        /*
+         * If the MethodEntry was added by traversing the DeclaredMethods of a Class its fileEntry
+         * will point to the original source file, thus it will be wrong for substituted methods. As
+         * a result when setting a MethodEntry as isInRange we also make sure that its fileEntry
+         * reflects the file info associated with the corresponding Range.
+         */
+        fileEntry = debugInfoBase.ensureFileEntry(debugRangeInfo);
+    }
+
+    public String getSymbolName() {
+        return symbolName;
+    }
+
+    private String getSignature() {
+        if (signature == null) {
+            signature = Arrays.stream(paramTypes).map(TypeEntry::getTypeName).collect(Collectors.joining(", "));
+        }
+        return signature;
+    }
+
     public int compareTo(String methodName, String paramSignature, String returnTypeName) {
         int nameComparison = memberName.compareTo(methodName);
         if (nameComparison != 0) {
@@ -83,28 +140,7 @@ public class MethodEntry extends MemberEntry implements Comparable<MethodEntry> 
         if (typeComparison != 0) {
             return typeComparison;
         }
-        String[] paramTypeNames = paramSignature.split((","));
-        int length;
-        if (paramSignature.trim().length() == 0) {
-            length = 0;
-        } else {
-            length = paramTypeNames.length;
-        }
-        int paramCountComparison = getParamCount() - length;
-        if (paramCountComparison != 0) {
-            return paramCountComparison;
-        }
-        for (int i = 0; i < getParamCount(); i++) {
-            int paraComparison = getParamTypeName(i).compareTo(paramTypeNames[i].trim());
-            if (paraComparison != 0) {
-                return paraComparison;
-            }
-        }
-        return 0;
-    }
-
-    public boolean isDeoptTarget() {
-        return isDeoptTarget;
+        return getSignature().compareTo(paramSignature);
     }
 
     @Override
@@ -118,16 +154,6 @@ public class MethodEntry extends MemberEntry implements Comparable<MethodEntry> 
         if (typeComparison != 0) {
             return typeComparison;
         }
-        int paramCountComparison = getParamCount() - other.getParamCount();
-        if (paramCountComparison != 0) {
-            return paramCountComparison;
-        }
-        for (int i = 0; i < getParamCount(); i++) {
-            int paramComparison = getParamTypeName(i).compareTo(other.getParamTypeName(i));
-            if (paramComparison != 0) {
-                return paramComparison;
-            }
-        }
-        return 0;
+        return getSignature().compareTo(other.getSignature());
     }
 }

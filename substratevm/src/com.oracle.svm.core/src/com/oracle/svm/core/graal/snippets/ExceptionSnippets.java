@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.graal.snippets;
 
-import static com.oracle.svm.core.graal.nodes.UnreachableNode.unreachable;
+import static org.graalvm.compiler.nodes.UnreachableNode.unreachable;
 import static com.oracle.svm.core.graal.snippets.SubstrateIntrinsics.runtimeCall;
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointer;
 

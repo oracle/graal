@@ -82,7 +82,7 @@ is printed on the console:
 Graal diagnostic output saved in /Users/demo/graal-dumps/1499768882600/graal_diagnostics_64565.zip
 ```
 
-You can then attach the .zip file to an issue on [GitHub](https://github.com/{{ site.github_username }}).
+You can then attach the .zip file to an issue on [GitHub](https://github.com/oracle/graal/issues).
 
 Apart from `Silent` and `Diagnose`, the following values for `graal.CompilationFailureAction`
 are also supported:
@@ -123,7 +123,7 @@ something like this:
 
 In this example, there is likely an error in the code produced by the GraalVM compiler for `NodeLIRBuilder.matchComplexExpressions`.
 
-When filing an issue on [GitHub](https://github.com/{{ site.github_username }})
+When filing an issue on [GitHub](https://github.com/oracle/graal/issues)
 for such a crash, you should first attempt to reproduce the crash with extra
 diagnostics enabled for the compilation of the problematic method.
 In this example, you would add the following to your command line:
@@ -191,4 +191,4 @@ ls -l /Users/demo/graal-dumps/1499768882600
 -rw-r--r--  1 demo  staff  12600725 Jul 13 11:46 HotSpotCompilation-791[NodeLIRBuilder.matchComplexExpressions(List)].bgv
 -rw-r--r--  1 demo  staff   1727409 Jul 13 11:46 HotSpotCompilation-791[NodeLIRBuilder.matchComplexExpressions(List)].cfg
 ```
-You should attach a .zip of this directory to an issue on [GitHub](https://github.com/{{ site.github_username }}).
+You should attach a .zip of this directory to an issue on [GitHub](https://github.com/oracle/graal/issues).

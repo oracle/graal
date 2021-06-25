@@ -635,3 +635,23 @@ class ScalaDaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.ScalaDaCapoBenchma
 
 
 mx_benchmark.add_bm_suite(ScalaDaCapoNativeImageBenchmarkSuite())
+
+
+class ConsoleNativeImageBenchmarkSuite(mx_java_benchmarks.ConsoleBenchmarkSuite, mx_sdk_benchmark.NativeImageBenchmarkMixin): #pylint: disable=too-many-ancestors
+    """
+    Console applications suite for Native Image
+    """
+
+    def name(self):
+        return 'console-native-image'
+
+    def benchSuiteName(self, bmSuiteArgs=None):
+        return 'console'
+
+    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
+        args = super(ConsoleNativeImageBenchmarkSuite, self).createCommandLineArgs(benchmarks, bmSuiteArgs)
+        self.benchmark_name = benchmarks[0]
+        return args
+
+
+mx_benchmark.add_bm_suite(ConsoleNativeImageBenchmarkSuite())

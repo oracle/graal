@@ -34,15 +34,10 @@ import java.lang.management.OperatingSystemMXBean;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
-import java.net.URI;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.FileSystem;
-import java.nio.file.FileSystemNotFoundException;
-import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.LinkOption;
-import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayDeque;
@@ -72,7 +67,9 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.oracle.svm.core.configure.ConfigurationFile;
+import com.oracle.svm.driver.metainf.MetaInfFileType;
+import com.oracle.svm.driver.metainf.NativeImageMetaInfResourceProcessor;
+import com.oracle.svm.driver.metainf.NativeImageMetaInfWalker;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
@@ -84,7 +81,6 @@ import com.oracle.svm.core.FallbackExecutor.Options;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.ClasspathUtils;
 import com.oracle.svm.core.util.UserError;
@@ -100,7 +96,7 @@ import com.oracle.svm.util.ModuleSupport;
 public class NativeImage {
 
     /* Used to enable native-image JPMS support (WIP) - will become default once completed */
-    static final boolean USE_NI_JPMS = System.getenv().getOrDefault("USE_NATIVE_IMAGE_JAVA_PLATFORM_MODULE_SYSTEM", "false").toLowerCase().equals("true");
+    static final boolean USE_NI_JPMS = System.getenv().getOrDefault("USE_NATIVE_IMAGE_JAVA_PLATFORM_MODULE_SYSTEM", "false").equalsIgnoreCase("true");
 
     private static final String DEFAULT_GENERATOR_CLASS_NAME = NativeImageGeneratorRunner.class.getName();
     private static final String DEFAULT_GENERATOR_MODULE_NAME = ModuleSupport.getModuleName(NativeImageGeneratorRunner.class);
@@ -148,7 +144,7 @@ public class NativeImage {
 
     private static final String usageText = getResource("/Usage.txt");
 
-    class ArgumentQueue {
+    static class ArgumentQueue {
 
         private final ArrayDeque<String> queue;
         public final String argumentOrigin;
@@ -265,9 +261,6 @@ public class NativeImage {
     private LinkedHashSet<EnabledOption> enabledLanguages;
 
     private final List<ExcludeConfig> excludedConfigs = new ArrayList<>();
-
-    public static final String nativeImagePropertiesFilename = "native-image.properties";
-    public static final String nativeImageMetaInf = "META-INF/native-image";
 
     public interface BuildConfiguration {
         /**
@@ -652,6 +645,55 @@ public class NativeImage {
         }
     }
 
+    class DriverMetaInfProcessor implements NativeImageMetaInfResourceProcessor {
+        @Override
+        public void processMetaInfResource(Path classpathEntry, Path resourceRoot, Path resourcePath, MetaInfFileType type) throws IOException {
+            NativeImageArgsProcessor args = NativeImage.this.new NativeImageArgsProcessor(resourcePath.toUri().toString());
+            Path componentDirectory = resourceRoot.relativize(resourcePath).getParent();
+            Function<String, String> resolver = str -> {
+                int nameCount = componentDirectory.getNameCount();
+                String optionArg = null;
+                if (nameCount > 2) {
+                    String optionArgKey = componentDirectory.subpath(2, nameCount).toString();
+                    optionArg = propertyFileSubstitutionValues.get(optionArgKey);
+                }
+                return resolvePropertyValue(str, optionArg, componentDirectory, config);
+            };
+
+            if (type == MetaInfFileType.Properties) {
+                Map<String, String> properties = loadProperties(Files.newInputStream(resourcePath));
+                String imageNameValue = properties.get("ImageName");
+                if (imageNameValue != null) {
+                    addCustomImageBuilderArgs(injectHostedOptionOrigin(oHName + resolver.apply(imageNameValue), resourcePath.toUri().toString()));
+                }
+                forEachPropertyValue(properties.get("JavaArgs"), NativeImage.this::addImageBuilderJavaArgs, resolver);
+                forEachPropertyValue(properties.get("Args"), args, resolver);
+            } else {
+                args.accept(oH(type.optionKey) + resourceRoot.relativize(resourcePath));
+            }
+            args.apply(true);
+        }
+
+        @Override
+        public void showWarning(String message) {
+            if (isVerbose()) {
+                NativeImage.showWarning(message);
+            }
+        }
+
+        @Override
+        public void showVerboseMessage(String message) {
+            NativeImage.this.showVerboseMessage(isVerbose(), message);
+        }
+
+        @Override
+        public boolean isExcluded(Path resourcePath, Path classpathEntry) {
+            return excludedConfigs.stream()
+                            .filter(e -> e.jarPattern.matcher(classpathEntry.toString()).find())
+                            .anyMatch(e -> e.resourcePattern.matcher(resourcePath.toString()).find());
+        }
+    }
+
     private ArrayList<String> createFallbackBuildArgs() {
         ArrayList<String> buildArgs = new ArrayList<>();
         Collection<String> fallbackSystemProperties = customJavaArgs.stream()
@@ -749,8 +791,11 @@ public class NativeImage {
         }
     }
 
+    private final DriverMetaInfProcessor metaInfProcessor;
+
     protected NativeImage(BuildConfiguration config) {
         this.config = config;
+        this.metaInfProcessor = new DriverMetaInfProcessor();
 
         String configFileEnvVarKey = "NATIVE_IMAGE_CONFIG_FILE";
         String configFile = System.getenv(configFileEnvVarKey);
@@ -946,118 +991,16 @@ public class NativeImage {
         }
     }
 
-    enum MetaInfFileType {
-        Properties(null, nativeImagePropertiesFilename),
-        JniConfiguration(ConfigurationFiles.Options.JNIConfigurationResources, ConfigurationFile.JNI.getFileName()),
-        ReflectConfiguration(ConfigurationFiles.Options.ReflectionConfigurationResources, ConfigurationFile.REFLECTION.getFileName()),
-        ResourceConfiguration(ConfigurationFiles.Options.ResourceConfigurationResources, ConfigurationFile.RESOURCES.getFileName()),
-        ProxyConfiguration(ConfigurationFiles.Options.DynamicProxyConfigurationResources, ConfigurationFile.DYNAMIC_PROXY.getFileName()),
-        SerializationConfiguration(ConfigurationFiles.Options.SerializationConfigurationResources, ConfigurationFile.SERIALIZATION.getFileName()),
-        SerializationDenyConfiguration(ConfigurationFiles.Options.SerializationDenyConfigurationResources, ConfigurationFile.SERIALIZATION_DENY.getFileName()),
-        PredefinedClassesConfiguration(ConfigurationFiles.Options.PredefinedClassesConfigurationResources, ConfigurationFile.PREDEFINED_CLASSES_NAME.getFileName());
-
-        final OptionKey<?> optionKey;
-        final String fileName;
-
-        MetaInfFileType(OptionKey<?> optionKey, String fileName) {
-            this.optionKey = optionKey;
-            this.fileName = fileName;
-        }
-    }
-
-    interface NativeImageMetaInfResourceProcessor {
-        void processMetaInfResource(Path classpathEntry, Path resourceRoot, Path resourcePath, MetaInfFileType type, Function<String, String> resolver) throws IOException;
-    }
-
     private void processClasspathNativeImageMetaInf(Path classpathEntry) {
-        processClasspathNativeImageMetaInf(classpathEntry, this::processNativeImageMetaInf);
-    }
-
-    private void processClasspathNativeImageMetaInf(Path classpathEntry, NativeImageMetaInfResourceProcessor metaInfProcessor) {
         try {
-            if (Files.isDirectory(classpathEntry)) {
-                Path nativeImageMetaInfBase = classpathEntry.resolve(Paths.get(nativeImageMetaInf));
-                processNativeImageMetaInf(classpathEntry, nativeImageMetaInfBase, metaInfProcessor);
-            } else {
-                List<Path> jarFileMatches = Collections.emptyList();
-                if (classpathEntry.endsWith(ClasspathUtils.cpWildcardSubstitute)) {
-                    try {
-                        jarFileMatches = Files.list(classpathEntry.getParent())
-                                        .filter(ClasspathUtils::isJar)
-                                        .collect(Collectors.toList());
-                    } catch (NoSuchFileException e) {
-                        /* Fallthrough */
-                    }
-                } else if (ClasspathUtils.isJar(classpathEntry)) {
-                    jarFileMatches = Collections.singletonList(classpathEntry);
-                }
-
-                for (Path jarFile : jarFileMatches) {
-                    URI jarFileURI = URI.create("jar:" + jarFile.toUri());
-                    FileSystem probeJarFS;
-                    try {
-                        probeJarFS = FileSystems.newFileSystem(jarFileURI, Collections.emptyMap());
-                    } catch (UnsupportedOperationException e) {
-                        probeJarFS = null;
-                        if (isVerbose()) {
-                            showWarning(ClasspathUtils.classpathToString(classpathEntry) + " does not describe valid jarfile" + (jarFileMatches.size() > 1 ? "s" : ""));
-                        }
-                    }
-                    if (probeJarFS != null) {
-                        try (FileSystem jarFS = probeJarFS) {
-                            Path nativeImageMetaInfBase = jarFS.getPath("/" + nativeImageMetaInf);
-                            processNativeImageMetaInf(jarFile, nativeImageMetaInfBase, metaInfProcessor);
-                        }
-                    }
-                }
-            }
-        } catch (IOException | FileSystemNotFoundException e) {
-            throw showError("Invalid classpath entry " + ClasspathUtils.classpathToString(classpathEntry), e);
-        }
-    }
-
-    private void processNativeImageMetaInf(Path classpathEntry, Path nativeImageMetaInfBase, NativeImageMetaInfResourceProcessor metaInfProcessor) throws IOException {
-        if (Files.isDirectory(nativeImageMetaInfBase)) {
-            for (MetaInfFileType fileType : MetaInfFileType.values()) {
-                List<Path> nativeImageMetaInfFiles = Files.walk(nativeImageMetaInfBase)
-                                .filter(p -> p.endsWith(fileType.fileName))
-                                .collect(Collectors.toList());
-                for (Path nativeImageMetaInfFile : nativeImageMetaInfFiles) {
-                    boolean excluded = isExcluded(nativeImageMetaInfFile, classpathEntry);
-                    if (excluded) {
-                        continue;
-                    }
-
-                    Path resourceRoot = nativeImageMetaInfBase.getParent().getParent();
-                    Function<String, String> resolver = str -> {
-                        Path componentDirectory = resourceRoot.relativize(nativeImageMetaInfFile).getParent();
-                        int nameCount = componentDirectory.getNameCount();
-                        String optionArg = null;
-                        if (nameCount > 2) {
-                            String optionArgKey = componentDirectory.subpath(2, nameCount).toString();
-                            optionArg = propertyFileSubstitutionValues.get(optionArgKey);
-                        }
-                        return resolvePropertyValue(str, optionArg, componentDirectory, config);
-                    };
-                    showVerboseMessage(isVerbose(), "Apply " + nativeImageMetaInfFile.toUri());
-                    try {
-                        metaInfProcessor.processMetaInfResource(classpathEntry, resourceRoot, nativeImageMetaInfFile, fileType, resolver);
-                    } catch (NativeImageError err) {
-                        showError("Processing " + nativeImageMetaInfFile.toUri() + " failed", err);
-                    }
-                }
-            }
+            NativeImageMetaInfWalker.walkMetaInfForCPEntry(classpathEntry, metaInfProcessor);
+        } catch (NativeImageMetaInfWalker.MetaInfWalkException e) {
+            throw showError(e.getMessage(), e.cause);
         }
     }
 
     public void addExcludeConfig(Pattern jarPattern, Pattern resourcePattern) {
         excludedConfigs.add(new ExcludeConfig(jarPattern, resourcePattern));
-    }
-
-    private boolean isExcluded(Path resourcePath, Path classpathEntry) {
-        return excludedConfigs.stream()
-                        .filter(e -> e.jarPattern.matcher(classpathEntry.toString()).find())
-                        .anyMatch(e -> e.resourcePattern.matcher(resourcePath.toString()).find());
     }
 
     static String injectHostedOptionOrigin(String option, String origin) {
@@ -1080,24 +1023,6 @@ public class NativeImage {
             }
         }
         return option;
-    }
-
-    private void processNativeImageMetaInf(@SuppressWarnings("unused") Path classpathEntry, Path resourceRoot,
-                    Path resourcePath, MetaInfFileType resourceType, Function<String, String> resolver) throws IOException {
-
-        NativeImageArgsProcessor args = new NativeImageArgsProcessor(resourcePath.toUri().toString());
-        if (resourceType == MetaInfFileType.Properties) {
-            Map<String, String> properties = loadProperties(Files.newInputStream(resourcePath));
-            String imageNameValue = properties.get("ImageName");
-            if (imageNameValue != null) {
-                addCustomImageBuilderArgs(injectHostedOptionOrigin(oHName + resolver.apply(imageNameValue), resourcePath.toUri().toString()));
-            }
-            forEachPropertyValue(properties.get("JavaArgs"), this::addImageBuilderJavaArgs, resolver);
-            forEachPropertyValue(properties.get("Args"), args, resolver);
-        } else {
-            args.accept(oH(resourceType.optionKey) + resourceRoot.relativize(resourcePath));
-        }
-        args.apply(true);
     }
 
     static void processManifestMainAttributes(Path path, BiConsumer<Path, Attributes> manifestConsumer) {
@@ -1388,7 +1313,7 @@ public class NativeImage {
         if (!agentOptions.isEmpty()) {
             args.add("-agentlib:native-image-diagnostics-agent=" + agentOptions);
         }
-        args.add("-javaagent:" + config.getAgentJAR().toAbsolutePath().toString() + (agentOptions.isEmpty() ? "" : "=" + agentOptions));
+        args.add("-javaagent:" + config.getAgentJAR().toAbsolutePath() + (agentOptions.isEmpty() ? "" : "=" + agentOptions));
         return args;
     }
 

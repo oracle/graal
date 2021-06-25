@@ -69,7 +69,7 @@ public class ELFProgbitsSection extends ELFUserDefinedSection implements Progbit
     }
 
     @Override
-    public ObjectFile.RelocationRecord markRelocationSite(int offset, ObjectFile.RelocationKind k, String symbolName, boolean useImplicitAddend, Long explicitAddend) {
-        return markRelocationSite(offset, ByteBuffer.wrap(getContent()).order(getOwner().getByteOrder()), k, symbolName, useImplicitAddend, explicitAddend);
+    public void markRelocationSite(int offset, ObjectFile.RelocationKind k, String symbolName, boolean useImplicitAddend, Long explicitAddend) {
+        markRelocationSite(offset, ByteBuffer.wrap(getContent()).order(getOwner().getByteOrder()), k, symbolName, useImplicitAddend, explicitAddend);
     }
 }

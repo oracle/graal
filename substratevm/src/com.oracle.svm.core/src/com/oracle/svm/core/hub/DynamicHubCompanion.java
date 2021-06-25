@@ -47,6 +47,10 @@ public final class DynamicHubCompanion {
         return packageName;
     }
 
+    boolean hasClassLoader() {
+        return classLoader != null;
+    }
+
     public ClassLoader getClassLoader() {
         ClassLoader loader = classLoader;
         VMError.guarantee(loader != null);

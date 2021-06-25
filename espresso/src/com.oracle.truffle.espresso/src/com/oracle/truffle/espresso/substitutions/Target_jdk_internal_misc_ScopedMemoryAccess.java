@@ -21,21 +21,12 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.jvmti.structs;
+package com.oracle.truffle.espresso.substitutions;
 
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.espresso.jni.JniEnv;
-
-/**
- * Commodity class that stores native structs sizes, along with member offsets. See documentation
- * for {@link StructWrapper}.
- */
-public abstract class StructStorage {
-    protected final long structSize;
-
-    public StructStorage(long structSize) {
-        this.structSize = structSize;
+@EspressoSubstitutions
+public class Target_jdk_internal_misc_ScopedMemoryAccess {
+    @Substitution
+    public static void registerNatives() {
+        /* nop */
     }
-
-    public abstract StructWrapper wrap(JniEnv jni, TruffleObject structPtr);
 }

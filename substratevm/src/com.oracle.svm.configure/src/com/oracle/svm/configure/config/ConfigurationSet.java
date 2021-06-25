@@ -25,14 +25,16 @@
 package com.oracle.svm.configure.config;
 
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.Reader;
 import java.net.URI;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationParser;
@@ -59,6 +61,15 @@ public class ConfigurationSet {
         resourceConfigPaths.add(path.resolve(ConfigurationFile.RESOURCES.getFileName()).toUri());
         serializationConfigPaths.add(path.resolve(ConfigurationFile.SERIALIZATION.getFileName()).toUri());
         predefinedClassesConfigPaths.add(path.resolve(ConfigurationFile.PREDEFINED_CLASSES_NAME.getFileName()).toUri());
+    }
+
+    public void addDirectory(Function<String, URI> fileResolver) {
+        jniConfigPaths.add(fileResolver.apply(ConfigurationFile.JNI.getFileName()));
+        reflectConfigPaths.add(fileResolver.apply(ConfigurationFile.REFLECTION.getFileName()));
+        proxyConfigPaths.add(fileResolver.apply(ConfigurationFile.DYNAMIC_PROXY.getFileName()));
+        resourceConfigPaths.add(fileResolver.apply(ConfigurationFile.RESOURCES.getFileName()));
+        serializationConfigPaths.add(fileResolver.apply(ConfigurationFile.SERIALIZATION.getFileName()));
+        predefinedClassesConfigPaths.add(fileResolver.apply(ConfigurationFile.PREDEFINED_CLASSES_NAME.getFileName()));
     }
 
     public boolean isEmpty() {
@@ -104,8 +115,9 @@ public class ConfigurationSet {
         return proxyConfiguration;
     }
 
-    public PredefinedClassesConfiguration loadPredefinedClassesConfig(Path[] classDestinationDirs, Function<IOException, Exception> exceptionHandler) throws Exception {
-        PredefinedClassesConfiguration predefinedClassesConfiguration = new PredefinedClassesConfiguration(classDestinationDirs);
+    public PredefinedClassesConfiguration loadPredefinedClassesConfig(Path[] classDestinationDirs, Predicate<String> shouldExcludeClassesWithHash,
+                    Function<IOException, Exception> exceptionHandler) throws Exception {
+        PredefinedClassesConfiguration predefinedClassesConfiguration = new PredefinedClassesConfiguration(classDestinationDirs, shouldExcludeClassesWithHash);
         loadConfig(predefinedClassesConfigPaths, new PredefinedClassesConfigurationParser(predefinedClassesConfiguration::add), exceptionHandler);
         return predefinedClassesConfiguration;
     }
@@ -129,10 +141,9 @@ public class ConfigurationSet {
     }
 
     private static void loadConfig(Collection<URI> configPaths, ConfigurationParser configurationParser, Function<IOException, Exception> exceptionHandler) throws Exception {
-        for (URI uri : configPaths) {
-            Path path = Paths.get(uri);
-            try {
-                configurationParser.parseAndRegister(path);
+        for (URI path : configPaths) {
+            try (Reader reader = new InputStreamReader(path.toURL().openStream())) {
+                configurationParser.parseAndRegister(reader);
             } catch (IOException ioe) {
                 Exception e = ioe;
                 if (exceptionHandler != null) {

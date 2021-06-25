@@ -506,7 +506,7 @@ def _native_unittest(native_image, cmdline_args):
         except IOError:
             mx.log('warning: could not read blacklist: ' + blacklist)
 
-    unittest_args = unmask(pargs.unittest_args) if unmask(pargs.unittest_args) else ['com.oracle.svm.test']
+    unittest_args = unmask(pargs.unittest_args) if unmask(pargs.unittest_args) else ['com.oracle.svm.test', 'com.oracle.svm.configure.test']
     _native_junit(native_image, unittest_args, unmask(pargs.build_args), unmask(pargs.run_args), blacklist, whitelist, pargs.preserve_image)
 
 
@@ -848,7 +848,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
                 'substratevm:SVM_AGENT',
             ],
             build_args=[
-                '--features=com.oracle.svm.agent.NativeImageAgent$RegistrationFeature'
+                '--features=com.oracle.svm.agent.NativeImageAgent$RegistrationFeature',
+                '--enable-url-protocols=jar',
             ],
         ),
         mx_sdk_vm.LibraryConfig(

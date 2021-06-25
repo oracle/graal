@@ -40,6 +40,10 @@ public final class ConfigurationPredefinedClass implements JsonPrintable {
         this.hash = hash;
     }
 
+    public String getNameInfo() {
+        return nameInfo;
+    }
+
     @Override
     public void printJson(JsonWriter writer) throws IOException {
         writer.append("{ ");

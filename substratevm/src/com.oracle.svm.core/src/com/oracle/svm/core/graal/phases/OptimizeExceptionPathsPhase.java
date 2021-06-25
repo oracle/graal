@@ -33,6 +33,7 @@ import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.ControlSinkNode;
 import org.graalvm.compiler.nodes.ControlSplitNode;
+import org.graalvm.compiler.nodes.DeadEndNode;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.ProfileData;
@@ -44,7 +45,7 @@ import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.SwitchNode;
 import org.graalvm.compiler.phases.Phase;
 
-import com.oracle.svm.core.graal.nodes.DeadEndNode;
+import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 
 /**
  * Optimizes the probability of branches that go to exception handlers.
@@ -62,6 +63,9 @@ public class OptimizeExceptionPathsPhase extends Phase {
             walkBack(unwind, exceptionPaths);
         }
         for (DeadEndNode deadEnd : graph.getNodes(DeadEndNode.TYPE)) {
+            walkBack(deadEnd, exceptionPaths);
+        }
+        for (LoweredDeadEndNode deadEnd : graph.getNodes(LoweredDeadEndNode.TYPE)) {
             walkBack(deadEnd, exceptionPaths);
         }
 

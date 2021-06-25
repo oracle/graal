@@ -174,7 +174,7 @@ public class CEntryPointLeaveNode extends DeoptimizingFixedWithNextNode implemen
                     }
                 } else if (cur instanceof ReturnNode) {
                     returns.add((ReturnNode) cur);
-                } else if (cur instanceof DeadEndNode) {
+                } else if (cur instanceof LoweredDeadEndNode) {
                     /* Ignore fatal errors, they are a VM exit. */
                 } else {
                     throw VMError.shouldNotReachHere("Unexpected control flow structure after CEntryPointLeaveNode. Disallowed node " + cur +

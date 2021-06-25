@@ -324,6 +324,13 @@ public abstract class ClassRegistry implements ContextAccess {
         } finally {
             chain.pop();
         }
+
+        if (getContext().getJavaVersion().java16OrLater() && superKlass != null) {
+            if (superKlass.isFinalFlagSet()) {
+                throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "class " + type + " is a subclass of final class " + superKlassType);
+            }
+        }
+
         ObjectKlass klass;
 
         try (DebugCloseable define = KLASS_DEFINE.scope(getContext().getTimers())) {
@@ -332,13 +339,23 @@ public abstract class ClassRegistry implements ContextAccess {
             klass = new ObjectKlass(context, linkedKlass, superKlass, superInterfaces, getClassLoader());
         }
 
-        if (superKlass != null && !Klass.checkAccess(superKlass, klass)) {
-            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, "class " + type + " cannot access its superclass " + superKlassType);
+        if (superKlass != null) {
+            if (!Klass.checkAccess(superKlass, klass)) {
+                throw meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, "class " + type + " cannot access its superclass " + superKlassType);
+            }
+            if (!superKlass.permittedSubclassCheck(klass)) {
+                throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "class " + type + " is not a permitted subclass of class " + superKlassType);
+            }
         }
 
         for (ObjectKlass interf : superInterfaces) {
-            if (interf != null && !Klass.checkAccess(interf, klass)) {
-                throw meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, "class " + type + " cannot access its superinterface " + interf.getType());
+            if (interf != null) {
+                if (!Klass.checkAccess(interf, klass)) {
+                    throw meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, "class " + type + " cannot access its superinterface " + interf.getType());
+                }
+                if (!interf.permittedSubclassCheck(klass)) {
+                    throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "class " + type + " is not a permitted subclass of interface " + superKlassType);
+                }
             }
         }
 

@@ -57,7 +57,7 @@ import com.oracle.graal.pointsto.results.StaticAnalysisResults;
 import com.oracle.svm.core.c.BoxedRelocatedPointer;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.graal.code.SubstrateCompilationIdentifier;
-import com.oracle.svm.core.graal.nodes.DeadEndNode;
+import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.graal.replacements.SubstrateGraphKit;
 import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
 import com.oracle.svm.core.util.ExceptionHelpers;
@@ -118,7 +118,7 @@ public class HostedGraphKit extends SubstrateGraphKit {
     public void throwInvocationTargetException(ValueNode exception) {
         ResolvedJavaMethod throwInvocationTargetException = findMethod(ExceptionHelpers.class, "throwInvocationTargetException", true);
         createJavaCallWithExceptionAndUnwind(InvokeKind.Static, throwInvocationTargetException, exception);
-        append(new DeadEndNode());
+        append(new LoweredDeadEndNode());
     }
 
     public LoadFieldNode createLoadFieldNode(ConstantNode receiver, Class<BoxedRelocatedPointer> clazz, String fieldName) {

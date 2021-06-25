@@ -74,7 +74,11 @@ public final class VirtualTable {
             for (Method override : overrides) {
                 if (override.isFinalFlagSet()) {
                     Meta meta = m.getDeclaringKlass().getMeta();
-                    throw meta.throwExceptionWithMessage(meta.java_lang_VerifyError, "Overriding final method: " + override);
+                    if (meta.getJavaVersion().java16OrLater()) {
+                        throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "Overriding final method: " + override);
+                    } else {
+                        throw meta.throwExceptionWithMessage(meta.java_lang_VerifyError, "Overriding final method: " + override);
+                    }
                 }
                 override.invalidateLeaf();
                 int pos = override.getVTableIndex();

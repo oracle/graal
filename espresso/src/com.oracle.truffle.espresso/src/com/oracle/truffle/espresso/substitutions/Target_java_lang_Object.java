@@ -69,4 +69,27 @@ public final class Target_java_lang_Object {
                     @InjectMeta Meta meta, @InjectProfile SubstitutionProfiler profiler) {
         return VM.JVM_Clone(self, finalizerRegister, meta, profiler);
     }
+
+    /* As of JDK 14+, these are no longer linked in libjava. */
+
+    @Substitution(hasReceiver = true)
+    public static void wait(StaticObject self, long time,
+                    @InjectMeta Meta meta,
+                    @InjectProfile SubstitutionProfiler profiler) {
+        meta.getVM().JVM_MonitorWait(self, time, meta, profiler);
+    }
+
+    @Substitution(hasReceiver = true)
+    public static void notify(StaticObject self,
+                    @InjectMeta Meta meta,
+                    @InjectProfile SubstitutionProfiler profiler) {
+        meta.getVM().JVM_MonitorNotify(self, profiler);
+    }
+
+    @Substitution(hasReceiver = true)
+    public static void notifyAll(StaticObject self,
+                    @InjectMeta Meta meta,
+                    @InjectProfile SubstitutionProfiler profiler) {
+        meta.getVM().JVM_MonitorNotifyAll(self, profiler);
+    }
 }

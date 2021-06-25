@@ -26,7 +26,7 @@ import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 
 import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.espresso.FinalizationFeature;
+import com.oracle.truffle.espresso.FinalizationSupport;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
@@ -36,7 +36,7 @@ public final class Target_java_lang_ref_Reference {
 
     static {
         // Ensure PublicFinalReference is injected in the host VM.
-        FinalizationFeature.ensureInitialized();
+        FinalizationSupport.ensureInitialized();
     }
 
     @Substitution(hasReceiver = true, methodName = "<init>")

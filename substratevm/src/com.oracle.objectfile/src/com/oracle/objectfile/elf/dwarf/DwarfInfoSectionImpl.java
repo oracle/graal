@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.oracle.objectfile.debugentry.MethodEntry;
 import org.graalvm.compiler.debug.DebugContext;
 
 import com.oracle.objectfile.BuildDependency;
@@ -654,24 +655,24 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
 
     private int writeMethodDeclarations(DebugContext context, ClassEntry classEntry, byte[] buffer, int p) {
         int pos = p;
-        List<PrimaryEntry> classPrimaryEntries = classEntry.getPrimaryEntries();
-        for (PrimaryEntry primaryEntry : classPrimaryEntries) {
-            Range range = primaryEntry.getPrimary();
-            /*
-             * Declare all methods including deopt targets even though they are written in separate
-             * CUs.
-             */
-            pos = writeMethodDeclaration(context, classEntry, range, buffer, pos);
+        for (MethodEntry method : classEntry.getMethods()) {
+            if (method.isInRange()) {
+                /*
+                 * Declare all methods including deopt targets even though they are written in
+                 * separate CUs.
+                 */
+                pos = writeMethodDeclaration(context, classEntry, method, buffer, pos);
+            }
         }
 
         return pos;
     }
 
-    private int writeMethodDeclaration(DebugContext context, ClassEntry classEntry, Range range, byte[] buffer, int p) {
+    private int writeMethodDeclaration(DebugContext context, ClassEntry classEntry, MethodEntry method, byte[] buffer, int p) {
         int pos = p;
-        String methodKey = range.getSymbolName();
+        String methodKey = method.getSymbolName();
         setMethodDeclarationIndex(classEntry, methodKey, pos);
-        int modifiers = range.getModifiers();
+        int modifiers = method.getModifiers();
         boolean isStatic = Modifier.isStatic(modifiers);
         log(context, "  [0x%08x] method declaration %s", pos, methodKey);
         int abbrevCode = (isStatic ? DwarfDebugInfo.DW_ABBREV_CODE_method_declaration2 : DwarfDebugInfo.DW_ABBREV_CODE_method_declaration1);
@@ -679,19 +680,23 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         log(context, "  [0x%08x]     external  true", pos);
         pos = writeFlag((byte) 1, buffer, pos);
-        String name = uniqueDebugString(range.getMethodName());
+        String name = uniqueDebugString(method.methodName());
         log(context, "  [0x%08x]     name 0x%x (%s)", pos, debugStringIndex(name), name);
         pos = writeAttrStrp(name, buffer, pos);
-        FileEntry fileEntry = range.getFileEntry();
-        int fileIdx = (fileEntry != null ? classEntry.localFilesIdx(fileEntry) : classEntry.localFilesIdx());
-        log(context, "  [0x%08x]     file 0x%x (%s)", pos, fileIdx, range.getFileEntry().getFullName());
+        FileEntry fileEntry = method.getFileEntry();
+        if (fileEntry == null) {
+            fileEntry = classEntry.getFileEntry();
+        }
+        assert fileEntry != null;
+        int fileIdx = classEntry.localFilesIdx(fileEntry);
+        log(context, "  [0x%08x]     file 0x%x (%s)", pos, fileIdx, fileEntry.getFullName());
         pos = writeAttrData2((short) fileIdx, buffer, pos);
-        String returnTypeName = range.getMethodReturnTypeName();
+        String returnTypeName = method.getValueType().getTypeName();
         int retTypeIdx = getTypeIndex(returnTypeName);
         log(context, "  [0x%08x]     type 0x%x (%s)", pos, retTypeIdx, returnTypeName);
         pos = writeAttrRefAddr(retTypeIdx, buffer, pos);
-        log(context, "  [0x%08x]     artificial %s", pos, range.isDeoptTarget() ? "true" : "false");
-        pos = writeFlag((range.isDeoptTarget() ? (byte) 1 : (byte) 0), buffer, pos);
+        log(context, "  [0x%08x]     artificial %s", pos, method.isDeoptTarget ? "true" : "false");
+        pos = writeFlag((method.isDeoptTarget ? (byte) 1 : (byte) 0), buffer, pos);
         log(context, "  [0x%08x]     accessibility %s", pos, "public");
         pos = writeAttrAccessibility(modifiers, buffer, pos);
         log(context, "  [0x%08x]     declaration true", pos);
@@ -713,22 +718,22 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             writeAttrRefAddr(pos, buffer, objectPointerIndex);
         }
         /* Write method parameter declarations. */
-        pos = writeMethodParameterDeclarations(context, classEntry, range, true, buffer, pos);
+        pos = writeMethodParameterDeclarations(context, classEntry, method, true, buffer, pos);
         /*
          * Write a terminating null attribute.
          */
         return writeAttrNull(buffer, pos);
     }
 
-    private int writeMethodParameterDeclarations(DebugContext context, ClassEntry classEntry, Range range, boolean isSpecification, byte[] buffer, int p) {
+    private int writeMethodParameterDeclarations(DebugContext context, ClassEntry classEntry, MethodEntry method, boolean isSpecification, byte[] buffer, int p) {
         int pos = p;
-        if (!Modifier.isStatic(range.getModifiers())) {
+        if (!Modifier.isStatic(method.getModifiers())) {
             pos = writeMethodParameterDeclaration(context, "this", classEntry.getTypeName(), true, isSpecification, buffer, pos);
         }
-        for (TypeEntry paramType : range.getParamTypes()) {
+        for (TypeEntry paramType : method.getParamTypes()) {
             String paramTypeName = paramType.getTypeName();
             String paramName = uniqueDebugString("");
-            FileEntry fileEntry = range.getFileEntry();
+            FileEntry fileEntry = method.getFileEntry();
             if (fileEntry != null) {
                 pos = writeMethodParameterDeclaration(context, paramName, paramTypeName, false, isSpecification, buffer, pos);
             } else {
@@ -1237,7 +1242,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         int methodSpecOffset = getMethodDeclarationIndex(classEntry, methodKey);
         log(context, "  [0x%08x]     specification  0x%x (%s)", pos, methodSpecOffset, methodKey);
         pos = writeAttrRefAddr(methodSpecOffset, buffer, pos);
-        pos = writeMethodParameterDeclarations(context, classEntry, range, false, buffer, pos);
+        pos = writeMethodParameterDeclarations(context, classEntry, range.getMethodEntry(), false, buffer, pos);
         /*
          * Write a terminating null attribute.
          */

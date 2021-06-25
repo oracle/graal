@@ -1,10 +1,10 @@
 suite = {
-  "mxversion" : "5.301.0",
+  "mxversion" : "5.302.1",
   "name" : "compiler",
   "sourceinprojectwhitelist" : [],
 
   "groupId" : "org.graalvm.compiler",
-  "version" : "21.2.0",
+  "version" : "21.3.0",
   "release" : False,
   "url" : "http://www.graalvm.org/",
   "developer" : {
@@ -1690,7 +1690,7 @@ suite = {
       "javaCompliance" : "11+",
       "checkPackagePrefix" : "false",
       "overlayTarget" : "org.graalvm.compiler.truffle.runtime.serviceprovider",
-      "multiReleaseJarVersion" : "9",
+      "multiReleaseJarVersion" : "11",
       "workingSets" : "Graal,Truffle",
     },
 
@@ -1976,7 +1976,7 @@ suite = {
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "11+",
       "overlayTarget" : "org.graalvm.compiler.truffle.runtime.hotspot",
-      "multiReleaseJarVersion" : "9",
+      "multiReleaseJarVersion" : "11",
       "workingSets" : "Graal,Truffle",
     },
 

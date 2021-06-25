@@ -76,7 +76,7 @@ import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
-import com.oracle.svm.core.graal.nodes.DeadEndNode;
+import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.graal.nodes.ThrowBytecodeExceptionNode;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
@@ -210,7 +210,7 @@ public abstract class NonSnippetLowerings {
             foreignCallNode.setStateDuring(node.stateBefore());
             node.replaceAndDelete(foreignCallNode);
 
-            DeadEndNode deadEnd = graph.add(new DeadEndNode());
+            LoweredDeadEndNode deadEnd = graph.add(new LoweredDeadEndNode());
             foreignCallNode.setNext(deadEnd);
         }
     }

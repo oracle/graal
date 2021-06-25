@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -407,9 +407,14 @@ public final class InterpreterToVM implements ContextAccess {
                 Field blockedCount = meta.HIDDEN_THREAD_BLOCKED_COUNT;
                 Target_java_lang_Thread.incrementThreadCounter(thread, blockedCount);
             }
-            context.getJDWPListener().onContendedMonitorEnter(obj);
+            final boolean report = context.shouldReportVMEvents();
+            if (report) {
+                context.reportOnContendedMonitorEnter(obj);
+            }
             monitorUnsafeEnter(lock);
-            context.getJDWPListener().onContendedMonitorEntered(obj);
+            if (report) {
+                context.reportOnContendedMonitorEntered(obj);
+            }
             if (context.EnableManagement) {
                 meta.HIDDEN_THREAD_BLOCKED_OBJECT.setHiddenObject(thread, null);
             }

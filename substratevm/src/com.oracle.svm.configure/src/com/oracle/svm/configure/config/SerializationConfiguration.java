@@ -40,8 +40,27 @@ public class SerializationConfiguration implements ConfigurationBase {
 
     private final Set<String> serializations = ConcurrentHashMap.newKeySet();
 
+    public SerializationConfiguration() {
+    }
+
+    public SerializationConfiguration(SerializationConfiguration other) {
+        this.serializations.addAll(other.serializations);
+    }
+
+    public void removeAll(SerializationConfiguration other) {
+        serializations.removeAll(other.serializations);
+    }
+
     public void add(String serializationTargetClass, String customTargetConstructorClass) {
-        serializations.add(serializationTargetClass + (customTargetConstructorClass != null ? KEY_SEPARATOR + customTargetConstructorClass : ""));
+        serializations.add(mapNameAndConstructor(serializationTargetClass, customTargetConstructorClass));
+    }
+
+    public boolean contains(String serializationTargetClass, String customTargetConstructorClass) {
+        return serializations.contains(mapNameAndConstructor(serializationTargetClass, customTargetConstructorClass));
+    }
+
+    private static String mapNameAndConstructor(String serializationTargetClass, String customTargetConstructorClass) {
+        return serializationTargetClass + (customTargetConstructorClass != null ? KEY_SEPARATOR + customTargetConstructorClass : "");
     }
 
     @Override

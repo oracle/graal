@@ -623,7 +623,7 @@ public final class ClassRedefinition {
         }
         oldKlass.redefineClass(packet, refreshSubClasses, ids);
         if (redefineListener.shouldRerunClassInitializer(oldKlass, packet.detectedChange.clinitChanged())) {
-            context.getJdwpContext().rerunclinit(oldKlass);
+            context.rerunclinit(oldKlass);
         }
     }
 

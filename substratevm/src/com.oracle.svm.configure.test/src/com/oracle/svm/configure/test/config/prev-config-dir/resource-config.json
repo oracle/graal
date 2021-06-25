@@ -1,0 +1,12 @@
+{
+  "resources": [
+    {
+      "pattern": "seenResource.txt"
+    }
+  ],
+  "bundles": [
+    {
+      "name": "seenBundle"
+    }
+  ]
+}

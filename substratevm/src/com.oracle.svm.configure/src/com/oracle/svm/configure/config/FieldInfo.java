@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.configure.config;
 
-final class FieldInfo {
+public final class FieldInfo {
     private static final FieldInfo[] FINAL_NOT_WRITABLE_CACHE;
     static {
         ConfigurationMemberKind[] values = ConfigurationMemberKind.values();
@@ -47,6 +47,23 @@ final class FieldInfo {
     private FieldInfo(ConfigurationMemberKind kind, boolean finalButWritable) {
         this.kind = kind;
         this.finalButWritable = finalButWritable;
+    }
+
+    public FieldInfo newMergedWith(FieldInfo other) {
+        assert kind.equals(other.kind);
+        if (finalButWritable == other.finalButWritable) {
+            return this;
+        }
+        return get(kind, finalButWritable || other.finalButWritable);
+    }
+
+    public FieldInfo newWithDifferencesFrom(FieldInfo other) {
+        assert kind.equals(other.kind);
+        boolean newFinalButWritable = finalButWritable && !other.finalButWritable;
+        if (!newFinalButWritable) {
+            return null;
+        }
+        return get(kind, newFinalButWritable);
     }
 
     public ConfigurationMemberKind getKind() {

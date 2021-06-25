@@ -23,18 +23,13 @@
 
 #include "jvmti.h"
 #include "jvmti_env.h"
+#include "structs.h"
 
 #include <trufflenfi.h>
 #include <jni.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-
-typedef struct member_info {
-	char* id;
-	size_t offset;
-	struct member_info *next;
-} member_info;
 
 #define JVMTI_METHOD_LIST(V) \
     V(SetEventNotificationMode) \
@@ -350,35 +345,6 @@ typedef struct member_info {
     V(member_info)
 
 
-void add_member_info(member_info** info, char* id, size_t offset) {
-	member_info* current = malloc(sizeof(struct member_info));
-	current->id = id;
-	current->offset = offset;
-	current->next = (*info);
-	*info = current;
-}
-
-size_t lookup_member_info(member_info** info, char* id) {
-	for (member_info* current = *info; current != NULL; current = current->next) {
-		if (strcmp(id, current->id) == 0) {
-			return current->offset;
-		}
-	}
-	return -1;
-}
-
-void free_member_info(member_info** info) {
-  if (info != NULL) {
-    member_info* current = (*info);
-    while (current != NULL) {
-      member_info* next = current->next;
-      free(current);
-      current = next;
-    }
-    free(info);
-  }
-}
-
 jvmtiEnv* initializeJvmtiContextImpl(void* (*fetch_by_name)(const char *)) {
 
   jvmtiEnv* env = (jvmtiEnv*) malloc(sizeof(*env));
@@ -425,30 +391,5 @@ JNIEXPORT void JNICALL disposeJvmtiContext(jvmtiEnv* env, int version, void (*re
     if (version <= JVMTI_VERSION) {
 		disposeJvmtiContextImpl(env, release_closure);
 	}
-}
-
-JNIEXPORT void JNICALL initializeJvmtiHandlerContext(void (*notify_member_offset_init)(void *)) {
-  member_info** info = malloc(sizeof(struct member_info*));
-  (*info) = NULL;
-	
-  #define MEMBER_INFO__(STRUCT_NAME, MEMBER_NAME) \
-    add_member_info(info, #STRUCT_NAME "." #MEMBER_NAME, offsetof(struct STRUCT_NAME, MEMBER_NAME));
-	
-  JVMTI_STRUCT_MEMBER_LIST(MEMBER_INFO__)
-  #undef MEMBER_INFO__
-
-  #define STRUCT_INFO__(STRUCT_NAME) \
-    add_member_info(info, #STRUCT_NAME, sizeof(struct STRUCT_NAME));
-
-  JVMTI_STRUCT_LIST(STRUCT_INFO__)
-  #undef STRUCT_INFO__
-  
-  notify_member_offset_init(info);
-  
-  free_member_info(info);
-}
-
-JNIEXPORT size_t JNICALL lookupMemberOffset(void* info, char* id) {
-    return lookup_member_info((member_info**) info, id);
 }
 
