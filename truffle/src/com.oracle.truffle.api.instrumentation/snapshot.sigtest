@@ -111,8 +111,15 @@ meth public abstract com.oracle.truffle.api.instrumentation.ExecutionEventNode c
 CLSS public abstract interface !annotation com.oracle.truffle.api.instrumentation.GenerateWrapper
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+innr public abstract interface static !annotation Ignore
 innr public abstract interface static !annotation IncomingConverter
 innr public abstract interface static !annotation OutgoingConverter
+intf java.lang.annotation.Annotation
+
+CLSS public abstract interface static !annotation com.oracle.truffle.api.instrumentation.GenerateWrapper$Ignore
+ outer com.oracle.truffle.api.instrumentation.GenerateWrapper
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
 intf java.lang.annotation.Annotation
 
 CLSS public abstract interface static !annotation com.oracle.truffle.api.instrumentation.GenerateWrapper$IncomingConverter
