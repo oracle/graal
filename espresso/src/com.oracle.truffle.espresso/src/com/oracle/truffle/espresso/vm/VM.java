@@ -1108,21 +1108,11 @@ public final class VM extends NativeEnv implements ContextAccess {
         ObjectKlass k;
         if (isHidden) {
             // Special handling
-            ClassRegistry registry = getRegistries().getClassRegistry(loader);
-            // Do not register in registry if it is not a strong hidden.
-            k = registry.defineKlass(type, bytes, !isStrong);
-            // Setup hidden class info
-            k.markHidden();
-            if (nest != null) {
-                k.setNest(nest);
-            }
-            getMeta().java_lang_Class_classData.setObject(k.mirror(), classData);
-            k.initSelfReferenceInPool();
+            k = getRegistries().defineKlass(type, bytes, loader, new ClassRegistry.ClassDefinitionInfo(pd, nest, classData, isStrong));
         } else {
             k = getRegistries().defineKlass(type, bytes, loader);
         }
 
-        getMeta().HIDDEN_PROTECTION_DOMAIN.setHiddenObject(k.mirror(), pd);
         if (initialize) {
             k.safeInitialize();
         }
@@ -1783,11 +1773,11 @@ public final class VM extends NativeEnv implements ContextAccess {
         if (getJavaVersion().java11OrEarlier()) {
             return getACCBefore11();
         } else {
-            return getACCAfter11();
+            return getACCAfter12();
         }
     }
 
-    private StaticObject getACCAfter11() {
+    private StaticObject getACCAfter12() {
         ArrayList<StaticObject> domains = new ArrayList<>();
         final boolean[] isPrivileged = new boolean[]{false};
 

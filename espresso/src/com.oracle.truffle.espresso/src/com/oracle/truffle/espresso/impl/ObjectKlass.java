@@ -111,7 +111,7 @@ public final class ObjectKlass extends Klass {
     private final Klass hostKlass;
 
     @CompilationFinal //
-    private volatile Klass nest;
+    private Klass nest;
 
     @CompilationFinal //
     private PackageEntry packageEntry;
@@ -122,9 +122,6 @@ public final class ObjectKlass extends Klass {
 
     @CompilationFinal //
     boolean hasDeclaredDefaultMethods = false;
-
-    @CompilationFinal //
-    boolean isHidden = false;
 
     @CompilationFinal private int computedModifiers = -1;
 
@@ -146,13 +143,15 @@ public final class ObjectKlass extends Klass {
     }
 
     public ObjectKlass(EspressoContext context, LinkedKlass linkedKlass, ObjectKlass superKlass, ObjectKlass[] superInterfaces, StaticObject classLoader) {
-        this(context, linkedKlass, superKlass, superInterfaces, classLoader, null);
+        this(context, linkedKlass, superKlass, superInterfaces, classLoader, ClassRegistry.ClassDefinitionInfo.EMPTY);
     }
 
-    public ObjectKlass(EspressoContext context, LinkedKlass linkedKlass, ObjectKlass superKlass, ObjectKlass[] superInterfaces, StaticObject classLoader, Klass hostKlass) {
+    public ObjectKlass(EspressoContext context, LinkedKlass linkedKlass, ObjectKlass superKlass, ObjectKlass[] superInterfaces, StaticObject classLoader, ClassRegistry.ClassDefinitionInfo info) {
         super(context, linkedKlass.getName(), linkedKlass.getType(), superKlass, superInterfaces, linkedKlass.getFlags());
 
-        this.hostKlass = hostKlass;
+        this.nest = info.dynamicNest;
+        this.hostKlass = info.hostKlass;
+
         // TODO(peterssen): Make writable copy.
         RuntimeConstantPool pool = new RuntimeConstantPool(getContext(), linkedKlass.getConstantPool(), classLoader);
         definingClassLoader = pool.getClassLoader();
@@ -213,6 +212,18 @@ public final class ObjectKlass extends Klass {
             superInterface.addSubType(this);
         }
         this.klassVersion = new KlassVersion(pool, linkedKlass, methods, mirandaMethods, vtable, itable, iKlassTable);
+
+        // Only forcefully initialization of the mirror if necessary
+        if (info.protectionDomain != null) {
+            getMeta().HIDDEN_PROTECTION_DOMAIN.setHiddenObject(mirror(), info.protectionDomain);
+        }
+        if (info.classData != null) {
+            getMeta().java_lang_Class_classData.setHiddenObject(mirror(), info.classData);
+        }
+        if (!info.addedToRegistry()) {
+            initSelfReferenceInPool();
+        }
+
         this.initState = LINKED;
         assert verifyTables();
     }
@@ -554,11 +565,6 @@ public final class ObjectKlass extends Klass {
             }
         }
         return nest;
-    }
-
-    public void setNest(Klass host) {
-        assert nest == null;
-        nest = host;
     }
 
     @Override
@@ -1093,14 +1099,6 @@ public final class ObjectKlass extends Klass {
 
     public void initSelfReferenceInPool() {
         getConstantPool().setKlassAt(getLinkedKlass().getParserKlass().getThisKlassIndex(), this);
-    }
-
-    public void markHidden() {
-        isHidden = true;
-    }
-
-    public boolean isHidden() {
-        return isHidden;
     }
 
     @SuppressWarnings("static-method")

@@ -34,7 +34,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.espresso.classfile.ClassfileStream;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.ffi.Buffer;
@@ -86,8 +85,6 @@ public final class Target_sun_misc_Unsafe {
                     @JavaType(byte[].class) StaticObject data,
                     @JavaType(Object[].class) StaticObject constantPoolPatches,
                     @InjectMeta Meta meta) {
-        EspressoContext context = meta.getContext();
-
         if (StaticObject.isNull(hostClass) || StaticObject.isNull(data)) {
             throw meta.throwNullPointerException();
         }
@@ -96,27 +93,18 @@ public final class Target_sun_misc_Unsafe {
         }
 
         byte[] bytes = data.unwrap();
-        StaticObject[] patches = StaticObject.isNull(constantPoolPatches) ? null : constantPoolPatches.unwrap();
-        Klass hostKlass = hostClass.getMirrorKlass();
-        ClassfileStream cfs = new ClassfileStream(bytes, null);
-        StaticObject classLoader = hostKlass.getDefiningClassLoader();
-        ClassRegistry registry = meta.getRegistries().getClassRegistry(classLoader);
-
-        ObjectKlass k = registry.defineKlass(null, bytes, true);
-        k.initSelfReferenceInPool();
-
-        StaticObject clazz = k.mirror();
-        // Inherit host class's protection domain.
+        ObjectKlass hostKlass = (ObjectKlass) hostClass.getMirrorKlass();
         StaticObject pd = (StaticObject) meta.HIDDEN_PROTECTION_DOMAIN.getHiddenObject(hostClass);
-        if (pd == null) {
-            pd = StaticObject.NULL;
-        }
-        meta.HIDDEN_PROTECTION_DOMAIN.setHiddenObject(clazz, pd);
+        StaticObject[] patches = StaticObject.isNull(constantPoolPatches) ? null : constantPoolPatches.unwrap();
+        // Inherit host class's protection domain.
+        ClassRegistry.ClassDefinitionInfo info = new ClassRegistry.ClassDefinitionInfo(pd, hostKlass, patches);
+
+        ObjectKlass k = meta.getRegistries().defineKlass(null, bytes, hostKlass.getDefiningClassLoader(), info);
 
         // Initialize, because no one else will.
         k.safeInitialize();
 
-        return clazz;
+        return k.mirror();
     }
 
     /**

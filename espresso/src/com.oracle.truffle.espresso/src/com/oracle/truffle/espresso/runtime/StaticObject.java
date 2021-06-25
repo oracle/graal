@@ -126,7 +126,7 @@ public class StaticObject implements TruffleObject, Cloneable {
             klass.getMeta().java_lang_Class_componentType.setObject(newObj, ((ArrayKlass) klass).getComponentType().mirror());
         }
         klass.getMeta().HIDDEN_MIRROR_KLASS.setHiddenObject(newObj, klass);
-        // Will be overriden by JVM_DefineKlass if necessary.
+        // Will be overriden if necessary, but must be initialized to non-host null.
         klass.getMeta().HIDDEN_PROTECTION_DOMAIN.setHiddenObject(newObj, StaticObject.NULL);
         return trackAllocation(klass, newObj);
     }

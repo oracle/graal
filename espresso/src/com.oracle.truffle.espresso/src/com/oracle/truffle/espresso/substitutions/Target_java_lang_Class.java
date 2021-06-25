@@ -64,6 +64,10 @@ import com.oracle.truffle.espresso.vm.VM;
 
 @EspressoSubstitutions
 public final class Target_java_lang_Class {
+    @Substitution
+    public static void registerNatives() {
+        /* nop */
+    }
 
     @Substitution(methodName = "getPrimitiveClass")
     abstract static class GetPrimitiveClass extends Node {
@@ -724,11 +728,6 @@ public final class Target_java_lang_Class {
     @Substitution(hasReceiver = true)
     public static boolean isInstance(@JavaType(Class.class) StaticObject self, @JavaType(Object.class) StaticObject obj) {
         return InterpreterToVM.instanceOf(obj, self.getMirrorKlass());
-    }
-
-    @Substitution
-    public static void registerNatives() {
-        /* nop */
     }
 
     @Substitution(hasReceiver = true)
