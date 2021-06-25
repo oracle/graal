@@ -85,7 +85,7 @@ public final class SomFeature implements GraalFeature {
     }
 
     private static Class<?> getArgumentClass(GraphBuilderContext b, ResolvedJavaMethod targetMethod, int parameterIndex, ValueNode arg) {
-        SubstrateGraphBuilderPlugins.checkParameterUsage(arg.isConstant(), b, targetMethod, parameterIndex,"parameter is not a compile time constant");
+        SubstrateGraphBuilderPlugins.checkParameterUsage(arg.isConstant(), b, targetMethod, parameterIndex, "parameter is not a compile time constant");
         return OriginalClassProvider.getJavaClass(GraalAccess.getOriginalSnippetReflection(), b.getConstantReflection().asJavaType(arg.asJavaConstant()));
     }
 
@@ -112,7 +112,7 @@ public final class SomFeature implements GraalFeature {
         } catch (IllegalAccessException | InvocationTargetException | ClassCastException e) {
             throw JVMCIError.shouldNotReachHere(e);
         }
-        for (String fieldName : new String[] {"primitive", "object", "shape"}) {
+        for (String fieldName : new String[]{"primitive", "object", "shape"}) {
             access.registerAsUnsafeAccessed(ReflectionUtil.lookupField(storageClass, fieldName));
         }
         return storageClass;
