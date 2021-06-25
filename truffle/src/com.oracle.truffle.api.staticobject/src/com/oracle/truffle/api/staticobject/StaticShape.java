@@ -41,11 +41,9 @@
 package com.oracle.truffle.api.staticobject;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
-import org.graalvm.options.OptionValues;
 import sun.misc.Unsafe;
 
 import java.lang.reflect.Field;
