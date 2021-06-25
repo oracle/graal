@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,13 +20,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+#ifndef _STRUCTS_H
+#define _STRUCTS_H
 
-package com.oracle.truffle.espresso.jvmti.structs;
+#include <jni.h>
+#include <stddef.h>
 
-public interface MemberOffsetGetter {
-    long getInfo(String structName);
+typedef struct member_info {
+	char* id;
+	size_t offset;
+	struct member_info *next;
+} member_info;
 
-    default long getOffset(String structName, String memberName) {
-        return getInfo(structName + "." + memberName);
-    }
-}
+JNIEXPORT size_t JNICALL lookupMemberOffset(void* info, char* id);
+
+JNIEXPORT void JNICALL initializeStructs(void (*notify_member_offset_init)(void *));
+
+#endif // _STRUCTS_H

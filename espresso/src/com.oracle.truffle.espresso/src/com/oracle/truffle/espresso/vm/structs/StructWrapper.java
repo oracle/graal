@@ -21,7 +21,7 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.jvmti.structs;
+package com.oracle.truffle.espresso.vm.structs;
 
 import static com.oracle.truffle.espresso.ffi.NativeType.BOOLEAN;
 import static com.oracle.truffle.espresso.ffi.NativeType.INT;
@@ -32,12 +32,13 @@ import static com.oracle.truffle.espresso.ffi.NativeType.POINTER;
 import java.nio.ByteBuffer;
 
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.espresso.ffi.NativeAccess;
 import com.oracle.truffle.espresso.ffi.RawPointer;
 import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
 import com.oracle.truffle.espresso.jni.JNIHandles;
 import com.oracle.truffle.espresso.jni.JniEnv;
-import com.oracle.truffle.espresso.jvmti.structs.GenerateStructs.KnownStruct;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.vm.structs.GenerateStructs.KnownStruct;
 
 /**
  * Commodity class that wraps around native pointers to provide an easy and concise way of accessing
@@ -64,6 +65,46 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
  */
 @GenerateStructs(//
 {
+                /*-
+                 * struct JavaVMAttachArgs {
+                 *     jint version;
+                 *     char *name;
+                 *     jobject group;
+                 * };
+                 */
+                @KnownStruct(structName = "JavaVMAttachArgs", //
+                                memberNames = {
+                                                "version",
+                                                "name",
+                                                "group",
+                                }, //
+                                types = {
+                                                INT,
+                                                POINTER,
+                                                OBJECT,
+                                }),
+                /*-
+                 * struct jdk_version_info {
+                 *     unsigned int jdk_version; // <- The only one we are interested in.
+                 *     unsigned int update_version : 8;
+                 *     unsigned int special_update_version : 8;
+                 *     unsigned int reserved1 : 16;
+                 *     unsigned int reserved2;
+                 *     unsigned int thread_park_blocker : 1;
+                 *     unsigned int post_vm_init_hook_enabled : 1;
+                 *     unsigned int pending_list_uses_discovered_field : 1;
+                 *     unsigned int : 29;
+                 *     unsigned int : 32;
+                 *     unsigned int : 32;
+                 * };
+                 */
+                @KnownStruct(structName = "jdk_version_info", //
+                                memberNames = {
+                                                "jdk_version",
+                                }, //
+                                types = {
+                                                INT,
+                                }),
                 /*-
                  * struct member_info {
                  *     char* id;
@@ -711,6 +752,10 @@ public abstract class StructWrapper {
 
     public TruffleObject pointer() {
         return pointer;
+    }
+
+    public void free(NativeAccess nativeAccess) {
+        nativeAccess.freeMemory(pointer);
     }
 
     protected StructWrapper(JniEnv jni, TruffleObject pointer, long capacity) {

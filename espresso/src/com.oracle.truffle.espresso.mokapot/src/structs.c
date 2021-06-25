@@ -21,8 +21,8 @@
  * questions.
  */
 
+#include "jvm.h"
 #include "jvmti.h"
-#include "jvmti_env.h"
 #include "structs.h"
 
 #include <trufflenfi.h>
@@ -31,155 +31,13 @@
 #include <stdio.h>
 #include <string.h>
 
-#define JVMTI_METHOD_LIST(V) \
-    V(SetEventNotificationMode) \
-    V(GetAllModules) \
-    V(GetAllThreads) \
-    V(SuspendThread) \
-    V(ResumeThread) \
-    V(StopThread) \
-    V(InterruptThread) \
-    V(GetThreadInfo) \
-    V(GetOwnedMonitorInfo) \
-    V(GetCurrentContendedMonitor) \
-    V(RunAgentThread) \
-    V(GetTopThreadGroups) \
-    V(GetThreadGroupInfo) \
-    V(GetThreadGroupChildren) \
-    V(GetFrameCount) \
-    V(GetThreadState) \
-    V(GetCurrentThread) \
-    V(GetFrameLocation) \
-    V(NotifyFramePop) \
-    V(GetLocalObject) \
-    V(GetLocalInt) \
-    V(GetLocalLong) \
-    V(GetLocalFloat) \
-    V(GetLocalDouble) \
-    V(SetLocalObject) \
-    V(SetLocalInt) \
-    V(SetLocalLong) \
-    V(SetLocalFloat) \
-    V(SetLocalDouble) \
-    V(CreateRawMonitor) \
-    V(DestroyRawMonitor) \
-    V(RawMonitorEnter) \
-    V(RawMonitorExit) \
-    V(RawMonitorWait) \
-    V(RawMonitorNotify) \
-    V(RawMonitorNotifyAll) \
-    V(SetBreakpoint) \
-    V(ClearBreakpoint) \
-    V(GetNamedModule) \
-    V(SetFieldAccessWatch) \
-    V(ClearFieldAccessWatch) \
-    V(SetFieldModificationWatch) \
-    V(ClearFieldModificationWatch) \
-    V(IsModifiableClass) \
-    V(Allocate) \
-    V(Deallocate) \
-    V(GetClassSignature) \
-    V(GetClassStatus) \
-    V(GetSourceFileName) \
-    V(GetClassModifiers) \
-    V(GetClassMethods) \
-    V(GetClassFields) \
-    V(GetImplementedInterfaces) \
-    V(IsInterface) \
-    V(IsArrayClass) \
-    V(GetClassLoader) \
-    V(GetObjectHashCode) \
-    V(GetObjectMonitorUsage) \
-    V(GetFieldName) \
-    V(GetFieldDeclaringClass) \
-    V(GetFieldModifiers) \
-    V(IsFieldSynthetic) \
-    V(GetMethodName) \
-    V(GetMethodDeclaringClass) \
-    V(GetMethodModifiers) \
-    V(GetMaxLocals) \
-    V(GetArgumentsSize) \
-    V(GetLineNumberTable) \
-    V(GetMethodLocation) \
-    V(GetLocalVariableTable) \
-    V(SetNativeMethodPrefix) \
-    V(SetNativeMethodPrefixes) \
-    V(GetBytecodes) \
-    V(IsMethodNative) \
-    V(IsMethodSynthetic) \
-    V(GetLoadedClasses) \
-    V(GetClassLoaderClasses) \
-    V(PopFrame) \
-    V(ForceEarlyReturnObject) \
-    V(ForceEarlyReturnInt) \
-    V(ForceEarlyReturnLong) \
-    V(ForceEarlyReturnFloat) \
-    V(ForceEarlyReturnDouble) \
-    V(ForceEarlyReturnVoid) \
-    V(RedefineClasses) \
-    V(GetVersionNumber) \
-    V(GetCapabilities) \
-    V(GetSourceDebugExtension) \
-    V(IsMethodObsolete) \
-    V(SuspendThreadList) \
-    V(ResumeThreadList) \
-    V(AddModuleReads) \
-    V(AddModuleExports) \
-    V(AddModuleOpens) \
-    V(AddModuleUses) \
-    V(AddModuleProvides) \
-    V(IsModifiableModule) \
-    V(GetAllStackTraces) \
-    V(GetThreadListStackTraces) \
-    V(GetThreadLocalStorage) \
-    V(SetThreadLocalStorage) \
-    V(GetStackTrace) \
-    V(GetTag) \
-    V(SetTag) \
-    V(ForceGarbageCollection) \
-    V(IterateOverObjectsReachableFromObject) \
-    V(IterateOverReachableObjects) \
-    V(IterateOverHeap) \
-    V(IterateOverInstancesOfClass) \
-    V(GetObjectsWithTags) \
-    V(FollowReferences) \
-    V(IterateThroughHeap) \
-    V(SetJNIFunctionTable) \
-    V(GetJNIFunctionTable) \
-    V(SetEventCallbacks) \
-    V(GenerateEvents) \
-    V(GetExtensionFunctions) \
-    V(GetExtensionEvents) \
-    V(SetExtensionEventCallback) \
-    V(DisposeEnvironment) \
-    V(GetErrorName) \
-    V(GetJLocationFormat) \
-    V(GetSystemProperties) \
-    V(GetSystemProperty) \
-    V(SetSystemProperty) \
-    V(GetPhase) \
-    V(GetCurrentThreadCpuTimerInfo) \
-    V(GetCurrentThreadCpuTime) \
-    V(GetThreadCpuTimerInfo) \
-    V(GetThreadCpuTime) \
-    V(GetTimerInfo) \
-    V(GetTime) \
-    V(GetPotentialCapabilities) \
-    V(AddCapabilities) \
-    V(RelinquishCapabilities) \
-    V(GetAvailableProcessors) \
-    V(GetClassVersionNumbers) \
-    V(GetConstantPool) \
-    V(GetEnvironmentLocalStorage) \
-    V(SetEnvironmentLocalStorage) \
-    V(AddToBootstrapClassLoaderSearch) \
-    V(SetVerboseFlag) \
-    V(AddToSystemClassLoaderSearch) \
-    V(RetransformClasses) \
-    V(GetOwnedMonitorStackDepthInfo) \
-    V(GetObjectSize) \
-    V(GetLocalInstance) \
-    V(SetHeapSamplingInterval)
+#define JNI_STRUCT_MEMBER_LIST(V) \
+	V(JavaVMAttachArgs, version) \
+	V(JavaVMAttachArgs, name) \
+	V(JavaVMAttachArgs, group) \
+
+#define JVM_STRUCT_MEMBER_LIST(V) \
+    V(jdk_version_info, jdk_version)
 
 #define JVMTI_STRUCT_MEMBER_LIST(V) \
     V(_jvmtiThreadInfo, name) \
@@ -313,12 +171,21 @@
     V(_jvmtiEventCallbacks, ObjectFree) \
     V(_jvmtiEventCallbacks, VMObjectAlloc) \
     V(_jvmtiEventCallbacks, reserved85) \
-    V(_jvmtiEventCallbacks, SampledObjectAlloc) \
+    V(_jvmtiEventCallbacks, SampledObjectAlloc)
+    
+#define MEMBER_INFO_STRUCT_MEMBER_LIST(V) \
     V(member_info, id) \
     V(member_info, offset) \
     V(member_info, next)
+    
+#define JNI_STRUCT_LIST(V) \
+	V(JavaVMAttachArgs) \
+	V(JavaVMAttachArgs) \
+	V(JavaVMAttachArgs) \
 
-
+#define JVM_STRUCT_LIST(V) \
+    V(jdk_version_info)
+    
 #define JVMTI_STRUCT_LIST(V) \
     V(_jvmtiThreadInfo) \
     V(_jvmtiMonitorStackDepthInfo) \
@@ -341,55 +208,74 @@
     V(_jvmtiExtensionEventInfo) \
     V(_jvmtiTimerInfo) \
     V(_jvmtiAddrLocationMap) \
-    V(_jvmtiEventCallbacks) \
+    V(_jvmtiEventCallbacks)
+    
+#define MEMBER_INFO_STRUCT_LIST(V) \
     V(member_info)
 
+#define STRUCT_LIST_LIST(V) \
+	JNI_STRUCT_LIST(V) \
+	JVM_STRUCT_LIST(V) \
+    JVMTI_STRUCT_LIST(V) \
+    MEMBER_INFO_STRUCT_LIST(V)
+    
+#define STRUCT_MEMBER_LIST_LIST(V) \
+	JNI_STRUCT_MEMBER_LIST(V) \
+	JVM_STRUCT_MEMBER_LIST(V) \
+    JVMTI_STRUCT_MEMBER_LIST(V) \
+    MEMBER_INFO_STRUCT_MEMBER_LIST(V)
 
-jvmtiEnv* initializeJvmtiContextImpl(void* (*fetch_by_name)(const char *)) {
-
-  jvmtiEnv* env = (jvmtiEnv*) malloc(sizeof(*env));
-  struct jvmtiInterface_1_ *jvmti = (jvmtiInterface_1*) malloc(sizeof(struct jvmtiInterface_1_));
-
-  (*env) = jvmti;
-
-  #define INIT__(name) \
-      jvmti->name = fetch_by_name(#name);
-
-  JVMTI_METHOD_LIST(INIT__)
-  #undef INIT_
-
-  return env;
+void add_member_info(member_info** info, char* id, size_t offset) {
+	member_info* current = malloc(sizeof(struct member_info));
+	current->id = id;
+	current->offset = offset;
+	current->next = (*info);
+	*info = current;
 }
 
-JNIEXPORT jvmtiEnv* JNICALL initializeJvmtiContext(void* (*fetch_by_name)(const char *), int version) {
-	if (version <= JVMTI_VERSION) {
-		return initializeJvmtiContextImpl(fetch_by_name);
-	} else {
-		return NULL;
+size_t lookup_member_info(member_info** info, char* id) {
+	for (member_info* current = *info; current != NULL; current = current->next) {
+		if (strcmp(id, current->id) == 0) {
+			return current->offset;
+		}
 	}
+	return -1;
 }
 
-void disposeJvmtiContextImpl(jvmtiEnv *env, void (*release_closure)(void *)) {
-  struct jvmtiInterface_1_ *jvmti = (jvmtiInterface_1*) (*env);
-
-  #define DISPOSE__(name) \
-    if (release_closure != NULL) { \
-      release_closure(jvmti->name); \
-    } \
-    jvmti->name = NULL;
-
-  JVMTI_METHOD_LIST(DISPOSE__)
-  #undef DISPOSE__
-
-  free(jvmti);
-  (*env) = NULL;
-
-  free(env);
+void free_member_info(member_info** info) {
+  if (info != NULL) {
+    member_info* current = (*info);
+    while (current != NULL) {
+      member_info* next = current->next;
+      free(current);
+      current = next;
+    }
+    free(info);
+  }
 }
 
-JNIEXPORT void JNICALL disposeJvmtiContext(jvmtiEnv* env, int version, void (*release_closure)(void *)) {
-    if (version <= JVMTI_VERSION) {
-		disposeJvmtiContextImpl(env, release_closure);
-	}
+JNIEXPORT void JNICALL initializeStructs(void (*notify_member_offset_init)(void *)) {
+  member_info** info = malloc(sizeof(struct member_info*));
+  (*info) = NULL;
+	
+  #define MEMBER_INFO__(STRUCT_NAME, MEMBER_NAME) \
+    add_member_info(info, #STRUCT_NAME "." #MEMBER_NAME, offsetof(struct STRUCT_NAME, MEMBER_NAME));
+    
+  STRUCT_MEMBER_LIST_LIST(MEMBER_INFO__)
+  #undef MEMBER_INFO__
+
+  #define STRUCT_INFO__(STRUCT_NAME) \
+    add_member_info(info, #STRUCT_NAME, sizeof(struct STRUCT_NAME));
+
+  STRUCT_LIST_LIST(STRUCT_INFO__)
+  #undef STRUCT_INFO__
+  
+  notify_member_offset_init(info);
+  
+  free_member_info(info);
+}
+
+JNIEXPORT size_t JNICALL lookupMemberOffset(void* info, char* id) {
+    return lookup_member_info((member_info**) info, id);
 }
 

@@ -21,7 +21,7 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.jvmti.structs;
+package com.oracle.truffle.espresso.vm.structs;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

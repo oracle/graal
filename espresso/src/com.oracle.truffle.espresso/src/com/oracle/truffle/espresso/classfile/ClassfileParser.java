@@ -66,6 +66,8 @@ import com.oracle.truffle.espresso.classfile.attributes.LocalVariableTable;
 import com.oracle.truffle.espresso.classfile.attributes.MethodParametersAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.NestHostAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.NestMembersAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.PermittedSubclassesAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.RecordAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.SignatureAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.SourceDebugExtensionAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.SourceFileAttribute;
@@ -563,12 +565,15 @@ public final class ClassfileParser {
                     RUNTIME_VISIBLE_TYPE_ANNOTATIONS | RUNTIME_INVISIBLE_TYPE_ANNOTATIONS | ANNOTATION_DEFAULT | SIGNATURE;
     private static final int fieldAnnotations = RUNTIME_VISIBLE_ANNOTATIONS | RUNTIME_INVISIBLE_ANNOTATIONS | RUNTIME_VISIBLE_TYPE_ANNOTATIONS | RUNTIME_INVISIBLE_TYPE_ANNOTATIONS | SIGNATURE;
     private static final int codeAnnotations = RUNTIME_VISIBLE_TYPE_ANNOTATIONS | RUNTIME_INVISIBLE_TYPE_ANNOTATIONS | SIGNATURE;
+    private static final int recordAnnotations = RUNTIME_VISIBLE_ANNOTATIONS | RUNTIME_INVISIBLE_ANNOTATIONS |
+                    RUNTIME_VISIBLE_TYPE_ANNOTATIONS | RUNTIME_INVISIBLE_TYPE_ANNOTATIONS | SIGNATURE;
 
     public enum InfoType {
         Class(classAnnotations),
         Method(methodAnnotations),
         Field(fieldAnnotations),
-        Code(codeAnnotations);
+        Code(codeAnnotations),
+        Record(recordAnnotations);
 
         final int annotations;
 
@@ -885,6 +890,8 @@ public final class ClassfileParser {
         EnclosingMethodAttribute enclosingMethod = null;
         BootstrapMethodsAttribute bootstrapMethods = null;
         InnerClassesAttribute innerClasses = null;
+        PermittedSubclassesAttribute permittedSubclasses = null;
+        RecordAttribute record = null;
 
         CommonAttributeParser commonAttributeParser = new CommonAttributeParser(InfoType.Class);
 
@@ -942,6 +949,16 @@ public final class ClassfileParser {
                         throw ConstantPool.classFormatError("Classfile cannot have both a nest members and a nest host attribute.");
                     }
                     classAttributes[i] = nestMembers = parseNestMembers(attributeName);
+                } else if (majorVersion >= JAVA_14_VERSION && attributeName.equals(Name.Record)) {
+                    if (record != null) {
+                        throw ConstantPool.classFormatError("Duplicate Record attribute");
+                    }
+                    classAttributes[i] = record = parseRecord(attributeName);
+                } else if (majorVersion >= JAVA_17_VERSION && attributeName.equals(Name.PermittedSubclasses)) {
+                    if (permittedSubclasses != null) {
+                        throw ConstantPool.classFormatError("Duplicate PermittedSubclasses attribute");
+                    }
+                    classAttributes[i] = permittedSubclasses = parsePermittedSubclasses(attributeName);
                 } else {
                     Attribute attr = commonAttributeParser.parseCommonAttribute(attributeName, attributeSize);
                     // stream.skip(attributeSize);
@@ -1237,6 +1254,45 @@ public final class ClassfileParser {
             classes[i] = pos;
         }
         return new NestMembersAttribute(attributeName, classes);
+    }
+
+    private PermittedSubclassesAttribute parsePermittedSubclasses(Symbol<Name> attributeName) {
+        assert PermittedSubclassesAttribute.NAME.equals(attributeName);
+        int numberOfClasses = stream.readU2();
+        int[] classes = new int[numberOfClasses];
+        for (int i = 0; i < numberOfClasses; i++) {
+            int pos = stream.readU2();
+            pool.classAt(pos).validate(pool);
+            classes[i] = pos;
+        }
+        return new PermittedSubclassesAttribute(attributeName, classes);
+    }
+
+    private RecordAttribute parseRecord(Symbol<Name> recordAttributeName) {
+        assert RecordAttribute.NAME.equals(recordAttributeName);
+        int length = stream.readU2();
+        RecordAttribute.RecordComponentInfo[] components = new RecordAttribute.RecordComponentInfo[length];
+        for (int i = 0; i < length; i++) {
+            final int name = stream.readU2();
+            final int descriptor = stream.readU2();
+            Attribute[] componentAttributes = parseRecordComponentAttributes();
+            components[i] = new RecordAttribute.RecordComponentInfo(name, descriptor, componentAttributes);
+        }
+        return new RecordAttribute(recordAttributeName, components);
+    }
+
+    private Attribute[] parseRecordComponentAttributes() {
+        final int size = stream.readU2();
+        Attribute[] componentAttributes = new Attribute[size];
+        for (int j = 0; j < size; j++) {
+            CommonAttributeParser commonAttributeParser = new CommonAttributeParser(InfoType.Record);
+            final int attributeNameIndex = stream.readU2();
+            final Symbol<Name> attributeName = pool.symbolAt(attributeNameIndex, "attribute name");
+            final int attributeSize = stream.readS4();
+            Attribute attr = commonAttributeParser.parseCommonAttribute(attributeName, attributeSize);
+            componentAttributes[j] = attr == null ? new Attribute(attributeName, stream.readByteArray(attributeSize)) : attr;
+        }
+        return componentAttributes;
     }
 
     private InnerClassesAttribute.Entry parseInnerClassEntry() {

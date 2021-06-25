@@ -53,6 +53,7 @@ import com.oracle.truffle.espresso.classfile.attributes.EnclosingMethodAttribute
 import com.oracle.truffle.espresso.classfile.attributes.InnerClassesAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.NestHostAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.NestMembersAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.PermittedSubclassesAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.SignatureAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.SourceDebugExtensionAttribute;
 import com.oracle.truffle.espresso.descriptors.Names;
@@ -567,6 +568,32 @@ public final class ObjectKlass extends Klass {
                 if (k == pool.resolvedKlassAt(this, index)) {
                     return true;
                 }
+            }
+        }
+        return false;
+    }
+
+    public boolean permittedSubclassCheck(ObjectKlass k) {
+        CompilerAsserts.neverPartOfCompilation();
+        if (!getContext().getJavaVersion().java17OrLater()) {
+            return true;
+        }
+        PermittedSubclassesAttribute permittedSubclasses = (PermittedSubclassesAttribute) getAttribute(PermittedSubclassesAttribute.NAME);
+        if (permittedSubclasses == null) {
+            return true;
+        }
+        if (module() != k.module()) {
+            return false;
+        }
+        if (!isPublic() && !sameRuntimePackage(k)) {
+            return false;
+        }
+        RuntimeConstantPool pool = getConstantPool();
+        for (int index : permittedSubclasses.getClasses()) {
+            if (k.getName().equals(pool.classAt(index).getName(pool))) {
+                // There should be no need to resolve: the previous checks guarantees it would
+                // resolve to k, but resolving here would cause circularity errors.
+                return true;
             }
         }
         return false;

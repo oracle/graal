@@ -41,7 +41,9 @@ SUNWprivate_1.1 {
                 # Espresso jvmti native API
                 initializeJvmtiContext;
                 disposeJvmtiContext;
-                initializeJvmtiHandlerContext;
+                
+                # Structs initialization
+                initializeStructs;
                 lookupMemberOffset;
 
                 # JNI
@@ -296,6 +298,27 @@ SUNWprivate_1.1 {
                 JVM_MoreStackWalk;
                 JVM_SetBootLoaderUnnamedModule;
                 JVM_WaitForReferencePendingList;
+                
+                # JDK 16
+                JVM_DefineArchivedModules;
+                JVM_GetExtendedNPEMessage;
+                JVM_GetPermittedSubclasses;
+                JVM_GetProperties;
+                JVM_GetRandomSeedForDumping;
+                JVM_GetRecordComponents;
+                JVM_IsCDSDumpingEnabled;
+                JVM_IsDumpingClassList;
+                JVM_IsHiddenClass;
+                JVM_IsRecord;
+                JVM_IsSharingEnabled;
+                JVM_IsUseContainerSupport;
+                JVM_LogLambdaFormInvoker;
+                JVM_LookupDefineClass;
+                JVM_LookupLambdaProxyClassFromArchive;
+                JVM_PhantomReferenceRefersTo;
+                JVM_ReferenceClear;
+                JVM_ReferenceRefersTo;
+                JVM_RegisterLambdaProxyClassForArchiving;
 
                 # miscellaneous functions
                 jio_fprintf;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,16 +20,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-#ifndef _JVMTI_ENV_H
-#define _JVMTI_ENV_H
 
-#include <trufflenfi.h>
-#include <jni.h>
+package com.oracle.truffle.espresso.vm.structs;
 
-#include <stddef.h>
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.espresso.ffi.NativeAccess;
+import com.oracle.truffle.espresso.jni.JniEnv;
 
-JNIEXPORT jvmtiEnv* JNICALL initializeJvmtiContext(void* (*fetch_by_name)(const char *), const int version);
+/**
+ * Commodity class that stores native structs sizes, along with member offsets. See documentation
+ * for {@link StructWrapper}.
+ */
+public abstract class StructStorage<T extends StructWrapper> {
+    protected final long structSize;
 
-JNIEXPORT void JNICALL disposeJvmtiContext(jvmtiEnv *env, int version, void (*release_closure)(void *));
+    public StructStorage(long structSize) {
+        this.structSize = structSize;
+    }
 
-#endif // _JVMTI_ENV_H
+    public abstract T wrap(JniEnv jni, TruffleObject structPtr);
+
+    public T allocate(NativeAccess nativeAccess, JniEnv jni) {
+        TruffleObject pointer = nativeAccess.allocateMemory(structSize);
+        return wrap(jni, pointer);
+    }
+
+    public long structSize() {
+        return structSize;
+    }
+}

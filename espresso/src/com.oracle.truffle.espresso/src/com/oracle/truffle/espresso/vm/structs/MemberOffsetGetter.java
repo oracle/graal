@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,16 +20,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-#ifndef _JVMTI_ENV_H
-#define _JVMTI_ENV_H
 
-#include <trufflenfi.h>
-#include <jni.h>
+package com.oracle.truffle.espresso.vm.structs;
 
-#include <stddef.h>
+public interface MemberOffsetGetter {
+    long getInfo(String structName);
 
-JNIEXPORT jvmtiEnv* JNICALL initializeJvmtiContext(void* (*fetch_by_name)(const char *), const int version);
-
-JNIEXPORT void JNICALL disposeJvmtiContext(jvmtiEnv *env, int version, void (*release_closure)(void *));
-
-#endif // _JVMTI_ENV_H
+    default long getOffset(String structName, String memberName) {
+        return getInfo(structName + "." + memberName);
+    }
+}

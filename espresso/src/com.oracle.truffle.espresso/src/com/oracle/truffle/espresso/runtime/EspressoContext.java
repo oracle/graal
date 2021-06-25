@@ -88,6 +88,7 @@ import com.oracle.truffle.espresso.redefinition.plugins.api.InternalRedefinition
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
+import com.oracle.truffle.espresso.vm.UnsafeAccess;
 import com.oracle.truffle.espresso.vm.VM;
 
 import sun.misc.SignalHandler;
@@ -191,7 +192,6 @@ public final class EspressoContext {
     @CompilationFinal private InterpreterToVM interpreterToVM;
     @CompilationFinal private JImageLibrary jimageLibrary;
     @CompilationFinal private EspressoProperties vmProperties;
-    @CompilationFinal private JavaVersion javaVersion;
     @CompilationFinal private AgentLibraries agents;
     @CompilationFinal private NativeAccess nativeAccess;
     // endregion VM
@@ -442,16 +442,16 @@ public final class EspressoContext {
 
             initVmProperties();
 
-            if (getJavaVersion().modulesEnabled()) {
-                registries.initJavaBaseModule();
-                registries.getBootClassRegistry().initUnnamedModule(StaticObject.NULL);
-            }
-
             // Spawn JNI first, then the VM.
             try (DebugCloseable vmInit = VM_INIT.scope(timers)) {
                 this.nativeAccess = spawnNativeAccess();
                 this.vm = VM.create(getJNI()); // Mokapot is loaded
                 vm.attachThread(Thread.currentThread());
+            }
+
+            if (getJavaVersion().modulesEnabled()) {
+                registries.initJavaBaseModule();
+                registries.getBootClassRegistry().initUnnamedModule(StaticObject.NULL);
             }
 
             // TODO: link libjimage
@@ -472,17 +472,28 @@ public final class EspressoContext {
                                 Type.java_lang_String,
                                 Type.java_lang_System,
                                 Type.java_lang_ThreadGroup,
-                                Type.java_lang_Thread,
-                                Type.java_lang_Class,
-                                Type.java_lang_reflect_Method)) {
+                                Type.java_lang_Thread)) {
                     initializeKnownClass(type);
                 }
             }
 
+            if (meta.jdk_internal_misc_UnsafeConstants != null) {
+                initializeKnownClass(Type.jdk_internal_misc_UnsafeConstants);
+                UnsafeAccess.initializeGuestUnsafeConstants(meta);
+            }
+
+            // Create main thread as soon as Thread class is initialized.
             threadManager.createMainThread(meta);
 
             try (DebugCloseable knownClassInit = KNOWN_CLASS_INIT.scope(timers)) {
-                initializeKnownClass(Type.java_lang_ref_Finalizer);
+                initializeKnownClass(Type.java_lang_Object);
+
+                for (Symbol<Type> type : Arrays.asList(
+                                Type.java_lang_Class,
+                                Type.java_lang_reflect_Method,
+                                Type.java_lang_ref_Finalizer)) {
+                    initializeKnownClass(type);
+                }
             }
 
             referenceDrainer.initReferenceDrain();
@@ -607,7 +618,6 @@ public final class EspressoContext {
         // libraries bundled with GraalVM.
         builder.javaHome(Engine.findHome());
         vmProperties = EspressoProperties.processOptions(builder, getEnv().getOptions()).build();
-        javaVersion = new JavaVersion(vmProperties.bootClassPathType().getJavaVersion());
     }
 
     private void initializeKnownClass(Symbol<Type> type) {
@@ -645,7 +655,7 @@ public final class EspressoContext {
     }
 
     public JavaVersion getJavaVersion() {
-        return javaVersion;
+        return vm.getJavaVersion();
     }
 
     public Types getTypes() {

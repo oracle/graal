@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,16 +20,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-#ifndef _JVMTI_ENV_H
-#define _JVMTI_ENV_H
 
-#include <trufflenfi.h>
-#include <jni.h>
+package com.oracle.truffle.espresso.classfile.attributes;
 
-#include <stddef.h>
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.runtime.Attribute;
 
-JNIEXPORT jvmtiEnv* JNICALL initializeJvmtiContext(void* (*fetch_by_name)(const char *), const int version);
+public class PermittedSubclassesAttribute extends Attribute {
+    public static final Symbol<Name> NAME = Name.PermittedSubclasses;
 
-JNIEXPORT void JNICALL disposeJvmtiContext(jvmtiEnv *env, int version, void (*release_closure)(void *));
+    @CompilerDirectives.CompilationFinal(dimensions = 1)//
+    private final int[] classes;
 
-#endif // _JVMTI_ENV_H
+    public PermittedSubclassesAttribute(Symbol<Name> name, int[] classes) {
+        super(name, null);
+        this.classes = classes;
+    }
+
+    public int[] getClasses() {
+        return classes;
+    }
+}
