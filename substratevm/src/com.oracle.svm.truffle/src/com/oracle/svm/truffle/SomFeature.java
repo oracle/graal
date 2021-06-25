@@ -95,7 +95,7 @@ public final class SomFeature implements GraalFeature {
         interceptedArgs.clear();
     }
 
-    private Class<?> generate(Class<?> storageSuperClass, Class<?> factoryInterface, BeforeAnalysisAccess access) {
+    private static Class<?> generate(Class<?> storageSuperClass, Class<?> factoryInterface, BeforeAnalysisAccess access) {
         Class<?> shapeGeneratorClass = loadClass(GENERATOR_CLASS_NAME);
         ClassLoader generatorCL = getGeneratorClassLoader(factoryInterface);
         Method generatorMethod = ReflectionUtil.lookupMethod(shapeGeneratorClass, "getShapeGenerator", generatorCL.getClass(), Class.class, Class.class);
