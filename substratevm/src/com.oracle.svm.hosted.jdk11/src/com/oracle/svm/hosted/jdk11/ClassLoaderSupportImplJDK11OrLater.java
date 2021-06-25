@@ -23,7 +23,7 @@
  * questions.
  */
 
-package com.oracle.svm.hosted;
+package com.oracle.svm.hosted.jdk11;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -45,26 +45,18 @@ import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.NativeImageClassLoaderSupport;
+import com.oracle.svm.hosted.NativeImageSystemClassLoader;
 
 import jdk.internal.module.Modules;
 
-@AutomaticFeature
-public class ClassLoaderSupportFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess a) {
-        VMError.guarantee(JavaVersionUtil.JAVA_SPEC > 8);
-        FeatureImpl.AfterRegistrationAccessImpl access = (FeatureImpl.AfterRegistrationAccessImpl) a;
-        ImageSingletons.add(ClassLoaderSupport.class, new ClassLoaderSupportImpl11(access.getImageClassLoader().classLoaderSupport));
-    }
-}
-
-final class ClassLoaderSupportImpl11 extends ClassLoaderSupport {
+public final class ClassLoaderSupportImplJDK11OrLater extends ClassLoaderSupport {
 
     private final NativeImageClassLoaderSupport classLoaderSupport;
     private final Map<String, Set<Module>> packageToModules;
 
-    ClassLoaderSupportImpl11(NativeImageClassLoaderSupport classLoaderSupport) {
+    ClassLoaderSupportImplJDK11OrLater(NativeImageClassLoaderSupport classLoaderSupport) {
         this.classLoaderSupport = classLoaderSupport;
         packageToModules = new HashMap<>();
         buildPackageToModulesMap(classLoaderSupport);
@@ -102,7 +94,7 @@ final class ClassLoaderSupportImpl11 extends ClassLoaderSupport {
         }
         ArrayList<ResourceBundle> resourceBundles = new ArrayList<>();
         for (Module module : modules) {
-            Module exportTargetModule = ClassLoaderSupportImpl8.class.getModule();
+            Module exportTargetModule = ClassLoaderSupportImplJDK11OrLater.class.getModule();
             if (!module.isExported(packageName, exportTargetModule)) {
                 Modules.addOpens(module, packageName, exportTargetModule);
             }
@@ -171,4 +163,18 @@ final class ClassLoaderSupportImpl11 extends ClassLoaderSupport {
         }
     }
 
+}
+
+@AutomaticFeature
+class ClassLoaderSupportFeatureJDK11OrLater implements Feature {
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return JavaVersionUtil.JAVA_SPEC >= 11;
+    }
+
+    @Override
+    public void afterRegistration(AfterRegistrationAccess a) {
+        FeatureImpl.AfterRegistrationAccessImpl access = (FeatureImpl.AfterRegistrationAccessImpl) a;
+        ImageSingletons.add(ClassLoaderSupport.class, new ClassLoaderSupportImplJDK11OrLater(access.getImageClassLoader().classLoaderSupport));
+    }
 }

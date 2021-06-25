@@ -69,7 +69,7 @@ public final class ImageClassLoader {
     }
 
     public final Platform platform;
-    final NativeImageClassLoaderSupport classLoaderSupport;
+    public final NativeImageClassLoaderSupport classLoaderSupport;
 
     private final EconomicSet<Class<?>> applicationClasses = EconomicSet.create();
     private final EconomicSet<Class<?>> hostedOnlyClasses = EconomicSet.create();

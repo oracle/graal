@@ -36,23 +36,12 @@ import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.util.VMError;
 
-@AutomaticFeature
-public class ClassLoaderSupportFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess a) {
-        VMError.guarantee(JavaVersionUtil.JAVA_SPEC <= 8);
-        FeatureImpl.AfterRegistrationAccessImpl access = (FeatureImpl.AfterRegistrationAccessImpl) a;
-        ImageSingletons.add(ClassLoaderSupport.class, new ClassLoaderSupportImpl8(access.getImageClassLoader().classLoaderSupport));
-    }
-}
-
-final class ClassLoaderSupportImpl8 extends ClassLoaderSupport {
+public final class ClassLoaderSupportImpl extends ClassLoaderSupport {
 
     private final ClassLoader imageClassLoader;
 
-    ClassLoaderSupportImpl8(NativeImageClassLoaderSupport classLoaderSupport) {
+    ClassLoaderSupportImpl(NativeImageClassLoaderSupport classLoaderSupport) {
         this.imageClassLoader = classLoaderSupport.getClassLoader();
     }
 
@@ -64,5 +53,19 @@ final class ClassLoaderSupportImpl8 extends ClassLoaderSupport {
     @Override
     public List<ResourceBundle> getResourceBundle(String bundleName, Locale locale) {
         return Collections.singletonList(ResourceBundle.getBundle(bundleName, locale, imageClassLoader));
+    }
+}
+
+@AutomaticFeature
+class ClassLoaderSupportFeature implements Feature {
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return JavaVersionUtil.JAVA_SPEC == 8;
+    }
+
+    @Override
+    public void afterRegistration(AfterRegistrationAccess a) {
+        FeatureImpl.AfterRegistrationAccessImpl access = (FeatureImpl.AfterRegistrationAccessImpl) a;
+        ImageSingletons.add(ClassLoaderSupport.class, new ClassLoaderSupportImpl(access.getImageClassLoader().classLoaderSupport));
     }
 }

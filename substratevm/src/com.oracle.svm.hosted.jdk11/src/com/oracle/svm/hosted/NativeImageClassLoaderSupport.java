@@ -59,7 +59,7 @@ public class NativeImageClassLoaderSupport extends AbstractNativeImageClassLoade
     private final List<Path> buildmp;
 
     private final ClassLoader classLoader;
-    final ModuleLayer moduleLayerForImageBuild;
+    public final ModuleLayer moduleLayerForImageBuild;
 
     NativeImageClassLoaderSupport(ClassLoader defaultSystemClassLoader, String[] classpath, String[] modulePath) {
         super(defaultSystemClassLoader, classpath);
@@ -244,7 +244,7 @@ public class NativeImageClassLoaderSupport extends AbstractNativeImageClassLoade
     }
 
     @Override
-    ClassLoader getClassLoader() {
+    public ClassLoader getClassLoader() {
         return classLoader;
     }
 
