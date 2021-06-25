@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -54,6 +54,7 @@ import com.oracle.truffle.api.OptimizationFailedException;
 import com.oracle.truffle.api.ReplaceObserver;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.DefaultCompilerOptions;
@@ -483,9 +484,11 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     private boolean interpreterCall() {
+        boolean bypassedInstalledCode = false;
         if (isValid()) {
             // Native entry stubs were deoptimized => reinstall.
             runtime().bypassedInstalledCode(this);
+            bypassedInstalledCode = true;
         }
         ensureInitialized();
         int intCallCount = this.callCount;
@@ -495,7 +498,19 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
         // Check if call target is hot enough to compile
         if (shouldCompileImpl(intCallCount, intLoopCallCount)) {
-            return compile(!engine.multiTier);
+            boolean isCompiled = compile(!engine.multiTier);
+            /*
+             * If we bypassed the installed code chances are high that the code is currently being
+             * debugged. This means that returning true for the interpreter call will retry the call
+             * boundary. If the call boundary is retried and debug stepping would invalidate the
+             * entry stub again then this leads to an inconvenient stack overflow error. In order to
+             * avoid this we just do not return true and wait for the second execution to jump to
+             * the optimized code. In practice the installed code should rarely be bypassed.
+             *
+             * This is only important for HotSpot. We can safely ignore this behavior for SVM as
+             * there is no regular JDWP debugging supported.
+             */
+            return isCompiled && (TruffleOptions.AOT || !bypassedInstalledCode);
         }
         return false;
     }
