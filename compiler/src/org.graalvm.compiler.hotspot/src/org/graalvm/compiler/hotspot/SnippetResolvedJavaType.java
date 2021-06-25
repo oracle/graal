@@ -247,6 +247,11 @@ public final class SnippetResolvedJavaType implements ResolvedJavaType {
     }
 
     @Override
+    public ResolvedJavaMethod resolveConcreteMethod(ResolvedJavaMethod method, ResolvedJavaType callerType) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
     public Assumptions.AssumptionResult<ResolvedJavaMethod> findUniqueConcreteMethod(ResolvedJavaMethod method) {
         throw new UnsupportedOperationException();
     }
