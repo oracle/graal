@@ -21,7 +21,7 @@ the Java HotSpot VM or run standalone.
 * [Tools](tools/README.md) contains a set of tools for GraalVM languages
 implemented with the instrumentation framework.
 
-* [Substrate VM](substratevm/README.md) framework that allows ahead-of-time (AOT)
+* [Substrate VM](substratevm/SubstrateVM.md) framework that allows ahead-of-time (AOT)
 compilation of Java applications under closed-world assumption into executable
 images or shared objects.
 
