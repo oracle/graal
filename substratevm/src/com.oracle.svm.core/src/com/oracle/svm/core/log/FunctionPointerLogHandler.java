@@ -42,6 +42,7 @@ public class FunctionPointerLogHandler implements LogHandlerExtension {
     private final LogHandler delegate;
 
     private LogFunctionPointer logFunctionPointer;
+    private LogFunctionPointer fatalLogFunctionPointer;
     private VoidFunctionPointer flushFunctionPointer;
     private VoidFunctionPointer fatalErrorFunctionPointer;
 
@@ -69,10 +70,16 @@ public class FunctionPointerLogHandler implements LogHandlerExtension {
 
     @Override
     public boolean fatalContext(CodePointer callerIP, String msg, Throwable ex) {
+        boolean res = true;
         if (delegate instanceof LogHandlerExtension) {
-            return ((LogHandlerExtension) delegate).fatalContext(callerIP, msg, ex);
+            res = ((LogHandlerExtension) delegate).fatalContext(callerIP, msg, ex);
         }
-        return true;
+        if (res && fatalLogFunctionPointer.isNonNull()) {
+            // Switch output to the function pointer that may redirect
+            // to a log file instead of to stdout or stderr.
+            logFunctionPointer = fatalLogFunctionPointer;
+        }
+        return res;
     }
 
     @Override
@@ -113,6 +120,9 @@ public class FunctionPointerLogHandler implements LogHandlerExtension {
     public static boolean parseVMOption(String optionString, WordPointer extraInfo) {
         if (optionString.equals("_log")) {
             handler(optionString).logFunctionPointer = (LogFunctionPointer) extraInfo;
+            return true;
+        } else if (optionString.equals("_fatal_log")) {
+            handler(optionString).fatalLogFunctionPointer = (LogFunctionPointer) extraInfo;
             return true;
         } else if (optionString.equals("_flush_log")) {
             handler(optionString).flushFunctionPointer = (VoidFunctionPointer) extraInfo;

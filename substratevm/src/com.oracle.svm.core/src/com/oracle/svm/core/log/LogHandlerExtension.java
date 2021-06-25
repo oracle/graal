@@ -37,21 +37,26 @@ public interface LogHandlerExtension extends LogHandler {
      * The callee receives arguments that describes the error. Based on these arguments the
      * implementor can decide if it wants to get more specific error related information via
      * subsequent calls to {@link #log(CCharPointer, UnsignedWord)}. This is requested by returning
-     * {@code true}. Returning {@code false} on the other hand will let the VM know that it can skip
-     * providing this information and immediately proceed with calling {@link #fatalError()} from
+     * {@code true}. Returning {@code false} on the other hand will let the VM know that it must
+     * skip logging this information and immediately proceed with calling {@link #fatalError()} from
      * where it is expected to never return to the VM.
      * <p>
      * Providing this method allows to implement flood control for fatal errors. The implementor can
      * rely on {@link #fatalError()} getting called soon after this method is called.
+     * <p>
+     * This method also allows an implementor to redirect fatal error log output related to a file.
+     * For example, libgraal uses this to redirect fatal error logging to a
+     * {@code hs_err_pid<NNNN>_libjvmci.log} file.
      *
      * @param callerIP the address of the call-site where the fatal error occurred
      * @param msg provides optional text that was passed to the fatal error call
      * @param ex provides optional exception object that was passed to the fatal error call
      *
-     * @return if {@code false} is returned the VM will skip providing more specific error related
-     *         information before calling {@link #fatalError()}.
+     * @return if {@code false} is returned the VM will not call
+     *         {@link #log(CCharPointer, UnsignedWord)} again before calling {@link #fatalError()}.
      *
      * @since 20.3
+     * @see Log#enterFatalContext
      */
     default boolean fatalContext(CodePointer callerIP, String msg, Throwable ex) {
         return true;

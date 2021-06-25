@@ -29,15 +29,21 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordBase;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
+import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicWord;
+import com.oracle.svm.core.thread.VMThreads;
 
 /**
  * Utility class that provides low-level output methods for basic Java data types (strings and
@@ -372,6 +378,46 @@ public abstract class Log implements AutoCloseable {
     /** An implementation of AutoCloseable.close(). */
     @Override
     public void close() {
+    }
+
+    /**
+     * Barrier for serializing threads that are logging fatal error data using
+     * {@link #enterFatalContext} and {@link #exitFatalContext}.
+     */
+    private static final AtomicWord<IsolateThread> threadInFatalContext = new AtomicWord<>();
+
+    /**
+     * Enters a fatal logging context which may redirect or suppress further log output based on
+     * whether {@code logHandler} is a {@link LogHandlerExtension} and if so, what it returns from
+     * {@link LogHandlerExtension#fatalContext}.
+     *
+     * If further logging is not suppressed (i.e. this method does not return {@code null}), then
+     * this method synchronizes its callers so that fatal error logging is not interleaved between
+     * threads. The caller must call {@link #exitFatalContext()} once it has finished all fatal
+     * error logging and is about to call {@link LogHandler#fatalError()}.
+     *
+     * @return {@code null} if fatal error logging is to be suppressed, otherwise the {@link Log}
+     *         object to be used for fatal error logging. In the latter case, the caller must call
+     *         {@link LogHandler#fatalError()} once fatal error logging is complete.
+     */
+    public static Log enterFatalContext(LogHandler logHandler, CodePointer callerIP, String msg, Throwable ex) {
+        if (!(logHandler instanceof LogHandlerExtension) || ((LogHandlerExtension) logHandler).fatalContext(callerIP, msg, ex)) {
+            IsolateThread currentThread = CurrentIsolate.getCurrentThread();
+            while (!threadInFatalContext.compareAndSet(WordFactory.nullPointer(), currentThread) && threadInFatalContext.get().notEqual(currentThread)) {
+                // Some other thread is in the fatal error context - wait for it to finish
+                VMThreads.singleton().nativeSleep(100);
+            }
+            return log().autoflush(true);
+        }
+        return null;
+    }
+
+    /**
+     * Notifies that the caller is finished fatal error logging, allowing other threads blocked in
+     * {@link #enterFatalContext} to proceed.
+     */
+    public static void exitFatalContext() {
+        threadInFatalContext.set(WordFactory.nullPointer());
     }
 
     /**
