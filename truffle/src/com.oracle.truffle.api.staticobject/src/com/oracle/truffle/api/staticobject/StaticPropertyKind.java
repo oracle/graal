@@ -44,6 +44,7 @@ package com.oracle.truffle.api.staticobject;
  * Describes the kind of a {@link StaticProperty}. In
  *
  * @see StaticProperty
+ * @since 21.3.0
  */
 public enum StaticPropertyKind {
     // The ordinal values of these enum types influences field scheduling in ArrayBasedStaticShape.

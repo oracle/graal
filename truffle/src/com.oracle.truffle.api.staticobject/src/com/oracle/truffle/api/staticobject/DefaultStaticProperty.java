@@ -44,6 +44,7 @@ package com.oracle.truffle.api.staticobject;
  * A trivial default implementation of {@link StaticProperty}.
  *
  * @see StaticProperty
+ * @since 21.3.0
  */
 public final class DefaultStaticProperty extends StaticProperty {
     private final String id;
@@ -56,6 +57,7 @@ public final class DefaultStaticProperty extends StaticProperty {
      *            shape.
      * @param kind the {@link StaticPropertyKind} of the static property
      * @param storeAsFinal if the static property value can be stored in a final field
+     * @since 21.3.0
      */
     public DefaultStaticProperty(String id, StaticPropertyKind kind, boolean storeAsFinal) {
         super(kind, storeAsFinal);

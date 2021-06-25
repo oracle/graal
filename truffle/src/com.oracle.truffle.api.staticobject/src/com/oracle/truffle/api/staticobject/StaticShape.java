@@ -87,6 +87,7 @@ import java.util.Objects;
  * @param <T> the {@linkplain Builder#build() default} or the
  *            {@linkplain StaticShape.Builder#build(Class, Class) user-defined} factory interface to
  *            allocate static objects
+ * @since 21.3.0
  */
 public abstract class StaticShape<T> {
     enum StorageStrategy {
@@ -129,6 +130,7 @@ public abstract class StaticShape<T> {
      * @see StaticProperty
      * @see DefaultStaticProperty
      * @see DefaultStaticObjectFactory
+     * @since 21.3.0
      */
     public static Builder newBuilder(TruffleLanguage<?> language) {
         Objects.requireNonNull(language);
@@ -148,6 +150,7 @@ public abstract class StaticShape<T> {
      * @see StaticShape.Builder#build()
      * @see StaticShape.Builder#build(StaticShape)
      * @see StaticShape.Builder#build(Class, Class)
+     * @since 21.3.0
      */
     public final T getFactory() {
         return factory;
@@ -197,6 +200,7 @@ public abstract class StaticShape<T> {
      * thread-safe and must not be used from multiple threads at the same time.
      *
      * @see StaticShape#newBuilder(TruffleLanguage)
+     * @since 21.3.0
      */
     public static final class Builder {
         private static final char[] FORBIDDEN_CHARS = new char[]{'.', ';', '[', '/'};
@@ -224,6 +228,7 @@ public abstract class StaticShape<T> {
          * @throws IllegalArgumentException if the {@linkplain StaticProperty#getId() property id}
          *             is an empty string, contains a forbidden character, or is the same of another
          *             static property already registered to this builder
+         * @since 21.3.0
          */
         public Builder property(StaticProperty property) {
             CompilerAsserts.neverPartOfCompilation();
@@ -241,6 +246,7 @@ public abstract class StaticShape<T> {
          * @see StaticShape.Builder#build(StaticShape)
          * @see StaticShape.Builder#build(Class, Class)
          * @return the new {@link StaticShape}
+         * @since 21.3.0
          */
         public StaticShape<DefaultStaticObjectFactory> build() {
             return build(Object.class, DefaultStaticObjectFactory.class);
@@ -259,6 +265,7 @@ public abstract class StaticShape<T> {
          * @param parentShape the parent {@linkplain StaticShape shape}
          * @param <T> the generic type of the parent {@linkplain StaticShape shape}
          * @return the new {@link StaticShape}
+         * @since 21.3.0
          */
         public <T> StaticShape<T> build(StaticShape<T> parentShape) {
             Objects.requireNonNull(parentShape);
@@ -298,6 +305,7 @@ public abstract class StaticShape<T> {
          *             overrides {@link Object#clone()} with a final method.
          * @throws RuntimeException if a static property was added to more than one builder or
          *             multiple times to the same builder
+         * @since 21.3.0
          */
         public <T> StaticShape<T> build(Class<?> superClass, Class<T> factoryInterface) {
             validateClasses(factoryInterface, superClass);
