@@ -443,15 +443,6 @@ public interface JDWPContext {
     MonitorStackInfo[] getOwnedMonitors(CallFrame[] callFrames);
 
     /**
-     * Returns the current contended monitor for the guest thread, or <code>null</code> if there are
-     * no current contended monitor for this thread.
-     *
-     * @param guestThread the guest thread
-     * @return the current contended monitor
-     */
-    Object getCurrentContendedMonitor(Object guestThread);
-
-    /**
      * Returns the language class associated with the implementing class of this interface.
      *
      * @return the Truffle language class

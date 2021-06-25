@@ -37,7 +37,7 @@ final class Target_com_oracle_truffle_espresso_hotswap_HotSwapHandler {
         }
 
         try {
-            meta.getContext().getJdwpContext().registerExternalHotSwapHandler(handler);
+            meta.getContext().registerExternalHotSwapHandler(handler);
         } catch (IllegalArgumentException ex) {
             return false;
         }

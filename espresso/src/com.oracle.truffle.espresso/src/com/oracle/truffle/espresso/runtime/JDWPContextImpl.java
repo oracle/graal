@@ -56,9 +56,8 @@ import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.jdwp.api.MonitorStackInfo;
 import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
 import com.oracle.truffle.espresso.jdwp.api.TagConstants;
-import com.oracle.truffle.espresso.jdwp.api.VMListener;
+import com.oracle.truffle.espresso.jdwp.api.VMEventListenerImpl;
 import com.oracle.truffle.espresso.jdwp.impl.DebuggerController;
-import com.oracle.truffle.espresso.jdwp.impl.EmptyListener;
 import com.oracle.truffle.espresso.jdwp.impl.JDWP;
 import com.oracle.truffle.espresso.jdwp.impl.JDWPInstrument;
 import com.oracle.truffle.espresso.jdwp.impl.TypeTag;
@@ -82,11 +81,10 @@ public final class JDWPContextImpl implements JDWPContext {
 
     private final EspressoContext context;
     private final Ids<Object> ids;
-    private JDWPSetup setup;
-    private VMListener eventListener = new EmptyListener();
-    private final ClassRedefinition classRedefinition;
-    private InnerClassRedefiner innerClassRedefiner;
-    private final RedefinitionPluginHandler redefinitionPluginHandler;
+    private final JDWPSetup setup;
+    private ClassRedefinition classRedefinition;
+    private final InnerClassRedefiner innerClassRedefiner;
+    private RedefinitionPluginHandler redefinitionPluginHandler;
     private final ArrayList<ReloadingAction> classInitializerActions = new ArrayList<>(1);
 
     public JDWPContextImpl(EspressoContext context) {
@@ -94,15 +92,15 @@ public final class JDWPContextImpl implements JDWPContext {
         this.ids = new Ids<>(StaticObject.NULL);
         this.setup = new JDWPSetup();
         this.innerClassRedefiner = new InnerClassRedefiner(context);
-        this.redefinitionPluginHandler = RedefinitionPluginHandler.create(context);
-        this.classRedefinition = new ClassRedefinition(context, ids, redefinitionPluginHandler);
     }
 
-    public VMListener jdwpInit(TruffleLanguage.Env env, Object mainThread) {
+    public void jdwpInit(TruffleLanguage.Env env, Object mainThread, VMEventListenerImpl vmEventListener) {
         Debugger debugger = env.lookup(env.getInstruments().get("debugger"), Debugger.class);
         DebuggerController control = env.lookup(env.getInstruments().get(JDWPInstrument.ID), DebuggerController.class);
-        setup.setup(debugger, control, context.JDWPOptions, this, mainThread);
-        return eventListener = control.getEventListener();
+        vmEventListener.activate(mainThread, control, this);
+        setup.setup(debugger, control, context.JDWPOptions, this, mainThread, vmEventListener);
+        redefinitionPluginHandler = RedefinitionPluginHandler.create(context);
+        classRedefinition = new ClassRedefinition(context, ids, redefinitionPluginHandler);
     }
 
     public void finalizeContext() {
@@ -650,11 +648,6 @@ public final class JDWPContextImpl implements JDWPContext {
             stackDepth++;
         }
         return result.toArray(new MonitorStackInfo[result.size()]);
-    }
-
-    @Override
-    public Object getCurrentContendedMonitor(Object guestThread) {
-        return eventListener.getCurrentContendedMonitor(guestThread);
     }
 
     @Override

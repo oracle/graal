@@ -2698,16 +2698,16 @@ public final class BytecodeNode extends EspressoMethodNode {
         }
 
         public void notifyEntry(@SuppressWarnings("unused") VirtualFrame frame, EspressoInstrumentableNode instrumentableNode) {
-            if (method.hasActiveHook()) {
-                if (context.getJDWPListener().onMethodEntry(method, instrumentableNode.getScope(frame, true))) {
+            if (context.shouldReportVMEvents() && method.hasActiveHook()) {
+                if (context.reportOnMethodEntry(method, instrumentableNode.getScope(frame, true))) {
                     enterAt(frame, 0);
                 }
             }
         }
 
         public void notifyReturn(VirtualFrame frame, int statementIndex, Object returnValue) {
-            if (method.hasActiveHook()) {
-                if (context.getJDWPListener().onMethodReturn(method, returnValue)) {
+            if (context.shouldReportVMEvents() && method.hasActiveHook()) {
+                if (context.reportOnMethodReturn(method, returnValue)) {
                     enterAt(frame, statementIndex);
                 }
             }
@@ -2723,16 +2723,16 @@ public final class BytecodeNode extends EspressoMethodNode {
         }
 
         public void notifyFieldModification(VirtualFrame frame, int index, Field field, StaticObject receiver, Object value) {
-            if (field.hasActiveBreakpoint()) {
-                if (context.getJDWPListener().onFieldModification(field, receiver, value)) {
+            if (context.shouldReportVMEvents() && field.hasActiveBreakpoint()) {
+                if (context.reportOnFieldModification(field, receiver, value)) {
                     enterAt(frame, index);
                 }
             }
         }
 
         public void notifyFieldAccess(VirtualFrame frame, int index, Field field, StaticObject receiver) {
-            if (field.hasActiveBreakpoint()) {
-                if (context.getJDWPListener().onFieldAccess(field, receiver)) {
+            if (context.shouldReportVMEvents() && field.hasActiveBreakpoint()) {
+                if (context.reportOnFieldAccess(field, receiver)) {
                     enterAt(frame, index);
                 }
             }
