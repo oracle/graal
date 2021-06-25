@@ -151,6 +151,6 @@ public class ShapeAndFactoryTest extends StaticObjectModelTest {
 
     @Test
     public void dummy() {
-
+        // to make sure this file is recognized as a test
     }
 }
