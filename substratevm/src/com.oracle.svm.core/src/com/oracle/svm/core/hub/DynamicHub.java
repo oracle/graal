@@ -950,6 +950,8 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
                         "` was removed by reachability analysis. Use `Feature.BeforeAnalysisAccess.registerForReflectiveInstantiation` to register the type for reflective instantiation.");
     }
 
+// Checkstyle: allow direct annotation access (false positives)
+
     @Substitute
     @Override
     public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
@@ -1016,6 +1018,8 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     public <T extends Annotation> T getDeclaredAnnotation(Class<T> annotationClass) {
         return AnnotationsEncoding.decodeAnnotations(annotationsEncoding).getDeclaredAnnotation(annotationClass);
     }
+
+// Checkstyle: disallow direct annotation access
 
     /**
      * This class stores similar information as the non-public class java.lang.Class.ReflectionData.

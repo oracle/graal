@@ -33,6 +33,7 @@ import java.lang.reflect.Type;
 
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.util.GuardedAnnotationAccess;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
@@ -143,7 +144,7 @@ class TypeVariableAnnotationsComputer implements CustomFieldValueComputer {
 
     @Override
     public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
-        return ((TypeVariableImpl<?>) receiver).getAnnotations();
+        return GuardedAnnotationAccess.getAnnotations((TypeVariableImpl<?>) receiver);
     }
 }
 
