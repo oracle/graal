@@ -30,7 +30,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.RawStoreNode;
 import org.graalvm.word.LocationIdentity;
 
-import com.oracle.graal.pointsto.api.UnsafePartitionKind;
+import com.oracle.svm.util.UnsafePartitionKind;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;

@@ -22,19 +22,28 @@
  */
 package com.oracle.truffle.espresso.jni;
 
+import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 /**
  * Retains one exception per thread that is pending to be handled in that thread (or none).
  */
 public final class JniThreadLocalPendingException {
-    private ThreadLocal<StaticObject> pendingException = new ThreadLocal<>();
+    private ThreadLocal<EspressoException> pendingException = new ThreadLocal<>();
 
     public StaticObject get() {
+        EspressoException espressoException = getEspressoException();
+        if (espressoException == null) {
+            return null;
+        }
+        return espressoException.getExceptionObject();
+    }
+
+    public EspressoException getEspressoException() {
         return pendingException.get();
     }
 
-    public void set(StaticObject t) {
+    public void set(EspressoException t) {
         // TODO(peterssen): Warn about overwritten pending exceptions.
         pendingException.set(t);
     }

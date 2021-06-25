@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -576,6 +576,11 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
+        public Object getLoggersSPI(Object loggerCache) {
+            return ((TruffleLogger.LoggerCache) loggerCache).getSPI();
+        }
+
+        @Override
         public void closeEngineLoggers(Object loggers) {
             ((TruffleLogger.LoggerCache) loggers).close();
         }
@@ -593,6 +598,21 @@ final class LanguageAccessor extends Accessor {
         @Override
         public Path getPath(TruffleFile truffleFile) {
             return truffleFile.getSPIPath();
+        }
+
+        @Override
+        public boolean isSynchronousTLAction(ThreadLocalAction action) {
+            return action.isSynchronous();
+        }
+
+        @Override
+        public boolean isSideEffectingTLAction(ThreadLocalAction action) {
+            return action.hasSideEffects();
+        }
+
+        @Override
+        public void performTLAction(ThreadLocalAction action, ThreadLocalAction.Access access) {
+            action.perform(access);
         }
 
     }

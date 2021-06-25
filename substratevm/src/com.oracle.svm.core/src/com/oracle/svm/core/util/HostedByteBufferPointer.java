@@ -131,162 +131,167 @@ public final class HostedByteBufferPointer implements Pointer {
 
     @Override
     public char readChar(WordBase offset, LocationIdentity locationIdentity) {
-        throw unsupported();
+        return readChar(offsetAsInt(offset), locationIdentity);
     }
 
     @Override
     public short readShort(WordBase offset, LocationIdentity locationIdentity) {
-        throw unsupported();
+        return readShort(offsetAsInt(offset), locationIdentity);
     }
 
     @Override
     public int readInt(WordBase offset, LocationIdentity locationIdentity) {
-        throw unsupported();
+        return readInt(offsetAsInt(offset), locationIdentity);
     }
 
     @Override
     public long readLong(WordBase offset, LocationIdentity locationIdentity) {
-        throw unsupported();
+        return readLong(offsetAsInt(offset), locationIdentity);
     }
 
     @Override
     public float readFloat(WordBase offset, LocationIdentity locationIdentity) {
-        throw unsupported();
+        return readFloat(offsetAsInt(offset), locationIdentity);
     }
 
     @Override
     public double readDouble(WordBase offset, LocationIdentity locationIdentity) {
-        throw unsupported();
+        return readDouble(offsetAsInt(offset), locationIdentity);
     }
 
     @Override
     public <T extends WordBase> T readWord(WordBase offset, LocationIdentity locationIdentity) {
-        throw unsupported();
+        return readWord(offsetAsInt(offset), locationIdentity);
     }
 
     @Override
     public Object readObject(WordBase offset, LocationIdentity locationIdentity) {
-        throw unsupported();
+        return readObject(offsetAsInt(offset), locationIdentity);
     }
 
     @Override
     public char readChar(int offset, LocationIdentity locationIdentity) {
-        throw unsupported();
+        return readChar(offset);
     }
 
     @Override
     public short readShort(int offset, LocationIdentity locationIdentity) {
-        throw unsupported();
+        return readShort(offset);
     }
 
     @Override
     public int readInt(int offset, LocationIdentity locationIdentity) {
-        throw unsupported();
+        return readInt(offset);
     }
 
     @Override
     public long readLong(int offset, LocationIdentity locationIdentity) {
-        throw unsupported();
+        return readLong(offset);
     }
 
     @Override
     public float readFloat(int offset, LocationIdentity locationIdentity) {
-        throw unsupported();
+        return readFloat(offset);
     }
 
     @Override
     public double readDouble(int offset, LocationIdentity locationIdentity) {
-        throw unsupported();
+        return readDouble(offset);
     }
 
     @Override
     public <T extends WordBase> T readWord(int offset, LocationIdentity locationIdentity) {
-        throw unsupported();
+        return readWord(offset);
     }
 
     @Override
     public Object readObject(int offset, LocationIdentity locationIdentity) {
-        throw unsupported();
+        return readObject(offset);
     }
 
     @Override
     public void writeChar(WordBase offset, char val, LocationIdentity locationIdentity) {
-        throw unsupported();
+        writeChar(offsetAsInt(offset), val, locationIdentity);
     }
 
     @Override
     public void writeShort(WordBase offset, short val, LocationIdentity locationIdentity) {
-        throw unsupported();
+        writeShort(offsetAsInt(offset), val, locationIdentity);
     }
 
     @Override
     public void writeInt(WordBase offset, int val, LocationIdentity locationIdentity) {
-        throw unsupported();
+        writeInt(offsetAsInt(offset), val, locationIdentity);
     }
 
     @Override
     public void writeLong(WordBase offset, long val, LocationIdentity locationIdentity) {
-        throw unsupported();
+        writeLong(offsetAsInt(offset), val, locationIdentity);
     }
 
     @Override
     public void writeFloat(WordBase offset, float val, LocationIdentity locationIdentity) {
-        throw unsupported();
+        writeFloat(offsetAsInt(offset), val, locationIdentity);
     }
 
     @Override
     public void writeDouble(WordBase offset, double val, LocationIdentity locationIdentity) {
-        throw unsupported();
+        writeDouble(offsetAsInt(offset), val, locationIdentity);
     }
 
     @Override
     public void writeWord(WordBase offset, WordBase val, LocationIdentity locationIdentity) {
-        throw unsupported();
+        writeWord(offsetAsInt(offset), val, locationIdentity);
     }
 
     @Override
     public void initializeLong(WordBase offset, long val, LocationIdentity locationIdentity) {
-        throw unsupported();
+        initializeLong(offsetAsInt(offset), val, locationIdentity);
     }
 
     @Override
     public void writeObject(WordBase offset, Object val, LocationIdentity locationIdentity) {
-        throw unsupported();
+        writeObject(offsetAsInt(offset), val, locationIdentity);
     }
 
     @Override
     public void writeChar(int offset, char val, LocationIdentity locationIdentity) {
-        throw unsupported();
+        writeChar(offset, val);
     }
 
     @Override
     public void writeShort(int offset, short val, LocationIdentity locationIdentity) {
-        throw unsupported();
+        writeShort(offset, val);
     }
 
     @Override
     public void writeInt(int offset, int val, LocationIdentity locationIdentity) {
-        throw unsupported();
+        writeInt(offset, val);
     }
 
     @Override
     public void writeLong(int offset, long val, LocationIdentity locationIdentity) {
-        throw unsupported();
+        writeLong(offset, val);
     }
 
     @Override
     public void writeFloat(int offset, float val, LocationIdentity locationIdentity) {
-        throw unsupported();
+        writeFloat(offset, val);
     }
 
     @Override
     public void writeDouble(int offset, double val, LocationIdentity locationIdentity) {
-        throw unsupported();
+        writeDouble(offset, val);
     }
 
     @Override
     public void writeWord(int offset, WordBase val, LocationIdentity locationIdentity) {
-        throw unsupported();
+        writeWord(offset, val);
+    }
+
+    @Override
+    public void writeObject(int offset, Object val, LocationIdentity locationIdentity) {
+        writeObject(offset, val);
     }
 
     @Override
@@ -295,78 +300,73 @@ public final class HostedByteBufferPointer implements Pointer {
     }
 
     @Override
-    public void writeObject(int offset, Object val, LocationIdentity locationIdentity) {
-        throw unsupported();
-    }
-
-    @Override
     public char readChar(WordBase offset) {
-        throw unsupported();
+        return readChar(offsetAsInt(offset));
     }
 
     @Override
     public short readShort(WordBase offset) {
-        throw unsupported();
+        return readShort(offsetAsInt(offset));
     }
 
     @Override
     public int readInt(WordBase offset) {
-        throw unsupported();
+        return readInt(offsetAsInt(offset));
     }
 
     @Override
     public long readLong(WordBase offset) {
-        throw unsupported();
+        return readLong(offsetAsInt(offset));
     }
 
     @Override
     public float readFloat(WordBase offset) {
-        throw unsupported();
+        return readFloat(offsetAsInt(offset));
     }
 
     @Override
     public double readDouble(WordBase offset) {
-        throw unsupported();
+        return readDouble(offsetAsInt(offset));
     }
 
     @Override
     public <T extends WordBase> T readWord(WordBase offset) {
-        throw unsupported();
+        return readWord(offsetAsInt(offset));
     }
 
     @Override
     public Object readObject(WordBase offset) {
-        throw unsupported();
+        return readObject(offsetAsInt(offset));
     }
 
     @Override
     public char readChar(int offset) {
-        throw unsupported();
+        return buffer.getChar(baseOffset + offset);
     }
 
     @Override
     public short readShort(int offset) {
-        throw unsupported();
+        return buffer.getShort(baseOffset + offset);
     }
 
     @Override
     public int readInt(int offset) {
-        throw unsupported();
+        return buffer.getInt(baseOffset + offset);
     }
 
     @Override
     public long readLong(int offset) {
-        throw unsupported();
+        return buffer.getLong(baseOffset + offset);
     }
 
     @Override
     public float readFloat(int offset) {
-        throw unsupported();
+        return buffer.getFloat(baseOffset + offset);
     }
 
     @Override
     public double readDouble(int offset) {
-        throw unsupported();
+        return buffer.getDouble(baseOffset + offset);
     }
 
     @Override
@@ -381,42 +381,42 @@ public final class HostedByteBufferPointer implements Pointer {
 
     @Override
     public void writeChar(WordBase offset, char val) {
-        throw unsupported();
+        writeChar(offsetAsInt(offset), val);
     }
 
     @Override
     public void writeShort(WordBase offset, short val) {
-        throw unsupported();
+        writeShort(offsetAsInt(offset), val);
     }
 
     @Override
     public void writeInt(WordBase offset, int val) {
-        throw unsupported();
+        writeInt(offsetAsInt(offset), val);
     }
 
     @Override
     public void writeLong(WordBase offset, long val) {
-        throw unsupported();
+        writeLong(offsetAsInt(offset), val);
     }
 
     @Override
     public void writeFloat(WordBase offset, float val) {
-        throw unsupported();
+        writeFloat(offsetAsInt(offset), val);
     }
 
     @Override
     public void writeDouble(WordBase offset, double val) {
-        throw unsupported();
+        writeDouble(offsetAsInt(offset), val);
     }
 
     @Override
     public void writeWord(WordBase offset, WordBase val) {
-        throw unsupported();
+        writeWord(offsetAsInt(offset), val);
     }
 
     @Override
     public void writeObject(WordBase offset, Object val) {
-        throw unsupported();
+        writeObject(offsetAsInt(offset), val);
     }
 
     @Override
@@ -461,32 +461,32 @@ public final class HostedByteBufferPointer implements Pointer {
 
     @Override
     public void writeChar(int offset, char val) {
-        throw unsupported();
+        buffer.putChar(baseOffset + offset, val);
     }
 
     @Override
     public void writeShort(int offset, short val) {
-        throw unsupported();
+        buffer.putShort(baseOffset + offset, val);
     }
 
     @Override
     public void writeInt(int offset, int val) {
-        throw unsupported();
+        buffer.putInt(baseOffset + offset, val);
     }
 
     @Override
     public void writeLong(int offset, long val) {
-        throw unsupported();
+        buffer.putLong(baseOffset + offset, val);
     }
 
     @Override
     public void writeFloat(int offset, float val) {
-        throw unsupported();
+        buffer.putFloat(baseOffset + offset, val);
     }
 
     @Override
     public void writeDouble(int offset, double val) {
-        throw unsupported();
+        buffer.putDouble(baseOffset + offset, val);
     }
 
     @Override
@@ -541,12 +541,12 @@ public final class HostedByteBufferPointer implements Pointer {
 
     @Override
     public Pointer add(UnsignedWord val) {
-        throw unsupported();
+        return add(NumUtil.safeToInt(val.rawValue()));
     }
 
     @Override
     public Pointer add(int val) {
-        throw unsupported();
+        return new HostedByteBufferPointer(buffer, baseOffset + val);
     }
 
     @Override

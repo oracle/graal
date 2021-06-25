@@ -2,6 +2,10 @@
 
 This changelog summarizes major changes between GraalVM SDK versions. The main focus is on APIs exported by GraalVM SDK.
 
+## Version 21.2.0
+* `AllowVMInspection` is enabled in the native launchers, `SIGQUIT` can be used to generate thread dumps. Performance counters are disabled by default, they can be enabled in the graalvm enterprise by the `--vm.XX:+UsePerfData` option.
+* Changed behavior of `Value.as(TypeLiteral<Function<Object, Object>>).apply()`: When the function is called with an `Object[]` argument, it is passed through as a single argument rather than an array of arguments.
+
 ## Version 21.1.0
 * Added new methods  in `Value` for interacting with buffer-like objects:
     * Added `Value.hasBufferElements()` that returns  `true` if this object supports buffer messages.
@@ -9,6 +13,33 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
     * Added `Value.getBufferSize()` to return the size of this buffer.
     * Added `Value.readBufferByte(long)`, `Value.readBufferShort(ByteOrder, long)`, `Value.readBufferInt(ByteOrder, long)`, `Value.readBufferLong(ByteOrder, long)`, `Value.readBufferFloat(ByteOrder, long)`  and `Value.readBufferDouble(ByteOrder, long)` to read a primitive from this buffer at the given index.
     * Added `Value.writeBufferByte(long, byte)`, `Value.writeBufferShort(ByteOrder, long, short)`, `Value.writeBufferInt(ByteOrder, long, int)`, `Value.writeBufferLong(ByteOrder, long, long)`, `Value.writeBufferFloat(ByteOrder, long, float)`  and `Value.writeBufferDouble(ByteOrder, long, double)` to write a primitive in this buffer at the given index (supported only if `Value.isBufferWritable()` returns `true`).
+* Added `Value` methods supporting iterables and iterators:
+    * Added `hasIterator()` specifying that the `Value` is an iterable.
+    * Added `getIterator()` to return the iterator for an iterable `Value`.
+    * Added `isIterator()`  specifying that the `Value` is an iterator.
+    * Added `hasIteratorNextElement()`  to test that the iterator `Value` has more elements to return by calling the `getIteratorNextElement()` method.
+    * Added `getIteratorNextElement()` to return the current iterator element.
+* Added `HostAccess.Builder.allowIterableAccess()` to allow the guest application to access Java `Iterables` as values with iterators (true by default for `HostAccess.ALL` and `HostAccess.Builder.allowListAccess(true)`, false otherwise).
+* Added `HostAccess.Builder.allowIteratorAccess()` to allow the guest application to access Java `Iterators` (true by default for `HostAccess.ALL`, `HostAccess.Builder.allowListAccess(true)` and `HostAccess.Builder.allowIterableAccess(true)`,  false otherwise).
+* Added `ProxyIterable` and `ProxyIterator` to proxy iterable and iterator guest values.
+* Added `Value` methods supporting hash maps:
+    * Added `hasHashEntries()` specifying that the `Value` provides hash entries.
+    * Added `getHashSize()` to return hash entries count.
+    * Added `hasHashEntry(Object)` specifying that the mapping for the specified key exists.
+    * Added `getHashValue(Object)` returning the value for the specified key.
+    * Added `getHashValueOrDefault(Object, Object)` returning the value for the specified key or a default value if the mapping for given key does not exist.
+    * Added `putHashEntry(Object, Object)` associating the specified value with the specified key.
+    * Added `removeHashEntry(Object)` removing the mapping for a given key.
+    * Added `getHashEntriesIterator()` returning a hash entries iterator.
+    * Added `getHashKeysIterator()` returning a hash keys iterator.
+    * Added `getHashValuesIterator()` returning a hash values iterator.
+* Added `HostAccess.Builder.allowMapAccess(boolean)` to allow the guest application to access Java `Map` as values with hash entries (true by default for `HostAccess.ALL`, false otherwise).
+* Added `ProxyHashMap` to proxy map guest values.
+* When `HostAccess.Builder.allowMapAccess(boolean)` is enabled the Java `HashMap.Entry` is interpreted as a guest value with two array elements.
+* Added `Context.safepoint()` to manually poll thread local of a polyglot context while a host method is executed. For example, this allows the context to check for potential interruption or cancellation.
+* `Value.putMember(String, Object)` now throws `UnsupportedOperationException` instead of `IllegalArgumentException` if the member is not writable.
+* `Value.removeMember(String)` now throws `UnsupportedOperationException` instead of returning `false` if the member is not removable.
+* `Value.invokeMember(String, Object...)` now throws `UnsupportedOperationException` instead of `IllegalArgumentException` if the member is not invokable.
 
 ## Version 21.0.0
 * Added support for explicitly selecting a host method overload using the signature in the form of comma-separated fully qualified parameter type names enclosed by parentheses (e.g. `methodName(f.q.TypeName,java.lang.String,int,int[])`).

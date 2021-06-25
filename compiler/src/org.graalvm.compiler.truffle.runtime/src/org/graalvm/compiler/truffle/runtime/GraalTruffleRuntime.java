@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -57,7 +57,6 @@ import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleDebugContext;
 import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
-import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
 import org.graalvm.compiler.truffle.common.TruffleOutputGroup;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ExceptionAction;
@@ -91,6 +90,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.TruffleRuntime;
+import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance;
@@ -101,6 +101,7 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.AbstractAssumption;
 import com.oracle.truffle.api.impl.TVMCI;
+import com.oracle.truffle.api.impl.ThreadLocalHandshake;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
@@ -180,10 +181,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         this.floodControlHandler = loadGraalRuntimeServiceProvider(FloodControlHandler.class, null, false);
     }
 
-    @Override
-    public TruffleMetaAccessProvider createInliningPlan() {
-        return new TruffleInlining();
-    }
+    public abstract ThreadLocalHandshake getThreadLocalHandshake();
 
     @Override
     public String getName() {
@@ -201,6 +199,13 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
             suffix = compilerConfigurationName;
         }
         return "GraalVM " + suffix;
+    }
+
+    /**
+     * Returns a set of classes that need to be initialized before compilations can be performed.
+     */
+    public final Iterable<Class<?>> getLookupTypes() {
+        return lookupTypes.getValues();
     }
 
     /**
@@ -363,6 +368,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         EconomicMap<String, Class<?>> m = EconomicMap.create();
         for (Class<?> c : new Class<?>[]{
                         Node.class,
+                        RootNode.class,
                         UnexpectedResultException.class,
                         SlowPathException.class,
                         OptimizedCallTarget.class,
@@ -386,6 +392,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                         BranchProfile.class,
                         ConditionProfile.class,
                         Objects.class,
+                        TruffleSafepoint.class
         }) {
             m.put(c.getName(), c);
         }
@@ -397,7 +404,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                 m.put(c.getName(), c);
             }
         }
-        if (JAVA_SPECIFICATION_VERSION >= 15) {
+        if (JAVA_SPECIFICATION_VERSION >= 16) {
             String className = "jdk.internal.access.foreign.MemorySegmentProxy";
             try {
                 Class<?> c = Class.forName(className);
@@ -418,7 +425,11 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
             }
             throw new NoClassDefFoundError(className);
         }
-        return metaAccess.lookupJavaType(c);
+        ResolvedJavaType type = metaAccess.lookupJavaType(c);
+        // In some situations, we may need the class to be linked now, especially if we are
+        // compiling immediately (e.g., to successfully devirtualize FrameWithoutBoxing methods).
+        type.link();
+        return type;
     }
 
     protected void installDefaultListeners() {
@@ -517,6 +528,20 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     @Override
     public <T> T iterateFrames(final FrameInstanceVisitor<T> visitor) {
         return iterateImpl(visitor, 0);
+    }
+
+    /**
+     * The compilation threshold scale is a real number. We use an integer which we treat as a fixed
+     * point value for performance reasons.
+     */
+    private int compilationThresholdScale = FixedPointMath.toFixedPoint(1.0);
+
+    public int compilationThresholdScale() {
+        return compilationThresholdScale;
+    }
+
+    void setCompilationThresholdScale(int scale) {
+        this.compilationThresholdScale = scale;
     }
 
     private static final class FrameVisitor<T> implements InspectedFrameVisitor<T> {
@@ -649,6 +674,8 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     protected final void doCompile(TruffleDebugContext debug, OptimizedCallTarget callTarget, TruffleCompilationTask task) {
+        Objects.requireNonNull(callTarget, "Cannot compile null call target.");
+        Objects.requireNonNull(task, "Compilation task required.");
         List<OptimizedCallTarget> oldBlockCompilations = callTarget.blockCompilations;
         if (oldBlockCompilations != null) {
             for (OptimizedCallTarget blockTarget : oldBlockCompilations) {
@@ -685,24 +712,18 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                 if (debug == null) {
                     debug = compiler.openDebugContext(optionsMap, compilation);
                 }
-                // Open the "Truffle::methodName" dump group if dumping is enabled.
-                try (AutoCloseable s = debug.scope("Truffle", new TruffleDebugJavaMethod(callTarget));
-                                TruffleOutputGroup o = isPrintGraphEnabled() ? TruffleOutputGroup.openCallTarget(debug, callTarget, Collections.singletonMap(GROUP_ID, compilation)) : null) {
-                    compilationStarted = true;
-                    listeners.onCompilationStarted(callTarget, task.tier());
-                    TruffleInlining inlining = new TruffleInlining();
-                    maybeDumpTruffleTree(debug, callTarget);
-                    // Open the "Graal Graphs" group if dumping is enabled.
-                    try (TruffleOutputGroup g = isPrintGraphEnabled() ? TruffleOutputGroup.openGraalGraphs(debug) : null) {
-                        compiler.doCompile(debug, compilation, optionsMap, inlining, task, listeners.isEmpty() ? null : listeners);
-                    }
-                    maybeDumpInlinedASTs(debug, callTarget, inlining);
-                    inlining.dequeueTargets();
+                listeners.onCompilationStarted(callTarget, task.tier());
+                compilationStarted = true;
+                try {
+                    compiler.doCompile(debug, compilation, optionsMap, task, listeners.isEmpty() ? null : listeners);
                 } finally {
                     if (initialDebug == null) {
                         debug.close();
                     }
                 }
+                TruffleInlining inlining = (TruffleInlining) task.inliningData();
+                truffleDump(callTarget, compiler, compilation, optionsMap, inlining);
+                inlining.dequeueTargets();
             }
         } catch (OptimizationFailedException e) {
             // Listeners already notified
@@ -716,9 +737,19 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         }
     }
 
-    private static void maybeDumpInlinedASTs(TruffleDebugContext debug, OptimizedCallTarget callTarget, TruffleInlining inlining) throws Exception {
-        if (debug.isDumpEnabled() && inlining.inlinedTargets().length > 1) {
-            TruffleTreeDumper.dump(debug, callTarget, inlining);
+    @SuppressWarnings("try")
+    private void truffleDump(OptimizedCallTarget callTarget, TruffleCompiler compiler, TruffleCompilation compilation, Map<String, Object> optionsMap, TruffleInlining inlining) throws Exception {
+        try (TruffleDebugContext debug = compiler.openDebugContext(optionsMap, compilation)) {
+            try (AutoCloseable s = debug.scope("Truffle", new TruffleDebugJavaMethod(callTarget));
+                            TruffleOutputGroup o = isPrintGraphEnabled() ? TruffleOutputGroup.openCallTarget(debug, callTarget, Collections.singletonMap(GROUP_ID, compilation)) : null) {
+                if (!debug.isDumpEnabled()) {
+                    return;
+                }
+                if (inlining.inlinedTargets().length > 1) {
+                    TruffleTreeDumper.dump(debug, callTarget, inlining);
+                }
+                TruffleTreeDumper.dump(debug, callTarget);
+            }
         }
     }
 
@@ -732,15 +763,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         } finally {
             Supplier<String> serializedException = () -> CompilableTruffleAST.serializeException(t);
             callTarget.onCompilationFailed(serializedException, isSuppressedFailure(callTarget, serializedException), false, false, false);
-        }
-    }
-
-    @SuppressWarnings("try")
-    private static void maybeDumpTruffleTree(TruffleDebugContext debug, OptimizedCallTarget callTarget) throws Exception {
-        try (AutoCloseable c = debug.scope("TruffleTree")) {
-            if (debug.isDumpEnabled()) {
-                TruffleTreeDumper.dump(debug, callTarget);
-            }
         }
     }
 
@@ -815,7 +837,8 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     public int getCompilationQueueSize() {
-        return getCompileQueue().getQueueSize();
+        BackgroundCompileQueue compileQueue = getCompileQueue();
+        return compileQueue == null ? 0 : compileQueue.getQueueSize();
     }
 
     /**
@@ -1105,9 +1128,9 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
      * Returns OptimizedCallTarget's {@link PolyglotCompilerOptions} as a {@link Map}. The returned
      * map can be passed as a {@code options} to the {@link TruffleCompiler} methods.
      */
-    public static Map<String, Object> getOptionsForCompiler(OptimizedCallTarget callTarget) {
+    public static Map<String, Object> getOptionsForCompiler(OptimizedCallTarget target) {
         Map<String, Object> map = new HashMap<>();
-        OptionValues values = callTarget == null ? null : callTarget.getOptionValues();
+        OptionValues values = target.engine.getEngineOptions();
 
         for (OptionDescriptor desc : PolyglotCompilerOptions.getDescriptors()) {
             final OptionKey<?> key = desc.getKey();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -52,7 +52,7 @@ public abstract class LLVMForeignWriteNode extends LLVMNode {
     static void doValue(LLVMPointer ptr, LLVMInteropType.Value type, Object value,
                     @Cached(value = "type.kind", allowUncached = true) @SuppressWarnings("unused") LLVMInteropType.ValueKind cachedKind,
                     @Cached(parameters = "cachedKind") LLVMOffsetStoreNode store,
-                    @Cached("createForeignToLLVM(type)") ForeignToLLVM toLLVM) {
+                    @Cached(value = "createForeignToLLVM(type)", uncached = "getSlowPath()") ForeignToLLVM toLLVM) {
         Object llvmValue = toLLVM.executeWithForeignToLLVMType(value, type.baseType, cachedKind.foreignToLLVMType);
         store.executeWithTargetGeneric(ptr, 0, llvmValue);
     }

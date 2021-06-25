@@ -40,6 +40,7 @@ import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.heap.Heap;
@@ -62,14 +63,11 @@ public class RealLog extends Log {
 
     @Override
     public Log string(String value) {
-        if (value != null) {
-            rawString(value);
-        } else {
-            rawString("null");
-        }
+        rawString(value == null ? "null" : value);
         return this;
     }
 
+    @NeverInline("Logging is always slow-path code")
     @Override
     public Log string(String str, int fill, int align) {
 
@@ -88,16 +86,15 @@ public class RealLog extends Log {
         return this;
     }
 
+    private static final char[] NULL_CHARS = "null".toCharArray();
+
     @Override
     public Log string(char[] value) {
-        if (value != null) {
-            rawString(value);
-        } else {
-            rawString("null");
-        }
+        rawString(value == null ? NULL_CHARS : value);
         return this;
     }
 
+    @NeverInline("Logging is always slow-path code")
     @Override
     public Log string(byte[] value, int offset, int length) {
         if (value == null) {
@@ -116,6 +113,7 @@ public class RealLog extends Log {
      * Write a raw java array by copying it first to a stack allocated temporary buffer. Caller must
      * ensure that the offset and length are within bounds.
      */
+    @NeverInline("Logging is always slow-path code")
     private void rawBytes(Object value, int offset, int length) {
         /*
          * Stack allocation needs an allocation size that is a compile time constant, so we split
@@ -163,6 +161,7 @@ public class RealLog extends Log {
         return this;
     }
 
+    @NeverInline("Logging is always slow-path code")
     @Override
     public Log character(char value) {
         CCharPointer bytes = StackValue.get(CCharPointer.class);
@@ -173,6 +172,7 @@ public class RealLog extends Log {
 
     private static final byte[] NEWLINE = System.lineSeparator().getBytes(StandardCharsets.US_ASCII);
 
+    @NeverInline("Logging is always slow-path code")
     @Override
     public Log newline() {
         string(NEWLINE);
@@ -195,9 +195,11 @@ public class RealLog extends Log {
 
     @Override
     public Log number(long value, int radix, boolean signed) {
-        return number(value, radix, signed, 0, NO_ALIGN);
+        number(value, radix, signed, 0, NO_ALIGN);
+        return this;
     }
 
+    @NeverInline("Logging is always slow-path code")
     private Log number(long value, int radix, boolean signed, int fill, int align) {
         if (radix < 2 || radix > 36) {
             /* Ignore bogus parameter value. */
@@ -253,43 +255,51 @@ public class RealLog extends Log {
 
     @Override
     public Log signed(WordBase value) {
-        return number(value.rawValue(), 10, true);
+        number(value.rawValue(), 10, true);
+        return this;
     }
 
     @Override
     public Log signed(int value) {
-        return number(value, 10, true);
+        number(value, 10, true);
+        return this;
     }
 
     @Override
     public Log signed(long value) {
-        return number(value, 10, true);
+        number(value, 10, true);
+        return this;
     }
 
     @Override
     public Log unsigned(WordBase value) {
-        return number(value.rawValue(), 10, false);
+        number(value.rawValue(), 10, false);
+        return this;
     }
 
     @Override
     public Log unsigned(WordBase value, int fill, int align) {
-        return number(value.rawValue(), 10, false, fill, align);
+        number(value.rawValue(), 10, false, fill, align);
+        return this;
     }
 
     @Override
     public Log unsigned(int value) {
         // unsigned expansion from int to long
-        return number(value & 0xffffffffL, 10, false);
+        number(value & 0xffffffffL, 10, false);
+        return this;
     }
 
     @Override
     public Log unsigned(long value) {
-        return number(value, 10, false);
+        number(value, 10, false);
+        return this;
     }
 
     @Override
     public Log unsigned(long value, int fill, int align) {
-        return number(value, 10, false, fill, align);
+        number(value, 10, false, fill, align);
+        return this;
     }
 
     /**
@@ -309,6 +319,7 @@ public class RealLog extends Log {
      *            performed and trailing zeros are printed.
      */
 
+    @NeverInline("Logging is always slow-path code")
     @Override
     public Log rational(long numerator, long denominator, long decimals) {
         if (denominator == 0) {
@@ -338,17 +349,20 @@ public class RealLog extends Log {
 
     @Override
     public Log hex(WordBase value) {
-        return string("0x").number(value.rawValue(), 16, false);
+        string("0x").number(value.rawValue(), 16, false);
+        return this;
     }
 
     @Override
     public Log hex(int value) {
-        return string("0x").number(value & 0xffffffffL, 16, false);
+        string("0x").number(value & 0xffffffffL, 16, false);
+        return this;
     }
 
     @Override
     public Log hex(long value) {
-        return string("0x").number(value, 16, false);
+        string("0x").number(value, 16, false);
+        return this;
     }
 
     private static final byte[] trueString = Boolean.TRUE.toString().getBytes();
@@ -356,16 +370,26 @@ public class RealLog extends Log {
 
     @Override
     public Log bool(boolean value) {
-        return string(value ? trueString : falseString);
+        string(value ? trueString : falseString);
+        return this;
     }
 
+    @NeverInline("Logging is always slow-path code")
     @Override
     public Log object(Object value) {
-        return (value == null ? string("null") : string(value.getClass().getName()).string("@").hex(Word.objectToUntrackedPointer(value)));
+        if (value == null) {
+            string("null");
+        } else {
+            string(value.getClass().getName());
+            string("@");
+            hex(Word.objectToUntrackedPointer(value));
+        }
+        return this;
     }
 
     private static final char spaceChar = ' ';
 
+    @NeverInline("Logging is always slow-path code")
     @Override
     public Log spaces(int value) {
         for (int i = 0; i < value; i += 1) {
@@ -374,6 +398,7 @@ public class RealLog extends Log {
         return this;
     }
 
+    @NeverInline("Logging is always slow-path code")
     @Override
     public Log flush() {
         ImageSingletons.lookup(LogHandler.class).flush();
@@ -393,10 +418,17 @@ public class RealLog extends Log {
         return this;
     }
 
+    @Override
+    public Log resetIndentation() {
+        indent = 0;
+        return this;
+    }
+
     private static byte digit(long d) {
         return (byte) (d + (d < 10 ? '0' : 'a' - 10));
     }
 
+    @NeverInline("Logging is always slow-path code")
     protected Log rawBytes(CCharPointer bytes, UnsignedWord length) {
         ImageSingletons.lookup(LogHandler.class).log(bytes, length);
         return this;
@@ -410,6 +442,7 @@ public class RealLog extends Log {
         rawBytes(value, 0, value.length);
     }
 
+    @NeverInline("Logging is always slow-path code")
     @Override
     public Log zhex(long value) {
         int zeros = Long.numberOfLeadingZeros(value);
@@ -437,21 +470,25 @@ public class RealLog extends Log {
 
     @Override
     public Log zhex(int value) {
-        return zhex(value, 4);
+        zhex(value, 4);
+        return this;
     }
 
     @Override
     public Log zhex(short value) {
         int intValue = value;
-        return zhex(intValue & 0xffff, 2);
+        zhex(intValue & 0xffff, 2);
+        return this;
     }
 
     @Override
     public Log zhex(byte value) {
         int intValue = value;
-        return zhex(intValue & 0xff, 1);
+        zhex(intValue & 0xff, 1);
+        return this;
     }
 
+    @NeverInline("Logging is always slow-path code")
     @Override
     public Log hexdump(PointerBase from, int wordSize, int numWords) {
         Pointer base = WordFactory.pointer(from.rawValue());
@@ -483,10 +520,12 @@ public class RealLog extends Log {
         return this;
     }
 
+    @NeverInline("Logging is always slow-path code")
     @Override
     public Log exception(Throwable t, int maxFrames) {
         if (t == null) {
-            return object(t);
+            object(t);
+            return this;
         }
 
         /*
@@ -513,6 +552,7 @@ public class RealLog extends Log {
                 newline().string("    ... ").unsigned(remaining).string(" more");
             }
         }
-        return newline();
+        newline();
+        return this;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@
 package org.graalvm.compiler.hotspot.replacements.arraycopy;
 
 import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.FAST_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.FREQUENT_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.LIKELY_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
@@ -101,12 +102,12 @@ public class HotSpotArraycopySnippets extends ArrayCopySnippets {
         GuardingNode anchor = SnippetAnchorNode.anchor();
         if (probability(NOT_FREQUENT_PROBABILITY, src == dest && srcPos < destPos)) {
             // bad aliased case so we need to copy the array from back to front
-            for (int position = length - 1; position >= 0; position--) {
+            for (int position = length - 1; probability(FAST_PATH_PROBABILITY, position >= 0); position--) {
                 Object value = GuardedUnsafeLoadNode.guardedLoad(src, sourceOffset + ((long) position) * scale, elementKind, arrayLocation, anchor);
                 RawStoreNode.storeObject(dest, destOffset + ((long) position) * scale, value, elementKind, arrayLocation, true);
             }
         } else {
-            for (int position = 0; position < length; position++) {
+            for (int position = 0; probability(FAST_PATH_PROBABILITY, position < length); position++) {
                 Object value = GuardedUnsafeLoadNode.guardedLoad(src, sourceOffset + ((long) position) * scale, elementKind, arrayLocation, anchor);
                 RawStoreNode.storeObject(dest, destOffset + ((long) position) * scale, value, elementKind, arrayLocation, true);
             }

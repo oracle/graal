@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -227,7 +227,10 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
                     maxPath = group.getMaxPath() + ((maxPath - group.getMaxPath()) * group.getQuantifier().getMax());
                 }
             }
-            if ((flags & (RegexASTNode.FLAG_HAS_BACK_REFERENCES | RegexASTNode.FLAG_HAS_LOOK_AHEADS | RegexASTNode.FLAG_HAS_LOOK_BEHINDS)) != 0) {
+            // The optimization below breaks dialects like Python or Ruby, where zero-width guards
+            // on expressions like lookarounds cannot be eliminated statically.
+            if (ast.getOptions().getFlavor().canHaveEmptyLoopIterations() ||
+                            ((flags & (RegexASTNode.FLAG_HAS_BACK_REFERENCES | RegexASTNode.FLAG_HAS_LOOK_AHEADS | RegexASTNode.FLAG_HAS_LOOK_BEHINDS)) != 0)) {
                 /*
                  * If a quantifier can produce a zero-width match, we have to check this in
                  * back-tracking mode.
@@ -396,7 +399,7 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
 
     private void setZeroWidthQuantifierIndex(QuantifiableTerm term) {
         if (isForward() && term.getQuantifier().getZeroWidthIndex() < 0) {
-            term.getQuantifier().setZeroWidthIndex(ast.getZeroWidthQuantifierCount().inc());
+            ast.registerZeroWidthQuantifiable(term);
         }
     }
 }

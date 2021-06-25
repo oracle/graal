@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -234,7 +234,7 @@ public final class RegexObject extends AbstractConstantKeysObject {
                     throws UnknownIdentifierException, ArityException, UnsupportedTypeException, UnsupportedMessageException {
         if (args.length != 2) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw ArityException.create(2, args.length);
+            throw ArityException.create(2, 2, args.length);
         }
         Object input = args[0];
         long fromIndex = toLongNode.execute(args[1]);
@@ -333,7 +333,7 @@ public final class RegexObject extends AbstractConstantKeysObject {
                         @Cached ExecCompiledRegexNode execNode) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
             if (args.length != 2) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw ArityException.create(2, args.length);
+                throw ArityException.create(2, 2, args.length);
             }
             Object input = expectStringOrTruffleObjectNode.execute(args[0]);
             long fromIndex = toLongNode.execute(args[1]);
@@ -382,7 +382,7 @@ public final class RegexObject extends AbstractConstantKeysObject {
             RegexObject regexObj = getRegexObject();
             if (args.length != 2) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw ArityException.create(2, args.length);
+                throw ArityException.create(2, 2, args.length);
             }
             byte[] input = expectByteArrayHostObjectNode.execute(args[0]);
             long fromIndex = toLongNode.execute(args[1]);

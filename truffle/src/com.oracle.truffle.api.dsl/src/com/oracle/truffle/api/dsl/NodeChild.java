@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -72,8 +72,54 @@ public @interface NodeChild {
      * number of {@link #executeWith()} arguments that are defined. For example if this child is
      * executed with one argument, the {@link #type()} attribute must define a node which publicly
      * declares a method with the signature <code>Object execute*(VirtualFrame, Object)</code>.
-     * 
+     *
      * @since 0.8 or earlier
      */
     String[] executeWith() default {};
+
+    /**
+     * Allows implicit creation of this child node. If this property is {@code false} (the default),
+     * the factory method of the parent node needs to be called with an instance of the child node
+     * as argument. If {@link #implicit} is {@code true}, the child node will be implicitly created
+     * when calling the factory method of the parent node.
+     *
+     * @since 21.1
+     */
+    boolean implicit() default false;
+
+    /**
+     * Defines the initializer expression for implicit child node creation. Specifying this property
+     * will enable {@link #implicit()} mode on this child node automatically, this should not be
+     * specified together with {@link #implicit()}. If {@link #implicit()} is {@code true}, the
+     * initializer expression defaults to {@code "create()"}.
+     *
+     * @see #implicit()
+     * @see Cached
+     * @since 21.1
+     */
+    String implicitCreate() default "create()";
+
+    /**
+     * Allow this child node to be used in uncached mode. If set to {@code false} (the default),
+     * only execute methods that have an explicit argument for the child value can be used on the
+     * uncached version of the parent node. If set to {@code true}, execute methods that do not have
+     * an explicit argument for the child value use an uncached version of the child node to compute
+     * the missing value.
+     *
+     * @see GenerateUncached
+     * @since 21.1
+     */
+    boolean allowUncached() default false;
+
+    /**
+     * Defines the expression to get an uncached instance of the child node. Specifying this
+     * property will implicitly enable {@link #allowUncached()} on this child node, this should not
+     * be specified together with {@link #allowUncached()}. If {@link #allowUncached()} is
+     * {@code true}, the uncached expression defaults to {@code "getUncached()"}.
+     *
+     * @see #allowUncached()
+     * @see Cached
+     * @since 21.1
+     */
+    String uncached() default "getUncached()";
 }

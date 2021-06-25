@@ -37,7 +37,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
  * 
  * @see EspressoContext#destroyVM(boolean)
  */
-public class DestroyVMNode extends RootNode {
+public final class DestroyVMNode extends RootNode {
     public static final String EVAL_NAME = "<DestroyJavaVM>";
 
     public DestroyVMNode(TruffleLanguage<?> language) {

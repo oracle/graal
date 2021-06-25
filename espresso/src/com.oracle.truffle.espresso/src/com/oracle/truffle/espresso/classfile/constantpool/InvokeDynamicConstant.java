@@ -44,6 +44,7 @@ public interface InvokeDynamicConstant extends BootstrapMethodConstant {
         return new Indexes(bootstrapMethodAttrIndex, nameAndTypeIndex);
     }
 
+    @Override
     default Tag tag() {
         return Tag.INVOKEDYNAMIC;
     }
@@ -80,7 +81,7 @@ public interface InvokeDynamicConstant extends BootstrapMethodConstant {
             StaticObject appendix = StaticObject.createArray(meta.java_lang_Object_array, new StaticObject[1]);
             StaticObject memberName;
             if (meta.getJavaVersion().varHandlesEnabled()) {
-                memberName = (StaticObject) meta.java_lang_invoke_MethodHandleNatives_linkCallSite11.invokeDirect(
+                memberName = (StaticObject) meta.java_lang_invoke_MethodHandleNatives_linkCallSite.invokeDirect(
                                 null,
                                 accessingKlass.mirror(),
                                 thisIndex,
@@ -89,7 +90,7 @@ public interface InvokeDynamicConstant extends BootstrapMethodConstant {
                                 StaticObject.createArray(meta.java_lang_Object_array, args),
                                 appendix);
             } else {
-                memberName = (StaticObject) meta.java_lang_invoke_MethodHandleNatives_linkCallSite8.invokeDirect(
+                memberName = (StaticObject) meta.java_lang_invoke_MethodHandleNatives_linkCallSite.invokeDirect(
                                 null,
                                 accessingKlass.mirror(),
                                 bootstrapmethodMethodHandle,

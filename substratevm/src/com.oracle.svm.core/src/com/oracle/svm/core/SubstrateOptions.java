@@ -46,17 +46,30 @@ import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
-import com.oracle.svm.core.jdk.JavaNetSubstitutions;
+import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.APIOptionGroup;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
-import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.XOptions;
 import com.oracle.svm.core.util.UserError;
 
 public class SubstrateOptions {
+
+    @Option(help = "When true, compiler graphs are parsed only once before static analysis. When false, compiler graphs are parsed for static analysis and again for AOT compilation.")//
+    public static final HostedOptionKey<Boolean> ParseOnce = new HostedOptionKey<>(true);
+
+    public static boolean parseOnce() {
+        /*
+         * Parsing all graphs before static analysis is work-in-progress, and not yet working for
+         * graphs parsed for deoptimization entry points and JIT compilation.
+         */
+        return ParseOnce.getValue() && !DeoptimizationSupport.enabled();
+    }
+
+    @Option(help = "Module containing the class that contains the main entry point. Optional if --shared is used.", type = OptionType.User)//
+    public static final HostedOptionKey<String> Module = new HostedOptionKey<>("");
 
     @Option(help = "Class containing the default entry point method. Optional if --shared is used.", type = OptionType.User)//
     public static final HostedOptionKey<String> Class = new HostedOptionKey<>("");
@@ -88,6 +101,9 @@ public class SubstrateOptions {
         }
     };
 
+    @Option(help = "Build with Loom JDK") //
+    public static final HostedOptionKey<Boolean> UseLoom = new HostedOptionKey<>(false);
+
     public static final int ForceFallback = 10;
     public static final int Automatic = 5;
     public static final int NoFallback = 0;
@@ -103,6 +119,7 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Integer> FallbackThreshold = new HostedOptionKey<>(Automatic);
 
     public static final String IMAGE_CLASSPATH_PREFIX = "-imagecp";
+    public static final String IMAGE_MODULEPATH_PREFIX = "-imagemp";
     public static final String WATCHPID_PREFIX = "-watchpid";
     private static ValueUpdateHandler optimizeValueUpdateHandler;
     private static ValueUpdateHandler debugInfoValueUpdateHandler = SubstrateOptions::defaultDebugInfoValueUpdateHandler;
@@ -147,9 +164,6 @@ public class SubstrateOptions {
     @Option(help = "Path passed to the linker as the -rpath (list of comma-separated directories)")//
     public static final HostedOptionKey<LocatableMultiOptionValue.Strings> LinkerRPath = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
 
-    @Option(help = "String which would be appended to the linker call")//
-    public static final HostedOptionKey<String> AdditionalLinkerOptions = new HostedOptionKey<>("");
-
     @Option(help = "Directory of the image file to be generated", type = OptionType.User)//
     public static final HostedOptionKey<String> Path = new HostedOptionKey<>(null);
 
@@ -166,8 +180,12 @@ public class SubstrateOptions {
     }
 
     @APIOption(name = "serial", group = GCGroup.class, customHelp = "Serial garbage collector")//
-    @Option(help = "Use a card remembered set heap for GC")//
-    public static final HostedOptionKey<Boolean> UseCardRememberedSetHeap = new HostedOptionKey<>(true);
+    @Option(help = "Use a serial GC")//
+    public static final HostedOptionKey<Boolean> UseSerialGC = new HostedOptionKey<>(true);
+
+    @APIOption(name = "epsilon", group = GCGroup.class, customHelp = "Epsilon garbage collector")//
+    @Option(help = "Use a no-op GC")//
+    public static final HostedOptionKey<Boolean> UseEpsilonGC = new HostedOptionKey<>(false);
 
     @Option(help = "The size of each thread stack at run-time, in bytes.", type = OptionType.User)//
     public static final RuntimeOptionKey<Long> StackSize = new RuntimeOptionKey<Long>(0L) {
@@ -240,32 +258,12 @@ public class SubstrateOptions {
     @APIOption(name = "enable-https", fixedValue = "https", customHelp = "enable https support in the generated image")//
     @APIOption(name = "enable-url-protocols")//
     @Option(help = "List of comma separated URL protocols to enable.")//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> EnableURLProtocols = new HostedOptionKey<LocatableMultiOptionValue.Strings>(new LocatableMultiOptionValue.Strings()) {
-        @Override
-        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, LocatableMultiOptionValue.Strings oldValue, LocatableMultiOptionValue.Strings newValue) {
-            for (String protocol : OptionUtils.flatten(",", newValue)) {
-                if (protocol.equals(JavaNetSubstitutions.HTTPS_PROTOCOL)) {
-                    EnableAllSecurityServices.update(values, true);
-                }
-            }
-        }
-    };
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> EnableURLProtocols = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
 
+    @SuppressWarnings("unused") //
     @APIOption(name = "enable-all-security-services")//
-    @Option(help = "Add all security service classes to the generated image.")//
-    public static final HostedOptionKey<Boolean> EnableAllSecurityServices = new HostedOptionKey<Boolean>(false) {
-        @Override
-        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
-            if (newValue) {
-                /*
-                 * Some providers like SunEC and SunSASL are implemented in native libs. These
-                 * providers are added to the image when EnableAllSecurityServices is set. If they
-                 * are actually used at runtime the user must provide and load the native libs.
-                 */
-                JNI.update(values, true);
-            }
-        }
-    };
+    @Option(help = "Add all security service classes to the generated image.", deprecated = true)//
+    public static final HostedOptionKey<Boolean> EnableAllSecurityServices = new HostedOptionKey<>(false);
 
     @Option(help = "Enable Java Native Interface (JNI) support.")//
     public static final HostedOptionKey<Boolean> JNI = new HostedOptionKey<>(true);
@@ -332,6 +330,9 @@ public class SubstrateOptions {
     @Option(help = "Parse and consume standard options and system properties from the command line arguments when the VM is created.")//
     public static final HostedOptionKey<Boolean> ParseRuntimeOptions = new HostedOptionKey<>(true);
 
+    @Option(help = "Enable wildcard expansion in command line arguments on Windows.")//
+    public static final HostedOptionKey<Boolean> EnableWildcardExpansion = new HostedOptionKey<>(true);
+
     @Option(help = "Perform method inlining in the AOT compiled native image")//
     public static final HostedOptionKey<Boolean> AOTInline = new HostedOptionKey<>(true);
 
@@ -373,6 +374,7 @@ public class SubstrateOptions {
                  * functions makes it incoherent with the executable.
                  */
                 RemoveUnusedSymbols.update(values, false);
+                InternalSymbolsAreGlobal.update(values, true);
                 /*
                  * The LLVM backend doesn't support speculative execution attack mitigation
                  */
@@ -389,10 +391,18 @@ public class SubstrateOptions {
     @Option(help = "Determines if VM operations should be executed in a dedicated thread.", type = OptionType.Expert)//
     public static final HostedOptionKey<Boolean> UseDedicatedVMOperationThread = new HostedOptionKey<>(false);
 
+    /*
+     * RemoveUnusedSymbols is not enabled on Darwin by default, because the linker sometimes
+     * segfaults when the -dead_strip option is used.
+     */
     @Option(help = "Use linker option to prevent unreferenced symbols in image.")//
-    public static final HostedOptionKey<Boolean> RemoveUnusedSymbols = new HostedOptionKey<>(false);
+    public static final HostedOptionKey<Boolean> RemoveUnusedSymbols = new HostedOptionKey<>(OS.getCurrent() != OS.DARWIN);
     @Option(help = "Use linker option to remove all local symbols from image.")//
     public static final HostedOptionKey<Boolean> DeleteLocalSymbols = new HostedOptionKey<>(true);
+    @Option(help = "Compatibility option to make symbols used for the image heap global. " +
+                    "Using global symbols is problematic for shared libraries because the loader implicitly changes the value when the symbol is already defined in the executable loading the library. " +
+                    "Setting this option to true preserves the broken behavior of old Native Image versions.")//
+    public static final HostedOptionKey<Boolean> InternalSymbolsAreGlobal = new HostedOptionKey<>(false);
 
     @Option(help = "Common prefix used by method symbols in image.")//
     public static final HostedOptionKey<String> ImageSymbolsPrefix = new HostedOptionKey<>("");
@@ -451,10 +461,13 @@ public class SubstrateOptions {
         }
     };
 
-    private static void defaultDebugInfoValueUpdateHandler(EconomicMap<OptionKey<?>, Object> values, @SuppressWarnings("unused") Integer oldValue, Integer newValue) {
-        // force update of TrackNodeSourcePosition and DeleteLocalSymbols
+    public static void defaultDebugInfoValueUpdateHandler(EconomicMap<OptionKey<?>, Object> values, @SuppressWarnings("unused") Integer oldValue, Integer newValue) {
+        /* Force update of TrackNodeSourcePosition */
         TrackNodeSourcePosition.update(values, newValue > 0);
-        DeleteLocalSymbols.update(values, newValue == 0);
+        if (OS.WINDOWS.isCurrent()) {
+            /* Keep symbols on Windows. The symbol table is part of the pdb-file. */
+            DeleteLocalSymbols.update(values, newValue == 0);
+        }
     }
 
     @Option(help = "Search path for source files for Application or GraalVM classes (list of comma-separated directories or jar files)")//
@@ -465,15 +478,14 @@ public class SubstrateOptions {
 
     public static Path getDebugInfoSourceCacheRoot() {
         try {
-            Path sourceRoot = Paths.get(DebugInfoSourceCacheRoot.getValue());
-            return sourceRoot;
+            return Paths.get(Path.getValue()).resolve(DebugInfoSourceCacheRoot.getValue());
         } catch (InvalidPathException ipe) {
             throw UserError.abort("Invalid path provided for option DebugInfoSourceCacheRoot %s", DebugInfoSourceCacheRoot.getValue());
         }
     }
 
-    /** Command line option to disable image build server. */
-    public static final String NO_SERVER = "--no-server";
+    @Option(help = "Omit generation of DebugLineInfo originating from inlined methods") //
+    public static final HostedOptionKey<Boolean> OmitInlinedMethodDebugLineInfo = new HostedOptionKey<>(true);
 
     @Fold
     public static boolean supportCompileInIsolates() {
@@ -494,6 +506,11 @@ public class SubstrateOptions {
 
     @Option(help = "Size of the reserved address space of each compilation isolate (0: default for new isolates).") //
     public static final RuntimeOptionKey<Long> CompilationIsolateAddressSpaceSize = new RuntimeOptionKey<>(0L);
+
+    @Fold
+    public static boolean useRememberedSet() {
+        return !SubstrateOptions.UseEpsilonGC.getValue() && ConcealedOptions.UseRememberedSet.getValue();
+    }
 
     /** Query these options only through an appropriate method. */
     public static class ConcealedOptions {
@@ -516,11 +533,43 @@ public class SubstrateOptions {
 
         @Option(help = "Activate runtime compilation in separate isolates (enable support during image build with option SupportCompileInIsolates).") //
         public static final RuntimeOptionKey<Boolean> CompileInIsolates = new RuntimeOptionKey<>(true);
+
+        @Option(help = "Determines if a remembered sets is used, which is necessary for collecting the young and old generation independently.", type = OptionType.Expert) //
+        public static final HostedOptionKey<Boolean> UseRememberedSet = new HostedOptionKey<>(true);
     }
 
     @Option(help = "Overwrites the available number of processors provided by the OS. Any value <= 0 means using the processor count from the OS.")//
     public static final RuntimeOptionKey<Integer> ActiveProcessorCount = new RuntimeOptionKey<>(-1);
 
     @Option(help = "For internal purposes only. Disables type id result verification even when running with assertions enabled.", stability = OptionStability.EXPERIMENTAL, type = Debug)//
-    public static final HostedOptionKey<Boolean> DisableTypeIdResultVerification = new HostedOptionKey<>(false);
+    public static final HostedOptionKey<Boolean> DisableTypeIdResultVerification = new HostedOptionKey<>(true);
+
+    public static boolean areMethodHandlesSupported() {
+        return JavaVersionUtil.JAVA_SPEC >= 11;
+    }
+
+    @Option(help = "Enables the signal API (sun.misc.Signal or jdk.internal.misc.Signal). Defaults to false for shared library and true for executables", stability = OptionStability.EXPERIMENTAL, type = Expert)//
+    public static final HostedOptionKey<Boolean> EnableSignalAPI = new HostedOptionKey<Boolean>(null) {
+        @Override
+        public Boolean getValueOrDefault(UnmodifiableEconomicMap<OptionKey<?>, Object> values) {
+            if (values.containsKey(this)) {
+                return (Boolean) values.get(this);
+            }
+            return !SharedLibrary.getValueOrDefault(values);
+        }
+
+        @Override
+        public Boolean getValue(OptionValues values) {
+            return getValueOrDefault(values.getMap());
+        }
+    };
+
+    @Option(help = "Enable Java Flight Recorder.")//
+    public static final RuntimeOptionKey<Boolean> FlightRecorder = new RuntimeOptionKey<>(false);
+
+    @Option(help = "Start flight recording with options.")//
+    public static final RuntimeOptionKey<String> StartFlightRecording = new RuntimeOptionKey<>("");
+
+    @Option(help = "file:doc-files/FlightRecorderLoggingHelp.txt")//
+    public static final RuntimeOptionKey<String> FlightRecorderLogging = new RuntimeOptionKey<>("all=warning");
 }

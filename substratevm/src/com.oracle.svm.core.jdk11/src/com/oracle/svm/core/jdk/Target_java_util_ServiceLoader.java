@@ -131,6 +131,7 @@ final class Target_java_util_ServiceLoader_LazyClassPathLookupIterator {
 @TargetClass(value = java.util.ServiceLoader.class, innerClass = "ProviderImpl")
 final class Target_java_util_ServiceLoader_ProviderImpl {
 
+    @SuppressWarnings("unused")
     @Alias
     Target_java_util_ServiceLoader_ProviderImpl(Class<?> service,
                     Class<?> type,

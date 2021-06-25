@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,6 +54,7 @@ import com.oracle.truffle.regex.tregex.nodes.TRegexExecNode;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecNode.LazyCaptureGroupRegexSearchNode;
 import com.oracle.truffle.regex.tregex.nodes.dfa.TRegexDFAExecutorNode;
 import com.oracle.truffle.regex.tregex.nodes.nfa.TRegexBacktrackingNFAExecutorNode;
+import com.oracle.truffle.regex.tregex.parser.flavors.ECMAScriptFlavor;
 import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavorProcessor;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.tregex.util.Loggers;
@@ -87,7 +88,7 @@ public final class TRegexCompiler {
     @TruffleBoundary
     private static RegexObject doCompile(RegexLanguage language, RegexSource source) throws RegexSyntaxException {
         RegexSource ecmascriptSource = source;
-        RegexFlavorProcessor flavorProcessor = source.getOptions().getFlavor() == null ? null : source.getOptions().getFlavor().forRegex(source);
+        RegexFlavorProcessor flavorProcessor = source.getOptions().getFlavor() == ECMAScriptFlavor.INSTANCE ? null : source.getOptions().getFlavor().forRegex(source);
         if (flavorProcessor != null) {
             ecmascriptSource = flavorProcessor.toECMAScriptRegex();
         }

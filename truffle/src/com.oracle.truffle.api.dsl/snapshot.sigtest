@@ -147,7 +147,11 @@ CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.NodeChild
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
 intf java.lang.annotation.Annotation
+meth public abstract !hasdefault boolean allowUncached()
+meth public abstract !hasdefault boolean implicit()
 meth public abstract !hasdefault java.lang.Class<?> type()
+meth public abstract !hasdefault java.lang.String implicitCreate()
+meth public abstract !hasdefault java.lang.String uncached()
 meth public abstract !hasdefault java.lang.String value()
 meth public abstract !hasdefault java.lang.String[] executeWith()
 

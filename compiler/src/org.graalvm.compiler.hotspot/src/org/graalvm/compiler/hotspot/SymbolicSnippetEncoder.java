@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -423,6 +423,7 @@ public class SymbolicSnippetEncoder {
             }
             assert verifySnippetEncodeDecode(debug, method, original, originalMethodString, args, trackNodeSourcePosition, graph);
             debug.dump(DebugContext.VERBOSE_LEVEL, graph, "After buildGraph");
+            assert graph.getAssumptions() == null : graph;
             return graph;
         }
     }
@@ -1122,7 +1123,7 @@ public class SymbolicSnippetEncoder {
 
     private static final Map<Class<?>, SnippetResolvedJavaType> snippetTypes = new HashMap<>();
 
-    private static SnippetResolvedJavaType lookupSnippetType(Class<?> clazz) {
+    private static synchronized SnippetResolvedJavaType lookupSnippetType(Class<?> clazz) {
         SnippetResolvedJavaType type = null;
         if (isGraalClass(clazz)) {
             type = snippetTypes.get(clazz);
@@ -1133,7 +1134,7 @@ public class SymbolicSnippetEncoder {
         return type;
     }
 
-    private static SnippetResolvedJavaType createType(Class<?> clazz) {
+    private static synchronized SnippetResolvedJavaType createType(Class<?> clazz) {
         SnippetResolvedJavaType type;
         type = new SnippetResolvedJavaType(clazz);
         snippetTypes.put(clazz, type);

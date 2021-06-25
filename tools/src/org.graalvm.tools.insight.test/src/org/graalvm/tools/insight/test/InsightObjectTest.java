@@ -287,6 +287,17 @@ public class InsightObjectTest {
                 assertEquals(2, ctx.line());
                 assertEquals(2, ctx.startLine());
                 assertEquals(4, ctx.endLine());
+
+                String fullText = ctx.source().characters();
+                final int charIndex = ctx.charIndex();
+                final int charEndIndex = ctx.charEndIndex();
+                final int charLength = ctx.charLength();
+
+                final int begOffset = indexOfLine(fullText, 2) + 13;
+                final int endOffset = indexOfLine(fullText, 4) + 2;
+                assertEquals(begOffset, charIndex);
+                assertEquals(endOffset, charEndIndex);
+                assertEquals(endOffset - begOffset, charLength);
             };
 
             CountDownLatch await = new CountDownLatch(1);
@@ -905,4 +916,16 @@ public class InsightObjectTest {
         }
     }
 
+    @SuppressWarnings("all")
+    private static int indexOfLine(String text, int line) {
+        int offset = 0;
+        for (String l : text.split("\n")) {
+            if (--line <= 0) {
+                return offset;
+            }
+            offset += l.length();
+            offset++;
+        }
+        throw new IllegalStateException();
+    }
 }

@@ -30,12 +30,11 @@ import javax.lang.model.element.ExecutableElement;
  * passed around during espresso annotation processing. It is meant to be subclassed to serve as
  * storage for the data required during processing.
  * 
- * @see com.oracle.truffle.espresso.processor.JniImplProcessor.JniHelper
- * @see com.oracle.truffle.espresso.processor.VMImplProcessor.VMHelper
+ * @see NativeEnvProcessor.IntrinsincsHelper
  * @see com.oracle.truffle.espresso.processor.SubstitutionProcessor.SubstitutorHelper
  */
 public class SubstitutionHelper {
-    List<String> guestCalls;
+    List<GuestCall> guestCalls;
     boolean hasMetaInjection;
     boolean hasProfileInjection;
 
@@ -43,5 +42,20 @@ public class SubstitutionHelper {
         guestCalls = processor.getGuestCalls(method);
         hasMetaInjection = processor.hasMetaInjection(method);
         hasProfileInjection = processor.hasProfileInjection(method);
+    }
+
+    public static final class GuestCall {
+        public final String target;
+        public final boolean original;
+
+        public GuestCall(String target, boolean original) {
+            this.target = target;
+            this.original = original;
+        }
+
+        @Override
+        public String toString() {
+            return target;
+        }
     }
 }

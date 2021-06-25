@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -78,8 +78,11 @@ import static com.oracle.truffle.tck.tests.ValueAssert.Trait.DATE;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.DURATION;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.EXCEPTION;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.EXECUTABLE;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.HASH;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.HOST_OBJECT;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.INSTANTIABLE;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.ITERABLE;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.ITERATOR;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.MEMBERS;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.META;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.NATIVE;
@@ -121,6 +124,10 @@ public class ValueAssert {
     private static final TypeLiteral<Map<Double, Object>> DOUBLE_OBJECT_MAP = new TypeLiteral<Map<Double, Object>>() {
     };
     private static final TypeLiteral<Function<Object, Object>> FUNCTION = new TypeLiteral<Function<Object, Object>>() {
+    };
+    private static final TypeLiteral<Iterable<Object>> OBJECT_ITERABLE = new TypeLiteral<Iterable<Object>>() {
+    };
+    private static final TypeLiteral<Iterator<Object>> OBJECT_ITERATOR = new TypeLiteral<Iterator<Object>>() {
     };
 
     public static void assertValue(Value value) {
@@ -269,7 +276,7 @@ public class ValueAssert {
                     if (value.isNull()) {
                         assertNull(value.as(Map.class));
                     } else {
-                        if (!value.isHostObject() || (!(value.asHostObject() instanceof Map))) {
+                        if ((!value.isHostObject() || (!(value.asHostObject() instanceof Map))) && !value.hasHashEntries()) {
                             assertFails(() -> value.as(Map.class), ClassCastException.class);
                         }
                     }
@@ -449,6 +456,30 @@ public class ValueAssert {
                     assertFails(() -> value.getMetaSimpleName(), UnsupportedOperationException.class);
                     assertFails(() -> value.isMetaInstance(""), UnsupportedOperationException.class);
                     break;
+                case ITERABLE:
+                    assertFalse(value.hasIterator());
+                    assertFails(() -> value.getIterator(), UnsupportedOperationException.class);
+                    break;
+                case ITERATOR:
+                    assertFalse(value.isIterator());
+                    assertFails(() -> value.hasIteratorNextElement(), UnsupportedOperationException.class);
+                    assertFails(() -> value.getIteratorNextElement(), UnsupportedOperationException.class);
+                    break;
+                case HASH:
+                    assertFalse(value.hasHashEntries());
+                    assertFalse(value.hasHashEntry("asdf"));
+                    assertFails(() -> value.getHashValue("asdf"), UnsupportedOperationException.class);
+                    assertFails(() -> value.putHashEntry("", ""), UnsupportedOperationException.class);
+                    assertFails(() -> value.removeHashEntry(""), UnsupportedOperationException.class);
+                    assertFails(() -> value.getHashEntriesIterator(), UnsupportedOperationException.class);
+                    if (value.isNull()) {
+                        assertNull(value.as(Map.class));
+                    } else {
+                        if ((!value.isHostObject() || (!(value.asHostObject() instanceof Map))) && !value.hasMembers()) {
+                            assertFails(() -> value.as(Map.class), ClassCastException.class);
+                        }
+                    }
+                    break;
                 default:
                     throw new AssertionError();
             }
@@ -567,6 +598,8 @@ public class ValueAssert {
                     } else if (value.isHostObject() && value.asHostObject() instanceof Map) {
                         Map<Object, Object> expectedValues = value.asHostObject();
                         assertEquals(value.as(OBJECT_OBJECT_MAP), expectedValues);
+                    } else if (value.hasHashEntries()) {
+                        assertHashKeys(value);
                     } else {
                         Map<String, Object> expectedValues = new HashMap<>();
                         for (String key : value.getMemberKeys()) {
@@ -578,7 +611,6 @@ public class ValueAssert {
                         assertEquals("PolyglotMap should be equal with itself", stringMap, stringMap);
                         assertEquals("Two PolyglotMaps wrapping the same host object should be equal", value.as(STRING_OBJECT_MAP), value.as(STRING_OBJECT_MAP));
                         assertNotEquals("A PolyglotMap should not be equal with a Map", value.as(STRING_OBJECT_MAP), expectedValues);
-
                         Set<String> keySet = value.as(Map.class).keySet();
                         assertEquals(value.getMemberKeys(), keySet);
 
@@ -653,7 +685,18 @@ public class ValueAssert {
                     assertNotNull(value.getMetaSimpleName());
                     value.isMetaInstance("");
                     break;
-
+                case ITERABLE:
+                    assertTrue(msg, value.hasIterator());
+                    assertValueIterable(value, depth, hasHostAccess);
+                    break;
+                case ITERATOR:
+                    assertTrue(msg, value.isIterator());
+                    value.hasIteratorNextElement();
+                    break;
+                case HASH:
+                    assertTrue(msg, value.hasHashEntries());
+                    assertValueHash(value, depth, hasHostAccess);
+                    break;
                 default:
                     throw new AssertionError();
             }
@@ -695,25 +738,29 @@ public class ValueAssert {
         assertCollectionEqualValues(receivedObjects, objectList1);
         assertCollectionEqualValues(receivedObjects, objectList2);
 
-        if (value.hasMembers()) {
-            Map<Object, Object> objectMap1 = value.as(OBJECT_OBJECT_MAP);
-            assertTrue(objectMap1.keySet().equals(value.getMemberKeys()));
+        if (value.hasHashEntries()) {
+            assertHashKeys(value);
         } else {
-            assertFails(() -> value.as(OBJECT_OBJECT_MAP), ClassCastException.class);
+            if (value.hasMembers()) {
+                Map<Object, Object> objectMap1 = value.as(OBJECT_OBJECT_MAP);
+                assertTrue(objectMap1.keySet().equals(value.getMemberKeys()));
+            } else {
+                assertFails(() -> value.as(OBJECT_OBJECT_MAP), ClassCastException.class);
+            }
+
+            Map<Long, Object> objectMap2 = value.as(LONG_OBJECT_MAP);
+            Map<Integer, Object> objectMap3 = value.as(INTEGER_OBJECT_MAP);
+            Map<Number, Object> objectMap4 = value.as(NUMBER_OBJECT_MAP);
+
+            assertFails(() -> value.as(SHORT_OBJECT_MAP), ClassCastException.class);
+            assertFails(() -> value.as(BYTE_OBJECT_MAP), ClassCastException.class);
+            assertFails(() -> value.as(FLOAT_OBJECT_MAP), ClassCastException.class);
+            assertFails(() -> value.as(DOUBLE_OBJECT_MAP), ClassCastException.class);
+
+            assertCollectionEqualValues(receivedObjectsLongMap.values(), objectMap2.values());
+            assertCollectionEqualValues(receivedObjectsIntMap.values(), objectMap3.values());
+            assertCollectionEqualValues(receivedObjectsLongMap.values(), objectMap4.values());
         }
-
-        Map<Long, Object> objectMap2 = value.as(LONG_OBJECT_MAP);
-        Map<Integer, Object> objectMap3 = value.as(INTEGER_OBJECT_MAP);
-        Map<Number, Object> objectMap4 = value.as(NUMBER_OBJECT_MAP);
-
-        assertFails(() -> value.as(SHORT_OBJECT_MAP), ClassCastException.class);
-        assertFails(() -> value.as(BYTE_OBJECT_MAP), ClassCastException.class);
-        assertFails(() -> value.as(FLOAT_OBJECT_MAP), ClassCastException.class);
-        assertFails(() -> value.as(DOUBLE_OBJECT_MAP), ClassCastException.class);
-
-        assertCollectionEqualValues(receivedObjectsLongMap.values(), objectMap2.values());
-        assertCollectionEqualValues(receivedObjectsIntMap.values(), objectMap3.values());
-        assertCollectionEqualValues(receivedObjectsLongMap.values(), objectMap4.values());
     }
 
     private static void assertValueBufferElements(Value value) {
@@ -821,6 +868,67 @@ public class ValueAssert {
                     break;
             }
         }
+    }
+
+    private static void assertValueIterable(Value value, int depth, boolean hasHostAccess) {
+        assertTrue(value.hasIterator());
+        List<Object> receivedObjects = new ArrayList<>();
+        Value iterator = value.getIterator();
+        while (iterator.hasIteratorNextElement()) {
+            Value element = iterator.getIteratorNextElement();
+            receivedObjects.add(element.as(Object.class));
+            assertValueImpl(element, depth + 1, hasHostAccess, detectSupportedTypes(element));
+        }
+        Iterable<Object> objectIterable = value.as(OBJECT_ITERABLE);
+        assertTrue(objectIterable.equals(objectIterable));
+        assertTrue(value.as(OBJECT_ITERABLE).equals(value.as(OBJECT_ITERABLE)));
+        assertNotEquals(0, objectIterable.hashCode());
+        assertNotNull(objectIterable.toString());
+
+        Iterator<Object> receivedIterator = receivedObjects.iterator();
+        Iterator<Object> objectIterator1 = objectIterable.iterator();
+        Iterator<Object> objectIterator2 = value.getIterator().as(OBJECT_ITERATOR);
+        while (objectIterator1.hasNext() && objectIterator2.hasNext() && receivedIterator.hasNext()) {
+            Object expected = receivedIterator.next();
+            assertEqualValues(expected, objectIterator1.next());
+            assertEqualValues(expected, objectIterator2.next());
+        }
+        assertFalse(objectIterator1.hasNext() || objectIterator2.hasNext() || receivedIterator.hasNext());
+    }
+
+    private static void assertValueHash(Value value, int depth, boolean hasHostAccess) {
+        assertTrue(value.hasHashEntries());
+        Map<Object, Object> receivedObjects = new HashMap<>();
+        Value iterator = value.getHashEntriesIterator();
+        while (iterator.hasIteratorNextElement()) {
+            Value element = iterator.getIteratorNextElement();
+            assertTrue(element.hasArrayElements());
+            receivedObjects.put(element.getArrayElement(0).as(Object.class), element.getArrayElement(1).as(Object.class));
+            assertValueImpl(element, depth + 1, hasHostAccess, detectSupportedTypes(element));
+        }
+        Map<Object, Object> objectMap = value.as(OBJECT_OBJECT_MAP);
+        assertTrue(objectMap.equals(objectMap));
+        assertTrue(value.as(OBJECT_OBJECT_MAP).equals(value.as(OBJECT_OBJECT_MAP)));
+        assertNotNull(objectMap.toString());
+
+        Iterator<Map.Entry<Object, Object>> receivedIterator = receivedObjects.entrySet().iterator();
+        Iterator<Map.Entry<Object, Object>> objectIterator1 = objectMap.entrySet().iterator();
+        while (objectIterator1.hasNext() && receivedIterator.hasNext()) {
+            Map.Entry<Object, Object> expected = receivedIterator.next();
+            Map.Entry<Object, Object> actual = objectIterator1.next();
+            assertEqualValues(expected.getKey(), actual.getKey());
+            assertEqualValues(expected.getValue(), actual.getValue());
+        }
+        assertFalse(objectIterator1.hasNext() || receivedIterator.hasNext());
+    }
+
+    private static void assertHashKeys(Value value) {
+        Set<Object> hashKeys = new HashSet<>();
+        for (Value iterator = value.getHashKeysIterator(); iterator.hasIteratorNextElement();) {
+            hashKeys.add(iterator.getIteratorNextElement().as(Object.class));
+        }
+        Map<Object, Object> hashMap = value.as(OBJECT_OBJECT_MAP);
+        assertTrue(hashMap.keySet().equals(hashKeys));
     }
 
     @SafeVarargs
@@ -1025,6 +1133,15 @@ public class ValueAssert {
         if (value.isMetaObject()) {
             valueTypes.add(META);
         }
+        if (value.hasIterator()) {
+            valueTypes.add(ITERABLE);
+        }
+        if (value.isIterator()) {
+            valueTypes.add(ITERATOR);
+        }
+        if (value.hasHashEntries()) {
+            valueTypes.add(HASH);
+        }
         return valueTypes.toArray(new Trait[0]);
     }
 
@@ -1048,6 +1165,9 @@ public class ValueAssert {
         DURATION,
         EXCEPTION,
         META,
+        ITERABLE,
+        ITERATOR,
+        HASH
     }
 
 }

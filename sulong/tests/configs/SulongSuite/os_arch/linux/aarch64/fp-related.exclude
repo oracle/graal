@@ -1,0 +1,17 @@
+c/builtin_gcc/__builtin_copysign.c.dir
+c/builtin_gcc/__builtin_fabsl.c.dir
+c/builtin_gcc/__builtin_fpclassify.c.dir
+c/builtin_gcc/__builtin_isfinite.c.dir
+c/builtin_gcc/__builtin_isinf.c.dir
+c/builtin_gcc/__builtin_isnan.c.dir
+c/builtin_gcc/__builtin_signbit.c.dir
+c/builtin_gcc/__builtin_signbitl.c.dir
+c/lfplayout.c.dir
+c/longdouble/add.c.dir
+c/longdouble/longdouble-add.c.dir
+c/longdouble/longdouble-div.c.dir
+c/longdouble/longdouble-mul.c.dir
+c/longdouble/longdouble-sub.c.dir
+c/stdlib/math/fmodl.c.dir
+c/stdlib/math/sqrt.c.dir
+c/varargs/var80bit.c.dir

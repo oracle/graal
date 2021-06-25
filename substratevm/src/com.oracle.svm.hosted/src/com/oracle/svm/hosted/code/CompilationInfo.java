@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -66,6 +66,7 @@ public class CompilationInfo {
     protected CompileFunction customCompileFunction;
 
     /* Statistics collected before/during compilation. */
+    protected long numNodesAfterParsing;
     protected long numNodesBeforeCompilation;
     protected long numNodesAfterCompilation;
     protected long numDeoptEntryPoints;
@@ -81,6 +82,14 @@ public class CompilationInfo {
 
     public boolean isDeoptEntry(int bci, boolean duringCall, boolean rethrowException) {
         return isDeoptTarget() && (deoptOrigin.compilationInfo.canDeoptForTesting || CompilationInfoSupport.singleton().isDeoptEntry(method, bci, duringCall, rethrowException));
+    }
+
+    /**
+     * Returns whether this bci was registered as a potential deoptimization entrypoint via
+     * {@link CompilationInfoSupport#registerDeoptEntry}.
+     */
+    public boolean isRegisteredDeoptEntry(int bci, boolean duringCall, boolean rethrowException) {
+        return isDeoptTarget() && CompilationInfoSupport.singleton().isDeoptTarget(method) && CompilationInfoSupport.singleton().isDeoptEntry(method, bci, duringCall, rethrowException);
     }
 
     public boolean canDeoptForTesting() {

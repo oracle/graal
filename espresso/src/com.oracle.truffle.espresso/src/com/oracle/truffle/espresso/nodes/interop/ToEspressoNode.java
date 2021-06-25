@@ -141,6 +141,10 @@ public abstract class ToEspressoNode extends Node {
         return klass.getMeta().java_lang_String.equals(klass);
     }
 
+    static boolean isStringCompatible(Klass klass) {
+        return klass.isAssignableFrom(klass.getMeta().java_lang_String);
+    }
+
     static boolean isStringArray(Klass klass) {
         return klass.getMeta().java_lang_String.array().equals(klass);
     }
@@ -152,9 +156,13 @@ public abstract class ToEspressoNode extends Node {
 
     @SuppressWarnings("unused")
     @Specialization(guards = {"!isStaticObject(value)", "interop.isNull(value)", "!klass.isPrimitive()"})
-    Object doForeignNull(Object value, Klass klass,
-                    @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
+    Object doForeignNull(Object value, Klass klass, @CachedLibrary(limit = "LIMIT") InteropLibrary interop, @CachedContext(EspressoLanguage.class) EspressoContext context) {
         return StaticObject.createForeignNull(value);
+    }
+
+    @Specialization(guards = {"isStringCompatible(klass)"})
+    Object doHostString(String value, ObjectKlass klass) {
+        return klass.getMeta().toGuestString(value);
     }
 
     @Specialization(guards = {"!isStaticObject(value)", "!interop.isNull(value)", "isString(klass)"})

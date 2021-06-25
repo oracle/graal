@@ -24,41 +24,46 @@ package com.oracle.truffle.espresso.nodes.quick.invoke;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.descriptors.Signatures;
-import com.oracle.truffle.espresso.impl.ClassRedefinition;
-import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
+import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.Method.MethodVersion;
-import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public final class InvokeSpecialNode extends QuickNode {
+
     @CompilationFinal protected MethodVersion method;
     @Child private DirectCallNode directCallNode;
 
     final int resultAt;
+    final boolean returnsPrimitiveType;
 
     public InvokeSpecialNode(Method method, int top, int callerBCI) {
         super(top, callerBCI);
         this.method = method.getMethodVersion();
         this.directCallNode = DirectCallNode.create(method.getCallTarget());
         this.resultAt = top - Signatures.slotsForParameters(method.getParsedSignature()) - 1; // -receiver
+        this.returnsPrimitiveType = Types.isPrimitive(Signatures.returnType(method.getParsedSignature()));
     }
 
     @Override
     public int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
+        Object[] args = BytecodeNode.popArguments(primitives, refs, top, true, method.getMethod().getParsedSignature());
+        nullCheck((StaticObject) args[0]); // nullcheck receiver
         if (!method.getAssumption().isValid()) {
             // update to the latest method version and grab a new direct call target
             CompilerDirectives.transferToInterpreterAndInvalidate();
             if (removedByRedefintion()) {
                 // accept a slow path once the method has been removed
                 // put method behind a boundary to avoid a deopt loop
-                handleRemovedMethod();
+                Method resolutionSeed = method.getMethod();
+                StaticObject receiver = ((StaticObject) args[0]);
+                method = ClassRedefinition.handleRemovedMethod(resolutionSeed, receiver.getKlass(), receiver).getMethodVersion();
             } else {
                 method = method.getMethod().getMethodVersion();
             }
@@ -67,38 +72,11 @@ public final class InvokeSpecialNode extends QuickNode {
             adoptChildren();
         }
         // TODO(peterssen): IsNull Node?
-        Object[] args = BytecodeNode.popArguments(primitives, refs, top, true, method.getMethod().getParsedSignature());
-        nullCheck((StaticObject) args[0]); // nullcheck receiver
         Object result = directCallNode.call(args);
-        return (getResultAt() - top) + BytecodeNode.putKind(primitives, refs, getResultAt(), result, method.getMethod().getReturnKind());
-    }
-
-    @TruffleBoundary
-    private void handleRemovedMethod() {
-        try {
-            ClassRedefinition.lock();
-
-            Method resolutionSeed = method.getMethod();
-            Klass accessingKlass = resolutionSeed.getDeclaringKlass();
-            Method replacementMethod = resolutionSeed.getDeclaringKlass().lookupMethod(resolutionSeed.getName(), resolutionSeed.getRawSignature(), accessingKlass);
-            Meta meta = resolutionSeed.getMeta();
-            if (replacementMethod == null) {
-                throw Meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError,
-                                meta.toGuestString(resolutionSeed.getDeclaringKlass().getNameAsString() + "." + resolutionSeed.getName() + resolutionSeed.getRawSignature()));
-            } else if (replacementMethod.isStatic()) {
-                throw Meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "expected non-static method: " + replacementMethod.getName());
-            } else {
-                // Update to the latest version of the replacement method
-                method = replacementMethod.getMethodVersion();
-            }
-        } finally {
-            ClassRedefinition.unlock();
+        if (!returnsPrimitiveType) {
+            getBytecodeNode().checkNoForeignObjectAssumption((StaticObject) result);
         }
-    }
-
-    @Override
-    public boolean producedForeignObject(Object[] refs) {
-        return method.getMethod().getReturnKind().isObject() && BytecodeNode.peekObject(refs, getResultAt()).isForeignObject();
+        return (getResultAt() - top) + BytecodeNode.putKind(primitives, refs, getResultAt(), result, method.getMethod().getReturnKind());
     }
 
     private int getResultAt() {

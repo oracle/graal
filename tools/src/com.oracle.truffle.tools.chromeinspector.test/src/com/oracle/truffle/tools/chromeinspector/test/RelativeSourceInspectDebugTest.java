@@ -147,11 +147,11 @@ public class RelativeSourceInspectDebugTest {
                             "{\"method\":\"Debugger.paused\",\"params\":{\"reason\":\"other\",\"hitBreakpoints\":[]," +
                                     "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"" + funcName + "\"," +
                                                      "\"scopeChain\":[{\"name\":\"" + funcName + "\",\"type\":\"local\",\"object\":{\"description\":\"" + funcName + "\",\"type\":\"object\",\"objectId\":\"" + objId + "\"}}]," +
-                                                     "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"" + (objId + 1) + "\"}," +
+                                                     "\"this\":null," +
                                                      "\"functionLocation\":{\"scriptId\":\"" + i + "\",\"columnNumber\":0,\"lineNumber\":0}," +
                                                      "\"location\":{\"scriptId\":\"" + i + "\",\"columnNumber\":0,\"lineNumber\":0}," +
                                                      "\"url\":\"" + resolvedURI[i] + "\"}]}}\n"));
-            objId += 2;
+            objId++;
             tester.sendMessage("{\"id\":" + cmdId + ",\"method\":\"Debugger.getScriptSource\",\"params\":{\"scriptId\":\"" + i + "\"}}");
             assertTrue(tester.compareReceivedMessages(
                             "{\"result\":{\"scriptSource\":\"" + sourceContent[i].replace("\n", "\\n") + "\"},\"id\":" + cmdId + "}\n"));
@@ -198,7 +198,7 @@ public class RelativeSourceInspectDebugTest {
                         "{\"method\":\"Debugger.paused\",\"params\":{\"reason\":\"other\",\"hitBreakpoints\":[]," +
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"relative\"," +
                                                  "\"scopeChain\":[{\"name\":\"relative\",\"type\":\"local\",\"object\":{\"description\":\"relative\",\"type\":\"object\",\"objectId\":\"1\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"2\"}," +
+                                                 "\"this\":null," +
                                                  "\"functionLocation\":{\"scriptId\":\"0\",\"columnNumber\":0,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"0\",\"columnNumber\":0,\"lineNumber\":0}," +
                                                  "\"url\":\"relative/path\"}]}}\n"));
@@ -315,7 +315,7 @@ public class RelativeSourceInspectDebugTest {
                         "{\"method\":\"Debugger.paused\",\"params\":{\"reason\":\"other\",\"hitBreakpoints\":[\"1\"]," +
                                 "\"callFrames\":[{\"callFrameId\":\"0\",\"functionName\":\"relative\"," +
                                                  "\"scopeChain\":[{\"name\":\"relative\",\"type\":\"local\",\"object\":{\"description\":\"relative\",\"type\":\"object\",\"objectId\":\"1\"}}]," +
-                                                 "\"this\":{\"subtype\":\"null\",\"description\":\"null\",\"type\":\"object\",\"objectId\":\"2\"}," +
+                                                 "\"this\":null," +
                                                  "\"functionLocation\":{\"scriptId\":\"0\",\"columnNumber\":0,\"lineNumber\":0}," +
                                                  "\"location\":{\"scriptId\":\"0\",\"columnNumber\":0,\"lineNumber\":0}," +
                                                  "\"url\":\"" + fileURI + "\"}]}}\n"));
@@ -340,7 +340,7 @@ public class RelativeSourceInspectDebugTest {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         try (Context context = Context.newBuilder().option("inspect.SourcePath", sourcePath).out(out).err(out).build()) {
             Instrument inspector = context.getEngine().getInstruments().get("inspect");
-            OptionValues optionValues = (OptionValues) ReflectionUtils.getField(ReflectionUtils.getField(inspector, "impl"), "optionValues");
+            OptionValues optionValues = (OptionValues) ReflectionUtils.getField(ReflectionUtils.getField(inspector, "receiver"), "optionValues");
             List<URI> spValue = (List<URI>) optionValues.get(inspector.getOptions().get("inspect.SourcePath").getKey());
             if (validator != null) {
                 validator.accept(spValue.get(0));

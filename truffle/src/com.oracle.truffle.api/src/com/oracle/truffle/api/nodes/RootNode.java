@@ -253,6 +253,21 @@ public abstract class RootNode extends ExecutableNode {
         return false;
     }
 
+    /**
+     * Returns <code>true</code> if this root node should count towards
+     * {@link com.oracle.truffle.api.exception.AbstractTruffleException#getStackTraceElementLimit}.
+     * <p>
+     * By default, returns the negation of {@link #isInternal()}.
+     * <p>
+     * This method may be invoked on compiled code paths. It is recommended to implement this method
+     * or #isInternal() such that it returns a partial evaluation constant.
+     *
+     * @since 21.2.0
+     */
+    protected boolean countsTowardsStackTraceLimit() {
+        return !isInternal();
+    }
+
     @TruffleBoundary
     private SourceSection materializeSourceSection() {
         return getSourceSection();

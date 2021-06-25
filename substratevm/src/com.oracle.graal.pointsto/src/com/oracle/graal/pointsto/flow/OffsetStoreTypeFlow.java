@@ -32,12 +32,12 @@ import org.graalvm.compiler.nodes.extended.RawStoreNode;
 import org.graalvm.compiler.nodes.java.UnsafeCompareAndSwapNode;
 
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.api.UnsafePartitionKind;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.nodes.UnsafePartitionStoreNode;
 import com.oracle.graal.pointsto.typestate.TypeState;
+import com.oracle.svm.util.UnsafePartitionKind;
 
 import jdk.vm.ci.code.BytecodePosition;
 
@@ -134,10 +134,6 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
         public boolean addState(BigBang bb, TypeState add) {
             /* Only a clone should be updated */
             assert this.isClone();
-            if (add.isUnknown()) {
-                bb.reportIllegalUnknownUse(graphRef.getMethod(), source, "Illegal: Index storing UnknownTypeState into object array. Store: " + source);
-                return false;
-            }
             return super.addState(bb, add, true);
         }
 
@@ -147,12 +143,6 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
             assert this.isClone();
 
             TypeState objectState = objectFlow.getState();
-
-            if (objectState.isUnknown()) {
-                bb.reportIllegalUnknownUse(graphRef.getMethod(), source, "Illegal: Index storing into UnknownTypeState objects. Store: " + this);
-                return;
-            }
-
             /* Iterate over the receiver objects. */
             for (AnalysisObject object : objectState.objects()) {
                 if (bb.analysisPolicy().relaxTypeFlowConstraints() && !object.type().isArray()) {
@@ -213,10 +203,6 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
         public boolean addState(BigBang bb, TypeState add) {
             /* Only a clone should be updated */
             assert this.isClone();
-            if (add.isUnknown()) {
-                bb.getUnsupportedFeatures().addMessage(graphRef.getMethod().format("%H.%n(%p)"), graphRef.getMethod(), "Illegal: Store UnknownTypeState via unsafe. Store: " + this.getSource());
-                return false;
-            }
             return super.addState(bb, add, true);
         }
 
@@ -240,12 +226,6 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
             assert this.isClone();
 
             TypeState objectState = objectFlow.getState();
-
-            if (objectState.isUnknown()) {
-                bb.reportIllegalUnknownUse(graphRef.getMethod(), source, "Illegal: Unsafe store into UnknownTypeState objects. Store: " + this);
-                return;
-            }
-
             /* Iterate over the receiver objects. */
             for (AnalysisObject object : objectState.objects()) {
                 AnalysisType objectType = object.type();
@@ -368,10 +348,6 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
         public boolean addState(BigBang bb, TypeState add) {
             /* Only a clone should be updated */
             assert this.isClone();
-            if (add.isUnknown()) {
-                bb.reportIllegalUnknownUse(graphRef.getMethod(), source, "Illegal: Store UnknownTypeState via unsafe. Store: " + source);
-                return false;
-            }
             return super.addState(bb, add, true);
         }
 
@@ -392,11 +368,6 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
             assert this.isClone();
 
             TypeState objectState = objectFlow.getState();
-
-            if (objectState.isUnknown()) {
-                bb.reportIllegalUnknownUse(graphRef.getMethod(), source, "Illegal: Unsafe store into UnknownTypeState objects. Store: " + source);
-                return;
-            }
 
             /* Iterate over the receiver objects. */
             for (AnalysisObject object : objectState.objects()) {

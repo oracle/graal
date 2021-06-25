@@ -24,12 +24,13 @@
 package com.oracle.truffle.espresso.substitutions;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.meta.EspressoError;
 
 public class SubstitutionProfiler extends Node {
 
-    @CompilerDirectives.CompilationFinal //
+    @CompilationFinal //
     private char profiles = 0;
 
     /**

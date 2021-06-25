@@ -397,14 +397,14 @@ final class LoadingConstraints implements ContextAccess {
 
     private LinkageError linkageError(String message) {
         Meta meta = getMeta();
-        throw Meta.throwExceptionWithMessage(meta.java_lang_LinkageError, message);
+        throw meta.throwExceptionWithMessage(meta.java_lang_LinkageError, message);
     }
 
     private static int getLoaderID(StaticObject loader, Meta meta) {
         if (StaticObject.isNull(loader)) {
             return meta.getContext().getBootClassLoaderID();
         }
-        ClassRegistry classRegistry = (ClassRegistry) loader.getHiddenFieldVolatile(meta.HIDDEN_CLASS_LOADER_REGISTRY);
+        ClassRegistry classRegistry = (ClassRegistry) meta.HIDDEN_CLASS_LOADER_REGISTRY.getHiddenObject(loader, true);
         if (classRegistry == null) {
             throw EspressoError.shouldNotReachHere();
         }

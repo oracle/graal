@@ -77,6 +77,7 @@ import org.graalvm.compiler.truffle.compiler.phases.DeoptimizeOnExceptionPhase;
 import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
@@ -86,6 +87,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -339,6 +341,23 @@ public final class GraalFeature implements Feature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess c) {
+        DebugContext debug = DebugContext.forCurrentThread();
+
+        // box lowering accesses the caches for those classes and thus needs reflective access
+        for (JavaKind kind : new JavaKind[]{JavaKind.Boolean, JavaKind.Byte, JavaKind.Char,
+                        JavaKind.Double, JavaKind.Float, JavaKind.Int, JavaKind.Long, JavaKind.Short}) {
+            RuntimeReflection.register(kind.toBoxedJavaClass());
+            Class<?>[] innerClasses = kind.toBoxedJavaClass().getDeclaredClasses();
+            if (innerClasses != null && innerClasses.length > 0) {
+                RuntimeReflection.register(innerClasses[0]);
+                try {
+                    RuntimeReflection.register(innerClasses[0].getDeclaredField("cache"));
+                } catch (Throwable t) {
+                    throw debug.handle(t);
+                }
+            }
+        }
+
         BeforeAnalysisAccessImpl config = (BeforeAnalysisAccessImpl) c;
 
         GraalSupport.allocatePhaseStatisticsCache();
@@ -368,9 +387,9 @@ public final class GraalFeature implements Feature {
 
         FeatureHandler featureHandler = config.getFeatureHandler();
         NativeImageGenerator.registerGraphBuilderPlugins(featureHandler, runtimeConfig, hostedProviders, config.getMetaAccess(), config.getUniverse(), null, null, config.getNativeLibraries(),
-                        config.getImageClassLoader(), false, false, ((Inflation) config.getBigBang()).getAnnotationSubstitutionProcessor(), new SubstrateClassInitializationPlugin(config.getHostVM()),
-                        classInitializationSupport, ConfigurationValues.getTarget());
-        DebugContext debug = DebugContext.forCurrentThread();
+                        config.getImageClassLoader(), ParsingReason.JITCompilation, ((Inflation) config.getBigBang()).getAnnotationSubstitutionProcessor(),
+                        new SubstrateClassInitializationPlugin(config.getHostVM()), classInitializationSupport, ConfigurationValues.getTarget());
+
         NativeImageGenerator.registerReplacements(debug, featureHandler, runtimeConfig, runtimeConfig.getProviders(), runtimeConfig.getSnippetReflection(), false, true);
         featureHandler.forEachGraalFeature(feature -> feature.registerCodeObserver(runtimeConfig));
         Suites suites = NativeImageGenerator.createSuites(featureHandler, runtimeConfig, runtimeConfig.getSnippetReflection(), false);

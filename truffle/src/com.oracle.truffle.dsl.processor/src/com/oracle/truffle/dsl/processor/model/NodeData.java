@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -90,6 +90,7 @@ public class NodeData extends Template implements Comparable<NodeData> {
     private boolean generateUncached;
     private Set<String> allowedCheckedExceptions;
     private Map<CacheExpression, String> sharedCaches = Collections.emptyMap();
+    private ExecutableTypeData polymorphicExecutable;
 
     public NodeData(ProcessorContext context, TypeElement type, TypeSystemData typeSystem, boolean generateFactory, boolean generateUncached) {
         super(context, type, null);
@@ -98,7 +99,7 @@ public class NodeData extends Template implements Comparable<NodeData> {
         this.fields = new ArrayList<>();
         this.children = new ArrayList<>();
         this.childExecutions = new ArrayList<>();
-        this.thisExecution = new NodeExecutionData(new NodeChildData(null, null, "this", getNodeType(), getNodeType(), null, Cardinality.ONE, null), -1, -1);
+        this.thisExecution = new NodeExecutionData(new NodeChildData(null, null, "this", getNodeType(), getNodeType(), null, Cardinality.ONE, null, null, null), -1, -1);
         this.thisExecution.getChild().setNode(this);
         this.generateFactory = generateFactory;
         this.generateUncached = generateUncached;
@@ -183,7 +184,7 @@ public class NodeData extends Template implements Comparable<NodeData> {
     }
 
     public boolean isFallbackReachable() {
-        SpecializationData generic = getGenericSpecialization();
+        SpecializationData generic = getFallbackSpecialization();
         if (generic != null) {
             return generic.isReachable();
         }
@@ -473,27 +474,9 @@ public class NodeData extends Template implements Comparable<NodeData> {
         return false;
     }
 
-    public SpecializationData getPolymorphicSpecialization() {
-        for (SpecializationData specialization : specializations) {
-            if (specialization.isPolymorphic()) {
-                return specialization;
-            }
-        }
-        return null;
-    }
-
-    public SpecializationData getGenericSpecialization() {
+    public SpecializationData getFallbackSpecialization() {
         for (SpecializationData specialization : specializations) {
             if (specialization.isFallback()) {
-                return specialization;
-            }
-        }
-        return null;
-    }
-
-    public SpecializationData getUninitializedSpecialization() {
-        for (SpecializationData specialization : specializations) {
-            if (specialization.isUninitialized()) {
                 return specialization;
             }
         }
@@ -701,6 +684,14 @@ public class NodeData extends Template implements Comparable<NodeData> {
 
     public Set<TypeMirror> getLibraryTypes() {
         return libraryTypes;
+    }
+
+    public void setPolymorphicExecutable(ExecutableTypeData polymorphicType) {
+        this.polymorphicExecutable = polymorphicType;
+    }
+
+    public ExecutableTypeData getPolymorphicExecutable() {
+        return polymorphicExecutable;
     }
 
 }

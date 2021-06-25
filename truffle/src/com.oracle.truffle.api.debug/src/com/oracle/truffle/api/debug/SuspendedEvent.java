@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -670,10 +670,26 @@ public final class SuspendedEvent {
      * @since 0.31
      */
     public void prepareUnwindFrame(DebugStackFrame frame) throws IllegalArgumentException {
+        prepareUnwindFrame(frame, null);
+    }
+
+    /**
+     * Prepare to unwind a frame. This frame and all frames above it are unwound off the execution
+     * stack and the frame will return immediately with <code>immediateReturnValue</code>. If the
+     * return value is <code>null</code>, the unwound frame will instead be reentered upon thread
+     * resumption. The frame needs to be on the {@link #getStackFrames() execution stack of this
+     * event}.
+     *
+     * @param frame the frame to unwind
+     * @param immediateReturnValue the value to return
+     * @throws IllegalArgumentException when the frame is not on the execution stack of this event
+     * @since 21.1.0
+     */
+    public void prepareUnwindFrame(DebugStackFrame frame, DebugValue immediateReturnValue) throws IllegalArgumentException {
         if (frame.event != this) {
             throw new IllegalArgumentException("The stack frame is not in the scope of this event.");
         }
-        setNextStrategy(SteppingStrategy.createUnwind(frame.getDepth()));
+        setNextStrategy(SteppingStrategy.createUnwind(frame.getDepth(), immediateReturnValue));
     }
 
     /**
@@ -832,7 +848,7 @@ public final class SuspendedEvent {
         public Iterator<DebugStackFrame> iterator() {
             if (hostStack != null) {
                 AtomicInteger frameDepth = new AtomicInteger(0);
-                return Debugger.ACCESSOR.engineSupport().mergeHostGuestFrames(hostStack, new GuestIterator(true) {
+                return Debugger.ACCESSOR.engineSupport().mergeHostGuestFrames(session.getDebugger().getEnv(), hostStack, new GuestIterator(true) {
                     @Override
                     public DebugStackFrame next() {
                         DebugStackFrame frame = super.next();

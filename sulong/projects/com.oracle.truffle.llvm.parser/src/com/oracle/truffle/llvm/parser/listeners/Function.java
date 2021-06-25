@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,10 +28,6 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 package com.oracle.truffle.llvm.parser.listeners;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 
 import com.oracle.truffle.llvm.parser.metadata.MDBaseNode;
 import com.oracle.truffle.llvm.parser.metadata.MDKind;
@@ -89,6 +85,11 @@ import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
+
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 public final class Function implements ParserListener {
 
@@ -792,12 +793,19 @@ public final class Function implements ParserListener {
 
     private void createExtractValue(RecordBuffer buffer) {
         int aggregate = readIndex(buffer);
-        Type aggregateType = readValueType(buffer, aggregate);
-        int index = buffer.readInt();
-        buffer.checkEnd("Multiple indices for extractvalue are not yet supported!");
-
-        Type elementType = Types.castToAggregate(aggregateType).getElementType(index);
-        emit(ExtractValueInstruction.fromSymbols(scope.getSymbols(), elementType, aggregate, index));
+        Type elementType = readValueType(buffer, aggregate);
+        ArrayDeque<Long> indicesList = new ArrayDeque<>();
+        /*
+         * We need to populate the indices list in the reverse order as it is expected by
+         * CommonNodeFactory.getTargetAddress called from
+         * LLVMBitcodeInstructionVisitor.visit(ExtractValueInstruction).
+         */
+        while (buffer.remaining() > 0) {
+            int index = buffer.readInt();
+            elementType = Types.castToAggregate(elementType).getElementType(index);
+            indicesList.addFirst((long) index);
+        }
+        emit(ExtractValueInstruction.fromSymbols(scope.getSymbols(), elementType, aggregate, indicesList));
     }
 
     private void createGetElementPointer(RecordBuffer buffer) {

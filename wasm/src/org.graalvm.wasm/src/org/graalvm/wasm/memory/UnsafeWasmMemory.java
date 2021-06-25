@@ -102,7 +102,11 @@ public class UnsafeWasmMemory extends WasmMemory implements AutoCloseable {
         this.size = declaredMinSize;
         this.maxAllowedSize = maxAllowedSize;
         final long byteSize = byteSize();
-        this.startAddress = unsafe.allocateMemory(byteSize);
+        try {
+            this.startAddress = unsafe.allocateMemory(byteSize);
+        } catch (OutOfMemoryError error) {
+            throw WasmException.create(Failure.MEMORY_ALLOCATION_FAILED);
+        }
         unsafe.setMemory(startAddress, byteSize, (byte) 0);
     }
 
@@ -165,13 +169,17 @@ public class UnsafeWasmMemory extends WasmMemory implements AutoCloseable {
             // Condition above and limit on maxPageSize (see ModuleLimits#MAX_MEMORY_SIZE) ensure
             // computation of targetByteSize does not overflow.
             final int targetByteSize = multiplyExact(addExact(size(), extraPageSize), MEMORY_PAGE_SIZE);
-            final long updatedStartAddress = unsafe.allocateMemory(targetByteSize);
-            unsafe.copyMemory(startAddress, updatedStartAddress, byteSize());
-            unsafe.setMemory(updatedStartAddress + byteSize(), targetByteSize - byteSize(), (byte) 0);
-            unsafe.freeMemory(startAddress);
-            startAddress = updatedStartAddress;
-            size += extraPageSize;
-            return true;
+            try {
+                final long updatedStartAddress = unsafe.allocateMemory(targetByteSize);
+                unsafe.copyMemory(startAddress, updatedStartAddress, byteSize());
+                unsafe.setMemory(updatedStartAddress + byteSize(), targetByteSize - byteSize(), (byte) 0);
+                unsafe.freeMemory(startAddress);
+                startAddress = updatedStartAddress;
+                size += extraPageSize;
+                return true;
+            } catch (OutOfMemoryError error) {
+                throw WasmException.create(Failure.MEMORY_ALLOCATION_FAILED);
+            }
         } else {
             return false;
         }

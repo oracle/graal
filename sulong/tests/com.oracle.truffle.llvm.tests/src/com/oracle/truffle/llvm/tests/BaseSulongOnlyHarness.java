@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -82,6 +82,10 @@ public abstract class BaseSulongOnlyHarness {
             this.expectedPosixReturn = expectedPosixReturn;
             this.expectedOutput = expectedOutput;
             this.args = args;
+        }
+
+        String[] getArgs() {
+            return args;
         }
     }
 }

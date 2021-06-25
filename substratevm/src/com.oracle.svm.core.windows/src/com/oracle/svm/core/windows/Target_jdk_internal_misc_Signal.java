@@ -29,10 +29,10 @@ import static org.graalvm.nativeimage.c.function.CFunction.Transition.NO_TRANSIT
 
 import java.util.Hashtable;
 
-import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
@@ -60,8 +60,8 @@ final class Target_jdk_internal_misc_Signal {
 
     @Substitute
     private static long handle0(int sig, long nativeH) {
-        if (ImageInfo.isSharedLibrary()) {
-            throw new IllegalArgumentException("Installing signal handlers is not allowed for native-image shared libraries.");
+        if (!SubstrateOptions.EnableSignalAPI.getValue()) {
+            throw new IllegalArgumentException("Installing signal handlers is not enabled");
         }
         if (!PlatformNativeLibrarySupport.singleton().isFirstIsolate()) {
             throw new IllegalArgumentException("Only the first isolate can install signal handlers, as signal handling is global for the process.");

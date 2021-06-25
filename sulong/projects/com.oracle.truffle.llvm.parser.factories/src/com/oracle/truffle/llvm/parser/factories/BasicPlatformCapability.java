@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.parser.factories;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Locale;
 
 import com.oracle.truffle.llvm.runtime.LLVMSyscallEntry;
 import com.oracle.truffle.llvm.runtime.NativeContextExtension;
@@ -39,6 +40,31 @@ import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMInfo;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMNativeSyscallNode;
 
 public abstract class BasicPlatformCapability<S extends Enum<S> & LLVMSyscallEntry> extends PlatformCapabilityBase<S> {
+
+    // Flags for DLOpen
+    public static final int RTLD_LAZY = 1;
+    public static final int RTLD_GLOBAL = 256;
+    public static final long RTLD_DEFAULT = 0;
+
+    @Override
+    public boolean isGlobalDLOpenFlagSet(int flag) {
+        return (flag & RTLD_GLOBAL) == RTLD_GLOBAL;
+    }
+
+    @Override
+    public boolean isLazyDLOpenFlagSet(int flag) {
+        return (flag & RTLD_LAZY) == RTLD_LAZY;
+    }
+
+    @Override
+    public boolean isFirstDLOpenFlagSet(int flag) {
+        return false;
+    }
+
+    @Override
+    public boolean isDefaultDLSymFlagSet(long flag) {
+        return flag == RTLD_DEFAULT;
+    }
 
     public static BasicPlatformCapability<?> create(boolean loadCxxLibraries) {
         if (LLVMInfo.SYSNAME.equalsIgnoreCase("linux")) {
@@ -52,12 +78,15 @@ public abstract class BasicPlatformCapability<S extends Enum<S> & LLVMSyscallEnt
         if (LLVMInfo.SYSNAME.equalsIgnoreCase("mac os x") && LLVMInfo.MACHINE.equalsIgnoreCase("x86_64")) {
             return new DarwinAMD64PlatformCapability(loadCxxLibraries);
         }
+        if (LLVMInfo.SYSNAME.toLowerCase(Locale.ROOT).startsWith("windows") && LLVMInfo.MACHINE.equalsIgnoreCase("x86_64")) {
+            return new WindowsAMD64PlatformCapability(loadCxxLibraries);
+        }
         return new UnknownBasicPlatformCapability(loadCxxLibraries);
     }
 
     private static final Path SULONG_LIBDIR = Paths.get("native", "lib");
-    public static final String LIBSULONG_FILENAME = "libsulong." + NativeContextExtension.getNativeLibrarySuffix();
-    public static final String LIBSULONGXX_FILENAME = "libsulong++." + NativeContextExtension.getNativeLibrarySuffix();
+    public static final String LIBSULONG_FILENAME = NativeContextExtension.getNativeLibrary("sulong");
+    public static final String LIBSULONGXX_FILENAME = NativeContextExtension.getNativeLibrary("sulong++");
 
     protected BasicPlatformCapability(Class<S> cls, boolean loadCxxLibraries) {
         super(cls, loadCxxLibraries);
@@ -65,7 +94,7 @@ public abstract class BasicPlatformCapability<S extends Enum<S> & LLVMSyscallEnt
 
     @Override
     public String getBuiltinsLibrary() {
-        return "libgraalvm-llvm." + NativeContextExtension.getNativeLibrarySuffixVersioned(1);
+        return NativeContextExtension.getNativeLibraryVersioned("graalvm-llvm", 1);
     }
 
     @Override

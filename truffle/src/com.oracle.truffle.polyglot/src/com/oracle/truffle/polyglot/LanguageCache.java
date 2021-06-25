@@ -133,8 +133,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
         }
     }
 
-    static LanguageCache createHostLanguageCache(String... services) {
-        TruffleLanguage<?> languageInstance = new HostLanguage();
+    static LanguageCache createHostLanguageCache(TruffleLanguage<Object> languageInstance, String... services) {
         Set<String> servicesClassNames;
         if (services.length == 0) {
             servicesClassNames = Collections.emptySet();
@@ -155,7 +154,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
                         null,
                         Collections.emptySet(),
                         false, false, servicesClassNames,
-                        LanguageReflection.forLanguageInstance(new HostLanguage(), ContextPolicy.SHARED));
+                        LanguageReflection.forLanguageInstance(languageInstance, ContextPolicy.SHARED));
     }
 
     static Map<String, LanguageCache> languageMimes() {

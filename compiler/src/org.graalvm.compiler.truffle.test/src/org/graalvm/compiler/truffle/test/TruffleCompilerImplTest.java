@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,8 @@
 package org.graalvm.compiler.truffle.test;
 
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
@@ -33,6 +35,9 @@ import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.polyglot.Context;
 import org.junit.After;
 import org.junit.Assume;
+
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.nodes.RootNode;
 
 public abstract class TruffleCompilerImplTest extends GraalCompilerTest {
 
@@ -52,6 +57,12 @@ public abstract class TruffleCompilerImplTest extends GraalCompilerTest {
             truffleCompiler.initialize(GraalTruffleRuntime.getOptionsForCompiler(callTarget), callTarget, true);
         }
         return truffleCompiler;
+    }
+
+    @Override
+    protected CompilationIdentifier createCompilationId() {
+        OptimizedCallTarget target = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
+        return getTruffleCompiler(target).createCompilationIdentifier(target);
     }
 
     protected final void setupContext(Context newContext) {

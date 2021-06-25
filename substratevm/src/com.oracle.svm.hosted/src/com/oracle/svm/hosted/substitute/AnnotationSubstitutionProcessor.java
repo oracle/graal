@@ -52,6 +52,7 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.Delete;
@@ -201,7 +202,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
                 }
 
                 PolymorphicSignatureWrapperMethod wrapperMethod = new PolymorphicSignatureWrapperMethod(substitutionBaseMethod, method);
-                SubstitutionMethod substitutionMethod = new SubstitutionMethod(method, wrapperMethod);
+                SubstitutionMethod substitutionMethod = new SubstitutionMethod(method, wrapperMethod, false, true);
                 synchronized (methodSubstitutions) {
                     /*
                      * It may happen that, during analysis, two threads are trying to register the
@@ -367,9 +368,19 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         if (original == null) {
             /* Optional target that is not present, so nothing to do. */
         } else if (deleteAnnotation != null) {
+            if (SubstrateOptions.VerifyNamingConventions.getValue()) {
+                int modifiers = original.getModifiers();
+                if (Modifier.isProtected(modifiers) || Modifier.isPublic(modifiers)) {
+                    String format = "Detected a public or protected method annotated with @Delete: %s. " +
+                                    "Such usages of @Delete are not permited since these methods can be called " +
+                                    "from third party code and can lead to unsupported features. " +
+                                    "Instead the method should be replaced with a @Substitute method and `throw VMError.unsupportedFeature()`.";
+                    throw UserError.abort(format, annotatedMethod);
+                }
+            }
             registerAsDeleted(annotated, original, deleteAnnotation);
         } else if (substituteAnnotation != null) {
-            SubstitutionMethod substitution = new SubstitutionMethod(original, annotated);
+            SubstitutionMethod substitution = new SubstitutionMethod(original, annotated, false, true);
             if (substituteAnnotation.polymorphicSignature()) {
                 register(polymorphicMethodSubstitutions, annotated, original, substitution);
             }
@@ -567,7 +578,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         ResolvedJavaType annotated = metaAccess.lookupJavaType(annotatedClass);
 
         for (int i = 0; i < ARRAY_DIMENSIONS; i++) {
-            ResolvedJavaType substitution = new SubstitutionType(original, annotated);
+            ResolvedJavaType substitution = new SubstitutionType(original, annotated, true);
             register(typeSubstitutions, annotated, original, substitution);
 
             original = original.getArrayClass();
@@ -629,7 +640,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         if (original == null) {
             /* Optional target that is not present, so nothing to do. */
         } else if (substituteAnnotation != null) {
-            SubstitutionMethod substitution = new SubstitutionMethod(original, annotated, true);
+            SubstitutionMethod substitution = new SubstitutionMethod(original, annotated, true, true);
             if (substituteAnnotation.polymorphicSignature()) {
                 register(polymorphicMethodSubstitutions, annotated, original, substitution);
             }
@@ -653,7 +664,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         if (original == null) {
             /* Optional target that is not present, so nothing to do. */
         } else {
-            register(fieldSubstitutions, annotated, original, new SubstitutionField(original, annotated));
+            register(fieldSubstitutions, annotated, original, new SubstitutionField(original, annotated, true));
         }
     }
 
@@ -668,7 +679,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
                  * methods as if they were annotated with @KeepOriginal. If the method/field that
                  * the synthetic method is forwarding to is not available, an error message for that
                  * method/field will be produced anyway.
-                 * 
+                 *
                  * This also treats synthetic bridge methods as @KeepOriginal, so that
                  * handleAnnotatedMethodInSubstitutionClass does not need to handle them.
                  */
@@ -827,11 +838,13 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         Class<?> targetClass = originalClass;
         String targetName = "";
         boolean isFinal = original.isFinal() && annotated.isFinal();
+        boolean disableCaching = false;
 
         if (recomputeAnnotation != null) {
             kind = recomputeAnnotation.kind();
             targetName = recomputeAnnotation.name();
             isFinal = recomputeAnnotation.isFinal();
+            disableCaching = recomputeAnnotation.disableCaching();
             guarantee(!isFinal || ComputedValueField.isFinalValid(kind), "@%s with %s can never be final during analysis: unset isFinal in the annotation on %s",
                             RecomputeFieldValue.class.getSimpleName(), kind, annotated);
             if (recomputeAnnotation.declClass() != RecomputeFieldValue.class) {
@@ -841,7 +854,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
                 targetClass = imageClassLoader.findClassOrFail(recomputeAnnotation.declClassName());
             }
         }
-        return new ComputedValueField(original, annotated, kind, targetClass, targetName, isFinal);
+        return new ComputedValueField(original, annotated, kind, targetClass, targetName, isFinal, disableCaching);
     }
 
     private void reinitializeField(Field annotatedField) {

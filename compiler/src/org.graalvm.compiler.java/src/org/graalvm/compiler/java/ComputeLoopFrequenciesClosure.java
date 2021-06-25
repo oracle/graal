@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,57 +35,78 @@ import org.graalvm.compiler.nodes.ControlSplitNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
+import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
+import org.graalvm.compiler.nodes.ProfileData.LoopFrequencyData;
+import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.graph.ReentrantNodeIterator;
 
-public final class ComputeLoopFrequenciesClosure extends ReentrantNodeIterator.NodeIteratorClosure<Double> {
+public final class ComputeLoopFrequenciesClosure extends ReentrantNodeIterator.NodeIteratorClosure<BranchProbabilityData> {
 
     private static final ComputeLoopFrequenciesClosure INSTANCE = new ComputeLoopFrequenciesClosure();
+
+    private static final BranchProbabilityData ZERO = BranchProbabilityData.create(0.0, ProfileSource.UNKNOWN);
+    private static final BranchProbabilityData ONE = BranchProbabilityData.create(1.0, ProfileSource.UNKNOWN);
 
     private ComputeLoopFrequenciesClosure() {
         // nothing to do
     }
 
+    private static BranchProbabilityData add(BranchProbabilityData x, BranchProbabilityData y) {
+        double p = x.getDesignatedSuccessorProbability() + y.getDesignatedSuccessorProbability();
+        return BranchProbabilityData.create(p, x.getProfileSource().combine(y.getProfileSource()));
+    }
+
+    private static BranchProbabilityData scale(BranchProbabilityData x, double scaleFactor) {
+        return scaleAndCombine(x, scaleFactor, x.getProfileSource());
+    }
+
+    private static BranchProbabilityData scaleAndCombine(BranchProbabilityData x, double scaleFactor, ProfileSource otherSource) {
+        double p = multiplyRelativeFrequencies(x.getDesignatedSuccessorProbability(), scaleFactor);
+        return BranchProbabilityData.create(p, x.getProfileSource().combine(otherSource));
+    }
+
     @Override
-    protected Double processNode(FixedNode node, Double currentState) {
+    protected BranchProbabilityData processNode(FixedNode node, BranchProbabilityData currentState) {
         // normal nodes never change the probability of a path
         return currentState;
     }
 
     @Override
-    protected Double merge(AbstractMergeNode merge, List<Double> states) {
+    protected BranchProbabilityData merge(AbstractMergeNode merge, List<BranchProbabilityData> states) {
         // a merge has the sum of all predecessor probabilities
-        double result = 0.0;
-        for (double d : states) {
-            result += d;
+        BranchProbabilityData result = ZERO;
+        for (BranchProbabilityData s : states) {
+            result = add(result, s);
         }
         return result;
     }
 
     @Override
-    protected Double afterSplit(AbstractBeginNode node, Double oldState) {
+    protected BranchProbabilityData afterSplit(AbstractBeginNode node, BranchProbabilityData oldState) {
         // a control split splits up the probability
         ControlSplitNode split = (ControlSplitNode) node.predecessor();
-        return oldState * split.probability(node);
+        return scaleAndCombine(oldState, split.probability(node), split.getProfileData().getProfileSource());
     }
 
     @Override
-    protected EconomicMap<LoopExitNode, Double> processLoop(LoopBeginNode loop, Double initialState) {
-        EconomicMap<LoopExitNode, Double> exitStates = ReentrantNodeIterator.processLoop(this, loop, 1D).exitStates;
+    protected EconomicMap<LoopExitNode, BranchProbabilityData> processLoop(LoopBeginNode loop, BranchProbabilityData initialState) {
+        EconomicMap<LoopExitNode, BranchProbabilityData> exitStates = ReentrantNodeIterator.processLoop(this, loop, ONE).exitStates;
 
-        double exitRelativeFrequency = 0.0;
-        for (double d : exitStates.getValues()) {
-            exitRelativeFrequency += d;
+        BranchProbabilityData exitState = ZERO;
+        for (BranchProbabilityData e : exitStates.getValues()) {
+            exitState = add(exitState, e);
         }
+        double exitRelativeFrequency = exitState.getDesignatedSuccessorProbability();
         exitRelativeFrequency = Math.min(1.0, exitRelativeFrequency);
         exitRelativeFrequency = Math.max(ControlFlowGraph.MIN_RELATIVE_FREQUENCY, exitRelativeFrequency);
         double loopFrequency = 1.0 / exitRelativeFrequency;
-        loop.setLoopFrequency(loopFrequency);
+        loop.setLoopFrequency(LoopFrequencyData.create(loopFrequency, exitState.getProfileSource()));
 
-        double adjustmentFactor = initialState * loopFrequency;
-        exitStates.replaceAll((exitNode, frequency) -> multiplyRelativeFrequencies(frequency, adjustmentFactor));
+        double adjustmentFactor = initialState.getDesignatedSuccessorProbability() * loopFrequency;
+        exitStates.replaceAll((exitNode, state) -> scale(state, adjustmentFactor));
 
         return exitStates;
     }
@@ -97,7 +118,7 @@ public final class ComputeLoopFrequenciesClosure extends ReentrantNodeIterator.N
      */
     public static void compute(StructuredGraph graph) {
         if (graph.hasLoops()) {
-            ReentrantNodeIterator.apply(INSTANCE, graph.start(), 1D);
+            ReentrantNodeIterator.apply(INSTANCE, graph.start(), ONE);
         }
     }
 

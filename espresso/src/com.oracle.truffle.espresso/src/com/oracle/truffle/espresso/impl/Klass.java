@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,7 +29,6 @@ import static com.oracle.truffle.espresso.vm.InterpreterToVM.instanceOf;
 import java.util.Comparator;
 import java.util.function.IntFunction;
 
-import com.oracle.truffle.espresso.meta.MetaUtil;
 import org.graalvm.collections.EconomicSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -69,19 +68,22 @@ import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.meta.ModifiersProvider;
 import com.oracle.truffle.espresso.nodes.interop.InvokeEspressoNode;
 import com.oracle.truffle.espresso.nodes.interop.LookupDeclaredMethod;
 import com.oracle.truffle.espresso.nodes.interop.LookupFieldNode;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
+import com.oracle.truffle.espresso.perf.DebugCounter;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.dispatch.BaseInterop;
+import com.oracle.truffle.espresso.runtime.dispatch.EspressoInterop;
 import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
-import com.oracle.truffle.object.DebugCounter;
 
 @ExportLibrary(InteropLibrary.class)
 public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRef, TruffleObject {
@@ -186,7 +188,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     @ExportMessage
     final boolean isMemberInvocable(String member,
                     @Exclusive @Cached LookupDeclaredMethod lookupMethod) {
-        return lookupMethod.isInvocable(this, member, true, true);
+        return lookupMethod.isInvocable(this, member, true);
     }
 
     @ExportMessage
@@ -195,8 +197,9 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
                     @Exclusive @Cached LookupDeclaredMethod lookupMethod,
                     @Exclusive @Cached InvokeEspressoNode invoke)
                     throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
-        Method method = lookupMethod.execute(this, member, true, true, arguments.length);
-        if (method != null) {
+        Method.MethodVersion methodVersion = lookupMethod.execute(this, member, true, true, arguments.length);
+        if (methodVersion != null) {
+            Method method = methodVersion.getMethod();
             assert method.isStatic() && method.isPublic();
             assert member.startsWith(method.getNameAsString());
             assert method.getParameterCount() == arguments.length;
@@ -297,7 +300,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
 
         private static int getLength(Object[] arguments, ToEspressoNode toEspressoNode, Meta meta) throws UnsupportedTypeException, ArityException {
             if (arguments.length != 1) {
-                throw ArityException.create(1, arguments.length);
+                throw ArityException.create(1, 1, arguments.length);
             }
             return convertLength(arguments[0], toEspressoNode, meta);
         }
@@ -341,7 +344,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
             ArrayKlass arrayKlass = (ArrayKlass) receiver;
             assert arrayKlass.getElementalType().getJavaKind() != JavaKind.Void;
             if (arrayKlass.getDimension() != arguments.length) {
-                throw ArityException.create(arrayKlass.getDimension(), arguments.length);
+                throw ArityException.create(arrayKlass.getDimension(), arrayKlass.getDimension(), arguments.length);
             }
             int[] dimensions = new int[arguments.length];
             for (int i = 0; i < dimensions.length; ++i) {
@@ -358,11 +361,12 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
                         @Exclusive @Cached LookupDeclaredMethod lookupMethod,
                         @Exclusive @Cached InvokeEspressoNode invoke) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
             ObjectKlass objectKlass = (ObjectKlass) receiver;
-            Method init = lookupMethod.execute(objectKlass, INIT_NAME, true, false, arguments.length);
+            Method.MethodVersion init = lookupMethod.execute(objectKlass, INIT_NAME, true, false, arguments.length);
             if (init != null) {
-                assert !init.isStatic() && init.isPublic() && init.getName().toString().equals(INIT_NAME) && init.getParameterCount() == arguments.length;
+                Method initMethod = init.getMethod();
+                assert !initMethod.isStatic() && initMethod.isPublic() && initMethod.getName().toString().equals(INIT_NAME) && initMethod.getParameterCount() == arguments.length;
                 StaticObject newObject = StaticObject.createNew(objectKlass);
-                invoke.execute(init, newObject, arguments);
+                invoke.execute(initMethod, newObject, arguments);
                 return newObject;
             }
             // TODO(goltsova): throw ArityException whenever possible
@@ -421,6 +425,28 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
 
     // endregion ### Identity/hashCode
 
+    public Class<?> getDispatch() {
+        Class<?> result = dispatch;
+        if (result == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            if (getMeta().getContext().metaInitialized()) {
+                result = getMeta().resolveDispatch(this);
+                dispatch = result;
+            } else {
+                /*
+                 * Meta is not fully initialized: return the generic interop, without updating the
+                 * dispatch cache. This is fine, as we are not expecting any meaningful interop
+                 * until context is fully initialized.
+                 */
+                if (isPrimitive()) {
+                    return BaseInterop.class;
+                }
+                return EspressoInterop.class;
+            }
+        }
+        return result;
+    }
+
     // endregion Interop
 
     // Threshold for using binary search instead of linear search for interface lookup.
@@ -455,6 +481,9 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
 
     @CompilationFinal //
     private volatile StaticObject mirrorCache;
+
+    @CompilationFinal //
+    private Class<?> dispatch;
 
     @CompilationFinal private int hierarchyDepth = -1;
 
@@ -570,6 +599,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         this.runtimePackage = initRuntimePackage();
     }
 
+    @Override
     public abstract @Host(ClassLoader.class) StaticObject getDefiningClassLoader();
 
     public abstract ConstantPool getConstantPool();
@@ -580,6 +610,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
                         : JavaKind.Object;
     }
 
+    @Override
     public final boolean isArray() {
         return this instanceof ArrayKlass;
     }
@@ -624,6 +655,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         return getArrayClass();
     }
 
+    @Override
     public ArrayKlass getArrayClass(int dimensions) {
         assert dimensions > 0;
         ArrayKlass array = getArrayClass();
@@ -698,6 +730,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
      *
      * @return {@code true} if this type is primitive
      */
+    @Override
     public final boolean isPrimitive() {
         return getJavaKind().isPrimitive();
     }
@@ -777,7 +810,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
 
     /**
      * Performs type checking for non-interface, non-array classes.
-     * 
+     *
      * @param other the class whose type is to be checked against {@code this}
      * @return true if {@code other} is a subclass of {@code this}
      */
@@ -788,7 +821,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
 
     /**
      * Performs type checking for interface classes.
-     * 
+     *
      * @param other the class whose type is to be checked against {@code this}
      * @return true if {@code this} is a super interface of {@code other}
      */
@@ -895,12 +928,14 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
      * Returns an array reflecting all the methods declared by this type. This method is similar to
      * {@link Class#getDeclaredMethods()} in terms of returned methods.
      */
+    @Override
     public abstract MethodRef[] getDeclaredMethodRefs();
 
     /**
      * Returns an array reflecting all the fields declared by this type. This method is similar to
      * {@link Class#getDeclaredFields()} in terms of returned fields.
      */
+    @Override
     public abstract Field[] getDeclaredFields();
 
     /**
@@ -932,7 +967,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
             StaticObject cause = e.getExceptionObject();
             Meta meta = getMeta();
             if (!InterpreterToVM.instanceOf(cause, meta.java_lang_Error)) {
-                throw Meta.throwExceptionWithCause(meta.java_lang_ExceptionInInitializerError, cause);
+                throw meta.throwExceptionWithCause(meta.java_lang_ExceptionInInitializerError, cause);
             } else {
                 throw e;
             }
@@ -1037,6 +1072,14 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
 
     // region Lookup
 
+    public final Field requireDeclaredField(Symbol<Name> fieldName, Symbol<Type> fieldType) {
+        Field obj = lookupDeclaredField(fieldName, fieldType);
+        if (obj == null) {
+            throw EspressoError.shouldNotReachHere("Missing field: ", fieldName, ": ", fieldType, " in ", this);
+        }
+        return obj;
+    }
+
     @ExplodeLoop
     public final Field lookupDeclaredField(Symbol<Name> fieldName, Symbol<Type> fieldType) {
         KLASS_LOOKUP_DECLARED_FIELD_COUNT.inc();
@@ -1109,6 +1152,22 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         // Array nor primitives have static fields.
         CompilerDirectives.transferToInterpreter();
         throw EspressoError.shouldNotReachHere("lookupStaticFieldTable on primitive/array type");
+    }
+
+    public final Method requireMethod(Symbol<Name> methodName, Symbol<Signature> signature) {
+        Method obj = lookupMethod(methodName, signature);
+        if (obj == null) {
+            throw EspressoError.shouldNotReachHere("Missing method: ", methodName, ": ", signature, " starting at ", this);
+        }
+        return obj;
+    }
+
+    public final Method requireDeclaredMethod(Symbol<Name> methodName, Symbol<Signature> signature) {
+        Method obj = lookupDeclaredMethod(methodName, signature);
+        if (obj == null) {
+            throw EspressoError.shouldNotReachHere("Missing method: ", methodName, ": ", signature, " in ", this);
+        }
+        return obj;
     }
 
     @ExplodeLoop
@@ -1212,6 +1271,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     /**
      * Returns the access flags provided by the .class file, e.g. ignores inner class access flags.
      */
+    @Override
     public final int getModifiers() {
         return modifiers;
     }
@@ -1281,10 +1341,12 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
 
     // region jdwp-specific
 
+    @Override
     public String getNameAsString() {
         return name.toString();
     }
 
+    @Override
     public String getTypeAsString() {
         return type.toString();
     }
@@ -1369,7 +1431,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     }
 
     public StaticObject protectionDomain() {
-        return (StaticObject) mirror().getHiddenField(getMeta().HIDDEN_PROTECTION_DOMAIN);
+        return (StaticObject) getMeta().HIDDEN_PROTECTION_DOMAIN.getHiddenObject(mirror());
     }
 
     /**

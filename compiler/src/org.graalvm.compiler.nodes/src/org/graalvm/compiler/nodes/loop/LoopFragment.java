@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import java.util.Deque;
 import java.util.Iterator;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Graph.DuplicationReplacement;
@@ -82,7 +83,7 @@ public abstract class LoopFragment {
     /**
      * Return the original LoopEx for this fragment. For duplicated fragments this returns null.
      */
-    protected LoopEx loop() {
+    public LoopEx loop() {
         return loop;
     }
 
@@ -106,6 +107,15 @@ public abstract class LoopFragment {
 
     protected <New extends Node, Old extends New> void putDuplicatedNode(Old oldNode, New newNode) {
         duplicationMap.put(oldNode, newNode);
+    }
+
+    public EconomicMap<Node, Node> reverseDuplicationMap() {
+        EconomicMap<Node, Node> reverseDuplicationMap = EconomicMap.create();
+        MapCursor<Node, Node> cursor = duplicationMap.getEntries();
+        while (cursor.advance()) {
+            reverseDuplicationMap.put(cursor.getValue(), cursor.getKey());
+        }
+        return reverseDuplicationMap;
     }
 
     /**

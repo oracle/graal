@@ -32,12 +32,15 @@ import java.io.InputStream;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.nio.file.FileSystem;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -47,19 +50,26 @@ import java.util.jar.JarFile;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.core.util.ClasspathUtils;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.home.HomeFinder;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.ResourceConfigurationParser;
 import com.oracle.svm.core.configure.ResourcesRegistry;
-import com.oracle.svm.core.jdk.LocalizationFeature;
 import com.oracle.svm.core.jdk.Resources;
+import com.oracle.svm.core.jdk.localization.LocalizationFeature;
+import com.oracle.svm.core.jdk.resources.NativeImageResourceFileAttributes;
+import com.oracle.svm.core.jdk.resources.NativeImageResourceFileAttributesView;
+import com.oracle.svm.core.jdk.resources.NativeImageResourceFileSystem;
+import com.oracle.svm.core.jdk.resources.NativeImageResourceFileSystemProvider;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.util.UserError;
@@ -68,6 +78,34 @@ import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.util.ModuleSupport;
 
+/**
+ * <p>
+ * Resources are collected at build time in this feature and stored in a hash map in
+ * {@link Resources} class.
+ * </p>
+ *
+ * <p>
+ * {@link NativeImageResourceFileSystemProvider } is a core class for building a custom file system
+ * on top of resources in the native image.
+ * </p>
+ *
+ * <p>
+ * The {@link NativeImageResourceFileSystemProvider} provides most of the functionality of a
+ * {@link FileSystem}. It is an in-memory file system that upon creation contains a copy of the
+ * resources included in the native-image. Note that changes to files do not affect actual resources
+ * returned by resource manipulation methods like `Class.getResource`. Upon being closed, all
+ * changes are discarded.
+ * </p>
+ *
+ * <p>
+ * As with other file system providers, these methods provide a low-level interface and are not
+ * meant for direct usage - see {@link java.nio.file.Files}
+ * </p>
+ *
+ * @see NativeImageResourceFileSystem
+ * @see NativeImageResourceFileAttributes
+ * @see NativeImageResourceFileAttributesView
+ */
 @AutomaticFeature
 public final class ResourcesFeature implements Feature {
 
@@ -80,26 +118,26 @@ public final class ResourcesFeature implements Feature {
     }
 
     private boolean sealed = false;
-    private Set<String> newResources = Collections.newSetFromMap(new ConcurrentHashMap<>());
-    private Set<String> ignoredResources = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private final Set<String> resourcePatternWorkSet = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private final Set<String> excludedResourcePatterns = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private int loadedConfigurations;
 
     private class ResourcesRegistryImpl implements ResourcesRegistry {
         @Override
         public void addResources(String pattern) {
             UserError.guarantee(!sealed, "Resources added too late: %s", pattern);
-            newResources.add(pattern);
+            resourcePatternWorkSet.add(pattern);
         }
 
         @Override
         public void ignoreResources(String pattern) {
             UserError.guarantee(!sealed, "Resources ignored too late: %s", pattern);
-            ignoredResources.add(pattern);
+            excludedResourcePatterns.add(pattern);
         }
 
         @Override
         public void addResourceBundles(String name) {
-            ImageSingletons.lookup(LocalizationFeature.class).addBundleToCache(name);
+            ImageSingletons.lookup(LocalizationFeature.class).prepareBundle(name);
         }
     }
 
@@ -114,22 +152,22 @@ public final class ResourcesFeature implements Feature {
         ResourceConfigurationParser parser = new ResourceConfigurationParser(ImageSingletons.lookup(ResourcesRegistry.class));
         loadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurations(parser, imageClassLoader, "resource",
                         ConfigurationFiles.Options.ResourceConfigurationFiles, ConfigurationFiles.Options.ResourceConfigurationResources,
-                        ConfigurationFiles.RESOURCES_NAME);
+                        ConfigurationFile.RESOURCES.getFileName());
 
-        newResources.addAll(Options.IncludeResources.getValue().values());
-        ignoredResources.addAll(Options.ExcludeResources.getValue().values());
+        resourcePatternWorkSet.addAll(Options.IncludeResources.getValue().values());
+        excludedResourcePatterns.addAll(Options.ExcludeResources.getValue().values());
     }
 
     @Override
     public void duringAnalysis(DuringAnalysisAccess access) {
-        if (newResources.isEmpty()) {
+        if (resourcePatternWorkSet.isEmpty()) {
             return;
         }
 
         access.requireAnalysisIteration();
         DebugContext debugContext = ((DuringAnalysisAccessImpl) access).getDebugContext();
-        final Pattern[] includePatterns = compilePatterns(newResources);
-        final Pattern[] excludePatterns = compilePatterns(ignoredResources);
+        final Pattern[] includePatterns = compilePatterns(resourcePatternWorkSet);
+        final Pattern[] excludePatterns = compilePatterns(excludedResourcePatterns);
 
         if (JavaVersionUtil.JAVA_SPEC > 8) {
             try {
@@ -150,32 +188,40 @@ public final class ResourcesFeature implements Feature {
          * @formatter:on
          */
 
-        final Set<File> todo = new HashSet<>();
-        // Checkstyle: stop
         final ClassLoader contextClassLoader = Thread.currentThread().getContextClassLoader();
+        final LinkedHashSet<File> userClasspathFiles = new LinkedHashSet<>();
+        final LinkedHashSet<File> supportLibraries = new LinkedHashSet<>();
+        String homeFolder = HomeFinder.getInstance().getHomeFolder().toString();
         if (contextClassLoader instanceof URLClassLoader) {
             for (URL url : ((URLClassLoader) contextClassLoader).getURLs()) {
                 try {
                     final File file = new File(url.toURI());
-                    todo.add(file);
+                    // Make sure the user resources are the first to be registered.
+                    if (file.getAbsolutePath().startsWith(homeFolder)) {
+                        supportLibraries.add(file);
+                    } else {
+                        userClasspathFiles.add(file);
+                    }
                 } catch (URISyntaxException | IllegalArgumentException e) {
-                    throw UserError.abort("Unable to handle imagecp element '%s'. Make sure that all imagecp entries are either directories or valid jar files.", url.toExternalForm());
+                    throw UserError.abort("Unable to handle image classpath element '%s'. Make sure that all image classpath entries are either directories or valid jar files.", url.toExternalForm());
                 }
             }
         }
-        // Checkstyle: resume
-        for (File element : todo) {
+
+        userClasspathFiles.addAll(supportLibraries);
+        for (File classpathFile : userClasspathFiles) {
             try {
-                if (element.isDirectory()) {
-                    scanDirectory(debugContext, element, "", includePatterns, excludePatterns);
-                } else {
-                    scanJar(debugContext, element, includePatterns, excludePatterns);
+                if (classpathFile.isDirectory()) {
+                    scanDirectory(debugContext, classpathFile, includePatterns, excludePatterns);
+                } else if (ClasspathUtils.isJar(classpathFile.toPath())) {
+                    scanJar(debugContext, classpathFile, includePatterns, excludePatterns);
                 }
             } catch (IOException ex) {
-                throw UserError.abort("Unable to handle classpath element '%s'. Make sure that all classpath entries are either directories or valid jar files.", element);
+                throw UserError.abort("Unable to handle classpath element '%s'. Make sure that all classpath entries are either directories or valid jar files.", classpathFile);
             }
         }
-        newResources.clear();
+
+        resourcePatternWorkSet.clear();
     }
 
     private static Pattern[] compilePatterns(Set<String> patterns) {
@@ -202,45 +248,41 @@ public final class ResourcesFeature implements Feature {
         }
     }
 
-    private void scanDirectory(DebugContext debugContext, File f, String relativePath, Pattern[] includePatterns, Pattern[] excludePatterns) throws IOException {
-        if (f.isDirectory()) {
-            File[] files = f.listFiles();
-            if (files == null) {
-                throw UserError.abort("Cannot scan directory %s", f);
-            } else {
-                for (File ch : files) {
-                    scanDirectory(debugContext, ch, relativePath.isEmpty() ? ch.getName() : relativePath + "/" + ch.getName(), includePatterns, excludePatterns);
-                }
-            }
-        } else {
-            if (matches(includePatterns, excludePatterns, relativePath)) {
-                try (FileInputStream is = new FileInputStream(f)) {
-                    registerResource(debugContext, relativePath, is);
-                }
-            }
-        }
-    }
-
-    private static void scanJar(DebugContext debugContext, File element, Pattern[] includePatterns, Pattern[] excludePatterns) throws IOException {
-        JarFile jf = new JarFile(element);
-        Enumeration<JarEntry> en = jf.entries();
-
+    private static void scanDirectory(DebugContext debugContext, File root, Pattern[] includePatterns, Pattern[] excludePatterns) throws IOException {
         Map<String, List<String>> matchedDirectoryResources = new HashMap<>();
         Set<String> allEntries = new HashSet<>();
-        while (en.hasMoreElements()) {
-            JarEntry e = en.nextElement();
-            if (e.isDirectory()) {
-                String dirName = e.getName().substring(0, e.getName().length() - 1);
-                allEntries.add(dirName);
-                if (matches(includePatterns, excludePatterns, dirName)) {
-                    matchedDirectoryResources.put(dirName, new ArrayList<>());
-                }
-                continue;
+        ArrayList<File> queue = new ArrayList<>();
+
+        queue.add(root);
+        while (!queue.isEmpty()) {
+            File file = queue.remove(0);
+            String relativeFilePath = "";
+            if (file != root) {
+                relativeFilePath = file.getAbsolutePath().substring(root.getAbsolutePath().length() + 1);
+                /*
+                 * Java resources always use / as the path separator, as do our resource inclusion
+                 * patterns.
+                 */
+                relativeFilePath = relativeFilePath.replace(File.separatorChar, '/');
             }
-            allEntries.add(e.getName());
-            if (matches(includePatterns, excludePatterns, e.getName())) {
-                try (InputStream is = jf.getInputStream(e)) {
-                    registerResource(debugContext, e.getName(), is);
+            if (file.isDirectory()) {
+                if (!relativeFilePath.isEmpty()) {
+                    allEntries.add(relativeFilePath);
+                }
+                if (matches(includePatterns, excludePatterns, relativeFilePath)) {
+                    matchedDirectoryResources.put(relativeFilePath, new ArrayList<>());
+                }
+                File[] files = file.listFiles();
+                if (files == null) {
+                    throw UserError.abort("Cannot scan directory %s", file);
+                }
+                queue.addAll(Arrays.asList(files));
+            } else {
+                allEntries.add(relativeFilePath);
+                if (matches(includePatterns, excludePatterns, relativeFilePath)) {
+                    try (InputStream is = new FileInputStream(file)) {
+                        registerResource(debugContext, relativeFilePath, is);
+                    }
                 }
             }
         }
@@ -250,7 +292,7 @@ public final class ResourcesFeature implements Feature {
             String key = last == -1 ? "" : entry.substring(0, last);
             List<String> dirContent = matchedDirectoryResources.get(key);
             if (dirContent != null && !dirContent.contains(entry)) {
-                dirContent.add(entry.substring(last + 1, entry.length()));
+                dirContent.add(entry.substring(last + 1));
             }
         }
 
@@ -258,6 +300,27 @@ public final class ResourcesFeature implements Feature {
             content.sort(Comparator.naturalOrder());
             registerDirectoryResource(debugContext, dir, String.join(System.lineSeparator(), content));
         });
+    }
+
+    private static void scanJar(DebugContext debugContext, File root, Pattern[] includePatterns, Pattern[] excludePatterns) throws IOException {
+        JarFile jf = new JarFile(root);
+        Enumeration<JarEntry> entries = jf.entries();
+        while (entries.hasMoreElements()) {
+            JarEntry entry = entries.nextElement();
+            if (entry.isDirectory()) {
+                String dirName = entry.getName().substring(0, entry.getName().length() - 1);
+                if (matches(includePatterns, excludePatterns, dirName)) {
+                    // Register the directory with empty content to preserve Java behavior
+                    registerDirectoryResource(debugContext, dirName, "");
+                }
+            } else {
+                if (matches(includePatterns, excludePatterns, entry.getName())) {
+                    try (InputStream is = jf.getInputStream(entry)) {
+                        registerResource(debugContext, entry.getName(), is);
+                    }
+                }
+            }
+        }
     }
 
     private static boolean matches(Pattern[] includePatterns, Pattern[] excludePatterns, String relativePath) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,6 +41,8 @@ import static org.graalvm.compiler.nodes.ConstantNode.forBoolean;
 import java.lang.invoke.ConstantCallSite;
 import java.lang.invoke.MutableCallSite;
 import java.lang.invoke.VolatileCallSite;
+import java.lang.ref.PhantomReference;
+import java.lang.ref.Reference;
 import java.lang.reflect.Array;
 import java.lang.reflect.Type;
 import java.math.BigInteger;
@@ -81,6 +83,7 @@ import org.graalvm.compiler.hotspot.replacements.UnsafeCopyMemoryNode;
 import org.graalvm.compiler.hotspot.word.HotSpotWordTypes;
 import org.graalvm.compiler.nodes.ComputeObjectAddressNode;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.FieldLocationIdentity;
 import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
@@ -224,10 +227,11 @@ public class HotSpotGraphBuilderPlugins {
                 registerCounterModePlugins(invocationPlugins, config, replacements);
                 registerBase64Plugins(invocationPlugins, config, metaAccess);
                 registerUnsafePlugins(invocationPlugins, config, replacements);
-                StandardGraphBuilderPlugins.registerInvocationPlugins(metaAccess, snippetReflection, invocationPlugins, replacements, true, false, true);
+                StandardGraphBuilderPlugins.registerInvocationPlugins(metaAccess, snippetReflection, invocationPlugins, replacements, true, false, true, graalRuntime.getHostProviders().getLowerer());
                 registerArrayPlugins(invocationPlugins, replacements);
                 registerStringPlugins(invocationPlugins, replacements, wordTypes, foreignCalls, config);
                 registerArraysSupportPlugins(invocationPlugins, config, replacements);
+                registerReferencePlugins(invocationPlugins, replacements);
             }
         });
         if (!IS_IN_NATIVE_IMAGE) {
@@ -584,8 +588,6 @@ public class HotSpotGraphBuilderPlugins {
             assert config.aescryptDecryptBlockStub != 0L;
             assert config.cipherBlockChainingEncryptAESCryptStub != 0L;
             assert config.cipherBlockChainingDecryptAESCryptStub != 0L;
-            String arch = config.osArch;
-            String decryptSuffix = arch.equals("sparc") ? "WithOriginalKey" : "";
 
             Registration r = new Registration(plugins, "com.sun.crypto.provider.CipherBlockChaining", replacements);
 
@@ -594,7 +596,7 @@ public class HotSpotGraphBuilderPlugins {
                             byte[].class, int.class);
 
             Pair<String, String> cbcDecryptName = selectIntrinsicName(config, "com/sun/crypto/provider/CipherBlockChaining", "implDecrypt", "decrypt");
-            registerAndCheckMismatch(r, CipherBlockChainingSubstitutions.class, cbcDecryptName, cbcDecryptName.getLeft() + decryptSuffix, Receiver.class, byte[].class, int.class, int.class,
+            registerAndCheckMismatch(r, CipherBlockChainingSubstitutions.class, cbcDecryptName, cbcDecryptName.getLeft(), Receiver.class, byte[].class, int.class, int.class,
                             byte[].class, int.class);
 
             r = new Registration(plugins, "com.sun.crypto.provider.AESCrypt", replacements);
@@ -603,7 +605,7 @@ public class HotSpotGraphBuilderPlugins {
             registerAndCheckMismatch(r, AESCryptSubstitutions.class, aesEncryptName, Receiver.class, byte[].class, int.class, byte[].class, int.class);
 
             Pair<String, String> aesDecryptName = selectIntrinsicName(config, "com/sun/crypto/provider/AESCrypt", "implDecryptBlock", "decryptBlock");
-            registerAndCheckMismatch(r, AESCryptSubstitutions.class, aesDecryptName, aesDecryptName.getLeft() + decryptSuffix, Receiver.class, byte[].class, int.class, byte[].class, int.class);
+            registerAndCheckMismatch(r, AESCryptSubstitutions.class, aesDecryptName, aesDecryptName.getLeft(), Receiver.class, byte[].class, int.class, byte[].class, int.class);
         }
     }
 
@@ -1030,6 +1032,48 @@ public class HotSpotGraphBuilderPlugins {
                                 }
                             });
 
+        }
+    }
+
+    private static void registerReferencePlugins(InvocationPlugins plugins, Replacements replacements) {
+        if (JavaVersionUtil.JAVA_SPEC >= 16) {
+            Registration r = new Registration(plugins, Reference.class, replacements);
+            r.register2("refersTo0", Receiver.class, Object.class, new InvocationPlugin() {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode o) {
+                    ValueNode offset = b.add(ConstantNode.forLong(HotSpotReplacementsUtil.referentOffset(b.getMetaAccess())));
+                    AddressNode address = b.add(new OffsetAddressNode(receiver.get(), offset));
+                    FieldLocationIdentity locationIdentity = new FieldLocationIdentity(HotSpotReplacementsUtil.referentField(b.getMetaAccess()));
+                    JavaReadNode read = b.add(new JavaReadNode(StampFactory.object(), JavaKind.Object, address, locationIdentity, BarrierType.WEAK_FIELD, true));
+                    LogicNode objectEquals = b.add(ObjectEqualsNode.create(b.getConstantReflection(), b.getMetaAccess(), b.getOptions(), read, o, NodeView.DEFAULT));
+                    b.addPush(JavaKind.Boolean, ConditionalNode.create(objectEquals, b.add(forBoolean(true)), b.add(forBoolean(false)), NodeView.DEFAULT));
+                    return true;
+                }
+
+                @Override
+                public boolean inlineOnly() {
+                    return true;
+                }
+            });
+
+            r = new Registration(plugins, PhantomReference.class, replacements);
+            r.register2("refersTo0", Receiver.class, Object.class, new InvocationPlugin() {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode o) {
+                    ValueNode offset = b.add(ConstantNode.forLong(HotSpotReplacementsUtil.referentOffset(b.getMetaAccess())));
+                    AddressNode address = b.add(new OffsetAddressNode(receiver.get(), offset));
+                    FieldLocationIdentity locationIdentity = new FieldLocationIdentity(HotSpotReplacementsUtil.referentField(b.getMetaAccess()));
+                    JavaReadNode read = b.add(new JavaReadNode(StampFactory.object(), JavaKind.Object, address, locationIdentity, BarrierType.PHANTOM_FIELD, true));
+                    LogicNode objectEquals = b.add(ObjectEqualsNode.create(b.getConstantReflection(), b.getMetaAccess(), b.getOptions(), read, o, NodeView.DEFAULT));
+                    b.addPush(JavaKind.Boolean, ConditionalNode.create(objectEquals, b.add(forBoolean(true)), b.add(forBoolean(false)), NodeView.DEFAULT));
+                    return true;
+                }
+
+                @Override
+                public boolean inlineOnly() {
+                    return true;
+                }
+            });
         }
     }
 }

@@ -35,12 +35,13 @@ import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
+import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.MonitorEnterNode;
 import org.graalvm.compiler.nodes.java.MonitorExitNode;
@@ -60,9 +61,8 @@ import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
 
 import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.DeoptimizationAction;
-import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -125,7 +125,7 @@ class JNINativeCallWrapperMethod extends CustomSubstitutionMethod {
         List<ValueNode> javaArguments = kit.loadArguments(javaArgumentTypes);
 
         List<ValueNode> jniArguments = new ArrayList<>(2 + javaArguments.size());
-        List<JavaType> jniArgumentTypes = new ArrayList<>(jniArguments.size());
+        List<JavaType> jniArgumentTypes = new ArrayList<>(2 + javaArguments.size());
         JavaType environmentType = providers.getMetaAccess().lookupJavaType(JNIEnvironment.class);
         JavaType objectHandleType = providers.getMetaAccess().lookupJavaType(JNIObjectHandle.class);
         jniArguments.add(environment);
@@ -161,7 +161,7 @@ class JNINativeCallWrapperMethod extends CustomSubstitutionMethod {
                 DynamicHub hub = (DynamicHub) SubstrateObjectConstant.asObject(hubConstant);
                 monitorObject = ConstantNode.forConstant(SubstrateObjectConstant.forObject(hub), providers.getMetaAccess(), graph);
             } else {
-                monitorObject = javaArguments.get(0);
+                monitorObject = kit.maybeCreateExplicitNullCheck(javaArguments.get(0));
             }
             MonitorIdNode monitorId = graph.add(new MonitorIdNode(kit.getFrameState().lockDepth(false)));
             MonitorEnterNode monitorEnter = kit.append(new MonitorEnterNode(monitorObject, monitorId));
@@ -202,8 +202,9 @@ class JNINativeCallWrapperMethod extends CustomSubstitutionMethod {
             LogicNode condition = kit.append(InstanceOfNode.createAllowNull(typeRef, object, null, null));
             if (!condition.isTautology()) {
                 ObjectStamp stamp = StampFactory.object(typeRef, false);
-                FixedGuardNode fixedGuard = kit.append(new FixedGuardNode(condition, DeoptimizationReason.ClassCastException, DeoptimizationAction.None, false));
-                casted = kit.append(PiNode.create(object, stamp, fixedGuard));
+                ValueNode expectedClass = kit.createConstant(kit.getConstantReflection().asJavaClass(type), JavaKind.Object);
+                GuardingNode guard = kit.createCheckThrowingBytecodeException(condition, false, BytecodeExceptionKind.CLASS_CAST, object, expectedClass);
+                casted = kit.append(PiNode.create(object, stamp, guard.asNode()));
             }
         }
         return casted;

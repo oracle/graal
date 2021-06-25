@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.heap;
 
-import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.LUDICROUSLY_FAST_PATH_PROBABILITY;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.EXTREMELY_FAST_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 
 import java.lang.ref.Reference;
@@ -117,6 +117,11 @@ public final class ReferenceInternals {
         return uncast(cast(instance).discovered);
     }
 
+    /** Barrier-less read of {@link Target_java_lang_ref_Reference#discovered} as a pointer. */
+    public static <T> Pointer getDiscoveredPointer(Reference<T> instance) {
+        return Word.objectToUntrackedPointer(ObjectAccess.readObject(instance, WordFactory.signed(Target_java_lang_ref_Reference.discoveredFieldOffset)));
+    }
+
     public static long getNextDiscoveredFieldOffset() {
         return Target_java_lang_ref_Reference.discoveredFieldOffset;
     }
@@ -161,36 +166,54 @@ public final class ReferenceInternals {
             }
             processPendingActive = true;
         }
-        try {
-            while (pendingList != null) {
-                Target_java_lang_ref_Reference<?> ref = pendingList;
-                pendingList = ref.discovered;
-                ref.discovered = null;
 
-                if (Target_jdk_internal_ref_Cleaner.class.isInstance(ref)) {
-                    Target_jdk_internal_ref_Cleaner cleaner = Target_jdk_internal_ref_Cleaner.class.cast(ref);
-                    // Cleaner catches all exceptions, cannot be overridden due to private c'tor
-                    cleaner.clean();
-                    synchronized (processPendingLock) {
-                        processPendingLock.notifyAll();
-                    }
-                } else {
-                    @SuppressWarnings("unchecked")
-                    Target_java_lang_ref_ReferenceQueue<? super Object> queue = SubstrateUtil.cast(ref.queue, Target_java_lang_ref_ReferenceQueue.class);
-                    if (queue != Target_java_lang_ref_ReferenceQueue.NULL) {
-                        // Enqueues, avoiding the potentially overridden Reference.enqueue().
-                        queue.enqueue(ref);
+        // Process all references that were discovered by the GC.
+        do {
+            try {
+                while (pendingList != null) {
+                    Target_java_lang_ref_Reference<?> ref = pendingList;
+                    pendingList = ref.discovered;
+                    ref.discovered = null;
+
+                    if (Target_jdk_internal_ref_Cleaner.class.isInstance(ref)) {
+                        Target_jdk_internal_ref_Cleaner cleaner = Target_jdk_internal_ref_Cleaner.class.cast(ref);
+                        // Cleaner catches all exceptions, cannot be overridden due to private c'tor
+                        cleaner.clean();
+                        synchronized (processPendingLock) {
+                            // Notify any waiters that progress has been made. This improves latency
+                            // for nio.Bits waiters, which are the only important ones.
+                            processPendingLock.notifyAll();
+                        }
+                    } else {
+                        @SuppressWarnings("unchecked")
+                        Target_java_lang_ref_ReferenceQueue<? super Object> queue = SubstrateUtil.cast(ref.queue, Target_java_lang_ref_ReferenceQueue.class);
+                        if (queue != Target_java_lang_ref_ReferenceQueue.NULL) {
+                            // Enqueues, avoiding the potentially overridden Reference.enqueue().
+                            queue.enqueue(ref);
+                        }
                     }
                 }
+            } catch (Throwable t) {
+                VMError.shouldNotReachHere("ReferenceQueue and Cleaner must handle all potential exceptions", t);
             }
-        } catch (Throwable t) {
-            VMError.shouldNotReachHere("ReferenceQueue and Cleaner must handle all potential exceptions", t);
-        } finally {
+
             synchronized (processPendingLock) {
-                processPendingActive = false;
+                /*
+                 * If we do not have a dedicated reference handler thread, then it is essential to
+                 * recheck if the GC created a new pending list in the meanwhile. Otherwise, pending
+                 * references might not be processed as the thread that performed the GC may have
+                 * skipped reference processing (processPendingActive was true for a while).
+                 */
+                pendingList = cast(Heap.getHeap().getAndClearReferencePendingList());
+                if (pendingList == null) {
+                    processPendingActive = false;
+                }
+
+                // We processed at least a few references, so notify potential waiters about the
+                // progress.
                 processPendingLock.notifyAll();
             }
-        }
+        } while (pendingList != null);
     }
 
     @SuppressFBWarnings(value = "WA_NOT_IN_LOOP", justification = "Wait for progress, not necessarily completion.")
@@ -213,7 +236,7 @@ public final class ReferenceInternals {
 
     public static void updateSoftReferenceClock() {
         long now = TimeUtils.divideNanosToMillis(System.nanoTime()); // should be monotonous, ensure
-        if (probability(LUDICROUSLY_FAST_PATH_PROBABILITY, now >= Target_java_lang_ref_SoftReference.clock)) {
+        if (probability(EXTREMELY_FAST_PATH_PROBABILITY, now >= Target_java_lang_ref_SoftReference.clock)) {
             Target_java_lang_ref_SoftReference.clock = now;
         }
     }

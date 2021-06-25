@@ -54,4 +54,8 @@ public class Jvm {
     @Platforms(Platform.WINDOWS.class)
     @CFunction(transition = CFunction.Transition.NO_TRANSITION)
     public static native VoidPointer JVM_RegisterSignal(int sig, VoidPointer handler);
+
+    @Platforms(Platform.WINDOWS.class)
+    @CFunction(transition = CFunction.Transition.NO_TRANSITION)
+    public static native long JVM_CurrentTimeMillis(VoidPointer ignored0, VoidPointer ignored1);
 }

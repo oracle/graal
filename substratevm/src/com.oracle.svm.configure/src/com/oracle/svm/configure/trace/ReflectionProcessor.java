@@ -103,13 +103,19 @@ class ReflectionProcessor extends AbstractProcessor {
                 configuration.getOrCreateType(name);
             }
             return;
+        } else if (function.equals("methodTypeDescriptor")) {
+            List<String> typeNames = singleElement(args);
+            for (String type : typeNames) {
+                if (!advisor.shouldIgnore(lazyValue(type), lazyValue(callerClass))) {
+                    configuration.getOrCreateType(type);
+                }
+            }
         }
         String clazz = (String) entry.get("class");
         if (advisor.shouldIgnore(lazyValue(clazz), lazyValue(callerClass))) {
             return;
         }
         ConfigurationMemberKind memberKind = ConfigurationMemberKind.PUBLIC;
-        boolean unsafeAccess = false;
         String clazzOrDeclaringClass = entry.containsKey("declaring_class") ? (String) entry.get("declaring_class") : clazz;
         switch (function) {
             case "getDeclaredFields": {
@@ -121,11 +127,11 @@ class ReflectionProcessor extends AbstractProcessor {
                 break;
             }
 
-            case "asInterfaceInstance":
             case "getDeclaredMethods": {
                 configuration.getOrCreateType(clazz).setAllDeclaredMethods();
                 break;
             }
+            case "asInterfaceInstance":
             case "getMethods": {
                 configuration.getOrCreateType(clazz).setAllPublicMethods();
                 break;
@@ -152,13 +158,11 @@ class ReflectionProcessor extends AbstractProcessor {
             case "objectFieldOffset":
             case "findFieldHandle":
             case "unreflectField":
-                unsafeAccess = true;
-                // fall through
             case "getDeclaredField":
                 memberKind = "findFieldHandle".equals(function) ? ConfigurationMemberKind.PRESENT : ConfigurationMemberKind.DECLARED;
                 // fall through
             case "getField": {
-                configuration.getOrCreateType(clazzOrDeclaringClass).addField(singleElement(args), memberKind, false, unsafeAccess);
+                configuration.getOrCreateType(clazzOrDeclaringClass).addField(singleElement(args), memberKind, false);
                 if (!clazzOrDeclaringClass.equals(clazz)) {
                     configuration.getOrCreateType(clazz);
                 }

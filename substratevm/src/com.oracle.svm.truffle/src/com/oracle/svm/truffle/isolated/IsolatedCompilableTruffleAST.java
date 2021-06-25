@@ -35,7 +35,6 @@ import org.graalvm.nativeimage.c.type.WordPointer;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.isolated.ClientHandle;
 import com.oracle.svm.graal.isolated.ClientIsolateThread;
@@ -268,7 +267,7 @@ final class IsolatedCompilableTruffleAST extends IsolatedObjectProxy<SubstrateCo
     private static ClientHandle<Assumption> getNodeRewritingAssumption0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SubstrateCompilableTruffleAST> handle) {
         CompilableTruffleAST ast = IsolatedCompileClient.get().unhand(handle);
         JavaConstant assumptionConstant = ast.getNodeRewritingAssumptionConstant();
-        Assumption assumption = KnownIntrinsics.convertUnknownValue(SubstrateObjectConstant.asObject(assumptionConstant), Assumption.class);
+        Assumption assumption = (Assumption) SubstrateObjectConstant.asObject(assumptionConstant);
         return IsolatedCompileClient.get().hand(assumption);
     }
 
@@ -277,7 +276,7 @@ final class IsolatedCompilableTruffleAST extends IsolatedObjectProxy<SubstrateCo
     private static ClientHandle<Assumption> getValidRootAssumption0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SubstrateCompilableTruffleAST> handle) {
         CompilableTruffleAST ast = IsolatedCompileClient.get().unhand(handle);
         JavaConstant assumptionConstant = ast.getValidRootAssumptionConstant();
-        Assumption assumption = KnownIntrinsics.convertUnknownValue(SubstrateObjectConstant.asObject(assumptionConstant), Assumption.class);
+        Assumption assumption = (Assumption) SubstrateObjectConstant.asObject(assumptionConstant);
         return IsolatedCompileClient.get().hand(assumption);
     }
 

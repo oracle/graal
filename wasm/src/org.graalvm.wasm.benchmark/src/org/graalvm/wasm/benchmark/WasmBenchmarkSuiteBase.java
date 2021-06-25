@@ -40,9 +40,14 @@
  */
 package org.graalvm.wasm.benchmark;
 
+import static org.graalvm.wasm.utils.SystemProperties.DISABLE_COMPILATION_FLAG;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.util.Objects;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
-import org.graalvm.wasm.predefined.testutil.TestutilModule;
 import org.graalvm.wasm.utils.Assert;
 import org.graalvm.wasm.utils.cases.WasmCase;
 import org.openjdk.jmh.annotations.Fork;
@@ -51,12 +56,6 @@ import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Warmup;
-
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.util.Objects;
-
-import static org.graalvm.wasm.utils.SystemProperties.DISABLE_COMPILATION_FLAG;
 
 @Warmup(iterations = 6)
 @Measurement(iterations = 8)
@@ -112,13 +111,13 @@ public abstract class WasmBenchmarkSuiteBase {
         }
 
         @Setup(Level.Iteration)
-        public void setupIteration() throws InterruptedException {
+        public void setupIteration() {
             // Reset result.
             result = null;
         }
 
         @TearDown(Level.Iteration)
-        public void teardownIteration() throws InterruptedException {
+        public void teardownIteration() {
             // Validate result.
             WasmCase.validateResult(benchmarkCase.data().resultValidator(), result, dummyStdout);
         }

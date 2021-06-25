@@ -75,15 +75,12 @@
 // V(GetInputArgumentArray)
 
 
-void* initializeManagementContext3(TruffleEnv *truffle_env, void* (*fetch_by_name)(const char *)) {
+void* initializeManagementContext3(void* (*fetch_by_name)(const char *)) {
 
   struct jmmInterface_3 *management = (JmmInterface*) malloc(sizeof(struct jmmInterface_3));
 
-  void *fn_ptr = NULL;
   #define INIT__(name) \
-      fn_ptr = fetch_by_name(#name); \
-      (*truffle_env)->newClosureRef(truffle_env, fn_ptr); \
-      management->name = fn_ptr;
+      management->name = fetch_by_name(#name);
 
   MANAGEMENT_METHOD_LIST_3(INIT__)
   #undef INIT_
@@ -91,13 +88,15 @@ void* initializeManagementContext3(TruffleEnv *truffle_env, void* (*fetch_by_nam
   return management;
 }
 
-void disposeManagementContext3(TruffleEnv *truffle_env, void *management_ptr) {
+void disposeManagementContext3(void *management_ptr, void (*release_closure)(void *)) {
   struct jmmInterface_3 *management = (struct jmmInterface_3*) management_ptr;
 
   #define DISPOSE__(name) \
-       (*truffle_env)->releaseClosureRef(truffle_env, management->name); \
-       management->name = NULL;
-
+    if (release_closure != NULL) { \
+      release_closure(management->name); \
+    } \
+    management->name = NULL;
+  
   MANAGEMENT_METHOD_LIST_3(DISPOSE__)
   #undef DISPOSE__
  

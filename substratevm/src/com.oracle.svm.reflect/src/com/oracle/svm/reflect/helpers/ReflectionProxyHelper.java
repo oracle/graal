@@ -55,7 +55,7 @@ public class ReflectionProxyHelper {
      * "h" field is not used as the methods (invoke, toString, hashCode, equals) that would use the
      * handler are substituted (see {@link ReflectionSubstitutionType}). However the handler is
      * needed when the proxy instance is used during image building, e.g., toString() is called on
-     * it for error reporting (see NativeImageHeap.addObjectToBootImageHeap()).
+     * it for error reporting (see NativeImageHeap.addObjectToImageHeap()).
      */
     public static void setDefaultInvocationHandler(Proxy proxyInstance) {
         VMError.guarantee(ReflectionProxy.class.isAssignableFrom(proxyInstance.getClass()));

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,11 +47,46 @@ import com.oracle.truffle.regex.RegexSource;
  * a flavor implementation is to translate regular expressions written in one flavor of regex (e.g.
  * Python) into equivalent regexes in ECMAScript.
  */
-public interface RegexFlavor {
+public abstract class RegexFlavor {
+
+    protected static final int BACKREFERENCES_TO_UNMATCHED_GROUPS_FAIL = 1 << 0;
+    protected static final int EMPTY_CHECKS_MONITOR_CAPTURE_GROUPS = 1 << 1;
+    protected static final int NESTED_CAPTURE_GROUPS_KEPT_ON_LOOP_REENTRY = 1 << 2;
+    protected static final int FAILING_EMPTY_CHECKS_DONT_BACKTRACK = 1 << 3;
+
+    private final int traits;
+
+    protected RegexFlavor(int traits) {
+        this.traits = traits;
+    }
 
     /**
      * Given a {@link RegexSource}, returns a {@link RegexFlavorProcessor} that can be used to parse
      * and translate the flavored regex into an ECMAScript regex.
      */
-    RegexFlavorProcessor forRegex(RegexSource source);
+    public abstract RegexFlavorProcessor forRegex(RegexSource source);
+
+    private boolean hasTrait(int traitMask) {
+        return (traits & traitMask) != 0;
+    }
+
+    public boolean backreferencesToUnmatchedGroupsFail() {
+        return hasTrait(BACKREFERENCES_TO_UNMATCHED_GROUPS_FAIL);
+    }
+
+    public boolean emptyChecksMonitorCaptureGroups() {
+        return hasTrait(EMPTY_CHECKS_MONITOR_CAPTURE_GROUPS);
+    }
+
+    public boolean nestedCaptureGroupsKeptOnLoopReentry() {
+        return hasTrait(NESTED_CAPTURE_GROUPS_KEPT_ON_LOOP_REENTRY);
+    }
+
+    public boolean failingEmptyChecksDontBacktrack() {
+        return hasTrait(FAILING_EMPTY_CHECKS_DONT_BACKTRACK);
+    }
+
+    public boolean canHaveEmptyLoopIterations() {
+        return emptyChecksMonitorCaptureGroups() || failingEmptyChecksDontBacktrack();
+    }
 }

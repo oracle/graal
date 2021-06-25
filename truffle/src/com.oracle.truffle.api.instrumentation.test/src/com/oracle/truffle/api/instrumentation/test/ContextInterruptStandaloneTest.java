@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,33 +59,47 @@ import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestName;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
 public class ContextInterruptStandaloneTest extends AbstractPolyglotTest {
 
+    @Rule public TestName testNameRule = new TestName();
+
+    @After
+    public void checkInterrupted() {
+        Assert.assertFalse("Interrupted flag was left set by test: " + testNameRule.getMethodName(), Thread.interrupted());
+    }
+
     @Test
     public void testCancelDuringHostSleep() throws ExecutionException, InterruptedException {
         CountDownLatch beforeSleep = new CountDownLatch(1);
-        setupEnv(Context.newBuilder(ProxyLanguage.ID).allowHostClassLoading(true).allowHostClassLookup((s) -> true).allowHostAccess(HostAccess.ALL),
+        enterContext = false;
+        setupEnv(Context.newBuilder(ProxyLanguage.ID).allowHostClassLookup((s) -> true).allowHostAccess(HostAccess.ALL),
                         new ProxyLanguage() {
                             @Override
                             protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
@@ -98,7 +112,7 @@ public class ContextInterruptStandaloneTest extends AbstractPolyglotTest {
                                         try {
                                             InteropLibrary.getUncached().invokeMember(javaThread, "sleep", 10000);
                                         } catch (UnsupportedMessageException | ArityException | UnknownIdentifierException | UnsupportedTypeException e) {
-                                            throw new RuntimeException(e);
+                                            throw new AssertionError(e);
                                         }
                                         return 0;
                                     }
@@ -147,7 +161,7 @@ public class ContextInterruptStandaloneTest extends AbstractPolyglotTest {
                         Thread.sleep(10000);
                         Assert.fail();
                     } catch (InterruptedException ie) {
-                        throw new RuntimeException(ie);
+                        throw new AssertionError(ie);
                     }
                 }
             }, instrEnv);
@@ -156,7 +170,7 @@ public class ContextInterruptStandaloneTest extends AbstractPolyglotTest {
                     ctx.eval(source);
                     Assert.fail();
                 } catch (PolyglotException pe) {
-                    if (!pe.isCancelled() || pe.isInterrupted()) {
+                    if (!pe.isCancelled()) {
                         throw pe;
                     }
                 }
@@ -202,7 +216,7 @@ public class ContextInterruptStandaloneTest extends AbstractPolyglotTest {
                         try {
                             ctx.interrupt(Duration.ofSeconds(50));
                         } catch (TimeoutException te) {
-                            throw new RuntimeException(te);
+                            throw new AssertionError(te);
                         }
                     }
                 }));
@@ -215,6 +229,9 @@ public class ContextInterruptStandaloneTest extends AbstractPolyglotTest {
             executorService.awaitTermination(100, TimeUnit.SECONDS);
         }
     }
+
+    private static final Node DUMMY_NODE = new Node() {
+    };
 
     @Test
     public void testInterruptTimeout() throws InterruptedException, IOException, ExecutionException {
@@ -230,8 +247,24 @@ public class ContextInterruptStandaloneTest extends AbstractPolyglotTest {
                 passLatch.countDown();
                 while (!interruptFinished.get()) {
                     try {
-                        interruptFinishLatch.await();
-                    } catch (InterruptedException ie) {
+                        TruffleSafepoint.setBlockedThreadInterruptible(DUMMY_NODE, new TruffleSafepoint.Interruptible<CountDownLatch>() {
+                            @Override
+                            public void apply(CountDownLatch arg) throws InterruptedException {
+                                if (!interruptFinished.get()) {
+                                    arg.await();
+                                }
+                            }
+                        }, interruptFinishLatch);
+                    } catch (Exception ie) {
+                        if (InteropLibrary.getUncached().isException(ie)) {
+                            try {
+                                if (InteropLibrary.getUncached().getExceptionType(ie) != ExceptionType.INTERRUPT) {
+                                    throw ie;
+                                }
+                            } catch (UnsupportedMessageException ume) {
+                                throw new AssertionError(ume);
+                            }
+                        }
                     }
                 }
             }, instrEnv);
@@ -266,7 +299,7 @@ public class ContextInterruptStandaloneTest extends AbstractPolyglotTest {
                 try {
                     ctx[0].interrupt(Duration.ofSeconds(100));
                 } catch (TimeoutException te) {
-                    throw new RuntimeException(te);
+                    throw new AssertionError(te);
                 }
             }, getInstrumentEnv(ctx[0].getEngine()));
             ctx[0].initialize(InstrumentationTestLanguage.ID);
@@ -291,7 +324,7 @@ public class ContextInterruptStandaloneTest extends AbstractPolyglotTest {
                     ctx[0].interrupt(Duration.ofSeconds(100));
                 } catch (TimeoutException te) {
                     polyglotThreadException[0] = te;
-                    throw new RuntimeException(te);
+                    throw new AssertionError(te);
                 } catch (IllegalStateException e) {
                     polyglotThreadException[0] = e;
                     if (!"Cannot interrupt context from a thread where its child context is active.".equals(e.getMessage())) {

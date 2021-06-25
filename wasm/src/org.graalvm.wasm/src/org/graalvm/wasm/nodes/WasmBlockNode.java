@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.ExactMath;
 import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch;
 import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitchBoundary;
 import com.oracle.truffle.api.Truffle;
@@ -74,8 +75,6 @@ import org.graalvm.wasm.memory.WasmMemory;
 import static org.graalvm.wasm.BinaryStreamParser.length;
 import static org.graalvm.wasm.BinaryStreamParser.value;
 import static org.graalvm.wasm.WasmMath.addExactUnsigned;
-import static org.graalvm.wasm.WasmMath.truncDouble;
-import static org.graalvm.wasm.WasmMath.truncFloat;
 import static org.graalvm.wasm.constants.Instructions.BLOCK;
 import static org.graalvm.wasm.constants.Instructions.BR;
 import static org.graalvm.wasm.constants.Instructions.BR_IF;
@@ -384,10 +383,11 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         check(intConstants.length, (1 << 31) - 1);
         check(profileCounters.length, (1 << 31) - 1);
         check(stacklocals.length, (1 << 31) - 1);
+        int opcode = UNREACHABLE;
         try {
             while (offset < offsetLimit) {
                 byte byteOpcode = BinaryStreamParser.rawPeek1(data, offset);
-                int opcode = byteOpcode & 0xFF;
+                opcode = byteOpcode & 0xFF;
                 offset++;
                 CompilerAsserts.partialEvaluationConstant(offset);
                 switch (opcode) {
@@ -627,10 +627,12 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         }
                         final WasmFunction function;
                         final CallTarget target;
+                        final WasmContext.Uid functionInstanceContextUid;
                         if (element instanceof WasmFunctionInstance) {
                             final WasmFunctionInstance functionInstance = (WasmFunctionInstance) element;
                             function = functionInstance.function();
                             target = functionInstance.target();
+                            functionInstanceContextUid = functionInstance.contextUid();
                         } else {
                             throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown table element type: %s", element);
                         }
@@ -650,10 +652,19 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         offset += 1;
 
                         // Validate that the function type matches the expected type.
-                        if (function != null && expectedTypeEquivalenceClass != function.typeEquivalenceClass()) {
-                            throw WasmException.format(Failure.INDIRECT_CALL_TYPE__MISMATCH, this,
-                                            "Actual (type %d of function %s) and expected (type %d in module %s) types differ in the indirect call.",
-                                            function.typeIndex(), function.name(), expectedFunctionTypeIndex, instance().name());
+                        if (functionInstanceContextUid == context.uid()) {
+                            // We can do a quick equivalence-class check.
+                            if (expectedTypeEquivalenceClass != function.typeEquivalenceClass()) {
+                                failFunctionTypeCheck(function, expectedFunctionTypeIndex);
+                            }
+                        } else {
+                            // The table is coming from a different context, so do a slow check.
+                            // If the Wasm function is set to null, then the check must be performed
+                            // in the body of the function. This is done when the function is
+                            // provided externally (e.g. comes from a different language).
+                            if (function != null && !function.type().equals(symtab.typeAt(expectedFunctionTypeIndex))) {
+                                failFunctionTypeCheck(function, expectedFunctionTypeIndex);
+                            }
                         }
 
                         // Invoke the resolved function.
@@ -1369,9 +1380,19 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                 }
             }
         } catch (ArithmeticException e) {
-            throw WasmException.fromArithmeticException(this, e);
+            if (opcode == I32_DIV_S || opcode == I32_DIV_U || opcode == I32_REM_S || opcode == I32_REM_U || opcode == I64_DIV_S || opcode == I64_DIV_U || opcode == I64_REM_S || opcode == I64_REM_U) {
+                throw WasmException.create(Failure.INT_DIVIDE_BY_ZERO, this);
+            } else {
+                throw e;
+            }
         }
         return -1;
+    }
+
+    private void failFunctionTypeCheck(WasmFunction function, int expectedFunctionTypeIndex) {
+        throw WasmException.format(Failure.INDIRECT_CALL_TYPE__MISMATCH, this,
+                        "Actual (type %d of function %s) and expected (type %d in module %s) types differ in the indirect call.",
+                        function.typeIndex(), function.name(), expectedFunctionTypeIndex, instance().name());
     }
 
     @SuppressWarnings("unused")
@@ -1601,13 +1622,13 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
             }
             case WasmType.F32_TYPE: {
                 int address = instance().globalAddress(index);
-                int value = context.globals().loadAsInt(address);
+                int value = context.globals().loadFloatAsInt(address);
                 pushInt(stack, stackPointer, value);
                 break;
             }
             case WasmType.F64_TYPE: {
                 int address = instance().globalAddress(index);
-                long value = context.globals().loadAsLong(address);
+                long value = context.globals().loadDoubleAsLong(address);
                 push(stack, stackPointer, value);
                 break;
             }
@@ -2490,7 +2511,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
 
     private void f32_trunc(long[] stack, int stackPointer) {
         float x = popAsFloat(stack, stackPointer - 1);
-        float result = truncFloat(x);
+        float result = ExactMath.truncate(x);
         pushFloat(stack, stackPointer - 1, result);
     }
 
@@ -2581,7 +2602,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
 
     private void f64_trunc(long[] stack, int stackPointer) {
         double x = popAsDouble(stack, stackPointer - 1);
-        double result = truncDouble(x);
+        double result = ExactMath.truncate(x);
         pushDouble(stack, stackPointer - 1, result);
     }
 

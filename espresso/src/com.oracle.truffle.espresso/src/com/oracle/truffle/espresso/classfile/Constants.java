@@ -50,7 +50,6 @@ public final class Constants {
 
     // Not part of the spec, used internally by the VM.
     public static final int ACC_FINALIZER = 0x00010000;
-    public static final int ACC_INNER_CLASS = 0x00020000;
     public static final int ACC_LAMBDA_FORM_COMPILED = 0x00040000;
     public static final int ACC_CALLER_SENSITIVE = 0x00080000;
     public static final int ACC_LAMBDA_FORM_HIDDEN = 0x00100000;

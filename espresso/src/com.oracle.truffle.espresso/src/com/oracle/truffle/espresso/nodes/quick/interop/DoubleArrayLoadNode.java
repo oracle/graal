@@ -63,23 +63,19 @@ public abstract class DoubleArrayLoadNode extends QuickNode {
                     @Cached ToEspressoNode toEspressoNode,
                     @CachedContext(EspressoLanguage.class) EspressoContext context,
                     @Cached BranchProfile exceptionProfile) {
-        Object result = ForeignArrayUtils.readForeignArrayElement(array, index, interop, context.getMeta(), exceptionProfile);
+        Meta meta = context.getMeta();
+        Object result = ForeignArrayUtils.readForeignArrayElement(array, index, interop, meta, exceptionProfile);
 
         try {
-            return (double) toEspressoNode.execute(result, context.getMeta()._double);
+            return (double) toEspressoNode.execute(result, meta._double);
         } catch (UnsupportedTypeException e) {
             exceptionProfile.enter();
-            throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_ClassCastException, "Could not cast the foreign array element to double");
+            throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Could not cast the foreign array element to double");
         }
     }
 
     @Specialization(guards = "array.isEspressoObject()")
     double doEspresso(StaticObject array, int index) {
-        return getBytecodesNode().getInterpreterToVM().getArrayDouble(index, array);
-    }
-
-    @Override
-    public boolean producedForeignObject(Object[] refs) {
-        return false;
+        return getBytecodeNode().getInterpreterToVM().getArrayDouble(index, array);
     }
 }

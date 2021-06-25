@@ -1,3 +1,9 @@
+---
+layout: docs
+toc_group: truffle
+link_title: Truffle Interop 2.0
+permalink: /graalvm-as-a-platform/language-implementation-framework/InteropMigration/
+---
 # Truffle Interop 2.0
 
 This document is targeted at guest language and tool implementers.

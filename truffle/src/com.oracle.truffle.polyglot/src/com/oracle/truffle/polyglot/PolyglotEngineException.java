@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,9 +40,13 @@
  */
 package com.oracle.truffle.polyglot;
 
+import java.util.ConcurrentModificationException;
+import java.util.NoSuchElementException;
+
+import org.graalvm.polyglot.Context;
+
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
-import org.graalvm.polyglot.Context;
 
 /**
  * Represents an expected user exception caused by the polyglot engine. It is wrapped such that it
@@ -95,16 +99,10 @@ import org.graalvm.polyglot.Context;
 final class PolyglotEngineException extends RuntimeException {
 
     final RuntimeException e;
-    final boolean closingContext;
 
-    private PolyglotEngineException(RuntimeException e) {
-        this(e, false);
-    }
-
-    private PolyglotEngineException(RuntimeException e, boolean closingContext) {
+    PolyglotEngineException(RuntimeException e) {
         super(null, e);
         this.e = e;
-        this.closingContext = closingContext;
     }
 
     @SuppressWarnings("sync-override")
@@ -131,10 +129,6 @@ final class PolyglotEngineException extends RuntimeException {
         return new PolyglotEngineException(new IllegalStateException(message));
     }
 
-    static PolyglotEngineException illegalState(String message, boolean closingContext) {
-        return new PolyglotEngineException(new IllegalStateException(message), closingContext);
-    }
-
     static PolyglotEngineException nullPointer(String message) {
         return new PolyglotEngineException(new NullPointerException(message));
     }
@@ -159,4 +153,11 @@ final class PolyglotEngineException extends RuntimeException {
         return new PolyglotEngineException(new IndexOutOfBoundsException(message));
     }
 
+    static PolyglotEngineException noSuchElement(String message) {
+        return new PolyglotEngineException(new NoSuchElementException(message));
+    }
+
+    static PolyglotEngineException concurrentModificationException(String message) {
+        return new PolyglotEngineException((new ConcurrentModificationException(message)));
+    }
 }

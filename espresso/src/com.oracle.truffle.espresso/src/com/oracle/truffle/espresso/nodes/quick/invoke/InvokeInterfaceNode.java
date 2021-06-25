@@ -23,14 +23,15 @@
 package com.oracle.truffle.espresso.nodes.quick.invoke;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.espresso.descriptors.Signatures;
-import com.oracle.truffle.espresso.impl.ClassRedefinition;
+
+import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
+import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.Method.MethodVersion;
@@ -45,6 +46,7 @@ public abstract class InvokeInterfaceNode extends QuickNode {
     final Method resolutionSeed;
     final Klass declaringKlass;
     final int resultAt;
+    final boolean returnsPrimitiveType;
 
     static final int INLINE_CACHE_SIZE_LIMIT = 5;
 
@@ -78,6 +80,7 @@ public abstract class InvokeInterfaceNode extends QuickNode {
         this.resolutionSeed = resolutionSeed;
         this.declaringKlass = resolutionSeed.getDeclaringKlass();
         this.resultAt = top - Signatures.slotsForParameters(resolutionSeed.getParsedSignature()) - 1; // -receiver
+        this.returnsPrimitiveType = Types.isPrimitive(Signatures.returnType(resolutionSeed.getParsedSignature()));
     }
 
     protected static MethodVersion methodLookup(StaticObject receiver, Method resolutionSeed, Klass declaringKlass) {
@@ -85,7 +88,7 @@ public abstract class InvokeInterfaceNode extends QuickNode {
         if (resolutionSeed.isRemovedByRedefition()) {
             // accept a slow path once the method has been removed
             // put method behind a boundary to avoid a deopt loop
-            return handleRemovedMethod(receiver, resolutionSeed);
+            return ClassRedefinition.handleRemovedMethod(resolutionSeed, receiver.getKlass(), receiver).getMethodVersion();
         }
 
         int iTableIndex = resolutionSeed.getITableIndex();
@@ -93,52 +96,24 @@ public abstract class InvokeInterfaceNode extends QuickNode {
         if (!method.isPublic()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             Meta meta = receiver.getKlass().getMeta();
-            throw Meta.throwException(meta.java_lang_IllegalAccessError);
+            throw meta.throwException(meta.java_lang_IllegalAccessError);
         }
         return method.getMethodVersion();
     }
 
-    @TruffleBoundary
-    private static MethodVersion handleRemovedMethod(StaticObject receiver, Method resolutionSeed) {
-        // do not run while a redefinition is in progress
-        try {
-            ClassRedefinition.lock();
-            // first check to see if there's a compatible new method before
-            // bailing out with a NoSuchMethodError
-            Klass receiverKlass = receiver.getKlass();
-            Method method = receiverKlass.lookupMethod(resolutionSeed.getName(), resolutionSeed.getRawSignature(), receiverKlass);
-            Meta meta = resolutionSeed.getMeta();
-            if (method == null) {
-                throw Meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError,
-                                meta.toGuestString(resolutionSeed.getDeclaringKlass().getNameAsString() + "." + resolutionSeed.getName() + resolutionSeed.getRawSignature()));
-            } else if (method.isStatic()) {
-                throw Meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "expected non-static method: " + method.getName());
-            } else if (!method.isPublic()) {
-                throw Meta.throwException(meta.java_lang_IllegalAccessError);
-            } else {
-                return method.getMethodVersion();
-            }
-        } finally {
-            ClassRedefinition.unlock();
-        }
-    }
-
     @Override
     public final int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
-        // Method signature does not change across methods.
-        // Can safely use the constant signature from `resolutionSeed` instead of the non-constant
-        // signature from the lookup.
-        // TODO(peterssen): Maybe refrain from exposing the whole root node?.
-        // TODO(peterssen): IsNull Node?.
+        /**
+         * Method signature does not change across methods. Can safely use the constant signature
+         * from `resolutionSeed` instead of the non-constant signature from the lookup.
+         */
         final Object[] args = BytecodeNode.popArguments(primitives, refs, top, true, resolutionSeed.getParsedSignature());
         final StaticObject receiver = nullCheck((StaticObject) args[0]);
         Object result = executeInterface(receiver, args);
+        if (!returnsPrimitiveType) {
+            getBytecodeNode().checkNoForeignObjectAssumption((StaticObject) result);
+        }
         return (getResultAt() - top) + BytecodeNode.putKind(primitives, refs, getResultAt(), result, Signatures.returnKind(resolutionSeed.getParsedSignature()));
-    }
-
-    @Override
-    public boolean producedForeignObject(Object[] refs) {
-        return resolutionSeed.getReturnKind().isObject() && BytecodeNode.peekObject(refs, getResultAt()).isForeignObject();
     }
 
     private int getResultAt() {

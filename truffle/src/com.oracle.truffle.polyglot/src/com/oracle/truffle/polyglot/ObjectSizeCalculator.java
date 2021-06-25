@@ -255,13 +255,13 @@ final class ObjectSizeCalculator {
             return true;
         }
 
-        assert !(obj instanceof PolyglotImpl.VMObject) &&
+        assert (!(obj instanceof PolyglotImpl.VMObject) || obj instanceof PolyglotLanguageContext || obj instanceof PolyglotContextImpl) &&
                         !(obj instanceof PolyglotContextConfig) &&
                         !(obj instanceof TruffleLanguage.Provider) &&
                         !(obj instanceof ExecutionEventListener) &&
                         !(obj instanceof ClassValue) &&
                         !(obj instanceof ClassLoader) &&
-                        !(obj instanceof HostWrapper) &&
+                        !(obj instanceof PolyglotWrapper) &&
                         !(obj instanceof Value) &&
                         !(obj instanceof Context) &&
                         !(obj instanceof Engine) &&
@@ -271,10 +271,7 @@ final class ObjectSizeCalculator {
                         !(obj instanceof org.graalvm.polyglot.SourceSection) : obj.getClass().getName() + " should not be reachable";
 
         return (obj instanceof Thread) ||
-                        (obj instanceof HostObject) ||
-                        (obj instanceof HostFunction) ||
-                        (obj instanceof HostException) ||
-                        (obj instanceof HostLanguage.HostContext) ||
+                        EngineAccessor.HOST.isHostBoundaryValue(obj) ||
 
                         (obj instanceof Class) ||
                         (obj instanceof OptionValues) ||
@@ -301,7 +298,25 @@ final class ObjectSizeCalculator {
                         (obj instanceof TruffleContext) ||
 
                         (obj instanceof ContextLocal) ||
-                        (obj instanceof ContextThreadLocal);
+                        (obj instanceof ContextThreadLocal) ||
+
+                        /*
+                         * For safety, copy the asserts here in case asserts are disabled.
+                         */
+                        (obj instanceof PolyglotImpl.VMObject) ||
+                        (obj instanceof PolyglotContextConfig) ||
+                        (obj instanceof TruffleLanguage.Provider) ||
+                        (obj instanceof ExecutionEventListener) ||
+                        (obj instanceof ClassValue) ||
+                        (obj instanceof ClassLoader) ||
+                        (obj instanceof PolyglotWrapper) ||
+                        (obj instanceof Value) ||
+                        (obj instanceof Context) ||
+                        (obj instanceof Engine) ||
+                        (obj instanceof Language) ||
+                        (obj instanceof Instrument) ||
+                        (obj instanceof org.graalvm.polyglot.Source) ||
+                        (obj instanceof org.graalvm.polyglot.SourceSection);
     }
 
     private static ClassInfo canProceed(Map<Class<?>, ClassInfo> classInfos, Object obj) {

@@ -137,10 +137,4 @@ public abstract class SourceTypeFlowBase extends TypeFlow<BytecodePosition> {
         assert this.isClone();
         return super.addState(bb, add);
     }
-
-    @Override
-    public void update(BigBang bb) {
-        assert !getState().isEmpty() : "why update when state is still empty?";
-        super.update(bb);
-    }
 }

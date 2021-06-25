@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,9 +22,6 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
-import static com.oracle.truffle.espresso.vm.VM.StackElement.NATIVE_BCI;
-import static com.oracle.truffle.espresso.vm.VM.StackElement.UNKNOWN_BCI;
-
 import java.util.Arrays;
 
 import com.oracle.truffle.api.frame.Frame;
@@ -34,8 +31,6 @@ import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.InstrumentableNode.WrapperNode;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.SourceSection;
@@ -55,7 +50,7 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
 public abstract class EspressoRootNode extends RootNode implements ContextAccess {
 
     // must not be of type EspressoMethodNode as it might be wrapped by instrumentation
-    @Child protected EspressoInstrumentableNode methodNode;
+    @Child protected EspressoBaseMethodNode methodNode;
 
     private final FrameSlot monitorSlot;
     /**
@@ -66,14 +61,14 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
 
     private final BranchProfile unbalancedMonitorProfile = BranchProfile.create();
 
-    EspressoRootNode(FrameDescriptor frameDescriptor, EspressoMethodNode methodNode, boolean usesMonitors) {
+    EspressoRootNode(FrameDescriptor frameDescriptor, EspressoBaseMethodNode methodNode, boolean usesMonitors) {
         super(methodNode.getMethod().getEspressoLanguage(), frameDescriptor);
         this.methodNode = methodNode;
         this.monitorSlot = usesMonitors ? frameDescriptor.addFrameSlot("monitor", FrameSlotKind.Object) : null;
         this.cookieSlot = frameDescriptor.addFrameSlot("cookie", FrameSlotKind.Object);
     }
 
-    private EspressoRootNode(EspressoRootNode split, FrameDescriptor frameDescriptor, EspressoMethodNode methodNode) {
+    private EspressoRootNode(EspressoRootNode split, FrameDescriptor frameDescriptor, EspressoBaseMethodNode methodNode) {
         super(methodNode.getMethod().getEspressoLanguage(), frameDescriptor);
         this.methodNode = methodNode;
         this.monitorSlot = split.monitorSlot;
@@ -130,25 +125,8 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
         return getMethodNode().getEncapsulatingSourceSection();
     }
 
-    public final boolean isBytecodeNode() {
-        return getMethodNode() instanceof BytecodeNode;
-    }
-
-    public final BytecodeNode getBytecodeNode() {
-        if (isBytecodeNode()) {
-            return (BytecodeNode) getMethodNode();
-        } else {
-            return null;
-        }
-    }
-
-    protected EspressoMethodNode getMethodNode() {
-        Node child = methodNode;
-        if (child instanceof WrapperNode) {
-            child = ((WrapperNode) child).getDelegateNode();
-        }
-        assert !(child instanceof WrapperNode);
-        return (EspressoMethodNode) child;
+    public EspressoBaseMethodNode getMethodNode() {
+        return methodNode;
     }
 
     public static EspressoRootNode create(FrameDescriptor descriptor, EspressoMethodNode methodNode) {
@@ -161,13 +139,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
     }
 
     public final int readBCI(Frame frame) {
-        if (isBytecodeNode()) {
-            return ((BytecodeNode) getMethodNode()).readBCI(frame);
-        } else if (getMethod().isNative()) {
-            return NATIVE_BCI; // native
-        } else {
-            return UNKNOWN_BCI; // unknown
-        }
+        return getMethodNode().getBci(frame);
     }
 
     public final void setFrameId(Frame frame, long frameId) {
@@ -248,6 +220,10 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
         }
     }
 
+    public void abortInternalMonitors(Frame frame) {
+        getMonitorStack(frame).exitInternalMonitors(getMeta());
+    }
+
     static final class Synchronized extends EspressoRootNode {
 
         Synchronized(FrameDescriptor frameDescriptor, EspressoMethodNode methodNode) {
@@ -275,11 +251,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
             try {
                 result = methodNode.execute(frame);
             } finally {
-                // force early return has already released the monitor on the frame, so don't
-                // do an unbalanced monitor exit here
-                if (getContext().getJDWPListener().getAndRemoveEarlyReturnValue() == null) {
-                    exitSynchronized(frame, monitor);
-                }
+                InterpreterToVM.monitorExit(monitor, getMeta());
             }
             return result;
         }
@@ -289,10 +261,6 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
             MonitorStack monitorStack = new MonitorStack();
             monitorStack.synchronizedMethodMonitor = monitor;
             initMonitorStack(frame, monitorStack);
-        }
-
-        private void exitSynchronized(@SuppressWarnings("unused") VirtualFrame frame, StaticObject monitor) {
-            InterpreterToVM.monitorExit(monitor, getMeta());
         }
     }
 
@@ -362,6 +330,12 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
                 } catch (Throwable e) {
                     /* ignore */
                 }
+            }
+        }
+
+        public void exitInternalMonitors(Meta meta) {
+            for (int i = 0; i < top; i++) {
+                InterpreterToVM.monitorExit(monitors[i], meta);
             }
         }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameUtil;
@@ -42,15 +43,16 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.espresso.classfile.attributes.Local;
+import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public class EspressoScope {
+public final class EspressoScope {
 
-    public static Object createVariables(Local[] liveLocals, Frame frame) {
+    public static Object createVariables(Local[] liveLocals, Frame frame, Symbol<Symbol.Name> scopeName) {
         int slotCount = liveLocals.length;
         Map<String, FrameSlotInfo> slotsMap;
         Map<String, FrameSlotInfo> identifiersMap;
@@ -75,7 +77,7 @@ public class EspressoScope {
                 identifiersMap.put(localName, frameSlotInfo);
             }
         }
-        return new VariablesMapObject(slotsMap, identifiersMap, frame);
+        return new VariablesMapObject(slotsMap, identifiersMap, frame, scopeName);
     }
 
     // We map both variable names and their slot number to members. However we only expose the
@@ -87,17 +89,43 @@ public class EspressoScope {
         final Map<String, FrameSlotInfo> slots;
         final Map<String, FrameSlotInfo> identifiers;
         final Frame frame;
+        final Symbol<Symbol.Name> scopeName;
 
-        private VariablesMapObject(Map<String, FrameSlotInfo> slots, Map<String, FrameSlotInfo> identifiers, Frame frame) {
+        private VariablesMapObject(Map<String, FrameSlotInfo> slots, Map<String, FrameSlotInfo> identifiers, Frame frame, Symbol<Symbol.Name> scopeName) {
             this.slots = slots;
             this.identifiers = identifiers;
             this.frame = frame;
+            this.scopeName = scopeName;
         }
 
-        @SuppressWarnings("static-method")
         @ExportMessage
+        @SuppressWarnings("static-method")
         boolean hasMembers() {
             return true;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean isScope() {
+            return true;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean hasLanguage() {
+            return true;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        Class<? extends TruffleLanguage<?>> getLanguage() {
+            return EspressoLanguage.class;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+            return scopeName.toString();
         }
 
         @ExportMessage

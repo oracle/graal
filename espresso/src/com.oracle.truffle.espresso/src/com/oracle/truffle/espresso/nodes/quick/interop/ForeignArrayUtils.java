@@ -46,10 +46,10 @@ public final class ForeignArrayUtils {
             return interop.readArrayElement(array.rawForeignObject(), index);
         } catch (UnsupportedMessageException e) {
             exceptionProfile.enter();
-            throw Meta.throwExceptionWithMessage(meta.getMeta().java_lang_IllegalArgumentException, "The foreign object is not a readable array");
+            throw meta.throwExceptionWithMessage(meta.getMeta().java_lang_IllegalArgumentException, "The foreign object is not a readable array");
         } catch (InvalidArrayIndexException e) {
             exceptionProfile.enter();
-            throw Meta.throwExceptionWithMessage(meta.getMeta().java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
+            throw meta.throwExceptionWithMessage(meta.getMeta().java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
         }
     }
 
@@ -59,13 +59,13 @@ public final class ForeignArrayUtils {
             interop.writeArrayElement(array.rawForeignObject(), index, value);
         } catch (UnsupportedMessageException e) {
             exceptionProfile.enter();
-            throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "The foreign object is not a writable array");
+            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "The foreign object is not a writable array");
         } catch (UnsupportedTypeException e) {
             exceptionProfile.enter();
-            throw Meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, createTypeErrorMessage(value));
+            throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, createTypeErrorMessage(value));
         } catch (InvalidArrayIndexException e) {
             exceptionProfile.enter();
-            throw Meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
+            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
         }
     }
 

@@ -1,3 +1,9 @@
+---
+layout: docs
+toc_group: truffle
+link_title: Reporting Polymorphic Specializations to Runtime
+permalink: /graalvm-as-a-platform/language-implementation-framework/splitting/ReportingPolymorphism/
+---
 # Reporting Polymorphic Specializations to Runtime
 
 This guide gives an overview of what is required of language implementers in order to leverage the monomorphization (splitting) strategy.

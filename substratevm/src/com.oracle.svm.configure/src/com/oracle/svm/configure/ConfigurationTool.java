@@ -26,7 +26,6 @@ package com.oracle.svm.configure;
 
 import java.io.BufferedReader;
 import java.io.FileOutputStream;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -41,6 +40,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import com.oracle.svm.configure.config.ConfigurationSet;
@@ -51,6 +51,7 @@ import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.configure.trace.AccessAdvisor;
 import com.oracle.svm.configure.trace.TraceProcessor;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.util.VMError;
 
 public class ConfigurationTool {
@@ -144,6 +145,7 @@ public class ConfigurationTool {
         boolean builtinHeuristicFilter = true;
         List<Path> callerFilterFiles = new ArrayList<>();
 
+        ConfigurationSet omittedInputSet = new ConfigurationSet();
         ConfigurationSet inputSet = new ConfigurationSet();
         ConfigurationSet outputSet = new ConfigurationSet();
         while (argsIter.hasNext()) {
@@ -163,6 +165,10 @@ public class ConfigurationTool {
                         throw new NoSuchFileException(value);
                     }
                     outputSet.addDirectory(directory);
+                    break;
+
+                case "--omit-from-input-dir":
+                    omittedInputSet.addDirectory(requirePath(current, value));
                     break;
 
                 case "--reflect-input":
@@ -193,6 +199,12 @@ public class ConfigurationTool {
                     set = inputSet; // fall through
                 case "--serialization-output":
                     set.getSerializationConfigPaths().add(requirePathUri(current, value));
+                    break;
+
+                case "--predefined-classes-input":
+                    set = inputSet; // fall through
+                case "--predefined-classes-output":
+                    set.getPredefinedClassesConfigPaths().add(requirePathUri(current, value));
                     break;
 
                 case "--trace-input":
@@ -239,7 +251,7 @@ public class ConfigurationTool {
             for (Path path : callerFilterFiles) {
                 try {
                     FilterConfigurationParser parser = new FilterConfigurationParser(callersFilter);
-                    parser.parseAndRegister(new FileReader(path.toFile()));
+                    parser.parseAndRegister(path);
                 } catch (Exception e) {
                     throw new UsageException("Cannot parse filter file " + path + ": " + e);
                 }
@@ -253,10 +265,23 @@ public class ConfigurationTool {
             advisor.setCallerFilterTree(callersFilter);
         }
         TraceProcessor p;
+        TraceProcessor omittedInputTraceProcessor;
         try {
+            omittedInputTraceProcessor = new TraceProcessor(advisor, omittedInputSet.loadJniConfig(ConfigurationSet.FAIL_ON_EXCEPTION),
+                            omittedInputSet.loadReflectConfig(ConfigurationSet.FAIL_ON_EXCEPTION),
+                            omittedInputSet.loadProxyConfig(ConfigurationSet.FAIL_ON_EXCEPTION), omittedInputSet.loadResourceConfig(ConfigurationSet.FAIL_ON_EXCEPTION),
+                            omittedInputSet.loadSerializationConfig(ConfigurationSet.FAIL_ON_EXCEPTION), omittedInputSet.loadPredefinedClassesConfig(null, null, ConfigurationSet.FAIL_ON_EXCEPTION),
+                            null);
+            List<Path> predefinedClassDestDirs = new ArrayList<>();
+            for (URI pathUri : outputSet.getPredefinedClassesConfigPaths()) {
+                predefinedClassDestDirs.add(Paths.get(pathUri).getParent().resolve(ConfigurationFile.PREDEFINED_CLASSES_AGENT_EXTRACTED_SUBDIR));
+            }
+            Predicate<String> shouldExcludeClassesWithHash = omittedInputTraceProcessor.getPredefinedClassesConfiguration()::containsClassWithHash;
             p = new TraceProcessor(advisor, inputSet.loadJniConfig(ConfigurationSet.FAIL_ON_EXCEPTION), inputSet.loadReflectConfig(ConfigurationSet.FAIL_ON_EXCEPTION),
                             inputSet.loadProxyConfig(ConfigurationSet.FAIL_ON_EXCEPTION), inputSet.loadResourceConfig(ConfigurationSet.FAIL_ON_EXCEPTION),
-                            inputSet.loadSerializationConfig(ConfigurationSet.FAIL_ON_EXCEPTION));
+                            inputSet.loadSerializationConfig(ConfigurationSet.FAIL_ON_EXCEPTION),
+                            inputSet.loadPredefinedClassesConfig(predefinedClassDestDirs.toArray(new Path[0]), shouldExcludeClassesWithHash, ConfigurationSet.FAIL_ON_EXCEPTION),
+                            omittedInputTraceProcessor);
         } catch (IOException e) {
             throw e;
         } catch (Throwable t) {
@@ -297,6 +322,11 @@ public class ConfigurationTool {
         for (URI uri : outputSet.getSerializationConfigPaths()) {
             try (JsonWriter writer = new JsonWriter(Paths.get(uri))) {
                 p.getSerializationConfiguration().printJson(writer);
+            }
+        }
+        for (URI uri : outputSet.getPredefinedClassesConfigPaths()) {
+            try (JsonWriter writer = new JsonWriter(Paths.get(uri))) {
+                p.getPredefinedClassesConfiguration().printJson(writer);
             }
         }
     }
@@ -344,10 +374,7 @@ public class ConfigurationTool {
 
                 case "--input-file":
                     rootNode = maybeCreateRootNode(rootNode);
-                    try (FileReader reader = new FileReader(requirePath(current, value).toFile())) {
-                        FilterConfigurationParser parser = new FilterConfigurationParser(rootNode);
-                        parser.parseAndRegister(reader);
-                    }
+                    new FilterConfigurationParser(rootNode).parseAndRegister(requirePath(current, value));
                     break;
 
                 case "--output-file":

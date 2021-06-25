@@ -1,3 +1,5 @@
+# Academic Publications
+
 This page describes various presentations and publications related to the GraalVM compiler and Truffle that were published by Oracle Labs and its academic collaborators.
 
 ## Truffle Tutorial

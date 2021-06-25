@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -150,6 +150,7 @@ public abstract class Source {
      */
     public static final CharSequence CONTENT_NONE = null;
     private static final CharSequence CONTENT_UNSET = new String();
+    private static final byte[] CONTENT_EMPTY = new byte[0];
 
     private static final Source EMPTY = new SourceImpl.ImmutableKey(null, null, null, null, null, null, null, false, false, false, null).toSourceNotInterned();
     private static final String NO_FASTPATH_SUBSOURCE_CREATION_MESSAGE = "do not create sub sources from compiled code";
@@ -388,7 +389,14 @@ public abstract class Source {
         if (uri == null) {
             uri = computedURI;
             if (uri == null) {
-                byte[] bytes = hasBytes() ? getBytes().toByteArray() : getCharacters().toString().getBytes();
+                byte[] bytes;
+                if (hasBytes()) {
+                    bytes = getBytes().toByteArray();
+                } else if (hasCharacters()) {
+                    bytes = getCharacters().toString().getBytes();
+                } else {
+                    bytes = CONTENT_EMPTY;
+                }
                 uri = computedURI = getNamedURI(getName(), bytes);
             }
         }

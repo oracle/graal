@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,7 @@ import org.graalvm.options.OptionValues;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.api.impl.ThreadLocalHandshake;
 import com.oracle.truffle.api.impl.Accessor.RuntimeSupport;
 import com.oracle.truffle.api.nodes.BlockNode;
 import com.oracle.truffle.api.nodes.BlockNode.ElementExecutor;
@@ -68,6 +69,11 @@ final class GraalRuntimeSupport extends RuntimeSupport {
                 ((OptimizedCallTarget) target).onLoopCount(count);
             }
         }
+    }
+
+    @Override
+    public ThreadLocalHandshake getThreadLocalHandshake() {
+        return GraalTruffleRuntime.getRuntime().getThreadLocalHandshake();
     }
 
     @Override

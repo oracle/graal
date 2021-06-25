@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,6 +49,8 @@ import org.graalvm.options.OptionDescriptors;
 import org.graalvm.wasm.api.WebAssembly;
 import org.graalvm.wasm.memory.UnsafeWasmMemory;
 import org.graalvm.wasm.memory.WasmMemory;
+
+import java.io.IOException;
 
 @TruffleLanguage.Registration(id = "wasm", name = "WebAssembly", defaultMimeType = "application/wasm", byteMimeTypes = "application/wasm", contextPolicy = TruffleLanguage.ContextPolicy.EXCLUSIVE, fileTypeDetectors = WasmFileDetector.class, //
                 interactive = false)
@@ -102,6 +104,11 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
             if (memory instanceof UnsafeWasmMemory) {
                 ((UnsafeWasmMemory) memory).free();
             }
+        }
+        try {
+            context.fdManager().close();
+        } catch (IOException e) {
+            throw new RuntimeException("Error while closing WasmFilesManager.");
         }
     }
 }

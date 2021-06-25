@@ -1,9 +1,15 @@
+---
+layout: docs
+toc_group: truffle
+link_title: Profiling Truffle Interpreters
+permalink: /graalvm-as-a-platform/language-implementation-framework/Profiling/
+---
 # Profiling Truffle Interpreters
 
 There is no shortage of tools for profiling interpreters written using Truffle.
 When running in JVM mode you can use standard JVM tooling such as VisualVM, Java Flight Recorder, and Oracle Developer Studio. When running in Native Image you can use `callgrind` from the Valgrind tool suite, and other system tools such as `strace`.
 As a language running on GraalVM, other GraalVM tools can be used.
-For a broad enough definition of profiling, you can also use the [Ideal Graph Visualizer (IGV)](https://docs.oracle.com/en/graalvm/enterprise/20/docs/tools/igv/) and C1 Visualizer to inspect the compiler output.
+For a broad enough definition of profiling, you can also use the [Ideal Graph Visualizer (IGV)](https://docs.oracle.com/en/graalvm/enterprise/21/docs/tools/igv/) and C1 Visualizer to inspect the compiler output.
 
 This guide is less about how to use each tool and more about suggestions for extracting the most useful information from the tools, assuming a basic knowledge of their usage.
 

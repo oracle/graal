@@ -63,6 +63,8 @@ import com.oracle.truffle.tools.chromeinspector.types.InternalPropertyDescriptor
 import com.oracle.truffle.tools.chromeinspector.types.Location;
 import com.oracle.truffle.tools.chromeinspector.types.PropertyDescriptor;
 import com.oracle.truffle.tools.chromeinspector.types.RemoteObject;
+import com.oracle.truffle.tools.chromeinspector.types.RemoteObject.TypeMark;
+import com.oracle.truffle.tools.chromeinspector.types.TypeInfo;
 
 import org.graalvm.collections.Pair;
 
@@ -295,7 +297,25 @@ public final class InspectorRuntime extends RuntimeDomain {
                     context.executeInSuspendThread(new SuspendThreadExecutable<Void>() {
                         @Override
                         public Void executeCommand() throws CommandProcessException {
-                            Collection<DebugValue> properties = value.getProperties();
+                            TypeMark typeMark = object.getTypeMark();
+                            if (typeMark != null) {
+                                switch (typeMark) {
+                                    case MAP_ENTRIES:
+                                        putMapEntries(json, value, indexRange, generatePreview, objectGroup);
+                                        break;
+                                    case MAP_ENTRY:
+                                        putMapEntry(json, value, generatePreview, objectGroup);
+                                        break;
+                                    default:
+                                        throw new CommandProcessException("Unknown type mark " + typeMark);
+                                }
+                                return null;
+                            }
+
+                            Collection<DebugValue> properties = null;
+                            if (!value.hasHashEntries()) {
+                                properties = value.getProperties();
+                            }
                             if (properties == null) {
                                 properties = Collections.emptyList();
                             } else if (indexRange != null && indexRange.isNamed()) {
@@ -327,6 +347,10 @@ public final class InspectorRuntime extends RuntimeDomain {
                         @Override
                         public Void executeCommand() throws CommandProcessException {
                             Collection<DebugValue> properties = new ArrayList<>();
+                            DebugValue scopeReceiver = object.getScopeReceiver();
+                            if (scopeReceiver != null) {
+                                properties.add(scopeReceiver);
+                            }
                             for (DebugValue p : scope.getDeclaredValues()) {
                                 properties.add(p);
                             }
@@ -347,6 +371,46 @@ public final class InspectorRuntime extends RuntimeDomain {
             }
         }
         return new Params(json);
+    }
+
+    private void putMapEntries(JSONObject json, DebugValue value, RemoteObject.IndexRange indexRange, boolean generatePreview, String objectGroup) {
+        int start = 0;
+        int end = Integer.MAX_VALUE;
+        if (indexRange != null && !indexRange.isNamed()) {
+            start = indexRange.start();
+            end = indexRange.end();
+        }
+        JSONArray result = new JSONArray();
+        for (int index = 0; value.hasIteratorNextElement() && index < end; index++) {
+            DebugValue next = value.getIteratorNextElement();
+            if (index < start) {
+                continue;
+            }
+            String name = Integer.toString(index);
+            JSONObject jsonEntry = createPropertyJSON(next, name, generatePreview, objectGroup, TypeMark.MAP_ENTRY);
+            result.put(jsonEntry);
+        }
+        json.put("result", result);
+    }
+
+    private void putMapEntry(JSONObject json, DebugValue entry, boolean generatePreview, String objectGroup) {
+        List<DebugValue> entryArray = entry.getArray();
+        DebugValue key = entryArray.get(0);
+        DebugValue value = entryArray.get(1);
+        JSONArray result = new JSONArray();
+        result.put(createMapEntryElement("key", key, generatePreview, objectGroup));
+        result.put(createMapEntryElement("value", value, generatePreview, objectGroup));
+        json.put("result", result);
+    }
+
+    private JSONObject createMapEntryElement(String name, DebugValue v, boolean generatePreview, String objectGroup) {
+        RemoteObject rv = new RemoteObject(v, false, generatePreview, context, (TypeMark) null);
+        context.getRemoteObjectsHandler().register(rv, objectGroup);
+        JSONObject json = new JSONObject();
+        json.put("name", name);
+        json.put("value", rv.toJSON());
+        json.put("writable", v.isWritable());
+        return json;
     }
 
     private void putResultProperties(JSONObject json, DebugValue value, Collection<DebugValue> properties, Collection<DebugValue> arrayElements, boolean generatePreview, String objectGroup) {
@@ -408,8 +472,13 @@ public final class InspectorRuntime extends RuntimeDomain {
                 // Add __proto__ when in JavaScript:
                 DebugValue prototype = value.getProperty("__proto__");
                 if (prototype != null && !prototype.isNull()) {
-                    result.put(createPropertyJSON(prototype, null, generatePreview, true, false, objectGroup));
+                    result.put(createPropertyJSON(prototype, null, generatePreview, true, false, objectGroup, false, null));
                 }
+            }
+            if (value != null && value.hasHashEntries()) {
+                DebugValue entries = value.getHashEntriesIterator();
+                JSONObject map2 = createPropertyJSON(entries, "[[Entries]]", false, false, true, objectGroup, true, TypeMark.MAP_ENTRIES);
+                internals.put(map2);
             }
         } catch (DebugException ex) {
             // From property iterators, etc.
@@ -487,7 +556,7 @@ public final class InspectorRuntime extends RuntimeDomain {
                                 }
                                 Object property = ((JSONObject) arguments.get(0)).get("value");
                                 CallArgument newValue = CallArgument.get((JSONObject) arguments.get(1));
-                                setPropertyValue(value, scope, property, newValue, suspendedInfo.lastEvaluatedValue.getAndSet(null));
+                                setPropertyValue(value, scope, property, object.getTypeMark(), newValue, suspendedInfo.lastEvaluatedValue.getAndSet(null));
                                 result = new JSONObject();
                             } else if (functionNoWS.equals(FUNCTION_GET_ARRAY_NUM_PROPS)) {
                                 if (!value.isArray()) {
@@ -709,7 +778,8 @@ public final class InspectorRuntime extends RuntimeDomain {
         context.getRemoteObjectsHandler().releaseObjectGroup(objectGroup);
     }
 
-    private void setPropertyValue(DebugValue object, DebugScope scope, Object property, CallArgument newValue, Pair<DebugValue, Object> evaluatedValue) throws CommandProcessException {
+    private void setPropertyValue(DebugValue object, DebugScope scope, Object property, RemoteObject.TypeMark typeMark, CallArgument newValue, Pair<DebugValue, Object> evaluatedValue)
+                    throws CommandProcessException {
         DebugValue propValue;
         Number index = null;
         if (object != null && object.isArray()) {
@@ -732,7 +802,25 @@ public final class InspectorRuntime extends RuntimeDomain {
             propValue = array.get(i);
         } else {
             if (object != null) {
-                propValue = object.getProperty(property.toString());
+                if (typeMark != null) {
+                    int entryIndex;
+                    switch (typeMark) {
+                        case MAP_ENTRY:
+                            if ("key".equals(property)) {
+                                entryIndex = 0;
+                            } else if ("value".equals(property)) {
+                                entryIndex = 1;
+                            } else {
+                                throw new CommandProcessException("Unknown entry: " + property);
+                            }
+                            break;
+                        default:
+                            throw new CommandProcessException("Unsupported type: " + typeMark);
+                    }
+                    propValue = object.getArray().get(entryIndex);
+                } else {
+                    propValue = object.getProperty(property.toString());
+                }
             } else {
                 propValue = scope.getDeclaredValue(property.toString());
             }
@@ -819,18 +907,23 @@ public final class InspectorRuntime extends RuntimeDomain {
     }
 
     private JSONObject createPropertyJSON(DebugValue v, String defaultName, boolean generatePreview, String objectGroup) {
-        return createPropertyJSON(v, defaultName, generatePreview, false, true, objectGroup);
+        return createPropertyJSON(v, defaultName, generatePreview, false, true, objectGroup, false, null);
     }
 
-    private JSONObject createPropertyJSON(DebugValue v, String defaultName, boolean generatePreview, boolean readEagerly, boolean enumerable, String objectGroup) {
+    private JSONObject createPropertyJSON(DebugValue v, String defaultName, boolean generatePreview, String objectGroup, TypeMark typeMark) {
+        return createPropertyJSON(v, defaultName, generatePreview, false, true, objectGroup, false, typeMark);
+    }
+
+    private JSONObject createPropertyJSON(DebugValue v, String defaultName, boolean generatePreview, boolean readEagerly, boolean enumerable, String objectGroup, boolean forceInternal,
+                    TypeMark typeMark) {
         PropertyDescriptor pd;
-        RemoteObject rv = new RemoteObject(v, readEagerly, generatePreview, context);
+        RemoteObject rv = new RemoteObject(v, readEagerly, generatePreview, context, typeMark);
         context.getRemoteObjectsHandler().register(rv, objectGroup);
         String name = v.getName();
         if (name == null && defaultName != null) {
             name = defaultName;
         }
-        if (!v.isInternal()) {
+        if (!(forceInternal || v.isInternal())) {
             RemoteObject getter;
             RemoteObject setter;
             if (readEagerly) {
@@ -851,14 +944,14 @@ public final class InspectorRuntime extends RuntimeDomain {
         if (!v.hasReadSideEffects()) {
             return null;
         }
-        return RemoteObject.createSimpleObject("function", "Function", "");
+        return RemoteObject.createSimpleObject(TypeInfo.TYPE.FUNCTION, "Function", "");
     }
 
     private static RemoteObject findSetter(DebugValue v) {
         if (!v.hasWriteSideEffects()) {
             return null;
         }
-        return RemoteObject.createSimpleObject("function", "Function", "");
+        return RemoteObject.createSimpleObject(TypeInfo.TYPE.FUNCTION, "Function", "");
     }
 
     private static String eliminateWhiteSpaces(String str) {

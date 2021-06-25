@@ -75,7 +75,7 @@ import com.oracle.svm.hosted.code.CompilationInfo;
 import com.oracle.svm.hosted.code.CompilationInfoSupport;
 import com.oracle.svm.hosted.code.CompilationInfoSupport.DeoptSourceFrameInfo;
 import com.oracle.svm.hosted.code.HostedImageHeapConstantPatch;
-import com.oracle.svm.hosted.image.NativeBootImage.NativeTextSectionImpl;
+import com.oracle.svm.hosted.image.NativeImage.NativeTextSectionImpl;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 
@@ -283,6 +283,19 @@ public abstract class NativeImageCodeCache {
         FrameInfoQueryResult targetFrame = result.getFrameInfo();
         if (targetFrame == null || !targetFrame.isDeoptEntry() || targetFrame.getEncodedBci() != encodedBci) {
             return error(method, encodedBci, "entry point found, but wrong property");
+        }
+
+        /*
+         * DeoptEntries corresponding to explicit instructions must have registered exception
+         * handlers and DeoptEntries corresponding to exception objects cannot.
+         */
+        if (!targetFrame.duringCall()) {
+            boolean hasExceptionHandler = result.getExceptionOffset() != 0;
+            if (!targetFrame.rethrowException() && !hasExceptionHandler) {
+                return error(method, encodedBci, "no exception handler registered for deopt entry");
+            } else if (targetFrame.rethrowException() && hasExceptionHandler) {
+                return error(method, encodedBci, "exception handler registered for rethrowException");
+            }
         }
 
         /*

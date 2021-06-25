@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -54,10 +54,14 @@ public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
 
     @Override
     public Direction direction() {
-        if (value instanceof SubNode && base.valueNode() == value.getY()) {
-            return base.direction().opposite();
+        Direction baseDirection = base.direction();
+        if (baseDirection == null) {
+            return null;
         }
-        return base.direction();
+        if (value instanceof SubNode && base.valueNode() == value.getY()) {
+            return baseDirection.opposite();
+        }
+        return baseDirection;
     }
 
     @Override
@@ -198,6 +202,13 @@ public class DerivedOffsetInductionVariable extends DerivedInductionVariable {
 
     @Override
     public InductionVariable copy(InductionVariable newBase, ValueNode newValue) {
-        return new DerivedOffsetInductionVariable(loop, newBase, offset, (BinaryArithmeticNode<?>) newValue);
+        if (newValue instanceof BinaryArithmeticNode<?>) {
+            return new DerivedOffsetInductionVariable(loop, newBase, offset, (BinaryArithmeticNode<?>) newValue);
+        } else if (newValue instanceof NegateNode) {
+            return new DerivedScaledInductionVariable(loop, newBase, (NegateNode) newValue);
+        } else {
+            assert newValue instanceof IntegerConvertNode<?, ?> : "Expected integer convert operation. New baseIV=" + newBase + " newValue=" + newValue;
+            return new DerivedConvertedInductionVariable(loop, newBase, newValue.stamp(NodeView.DEFAULT), newValue);
+        }
     }
 }

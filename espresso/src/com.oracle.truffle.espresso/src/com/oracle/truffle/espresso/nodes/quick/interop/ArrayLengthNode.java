@@ -65,22 +65,19 @@ public abstract class ArrayLengthNode extends QuickNode {
             long arrayLength = interop.getArraySize(array.rawForeignObject());
             if (arrayLength > Integer.MAX_VALUE) {
                 exceptionProfile.enter();
-                throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_ClassCastException, "The foreign array length does not fit in int");
+                Meta meta = context.getMeta();
+                throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "The foreign array length does not fit in int");
             }
             return (int) arrayLength;
         } catch (UnsupportedMessageException e) {
             exceptionProfile.enter();
-            throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_IllegalArgumentException, "Called 'length' on a non-array object");
+            Meta meta = context.getMeta();
+            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "Called 'length' on a non-array object");
         }
     }
 
     @Specialization(guards = "array.isEspressoObject()")
     int doEspresso(StaticObject array) {
         return InterpreterToVM.arrayLength(array);
-    }
-
-    @Override
-    public final boolean producedForeignObject(Object[] refs) {
-        return false;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,10 +40,10 @@ public final class LeafAssumptionGetterNode extends InlinedGetterNode {
 
     @Override
     public int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
-        BytecodeNode root = getBytecodesNode();
+        BytecodeNode root = getBytecodeNode();
         if (inlinedMethod.leafAssumption()) {
-            StaticObject receiver = field.isStatic()
-                            ? field.getDeclaringKlass().tryInitializeAndGetStatics()
+            StaticObject receiver = fieldVersion.getField().isStatic()
+                            ? fieldVersion.getField().getDeclaringKlass().tryInitializeAndGetStatics()
                             : nullCheck(BytecodeNode.popObject(refs, top - 1));
             int resultAt = inlinedMethod.isStatic() ? top : (top - 1);
             return (resultAt - top) + getFieldNode.getField(frame, primitives, refs, root, receiver, resultAt, statementIndex);

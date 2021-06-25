@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,6 +35,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.function.Function;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
@@ -123,7 +125,7 @@ public class PluginGenerator {
                 out.printf("// GENERATORS: %s, %s\n", ReplacementsAnnotationProcessor.class.getName(), PluginGenerator.class.getName());
                 out.printf("package %s;\n", pkg.getQualifiedName());
                 out.printf("\n");
-                createImports(out, processor, plugins);
+                createImports(out, processor, plugins, pkg.getQualifiedName().toString());
                 out.printf("\n");
                 for (GeneratedPlugin plugin : plugins) {
                     plugin.generate(processor, out);
@@ -139,7 +141,7 @@ public class PluginGenerator {
         processor.createProviderFile(qualifiedGenClassName, "org.graalvm.compiler.nodes.graphbuilderconf.GeneratedPluginFactory", topLevelClass);
     }
 
-    protected static void createImports(PrintWriter out, AbstractProcessor processor, List<GeneratedPlugin> plugins) {
+    protected static void createImports(PrintWriter out, AbstractProcessor processor, List<GeneratedPlugin> plugins, String importingPackage) {
         HashSet<String> extra = new HashSet<>();
 
         extra.add("jdk.vm.ci.meta.ResolvedJavaMethod");
@@ -159,13 +161,21 @@ public class PluginGenerator {
                 extra.add("org.graalvm.compiler.nodes.PluginReplacementNode");
             }
         }
-        if (!extra.isEmpty()) {
-            out.printf("\n");
-            String[] imports = extra.toArray(new String[extra.size()]);
-            Arrays.sort(imports);
-            for (String i : imports) {
-                out.printf("import %s;\n", i);
+        Pattern packageClassBoundary = Pattern.compile("\\.([A-Z])");
+        out.printf("\n");
+        String[] imports = extra.toArray(new String[extra.size()]);
+        Arrays.sort(imports);
+        for (String i : imports) {
+            Matcher matcher = packageClassBoundary.matcher(i);
+            if (matcher.find()) {
+                String packageName = i.substring(0, matcher.start());
+                String className = i.substring(matcher.start() + 1);
+                if (packageName.equals(importingPackage) && className.indexOf('.') == -1) {
+                    // No need to import top level class in the same package
+                    continue;
+                }
             }
+            out.printf("import %s;\n", i);
         }
     }
 

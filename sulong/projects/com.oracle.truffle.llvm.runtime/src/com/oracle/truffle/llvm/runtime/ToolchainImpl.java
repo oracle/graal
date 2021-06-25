@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.runtime;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.llvm.api.Toolchain;
+import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMInfo;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -39,6 +40,7 @@ import java.util.List;
 
 public final class ToolchainImpl implements Toolchain {
 
+    private static final String[] WINDOWS_EXECUTABLE_EXTENSIONS = {".exe", ".cmd"};
     private final ToolchainConfig toolchainConfig;
     private final LLVMLanguage language;
 
@@ -47,12 +49,36 @@ public final class ToolchainImpl implements Toolchain {
         this.language = language;
     }
 
+    @Override
+    public TruffleFile getToolPath(String tool) {
+        TruffleFile res = getToolPathImpl(tool);
+        if (LLVMInfo.SYSNAME.toLowerCase().contains("windows")) {
+            /*
+             * On Windows the tools have either a .exe or a .cmd suffix. ATM there is no other way
+             * than to see if the file exists.
+             */
+            TruffleFile parent = res.getParent();
+            String name = res.getName();
+            for (String ext : WINDOWS_EXECUTABLE_EXTENSIONS) {
+                TruffleFile fileWithExt = parent.resolve(name + ext);
+                try {
+                    if (fileWithExt.exists()) {
+                        return fileWithExt;
+                    }
+                } catch (Throwable e) {
+                    // ignore if call to exists() fails
+                }
+            }
+        }
+        return res;
+    }
+
     /**
      * Please keep this list in sync with Toolchain.java (method documentation) and mx_sulong.py's
      * ToolchainConfig::_tool_map.
      */
-    @Override
-    public TruffleFile getToolPath(String tool) {
+    private TruffleFile getToolPathImpl(String tool) {
+
         if (toolchainConfig == null) {
             return null;
         }

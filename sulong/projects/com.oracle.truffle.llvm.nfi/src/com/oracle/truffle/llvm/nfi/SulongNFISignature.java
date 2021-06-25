@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -36,8 +36,8 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.nfi.spi.NFIBackendSignatureBuilderLibrary;
-import com.oracle.truffle.nfi.spi.NFIBackendSignatureLibrary;
+import com.oracle.truffle.nfi.backend.spi.NFIBackendSignatureBuilderLibrary;
+import com.oracle.truffle.nfi.backend.spi.NFIBackendSignatureLibrary;
 
 @ExportLibrary(NFIBackendSignatureLibrary.class)
 @SuppressWarnings("static-method")

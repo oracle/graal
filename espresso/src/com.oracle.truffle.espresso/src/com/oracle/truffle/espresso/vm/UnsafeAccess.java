@@ -51,7 +51,7 @@ public final class UnsafeAccess {
         if (meta.getContext().NativeAccessAllowed) {
             return UNSAFE;
         } else {
-            throw Meta.throwExceptionWithMessage(meta.java_lang_UnsupportedOperationException, "Cannot perform unsafe operations unless the Context allows native access");
+            throw meta.throwExceptionWithMessage(meta.java_lang_UnsupportedOperationException, "Cannot perform unsafe operations unless the Context allows native access");
         }
     }
 }

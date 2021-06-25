@@ -53,6 +53,7 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
+import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
@@ -85,7 +86,7 @@ public final class Target_java_lang_Class {
             case "void":
                 return meta._void.mirror();
             default:
-                throw Meta.throwExceptionWithMessage(meta.java_lang_ClassNotFoundException, name);
+                throw meta.throwExceptionWithMessage(meta.java_lang_ClassNotFoundException, name);
         }
     }
 
@@ -114,7 +115,7 @@ public final class Target_java_lang_Class {
 
         String hostName = meta.toHostString(name);
         if (hostName.indexOf('/') >= 0) {
-            throw Meta.throwExceptionWithMessage(meta.java_lang_ClassNotFoundException, name);
+            throw meta.throwExceptionWithMessage(meta.java_lang_ClassNotFoundException, name);
         }
 
         hostName = hostName.replace('.', '/');
@@ -124,7 +125,7 @@ public final class Target_java_lang_Class {
         }
 
         if (!Validation.validTypeDescriptor(ByteSequence.create(hostName), false)) {
-            throw Meta.throwExceptionWithMessage(meta.java_lang_ClassNotFoundException, name);
+            throw meta.throwExceptionWithMessage(meta.java_lang_ClassNotFoundException, name);
         }
 
         Symbol<Type> type = meta.getTypes().fromClassGetName(hostName);
@@ -139,14 +140,14 @@ public final class Target_java_lang_Class {
             }
 
             if (klass == null) {
-                throw Meta.throwExceptionWithMessage(meta.java_lang_ClassNotFoundException, name);
+                throw meta.throwExceptionWithMessage(meta.java_lang_ClassNotFoundException, name);
             }
 
             if (initialize) {
                 klass.safeInitialize();
             }
             return klass.mirror();
-        } catch (EspressoException e) {
+        } catch (EspressoException | EspressoExitException e) {
             throw e;
         } catch (Throwable e) {
             CompilerDirectives.transferToInterpreter();
@@ -272,8 +273,8 @@ public final class Target_java_lang_Class {
                                 /* signature */ meta.toGuestString(f.getGenericSignature()),
                                 // FIXME(peterssen): Fill annotations bytes.
                                 /* annotations */ runtimeVisibleAnnotations);
-                instance.setHiddenField(meta.HIDDEN_FIELD_KEY, f);
-                instance.setHiddenField(meta.HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS, runtimeVisibleTypeAnnotations);
+                meta.HIDDEN_FIELD_KEY.setHiddenObject(instance, f);
+                meta.HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS.setHiddenObject(instance, runtimeVisibleTypeAnnotations);
                 return instance;
             }
         });
@@ -374,8 +375,8 @@ public final class Target_java_lang_Class {
                                 /* annotations */ runtimeVisibleAnnotations,
                                 /* parameterAnnotations */ runtimeVisibleParameterAnnotations);
 
-                instance.setHiddenField(meta.HIDDEN_CONSTRUCTOR_KEY, m);
-                instance.setHiddenField(meta.HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS, runtimeVisibleTypeAnnotations);
+                meta.HIDDEN_CONSTRUCTOR_KEY.setHiddenObject(instance, m);
+                meta.HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS.setHiddenObject(instance, runtimeVisibleTypeAnnotations);
 
                 return instance;
             }
@@ -489,8 +490,8 @@ public final class Target_java_lang_Class {
                                 /* parameterAnnotations */ runtimeVisibleParameterAnnotations,
                                 /* annotationDefault */ annotationDefault);
 
-                instance.setHiddenField(meta.HIDDEN_METHOD_KEY, m);
-                instance.setHiddenField(meta.HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS, runtimeVisibleTypeAnnotations);
+                meta.HIDDEN_METHOD_KEY.setHiddenObject(instance, m);
+                meta.HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS.setHiddenObject(instance, runtimeVisibleTypeAnnotations);
                 return instance;
             }
         });
@@ -564,21 +565,25 @@ public final class Target_java_lang_Class {
             if (enclosingMethodAttr == null) {
                 return StaticObject.NULL;
             }
-            if (enclosingMethodAttr.getMethodIndex() == 0) {
+            int classIndex = enclosingMethodAttr.getClassIndex();
+            if (classIndex == 0) {
                 return StaticObject.NULL;
             }
             StaticObject arr = meta.java_lang_Object.allocateReferenceArray(3);
             RuntimeConstantPool pool = klass.getConstantPool();
-            Klass enclosingKlass = pool.resolvedKlassAt(klass, enclosingMethodAttr.getClassIndex());
+            Klass enclosingKlass = pool.resolvedKlassAt(klass, classIndex);
 
             vm.setArrayObject(enclosingKlass.mirror(), 0, arr);
 
-            NameAndTypeConstant nmt = pool.nameAndTypeAt(enclosingMethodAttr.getMethodIndex());
-            StaticObject name = meta.toGuestString(nmt.getName(pool));
-            StaticObject desc = meta.toGuestString(nmt.getDescriptor(pool));
+            int methodIndex = enclosingMethodAttr.getMethodIndex();
+            if (methodIndex != 0) {
+                NameAndTypeConstant nmt = pool.nameAndTypeAt(methodIndex);
+                StaticObject name = meta.toGuestString(nmt.getName(pool));
+                StaticObject desc = meta.toGuestString(nmt.getDescriptor(pool));
 
-            vm.setArrayObject(name, 1, arr);
-            vm.setArrayObject(desc, 2, arr);
+                vm.setArrayObject(name, 1, arr);
+                vm.setArrayObject(desc, 2, arr);
+            }
 
             return arr;
         }
@@ -676,7 +681,7 @@ public final class Target_java_lang_Class {
     @Substitution(hasReceiver = true)
     public static @Host(ProtectionDomain.class) StaticObject getProtectionDomain0(@Host(Class.class) StaticObject self,
                     @InjectMeta Meta meta) {
-        StaticObject pd = (StaticObject) self.getHiddenField(meta.HIDDEN_PROTECTION_DOMAIN);
+        StaticObject pd = (StaticObject) meta.HIDDEN_PROTECTION_DOMAIN.getHiddenObject(self);
         // The protection domain is not always set e.g. bootstrap (classloader) classes.
         return pd == null ? StaticObject.NULL : pd;
     }
@@ -716,7 +721,7 @@ public final class Target_java_lang_Class {
             return StaticObject.NULL;
         }
         StaticObject cp = InterpreterToVM.newObject(meta.sun_reflect_ConstantPool, false);
-        cp.setField(meta.sun_reflect_ConstantPool_constantPoolOop, self);
+        meta.sun_reflect_ConstantPool_constantPoolOop.setObject(cp, self);
         return cp;
     }
 
@@ -794,7 +799,7 @@ public final class Target_java_lang_Class {
         if (klass.isPrimitive()) {
             return StaticObject.NULL;
         }
-        StaticObject signersArray = (StaticObject) self.getHiddenField(meta.HIDDEN_SIGNERS);
+        StaticObject signersArray = (StaticObject) meta.HIDDEN_SIGNERS.getHiddenObject(self);
         if (signersArray == null || StaticObject.isNull(signersArray)) {
             return StaticObject.NULL;
         }
@@ -806,7 +811,7 @@ public final class Target_java_lang_Class {
                     @InjectMeta Meta meta) {
         Klass klass = self.getMirrorKlass();
         if (!klass.isPrimitive() && !klass.isArray()) {
-            self.setHiddenField(meta.HIDDEN_SIGNERS, signers);
+            meta.HIDDEN_SIGNERS.setHiddenObject(self, signers);
         }
     }
 }

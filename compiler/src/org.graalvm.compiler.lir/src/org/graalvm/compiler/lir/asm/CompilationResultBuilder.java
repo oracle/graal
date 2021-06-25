@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,7 +43,6 @@ import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.CompilationResult.CodeAnnotation;
 import org.graalvm.compiler.code.CompilationResult.JumpTable;
 import org.graalvm.compiler.code.DataSection.Data;
-import org.graalvm.compiler.code.DataSection.RawData;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.core.common.spi.CodeGenProviders;
@@ -165,8 +164,7 @@ public class CompilationResultBuilder {
 
     /**
      * These position maps are used for estimating offsets of forward branches. Used for
-     * architectures where certain branch instructions have limited displacement such as ARM tbz or
-     * SPARC cbcond.
+     * architectures where certain branch instructions have limited displacement such as ARM tbz.
      */
     private EconomicMap<Label, Integer> labelBindLirPositions;
     private EconomicMap<LIRInstruction, Integer> lirPositions;
@@ -385,13 +383,13 @@ public class CompilationResultBuilder {
         assert constant != null;
         debug.log("Constant reference in code: pos = %d, data = %s", asm.position(), constant);
         Data data = createDataItem(constant);
-        data.updateAlignment(alignment);
+        dataBuilder.updateAlignment(data, alignment);
         return recordDataSectionReference(data);
     }
 
     public AbstractAddress recordDataReferenceInCode(Data data, int alignment) {
         assert data != null;
-        data.updateAlignment(alignment);
+        dataBuilder.updateAlignment(data, alignment);
         return recordDataSectionReference(data);
     }
 
@@ -409,7 +407,8 @@ public class CompilationResultBuilder {
         if (debug.isLogEnabled()) {
             debug.log("Data reference in code: pos = %d, data = %s", asm.position(), Arrays.toString(data));
         }
-        return recordDataSectionReference(new RawData(data, alignment));
+        ArrayDataPointerConstant arrayConstant = new ArrayDataPointerConstant(data, alignment);
+        return recordDataSectionReference(dataBuilder.createSerializableData(arrayConstant, alignment));
     }
 
     /**
@@ -583,7 +582,7 @@ public class CompilationResultBuilder {
                     afterOp.accept(op);
                 }
             } catch (GraalError e) {
-                throw e.addContext("lir instruction", block + "@" + op.id() + " " + op.getClass().getName() + " " + op + "\n" + Arrays.toString(lir.codeEmittingOrder()));
+                throw e.addContext("lir instruction", block + "@" + op.id() + " " + op.getClass().getName() + " " + op);
             }
         }
     }

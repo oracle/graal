@@ -130,15 +130,15 @@ CLSS public abstract interface static com.oracle.truffle.tck.DebuggerTester$Posi
 meth public abstract boolean testLine(int)
 meth public abstract boolean testLineColumn(int,int)
 
-CLSS public final com.oracle.truffle.tck.TruffleRunner
+CLSS public com.oracle.truffle.tck.TruffleRunner
 cons public init(java.lang.Class<?>) throws org.junit.runners.model.InitializationError
 innr public abstract interface static !annotation Inject
 innr public abstract interface static !annotation Warmup
 innr public final static ParametersFactory
 innr public final static RunWithPolyglotRule
-meth protected org.junit.runners.model.Statement methodInvoker(org.junit.runners.model.FrameworkMethod,java.lang.Object)
-meth protected org.junit.runners.model.TestClass createTestClass(java.lang.Class<?>)
-meth protected void validateTestMethods(java.util.List<java.lang.Throwable>)
+meth protected final org.junit.runners.model.Statement methodInvoker(org.junit.runners.model.FrameworkMethod,java.lang.Object)
+meth protected final org.junit.runners.model.TestClass createTestClass(java.lang.Class<?>)
+meth protected final void validateTestMethods(java.util.List<java.lang.Throwable>)
 supr org.junit.runners.BlockJUnit4ClassRunner
 hfds truffleTestInvoker
 hcls ParameterizedRunner

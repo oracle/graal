@@ -45,14 +45,9 @@ public final class QuickenedPutFieldNode extends QuickNode {
 
     @Override
     public int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
-        BytecodeNode root = getBytecodesNode();
+        BytecodeNode root = getBytecodeNode();
         StaticObject receiver = nullCheck(BytecodeNode.popObject(refs, top - 1 - slotCount));
         setFieldNode.setField(frame, primitives, refs, root, receiver, top, statementIndex);
         return -slotCount - 1; // -receiver
-    }
-
-    @Override
-    public boolean producedForeignObject(Object[] refs) {
-        return false;
     }
 }

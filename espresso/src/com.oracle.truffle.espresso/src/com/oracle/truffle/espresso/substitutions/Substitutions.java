@@ -49,6 +49,7 @@ import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.IntrinsicSubstitutorNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.dispatch.EspressoInterop;
 
 /**
  * Substitutions/intrinsics for Espresso.
@@ -222,6 +223,9 @@ public final class Substitutions implements ContextAccess {
         EspressoRootNodeFactory factory = new EspressoRootNodeFactory() {
             @Override
             public EspressoRootNode createNodeIfValid(Method methodToSubstitute, boolean forceValid) {
+                if (!substitutorFactory.isValidFor(methodToSubstitute.getJavaVersion())) {
+                    return null;
+                }
                 StaticObject classLoader = methodToSubstitute.getDeclaringKlass().getDefiningClassLoader();
                 if (forceValid || ClassRegistry.loaderIsBootOrPlatform(classLoader, methodToSubstitute.getMeta())) {
                     return EspressoRootNode.create(null, new IntrinsicSubstitutorNode(substitutorFactory, methodToSubstitute));
@@ -233,7 +237,7 @@ public final class Substitutions implements ContextAccess {
                         StaticObject givenLoader = methodToSubstitute.getDeclaringKlass().getDefiningClassLoader();
                         return "Static substitution for " + methodToSubstitute + " does not apply.\n" +
                                         "\tExpected class loader: Boot (null) or platform class loader\n" +
-                                        "\tGiven class loader: " + givenLoader.toDisplayString(false) + "\n";
+                                        "\tGiven class loader: " + EspressoInterop.toDisplayString(givenLoader, false) + "\n";
                     }
                 });
                 return null;
@@ -289,5 +293,10 @@ public final class Substitutions implements ContextAccess {
             return null;
         }
         return factory.createNodeIfValid(method);
+    }
+
+    public boolean hasSubstitutionFor(Method method) {
+        MethodRef key = getMethodKey(method);
+        return STATIC_SUBSTITUTIONS.containsKey(key) || runtimeSubstitutions.containsKey(key);
     }
 }

@@ -52,7 +52,9 @@ public abstract class ReferenceArrayLoadNode extends QuickNode {
     public final int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
         StaticObject array = nullCheck(BytecodeNode.popObject(refs, top - 2));
         int index = BytecodeNode.popInt(primitives, top - 1);
-        BytecodeNode.putObject(refs, top - 2, executeLoad(array, index));
+        StaticObject result = executeLoad(array, index);
+        getBytecodeNode().checkNoForeignObjectAssumption(result);
+        BytecodeNode.putObject(refs, top - 2, result);
         return Bytecodes.stackEffectOf(Bytecodes.AALOAD);
     }
 
@@ -64,24 +66,20 @@ public abstract class ReferenceArrayLoadNode extends QuickNode {
                     @Cached ToEspressoNode toEspressoNode,
                     @CachedContext(EspressoLanguage.class) EspressoContext context,
                     @Cached BranchProfile exceptionProfile) {
-        Object result = ForeignArrayUtils.readForeignArrayElement(array, index, interop, context.getMeta(), exceptionProfile);
+        Meta meta = context.getMeta();
+        Object result = ForeignArrayUtils.readForeignArrayElement(array, index, interop, meta, exceptionProfile);
 
         ArrayKlass arrayKlass = (ArrayKlass) array.getKlass();
         try {
             return (StaticObject) toEspressoNode.execute(result, arrayKlass.getComponentType());
         } catch (UnsupportedTypeException e) {
             exceptionProfile.enter();
-            throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_ClassCastException, "Could not cast the foreign array element to the array component type");
+            throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Could not cast the foreign array element to the array component type");
         }
     }
 
     @Specialization(guards = "array.isEspressoObject()")
     StaticObject doEspresso(StaticObject array, int index) {
-        return getBytecodesNode().getInterpreterToVM().getArrayObject(index, array);
-    }
-
-    @Override
-    public boolean producedForeignObject(Object[] refs) {
-        return BytecodeNode.peekObject(refs, top - 2).isForeignObject();
+        return getBytecodeNode().getInterpreterToVM().getArrayObject(index, array);
     }
 }

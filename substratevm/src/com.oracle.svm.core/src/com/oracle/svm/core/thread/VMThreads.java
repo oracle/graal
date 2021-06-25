@@ -35,6 +35,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CFunction;
+import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.Pointer;
@@ -444,7 +445,7 @@ public abstract class VMThreads {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code, but still safe at this point.", calleeMustBe = false, mayBeInlined = true)
-    @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, reason = "Still safe at this point.")
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true, reason = "Still safe at this point.")
     private static void cleanupBeforeDetach(IsolateThread thread) {
         JavaThreads.cleanupBeforeDetach(thread);
     }
@@ -503,6 +504,15 @@ public abstract class VMThreads {
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected abstract OSThreadId getCurrentOSThreadId();
+
+    /**
+     * Puts this thread to sleep on the operating-system level and does not care about Java
+     * semantics. May only be used in very specific situations, e.g., when printing diagnostics.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void nativeSleep(@SuppressWarnings("unused") int milliseconds) {
+        throw VMError.shouldNotReachHere();
+    }
 
     @Uninterruptible(reason = "Called from uninterruptible verification code.", mayBeInlined = true)
     public boolean verifyThreadIsAttached(IsolateThread thread) {
@@ -820,6 +830,65 @@ public abstract class VMThreads {
                 }
                 setSynchronizeCode(vmThread);
             }
+        }
+    }
+
+    /**
+     * This follows {@link ActionOnTransitionToJavaSupport}, but only for exiting safepoint.
+     */
+    public static class ActionOnExitSafepointSupport {
+
+        private static final FastThreadLocalInt actionTL = FastThreadLocalFactory.createInt();
+        private static final int NO_ACTION = 0;
+        /**
+         * The thread needs to start execution from a different stack, used for preempting a
+         * continuation.
+         */
+        private static final int SWITCH_STACK = NO_ACTION + 1;
+
+        /** Target of stack switching. */
+        private static final FastThreadLocalWord<Pointer> returnSP = FastThreadLocalFactory.createWord();
+        private static final FastThreadLocalWord<CodePointer> returnIP = FastThreadLocalFactory.createWord();
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static boolean isActionPending() {
+            return actionTL.getVolatile() != NO_ACTION;
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static boolean getSwitchStack() {
+            return actionTL.getVolatile() == SWITCH_STACK;
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static void setSwitchStack(IsolateThread vmThread) {
+            assert VMOperation.isInProgressAtSafepoint() : "Invariant to avoid races between setting and clearing.";
+            actionTL.setVolatile(vmThread, SWITCH_STACK);
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static void setSwitchStackTarget(IsolateThread vmThread, Pointer sp, CodePointer ip) {
+            returnSP.setVolatile(vmThread, sp);
+            returnIP.setVolatile(vmThread, ip);
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        protected static Pointer getSwitchStackSP() {
+            Pointer sp = returnSP.getVolatile();
+            assert sp.isNonNull();
+            return sp;
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        protected static CodePointer getSwitchStackIP() {
+            CodePointer ip = returnIP.getVolatile();
+            assert ip.isNonNull();
+            return ip;
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static void clearActions() {
+            actionTL.setVolatile(NO_ACTION);
         }
     }
 

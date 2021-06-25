@@ -29,6 +29,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -48,9 +49,10 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import com.oracle.svm.hosted.code.HostedImageHeapConstantPatch;
 import com.oracle.svm.hosted.code.HostedPatcher;
-import com.oracle.svm.hosted.image.NativeBootImage.NativeTextSectionImpl;
+import com.oracle.svm.hosted.image.NativeImage.NativeTextSectionImpl;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.MethodPointer;
@@ -245,7 +247,8 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
     public List<ObjectFile.Symbol> getSymbols(ObjectFile objectFile, boolean onlyGlobal) {
         Stream<ObjectFile.Symbol> stream = StreamSupport.stream(objectFile.getSymbolTable().spliterator(), false);
         if (onlyGlobal) {
-            stream = stream.filter(ObjectFile.Symbol::isGlobal);
+            Set<String> globalHiddenSymbols = CGlobalDataFeature.singleton().getGlobalHiddenSymbols();
+            stream = stream.filter(symbol -> symbol.isGlobal() && !globalHiddenSymbols.contains(symbol.getName()));
         }
         return stream.filter(ObjectFile.Symbol::isDefined).collect(Collectors.toList());
     }

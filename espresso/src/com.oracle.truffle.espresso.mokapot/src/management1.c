@@ -71,15 +71,12 @@
    
 
 
-void* initializeManagementContext1(TruffleEnv *truffle_env, void* (*fetch_by_name)(const char *)) {
+void* initializeManagementContext1(void* (*fetch_by_name)(const char *)) {
 
   struct jmmInterface_1 *management = (JmmInterface*) malloc(sizeof(struct jmmInterface_1));
 
-  void *fn_ptr = NULL;
   #define INIT__(name) \
-      fn_ptr = fetch_by_name(#name); \
-      (*truffle_env)->newClosureRef(truffle_env, fn_ptr); \
-      management->name = fn_ptr;
+      management->name = fetch_by_name(#name);
 
   MANAGEMENT_METHOD_LIST_1(INIT__)
   #undef INIT_
@@ -87,12 +84,14 @@ void* initializeManagementContext1(TruffleEnv *truffle_env, void* (*fetch_by_nam
   return management;
 }
 
-void disposeManagementContext1(TruffleEnv *truffle_env, void *management_ptr) {
+void disposeManagementContext1(void *management_ptr, void (*release_closure)(void *)) {
   struct jmmInterface_1 *management = (struct jmmInterface_1*) management_ptr;
 
   #define DISPOSE__(name) \
-       (*truffle_env)->releaseClosureRef(truffle_env, management->name); \
-       management->name = NULL;
+    if (release_closure != NULL) { \
+      release_closure(management->name); \
+    } \
+    management->name = NULL;
 
   MANAGEMENT_METHOD_LIST_1(DISPOSE__)
   #undef DISPOSE__

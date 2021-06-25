@@ -38,6 +38,11 @@ public abstract class FastThreadLocal {
         public boolean isImmutable() {
             return false;
         }
+
+        @Override
+        public String toString() {
+            return "THREAD_LOCAL@" + Integer.toHexString(hashCode());
+        }
     }
 
     private final LocationIdentity locationIdentity;
@@ -61,7 +66,7 @@ public abstract class FastThreadLocal {
     /**
      * Useful value for {@link #setMaxOffset}: The thread local variable is in the first cache line
      * of the memory block. This allows grouping of the most frequently accessed variables.
-     * 
+     *
      * We are not using a real cache line size, but instead assume that 64 bytes is the common
      * minimum size on all platforms.
      */

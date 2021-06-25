@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -228,7 +228,7 @@ public abstract class RegexResult extends AbstractConstantKeysObject {
                         @Cached RegexResultGetStartNode getStartNode) throws ArityException, UnsupportedTypeException {
             if (args.length != 1) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw ArityException.create(1, args.length);
+                throw ArityException.create(1, 1, args.length);
             }
             return getStartNode.execute(result, toIntNode.execute(args[0]));
         }
@@ -262,7 +262,7 @@ public abstract class RegexResult extends AbstractConstantKeysObject {
                         @Cached RegexResultGetEndNode getEndNode) throws ArityException, UnsupportedTypeException {
             if (args.length != 1) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw ArityException.create(1, args.length);
+                throw ArityException.create(1, 1, args.length);
             }
             return getEndNode.execute(result, toIntNode.execute(args[1]));
         }
@@ -306,7 +306,7 @@ public abstract class RegexResult extends AbstractConstantKeysObject {
                     @Cached InvokeCacheNode invokeCache) throws UnknownIdentifierException, ArityException, UnsupportedTypeException {
         if (args.length != 1) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw ArityException.create(1, args.length);
+            throw ArityException.create(1, 1, args.length);
         }
         return invokeCache.execute(this, member, toIntNode.execute(args[0]));
     }

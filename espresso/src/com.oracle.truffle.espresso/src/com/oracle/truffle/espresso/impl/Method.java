@@ -36,7 +36,6 @@ import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeInterfac
 import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeSpecial;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeStatic;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeVirtual;
-import static com.oracle.truffle.espresso.jni.NativeEnv.word;
 
 import java.io.PrintStream;
 import java.lang.reflect.Modifier;
@@ -54,10 +53,8 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.EspressoOptions;
-import com.oracle.truffle.espresso.Utils;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
@@ -75,14 +72,18 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.ffi.NativeAccess;
+import com.oracle.truffle.espresso.ffi.NativeSignature;
+import com.oracle.truffle.espresso.ffi.NativeType;
+import com.oracle.truffle.espresso.ffi.Pointer;
 import com.oracle.truffle.espresso.jdwp.api.Ids;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.jdwp.api.LineNumberTableRef;
 import com.oracle.truffle.espresso.jdwp.api.LocalVariableTableRef;
-import com.oracle.truffle.espresso.jdwp.api.MethodBreakpoint;
+import com.oracle.truffle.espresso.jdwp.api.MethodHook;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.jni.Mangle;
-import com.oracle.truffle.espresso.jni.NativeLibrary;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -90,13 +91,14 @@ import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.NativeMethodNode;
+import com.oracle.truffle.espresso.nodes.interop.AbstractLookupNode;
 import com.oracle.truffle.espresso.nodes.methodhandle.MethodHandleIntrinsicNode;
+import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
-import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 
 public final class Method extends Member<Signature> implements TruffleObject, ContextAccess {
 
@@ -129,15 +131,15 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     private final Method proxy;
     private String genericSignature;
 
+    // always null unless the raw signature exposed for this method should be
+    // different from the one in the linkedKlass
+    private final Symbol<Signature> rawSignature;
+
     // the parts of the method that can change when it's redefined
     // are encapsulated within the methodVersion
     @CompilationFinal private volatile MethodVersion methodVersion;
 
     private final Assumption removedByRedefinition = Truffle.getRuntime().createAssumption();
-
-    public Method identity() {
-        return proxy == null ? this : proxy;
-    }
 
     // Multiple maximally-specific interface methods. Fail on call.
     @CompilationFinal private boolean poisonPill = false;
@@ -145,8 +147,16 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     // Whether we need to use an additional frame slot for monitor unlock on kill.
     @CompilationFinal private byte usesMonitors = -1;
 
-    // can have a different constant pool than it's declaring class
+    public Method identity() {
+        return proxy == null ? this : proxy;
+    }
 
+    @Override
+    public Symbol<Name> getName() {
+        return getLinkedMethod().getName();
+    }
+
+    // can have a different constant pool than it's declaring class
     public ConstantPool getConstantPool() {
         return getRuntimeConstantPool();
     }
@@ -169,7 +179,10 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     public Symbol<Signature> getRawSignature() {
-        return descriptor;
+        if (rawSignature != null) {
+            return rawSignature;
+        }
+        return getLinkedMethod().getRawSignature();
     }
 
     public Symbol<Type>[] getParsedSignature() {
@@ -180,7 +193,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     private Source source;
 
     Method(Method method) {
-        super(method.getRawSignature(), method.getName());
+        this.rawSignature = method.rawSignature;
         this.declaringKlass = method.declaringKlass;
         this.methodVersion = new MethodVersion(method.getRuntimeConstantPool(), method.getLinkedMethod(), method.getCodeAttribute());
 
@@ -188,7 +201,8 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             this.parsedSignature = getSignatures().parsed(this.getRawSignature());
         } catch (IllegalArgumentException | ClassFormatError e) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw Meta.throwExceptionWithMessage(getMeta().java_lang_ClassFormatError, e.getMessage());
+            Meta meta = getMeta();
+            throw meta.throwExceptionWithMessage(meta.java_lang_ClassFormatError, e.getMessage());
         }
 
         // Proxy the method, so that we have the same callTarget if it is not yet initialized.
@@ -202,7 +216,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     private Method(Method method, CodeAttribute split) {
-        super(method.getRawSignature(), method.getName());
+        this.rawSignature = method.rawSignature;
         this.declaringKlass = method.declaringKlass;
         this.methodVersion = new MethodVersion(method.getRuntimeConstantPool(), method.getLinkedMethod(), split);
 
@@ -210,7 +224,8 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             this.parsedSignature = getSignatures().parsed(this.getRawSignature());
         } catch (IllegalArgumentException | ClassFormatError e) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw Meta.throwExceptionWithMessage(getMeta().java_lang_ClassFormatError, e.getMessage());
+            Meta meta = getMeta();
+            throw meta.throwExceptionWithMessage(meta.java_lang_ClassFormatError, e.getMessage());
         }
         // Proxy the method, so that we have the same callTarget if it is not yet initialized.
         // Allows for not duplicating the codeAttribute
@@ -227,15 +242,16 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     Method(ObjectKlass declaringKlass, LinkedMethod linkedMethod, Symbol<Signature> rawSignature, RuntimeConstantPool pool) {
-        super(rawSignature, linkedMethod.getName());
         this.methodVersion = new MethodVersion(pool, linkedMethod, (CodeAttribute) linkedMethod.getAttribute(CodeAttribute.NAME));
         this.declaringKlass = declaringKlass;
+        this.rawSignature = rawSignature;
 
         try {
             this.parsedSignature = getSignatures().parsed(this.getRawSignature());
         } catch (IllegalArgumentException | ClassFormatError e) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw Meta.throwExceptionWithMessage(getMeta().java_lang_ClassFormatError, e.getMessage());
+            Meta meta = getMeta();
+            throw meta.throwExceptionWithMessage(meta.java_lang_ClassFormatError, e.getMessage());
         }
 
         this.exceptionsAttribute = (ExceptionsAttribute) linkedMethod.getAttribute(ExceptionsAttribute.NAME);
@@ -323,32 +339,34 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return res;
     }
 
-    private static String buildJniNativeSignature(Method method) {
+    public static NativeSignature buildJniNativeSignature(Symbol<Type>[] signature) {
+        NativeType returnType = NativeAccess.kindToNativeType(Signatures.returnKind(signature));
+        int argCount = Signatures.parameterCount(signature, false);
+
+        // Prepend JNIEnv* and class|receiver.
+        NativeType[] parameterTypes = new NativeType[argCount + 2];
+
         // Prepend JNIEnv*.
-        StringBuilder sb = new StringBuilder("(").append(NativeSimpleType.POINTER);
-        final Symbol<Type>[] signature = method.getParsedSignature();
+        parameterTypes[0] = NativeType.POINTER;
 
         // Receiver for instance methods, class for static methods.
-        sb.append(", ").append(word());
+        parameterTypes[1] = NativeType.OBJECT;
 
-        int argCount = Signatures.parameterCount(signature, false);
         for (int i = 0; i < argCount; ++i) {
-            sb.append(", ").append(Utils.kindToType(Signatures.parameterKind(signature, i)));
+            parameterTypes[i + 2] = NativeAccess.kindToNativeType(Signatures.parameterKind(signature, i));
         }
 
-        sb.append("): ").append(Utils.kindToType(Signatures.returnKind(signature)));
-
-        return sb.toString();
+        return NativeSignature.create(returnType, parameterTypes);
     }
 
-    public static TruffleObject bind(TruffleObject library, Method m, String mangledName) throws UnknownIdentifierException {
-        String signature = buildJniNativeSignature(m);
-        return NativeLibrary.lookupAndBind(library, mangledName, signature);
+    public TruffleObject lookupAndBind(@Pointer TruffleObject library, String mangledName) {
+        NativeSignature signature = buildJniNativeSignature(getParsedSignature());
+        return getNativeAccess().lookupAndBindSymbol(library, mangledName, signature);
     }
 
-    private static TruffleObject bind(TruffleObject symbol, Method m) {
-        String signature = buildJniNativeSignature(m);
-        return NativeLibrary.bind(symbol, signature);
+    private TruffleObject bind(@Pointer TruffleObject symbol) {
+        NativeSignature signature = buildJniNativeSignature(getParsedSignature());
+        return getNativeAccess().bindSymbol(symbol, signature);
     }
 
     /**
@@ -361,6 +379,16 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     public CallTarget getCallTargetNoInit() {
         return getMethodVersion().getCallTargetNoInit();
+    }
+
+    /**
+     * Obtains the original call target for the method, ignoring espresso substitutions. Note that
+     * this completely ignores the call target cache, therefore, all calls to this method will
+     * generate a new CallTarget. This is fine, as this method is not intended to be used outside of
+     * the substitutions themselves.
+     */
+    public CallTarget getCallTargetNoSubstitution() {
+        return getMethodVersion().getCallTargetNoSubstitution();
     }
 
     public boolean usesMonitors() {
@@ -395,6 +423,60 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return descriptor;
     }
 
+    private void checkPoisonPill(Meta meta) {
+        if (poisonPill) {
+            // Conflicting Maximally-specific non-abstract interface methods.
+            if (getJavaVersion().java9OrLater() && getContext().SpecCompliancyMode == EspressoOptions.SpecCompliancyMode.HOTSPOT) {
+                /*
+                 * Supposed to be IncompatibleClassChangeError (see jvms-6.5.invokeinterface), but
+                 * HotSpot throws AbstractMethodError.
+                 */
+                throw meta.throwExceptionWithMessage(meta.java_lang_AbstractMethodError, "Conflicting default methods: " + getName());
+            }
+            throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "Conflicting default methods: " + getName());
+        }
+    }
+
+    private CallTarget lookupLibJavaCallTarget() {
+        // If the loader is null we have a system class, so we attempt a lookup
+        // in the native Java library.
+        if (StaticObject.isNull(getDeclaringKlass().getDefiningClassLoader())) {
+            for (boolean withSignature : new boolean[]{false, true}) {
+                String mangledName = Mangle.mangleMethod(this, withSignature);
+                // Look in libjava
+                TruffleObject nativeMethod = lookupAndBind(getVM().getJavaLibrary(), mangledName);
+                if (nativeMethod != null) {
+                    return Truffle.getRuntime().createCallTarget(EspressoRootNode.create(null, new NativeMethodNode(nativeMethod, getMethodVersion())));
+                }
+            }
+        }
+        return null;
+    }
+
+    private CallTarget lookupAgents() {
+        // Look in agents
+        for (boolean withSignature : new boolean[]{false, true}) {
+            String mangledName = Mangle.mangleMethod(this, withSignature);
+            TruffleObject nativeMethod = getContext().bindToAgent(this, mangledName);
+            if (nativeMethod != null) {
+                return Truffle.getRuntime().createCallTarget(EspressoRootNode.create(null, new NativeMethodNode(nativeMethod, getMethodVersion())));
+            }
+        }
+        return null;
+    }
+
+    private CallTarget lookupJniCallTarget() {
+        CallTarget target;
+        Method findNative = getMeta().java_lang_ClassLoader_findNative;
+        // Lookup the short name first, otherwise lookup the long name (with
+        // signature).
+        target = lookupJniCallTarget(findNative, false);
+        if (target == null) {
+            target = lookupJniCallTarget(findNative, true);
+        }
+        return target;
+    }
+
     private CallTarget lookupJniCallTarget(Method findNative, boolean fullSignature) {
         String mangledName = Mangle.mangleMethod(this, fullSignature);
         long handle = (long) findNative.invokeWithConversions(null, getDeclaringKlass().getDefiningClassLoader(), mangledName);
@@ -402,8 +484,8 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             return null;
         }
         TruffleObject symbol = getVM().getFunction(handle);
-        TruffleObject nativeMethod = bind(symbol, this);
-        return Truffle.getRuntime().createCallTarget(EspressoRootNode.create(null, new NativeMethodNode(nativeMethod, this.getMethodVersion(), true)));
+        TruffleObject nativeMethod = bind(symbol);
+        return Truffle.getRuntime().createCallTarget(EspressoRootNode.create(null, new NativeMethodNode(nativeMethod, this.getMethodVersion())));
     }
 
     public boolean isConstructor() {
@@ -585,9 +667,9 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         StaticObject curMethod = seed;
         Method target = null;
         while (target == null) {
-            target = (Method) curMethod.getHiddenField(meta.HIDDEN_METHOD_KEY);
+            target = (Method) meta.HIDDEN_METHOD_KEY.getHiddenObject(curMethod);
             if (target == null) {
-                curMethod = (StaticObject) meta.java_lang_reflect_Method_root.get(curMethod);
+                curMethod = meta.java_lang_reflect_Method_root.getObject(curMethod);
             }
         }
         return target;
@@ -598,9 +680,9 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         StaticObject curMethod = seed;
         Method target = null;
         while (target == null) {
-            target = (Method) curMethod.getHiddenField(meta.HIDDEN_CONSTRUCTOR_KEY);
+            target = (Method) meta.HIDDEN_CONSTRUCTOR_KEY.getHiddenObject(curMethod);
             if (target == null) {
-                curMethod = (StaticObject) meta.java_lang_reflect_Constructor_root.get(curMethod);
+                curMethod = meta.java_lang_reflect_Constructor_root.getObject(curMethod);
             }
         }
         return target;
@@ -879,6 +961,11 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return getName().toString();
     }
 
+    @TruffleBoundary
+    public String getInteropString() {
+        return getNameAsString() + AbstractLookupNode.METHOD_SELECTION_SEPARATOR + getRawSignature();
+    }
+
     public String getSignatureAsString() {
         return getRawSignature().toString();
     }
@@ -927,49 +1014,98 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return genericSignature;
     }
 
-    private final Field.StableBoolean hasActiveBreakpoints = new Field.StableBoolean(false);
+    private final Field.StableBoolean hasActiveHook = new Field.StableBoolean(false);
 
-    private MethodBreakpoint[] infos = new MethodBreakpoint[0];
+    private MethodHook[] hooks = new MethodHook[0];
 
-    public boolean hasActiveBreakpoint() {
-        return hasActiveBreakpoints.get();
+    public boolean hasActiveHook() {
+        return hasActiveHook.get();
     }
 
-    public MethodBreakpoint[] getMethodBreakpointInfos() {
-        return infos;
+    public synchronized MethodHook[] getMethodHooks() {
+        return Arrays.copyOf(hooks, hooks.length);
     }
 
-    public void addMethodBreakpointInfo(MethodBreakpoint info) {
-        hasActiveBreakpoints.set(true);
-        if (infos.length == 0) {
-            infos = new MethodBreakpoint[]{info};
+    public synchronized void addMethodHook(MethodHook info) {
+        hasActiveHook.set(true);
+        if (hooks.length == 0) {
+            hooks = new MethodHook[]{info};
             return;
         }
 
-        infos = Arrays.copyOf(infos, infos.length + 1);
-        infos[infos.length - 1] = info;
+        hooks = Arrays.copyOf(hooks, hooks.length + 1);
+        hooks[hooks.length - 1] = info;
     }
 
-    public void removeMethodBreakpointInfo(int requestId) {
+    private void expectActiveHooks() {
+        if (hooks.length == 0) {
+            throw new RuntimeException("Method: " + getNameAsString() + " expected to contain method hook");
+        }
+    }
+
+    public synchronized void removeActiveHook(int requestId) {
+        expectActiveHooks();
+        boolean removed = false;
         // shrink the array to avoid null values
-        if (infos.length == 0) {
-            throw new RuntimeException("Method: " + getNameAsString() + " should contain method breakpoint info");
-        } else if (infos.length == 1) {
-            infos = new MethodBreakpoint[0];
-            hasActiveBreakpoints.set(false);
+        if (hooks.length == 1) {
+            // make sure it's the right hook
+            if (hooks[0].getRequestId() == requestId) {
+                hooks = new MethodHook[0];
+                hasActiveHook.set(false);
+                removed = true;
+            }
         } else {
             int removeIndex = -1;
-            for (int i = 0; i < infos.length; i++) {
-                if (infos[i].getRequestId() == requestId) {
+            for (int i = 0; i < hooks.length; i++) {
+                if (hooks[i].getRequestId() == requestId) {
                     removeIndex = i;
                     break;
                 }
             }
-            MethodBreakpoint[] temp = new MethodBreakpoint[infos.length - 1];
-            for (int i = 0; i < temp.length; i++) {
-                temp[i] = i < removeIndex ? infos[i] : infos[i + 1];
+            if (removeIndex != -1) {
+                MethodHook[] temp = new MethodHook[hooks.length - 1];
+                for (int i = 0; i < temp.length; i++) {
+                    temp[i] = i < removeIndex ? hooks[i] : hooks[i + 1];
+                }
+                hooks = temp;
+                removed = true;
             }
-            infos = temp;
+        }
+        if (!removed) {
+            throw new RuntimeException("Method: " + getNameAsString() + " should contain method hook");
+        }
+    }
+
+    public synchronized void removeActiveHook(MethodHook hook) {
+        expectActiveHooks();
+        boolean removed = false;
+        // shrink the array to avoid null values
+        if (hooks.length == 1) {
+            // make sure it's the right hook
+            if (hooks[0] == hook) {
+                hooks = new MethodHook[0];
+                hasActiveHook.set(false);
+                removed = true;
+            }
+        } else {
+            int removeIndex = -1;
+            for (int i = 0; i < hooks.length; i++) {
+                if (hooks[i] == hook) {
+                    removeIndex = i;
+                    break;
+                }
+            }
+            if (removeIndex != -1) {
+                MethodHook[] temp = new MethodHook[hooks.length - 1];
+                for (int i = 0; i < temp.length; i++) {
+                    temp[i] = i < removeIndex ? hooks[i] : hooks[i + 1];
+                }
+                hooks = temp;
+                removed = true;
+            }
+        }
+        if (!removed) {
+            throw new RuntimeException("Method: " + getNameAsString() + " should contain method hook");
         }
     }
 
@@ -1078,30 +1214,26 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             return getCallTarget(false);
         }
 
-        public CallTarget getCallTarget(boolean initKlass) {
+        private CallTarget getCallTargetNoSubstitution() {
+            CompilerAsserts.neverPartOfCompilation();
+            EspressoError.guarantee(getSubstitutions().hasSubstitutionFor(getMethod()),
+                            "Using 'getCallTargetNoSubstitution' should be done only to bypass the substitution mechanism.");
+            return findCallTarget();
+        }
+
+        private CallTarget getCallTarget(boolean initKlass) {
             if (callTarget == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 Meta meta = getMeta();
-                if (poisonPill) {
-                    // Conflicting Maximally-specific non-abstract interface methods.
-                    if (getJavaVersion().java9OrLater() && getContext().SpecCompliancyMode == EspressoOptions.SpecCompliancyMode.HOTSPOT) {
-                        /*
-                         * Supposed to be IncompatibleClassChangeError (see
-                         * jvms-6.5.invokeinterface), but HotSpot throws AbstractMethodError.
-                         */
-                        throw Meta.throwExceptionWithMessage(meta.java_lang_AbstractMethodError, "Conflicting default methods: " + getMethod().getName());
-                    }
-                    throw Meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "Conflicting default methods: " + getMethod().getName());
-                }
+                checkPoisonPill(meta);
                 if (initKlass) {
-                    // Initializing a class costs a lock, do it outside of this method's lock to
-                    // avoid
-                    // congestion.
-                    // Note that requesting a call target is immediately followed by a call to the
-                    // method, before advancing BCI.
-                    // This ensures that we are respecting the specs, saying that a class must be
-                    // initialized before a method is called, while saving a call to safeInitialize
-                    // after a method lookup.
+                    /*
+                     * Initializing a class costs a lock, do it outside of this method's lock to
+                     * avoid congestion. Note that requesting a call target is immediately followed
+                     * by a call to the method, before advancing BCI. This ensures that we are
+                     * respecting the specs, saying that a class must be initialized before a method
+                     * is called, while saving a call to safeInitialize after a method lookup.
+                     */
                     declaringKlass.safeInitialize();
                 }
                 synchronized (this) {
@@ -1121,79 +1253,62 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                     EspressoRootNode redirectedMethod = getSubstitutions().get(getMethod());
                     if (redirectedMethod != null) {
                         callTarget = Truffle.getRuntime().createCallTarget(redirectedMethod);
+                        return callTarget;
                     }
 
-                    if (callTarget == null) {
-                        if (getMethod().isNative()) {
-                            // Bind native method.
-                            // If the loader is null we have a system class, so we attempt a lookup
-                            // in the native Java library.
-                            if (StaticObject.isNull(getMethod().getDeclaringKlass().getDefiningClassLoader())) {
-                                // Look in libjava
-                                for (boolean withSignature : new boolean[]{false, true}) {
-                                    String mangledName = Mangle.mangleMethod(getMethod(), withSignature);
-
-                                    try {
-                                        TruffleObject nativeMethod = bind(getVM().getJavaLibrary(), getMethod(), mangledName);
-                                        callTarget = Truffle.getRuntime().createCallTarget(EspressoRootNode.create(null, new NativeMethodNode(nativeMethod, this, true)));
-                                        return callTarget;
-                                    } catch (UnknownIdentifierException e) {
-                                        // native method not found in libjava, safe to ignore
-                                    }
-                                    // Look in agents
-                                    TruffleObject nativeMethod = getContext().bindToAgent(getMethod(), mangledName);
-                                    if (nativeMethod != null) {
-                                        callTarget = Truffle.getRuntime().createCallTarget(EspressoRootNode.create(null, new NativeMethodNode(nativeMethod, this, true)));
-                                        return callTarget;
-                                    }
-                                }
-                            }
-
-                            Method findNative = meta.java_lang_ClassLoader_findNative;
-
-                            // Lookup the short name first, otherwise lookup the long name (with
-                            // signature).
-                            callTarget = lookupJniCallTarget(findNative, false);
-                            if (callTarget == null) {
-                                callTarget = lookupJniCallTarget(findNative, true);
-                            }
-
-                            // TODO(peterssen): Search JNI methods with OS prefix/suffix
-                            // (print_jni_name_suffix_on ...)
-
-                            if (callTarget == null) {
-                                if (isSignaturePolymorphicDeclared()) {
-                                    /*
-                                     * Happens only when trying to obtain call target of
-                                     * MethodHandle.invoke(Object... args), or
-                                     * MethodHandle.invokeExact(Object... args).
-                                     *
-                                     * The method was obtained through a regular lookup (since it is
-                                     * in the declared methods). Delegate it to a polysignature
-                                     * method lookup.
-                                     *
-                                     * Redundant callTarget assignment. Better sure than sorry.
-                                     */
-                                    this.callTarget = declaringKlass.lookupPolysigMethod(getName(), getRawSignature()).getCallTarget();
-                                } else {
-                                    getContext().getLogger().log(Level.WARNING, "Failed to link native method: {0}", getMethod().toString());
-                                    throw Meta.throwException(meta.java_lang_UnsatisfiedLinkError);
-                                }
-                            }
-                        } else {
-                            if (codeAttribute == null) {
-                                throw Meta.throwExceptionWithMessage(meta.java_lang_AbstractMethodError,
-                                                "Calling abstract method: " + getMethod().getDeclaringKlass().getType() + "." + getName() + " -> " + getRawSignature());
-                            }
-                            FrameDescriptor frameDescriptor = new FrameDescriptor();
-                            EspressoRootNode rootNode = EspressoRootNode.create(frameDescriptor, new BytecodeNode(this, frameDescriptor));
-                            callTarget = Truffle.getRuntime().createCallTarget(rootNode);
-                        }
+                    CallTarget target = findCallTarget();
+                    if (target != null) {
+                        callTarget = target;
+                        return callTarget;
                     }
                 }
             }
-
             return callTarget;
+        }
+
+        private CallTarget findCallTarget() {
+            CallTarget target;
+            if (getMethod().isNative()) {
+                // Bind native method.
+                target = lookupLibJavaCallTarget();
+                if (target == null) {
+                    target = lookupAgents();
+                }
+                if (target == null) {
+                    target = lookupJniCallTarget();
+                }
+
+                // TODO(peterssen): Search JNI methods with OS prefix/suffix
+                // (print_jni_name_suffix_on ...)
+
+                if (target == null && isSignaturePolymorphicDeclared()) {
+                    /*
+                     * Happens only when trying to obtain call target of
+                     * MethodHandle.invoke(Object... args), or MethodHandle.invokeExact(Object...
+                     * args).
+                     *
+                     * The method was obtained through a regular lookup (since it is in the declared
+                     * methods). Delegate it to a polysignature method lookup.
+                     */
+                    target = declaringKlass.lookupPolysigMethod(getName(), getRawSignature()).getCallTarget();
+                }
+
+                if (target == null) {
+                    getContext().getLogger().log(Level.WARNING, "Failed to link native method: {0}", getMethod().toString());
+                    Meta meta = getMeta();
+                    throw meta.throwException(meta.java_lang_UnsatisfiedLinkError);
+                }
+            } else {
+                if (codeAttribute == null) {
+                    Meta meta = getMeta();
+                    throw meta.throwExceptionWithMessage(meta.java_lang_AbstractMethodError,
+                                    "Calling abstract method: " + getMethod().getDeclaringKlass().getType() + "." + getName() + " -> " + getRawSignature());
+                }
+                FrameDescriptor frameDescriptor = new FrameDescriptor();
+                EspressoRootNode rootNode = EspressoRootNode.create(frameDescriptor, new BytecodeNode(this, frameDescriptor));
+                target = Truffle.getRuntime().createCallTarget(rootNode);
+            }
+            return target;
         }
 
         public int getCodeSize() {
@@ -1291,8 +1406,9 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         @Override
         public Object invokeMethod(Object callee, Object[] args) {
             if (getMethod().isRemovedByRedefition()) {
-                throw Meta.throwExceptionWithMessage(getMeta().java_lang_NoSuchMethodError,
-                                getMeta().toGuestString(getMethod().getDeclaringKlass().getNameAsString() + "." + getMethod().getName() + getMethod().getRawSignature()));
+                Meta meta = getMeta();
+                throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError,
+                                meta.toGuestString(getMethod().getDeclaringKlass().getNameAsString() + "." + getMethod().getName() + getMethod().getRawSignature()));
             }
             return getMethod().invokeMethod(callee, args);
         }
@@ -1323,23 +1439,28 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         }
 
         @Override
-        public MethodBreakpoint[] getMethodBreakpointInfos() {
-            return getMethod().getMethodBreakpointInfos();
+        public MethodHook[] getMethodHooks() {
+            return getMethod().getMethodHooks();
         }
 
         @Override
-        public void addMethodBreakpointInfo(MethodBreakpoint info) {
-            getMethod().addMethodBreakpointInfo(info);
+        public void addMethodHook(MethodHook info) {
+            getMethod().addMethodHook(info);
         }
 
         @Override
-        public void removeMethodBreakpointInfo(int requestId) {
-            getMethod().removeMethodBreakpointInfo(requestId);
+        public void removedMethodHook(int requestId) {
+            getMethod().removeActiveHook(requestId);
         }
 
         @Override
-        public boolean hasActiveBreakpoint() {
-            return getMethod().hasActiveBreakpoint();
+        public void removedMethodHook(MethodHook hook) {
+            getMethod().removeActiveHook(hook);
+        }
+
+        @Override
+        public boolean hasActiveHook() {
+            return getMethod().hasActiveHook();
         }
 
         @Override
@@ -1363,9 +1484,14 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             }
             return bci;
         }
+
+        @Override
+        public String toString() {
+            return getMethod().toString();
+        }
     }
 
-    class SharedRedefinitionContent {
+    static class SharedRedefinitionContent {
 
         private final LinkedMethod linkedMethod;
         private final RuntimeConstantPool pool;

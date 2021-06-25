@@ -1,3 +1,9 @@
+---
+layout: docs
+toc_group: truffle
+link_title: Truffle Approach to Function Inlining
+permalink: /graalvm-as-a-platform/language-implementation-framework/Inlining/
+---
 # Truffle Approach to Function Inlining
 
 Truffle provides automated inlining for all languages built with the framework.

@@ -32,7 +32,6 @@ import java.net.InetAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.security.Permission;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -69,9 +68,11 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.Package_jdk_internal_reflect;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.SVMHost;
@@ -130,6 +131,7 @@ public class PermissionsFeature implements Feature {
         compilerPackages.add("com.oracle.graalvm.");
         compilerPackages.add("com.oracle.truffle.api.");
         compilerPackages.add("com.oracle.truffle.polyglot.");
+        compilerPackages.add("com.oracle.truffle.host.");
         compilerPackages.add("com.oracle.truffle.nfi.");
         compilerPackages.add("com.oracle.truffle.object.");
     }
@@ -152,9 +154,10 @@ public class PermissionsFeature implements Feature {
     private Set<AnalysisMethod> whiteList;
 
     /**
-     * Marker interface for SVM generated accessor classes which are opaque for permission analysis.
+     * Classes for reflective accesses which are opaque for permission analysis.
      */
     private AnalysisType reflectionProxy;
+    private AnalysisType reflectionFieldAccessorFactory;
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
@@ -175,9 +178,7 @@ public class PermissionsFeature implements Feature {
     @SuppressWarnings("try")
     public void afterAnalysis(AfterAnalysisAccess access) {
         try {
-            if (Files.exists(reportFilePath) && Files.size(reportFilePath) > 0) {
-                Files.newOutputStream(reportFilePath, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-            }
+            Files.deleteIfExists(reportFilePath);
         } catch (IOException ioe) {
             throw UserError.abort("Cannot delete existing report file %s.", reportFilePath);
         }
@@ -193,9 +194,8 @@ public class PermissionsFeature implements Feature {
                             new ResourceAsOptionDecorator(getClass().getPackage().getName().replace('.', '/') + "/resources/jre.json"),
                             CONFIG);
             reflectionProxy = bigbang.forClass("com.oracle.svm.reflect.helpers.ReflectionProxy");
-            if (reflectionProxy == null) {
-                UserError.abort("Cannot load ReflectionProxy type");
-            }
+            reflectionFieldAccessorFactory = bigbang.forClass(Package_jdk_internal_reflect.getQualifiedName() + ".UnsafeFieldAccessorFactory");
+            VMError.guarantee(reflectionProxy != null && reflectionFieldAccessorFactory != null, "Cannot load one or several reflection types");
             whiteList = parser.getLoadedWhiteList();
             Set<AnalysisMethod> deniedMethods = new HashSet<>();
             deniedMethods.addAll(findMethods(bigbang, SecurityManager.class, (m) -> m.getName().startsWith("check")));
@@ -411,7 +411,7 @@ public class PermissionsFeature implements Feature {
                 } else {
                     nextCaller: for (AnalysisMethod caller : callers) {
                         for (CallGraphFilter filter : contextFilters) {
-                            if (filter.test(m, caller, visited)) {
+                            if (isReflectionFieldAccessorFactory(caller) || filter.test(m, caller, visited)) {
                                 continue nextCaller;
                             }
                         }
@@ -427,8 +427,6 @@ public class PermissionsFeature implements Feature {
 
     /**
      * Tests if the given {@link AnalysisMethod} comes from {@code ReflectionProxy} implementation.
-     *
-     * @param method the {@link AnalysisMethod} to check
      */
     private boolean isReflectionProxy(AnalysisMethod method) {
         for (AnalysisType iface : method.getDeclaringClass().getInterfaces()) {
@@ -437,6 +435,13 @@ public class PermissionsFeature implements Feature {
             }
         }
         return false;
+    }
+
+    /**
+     * Tests if the given {@link AnalysisMethod} is part of the factory of field accessors.
+     */
+    private boolean isReflectionFieldAccessorFactory(AnalysisMethod method) {
+        return reflectionFieldAccessorFactory.isAssignableFrom(method.getDeclaringClass());
     }
 
     /**

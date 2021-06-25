@@ -31,12 +31,14 @@ import java.io.Externalizable;
 import java.io.ObjectStreamClass;
 import java.io.Serializable;
 import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
+import com.oracle.svm.core.configure.ConfigurationFile;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
@@ -46,6 +48,7 @@ import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.SerializationConfigurationParser;
 import com.oracle.svm.core.configure.SerializationConfigurationParser.SerializationParserFunction;
 import com.oracle.svm.core.jdk.Package_jdk_internal_reflect;
+import com.oracle.svm.core.jdk.RecordSupport;
 import com.oracle.svm.core.jdk.serialize.SerializationRegistry;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -55,6 +58,7 @@ import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
+import com.oracle.svm.reflect.hosted.ReflectionFeature;
 import com.oracle.svm.reflect.serialize.SerializationSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -65,8 +69,13 @@ public class SerializationFeature implements Feature {
     private int loadedConfigurations;
 
     @Override
-    public void beforeAnalysis(BeforeAnalysisAccess a) {
-        FeatureImpl.BeforeAnalysisAccessImpl access = (FeatureImpl.BeforeAnalysisAccessImpl) a;
+    public List<Class<? extends Feature>> getRequiredFeatures() {
+        return Collections.singletonList(ReflectionFeature.class);
+    }
+
+    @Override
+    public void duringSetup(DuringSetupAccess a) {
+        FeatureImpl.DuringSetupAccessImpl access = (FeatureImpl.DuringSetupAccessImpl) a;
         SerializationBuilder serializationBuilder = new SerializationBuilder(access);
 
         Map<Class<?>, Boolean> deniedClasses = new HashMap<>();
@@ -79,7 +88,7 @@ public class SerializationFeature implements Feature {
         ImageClassLoader imageClassLoader = access.getImageClassLoader();
         ConfigurationParserUtils.parseAndRegisterConfigurations(denyCollectorParser, imageClassLoader, "serialization",
                         ConfigurationFiles.Options.SerializationDenyConfigurationFiles, ConfigurationFiles.Options.SerializationDenyConfigurationResources,
-                        ConfigurationFiles.SERIALIZATION_DENY_NAME);
+                        ConfigurationFile.SERIALIZATION_DENY.getFileName());
 
         SerializationParserFunction serializationAdapter = (strTargetSerializationClass, strCustomTargetConstructorClass) -> {
             Class<?> serializationTargetClass = resolveClass(strTargetSerializationClass, access);
@@ -112,7 +121,7 @@ public class SerializationFeature implements Feature {
         SerializationConfigurationParser parser = new SerializationConfigurationParser(serializationAdapter);
         loadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurations(parser, imageClassLoader, "serialization",
                         ConfigurationFiles.Options.SerializationConfigurationFiles, ConfigurationFiles.Options.SerializationConfigurationResources,
-                        ConfigurationFiles.SERIALIZATION_NAME);
+                        ConfigurationFile.SERIALIZATION.getFileName());
     }
 
     public static void addReflections(Class<?> serializationTargetClass, Class<?> targetConstructorClass) {
@@ -122,6 +131,18 @@ public class SerializationFeature implements Feature {
 
         if (Externalizable.class.isAssignableFrom(serializationTargetClass)) {
             RuntimeReflection.register(ReflectionUtil.lookupConstructor(serializationTargetClass, (Class<?>[]) null));
+        }
+
+        RecordSupport recordSupport = RecordSupport.singleton();
+        if (recordSupport.isRecord(serializationTargetClass)) {
+            /* Serialization for records uses the canonical record constructor directly. */
+            RuntimeReflection.register(recordSupport.getCanonicalRecordConstructor(serializationTargetClass));
+            /*
+             * Serialization for records invokes Class.getRecordComponents(). Registering all record
+             * component accessor methods for reflection ensures that the record components are
+             * available at run time.
+             */
+            RuntimeReflection.register(recordSupport.getRecordComponentAccessorMethods(serializationTargetClass));
         }
 
         RuntimeReflection.register(serializationTargetClass);
@@ -142,17 +163,7 @@ public class SerializationFeature implements Feature {
     }
 
     private static void registerFields(Class<?> serializationTargetClass) {
-        for (Field f : serializationTargetClass.getDeclaredFields()) {
-            int modifiers = f.getModifiers();
-            boolean allowWrite = false;
-            boolean allowUnsafeAccess = false;
-            int staticFinalMask = Modifier.STATIC | Modifier.FINAL;
-            if ((modifiers & staticFinalMask) != staticFinalMask) {
-                allowWrite = Modifier.isFinal(f.getModifiers());
-                allowUnsafeAccess = !Modifier.isStatic(f.getModifiers());
-            }
-            RuntimeReflection.register(allowWrite, allowUnsafeAccess, f);
-        }
+        RuntimeReflection.register(serializationTargetClass.getDeclaredFields());
     }
 
     private static Class<?> resolveClass(String typeName, FeatureAccess a) {
@@ -206,7 +217,7 @@ final class SerializationBuilder {
 
     private final SerializationSupport serializationSupport;
 
-    SerializationBuilder(FeatureImpl.BeforeAnalysisAccessImpl access) {
+    SerializationBuilder(FeatureImpl.DuringSetupAccessImpl access) {
         try {
             Class<?> reflectionFactoryClass = access.findClassByName(Package_jdk_internal_reflect.getQualifiedName() + ".ReflectionFactory");
             Method getReflectionFactoryMethod = ReflectionUtil.lookupMethod(reflectionFactoryClass, "getReflectionFactory");

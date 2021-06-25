@@ -28,6 +28,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.function.Consumer;
 
+import com.oracle.svm.core.configure.ConfigurationFile;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
@@ -79,7 +80,7 @@ public final class DynamicProxyFeature implements Feature {
         ProxyConfigurationParser parser = new ProxyConfigurationParser(adapter);
         loadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurations(parser, imageClassLoader, "dynamic proxy",
                         ConfigurationFiles.Options.DynamicProxyConfigurationFiles, ConfigurationFiles.Options.DynamicProxyConfigurationResources,
-                        ConfigurationFiles.DYNAMIC_PROXY_NAME);
+                        ConfigurationFile.DYNAMIC_PROXY.getFileName());
     }
 
     @Override

@@ -40,10 +40,8 @@ import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.MultiTypeState.Range;
-import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.BitArrayUtils;
 
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaConstant;
 
 public abstract class TypeState {
@@ -216,10 +214,6 @@ public abstract class TypeState {
         return this == EmptyTypeState.SINGLETON;
     }
 
-    public boolean isUnknown() {
-        return this == UnknownTypeState.SINGLETON;
-    }
-
     public boolean isSingleTypeState() {
         return this.typesCount() == 1;
     }
@@ -246,7 +240,7 @@ public abstract class TypeState {
     public abstract TypeState exactTypeState(BigBang bb, AnalysisType exactType);
 
     public boolean verifyDeclaredType(AnalysisType declaredType) {
-        if (!this.isUnknown() && declaredType != null) {
+        if (declaredType != null) {
             for (AnalysisType e : types()) {
                 if (!declaredType.isAssignableFrom(e)) {
                     return false;
@@ -290,10 +284,6 @@ public abstract class TypeState {
 
     public static TypeState forNull() {
         return NullTypeState.SINGLETON;
-    }
-
-    public static TypeState forUnknown() {
-        return UnknownTypeState.SINGLETON;
     }
 
     /** Wraps an analysis object into a non-null type state. */
@@ -374,7 +364,7 @@ public abstract class TypeState {
      */
     public static TypeState forContextInsensitiveTypeState(BigBang bb, TypeState state) {
         if (!PointstoOptions.AllocationSiteSensitiveHeap.getValue(bb.getOptions()) ||
-                        state.isEmpty() || state.isNull() || state.isUnknown()) {
+                        state.isEmpty() || state.isNull()) {
             /* The type state is already context insensitive. */
             return state;
         } else {
@@ -409,12 +399,7 @@ public abstract class TypeState {
     protected abstract TypeState forCanBeNull(BigBang bb, boolean stateCanBeNull);
 
     public static TypeState forUnion(BigBang bb, TypeState s1, TypeState s2) {
-
-        if (s1.isUnknown()) {
-            return s1;
-        } else if (s2.isUnknown()) {
-            return s2;
-        } else if (s1.isEmpty()) {
+        if (s1.isEmpty()) {
             return s2;
         } else if (s1.isNull()) {
             return s2.forCanBeNull(bb, true);
@@ -439,10 +424,6 @@ public abstract class TypeState {
     }
 
     public static TypeState forIntersection(BigBang bb, TypeState s1, TypeState s2) {
-        if (s1.isUnknown() || s2.isUnknown()) {
-            throw AnalysisError.shouldNotReachHere("Intersection with unknown type state is undefined.");
-        }
-
         if (s1.isEmpty()) {
             return s1;
         } else if (s1.isNull()) {
@@ -464,10 +445,6 @@ public abstract class TypeState {
     }
 
     public static TypeState forSubtraction(BigBang bb, TypeState s1, TypeState s2) {
-        if (s1.isUnknown() || s2.isUnknown()) {
-            throw AnalysisError.shouldNotReachHere("Subtraction of unknown type state is undefined");
-        }
-
         if (s1.isEmpty()) {
             return s1;
         } else if (s1.isNull()) {
@@ -1560,92 +1537,4 @@ final class NullTypeState extends TypeState {
         return "Null";
     }
 
-}
-
-final class UnknownTypeState extends TypeState {
-
-    protected static final TypeState SINGLETON = new UnknownTypeState();
-
-    private UnknownTypeState() {
-        super(BitArrayUtils.EMPTY_BIT_ARRAY);
-    }
-
-    @Override
-    public void noteMerge(BigBang bb) {
-    }
-
-    @Override
-    public boolean hasExactTypes(BitSet typesBitSet) {
-        return false;
-    }
-
-    @Override
-    public AnalysisType exactType() {
-        throw JVMCIError.shouldNotReachHere("UnknownTypeState.exactType()");
-    }
-
-    @Override
-    public int typesCount() {
-        throw JVMCIError.shouldNotReachHere("UnknownTypeState.typesCount()");
-    }
-
-    @Override
-    public Iterator<AnalysisType> typesIterator() {
-        throw JVMCIError.shouldNotReachHere("UnknownTypeState.typesIterator()");
-    }
-
-    @Override
-    public Iterator<AnalysisObject> objectsIterator(AnalysisType type) {
-        throw JVMCIError.shouldNotReachHere("UnknownTypeState.objectsIterator(AnalysisType)");
-    }
-
-    @Override
-    public AnalysisObject[] objectsArray(AnalysisType type) {
-        throw JVMCIError.shouldNotReachHere("UnknownTypeState.objectsArray(AnalysisType)");
-    }
-
-    @Override
-    public boolean containsType(AnalysisType exactType) {
-        throw JVMCIError.shouldNotReachHere("UnknownTypeState.containsType(AnalysisType)");
-    }
-
-    @Override
-    public boolean containsObject(AnalysisObject object) {
-        throw JVMCIError.shouldNotReachHere("UnknownTypeState.containsObject(AnalysisObject)");
-    }
-
-    @Override
-    public TypeState exactTypeState(BigBang bb, AnalysisType exactType) {
-        throw JVMCIError.shouldNotReachHere("UnknownTypeState.exactTypeState(AnalysisType)");
-    }
-
-    @Override
-    public TypeState forCanBeNull(BigBang bb, boolean stateCanBeNull) {
-        return UnknownTypeState.SINGLETON;
-    }
-
-    @Override
-    public AnalysisObject[] objects() {
-        throw JVMCIError.shouldNotReachHere("UnknownTypeState.objects()");
-    }
-
-    @Override
-    public int objectsCount() {
-        throw JVMCIError.shouldNotReachHere("UnknownTypeState.objectsCount()");
-    }
-
-    @Override
-    public boolean canBeNull() {
-        return true;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        return this == obj;
-    }
-
-    @Override
-    public String toString() {
-        return "Unknown";
-    }
 }

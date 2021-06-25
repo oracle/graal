@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -123,8 +123,11 @@ public abstract class LiteralRegexExecNode extends RegexExecNode implements Json
 
     public static final class EmptyEndsWith extends LiteralRegexExecNode {
 
+        private final boolean sticky;
+
         public EmptyEndsWith(RegexLanguage language, RegexAST ast, PreCalcResultVisitor preCalcResultVisitor) {
             super(language, ast, preCalcResultVisitor);
+            this.sticky = ast.getFlags().isSticky();
         }
 
         @Override
@@ -135,7 +138,11 @@ public abstract class LiteralRegexExecNode extends RegexExecNode implements Json
         @Override
         protected RegexResult execute(Object input, int fromIndex) {
             assert fromIndex <= inputLength(input);
-            return resultFactory.createFromEnd(inputLength(input));
+            if (!sticky || fromIndex == inputLength(input)) {
+                return resultFactory.createFromEnd(inputLength(input));
+            } else {
+                return NoMatchResult.getInstance();
+            }
         }
     }
 

@@ -90,9 +90,7 @@ def fuzz(args=None, out=None):
                 mx_sulong.llvm_tool(["llvm-link", "-o", tmp_ll, tmp_ll, tmp_main_ll])
                 mx_sulong.llvm_tool(["llvm-dis", "-o", tmp_ll, tmp_ll])
             else:
-                csmith_exe = mx_sulong.which("csmith")
-                if not csmith_exe:
-                    mx.abort("`csmith` executable not found")
+                csmith_exe = "csmith"
                 csmith_headers = mx.get_env('CSMITH_HEADERS', None)
                 if not csmith_headers:
                     mx.abort("Environment variable `CSMITH_HEADERS` not set")

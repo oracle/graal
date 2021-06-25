@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,6 +49,7 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.io.ByteArrayOutputStream;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
@@ -61,9 +62,19 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleSafepoint;
+import com.oracle.truffle.api.nodes.RootNode;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.Source;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestName;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -79,6 +90,13 @@ import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
 public class TruffleContextTest extends AbstractPolyglotTest {
+
+    @Rule public TestName testNameRule = new TestName();
+
+    @After
+    public void checkInterrupted() {
+        Assert.assertFalse("Interrupted flag was left set by test: " + testNameRule.getMethodName(), Thread.interrupted());
+    }
 
     @Test
     public void testCreate() {
@@ -115,13 +133,14 @@ public class TruffleContextTest extends AbstractPolyglotTest {
 
     @Test
     public void testParallelForceClose() throws InterruptedException {
-        setupEnv(Context.newBuilder().allowAllAccess(true).build(), new ProxyLanguage() {
+        setupEnv(Context.newBuilder().allowAllAccess(true).option("engine.TriggerUncaughtExceptionHandlerForCancel", "true").build(),
+                        new ProxyLanguage() {
 
-            @Override
-            protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
-                return true;
-            }
-        });
+                            @Override
+                            protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
+                                return true;
+                            }
+                        });
 
         TruffleContext tc = languageEnv.newContextBuilder().build();
         List<Thread> threads = new ArrayList<>();
@@ -169,7 +188,7 @@ public class TruffleContextTest extends AbstractPolyglotTest {
         for (int i = 0; i < threads.size(); i++) {
             Throwable e = exceptions.get(i).get();
             assertNotNull(e);
-            assertEquals(getCancelExcecutionClass(), e.getClass());
+            assertEquals(getCancelExecutionClass(), e.getClass());
             assertEquals("testreason", e.getMessage());
             assertTrue(tc.isClosed());
         }
@@ -189,15 +208,16 @@ public class TruffleContextTest extends AbstractPolyglotTest {
 
         assertFails(() -> tc.close(), IllegalStateException.class);
 
-        assertFails(() -> tc.closeCancelled(node, "testreason"), getCancelExcecutionClass(), (e) -> {
-            assertSame(getCancelExcecutionLocation(e), node);
+        assertFails(() -> tc.closeCancelled(node, "testreason"), getCancelExecutionClass(), (e) -> {
+            assertSame(getCancelExecutionLocation(e), node);
             assertEquals("testreason", ((Throwable) e).getMessage());
         });
 
-        assertFails(() -> tc.closeResourceExhausted(node, "testreason"), getCancelExcecutionClass(), (e) -> {
-            assertSame(getCancelExcecutionLocation(e), node);
+        assertFails(() -> tc.closeResourceExhausted(node, "testreason"), getCancelExecutionClass(), (e) -> {
+            assertSame(getCancelExecutionLocation(e), node);
             assertEquals("testreason", ((Throwable) e).getMessage());
         });
+
         tc.leave(null, prev);
     }
 
@@ -305,6 +325,31 @@ public class TruffleContextTest extends AbstractPolyglotTest {
     }
 
     @Test
+    public void testCancellingUncaughtExceptionHandler() {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        setupEnv(Context.newBuilder().allowAllAccess(true).err(out).build(), new ProxyLanguage() {
+            @Override
+            protected CallTarget parse(ParsingRequest request) {
+                RootNode rootNode;
+                String command = request.getSource().getCharacters().toString();
+                switch (command) {
+                    case "controller":
+                        rootNode = new ControllerNode(languageInstance);
+                        break;
+                    case "worker":
+                        rootNode = new WorkerNode(languageInstance);
+                        break;
+                    default:
+                        throw CompilerDirectives.shouldNotReachHere("Unknown request: " + command);
+                }
+                return Truffle.getRuntime().createCallTarget(rootNode);
+            }
+        });
+        context.eval(Source.newBuilder(ProxyLanguage.ID, "controller", "test").buildLiteral());
+        assertFalse(out.toString().contains(getCancelExecutionClass().getName()));
+    }
+
+    @Test
     public void testContextHierarchy() {
         setupEnv();
 
@@ -355,8 +400,8 @@ public class TruffleContextTest extends AbstractPolyglotTest {
 
         // we allow cancel in this case. the error will be propagated an the caller
         // need to make sure to either propagate the cancel the parent context
-        assertFails(() -> tc1.closeCancelled(null, ""), getCancelExcecutionClass());
-        assertFails(() -> tc1.closeResourceExhausted(null, ""), getCancelExcecutionClass());
+        assertFails(() -> tc1.closeCancelled(null, ""), getCancelExecutionClass());
+        assertFails(() -> tc1.closeResourceExhausted(null, ""), getCancelExecutionClass());
 
         tc1.leave(null, prev3);
         tc2.leave(null, prev2);
@@ -364,7 +409,62 @@ public class TruffleContextTest extends AbstractPolyglotTest {
 
     }
 
-    private static Class<? extends Throwable> getCancelExcecutionClass() {
+    @Test
+    public void testLeaveAndEnter() {
+        setupEnv();
+
+        TruffleContext tc = languageEnv.getContext();
+        assertTrue(tc.isEntered());
+
+        int value = tc.leaveAndEnter(null, () -> {
+            assertFalse(tc.isEntered());
+            assertFalse(tc.isClosed());
+            return 42;
+        });
+        assertEquals(42, value);
+
+        assertTrue(tc.isEntered());
+        assertFalse(tc.isClosed());
+    }
+
+    @Test
+    public void testLeaveAndEnterInnerContext() {
+        setupEnv();
+
+        TruffleContext parent = languageEnv.getContext();
+        TruffleContext tc = languageEnv.newContextBuilder().build();
+        assertFalse(tc.isEntered());
+        assertEquals(parent, tc.getParent());
+
+        try {
+            tc.leaveAndEnter(null, () -> {
+                fail();
+                return true;
+            });
+            fail();
+        } catch (AssertionError e) {
+            assertTrue(e.getMessage(), e.getMessage().contains("Cannot leave context that is currently not entered"));
+        }
+
+        assertTrue(parent.isEntered());
+        Object prev = tc.enter(null);
+        try {
+            assertFalse(parent.isEntered());
+            assertTrue(parent.isActive());
+            int value = tc.leaveAndEnter(null, () -> {
+                assertFalse(tc.isEntered());
+                assertFalse(parent.isEntered());
+                assertTrue(parent.isActive());
+                return 42;
+            });
+            assertEquals(42, value);
+            assertTrue(tc.isEntered());
+        } finally {
+            tc.leave(null, prev);
+        }
+    }
+
+    private static Class<? extends Throwable> getCancelExecutionClass() {
         try {
             return Class.forName("com.oracle.truffle.polyglot.PolyglotEngineImpl$CancelExecution").asSubclass(Throwable.class);
         } catch (ClassNotFoundException cnf) {
@@ -372,13 +472,71 @@ public class TruffleContextTest extends AbstractPolyglotTest {
         }
     }
 
-    private static Node getCancelExcecutionLocation(Throwable t) {
+    private static Node getCancelExecutionLocation(Throwable t) {
         try {
             Method m = t.getClass().getDeclaredMethod("getLocation");
             m.setAccessible(true);
             return (Node) m.invoke(t);
         } catch (ReflectiveOperationException e) {
             throw new AssertionError("Failed to invoke CancelExecution.getLocation.", e);
+        }
+    }
+
+    private static final class ControllerNode extends RootNode {
+
+        ControllerNode(TruffleLanguage<?> language) {
+            super(language);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return executeImpl();
+        }
+
+        @TruffleBoundary
+        private Object executeImpl() {
+            TruffleLanguage.Env env = lookupContextReference(ProxyLanguage.class).get().getEnv();
+            TruffleContext creatorContext = env.newContextBuilder().build();
+            CountDownLatch running = new CountDownLatch(1);
+            Thread t = env.createThread(() -> {
+                CallTarget target = ProxyLanguage.getCurrentContext().getEnv().parsePublic(com.oracle.truffle.api.source.Source.newBuilder(
+                                ProxyLanguage.ID, "worker", "worker").build());
+                running.countDown();
+                target.call();
+            }, creatorContext);
+            try {
+                t.start();
+                running.await();
+                creatorContext.closeCancelled(this, "Stopping");
+                t.join();
+                return true;
+            } catch (InterruptedException ie) {
+                return false;
+            }
+        }
+    }
+
+    private static final class WorkerNode extends RootNode {
+
+        WorkerNode(TruffleLanguage<?> language) {
+            super(language);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return executeImpl();
+        }
+
+        @TruffleBoundary
+        private Object executeImpl() {
+            while (true) {
+                try {
+                    Thread.sleep(1_000);
+                    TruffleSafepoint.poll(this);
+                } catch (InterruptedException ie) {
+                    // Ignore InterruptedException, wait for ThreadDeath.
+                }
+            }
         }
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,7 @@ import java.util.Map;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.CompilationResultInfo;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
 import org.graalvm.compiler.truffle.runtime.AbstractGraalTruffleRuntimeListener;
+import org.graalvm.compiler.truffle.runtime.FixedPointMath;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntimeListener;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
@@ -85,11 +86,15 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
         Map<String, Object> properties = new LinkedHashMap<>();
         GraalTruffleRuntimeListener.addASTSizeProperty(target, properties);
         properties.put("Tier", Integer.toString(tier)); // to avoid padding
-        properties.put("Calls/Thres", String.format("%7d/%5d", target.getCallCount(), target.engine.callThresholdInInterpreter));
-        properties.put("CallsAndLoop/Thres", String.format("%7d/%5d", target.getCallAndLoopCount(), target.engine.callAndLoopThresholdInInterpreter));
+        int callThreshold = tier == 1 ? target.engine.callThresholdInInterpreter : target.engine.callThresholdInFirstTier;
+        int scale = runtime.compilationThresholdScale();
+        properties.put("Calls/Thres", String.format("%7d/%5d", target.getCallCount(), FixedPointMath.multiply(scale, callThreshold)));
+        int callAndLoopThreshold = tier == 1 ? target.engine.callAndLoopThresholdInInterpreter : target.engine.callAndLoopThresholdInFirstTier;
+        properties.put("CallsAndLoop/Thres", String.format("%7d/%5d", target.getCallAndLoopCount(), FixedPointMath.multiply(scale, callAndLoopThreshold)));
         properties.put("Src", formatSourceSection(target.getRootNode().getSourceSection()));
         properties.put("QueueSize", runtime.getCompilationQueueSize());
         properties.put("Time", System.nanoTime() - startTime);
+        properties.put("Scale", scale);
         return properties;
     }
 
@@ -99,7 +104,7 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
             if (!isPermanentFailure(bailout, permanentBailout)) {
                 onCompilationDequeued(target, null, "Non permanent bailout: " + reason, tier);
             } else {
-                Map<String, Object> properties = queueProperties(target, tier);
+                Map<String, Object> properties = compilationEndProperties(target, null, null, null, tier);
                 properties.put("Reason", reason);
                 runtime.logEvent(target, 0, "opt failed", properties);
             }
@@ -143,14 +148,22 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
             return;
         }
 
+        Map<String, Object> properties = compilationEndProperties(target, inliningDecision, graph, result, tier);
+
+        runtime.logEvent(target, 0, "opt done", properties);
+
+        currentCompilation.set(null);
+    }
+
+    private Map<String, Object> compilationEndProperties(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph, CompilationResultInfo result, int tier) {
         long timeCompilationFinished = System.nanoTime();
-        int nodeCountLowered = graph.getNodeCount();
+        int nodeCountLowered = graph == null ? 0 : graph.getNodeCount();
         Times compilation = currentCompilation.get();
 
         int calls = 0;
         int inlinedCalls;
         if (inliningDecision == null) {
-            TraceCompilationListener.CallCountVisitor visitor = new TraceCompilationListener.CallCountVisitor();
+            CallCountVisitor visitor = new CallCountVisitor();
             target.accept(visitor);
             calls = visitor.calls;
             inlinedCalls = 0;
@@ -169,17 +182,14 @@ public final class TraceCompilationListener extends AbstractGraalTruffleRuntimeL
                         (timeCompilationFinished - compilation.timePartialEvaluationFinished) / 1e6));
         properties.put("Inlined", String.format("%3dY %3dN", inlinedCalls, dispatchedCalls));
         properties.put("IR", String.format("%5d/%5d", compilation.nodeCountPartialEval, nodeCountLowered));
-        properties.put("CodeSize", result.getTargetCodeSize());
+        properties.put("CodeSize", result == null ? 0 : result.getTargetCodeSize());
         if (target.getCodeAddress() != 0) {
             properties.put("Addr", "0x" + Long.toHexString(target.getCodeAddress()));
         } else {
             properties.put("Addr", "N/A");
         }
         properties.put("Src", formatSourceSection(target.getRootNode().getSourceSection()));
-
-        runtime.logEvent(target, 0, "opt done", properties);
-
-        currentCompilation.set(null);
+        return properties;
     }
 
     private static String formatSourceSection(SourceSection sourceSection) {

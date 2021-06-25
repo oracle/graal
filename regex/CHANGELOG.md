@@ -2,6 +2,10 @@
 
 This changelog summarizes major changes between TRegex versions relevant to language implementors integrating TRegex into their language. This document will focus on API changes relevant to integrators of TRegex.
 
+## Version 21.2.0
+
+* Added support for the `hasIndices` (`d`) flag in ECMAScript regular expressions.
+
 ## Version 20.2.0
 
 * Introduced on-the-fly decoding for UTF-16 strings.

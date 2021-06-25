@@ -100,7 +100,7 @@ public abstract class DebugExprFunctionCallNode extends LLVMExpressionNode {
                     } catch (UnsupportedTypeException e) {
                         throw DebugExprException.create(this, "actual and formal parameters of %s do not match", functionName);
                     } catch (ArityException e) {
-                        throw DebugExprException.create(this, "%s requires %d argument(s) but got %d", functionName, e.getExpectedArity(), e.getActualArity());
+                        throw DebugExprException.create(this, "%s requires %d argument(s) but got %d", functionName, e.getExpectedMinArity(), e.getActualArity());
                     }
                 } else {
                     throw DebugExprException.create(this, "%s is not invocable", functionName);

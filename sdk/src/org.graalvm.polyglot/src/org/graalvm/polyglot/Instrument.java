@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,7 @@
 package org.graalvm.polyglot;
 
 import org.graalvm.options.OptionDescriptors;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractInstrumentImpl;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractInstrumentDispatch;
 
 /**
  * A handle for an <em>instrument</em> installed in an {@link Engine engine}. The instrument is
@@ -56,10 +56,12 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractInstrumentImpl;
  */
 public final class Instrument {
 
-    final AbstractInstrumentImpl impl;
+    final AbstractInstrumentDispatch dispatch;
+    final Object receiver;
 
-    Instrument(AbstractInstrumentImpl impl) {
-        this.impl = impl;
+    Instrument(AbstractInstrumentDispatch dispatch, Object receiver) {
+        this.dispatch = dispatch;
+        this.receiver = receiver;
     }
 
     /**
@@ -69,7 +71,7 @@ public final class Instrument {
      * @since 19.0
      */
     public String getId() {
-        return impl.getId();
+        return dispatch.getId(receiver);
     }
 
     /**
@@ -79,7 +81,7 @@ public final class Instrument {
      * @since 19.0
      */
     public String getName() {
-        return impl.getName();
+        return dispatch.getName(receiver);
     }
 
     /**
@@ -89,7 +91,7 @@ public final class Instrument {
      * @since 19.0
      */
     public OptionDescriptors getOptions() {
-        return impl.getOptions();
+        return dispatch.getOptions(receiver);
     }
 
     /**
@@ -99,7 +101,7 @@ public final class Instrument {
      * @since 19.0
      */
     public String getVersion() {
-        return impl.getVersion();
+        return dispatch.getVersion(receiver);
     }
 
     /**
@@ -113,7 +115,7 @@ public final class Instrument {
      * @since 19.0
      */
     public <T> T lookup(Class<T> type) {
-        return impl.lookup(type);
+        return dispatch.lookup(receiver, type);
     }
 
 }

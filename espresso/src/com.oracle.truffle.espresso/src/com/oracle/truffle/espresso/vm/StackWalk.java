@@ -94,7 +94,7 @@ public class StackWalk {
     }
 
     private static int getConstantField(Klass stackStreamFactory, StaticObject statics, String name, Meta meta) {
-        return statics.getIntField(stackStreamFactory.lookupDeclaredField(meta.getNames().getOrCreate(name), Symbol.Type._int));
+        return stackStreamFactory.lookupDeclaredField(meta.getNames().getOrCreate(name), Symbol.Type._int).getInt(statics);
     }
 
     public StackWalk() {
@@ -121,7 +121,7 @@ public class StackWalk {
         Integer decodedOrNull = fw.doStackWalk(frames);
         int decoded = decodedOrNull == null ? fw.decoded() : decodedOrNull;
         if (decoded < 1) {
-            throw Meta.throwException(meta.java_lang_InternalError);
+            throw meta.throwException(meta.java_lang_InternalError);
         }
         register(fw);
         Object result = meta.java_lang_AbstractStackWalker_doStackWalk.invokeDirect(stackStream, fw.anchor, skipframes, batchSize, startIndex, startIndex + decoded);
@@ -144,7 +144,7 @@ public class StackWalk {
         assert synchronizedConstants(meta);
         FrameWalker fw = getAnchored(anchor);
         if (fw == null) {
-            throw Meta.throwExceptionWithMessage(meta.java_lang_InternalError, "doStackWalk: corrupted buffers");
+            throw meta.throwExceptionWithMessage(meta.java_lang_InternalError, "doStackWalk: corrupted buffers");
         }
         if (batchSize <= 0) {
             return startIndex;
@@ -330,7 +330,7 @@ public class StackWalk {
                 }
             }
             if (!needMethodInfo(mode) && getCallerClass(mode) && (index == startIndex) && ((m.getModifiers() & ACC_CALLER_SENSITIVE) != 0)) {
-                throw Meta.throwExceptionWithMessage(meta.java_lang_UnsupportedOperationException, "StackWalker::getCallerClass called from @CallerSensitive method");
+                throw meta.throwExceptionWithMessage(meta.java_lang_UnsupportedOperationException, "StackWalker::getCallerClass called from @CallerSensitive method");
             }
             processFrame(frameInstance, m, index);
             decoded++;
@@ -345,7 +345,7 @@ public class StackWalk {
                 fillFrame(frameInstance, m, index);
             } else {
                 // Only class info is needed.
-                frames.putObject(m.getDeclaringKlass().mirror(), index, meta);
+                meta.getInterpreterToVM().setArrayObject(m.getDeclaringKlass().mirror(), index, frames);
             }
         }
 
@@ -356,10 +356,10 @@ public class StackWalk {
          */
         private void fillFrame(FrameInstance frameInstance, Method m, int index) {
             StaticObject frame = frames.get(index);
-            StaticObject memberName = frame.getField(meta.java_lang_StackFrameInfo_memberName);
+            StaticObject memberName = meta.java_lang_StackFrameInfo_memberName.getObject(frame);
             Target_java_lang_invoke_MethodHandleNatives.plantResolvedMethod(memberName, m, m.getRefKind(), meta);
-            memberName.setField(meta.java_lang_invoke_MemberName_clazz, m.getDeclaringKlass().mirror());
-            frame.setIntField(meta.java_lang_StackFrameInfo_bci, VM.getEspressoRootFromFrame(frameInstance).readBCI(frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY)));
+            meta.java_lang_invoke_MemberName_clazz.setObject(memberName, m.getDeclaringKlass().mirror());
+            meta.java_lang_StackFrameInfo_bci.setInt(frame, VM.getEspressoRootFromFrame(frameInstance).readBCI(frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY)));
         }
     }
 }

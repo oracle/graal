@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -51,7 +51,7 @@ public class AssumptionPartialEvaluationTest extends PartialEvaluationTest {
         Assumption assumption = Truffle.getRuntime().createAssumption();
         AbstractTestNode result = new ConstantWithAssumptionTestNode(assumption, 42);
         RootTestNode rootNode = new RootTestNode(new FrameDescriptor(), "constantValue", result);
-        OptimizedCallTarget callTarget = assertPartialEvalEquals("constant42", rootNode);
+        OptimizedCallTarget callTarget = assertPartialEvalEquals(AssumptionPartialEvaluationTest::constant42, rootNode);
         Assert.assertTrue(callTarget.isValid());
         assertDeepEquals(42, callTarget.call());
         Assert.assertTrue(callTarget.isValid());

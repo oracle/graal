@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,6 +56,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.ResourceLimits;
 import org.graalvm.polyglot.Source;
 import org.junit.Assert;
 import org.junit.Assume;
@@ -64,7 +66,12 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
+import com.oracle.truffle.api.instrumentation.EventContext;
+import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.test.CompileImmediatelyCheck;
 
@@ -91,6 +98,43 @@ public class RetainedSizeComputationTest {
                 Assert.assertTrue(retainedSize < 16L * 1024L * 1024L);
             } finally {
                 context.leave();
+            }
+        }
+    }
+
+    @Test
+    public void testRetainedSizeWithStatementLimit() {
+        Assume.assumeFalse(TruffleOptions.AOT);
+        Assume.assumeFalse(Truffle.getRuntime() instanceof DefaultTruffleRuntime);
+        try (Engine engine = Engine.create()) {
+            Context.newBuilder().engine(engine).build().close();
+            ResourceLimits resourceLimits = ResourceLimits.newBuilder().statementLimit(5, source -> true).build();
+            try (Context context = Context.newBuilder().engine(engine).resourceLimits(resourceLimits).build()) {
+                TruffleInstrument.Env instrumentEnv = context.getEngine().getInstruments().get("InstrumentationUpdateInstrument").lookup(TruffleInstrument.Env.class);
+                context.initialize(InstrumentationTestLanguage.ID);
+                instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class).build(), new ExecutionEventListener() {
+                    @Override
+                    public void onEnter(EventContext ctx, VirtualFrame frame) {
+
+                    }
+
+                    @Override
+                    public void onReturnValue(EventContext ctx, VirtualFrame frame, Object result) {
+                        long retainedSize = instrumentEnv.calculateContextHeapSize(instrumentEnv.getEnteredContext(), 16L * 1024L * 1024L, new AtomicBoolean(false));
+                        Assert.assertTrue(retainedSize > 0L);
+                        Assert.assertTrue(retainedSize < 16L * 1024L * 1024L);
+                    }
+
+                    @Override
+                    public void onReturnExceptional(EventContext ctx, VirtualFrame frame, Throwable exception) {
+
+                    }
+                });
+                /*
+                 * StatementIncrementNode stores PolyglotContextImpl in frames. The retained size
+                 * computation should stop on PolyglotContextImpl and don't fail.
+                 */
+                context.eval(InstrumentationTestLanguage.ID, "ROOT(STATEMENT)");
             }
         }
     }
@@ -144,15 +188,32 @@ public class RetainedSizeComputationTest {
             List<Future<?>> futures = new ArrayList<>();
             Object waiter = new Object();
             AtomicInteger defineCount = new AtomicInteger();
+            int targetDefineCount = 1000000;
+            int notificationStep = 1000;
             for (int i = 0; i < 100; i++) {
                 int taskId = i;
                 futures.add(executor.submit(() -> {
                     synchronized (waiter) {
-                        while (defineCount.get() < taskId * 10000) {
+                        while (defineCount.get() < taskId * notificationStep * 10) {
                             try {
                                 waiter.wait();
                             } catch (InterruptedException ie) {
                             }
+                        }
+                        /*
+                         * Wait until at least 1000 further define calls.
+                         */
+                        int currentDefineCount = defineCount.get();
+                        if (currentDefineCount <= (targetDefineCount - 2 * notificationStep)) {
+                            int waitUntilDefineCount = ((currentDefineCount + notificationStep - 1) / notificationStep) * notificationStep + notificationStep;
+                            while (defineCount.get() < waitUntilDefineCount) {
+                                try {
+                                    waiter.wait();
+                                } catch (InterruptedException ie) {
+                                }
+                            }
+                        } else {
+                            return;
                         }
                     }
                     context.enter();
@@ -170,10 +231,10 @@ public class RetainedSizeComputationTest {
              * computation should start as soon as it is allowed to start and don't take longer than
              * the computation started after it.
              */
-            for (int i = 0; i < 1000000; i++) {
+            for (int i = 0; i < targetDefineCount; i++) {
                 defineFoobarFunction(context, i);
                 defineCount.incrementAndGet();
-                if (i % 10000 == 0) {
+                if (i % notificationStep == 0) {
                     synchronized (waiter) {
                         waiter.notifyAll();
                     }
@@ -183,9 +244,11 @@ public class RetainedSizeComputationTest {
                 future.get();
             }
             long previousResult = 0;
+            int cnt = 0;
             for (long calculationResult : retainedSizesList) {
+                cnt++;
                 if (previousResult > 1024L * 1024L) {
-                    Assert.assertTrue(String.format("previousCalculationResult = %d, calculationResult = %d", previousResult, calculationResult),
+                    Assert.assertTrue(String.format("previousCalculationResult = %d, calculationResult = %d, cnt = %d", previousResult, calculationResult, cnt),
                                     previousResult > 16L * 1024 * 1024L || previousResult <= calculationResult);
                 }
                 previousResult = calculationResult;
@@ -210,15 +273,32 @@ public class RetainedSizeComputationTest {
             AtomicBoolean cancelled = new AtomicBoolean();
             Object waiter = new Object();
             AtomicInteger defineCount = new AtomicInteger();
+            int targetDefineCount = 1000000;
+            int notificationStep = 1000;
             for (int i = 0; i < 100; i++) {
                 int taskId = i;
                 futures.add(executor.submit(() -> {
                     synchronized (waiter) {
-                        while (defineCount.get() < taskId * 10000) {
+                        while (defineCount.get() < taskId * notificationStep * 10) {
                             try {
                                 waiter.wait();
                             } catch (InterruptedException ie) {
                             }
+                        }
+                        /*
+                         * Wait until at least 1000 further define calls.
+                         */
+                        int currentDefineCount = defineCount.get();
+                        if (currentDefineCount <= (targetDefineCount - 2 * notificationStep)) {
+                            int waitUntilDefineCount = ((currentDefineCount + notificationStep - 1) / notificationStep) * notificationStep + notificationStep;
+                            while (defineCount.get() < waitUntilDefineCount) {
+                                try {
+                                    waiter.wait();
+                                } catch (InterruptedException ie) {
+                                }
+                            }
+                        } else {
+                            return;
                         }
                     }
                     context.enter();
@@ -242,15 +322,15 @@ public class RetainedSizeComputationTest {
              * soon as it is allowed to start and don't take longer than the computation started
              * after it unless the next computation is cancelled.
              */
-            for (int i = 0; i < 1000000; i++) {
+            for (int i = 0; i < targetDefineCount; i++) {
                 defineFoobarFunction(context, i);
                 defineCount.incrementAndGet();
-                if (i % 10000 == 0) {
+                if (i % notificationStep == 0) {
                     synchronized (waiter) {
                         waiter.notifyAll();
                     }
                 }
-                if (i == 505000) {
+                if (i == targetDefineCount / 2 + notificationStep / 2) {
                     cancelled.set(true);
                 }
             }
@@ -260,7 +340,7 @@ public class RetainedSizeComputationTest {
             long previousResult = 0;
             for (long calculationResult : retainedSizesList) {
                 if (previousResult > 1024L * 1024L || previousResult == -1L) {
-                    Assert.assertTrue(String.format("previousCalculationResult = %d, calculationResult = %d", previousResult, previousResult),
+                    Assert.assertTrue(String.format("previousCalculationResult = %d, calculationResult = %d", previousResult, calculationResult),
                                     previousResult > 16L * 1024 * 1024L || previousResult <= calculationResult ||
                                                     (previousResult >= 0 && calculationResult == -1L));
                 }

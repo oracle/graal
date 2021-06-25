@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,34 +44,48 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.predefined.BuiltinModule;
+import org.graalvm.wasm.predefined.wasi.fd.FdManager;
 
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 public final class WasmContext {
+    private final Uid uid;
     private final Env env;
     private final WasmLanguage language;
+    private final Map<SymbolTable.FunctionType, Integer> equivalenceClasses;
+    private int nextEquivalenceClass;
     private final MemoryRegistry memoryRegistry;
     private final GlobalRegistry globals;
     private final TableRegistry tableRegistry;
     private final Linker linker;
     private final Map<String, WasmInstance> moduleInstances;
     private int moduleNameCount;
+    private final FdManager filesManager;
 
     public static WasmContext getCurrent() {
         return WasmLanguage.getCurrentContext();
     }
 
     public WasmContext(Env env, WasmLanguage language) {
+        this.uid = new Uid();
         this.env = env;
         this.language = language;
+        this.equivalenceClasses = new HashMap<>();
+        this.nextEquivalenceClass = SymbolTable.FIRST_EQUIVALENCE_CLASS;
         this.globals = new GlobalRegistry();
         this.tableRegistry = new TableRegistry();
         this.memoryRegistry = new MemoryRegistry();
         this.moduleInstances = new LinkedHashMap<>();
         this.linker = new Linker();
         this.moduleNameCount = 0;
+        this.filesManager = new FdManager(env);
         instantiateBuiltinInstances();
+    }
+
+    public Uid uid() {
+        return uid;
     }
 
     public Env environment() {
@@ -98,9 +112,22 @@ public final class WasmContext {
         return linker;
     }
 
+    public Integer equivalenceClassFor(SymbolTable.FunctionType type) {
+        Integer equivalenceClass = equivalenceClasses.get(type);
+        if (equivalenceClass == null) {
+            equivalenceClass = nextEquivalenceClass++;
+            equivalenceClasses.put(type, equivalenceClass);
+        }
+        return equivalenceClass;
+    }
+
     @SuppressWarnings("unused")
     public Object getScope() {
         return new WasmScope(moduleInstances);
+    }
+
+    public FdManager fdManager() {
+        return filesManager;
     }
 
     /**
@@ -154,7 +181,7 @@ public final class WasmContext {
         if (moduleInstances.containsKey(module.name())) {
             throw WasmException.create(Failure.UNSPECIFIED_INVALID, null, "Module " + module.name() + " is already instantiated in this context.");
         }
-        final WasmInstance instance = new WasmInstance(module);
+        final WasmInstance instance = new WasmInstance(this, module);
         final BinaryParser reader = new BinaryParser(language, module);
         reader.readInstance(this, instance);
         this.register(instance);
@@ -175,5 +202,8 @@ public final class WasmContext {
                 instance.target(startFunction.index()).call();
             }
         }
+    }
+
+    public class Uid {
     }
 }

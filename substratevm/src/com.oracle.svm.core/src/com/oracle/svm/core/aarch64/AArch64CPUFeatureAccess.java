@@ -37,7 +37,7 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.CPUFeatureAccess;
-import com.oracle.svm.core.MemoryUtil;
+import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.util.VMError;
 
@@ -54,6 +54,14 @@ class AArch64CPUFeatureAccessFeature implements Feature {
 }
 
 public class AArch64CPUFeatureAccess implements CPUFeatureAccess {
+
+    /**
+     * We include all flags which currently impact AArch64 performance.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static EnumSet<AArch64.Flag> enabledAArch64Flags() {
+        return EnumSet.of(AArch64.Flag.UseLSE);
+    }
 
     /**
      * Determines whether a given JVMCI AArch64.CPUFeature is present on the current hardware.
@@ -97,7 +105,7 @@ public class AArch64CPUFeatureAccess implements CPUFeatureAccess {
 
         AArch64LibCHelper.CPUFeatures cpuFeatures = StackValue.get(AArch64LibCHelper.CPUFeatures.class);
 
-        MemoryUtil.fill((Pointer) cpuFeatures, SizeOf.unsigned(AArch64LibCHelper.CPUFeatures.class), (byte) 0);
+        UnmanagedMemoryUtil.fill((Pointer) cpuFeatures, SizeOf.unsigned(AArch64LibCHelper.CPUFeatures.class), (byte) 0);
 
         AArch64LibCHelper.determineCPUFeatures(cpuFeatures);
 

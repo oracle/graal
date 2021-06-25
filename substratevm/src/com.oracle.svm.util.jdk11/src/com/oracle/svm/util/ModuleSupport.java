@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.util;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.module.ModuleFinder;
@@ -61,14 +62,21 @@ public final class ModuleSupport {
          * Open up module that contains the bundleClass so that ResourceBundle.getBundle can
          * succeed.
          */
-        ModuleSupport.openModule(bundleClass, ModuleSupport.class);
+        ModuleSupport.openModuleByClass(bundleClass, ModuleSupport.class);
         return ResourceBundle.getBundle(bundleName, locale, bundleClass.getModule());
     }
 
     private static ResourceBundle getResourceBundleFallback(String bundleName, Locale locale, ClassLoader loader) {
         /* Try looking through all modules to find a match. */
+        Optional<String> packageName = packageName(bundleName);
         for (Module module : ModuleLayer.boot().modules()) {
             try {
+                packageName.ifPresent(p -> {
+                    if (module.getPackages().contains(p)) {
+                        Modules.addExportsToAllUnnamed(module, p);
+                        Modules.addOpensToAllUnnamed(module, p);
+                    }
+                });
                 return ResourceBundle.getBundle(bundleName, locale, module);
             } catch (MissingResourceException e2) {
                 /* Continue the loop. */
@@ -82,8 +90,56 @@ public final class ModuleSupport {
         return ResourceBundle.getBundle(bundleName, locale, loader);
     }
 
+    /**
+     * If the bundle is specified via java.class or java.properties format extract the package from
+     * the name.
+     */
+    private static Optional<String> packageName(String bundleName) {
+        int classSep = bundleName.replace('/', '.').lastIndexOf('.');
+        if (classSep == -1) {
+            /* The bundle is not specified via a java.class or java.properties format. */
+            return Optional.empty();
+        }
+        return Optional.of(bundleName.substring(0, classSep));
+    }
+
+    private static ModuleFinder upgradeAndSystemModuleFinder;
+
+    /**
+     * Creates a finder from a module path specified by the {@code prop} system property.
+     */
+    private static ModuleFinder finderFor(String prop) {
+        String s = System.getProperty(prop);
+        if (s == null || s.isEmpty()) {
+            return null;
+        } else {
+            String[] dirs = s.split(File.pathSeparator);
+            Path[] paths = new Path[dirs.length];
+            int i = 0;
+            for (String dir : dirs) {
+                paths[i++] = Path.of(dir);
+            }
+            return ModuleFinder.of(paths);
+        }
+    }
+
+    /**
+     * Gets a finder that locates the upgrade modules and the system modules, in that order.
+     */
+    private static ModuleFinder getUpgradeAndSystemModuleFinder() {
+        if (upgradeAndSystemModuleFinder == null) {
+            ModuleFinder finder = ModuleFinder.ofSystem();
+            ModuleFinder upgradeModulePath = finderFor("jdk.module.upgrade.path");
+            if (upgradeModulePath != null) {
+                finder = ModuleFinder.compose(upgradeModulePath, finder);
+            }
+            upgradeAndSystemModuleFinder = finder;
+        }
+        return upgradeAndSystemModuleFinder;
+    }
+
     public static boolean hasSystemModule(String moduleName) {
-        return ModuleFinder.ofSystem().find(moduleName).isPresent();
+        return getUpgradeAndSystemModuleFinder().find(moduleName).isPresent();
     }
 
     public static List<String> getModuleResources(Collection<Path> modulePath) {
@@ -101,7 +157,7 @@ public final class ModuleSupport {
     public static List<String> getSystemModuleResources(Collection<String> names) {
         List<String> result = new ArrayList<>();
         for (String name : names) {
-            Optional<ModuleReference> moduleReference = ModuleFinder.ofSystem().find(name);
+            Optional<ModuleReference> moduleReference = getUpgradeAndSystemModuleFinder().find(name);
             if (moduleReference.isEmpty()) {
                 throw new RuntimeException("Unable find ModuleReference for module " + name);
             }
@@ -114,7 +170,7 @@ public final class ModuleSupport {
         return result;
     }
 
-    public static void openModule(Class<?> declaringClass, Class<?> accessingClass) {
+    public static void openModuleByClass(Class<?> declaringClass, Class<?> accessingClass) {
         Module declaringModule = declaringClass.getModule();
         String packageName = declaringClass.getPackageName();
         Module accessingModule = accessingClass == null ? null : accessingClass.getModule();
@@ -127,8 +183,29 @@ public final class ModuleSupport {
         }
     }
 
-    public static ClassLoader getPlatformClassLoader() {
-        return ClassLoader.getPlatformClassLoader();
+    /**
+     * Exports and opens a single package {@code packageName} in the module named {@code moduleName}
+     * to all unnamed modules.
+     */
+    @SuppressWarnings("unused")
+    public static void exportAndOpenPackageToClass(String moduleName, String packageName, boolean optional, Class<?> accessingClass) {
+        Optional<Module> value = ModuleLayer.boot().findModule(moduleName);
+        if (value.isEmpty()) {
+            if (!optional) {
+                throw new NoSuchElementException(moduleName);
+            }
+            return;
+        }
+        Module declaringModule = value.get();
+        Module accessingModule = accessingClass == null ? null : accessingClass.getModule();
+        if (accessingModule != null && accessingModule.isNamed()) {
+            if (!declaringModule.isOpen(packageName, accessingModule)) {
+                Modules.addOpens(declaringModule, packageName, accessingModule);
+            }
+        } else {
+            Modules.addOpensToAllUnnamed(declaringModule, packageName);
+        }
+
     }
 
     /**

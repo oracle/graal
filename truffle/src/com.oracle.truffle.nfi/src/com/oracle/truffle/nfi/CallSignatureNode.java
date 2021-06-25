@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -62,7 +62,7 @@ import com.oracle.truffle.nfi.ConvertTypeNode.OptimizedConvertTypeNode;
 import com.oracle.truffle.nfi.NFISignature.ArgsCachedState;
 import com.oracle.truffle.nfi.NFISignature.SignatureCachedState;
 import com.oracle.truffle.nfi.NFIType.TypeCachedState;
-import com.oracle.truffle.nfi.spi.NFIBackendSignatureLibrary;
+import com.oracle.truffle.nfi.backend.spi.NFIBackendSignatureLibrary;
 
 abstract class CallSignatureNode extends Node {
 
@@ -93,7 +93,7 @@ abstract class CallSignatureNode extends Node {
                         @CachedLibrary("signature.nativeSignature") NFIBackendSignatureLibrary nativeLibrary) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
             if (args.length != signature.managedArgCount) {
                 exception.enter();
-                throw ArityException.create(signature.managedArgCount, args.length);
+                throw ArityException.create(signature.managedArgCount, signature.managedArgCount, args.length);
             }
 
             Object[] preparedArgs = new Object[signature.nativeArgCount];
@@ -160,7 +160,7 @@ abstract class CallSignatureNode extends Node {
                         @CachedLibrary("signature.nativeSignature") NFIBackendSignatureLibrary backendLibrary) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
             if (args.length != managedArgCount) {
                 exception.enter();
-                throw ArityException.create(managedArgCount, args.length);
+                throw ArityException.create(managedArgCount, managedArgCount, args.length);
             }
             Object[] preparedArgs = prepareArgs(signature, args);
             Object ret = backendLibrary.call(signature.nativeSignature, function, preparedArgs);
@@ -207,7 +207,7 @@ abstract class CallSignatureNode extends Node {
                         @CachedLibrary("function") InteropLibrary interop) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
             if (args.length != convertArgs.length) {
                 exception.enter();
-                throw ArityException.create(convertArgs.length, args.length);
+                throw ArityException.create(convertArgs.length, convertArgs.length, args.length);
             }
             Object[] preparedArgs = prepareArgs(signature, args);
             Object ret = interop.execute(function, preparedArgs);

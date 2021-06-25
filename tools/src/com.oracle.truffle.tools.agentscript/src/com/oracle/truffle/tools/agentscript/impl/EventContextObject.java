@@ -106,7 +106,7 @@ final class EventContextObject extends AbstractContextObject {
     @CompilerDirectives.TruffleBoundary
     private static Object iterateFrames(Object[] args, EventContextObject obj) throws ArityException, UnsupportedTypeException {
         if (args.length == 0) {
-            throw ArityException.create(1, 0);
+            throw ArityException.create(0, 0, args.length);
         }
         final NodeLibrary lib = NodeLibrary.getUncached();
         final InteropLibrary iop = InteropLibrary.getUncached();
@@ -117,8 +117,8 @@ final class EventContextObject extends AbstractContextObject {
         }
         Object retValue = Truffle.getRuntime().iterateFrames((frameInstance) -> {
             final Node n = frameInstance.getCallNode();
-            if (n == null) {
-                // skip top most record about the instrument
+            if (n == null || n.getRootNode() == null || n.getRootNode().isInternal()) {
+                // skip top most record of the instrument and any internal frames
                 return null;
             }
             LocationObject location = new LocationObject(n);

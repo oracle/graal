@@ -26,9 +26,9 @@
 #include <trufflenfi.h>
 #include <jni.h>
 
-JNIEXPORT void* JNICALL initializeManagementContext(TruffleEnv *truffle_env, void* (*fetch_by_name)(const char *), const int version);
+JNIEXPORT void* JNICALL initializeManagementContext(void* (*fetch_by_name)(const char *), const int version);
 
-JNIEXPORT void JNICALL disposeManagementContext(TruffleEnv *truffle_env, void *management_ptr, int version);
+JNIEXPORT void JNICALL disposeManagementContext(void *management_ptr, int version, void (*release_closure)(void *));
 
 /* 
  * JMM interface changes dramatically between versions, changing
@@ -43,16 +43,16 @@ JNIEXPORT void JNICALL disposeManagementContext(TruffleEnv *truffle_env, void *m
  * documentation for a guide on how to support a new version.
  */
 
-void* initializeManagementContext1(TruffleEnv *truffle_env, void* (*fetch_by_name)(const char *));
+void* initializeManagementContext1(void* (*fetch_by_name)(const char *));
 
-void disposeManagementContext1(TruffleEnv *truffle_env, void *management_ptr);
+void disposeManagementContext1(void *management_ptr, void (*release_closure)(void *));
 
-void* initializeManagementContext2(TruffleEnv *truffle_env, void* (*fetch_by_name)(const char *));
+void* initializeManagementContext2(void* (*fetch_by_name)(const char *));
 
-void disposeManagementContext2(TruffleEnv *truffle_env, void *management_ptr);
+void disposeManagementContext2(void *management_ptr, void (*release_closure)(void *));
 
-void* initializeManagementContext3(TruffleEnv *truffle_env, void* (*fetch_by_name)(const char *));
+void* initializeManagementContext3(void* (*fetch_by_name)(const char *));
 
-void disposeManagementContext3(TruffleEnv *truffle_env, void *management_ptr);
+void disposeManagementContext3(void *management_ptr, void (*release_closure)(void *));
 
 #endif // _MANAGEMENT_H

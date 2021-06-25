@@ -36,4 +36,6 @@ public @interface Substitution {
     boolean hasReceiver() default false;
 
     Class<? extends SubstitutionNamesProvider> nameProvider() default SubstitutionNamesProvider.NoProvider.class;
+
+    Class<? extends VersionFilter> versionFilter() default VersionFilter.NoFilter.class;
 }

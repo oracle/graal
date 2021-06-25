@@ -33,39 +33,48 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashMap;
+import java.util.Map;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.llvm.runtime.NativeContextExtension;
-import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
-import com.oracle.truffle.llvm.tests.BaseSuiteHarness;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Value;
+import org.junit.BeforeClass;
 import org.junit.ClassRule;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
+import com.oracle.truffle.llvm.tests.CommonTestUtils;
 import com.oracle.truffle.llvm.tests.options.TestOptions;
-import com.oracle.truffle.tck.TruffleRunner;
-import org.graalvm.polyglot.Value;
 
 public class InteropTestBase {
 
-    @ClassRule public static TruffleRunner.RunWithPolyglotRule runWithPolyglot = new TruffleRunner.RunWithPolyglotRule(getContextBuilder());
-
-    public static Context.Builder getContextBuilder() {
-        String lib = System.getProperty("test.sulongtest.lib.path");
-        return Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option(SulongEngineOption.LIBRARY_PATH_NAME, lib).option(SulongEngineOption.CXX_INTEROP_NAME, "true");
+    @BeforeClass
+    public static void bundledOnly() {
+        TestOptions.assumeBundledLLVM();
     }
 
-    protected static final Path testBase = Paths.get(TestOptions.TEST_SUITE_PATH, "interop");
-    public static final String TEST_FILE_NAME = "O1." + NativeContextExtension.getNativeLibrarySuffix();
+    @ClassRule public static CommonTestUtils.RunWithTestEngineConfigRule runWithPolyglot = new CommonTestUtils.RunWithTestEngineConfigRule(InteropTestBase::updateContextBuilder);
+
+    public static void updateContextBuilder(Context.Builder builder) {
+        String lib = System.getProperty("test.sulongtest.lib.path");
+        Map<String, String> options = new HashMap<>();
+        options.put(SulongEngineOption.LIBRARY_PATH_NAME, lib);
+        options.put(SulongEngineOption.CXX_INTEROP_NAME, "true");
+        builder.allowAllAccess(true).allowExperimentalOptions(true).options(options);
+    }
+
+    protected static final Path testBase = Paths.get(TestOptions.getTestDistribution("SULONG_EMBEDDED_TEST_SUITES"), "interop");
+    public static final String TEST_FILE_NAME = "toolchain-plain.so";
 
     protected static Object loadTestBitcodeInternal(String name) {
-        File file = Paths.get(testBase.toString(), name + BaseSuiteHarness.TEST_DIR_EXT, TEST_FILE_NAME).toFile();
+        File file = Paths.get(testBase.toString(), name + CommonTestUtils.TEST_DIR_EXT, TEST_FILE_NAME).toFile();
         CallTarget target = getTestBitcodeCallTarget(file);
         return target.call();
     }
@@ -81,7 +90,7 @@ public class InteropTestBase {
     }
 
     protected static Value loadTestBitcodeValue(String name) {
-        File file = Paths.get(testBase.toString(), name + BaseSuiteHarness.TEST_DIR_EXT, TEST_FILE_NAME).toFile();
+        File file = Paths.get(testBase.toString(), name + CommonTestUtils.TEST_DIR_EXT, TEST_FILE_NAME).toFile();
         org.graalvm.polyglot.Source source;
         try {
             source = org.graalvm.polyglot.Source.newBuilder("llvm", file).build();

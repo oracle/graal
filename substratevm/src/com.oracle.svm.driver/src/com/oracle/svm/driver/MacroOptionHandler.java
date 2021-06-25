@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,8 +39,11 @@ import com.oracle.svm.driver.NativeImage.BuildConfiguration;
 
 class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
+    private final HashSet<MacroOption> addedCheck;
+
     MacroOptionHandler(NativeImage nativeImage) {
         super(nativeImage);
+        addedCheck = new HashSet<>();
     }
 
     @Override
@@ -48,7 +51,7 @@ class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         String headArg = args.peek();
         boolean consumed = false;
         try {
-            consumed = nativeImage.optionRegistry.enableOption(nativeImage.config, headArg, new HashSet<>(), null, enabledOption -> applyEnabled(enabledOption, args.argumentOrigin));
+            consumed = nativeImage.optionRegistry.enableOption(nativeImage.config, headArg, addedCheck, null, enabledOption -> applyEnabled(enabledOption, args.argumentOrigin));
         } catch (VerboseInvalidMacroException e1) {
             NativeImage.showError(e1.getMessage(nativeImage.optionRegistry));
         } catch (InvalidMacroException | AddedTwiceException e) {
@@ -95,6 +98,8 @@ class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             NativeImage.getJars(imageJarsDirectory).forEach(nativeImage::addImageClasspath);
         }
 
+        enabledOption.forEachPropertyValue(config, "ImageModulePath", entry -> nativeImage.addImageModulePath(ClasspathUtils.stringToClasspath(entry), true), PATH_SEPARATOR_REGEX);
+
         String imageName = enabledOption.getProperty(config, "ImageName");
         if (imageName != null) {
             nativeImage.addPlainImageBuilderArg(nativeImage.oHName + imageName);
@@ -108,6 +113,11 @@ class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         String imageClass = enabledOption.getProperty(config, "ImageClass");
         if (imageClass != null) {
             nativeImage.addPlainImageBuilderArg(nativeImage.oHClass + imageClass);
+        }
+
+        String imageModule = enabledOption.getProperty(config, "ImageModule");
+        if (imageModule != null) {
+            nativeImage.addPlainImageBuilderArg(nativeImage.oHModule + imageModule);
         }
 
         enabledOption.forEachPropertyValue(config, "JavaArgs", nativeImage::addImageBuilderJavaArgs);

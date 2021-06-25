@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,12 +22,13 @@
  */
 package com.oracle.truffle.espresso.jdwp.api;
 
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.nodes.RootNode;
-
 import java.nio.file.Path;
 import java.util.List;
+
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 
 /**
  * Interface that defines required methods for a guest language when implementing JDWP.
@@ -426,6 +427,14 @@ public interface JDWPContext {
     Object getMonitorOwnerThread(Object monitor);
 
     /**
+     * Returns the entry count for the monitor on the current thread.
+     *
+     * @param monitor the monitor
+     * @return entry count of monitor
+     */
+    int getMonitorEntryCount(Object monitor);
+
+    /**
      * Returns all owned guest-language monitor object of the input call frames.
      *
      * @param callFrames the current call frames
@@ -443,16 +452,6 @@ public interface JDWPContext {
     Object getCurrentContendedMonitor(Object guestThread);
 
     /**
-     * Forces an early return on the top-most frame with the given return value. All monitors held
-     * on the current top frame are released before the early return.
-     *
-     * @param returnValue the value to return
-     * @param topFrame the current top frame
-     * @return {@code true} if the early return can be performed or {@code false} otherwise
-     */
-    boolean forceEarlyReturn(Object returnValue, CallFrame topFrame);
-
-    /**
      * Returns the language class associated with the implementing class of this interface.
      *
      * @return the Truffle language class
@@ -467,5 +466,35 @@ public interface JDWPContext {
      * @param redefineInfos the information about the original class and the new class bytes
      * @return 0 on success or the appropriate {@link ErrorCodes} if an error occur
      */
-    int redefineClasses(RedefineInfo[] redefineInfos);
+    int redefineClasses(List<RedefineInfo> redefineInfos);
+
+    /**
+     * Exit all monitors that was entered by the frame.
+     * 
+     * @param frame
+     */
+    void clearFrameMonitors(CallFrame frame);
+
+    /**
+     * Aborts the context.
+     *
+     * @param exitCode the system exit code
+     */
+    void abort(int exitCode);
+
+    /**
+     * Determines if the current thread is a VM internal thread.
+     *
+     * @return true if current thread is a VM internal thread
+     */
+    boolean isSystemThread();
+
+    /**
+     * Returns the current BCI of the node.
+     *
+     * @param rawNode the current node
+     * @param frame the current frame
+     * @return the current bci
+     */
+    long getBCI(Node rawNode, Frame frame);
 }

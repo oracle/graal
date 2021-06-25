@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,11 +49,14 @@ import org.graalvm.compiler.lir.aarch64.AArch64AddressValue;
 import org.graalvm.compiler.lir.aarch64.AArch64ArithmeticOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ArrayCompareToOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ArrayEqualsOp;
+import org.graalvm.compiler.lir.aarch64.AArch64ArrayIndexOfOp;
 import org.graalvm.compiler.lir.aarch64.AArch64AtomicMove.AtomicReadAndAddLSEOp;
 import org.graalvm.compiler.lir.aarch64.AArch64AtomicMove.AtomicReadAndAddOp;
 import org.graalvm.compiler.lir.aarch64.AArch64AtomicMove.AtomicReadAndWriteOp;
 import org.graalvm.compiler.lir.aarch64.AArch64AtomicMove.CompareAndSwapOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ByteSwapOp;
+import org.graalvm.compiler.lir.aarch64.AArch64CacheWritebackOp;
+import org.graalvm.compiler.lir.aarch64.AArch64CacheWritebackPostSyncOp;
 import org.graalvm.compiler.lir.aarch64.AArch64Compare;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.BranchOp;
@@ -62,7 +65,7 @@ import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.CondMoveOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.CondSetOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.StrategySwitchOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.TableSwitchOp;
-import org.graalvm.compiler.lir.aarch64.AArch64LIRFlagsVersioned;
+import org.graalvm.compiler.lir.aarch64.AArch64LIRFlags;
 import org.graalvm.compiler.lir.aarch64.AArch64Move;
 import org.graalvm.compiler.lir.aarch64.AArch64Move.MembarOp;
 import org.graalvm.compiler.lir.aarch64.AArch64PauseOp;
@@ -211,7 +214,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     @Override
     public Value emitAtomicReadAndAdd(Value address, ValueKind<?> kind, Value delta) {
         Variable result = newVariable(kind);
-        if (AArch64LIRFlagsVersioned.useLSE(target().arch)) {
+        if (AArch64LIRFlags.useLSE(target().arch)) {
             append(new AtomicReadAndAddLSEOp((AArch64Kind) kind.getPlatformKind(), asAllocatable(result), asAllocatable(address), asAllocatable(delta)));
         } else {
             append(new AtomicReadAndAddOp((AArch64Kind) kind.getPlatformKind(), asAllocatable(result), asAllocatable(address), delta));
@@ -406,13 +409,36 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
             Value aExt = a;
             Value bExt = b;
 
-            int compareBytes = cmpKind.getSizeInBytes();
-            // AArch64 compares 32 or 64 bits: sign extend a and b as required.
-            if (compareBytes < a.getPlatformKind().getSizeInBytes()) {
-                aExt = arithmeticLIRGen.emitSignExtend(a, compareBytes * 8, 64);
-            }
-            if (compareBytes < b.getPlatformKind().getSizeInBytes()) {
-                bExt = arithmeticLIRGen.emitSignExtend(b, compareBytes * 8, 64);
+            assert a.getPlatformKind() == b.getPlatformKind();
+            /*
+             * AArch64 compares 32 or 64 bits: sign extend a and b as required. Note currently the
+             * size of the comparison within AArch64Compare is based on the size of the operands,
+             * not the comparison size provided here.
+             */
+            int compareBits = cmpKind.getSizeInBytes() * Byte.SIZE;
+            int operandBits = a.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+            switch (compareBits) {
+                case 8:
+                case 16:
+                    /* Lower bits need to be sign extended. */
+                    aExt = arithmeticLIRGen.emitSignExtend(a, compareBits, 64);
+                    bExt = arithmeticLIRGen.emitSignExtend(b, compareBits, 64);
+                    break;
+                case 32:
+                case 64:
+                    /*
+                     * May need to extend operands to be at least 32 bits. If both operands are
+                     * 32-bits, it is unnecessary to extend them to 64 bits, even if compareBits is
+                     * 64.
+                     */
+                    if (operandBits < 32) {
+                        aExt = arithmeticLIRGen.emitSignExtend(a, operandBits, compareBits);
+                        bExt = arithmeticLIRGen.emitSignExtend(b, operandBits, compareBits);
+                    }
+                    break;
+                default:
+                    throw GraalError.shouldNotReachHere();
+
             }
 
             /*
@@ -424,7 +450,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
 
             if (aIsStackPointer && bIsStackPointer) {
                 /*
-                 * both a and b are sp, but this cannot be encoded in an AArch64 comparison. Hence,
+                 * If both a and b are sp, this cannot be encoded in an AArch64 comparison. Hence,
                  * sp must be moved to a register.
                  */
                 left = right = emitMove(aExt);
@@ -496,7 +522,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
                         maskedValue = longValue & 0xFFFF;
                         break;
                     case Int:
-                        maskedValue = longValue & 0xFFFF_FFFF;
+                        maskedValue = longValue & 0xFFFF_FFFFL;
                         break;
                     case Long:
                         maskedValue = longValue;
@@ -583,6 +609,14 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     @Override
+    public Variable emitArrayIndexOf(int arrayBaseOffset, JavaKind valueKind, boolean findTwoConsecutive, Value arrayPointer, Value arrayLength, Value fromIndex, Value... searchValues) {
+        assert searchValues.length == 1;
+        Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
+        append(new AArch64ArrayIndexOfOp(arrayBaseOffset, valueKind, this, result, asAllocatable(arrayPointer), asAllocatable(arrayLength), asAllocatable(fromIndex), asAllocatable(searchValues[0])));
+        return result;
+    }
+
+    @Override
     protected JavaConstant zapValueForKind(PlatformKind kind) {
         long dead = 0xDEADDEADDEADDEADL;
         switch ((AArch64Kind) kind) {
@@ -631,6 +665,19 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     @Override
     public void emitPause() {
         append(new AArch64PauseOp());
+    }
+
+    @Override
+    public void emitCacheWriteback(Value address) {
+        append(new AArch64CacheWritebackOp(asAddressValue(address)));
+    }
+
+    @Override
+    public void emitCacheWritebackSync(boolean isPreSync) {
+        // only need a post sync barrier on AArch64
+        if (!isPreSync) {
+            append(new AArch64CacheWritebackPostSyncOp());
+        }
     }
 
     public abstract void emitCCall(long address, CallingConvention nativeCallingConvention, Value[] args);

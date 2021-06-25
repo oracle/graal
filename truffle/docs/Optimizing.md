@@ -1,3 +1,9 @@
+---
+layout: docs
+toc_group: truffle
+link_title: Optimizing Truffle Interpreters
+permalink: /graalvm-as-a-platform/language-implementation-framework/Optimizing/
+---
 # Optimizing Truffle Interpreters
 
 This document discusses tools for optimizing or debugging Truffle interpreters for peak temporal performance.
@@ -502,7 +508,7 @@ To make the best use of the former options, limit what is compiled to the method
 
 ## Ideal Graph Visualizer
 
-The [Ideal Graph Visualizer (IGV)](https://docs.oracle.com/en/graalvm/enterprise/20/docs/tools/igv/) is a tool to understand Truffle ASTs and the GraalVM compiler graphs.
+The [Ideal Graph Visualizer (IGV)](https://docs.oracle.com/en/graalvm/enterprise/21/docs/tools/igv/) is a tool to understand Truffle ASTs and the GraalVM compiler graphs.
 
 A typical usage is to run with `--vm.Dgraal.Dump=Truffle:1 --vm.Dgraal.PrintGraph=Network`, which will show you Truffle ASTs, guest-language call graphs, and the Graal graphs as they leave the Truffle phase.
 If the `-Dgraal.PrintGraph=Network` flag is omitted then the dump files are placed in the `graal_dumps` directory, which you should then open in IGV.

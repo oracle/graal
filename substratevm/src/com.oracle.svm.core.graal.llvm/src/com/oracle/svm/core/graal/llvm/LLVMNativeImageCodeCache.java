@@ -25,7 +25,7 @@
 package com.oracle.svm.core.graal.llvm;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
-import static com.oracle.svm.hosted.image.NativeBootImage.RWDATA_CGLOBALS_PARTITION_OFFSET;
+import static com.oracle.svm.hosted.image.NativeImage.RWDATA_CGLOBALS_PARTITION_OFFSET;
 
 import java.io.FileOutputStream;
 import java.io.FileWriter;
@@ -72,7 +72,7 @@ import com.oracle.svm.core.graal.llvm.util.LLVMToolchain;
 import com.oracle.svm.core.graal.llvm.util.LLVMToolchain.RunFailureException;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicInteger;
-import com.oracle.svm.hosted.image.NativeBootImage.NativeTextSectionImpl;
+import com.oracle.svm.hosted.image.NativeImage.NativeTextSectionImpl;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;
 import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.image.RelocatableBuffer;

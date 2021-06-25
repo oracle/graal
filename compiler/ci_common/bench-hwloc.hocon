@@ -45,6 +45,24 @@ bench-micros-graal-dist-hwloc: ${bench-micros-graal-dist}{
   ]
 }
 
+bench-misc-graal-dist-hwloc: ${bench-misc-graal-dist}{
+  setup: ${bench-misc-graal-dist.setup}
+  run: [
+    [export, "LOGDIR=${PWD}"]
+    ${export.node0}
+    ${hwloc.node} ${bench-jvmci.mx-misc-graal-dist} ${bench-arguments}
+  ]
+}
+
+bench-shootout-graal-dist-hwloc: ${bench-shootout-graal-dist}{
+  setup: ${bench-shootout-graal-dist.setup}
+  run: [
+    [export, "LOGDIR=${PWD}"]
+    ${export.node0}
+    ${hwloc.node} ${bench-jvmci.mx-shootout-graal-dist} ${bench-arguments}
+  ]
+}
+
 bench-awfy-hwloc: ${bench-awfy} {
   setup: ${bench-awfy.setup}
   run: [

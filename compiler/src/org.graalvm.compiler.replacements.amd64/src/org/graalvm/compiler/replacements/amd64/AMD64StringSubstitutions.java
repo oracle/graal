@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,6 +35,7 @@ import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
+import org.graalvm.compiler.replacements.ArrayIndexOf;
 import org.graalvm.compiler.replacements.StringSubstitutions;
 import org.graalvm.compiler.replacements.nodes.ArrayCompareToNode;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsNode;
@@ -79,11 +80,11 @@ public class AMD64StringSubstitutions {
         }
 
         if (injectBranchProbability(UNLIKELY_PROBABILITY, targetCount == 1)) {
-            return AMD64ArrayIndexOf.indexOf1Char(source, sourceCount, totalOffset, target[targetOffset]);
+            return ArrayIndexOf.indexOf1Char(source, sourceCount, totalOffset, target[targetOffset]);
         } else {
             int haystackLength = sourceCount - (targetCount - 2);
             while (injectBranchProbability(LIKELY_PROBABILITY, totalOffset < haystackLength)) {
-                int indexOfResult = AMD64ArrayIndexOf.indexOfTwoConsecutiveChars(source, haystackLength, totalOffset, target[targetOffset], target[targetOffset + 1]);
+                int indexOfResult = ArrayIndexOf.indexOfTwoConsecutiveChars(source, haystackLength, totalOffset, target[targetOffset], target[targetOffset + 1]);
                 if (injectBranchProbability(UNLIKELY_PROBABILITY, indexOfResult < 0)) {
                     return -1;
                 }
@@ -118,7 +119,7 @@ public class AMD64StringSubstitutions {
 
         if (injectBranchProbability(LIKELY_PROBABILITY, ch < Character.MIN_SUPPLEMENTARY_CODE_POINT)) {
             char[] sourceArray = StringSubstitutions.getValue(source);
-            return AMD64ArrayIndexOf.indexOf1Char(sourceArray, sourceCount, fromIndex, (char) ch);
+            return ArrayIndexOf.indexOf1Char(sourceArray, sourceCount, fromIndex, (char) ch);
         } else {
             return indexOf(source, ch, origFromIndex);
         }

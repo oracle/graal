@@ -50,14 +50,14 @@ meth public void onLanguageContextCreateFailed(com.oracle.truffle.api.TruffleCon
 meth public void onLanguageContextInitialize(com.oracle.truffle.api.TruffleContext,com.oracle.truffle.api.nodes.LanguageInfo)
 meth public void onLanguageContextInitializeFailed(com.oracle.truffle.api.TruffleContext,com.oracle.truffle.api.nodes.LanguageInfo)
 
-CLSS public abstract com.oracle.truffle.api.instrumentation.EventBinding<%0 extends java.lang.Object>
-meth public final boolean isAttached()
+CLSS public com.oracle.truffle.api.instrumentation.EventBinding<%0 extends java.lang.Object>
 meth public boolean isDisposed()
+meth public final boolean isAttached()
 meth public final void attach()
 meth public void dispose()
 meth public {com.oracle.truffle.api.instrumentation.EventBinding%0} getElement()
 supr java.lang.Object
-hfds attached,disposed,disposing,element,instrumenter
+hfds attached,attachedSemaphore,disposed,disposing,element,instrumenter
 hcls Allocation,Execution,LoadSource,Source,SourceExecuted,SourceLoaded,SourceSectionLoaded
 
 CLSS public final com.oracle.truffle.api.instrumentation.EventContext
@@ -411,6 +411,7 @@ meth public java.util.Map<java.lang.String,?> getExportedSymbols()
  anno 0 java.lang.Deprecated()
 meth public java.util.Map<java.lang.String,com.oracle.truffle.api.InstrumentInfo> getInstruments()
 meth public java.util.Map<java.lang.String,com.oracle.truffle.api.nodes.LanguageInfo> getLanguages()
+meth public java.util.concurrent.Future<java.lang.Void> submitThreadLocal(com.oracle.truffle.api.TruffleContext,java.lang.Thread[],com.oracle.truffle.api.ThreadLocalAction)
 meth public long calculateContextHeapSize(com.oracle.truffle.api.TruffleContext,long,java.util.concurrent.atomic.AtomicBoolean)
 meth public org.graalvm.options.OptionValues getOptions()
 meth public org.graalvm.options.OptionValues getOptions(com.oracle.truffle.api.TruffleContext)

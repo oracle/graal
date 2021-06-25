@@ -27,8 +27,6 @@ package com.oracle.svm.core.classinitialization;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.Node.NodeIntrinsicFactory;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.spi.Simplifiable;
-import org.graalvm.compiler.graph.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -40,6 +38,8 @@ import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Lowerable;
+import org.graalvm.compiler.nodes.spi.Simplifiable;
+import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.word.LocationIdentity;
 
@@ -59,10 +59,15 @@ public class EnsureClassInitializedNode extends WithExceptionNode implements Sim
         return true;
     }
 
-    public EnsureClassInitializedNode(ValueNode hub) {
+    public EnsureClassInitializedNode(ValueNode hub, FrameState stateAfter) {
         super(TYPE, StampFactory.forVoid());
         this.hub = hub;
         assert StampTool.isPointerNonNull(hub) : "Hub must already be null-checked";
+        this.stateAfter = stateAfter;
+    }
+
+    public EnsureClassInitializedNode(ValueNode hub) {
+        this(hub, null);
     }
 
     public ValueNode getHub() {

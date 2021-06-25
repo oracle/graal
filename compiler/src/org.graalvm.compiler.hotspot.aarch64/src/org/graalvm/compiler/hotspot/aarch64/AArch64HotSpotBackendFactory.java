@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2018, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -100,8 +100,7 @@ public class AArch64HotSpotBackendFactory extends HotSpotBackendFactory {
                         replacements,
                         options,
                         target);
-        AArch64GraphBuilderPlugins.register(plugins, replacements, false, //
-                        /* registerForeignCallMath */true, config.useFMAIntrinsics, options);
+        AArch64GraphBuilderPlugins.register(plugins, replacements, /* registerForeignCallMath */true, config.useFMAIntrinsics, options);
         return plugins;
     }
 
@@ -139,6 +138,8 @@ public class AArch64HotSpotBackendFactory extends HotSpotBackendFactory {
     @Override
     protected Value[] createNativeABICallerSaveRegisters(@SuppressWarnings("unused") GraalHotSpotVMConfig config, RegisterConfig regConfig) {
         List<Register> callerSave = new ArrayList<>(regConfig.getAllocatableRegisters().asList());
+        // Removing callee-saved registers.
+        /* General Purpose Registers. */
         callerSave.remove(AArch64.r19);
         callerSave.remove(AArch64.r20);
         callerSave.remove(AArch64.r21);
@@ -149,6 +150,15 @@ public class AArch64HotSpotBackendFactory extends HotSpotBackendFactory {
         callerSave.remove(AArch64.r26);
         callerSave.remove(AArch64.r27);
         callerSave.remove(AArch64.r28);
+        /* Floating-Point Registers. */
+        callerSave.remove(AArch64.v8);
+        callerSave.remove(AArch64.v9);
+        callerSave.remove(AArch64.v10);
+        callerSave.remove(AArch64.v11);
+        callerSave.remove(AArch64.v12);
+        callerSave.remove(AArch64.v13);
+        callerSave.remove(AArch64.v14);
+        callerSave.remove(AArch64.v15);
         Value[] nativeABICallerSaveRegisters = new Value[callerSave.size()];
         for (int i = 0; i < callerSave.size(); i++) {
             nativeABICallerSaveRegisters[i] = callerSave.get(i).asValue();

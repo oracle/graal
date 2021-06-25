@@ -323,8 +323,8 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             if (method.hasCalleeSavedRegisters()) {
                 AMD64CalleeSavedRegisters calleeSavedRegisters = AMD64CalleeSavedRegisters.singleton();
                 FrameMap frameMap = ((FrameMapBuilderTool) frameMapBuilder).getFrameMap();
-                int registerSaveAreaSizeInBytes = method.hasCalleeSavedRegisters() ? calleeSavedRegisters.getSaveAreaSize() : 0;
-                StackSlot calleeSaveArea = frameMap.allocateStackSlots(registerSaveAreaSizeInBytes / frameMap.getTarget().wordSize);
+                int registerSaveAreaSizeInBytes = calleeSavedRegisters.getSaveAreaSize();
+                StackSlot calleeSaveArea = frameMap.allocateStackMemory(registerSaveAreaSizeInBytes, frameMap.getTarget().wordSize);
 
                 /*
                  * The offset of the callee save area must be fixed early during image generation.

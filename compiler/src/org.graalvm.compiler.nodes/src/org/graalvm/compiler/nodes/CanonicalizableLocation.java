@@ -24,7 +24,7 @@
  */
 package org.graalvm.compiler.nodes;
 
-import org.graalvm.compiler.graph.spi.CanonicalizerTool;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 
 public interface CanonicalizableLocation {

@@ -127,6 +127,9 @@ public final class Support {
     }
 
     public static String fromCString(CCharPointer s) {
+        if (s.isNull()) {
+            return null;
+        }
         return CTypeConversion.toJavaString(s, SubstrateUtil.strlen(s), StandardCharsets.UTF_8);
     }
 
@@ -234,18 +237,6 @@ public final class Support {
         return methodName;
     }
 
-    public static JNIObjectHandle getObjectField(JNIEnvironment env, JNIObjectHandle clazz, JNIObjectHandle obj, String name, String signature) {
-        try (CCharPointerHolder nameHolder = toCString(name);
-                        CCharPointerHolder sigHolder = toCString(signature);) {
-            JNIFieldId fieldId = jniFunctions().getGetFieldID().invoke(env, clazz, nameHolder.get(), sigHolder.get());
-            if (nullHandle().notEqual(fieldId)) {
-                return jniFunctions().getGetObjectField().invoke(env, obj, fieldId);
-            } else {
-                return nullHandle();
-            }
-        }
-    }
-
     public static boolean clearException(JNIEnvironment localEnv) {
         if (jniFunctions().getExceptionCheck().invoke(localEnv)) {
             jniFunctions().getExceptionClear().invoke(localEnv);
@@ -260,6 +251,15 @@ public final class Support {
             return true;
         }
         return false;
+    }
+
+    public static JNIObjectHandle handleException(JNIEnvironment localEnv) {
+        if (jniFunctions().getExceptionCheck().invoke(localEnv)) {
+            JNIObjectHandle exception = jniFunctions().getExceptionOccurred().invoke(localEnv);
+            jniFunctions().getExceptionClear().invoke(localEnv);
+            return exception;
+        }
+        return nullHandle();
     }
 
     /*
@@ -301,6 +301,11 @@ public final class Support {
         args.addressOf(2).setObject(l2);
         args.addressOf(3).setObject(l3);
         return jniFunctions().getCallObjectMethodA().invoke(env, obj, method, args);
+    }
+
+    public static JNIObjectHandle callStaticObjectMethod(JNIEnvironment env, JNIObjectHandle clazz, JNIMethodId method) {
+        JNIValue args = StackValue.get(0, JNIValue.class);
+        return jniFunctions().getCallStaticObjectMethodA().invoke(env, clazz, method, args);
     }
 
     public static JNIObjectHandle callStaticObjectMethodL(JNIEnvironment env, JNIObjectHandle clazz, JNIMethodId method, JNIObjectHandle l0) {

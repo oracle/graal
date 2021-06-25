@@ -30,13 +30,14 @@ import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
+import com.oracle.graal.pointsto.util.CompletionExecutor;
 
 import jdk.vm.ci.meta.JavaConstant;
 
 public class AnalysisObjectScanner extends ObjectScanner {
 
-    public AnalysisObjectScanner(BigBang bigbang, ReusableSet scannedObjects) {
-        super(bigbang, scannedObjects);
+    public AnalysisObjectScanner(BigBang bigbang, CompletionExecutor executor, ReusableSet scannedObjects) {
+        super(bigbang, executor, scannedObjects);
     }
 
     @Override
@@ -70,7 +71,7 @@ public class AnalysisObjectScanner extends ObjectScanner {
             /* Add the constant value object to the field's type flow. */
             FieldTypeFlow fieldTypeFlow = getFieldTypeFlow(field, receiver);
             AnalysisObject constantObject = bb.analysisPolicy().createConstantObject(bb, fieldValue, fieldType);
-            if (!fieldTypeFlow.getState().isUnknown() && !fieldTypeFlow.getState().containsObject(constantObject)) {
+            if (!fieldTypeFlow.getState().containsObject(constantObject)) {
                 /* Add the new constant to the field's flow state. */
                 TypeState constantTypeState = TypeState.forNonNullObject(bb, constantObject);
                 fieldTypeFlow.addState(bb, constantTypeState);
@@ -114,7 +115,7 @@ public class AnalysisObjectScanner extends ObjectScanner {
         if (bb.getAllInstantiatedTypeFlow().getState().containsType(elementType)) {
             ArrayElementsTypeFlow arrayObjElementsFlow = getArrayElementsFlow(array, arrayType);
             AnalysisObject constantObject = bb.analysisPolicy().createConstantObject(bb, elementConstant, elementType);
-            if (!arrayObjElementsFlow.getState().isUnknown() && !arrayObjElementsFlow.getState().containsObject(constantObject)) {
+            if (!arrayObjElementsFlow.getState().containsObject(constantObject)) {
                 /* Add the constant element to the constant's array type flow. */
                 TypeState elementTypeState = TypeState.forNonNullObject(bb, constantObject);
                 arrayObjElementsFlow.addState(bb, elementTypeState);

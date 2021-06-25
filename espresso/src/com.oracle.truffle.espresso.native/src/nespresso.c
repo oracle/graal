@@ -606,7 +606,7 @@ JNIEXPORT void* JNICALL dupClosureRef(TruffleEnv *truffle_env, void* closure) {
     return closure;
 }
 
-JNIEXPORT JNIEnv* JNICALL initializeNativeContext(TruffleEnv *truffle_env, void* (*fetch_by_name)(const char *)) {
+JNIEXPORT JNIEnv* JNICALL initializeNativeContext(void* (*fetch_by_name)(const char *)) {
   JNIEnv* env = (JNIEnv*) malloc(sizeof(*env));
   struct JNINativeInterface_* jni_impl = malloc(sizeof(*jni_impl));
   struct NespressoEnv* nespresso_env = (struct NespressoEnv*) malloc(sizeof(*nespresso_env));
@@ -644,22 +644,16 @@ JNIEXPORT JNIEnv* JNICALL initializeNativeContext(TruffleEnv *truffle_env, void*
   return env;
 }
 
-static void releaseClosure(TruffleEnv *truffle_env, void* closure) {
-    if (truffle_env != NULL) {
-        (*truffle_env)->releaseClosureRef(truffle_env, closure);
-    } else {
-        truffle_release_handle(closure);
-    }
-}
-
-JNIEXPORT void JNICALL disposeNativeContext(TruffleEnv* truffle_env, JNIEnv* env) {
+JNIEXPORT void JNICALL disposeNativeContext(JNIEnv* env, void (*release_closure)(void *)) {
   struct JNINativeInterface_* jni_impl = (struct JNINativeInterface_*) *env;
   struct NespressoEnv *nespresso_env = (struct NespressoEnv *) (*env)->reserved0;
 
   // Dispose methods implemented in Java.
   #define DISPOSE__(fn_name) \
-     releaseClosure(truffle_env, jni_impl->fn_name); \
-     jni_impl->fn_name = NULL;
+    if (release_closure != NULL) { \
+      release_closure(jni_impl->fn_name); \
+    } \
+    jni_impl->fn_name = NULL;
 
   JNI_FUNCTION_LIST(DISPOSE__)
   #undef DISPOSE__
@@ -673,7 +667,9 @@ JNIEXPORT void JNICALL disposeNativeContext(TruffleEnv* truffle_env, JNIEnv* env
 
   // Dispose Nespresso-specific methods implemented in Java (e.g. Java varargs).
   #define DISPOSE_VARARGS_METHOD__(fn_name) \
-    releaseClosure(truffle_env, nespresso_env->fn_name); \
+    if (release_closure != NULL) { \
+      release_closure(nespresso_env->fn_name); \
+    } \
     *(void**)(&nespresso_env->fn_name) = NULL;
 
   VARARGS_METHOD_LIST(DISPOSE_VARARGS_METHOD__)

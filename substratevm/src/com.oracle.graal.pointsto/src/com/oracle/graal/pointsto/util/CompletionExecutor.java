@@ -98,8 +98,6 @@ public class CompletionExecutor {
     }
 
     public void init(Timing newTiming) {
-        assert isSequential() || !(executorService instanceof ForkJoinPool) || !((ForkJoinPool) executorService).hasQueuedSubmissions();
-
         timing = newTiming;
         setState(State.BEFORE_START);
         postedOperations.reset();
@@ -175,6 +173,7 @@ public class CompletionExecutor {
         });
     }
 
+    @SuppressWarnings("try")
     public void executeCommand(DebugContextRunnable command) {
         bb.getHostVM().installInThread(vmConfig);
         long startTime = 0L;
@@ -234,7 +233,12 @@ public class CompletionExecutor {
         while (true) {
             assert state.get() == State.STARTED;
 
-            boolean quiescent = executorService.awaitTermination(100, TimeUnit.MILLISECONDS);
+            boolean quiescent;
+            if (executorService instanceof ForkJoinPool) {
+                quiescent = ((ForkJoinPool) executorService).awaitQuiescence(100, TimeUnit.MILLISECONDS);
+            } else {
+                quiescent = executorService.awaitTermination(100, TimeUnit.MILLISECONDS);
+            }
             if (timing != null && !quiescent) {
                 long curTime = System.nanoTime();
                 if (curTime - lastPrint > timing.getPrintIntervalNanos()) {
@@ -284,14 +288,14 @@ public class CompletionExecutor {
 
     public int parallelism() {
         if (executorService instanceof ForkJoinPool) {
-            ((ForkJoinPool) executorService).getParallelism();
+            return ((ForkJoinPool) executorService).getParallelism();
         }
         return 1;
     }
 
     public int poolSize() {
         if (executorService instanceof ForkJoinPool) {
-            ((ForkJoinPool) executorService).getPoolSize();
+            return ((ForkJoinPool) executorService).getPoolSize();
         }
         return 1;
     }

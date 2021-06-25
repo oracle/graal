@@ -22,13 +22,19 @@ meth public static com.oracle.truffle.api.library.LibraryFactory<com.oracle.truf
 supr com.oracle.truffle.api.library.Library
 hfds FACTORY
 
+CLSS public abstract interface com.oracle.truffle.api.library.EagerExportProvider
+meth public abstract java.lang.String getLibraryClassName()
+meth public abstract void ensureRegistered()
+
 CLSS public abstract interface !annotation com.oracle.truffle.api.library.ExportLibrary
  anno 0 java.lang.annotation.Repeatable(java.lang.Class<? extends java.lang.annotation.Annotation> value=class com.oracle.truffle.api.library.ExportLibrary$Repeat)
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
 innr public abstract interface static !annotation Repeat
 intf java.lang.annotation.Annotation
+meth public abstract !hasdefault boolean useForAOT()
 meth public abstract !hasdefault int priority()
+meth public abstract !hasdefault int useForAOTPriority()
 meth public abstract !hasdefault java.lang.Class<?> receiverType()
 meth public abstract !hasdefault java.lang.String delegateTo()
 meth public abstract !hasdefault java.lang.String transitionLimit()
@@ -107,6 +113,7 @@ supr com.oracle.truffle.api.nodes.Node
 
 CLSS public abstract com.oracle.truffle.api.library.LibraryExport<%0 extends com.oracle.truffle.api.library.Library>
 cons protected init(java.lang.Class<? extends {com.oracle.truffle.api.library.LibraryExport%0}>,java.lang.Class<?>,boolean)
+cons protected init(java.lang.Class<? extends {com.oracle.truffle.api.library.LibraryExport%0}>,java.lang.Class<?>,boolean,boolean,int)
 innr protected abstract interface static DelegateExport
 meth protected !varargs static com.oracle.truffle.api.utilities.FinalBitSet createMessageBitSet(com.oracle.truffle.api.library.LibraryFactory<?>,java.lang.String[])
 meth protected abstract {com.oracle.truffle.api.library.LibraryExport%0} createCached(java.lang.Object)
@@ -115,7 +122,7 @@ meth protected static <%0 extends com.oracle.truffle.api.library.Library> {%%0} 
 meth public !varargs static <%0 extends com.oracle.truffle.api.library.Library> void register(java.lang.Class<?>,com.oracle.truffle.api.library.LibraryExport<?>[])
 meth public final java.lang.String toString()
 supr java.lang.Object
-hfds GENERATED_CLASS_SUFFIX,defaultExport,library,receiverClass,registerClass
+hfds GENERATED_CLASS_SUFFIX,aot,aotPriority,defaultExport,library,receiverClass,registerClass
 
 CLSS protected abstract interface static com.oracle.truffle.api.library.LibraryExport$DelegateExport
  outer com.oracle.truffle.api.library.LibraryExport
@@ -131,6 +138,8 @@ meth protected abstract java.lang.Object genericDispatch(com.oracle.truffle.api.
 meth protected abstract {com.oracle.truffle.api.library.LibraryFactory%0} createDispatchImpl(int)
 meth protected abstract {com.oracle.truffle.api.library.LibraryFactory%0} createProxy(com.oracle.truffle.api.library.ReflectionLibrary)
 meth protected abstract {com.oracle.truffle.api.library.LibraryFactory%0} createUncachedDispatch()
+meth protected final java.util.List<com.oracle.truffle.api.library.LibraryExport<{com.oracle.truffle.api.library.LibraryFactory%0}>> getAOTExports()
+meth protected final {com.oracle.truffle.api.library.LibraryFactory%0} createAOT(com.oracle.truffle.api.library.LibraryExport<{com.oracle.truffle.api.library.LibraryFactory%0}>)
 meth protected static <%0 extends com.oracle.truffle.api.library.Library> void register(java.lang.Class<{%%0}>,com.oracle.truffle.api.library.LibraryFactory<{%%0}>)
 meth protected static <%0 extends com.oracle.truffle.api.library.Library> {%%0} getDelegateLibrary({%%0},java.lang.Object)
 meth protected static boolean isDelegated(com.oracle.truffle.api.library.Library,int)
@@ -144,8 +153,8 @@ meth public final {com.oracle.truffle.api.library.LibraryFactory%0} getUncached(
 meth public java.lang.String toString()
 meth public static <%0 extends com.oracle.truffle.api.library.Library> com.oracle.truffle.api.library.LibraryFactory<{%%0}> resolve(java.lang.Class<{%%0}>)
 supr java.lang.Object
-hfds EMPTY_DEFAULT_EXPORT_ARRAY,LIBRARIES,UNSAFE,afterBuiltinDefaultExports,beforeBuiltinDefaultExports,cachedCache,dispatchLibrary,exportCache,externalDefaultProviders,libraryClass,messages,nameToMessages,proxyExports,uncachedCache,uncachedDispatch
-hcls ProxyExports,ResolvedDispatch
+hfds EMPTY_DEFAULT_EXPORT_ARRAY,LIBRARIES,UNSAFE,afterBuiltinDefaultExports,aot,beforeBuiltinDefaultExports,cachedCache,dispatchLibrary,eagerExportProviders,exportCache,externalDefaultProviders,libraryClass,messages,nameToMessages,proxyExports,uncachedCache,uncachedDispatch
+hcls CachedAOTExports,ProxyExports,ResolvedDispatch
 
 CLSS public abstract com.oracle.truffle.api.library.Message
 cons protected !varargs init(java.lang.Class<? extends com.oracle.truffle.api.library.Library>,java.lang.String,java.lang.Class<?>,java.lang.Class<?>[])

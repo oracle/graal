@@ -32,62 +32,46 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLStreamHandler;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Collections;
+import java.util.Enumeration;
 import java.util.List;
-import java.util.Map;
 
-import org.graalvm.nativeimage.hosted.Feature;
+import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
+import com.oracle.svm.core.jdk.resources.ResourceURLConnection;
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
 
 /**
  * Support for resources on Substrate VM. All resources that need to be available at run time need
  * to be added explicitly during native image generation using {@link #registerResource}.
  *
- * Registered resources are then available from {@link DynamicHub#getResource classes} and
+ * Registered resources are then available from DynamicHub#getResource classes and
  * {@link Target_java_lang_ClassLoader class loaders}.
  */
 public final class Resources {
 
-    static class ResourcesSupport {
-        final Map<String, List<byte[]>> resources = new HashMap<>();
+    public static Resources singleton() {
+        return ImageSingletons.lookup(Resources.class);
     }
 
-    @AutomaticFeature
-    static class ResourcesFeature implements Feature {
-        @Override
-        public void afterRegistration(AfterRegistrationAccess access) {
-            ImageSingletons.add(ResourcesSupport.class, new ResourcesSupport());
-        }
+    /** The hosted map used to collect registered resources. */
+    private final EconomicMap<String, ResourceStorageEntry> resources = ImageHeapMap.create();
 
-        @Override
-        public void afterCompilation(AfterCompilationAccess access) {
-            /*
-             * The resources embedded in the image heap are read-only at run time. Note that we do
-             * not mark the collection data structures as read-only because Java collections have
-             * all sorts of lazily initialized fields. Only the byte[] arrays themselves can be
-             * safely made read-only.
-             */
-            for (List<byte[]> resourceList : ImageSingletons.lookup(ResourcesSupport.class).resources.values()) {
-                for (byte[] resource : resourceList) {
-                    access.registerAsImmutable(resource);
-                }
-            }
-        }
+    Resources() {
     }
 
-    private Resources() {
+    public EconomicMap<String, ResourceStorageEntry> resources() {
+        return resources;
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public static void registerResource(String name, InputStream is) {
-        ResourcesSupport support = ImageSingletons.lookup(ResourcesSupport.class);
-
+    public static byte[] inputStreamToByteArray(InputStream is) {
         byte[] arr = new byte[4096];
         int pos = 0;
         try {
@@ -107,69 +91,112 @@ public final class Resources {
             throw VMError.shouldNotReachHere(ex);
         }
 
-        byte[] res = new byte[pos];
-        System.arraycopy(arr, 0, res, 0, pos);
+        byte[] data = new byte[pos];
+        System.arraycopy(arr, 0, data, 0, pos);
+        return data;
+    }
 
-        List<byte[]> list = support.resources.get(name);
-        if (list == null) {
-            list = new ArrayList<>();
-            support.resources.put(name, list);
+    private static void addEntry(String resourceName, boolean isDirectory, byte[] data) {
+        Resources support = singleton();
+        ResourceStorageEntry entry = support.resources.get(resourceName);
+        if (entry == null) {
+            entry = new ResourceStorageEntry(isDirectory);
+            support.resources.put(resourceName, entry);
         }
-        list.add(res);
+        entry.getData().add(data);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static void registerDirectoryResource(String dir, String content) {
+    public static void registerResource(String resourceName, InputStream is) {
+        addEntry(resourceName, false, inputStreamToByteArray(is));
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void registerDirectoryResource(String resourceDirName, String content) {
         /*
          * A directory content represents the names of all files and subdirectories located in the
          * specified directory, separated with new line delimiter and joined into one string which
          * is later converted into a byte array and placed into the resources map.
          */
-        ResourcesSupport support = ImageSingletons.lookup(ResourcesSupport.class);
-
-        byte[] arr = content.getBytes();
-        List<byte[]> list = support.resources.get(dir);
-        if (list == null) {
-            list = new ArrayList<>();
-            support.resources.put(dir, list);
-        }
-        list.add(arr);
+        addEntry(resourceDirName, true, content.getBytes());
     }
 
-    public static List<byte[]> get(String name) {
-        return ImageSingletons.lookup(ResourcesSupport.class).resources.get(name);
+    public static ResourceStorageEntry get(String name) {
+        return singleton().resources.get(name);
     }
 
-    public static URL createURL(String name, byte[] resourceBytes) {
-        class Conn extends URLConnection {
-            Conn(URL url) {
-                super(url);
-            }
-
-            @Override
-            public void connect() throws IOException {
-            }
-
-            @Override
-            public InputStream getInputStream() throws IOException {
-                return new ByteArrayInputStream(resourceBytes);
-            }
-
-            @Override
-            public long getContentLengthLong() {
-                return resourceBytes.length;
-            }
-        }
-
+    private static URL createURL(String resourceName, int index) {
         try {
-            return new URL("resource", null, -1, name, new URLStreamHandler() {
-                @Override
-                protected URLConnection openConnection(URL u) throws IOException {
-                    return new Conn(u);
-                }
-            });
+            return new URL(JavaNetSubstitutions.RESOURCE_PROTOCOL, null, -1, resourceName,
+                            new URLStreamHandler() {
+                                @Override
+                                protected URLConnection openConnection(URL url) {
+                                    return new ResourceURLConnection(url, index);
+                                }
+                            });
         } catch (MalformedURLException ex) {
             throw new IllegalStateException(ex);
+        }
+
+    }
+
+    public static URL createURL(String resourceName) {
+        if (resourceName == null) {
+            return null;
+        }
+        Enumeration<URL> urls = createURLs(resourceName);
+        return urls.hasMoreElements() ? urls.nextElement() : null;
+    }
+
+    /* Avoid pulling in the URL class when only an InputStream is needed. */
+    public static InputStream createInputStream(String resourceName) {
+        if (resourceName == null) {
+            return null;
+        }
+        ResourceStorageEntry entry = Resources.get(resourceName);
+        if (entry == null) {
+            return null;
+        }
+        List<byte[]> data = entry.getData();
+        return data.isEmpty() ? null : new ByteArrayInputStream(data.get(0));
+    }
+
+    public static Enumeration<URL> createURLs(String resourceName) {
+        if (resourceName == null) {
+            return null;
+        }
+        ResourceStorageEntry entry = Resources.get(resourceName);
+        if (entry == null) {
+            return Collections.emptyEnumeration();
+        }
+        int numberOfResources = entry.getData().size();
+        List<URL> resourcesURLs = new ArrayList<>(numberOfResources);
+        for (int index = 0; index < numberOfResources; index++) {
+            resourcesURLs.add(createURL(resourceName, index));
+        }
+        return Collections.enumeration(resourcesURLs);
+    }
+}
+
+@AutomaticFeature
+final class ResourcesFeature implements Feature {
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        ImageSingletons.add(Resources.class, new Resources());
+    }
+
+    @Override
+    public void afterCompilation(AfterCompilationAccess access) {
+        /*
+         * The resources embedded in the image heap are read-only at run time. Note that we do not
+         * mark the collection data structures as read-only because Java collections have all sorts
+         * of lazily initialized fields. Only the byte[] arrays themselves can be safely made
+         * read-only.
+         */
+        for (ResourceStorageEntry resourceList : Resources.singleton().resources().getValues()) {
+            for (byte[] resource : resourceList.getData()) {
+                access.registerAsImmutable(resource);
+            }
         }
     }
 }

@@ -41,7 +41,6 @@ import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.handles.ObjectHandlesImpl;
 import com.oracle.svm.core.handles.ThreadLocalHandles;
 import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.util.ExceptionHelpers;
@@ -390,7 +389,7 @@ final class JNIImageHeapHandles {
         UnsignedWord base = (UnsignedWord) Isolates.getHeapBase(CurrentIsolate.getIsolate());
         Pointer offset = ((Pointer) handle).and(OBJ_OFFSET_BITS_MASK).add(base);
         @SuppressWarnings("unchecked")
-        T obj = (T) KnownIntrinsics.convertUnknownValue(offset.toObjectNonNull(), Object.class);
+        T obj = (T) offset.toObjectNonNull();
         assert isInImageHeap(obj);
         return obj;
     }

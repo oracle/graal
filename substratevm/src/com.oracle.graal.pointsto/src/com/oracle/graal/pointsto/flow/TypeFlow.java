@@ -102,8 +102,9 @@ public abstract class TypeFlow<T> {
      * individual type flows to subscribe themselves directly to the type flows of their declared
      * types if they need further updates.
      * <p/>
-     * When static analysis results are built in {@link StaticAnalysisResultsBuilder#makeResults}
-     * the type state is considered only if the type flow was not marked as saturated.
+     * When static analysis results are built in
+     * {@link StaticAnalysisResultsBuilder#makeOrApplyResults} the type state is considered only if
+     * the type flow was not marked as saturated.
      * <p/>
      * The initial value is false, i.e., the flow is initially not saturated.
      */
@@ -522,9 +523,6 @@ public abstract class TypeFlow<T> {
             /* If the declared type is Object type there is no need to filter. */
             return newState;
         }
-        if (newState.isUnknown()) {
-            return newState;
-        }
         /* By default filter all type flows with the declared type. */
         return TypeState.forIntersection(bb, newState, declaredType.getTypeFlow(bb, true).getState());
     }
@@ -555,9 +553,6 @@ public abstract class TypeFlow<T> {
         }
         if (!canSaturate()) {
             /* This type flow needs to track all its individual types. */
-            return false;
-        }
-        if (this.state.isUnknown()) {
             return false;
         }
         return typeState.typesCount() > bb.analysisPolicy().typeFlowSaturationCutoff();

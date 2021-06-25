@@ -255,7 +255,10 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
                             info.addRequiredValues(parseHeader(BundleConstants.BUNDLE_REQUIRED).parseRequiredCapabilities());
                             info.addProvidedValues(parseHeader(BundleConstants.BUNDLE_PROVIDED, "").parseProvidedCapabilities());
                             info.setDependencies(parseHeader(BundleConstants.BUNDLE_DEPENDENCY, "").parseDependencies());
-                            info.setStability(parseHeader(BundleConstants.BUNDLE_STABILITY, "").parseStability());
+                            info.setStability(
+                                            // use the new header, fall back on the old one. Default
+                                            // to "".
+                                            parseHeader(BundleConstants.BUNDLE_STABILITY2, value(BundleConstants.BUNDLE_STABILITY)).parseStability());
                         });
         supplyComponentTag();
         return info;
@@ -281,8 +284,9 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
         try {
             return DistributionType.valueOf(dtString.toUpperCase(Locale.ENGLISH));
         } catch (IllegalArgumentException ex) {
-            throw new MetadataException(BundleConstants.BUNDLE_COMPONENT_DISTRIBUTION,
-                            feedback.l10n("ERROR_InvalidDistributionType", dtString));
+            // do not report the exception, just notice in verbose mode:
+            feedback.verboseOutput("ERROR_InvalidDistributionType", id, dtString);
+            return DistributionType.OPTIONAL;
         }
     }
 

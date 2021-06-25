@@ -19,6 +19,8 @@ bench-jvmci : {
   mx-spark-sql-perf: ${bench-jvmci.mx-benchmark} ["spark-sql-perf"]
   mx-micros-graal-whitebox: ${bench-jvmci.mx-benchmark} ["jmh-whitebox:*"]
   mx-micros-graal-dist: ${bench-jvmci.mx-benchmark} ["jmh-dist:GRAAL_COMPILER_MICRO_BENCHMARKS"]
+  mx-misc-graal-dist: ${bench-jvmci.mx-benchmark} ["jmh-dist:GRAAL_BENCH_MISC"]
+  mx-shootout-graal-dist: ${bench-jvmci.mx-benchmark} ["jmh-dist:GRAAL_BENCH_SHOOTOUT"]
   mx-teardown : ["bench-uploader.py", "${BENCH_RESULTS_FILE_PATH}"]
 }
 
@@ -171,6 +173,22 @@ bench-micros-graal-dist: ${bench-common} ${default-heap} ${micros-bench-notifica
   targets: [bench, weekly]
   run: [
     ${bench-jvmci.mx-micros-graal-dist} ${bench-arguments}
+  ]
+  timelimit: "3:00:00"
+}
+
+bench-misc-graal-dist: ${bench-common} ${default-heap} ${misc-bench-notifications} {
+  targets: [bench, daily]
+  run: [
+    ${bench-jvmci.mx-misc-graal-dist} ${bench-arguments}
+  ]
+  timelimit: "3:00:00"
+}
+
+bench-shootout-graal-dist: ${bench-common} ${default-heap} ${shootout-bench-notifications} {
+  targets: [bench, daily]
+  run: [
+    ${bench-jvmci.mx-shootout-graal-dist} ${bench-arguments}
   ]
   timelimit: "3:00:00"
 }

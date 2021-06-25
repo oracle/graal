@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,25 +22,39 @@
  */
 package com.oracle.truffle.espresso.impl;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.meta.JavaKind;
+import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 import com.oracle.truffle.espresso.runtime.Attribute;
+import com.oracle.truffle.espresso.staticobject.StaticProperty;
 
-final class LinkedField {
-    private final ParserField parserField;
-    private final int index;
+final class LinkedField extends StaticProperty {
+    @CompilationFinal private ParserField parserField;
     private final int slot;
 
-    LinkedField(ParserField parserField, int slot, int index) {
+    LinkedField(ParserField parserField, int slot, boolean storeAsFinal) {
+        super(parserField.getPropertyKind(), storeAsFinal);
         this.parserField = parserField;
         this.slot = slot;
-        this.index = index;
     }
 
-    public static LinkedField createHidden(Symbol<Name> name, int slot, int index) {
-        return new LinkedField(new ParserField(ParserField.HIDDEN, name, Type.java_lang_Object, null), slot, index);
+    /**
+     * This method is required by the Static Object Model. In Espresso we should rather call
+     * `getName()` and use Symbols.
+     */
+    @Override
+    protected String getId() {
+        return getName().toString();
+    }
+
+    public Symbol<Name> getName() {
+        // no need to go through getParserField(), since name
+        // can't change on redefinition on a linked field
+        return parserField.getName();
     }
 
     /**
@@ -50,31 +64,22 @@ final class LinkedField {
         return slot;
     }
 
-    /**
-     * The index is the actual position in the field array of an actual instance.
-     */
-    public int getIndex() {
-        return index;
-    }
-
     public Symbol<Type> getType() {
-        return parserField.getType();
-    }
-
-    public Symbol<Name> getName() {
-        return parserField.getName();
+        return getParserField().getType();
     }
 
     public int getFlags() {
-        return parserField.getFlags();
+        return getParserField().getFlags();
     }
 
     public JavaKind getKind() {
+        // no need to go through getParserField(), since kind
+        // can't change on redefinition on a linked field
         return parserField.getKind();
     }
 
     public Attribute getAttribute(Symbol<Name> name) {
-        for (Attribute a : parserField.getAttributes()) {
+        for (Attribute a : getParserField().getAttributes()) {
             if (name.equals(a.getName())) {
                 return a;
             }
@@ -83,10 +88,26 @@ final class LinkedField {
     }
 
     public boolean isHidden() {
-        return parserField.isHidden();
+        return getParserField().isHidden();
     }
 
     ParserField getParserField() {
-        return parserField;
+        // block execution during class redefinition
+        ClassRedefinition.check();
+
+        ParserField current = parserField;
+        if (!current.getRedefineAssumption().isValid()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            do {
+                current = parserField;
+            } while (!current.getRedefineAssumption().isValid());
+        }
+        return current;
+    }
+
+    public void redefine(ParserField newParserField) {
+        ParserField old = parserField;
+        parserField = newParserField;
+        old.getRedefineAssumption().invalidate();
     }
 }

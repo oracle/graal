@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -205,6 +205,15 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                 processor.registerService(serviceBinaryName, serviceImplName, libraryExports.getTemplateType());
             }
 
+            if (libraryExports.needsEagerExportProvider()) {
+                ElementUtils.setVisibility(genClass.getModifiers(), PUBLIC);
+                TypeElement provider = createAOTExportProvider(libraryExports, genClass);
+                genClass.add(provider);
+                String serviceBinaryName = context.getEnvironment().getElementUtils().getBinaryName(ElementUtils.castTypeElement(context.getTypes().EagerExportProvider)).toString();
+                String serviceImplName = ElementUtils.getBinaryName(provider);
+                processor.registerService(serviceBinaryName, serviceImplName, libraryExports.getTemplateType());
+            }
+
             final TypeElement libraryBaseTypeElement = libraryExports.getLibrary().getTemplateType();
             final DeclaredType libraryBaseType = (DeclaredType) libraryBaseTypeElement.asType();
 
@@ -278,13 +287,6 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         }
     }
 
-    private static boolean hasFinalDynamicDispatch(ExportsLibrary libraryExport) {
-        if (libraryExport.isDynamicDispatchTarget()) {
-            return libraryExport.getTemplateType().getModifiers().contains(Modifier.FINAL);
-        }
-        return true;
-    }
-
     private static Modifier resolveSubclassVisibility(ExportsLibrary libraryExport) {
         if (libraryExport.isBuiltinDefaultExport()) {
             // lets open this can of worms at a later date
@@ -324,8 +326,21 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
 
         CodeExecutableElement constructor = new CodeExecutableElement(modifiers(PRIVATE), null, exportsClass.getSimpleName().toString());
         builder = constructor.createBuilder();
-        builder.startStatement().startSuperCall().typeLiteral(libraryBaseType).typeLiteral(libraryExport.getReceiverType()).string(
-                        Boolean.valueOf(libraryExport.isBuiltinDefaultExport()).toString()).end().end();
+        builder.startStatement().startSuperCall();
+        builder.typeLiteral(libraryBaseType).typeLiteral(libraryExport.getReceiverType());
+        builder.string(Boolean.valueOf(libraryExport.isBuiltinDefaultExport()).toString());
+        boolean useForAOT = false;
+
+        // we ignore the value if generate AOT is not enabled for the library
+        // this might be the case for the dynamic dispatch library where
+        // AOT is not enabled for the library but enabled for the export.
+        if (libraryExport.getLibrary().isGenerateAOT()) {
+            useForAOT = libraryExport.isUseForAOT();
+        }
+        builder.string(Boolean.valueOf(useForAOT).toString());
+        builder.string(Integer.toString(libraryExport.getUseForAOTPriority()));
+
+        builder.end().end();
         exportsClass.add(constructor);
 
         if (libraryExport.hasExportDelegation()) {
@@ -402,7 +417,11 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         createCached.renameArguments("receiver");
         builder = createCached.createBuilder();
         if (!ElementUtils.typeEquals(exportReceiverType, context.getType(Object.class))) {
-            builder.startAssert().string("receiver instanceof ").type(exportReceiverType).end();
+            builder.startAssert().string("receiver instanceof ").type(exportReceiverType);
+            if (libraryExport.isUseForAOT()) {
+                builder.string(" || receiver instanceof ").type(types.LibraryExport).build();
+            }
+            builder.end();
         }
         builder.startReturn();
         if (libraryExport.hasExportDelegation()) {
@@ -487,6 +506,41 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         return providerClass;
     }
 
+    CodeTypeElement createAOTExportProvider(ExportsLibrary libraryExports, CodeTypeElement genClass) {
+        String libraryName = libraryExports.getLibrary().getTemplateType().getSimpleName().toString();
+        CodeTypeElement providerClass = createClass(libraryExports, null, modifiers(PUBLIC, STATIC, FINAL), libraryName + "EagerProvider", null);
+        providerClass.getImplements().add(context.getTypes().EagerExportProvider);
+
+        ExecutableElement init = ElementUtils.findMethod((DeclaredType) genClass.asType(), "init");
+        if (init == null) {
+            CodeExecutableElement genInit = genClass.add(new CodeExecutableElement(modifiers(PRIVATE, STATIC), context.getType(void.class), "init"));
+            genInit.createBuilder().lineComment("This method is intended to ensure class initialization.");
+            init = genInit;
+        }
+
+        for (ExecutableElement method : ElementFilter.methodsIn(context.getTypes().EagerExportProvider.asElement().getEnclosedElements())) {
+            CodeExecutableElement m = null;
+            switch (method.getSimpleName().toString()) {
+                case "ensureRegistered":
+                    m = CodeExecutableElement.cloneNoAnnotations(method);
+                    m.createBuilder().startStatement().startStaticCall(init).end().end();
+                    break;
+                case "getLibraryClassName":
+                    m = CodeExecutableElement.cloneNoAnnotations(method);
+                    m.createBuilder().startReturn().doubleQuote(context.getEnvironment().getElementUtils().getBinaryName(libraryExports.getLibrary().getTemplateType()).toString()).end();
+                    break;
+            }
+            if (m != null) {
+                m.getModifiers().remove(Modifier.ABSTRACT);
+                providerClass.add(m);
+            }
+        }
+        if (providerClass.getEnclosedElements().size() != 2) {
+            throw new AssertionError();
+        }
+        return providerClass;
+    }
+
     CodeTypeElement createCached(ExportsLibrary libraryExports, Map<String, ExportMessageData> messages) {
         TypeMirror exportReceiverType = libraryExports.getReceiverType();
         final Modifier classVisibility = resolveSubclassVisibility(libraryExports);
@@ -530,13 +584,17 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
             boolean needsCast;
             if (hasConstructorCacheInitializer(messages)) {
                 needsCast = true;
-            } else if (libraryExports.needsDynamicDispatch() || !libraryExports.isFinalReceiver()) {
+            } else if (!libraryExports.needsDynamicDispatch() && !libraryExports.isFinalReceiver()) {
                 needsCast = !useSuperAccepts(libraryExports, messages);
             } else {
                 needsCast = false;
             }
 
-            if (ElementUtils.needsCastTo(context.getType(Object.class), libraryExports.getReceiverType()) && needsCast) {
+            if (libraryExports.isUseForAOT() && !mergedLibraries.isEmpty()) {
+                builder.startIf().string("!(", receiverLocalName).string(" instanceof ").type(types.LibraryExport).string(")").end().startBlock();
+            }
+
+            if (needsCast && ElementUtils.needsCastTo(context.getType(Object.class), libraryExports.getReceiverType())) {
                 String oldReceiverName = receiverLocalName;
                 receiverLocalName = "castReceiver";
                 builder.declaration(libraryExports.getReceiverType(), receiverLocalName,
@@ -552,6 +610,10 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                 builder.string(")").end();
                 CodeVariableElement var = cacheClass.add(new CodeVariableElement(modifiers(PRIVATE), key.libraryType, identifier));
                 var.getAnnotationMirrors().add(new CodeAnnotationMirror(types.Node_Child));
+            }
+
+            if (libraryExports.isUseForAOT()) {
+                builder.end();
             }
 
             if (acceptsMessage != null && acceptsMessage.getSpecializedNode() != null && acceptsMessage.isDeclared()) {
@@ -656,6 +718,10 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                 CodeTree mergedLibraryInitializer = writeExpression(key.cache, "receiver", context.getType(Object.class), libraryExports.getReceiverType());
                 String identifier = key.getCache().getMergedLibraryIdentifier();
                 builder.startElseIf();
+                if (libraryExports.isUseForAOT()) {
+                    builder.string("this.", identifier, " != null && ");
+                }
+
                 builder.string("!this.", identifier);
                 builder.startCall(".accepts").tree(mergedLibraryInitializer).end();
                 builder.end().startBlock();
@@ -767,10 +833,15 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                         continue;
                     }
                     if (!shared) {
+                        if (simpleName.equals("prepareForAOT")) {
+                            TypeMirror aotProviderType = new GeneratedTypeMirror(ElementUtils.getPackageName(types.GenerateAOT_Provider), "GenerateAOT.Provider");
+                            cacheClass.getImplements().add(aotProviderType);
+                        }
                         // only execute method needed for shared
                         cacheClass.getEnclosedElements().add(element);
                     }
                 }
+
             }
             if (cachedExecute == null) {
                 throw new AssertionError("execute not found");
@@ -1005,11 +1076,9 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
             }
             acceptsBuilder.string("dynamicDispatch_.accepts(" + receiverName + ") && ");
 
-            boolean finalClass = hasFinalDynamicDispatch(libraryExports);
-            if (finalClass) {
-                acceptsBuilder.string("dynamicDispatch_.dispatch(" + receiverName + ")");
-                acceptsBuilder.string(" == ");
-            }
+            acceptsBuilder.string("dynamicDispatch_.dispatch(" + receiverName + ")");
+            acceptsBuilder.string(" == ");
+
             if (libraryExports.isDynamicDispatchTarget()) {
                 acceptsBuilder.typeLiteral(libraryExports.getTemplateType().asType());
             } else {
@@ -1030,14 +1099,6 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                 acceptsBuilder.string(name);
             }
 
-            if (finalClass) {
-                // nothing to close
-            } else {
-                acceptsBuilder.string(".isAssignableFrom(");
-                acceptsBuilder.string("dynamicDispatch_.dispatch(" + receiverName + ")");
-                acceptsBuilder.string(")");
-            }
-
         } else {
             if (libraryExports.isFinalReceiver() || (!cached && libraryExports.getLibrary().isDynamicDispatch())) {
                 if (ElementUtils.isObject(exportReceiverType)) {
@@ -1056,6 +1117,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                 if (constructor != null) {
                     boolean doCast = !((TypeElement) ((DeclaredType) receiverType).asElement()).getTypeParameters().isEmpty();
                     CodeTreeBuilder builder = constructor.appendBuilder().startStatement().string("this.receiverClass_ = ");
+
                     if (doCast) {
                         builder.cast(receiverClassType);
                         constructor.addAnnotationMirror(LibraryGenerator.createSuppressWarningsUnchecked(context));

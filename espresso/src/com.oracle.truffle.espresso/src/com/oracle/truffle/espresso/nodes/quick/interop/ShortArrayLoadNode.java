@@ -63,23 +63,19 @@ public abstract class ShortArrayLoadNode extends QuickNode {
                     @Cached ToEspressoNode toEspressoNode,
                     @CachedContext(EspressoLanguage.class) EspressoContext context,
                     @Cached BranchProfile exceptionProfile) {
-        Object result = ForeignArrayUtils.readForeignArrayElement(array, index, interop, context.getMeta(), exceptionProfile);
+        Meta meta = context.getMeta();
+        Object result = ForeignArrayUtils.readForeignArrayElement(array, index, interop, meta, exceptionProfile);
 
         try {
-            return (short) toEspressoNode.execute(result, context.getMeta()._short);
+            return (short) toEspressoNode.execute(result, meta._short);
         } catch (UnsupportedTypeException e) {
             exceptionProfile.enter();
-            throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_ClassCastException, "Could not cast the foreign array element to short");
+            throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Could not cast the foreign array element to short");
         }
     }
 
     @Specialization(guards = "array.isEspressoObject()")
     short doEspresso(StaticObject array, int index) {
-        return getBytecodesNode().getInterpreterToVM().getArrayShort(index, array);
-    }
-
-    @Override
-    public boolean producedForeignObject(Object[] refs) {
-        return false;
+        return getBytecodeNode().getInterpreterToVM().getArrayShort(index, array);
     }
 }

@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
+import com.oracle.svm.core.util.VMError;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.runtime.GraalRuntime;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
@@ -284,6 +285,7 @@ public class GraalObjectReplacer implements Function<Object, Object> {
         }
 
         AnalysisType aType = toAnalysisType(original);
+        VMError.guarantee(aType.isLinked(), "types reachable for JIT compilation must not have linkage errors");
         SubstrateType sType = types.get(aType);
 
         if (sType == null) {

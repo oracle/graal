@@ -16,8 +16,10 @@ env:
   DB_USER: hibernate_orm_test
   DB_PASSWORD: hibernate_orm_test
   DB_NAME: hibernate_orm_test
-  NATIVE_TEST_MAVEN_OPTS: "-B --settings ${QUARKUS_PATH}/.github/mvn-settings.xml --fail-at-end -Dtest-containers -Dstart-containers -Dnative-image.xmx=5g -Dnative -Dnative.surefire.skip -Dformat.skip -Dno-descriptor-tests install -DskipDocs"
+  COMMON_MAVEN_ARGS: "-e -B --settings .github/mvn-settings.xml --fail-at-end"
+  NATIVE_TEST_MAVEN_ARGS: "-Dtest-containers -Dstart-containers -Dquarkus.native.native-image-xmx=5g -Dnative -Dnative.surefire.skip -Dformat.skip -Dno-descriptor-tests install -DskipDocs"
   MX_GIT_CACHE: refcache
+  MX_PYTHON_VERSION: 3
   MX_PATH: ${{ github.workspace }}/mx
   JAVA_HOME: ${{ github.workspace }}/jdk
   QUARKUS_PATH: ${{ github.workspace }}/quarkus
@@ -41,7 +43,7 @@ jobs:
         path: ${{ env.MX_PATH }}
     - name: Get latest quarkus release
       run: |
-        export QUARKUS_VERSION=$(curl https://repo1.maven.org/maven2/io/quarkus/quarkus-bom/maven-metadata.xml | awk -F"[<>]" '/latest/ {print $3}')
+        export QUARKUS_VERSION=main #$(curl https://repo1.maven.org/maven2/io/quarkus/quarkus-bom/maven-metadata.xml | awk -F"[<>]" '/latest/ {print $3}')
         echo Getting Quarkus $QUARKUS_VERSION
         curl --output quarkus.tgz -sL https://api.github.com/repos/quarkusio/quarkus/tarball/$QUARKUS_VERSION
         mkdir ${QUARKUS_PATH}
@@ -61,7 +63,7 @@ jobs:
     - name: Get JDK
       run: |
         mkdir jdk-dl
-        ${MX_PATH}/mx fetch-jdk --java-distribution labsjdk-ce-11 --to jdk-dl --alias ${JAVA_HOME}
+        ${MX_PATH}/mx fetch-jdk --jdk-id labsjdk-ce-11 --to jdk-dl --alias ${JAVA_HOME}
     - name: Build graalvm native-image
       run: |
         cd substratevm
@@ -107,48 +109,45 @@ jobs:
       matrix: ${{ fromJson(needs.build-quarkus-and-graalvm.outputs.matrix) }}
     steps:
       - name: Download GraalVM build
+        if: startsWith(matrix.os-name, 'ubuntu')
         uses: actions/download-artifact@v1
         with:
           name: graalvm
           path: .
       - name: Extract GraalVM build
+        if: startsWith(matrix.os-name, 'ubuntu')
         shell: bash
         run: tar -xzvf graalvm.tgz -C $(dirname ${GRAALVM_HOME})
       - name: Get latest quarkus release
+        if: startsWith(matrix.os-name, 'ubuntu')
         run: |
-          export QUARKUS_VERSION=$(curl https://repo1.maven.org/maven2/io/quarkus/quarkus-bom/maven-metadata.xml | awk -F"[<>]" '/latest/ {print $3}')
+          export QUARKUS_VERSION=main #$(curl https://repo1.maven.org/maven2/io/quarkus/quarkus-bom/maven-metadata.xml | awk -F"[<>]" '/latest/ {print $3}')
           echo Getting Quarkus $QUARKUS_VERSION
           curl --output quarkus.tgz -sL https://api.github.com/repos/quarkusio/quarkus/tarball/$QUARKUS_VERSION
           mkdir ${QUARKUS_PATH}
           tar xf quarkus.tgz -C ${QUARKUS_PATH} --strip-components=1
       - name: Reclaim Disk Space
+        if: startsWith(matrix.os-name, 'ubuntu')
         run: ${QUARKUS_PATH}/.github/ci-prerequisites.sh
       - name: Download Maven Repo
+        if: startsWith(matrix.os-name, 'ubuntu')
         uses: actions/download-artifact@v1
         with:
           name: maven-repo
           path: .
       - name: Extract Maven Repo
+        if: startsWith(matrix.os-name, 'ubuntu')
         shell: bash
         run: tar -xzf maven-repo.tgz -C ~
       - name: Build with Maven
+        if: startsWith(matrix.os-name, 'ubuntu')
         env:
           TEST_MODULES: ${{matrix.test-modules}}
-          CATEGORY: ${{matrix.category}}
         run: |
           cd ${QUARKUS_PATH}
           export JAVA_HOME=${GRAALVM_HOME}
           ${GRAALVM_HOME}/bin/native-image --version
-          for i in $TEST_MODULES
-          do modules+=("integration-tests/$i"); done
-          IFS=,
-          eval mvn -pl "${modules[*]}" $NATIVE_TEST_MAVEN_OPTS
-          # add the 'simple with spaces' project to the run of 'Misc1' by executing it explicitly
-          # done because there is no good way to pass strings with empty values to the previous command
-          # so this hack is as good as any
-          if [ "$CATEGORY" == "Misc1" ]; then
-            mvn -Dnative -B --settings ${GITHUB_WORKSPACE}/quarkus/.github/mvn-settings.xml -f 'integration-tests/simple with space/' verify
-          fi
+          ./mvnw $COMMON_MAVEN_ARGS -f integration-tests -pl "$TEST_MODULES" $NATIVE_TEST_MAVEN_ARGS
       - name: Prepare failure archive (if maven failed)
         if: failure()
         shell: bash

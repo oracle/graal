@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -163,8 +163,8 @@ abstract class SteppingStrategy {
         return new StepOver(session, config);
     }
 
-    static SteppingStrategy createUnwind(int depth) {
-        return new Unwind(depth);
+    static SteppingStrategy createUnwind(int depth, DebugValue returnValue) {
+        return new Unwind(depth, returnValue);
     }
 
     static SteppingStrategy createComposed(SteppingStrategy strategy1, SteppingStrategy strategy2) {
@@ -531,15 +531,17 @@ abstract class SteppingStrategy {
     static final class Unwind extends SteppingStrategy {
 
         private final int depth; // Negative depth
+        private final DebugValue returnValue;
         private int stackCounter;
         ThreadDeath unwind;
 
-        Unwind(int depth) {
+        Unwind(int depth, DebugValue returnValue) {
             this.depth = -depth;
+            this.returnValue = returnValue;
         }
 
         @Override
-        void initialize(SuspendedContext contex, SuspendAnchor suspendAnchor) {
+        void initialize(SuspendedContext context, SuspendAnchor suspendAnchor) {
             // We're entered already, we'll be called on exit once before unwind.
             this.stackCounter = 1;
         }
@@ -557,7 +559,7 @@ abstract class SteppingStrategy {
         @Override
         Object notifyOnUnwind() {
             if (depth == stackCounter) {
-                return ProbeNode.UNWIND_ACTION_REENTER;
+                return returnValue != null ? returnValue.get() : ProbeNode.UNWIND_ACTION_REENTER;
             } else {
                 return null;
             }

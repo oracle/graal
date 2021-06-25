@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,9 +43,26 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.tools.chromeinspector.InspectorExecutionContext;
 import com.oracle.truffle.tools.chromeinspector.LanguageChecks;
 import com.oracle.truffle.tools.chromeinspector.objects.NullObject;
+import com.oracle.truffle.tools.chromeinspector.types.TypeInfo.SUBTYPE;
 import com.oracle.truffle.tools.chromeinspector.types.TypeInfo.TYPE;
 
 public final class RemoteObject {
+
+    /**
+     * An additional type mark specifying the value internal structure.
+     */
+    public enum TypeMark {
+
+        /**
+         * Map entries iterator.
+         */
+        MAP_ENTRIES,
+
+        /**
+         * Map entry. An array of the key and value.
+         */
+        MAP_ENTRY,
+    }
 
     private static final Double NEGATIVE_DOUBLE_0 = Double.valueOf("-0");
     private static final Float NEGATIVE_FLOAT_0 = Float.valueOf("-0");
@@ -58,7 +75,9 @@ public final class RemoteObject {
     private final String objectId;
     private final InspectorExecutionContext context;
     private final IndexRange indexRange;
+    private DebugValue scopeReceiver;
     private TypeInfo typeInfo;
+    private final TypeMark typeMark;
     private Object value;
     private boolean replicableValue;
     private String unserializableValue;
@@ -72,15 +91,24 @@ public final class RemoteObject {
     }
 
     public RemoteObject(DebugValue debugValue, boolean readEagerly, boolean generatePreview, InspectorExecutionContext context) {
-        this(debugValue, readEagerly, generatePreview, context, null);
+        this(debugValue, readEagerly, generatePreview, context, null, null);
+    }
+
+    public RemoteObject(DebugValue debugValue, boolean readEagerly, boolean generatePreview, InspectorExecutionContext context, TypeMark typeMark) {
+        this(debugValue, readEagerly, generatePreview, context, null, typeMark);
     }
 
     public RemoteObject(DebugValue debugValue, boolean readEagerly, boolean generatePreview, InspectorExecutionContext context, IndexRange indexRange) {
+        this(debugValue, readEagerly, generatePreview, context, indexRange, null);
+    }
+
+    private RemoteObject(DebugValue debugValue, boolean readEagerly, boolean generatePreview, InspectorExecutionContext context, IndexRange indexRange, TypeMark typeMark) {
         this.valueValue = debugValue;
         this.valueScope = null;
         this.generatePreview = generatePreview;
         this.context = context;
         this.indexRange = indexRange;
+        this.typeMark = typeMark;
         if (!debugValue.hasReadSideEffects() || readEagerly) {
             boolean isObject = initFromValue();
             objectId = (isObject) ? Long.toString(LAST_ID.incrementAndGet()) : null;
@@ -98,7 +126,7 @@ public final class RemoteObject {
             debugValue = debugValue.asInLanguage(originalLanguage);
         }
         PrintWriter err = context != null ? context.getErr() : null;
-        this.typeInfo = TypeInfo.fromValue(debugValue, originalLanguage, err);
+        this.typeInfo = TypeInfo.fromValue(debugValue, typeMark, originalLanguage, err);
         boolean readable = debugValue.isReadable();
         String toString;
         boolean addType = true;
@@ -106,14 +134,17 @@ public final class RemoteObject {
         String unserializable = null;
         boolean replicableRawValue = true;
         try {
-            if (readable) {
+            if (typeInfo.subtype == SUBTYPE.INTERNAL_ENTRY) {
+                toString = createMapEntryDescription(debugValue, context.areToStringSideEffectsAllowed(), err);
+                addType = false;
+            } else if (readable) {
                 SourceSection sourceSection;
                 if (typeInfo.isFunction && (sourceSection = debugValue.getSourceLocation()) != null && sourceSection.isAvailable() && sourceSection.getSource().hasCharacters()) {
                     toString = sourceSection.getCharacters().toString();
                     addType = false;
                 } else {
                     toString = debugValue.toDisplayString(context.areToStringSideEffectsAllowed());
-                    if (TYPE.STRING.getId().equals(typeInfo.type) || TYPE.SYMBOL.getId().equals(typeInfo.type)) {
+                    if (typeInfo.type == TYPE.STRING || typeInfo.type == TYPE.SYMBOL) {
                         // The whole description is rendered as a String in quotes, or highlighted
                         // as a symbol. Do not prepend the type.
                         addType = false;
@@ -124,9 +155,9 @@ public final class RemoteObject {
                 replicableRawValue = false;
             }
             if (readable && !typeInfo.isObject) {
-                if ("null".equals(typeInfo.subtype) && TYPE.OBJECT.getId().equals(typeInfo.type)) {
+                if (typeInfo.subtype == SUBTYPE.NULL && typeInfo.type == TYPE.OBJECT) {
                     replicableRawValue = false;
-                } else if (TYPE.UNDEFINED.getId().equals(typeInfo.type)) {
+                } else if (typeInfo.type == TYPE.UNDEFINED) {
                     replicableRawValue = false;
                 } else {
                     if (debugValue.isBoolean()) {
@@ -187,6 +218,35 @@ public final class RemoteObject {
         return typeInfo.isObject;
     }
 
+    private static String createMapEntryDescription(DebugValue entryValue, boolean allowSideEffects, PrintWriter err) {
+        List<DebugValue> keyAndValue;
+        try {
+            keyAndValue = entryValue.getArray();
+        } catch (DebugException ex) {
+            if (err != null) {
+                ex.printStackTrace(err);
+            }
+            return "{? => ?}";
+        }
+        return "{" + createMapEntryElementDescription(keyAndValue, 0, allowSideEffects, err) + " => " + createMapEntryElementDescription(keyAndValue, 1, allowSideEffects, err) + "}";
+    }
+
+    private static String createMapEntryElementDescription(List<DebugValue> keyAndValue, int index, boolean allowSideEffects, PrintWriter err) {
+        try {
+            DebugValue v = keyAndValue.get(index);
+            String toString = v.toDisplayString(allowSideEffects);
+            if (v.isString()) {
+                toString = "\"" + toString + "\"";
+            }
+            return toString;
+        } catch (DebugException ex) {
+            if (err != null) {
+                ex.printStackTrace(err);
+            }
+            return "?";
+        }
+    }
+
     public RemoteObject(DebugScope scope) {
         this(scope, null);
     }
@@ -197,7 +257,8 @@ public final class RemoteObject {
         this.generatePreview = false;
         this.context = null;
         this.indexRange = null;
-        this.typeInfo = new TypeInfo(TYPE.OBJECT.getId(), null, null, null, true, false, false, false);
+        this.typeMark = null;
+        this.typeInfo = new TypeInfo(TYPE.OBJECT, null, null, null, true, false, false, false);
         this.value = null;
         this.replicableValue = false;
         this.unserializableValue = null;
@@ -206,12 +267,13 @@ public final class RemoteObject {
         this.jsonObject = createJSON();
     }
 
-    private RemoteObject(String type, String subtype, String className, String description) {
+    private RemoteObject(TYPE type, SUBTYPE subtype, String className, String description) {
         this.valueValue = null;
         this.valueScope = null;
         this.generatePreview = false;
         this.context = null;
         this.indexRange = null;
+        this.typeMark = null;
         this.typeInfo = new TypeInfo(type, subtype, className, null, true, false, false, false);
         this.value = null;
         this.replicableValue = false;
@@ -221,7 +283,19 @@ public final class RemoteObject {
         this.jsonObject = createJSON();
     }
 
-    public static RemoteObject createSimpleObject(String type, String className, String description) {
+    public TypeMark getTypeMark() {
+        return this.typeMark;
+    }
+
+    public void setScopeReceiver(DebugValue scopeReceiver) {
+        this.scopeReceiver = scopeReceiver;
+    }
+
+    public DebugValue getScopeReceiver() {
+        return this.scopeReceiver;
+    }
+
+    public static RemoteObject createSimpleObject(TYPE type, String className, String description) {
         return new RemoteObject(type, null, className, description);
     }
 
@@ -235,13 +309,19 @@ public final class RemoteObject {
             CompilerDirectives.transferToInterpreter();
             throw new AssertionError(e);
         }
-        return new RemoteObject("object", "null", null, nullStr);
+        return new RemoteObject(TYPE.OBJECT, SUBTYPE.NULL, null, nullStr);
     }
 
     private JSONObject createJSON() {
         JSONObject json = new JSONObject();
-        json.put("type", typeInfo.type);
-        json.putOpt("subtype", typeInfo.subtype);
+        json.put("type", typeInfo.type.getId());
+        if (TypeMark.MAP_ENTRIES == typeMark) {
+            json.put("subtype", SUBTYPE.ARRAY.getId());
+        } else {
+            if (typeInfo.subtype != null) {
+                json.put("subtype", typeInfo.subtype.getId());
+            }
+        }
         json.putOpt("className", typeInfo.className);
         json.putOpt("unserializableValue", unserializableValue);
         json.putOpt("value", value);

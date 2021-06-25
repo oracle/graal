@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -111,8 +111,9 @@ abstract class CoreLocations {
 
         @Override
         default void setInt(DynamicObject store, int value, Shape oldShape, Shape newShape) {
-            ACCESS.growAndSetShape(store, oldShape, newShape);
+            ACCESS.grow(store, oldShape, newShape);
             setInt(store, value, false);
+            ACCESS.setShapeWithStoreFence(store, newShape);
         }
     }
 
@@ -146,8 +147,9 @@ abstract class CoreLocations {
 
         @Override
         default void setLong(DynamicObject store, long value, Shape oldShape, Shape newShape) {
-            ACCESS.growAndSetShape(store, oldShape, newShape);
+            ACCESS.grow(store, oldShape, newShape);
             setLong(store, value, false);
+            ACCESS.setShapeWithStoreFence(store, newShape);
         }
     }
 
@@ -181,8 +183,9 @@ abstract class CoreLocations {
 
         @Override
         default void setDouble(DynamicObject store, double value, Shape oldShape, Shape newShape) {
-            ACCESS.growAndSetShape(store, oldShape, newShape);
+            ACCESS.grow(store, oldShape, newShape);
             setDouble(store, value, false);
+            ACCESS.setShapeWithStoreFence(store, newShape);
         }
     }
 
@@ -214,8 +217,9 @@ abstract class CoreLocations {
 
         @Override
         default void setBoolean(DynamicObject store, boolean value, Shape oldShape, Shape newShape) {
-            ACCESS.growAndSetShape(store, oldShape, newShape);
+            ACCESS.grow(store, oldShape, newShape);
             setBoolean(store, value, false);
+            ACCESS.setShapeWithStoreFence(store, newShape);
         }
     }
 
@@ -232,7 +236,7 @@ abstract class CoreLocations {
         public int hashCode() {
             final int prime = 31;
             int result = super.hashCode();
-            result = prime * result + ((value == null) ? 0 : 0 /* value.hashCode() */);
+            result = prime * result + ((value == null) ? 0 : value.hashCode());
             return result;
         }
 
@@ -430,6 +434,11 @@ abstract class CoreLocations {
         }
 
         @Override
+        protected void clear(DynamicObject store) {
+            setInternal(store, null, false);
+        }
+
+        @Override
         public int objectArrayCount() {
             return OBJECT_SLOT_SIZE;
         }
@@ -464,6 +473,11 @@ abstract class CoreLocations {
 
         public boolean isNonNull() {
             return false;
+        }
+
+        @Override
+        protected void clear(DynamicObject store) {
+            setInternal(store, null, false);
         }
 
         @Override
@@ -998,9 +1012,9 @@ abstract class CoreLocations {
         LocationImpl internal = loc.getInternalLocation();
         boolean isPrimitive = internal instanceof CoreLocations.LongLocation;
         if (internal instanceof CoreLocations.FieldLocation) {
-            return (isPrimitive ? Integer.MIN_VALUE : 0) + ((CoreLocations.FieldLocation) internal).getIndex();
+            return (isPrimitive ? -Integer.MAX_VALUE : 0) + ((CoreLocations.FieldLocation) internal).getIndex();
         } else if (internal instanceof CoreLocations.ArrayLocation) {
-            return (isPrimitive ? Integer.MIN_VALUE : 0) + MAX_DYNAMIC_FIELDS + ((CoreLocations.ArrayLocation) internal).getIndex();
+            return (isPrimitive ? -Integer.MAX_VALUE : 0) + MAX_DYNAMIC_FIELDS + ((CoreLocations.ArrayLocation) internal).getIndex();
         } else {
             throw new IllegalArgumentException(internal.getClass().getName());
         }

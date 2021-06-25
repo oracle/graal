@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ package com.oracle.truffle.espresso.nodes.interop;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
@@ -37,10 +38,10 @@ import com.oracle.truffle.espresso.meta.Meta;
 public abstract class LookupVirtualMethodNode extends AbstractLookupNode {
     static final int LIMIT = 2;
 
-    public abstract Method execute(Klass klass, String methodName, int arity);
+    public abstract Method execute(Klass klass, String methodName, int arity) throws ArityException;
 
     public boolean isInvocable(Klass klass, String member) {
-        return doLookup(klass, member, true, false, -1) != null;
+        return isInvocable(klass, member, true, false);
     }
 
     @SuppressWarnings("unused")
@@ -67,27 +68,27 @@ public abstract class LookupVirtualMethodNode extends AbstractLookupNode {
     @Specialization(replaces = "doArrayCached")
     Method doArrayGeneric(ArrayKlass klass,
                     String methodName,
-                    int arity) {
+                    int arity) throws ArityException {
         return doGeneric(getJLObject(klass.getMeta()), methodName, arity);
     }
 
     @SuppressWarnings("unused")
     @Specialization(guards = {
-                    "klass.equals(cachedKlass)",
+                    "klass.equals(cachedKlass.getKlass())",
                     "methodName.equals(cachedMethodName)",
-                    "arity == cachedArity"}, limit = "LIMIT")
+                    "arity == cachedArity"}, limit = "LIMIT", assumptions = "cachedKlass.getAssumption()")
     Method doCached(ObjectKlass klass,
                     String methodName,
                     int arity,
-                    @Cached("klass") Klass cachedKlass,
+                    @Cached("klass.getKlassVersion()") ObjectKlass.KlassVersion cachedKlass,
                     @Cached("methodName") String cachedMethodName,
                     @Cached("arity") int cachedArity,
-                    @Cached("doGeneric(klass, methodName, arity)") Method method) {
+                    @Cached("doGeneric(cachedKlass.getKlass(), methodName, arity)") Method method) {
         return method;
     }
 
     @Specialization(replaces = "doCached")
-    Method doGeneric(ObjectKlass klass, String key, int arity) {
+    Method doGeneric(ObjectKlass klass, String key, int arity) throws ArityException {
         return doLookup(klass, key, true, false, arity);
     }
 
@@ -95,7 +96,7 @@ public abstract class LookupVirtualMethodNode extends AbstractLookupNode {
         return meta.java_lang_Object;
     }
 
-    public static boolean isCanditate(Method m) {
+    public static boolean isCandidate(Method m) {
         return m.isPublic() && !m.isStatic() && !m.isSignaturePolymorphicDeclared();
     }
 

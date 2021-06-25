@@ -337,7 +337,7 @@ public class LLVMVaListStorage implements TruffleObject {
 
     @ExportMessage
     public Object invokeMember(String member, Object[] arguments,
-                    @Cached LLVMPointerDataEscapeNode pointerEscapeNode) throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
+                    @Cached.Shared("escapeNode") @Cached LLVMPointerDataEscapeNode pointerEscapeNode) throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
         if (GET_MEMBER.equals(member)) {
             if (arguments.length == 2) {
                 if (!(arguments[0] instanceof Integer)) {
@@ -367,7 +367,7 @@ public class LLVMVaListStorage implements TruffleObject {
                 return pointerEscapeNode.executeWithType(ptrArg, type);
 
             } else {
-                throw ArityException.create(2, arguments.length);
+                throw ArityException.create(2, 2, arguments.length);
             }
         }
         throw UnknownIdentifierException.create(member);
@@ -390,8 +390,9 @@ public class LLVMVaListStorage implements TruffleObject {
     }
 
     @ExportMessage
-    public Object readArrayElement(long index) {
-        return realArguments[(int) index + numberOfExplicitArguments];
+    public Object readArrayElement(long index, @Cached.Shared("escapeNode") @Cached LLVMPointerDataEscapeNode pointerEscapeNode) {
+        Object arg = realArguments[(int) index + numberOfExplicitArguments];
+        return pointerEscapeNode.executeWithTarget(arg);
     }
 
     @ExportMessage

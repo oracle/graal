@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -76,6 +76,8 @@ import org.graalvm.compiler.lir.amd64.AMD64ArrayIndexOfOp;
 import org.graalvm.compiler.lir.amd64.AMD64Binary;
 import org.graalvm.compiler.lir.amd64.AMD64BinaryConsumer;
 import org.graalvm.compiler.lir.amd64.AMD64ByteSwapOp;
+import org.graalvm.compiler.lir.amd64.AMD64CacheWritebackOp;
+import org.graalvm.compiler.lir.amd64.AMD64CacheWritebackPostSyncOp;
 import org.graalvm.compiler.lir.amd64.AMD64Call;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.BranchOp;
@@ -643,7 +645,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         emitMove(rdst, dst);
         emitMove(rlen, len);
 
-        append(new AMD64StringLatin1InflateOp(this, getAVX3Threshold(), rsrc, rdst, rlen));
+        append(new AMD64StringLatin1InflateOp(this, getAVX3Threshold(), getMaxVectorSize(), rsrc, rdst, rlen));
     }
 
     @Override
@@ -659,7 +661,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         LIRKind reskind = LIRKind.value(AMD64Kind.DWORD);
         RegisterValue rres = AMD64.rax.asValue(reskind);
 
-        append(new AMD64StringUTF16CompressOp(this, getAVX3Threshold(), rres, rsrc, rdst, rlen));
+        append(new AMD64StringUTF16CompressOp(this, getAVX3Threshold(), getMaxVectorSize(), rres, rsrc, rdst, rlen));
 
         Variable res = newVariable(reskind);
         emitMove(res, rres);
@@ -723,6 +725,19 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     public void emitPause() {
         append(new AMD64PauseOp());
+    }
+
+    @Override
+    public void emitCacheWriteback(Value address) {
+        append(new AMD64CacheWritebackOp(asAddressValue(address)));
+    }
+
+    @Override
+    public void emitCacheWritebackSync(boolean isPreSync) {
+        // only need a post sync barrier on AMD64
+        if (!isPreSync) {
+            append(new AMD64CacheWritebackPostSyncOp());
+        }
     }
 
     @Override

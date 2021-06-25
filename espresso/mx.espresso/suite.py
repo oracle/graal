@@ -23,6 +23,21 @@
 suite = {
     "mxversion": "5.280.5",
     "name": "espresso",
+    "version" : "21.3.0",
+    "release" : False,
+    "groupId" : "org.graalvm.espresso",
+    "url" : "https://www.graalvm.org/reference-manual/java-on-truffle/",
+    "developer" : {
+        "name" : "GraalVM Development",
+        "email" : "graalvm-dev@oss.oracle.com",
+        "organization" : "Oracle Corporation",
+        "organizationUrl" : "http://www.graalvm.org/",
+    },
+    "scm" : {
+        "url" : "https://github.com/oracle/graal/tree/master/truffle",
+        "read" : "https://github.com/oracle/graal.git",
+        "write" : "git@github.com:oracle/graal.git",
+    },
 
     # ------------- licenses
 
@@ -81,19 +96,55 @@ suite = {
             "license": "UPL",
         },
 
+        "com.oracle.truffle.espresso.hotswap": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+            ],
+            "javaCompliance": "1.8+",
+            "checkstyle": "com.oracle.truffle.espresso.polyglot",
+            "license": "UPL",
+        },
+
         "com.oracle.truffle.espresso": {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
-                "truffle:TRUFFLE_API",
                 "truffle:TRUFFLE_NFI",
-                "com.oracle.truffle.espresso.jdwp"
+                "com.oracle.truffle.espresso.jdwp",
+                "com.oracle.truffle.espresso.staticobject",
+            ],
+            "uses": [
+                "com.oracle.truffle.espresso._native.NativeAccess.Provider",
             ],
             "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR", "ESPRESSO_PROCESSOR"],
             "javaCompliance": "1.8+",
             "checkstyle": "com.oracle.truffle.espresso",
             "checkstyleVersion": "8.8",
             "checkPackagePrefix": False,  # java.lang.ref.PublicFinalReference
+        },
+
+        "com.oracle.truffle.espresso.staticobject": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "truffle:TRUFFLE_API",
+                "truffle:TRUFFLE_ASM_7.2",
+            ],
+            "javaCompliance": "1.8+",
+            "checkstyle": "com.oracle.truffle.espresso",
+            "javadocType": "api",
+        },
+
+        "com.oracle.truffle.espresso.staticobject.test": {
+            "subDir" : "src",
+            "sourceDirs" : ["src"],
+            "dependencies" : [
+                "com.oracle.truffle.espresso.staticobject",
+                "mx:JUNIT"
+            ],
+            "javaCompliance": "1.8+",
+            "checkstyle": "com.oracle.truffle.espresso",
         },
 
         "com.oracle.truffle.espresso.processor": {
@@ -251,12 +302,31 @@ suite = {
             "distDependencies": [
                 "truffle:TRUFFLE_API",
                 "truffle:TRUFFLE_NFI",
+                "truffle:TRUFFLE_NFI_LIBFFI",
                 "tools:TRUFFLE_PROFILER",
+            ],
+            "exclude": [
+                "truffle:TRUFFLE_ASM_7.2",
             ],
             "javaProperties": {
                 "org.graalvm.language.java.home": "<path:ESPRESSO_SUPPORT>",
                 "polyglot.java.JVMLibraryPath": "<path:ESPRESSO_JVM_SUPPORT>/truffle",
             },
+            "maven": False,
+        },
+
+        "ESPRESSO_STATICOBJECT_TESTS": {
+            "subDir": "src",
+            "dependencies": [
+                "com.oracle.truffle.espresso.staticobject.test",
+            ],
+            "distDependencies": [
+                "espresso:ESPRESSO",
+            ],
+            "exclude": [
+                "mx:JUNIT",
+            ],
+            "maven": False,
         },
 
         "ESPRESSO_LAUNCHER": {
@@ -269,9 +339,9 @@ suite = {
                 "sdk:GRAAL_SDK",
                 "sdk:LAUNCHER_COMMON",
             ],
-            "license": "UPL",
             "description": "Espresso launcher using the polyglot API.",
             "allowsJavadocWarnings": True,
+            "maven": False,
         },
 
         "LIB_ESPRESSO": {
@@ -283,7 +353,6 @@ suite = {
                 "sdk:GRAAL_SDK",
                 "sdk:LAUNCHER_COMMON",
             ],
-            "license": "UPL",
             "description": "provides native espresso entry points",
             "allowsJavadocWarnings": True,
             "maven": False,
@@ -294,8 +363,6 @@ suite = {
             "dependencies": [
                 "com.oracle.truffle.espresso.processor",
             ],
-            "distDependencies": [],
-            "license": "UPL",
             "description": "Espresso annotation processor.",
             "maven": False,
         },
@@ -309,13 +376,15 @@ suite = {
                     "file:mx.espresso/native-image.properties",
                     "file:mx.espresso/reflectconfig.json",
                 ],
-                "LICENSE_ESPRESSO": "file:LICENSE",
+                "LICENSE_JAVAONTRUFFLE": "file:LICENSE",
                 "lib/": [
                     "dependency:espresso:com.oracle.truffle.espresso.eden/<lib:eden>",
                     "dependency:espresso:com.oracle.truffle.espresso.native/<lib:nespresso>",
                     "dependency:espresso:POLYGLOT/*",
+                    "dependency:espresso:HOTSWAP/*",
                 ],
             },
+            "maven": False,
         },
 
         "ESPRESSO_JVM_SUPPORT": {
@@ -327,6 +396,7 @@ suite = {
                     "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>",
                 ],
             },
+            "maven": False,
         },
 
         "POLYGLOT": {
@@ -337,6 +407,28 @@ suite = {
             "description": "Espresso polyglot API",
             "license": "UPL",
             "javadocType": "api",
+            "moduleInfo" : {
+                "name" : "espresso.polyglot",
+                "exports" : [
+                    "com.oracle.truffle.espresso.polyglot",
+                ]
+            }
+        },
+
+        "HOTSWAP": {
+            "subDir": "src",
+            "dependencies": [
+                "com.oracle.truffle.espresso.hotswap"
+            ],
+            "description": "Espresso HotSwap API",
+            "license": "UPL",
+            "javadocType": "api",
+            "moduleInfo" : {
+                "name" : "espresso.hotswap",
+                "exports" : [
+                    "com.oracle.truffle.espresso.hotswap",
+                ]
+            }
         },
 
         "DACAPO_SCALA_WARMUP": {
@@ -364,6 +456,7 @@ suite = {
                     "Archiver-Version": "Plexus Archiver",
             },
             "description": "Scala DaCapo with WallTime callback",
+            "maven": False,
         },
     }
 }

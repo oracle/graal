@@ -34,6 +34,7 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.SnippetCounter;
 import org.graalvm.compiler.replacements.SnippetIntegerHistogram;
 
+import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.graal.GraalFeature;
@@ -80,8 +81,8 @@ final class DisableSnippetCountersFeature implements GraalFeature {
     }
 
     @Override
-    public void registerGraphBuilderPlugins(Providers providers, GraphBuilderConfiguration.Plugins plugins, boolean analysis, boolean hosted) {
-        if (!analysis && !hosted) {
+    public void registerGraphBuilderPlugins(Providers providers, GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
+        if (reason == ParsingReason.JITCompilation) {
             plugins.appendNodePlugin(new DisableSnippetCountersPlugin());
         }
     }

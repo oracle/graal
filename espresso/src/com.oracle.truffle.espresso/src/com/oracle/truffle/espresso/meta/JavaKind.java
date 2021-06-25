@@ -96,6 +96,10 @@ public enum JavaKind {
         assert primitiveJavaClass == null || javaName.equals(primitiveJavaClass.getName());
     }
 
+    public static void ensureInitialized() {
+        /* nop */
+    }
+
     /**
      * Returns the number of stack slots occupied by this kind according to the Java bytecodes
      * specification.
@@ -535,5 +539,14 @@ public enum JavaKind {
             default:
                 return -1;
         }
+    }
+
+    public static JavaKind fromByte(byte b) {
+        return JavaKind.values()[b];
+    }
+
+    public byte toByte() {
+        assert JavaKind.values().length < java.lang.Byte.MAX_VALUE;
+        return (byte) ordinal();
     }
 }

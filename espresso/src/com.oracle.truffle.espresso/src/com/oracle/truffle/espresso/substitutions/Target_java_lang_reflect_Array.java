@@ -64,23 +64,30 @@ public final class Target_java_lang_reflect_Array {
      */
     @Substitution
     public static Object newArray(@Host(Class.class) StaticObject componentType, int length, @InjectMeta Meta meta) {
+        if (CompilerDirectives.isPartialEvaluationConstant(componentType)) {
+            // PE-through.
+            return newArrayImpl(componentType, length, meta);
+        }
+        return newArrayBoundary(componentType, length, meta);
+    }
+
+    @TruffleBoundary(allowInlining = true)
+    static Object newArrayBoundary(@Host(Class.class) StaticObject componentType, int length, @InjectMeta Meta meta) {
+        return newArrayImpl(componentType, length, meta);
+    }
+
+    static Object newArrayImpl(@Host(Class.class) StaticObject componentType, int length, @InjectMeta Meta meta) {
         if (StaticObject.isNull(componentType)) {
             throw meta.throwNullPointerException();
         }
         Klass component = componentType.getMirrorKlass();
         if (component == meta._void || Types.getArrayDimensions(component.getType()) >= 255) {
-            throw Meta.throwException(meta.java_lang_IllegalArgumentException);
+            throw meta.throwException(meta.java_lang_IllegalArgumentException);
         }
-
         if (component.isPrimitive()) {
             byte jvmPrimitiveType = (byte) component.getJavaKind().getBasicType();
             return InterpreterToVM.allocatePrimitiveArray(jvmPrimitiveType, length, meta);
         }
-
-        // NegativeArraySizeException is thrown in getInterpreterToVM().newArray
-        // if (length < 0) {
-        // throw meta.throwEx(meta.NegativeArraySizeException);
-        // }
         return InterpreterToVM.newReferenceArray(component, length);
     }
 
@@ -107,6 +114,7 @@ public final class Target_java_lang_reflect_Array {
      * @exception NegativeArraySizeException if any of the components in the specified
      *                {@code dimensions} argument is negative.
      */
+    @TruffleBoundary
     @Substitution
     public static @Host(Object.class) StaticObject multiNewArray(@Host(Class.class) StaticObject componentType, @Host(int[].class) StaticObject dimensionsArray, @InjectMeta Meta meta) {
         if (StaticObject.isNull(componentType) || StaticObject.isNull(dimensionsArray)) {
@@ -114,7 +122,7 @@ public final class Target_java_lang_reflect_Array {
         }
         Klass component = componentType.getMirrorKlass();
         if (component == meta._void || StaticObject.isNull(dimensionsArray)) {
-            throw Meta.throwException(meta.java_lang_IllegalArgumentException);
+            throw meta.throwException(meta.java_lang_IllegalArgumentException);
         }
         final int[] dimensions = dimensionsArray.unwrap();
         int finalDimensions = dimensions.length;
@@ -122,11 +130,11 @@ public final class Target_java_lang_reflect_Array {
             finalDimensions += Types.getArrayDimensions(component.getType());
         }
         if (dimensions.length == 0 || finalDimensions > 255) {
-            throw Meta.throwException(meta.java_lang_IllegalArgumentException);
+            throw meta.throwException(meta.java_lang_IllegalArgumentException);
         }
         for (int d : dimensions) {
             if (d < 0) {
-                throw Meta.throwException(meta.java_lang_NegativeArraySizeException);
+                throw meta.throwException(meta.java_lang_NegativeArraySizeException);
             }
         }
         if (dimensions.length == 1) {
@@ -139,10 +147,19 @@ public final class Target_java_lang_reflect_Array {
     @Substitution
     public static boolean getBoolean(@Host(Object.class) StaticObject array, int index, @InjectMeta Meta meta,
                     @InjectProfile SubstitutionProfiler profiler) {
-        checkNonNullArray(array, meta, profiler);
+        if (StaticObject.isNull(array)) {
+            profiler.profile(0);
+            throw meta.throwNullPointerException();
+        }
+        // `getBoolean` should only access boolean arrays
+        Klass arrayKlass = array.getKlass();
+        if (arrayKlass != arrayKlass.getMeta()._boolean_array) {
+            profiler.profile(1);
+            throw meta.throwException(meta.java_lang_IllegalArgumentException);
+        }
         try {
-            return Array.getBoolean(array.unwrap(), index);
-        } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
+            return Array.getByte(array.unwrap(), index) != 0;
+        } catch (ArrayIndexOutOfBoundsException e) {
             profiler.profile(5);
             throw rethrowAsGuestException(e, meta, profiler);
         }
@@ -240,11 +257,11 @@ public final class Target_java_lang_reflect_Array {
         }
         if (e instanceof ArrayIndexOutOfBoundsException) {
             profiler.profile(3);
-            throw Meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
+            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
         }
         if (e instanceof IllegalArgumentException) {
             profiler.profile(4);
-            throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, getMessageBoundary(e));
+            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, getMessageBoundary(e));
         }
         throw EspressoError.shouldNotReachHere(e);
     }
@@ -262,17 +279,27 @@ public final class Target_java_lang_reflect_Array {
         }
         if (!(array.isArray())) {
             profiler.profile(1);
-            throw Meta.throwException(meta.java_lang_IllegalArgumentException);
+            throw meta.throwException(meta.java_lang_IllegalArgumentException);
         }
     }
 
     @Substitution
     public static void setBoolean(@Host(Object.class) StaticObject array, int index, boolean value, @InjectMeta Meta meta,
                     @InjectProfile SubstitutionProfiler profiler) {
-        checkNonNullArray(array, meta, profiler);
+        if (StaticObject.isNull(array)) {
+            profiler.profile(0);
+            throw meta.throwNullPointerException();
+        }
+        // host `setByte` can write in all primitive arrays beside boolean array
+        // `setBoolean` should only access boolean arrays
+        Klass arrayKlass = array.getKlass();
+        if (arrayKlass != arrayKlass.getMeta()._boolean_array) {
+            profiler.profile(1);
+            throw meta.throwException(meta.java_lang_IllegalArgumentException);
+        }
         try {
-            Array.setBoolean(array.unwrap(), index, value);
-        } catch (NullPointerException | ArrayIndexOutOfBoundsException | IllegalArgumentException e) {
+            Array.setByte(array.unwrap(), index, value ? (byte) 1 : (byte) 0);
+        } catch (ArrayIndexOutOfBoundsException e) {
             profiler.profile(5);
             throw rethrowAsGuestException(e, meta, profiler);
         }
@@ -402,7 +429,7 @@ public final class Target_java_lang_reflect_Array {
             }
             // @formatter:on
         } else {
-            throw Meta.throwException(meta.java_lang_IllegalArgumentException);
+            throw meta.throwException(meta.java_lang_IllegalArgumentException);
         }
     }
 
@@ -443,7 +470,7 @@ public final class Target_java_lang_reflect_Array {
             }
             // @formatter:on
         } else {
-            throw Meta.throwException(meta.java_lang_IllegalArgumentException);
+            throw meta.throwException(meta.java_lang_IllegalArgumentException);
         }
     }
 

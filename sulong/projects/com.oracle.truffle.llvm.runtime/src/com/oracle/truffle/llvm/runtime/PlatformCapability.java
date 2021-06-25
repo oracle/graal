@@ -54,10 +54,23 @@ public abstract class PlatformCapability<S extends Enum<S> & LLVMSyscallEntry> i
 
     public abstract String getLibrarySuffix();
 
+    public abstract boolean isGlobalDLOpenFlagSet(int flag);
+
+    public abstract boolean isFirstDLOpenFlagSet(int flag);
+
+    public abstract boolean isLazyDLOpenFlagSet(int flag);
+
+    public abstract boolean isDefaultDLSymFlagSet(long flag);
+
     @CompilerDirectives.CompilationFinal(dimensions = 1) private final S[] valueToSysCall;
 
     protected PlatformCapability(Class<S> cls) {
         valueToSysCall = initTable(cls);
+    }
+
+    public void initializeThread(@SuppressWarnings("unused") LLVMContext context,
+                    @SuppressWarnings("unused") Thread thread) {
+        // Nothing needs to be done in Sulong for native thread initialization.
     }
 
     @SuppressWarnings("unchecked")

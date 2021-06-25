@@ -55,10 +55,10 @@ public interface OnHeapMemoryAccess extends MemoryAccess {
          */
         WEAK_FIELD,
         /**
-         * An access which requires a dynamic check for Weak field access (e.g. Hotspot's
-         * Reference.referent field).
+         * Phantom field access (e.g. Hotspot's Reference.referent field of a PhantomReference
+         * instance).
          */
-        MAYBE_WEAK_FIELD
+        PHANTOM_FIELD
     }
 
     /**

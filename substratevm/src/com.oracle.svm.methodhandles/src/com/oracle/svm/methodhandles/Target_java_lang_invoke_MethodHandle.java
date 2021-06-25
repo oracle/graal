@@ -40,6 +40,8 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.invoke.MethodHandleUtils.MethodHandlesSupported;
+import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.reflect.helpers.InvokeSpecialReflectionProxy;
 import com.oracle.svm.reflect.target.Target_java_lang_reflect_AccessibleObject;
@@ -61,7 +63,7 @@ final class Target_java_lang_invoke_MethodHandle {
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     private MethodHandle asTypeCache;
 
-    @Alias private MethodType type;
+    @Alias MethodType type;
 
     @Alias
     native Target_java_lang_invoke_MemberName internalMemberName();

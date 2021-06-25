@@ -39,7 +39,10 @@ class StackFrame {
     final Operand[] locals;
     final SubroutineModificationStack subroutineModificationStack;
 
-    // For stackMap extraction
+    /*
+     * For stackMap extraction. Points to the last occupied slot of a stack frame, or -1 if there is
+     * no local.
+     */
     int lastLocal;
 
     StackFrame(OperandStack stack, Locals locals) {
@@ -68,13 +71,13 @@ class StackFrame {
 
     StackFrame(MethodVerifier mv) {
         this(new OperandStack(mv.getMaxStack()), new Locals(mv));
-        int last = (mv.isStatic() ? -1 : 0);
+        int last = (mv.isStatic() ? 0 : 1);
         for (int i = 0; i < mv.getSig().length - 1; i++) {
-            if (isType2(locals[++last])) {
+            if (isType2(locals[last++])) {
                 last++;
             }
         }
-        this.lastLocal = last;
+        this.lastLocal = last - 1;
     }
 
     StackFrame(Operand[] stack, int stackSize, int top, Operand[] locals) {

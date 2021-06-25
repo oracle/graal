@@ -34,7 +34,7 @@ import com.oracle.truffle.espresso.runtime.ClasspathFile;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
-import com.oracle.truffle.object.DebugCounter;
+import com.oracle.truffle.espresso.perf.DebugCounter;
 
 /**
  * A {@link BootClassRegistry} maps type names to resolved {@link Klass} instances loaded by the

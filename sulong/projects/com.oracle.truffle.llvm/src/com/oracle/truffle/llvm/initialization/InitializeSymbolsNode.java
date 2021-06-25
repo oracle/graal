@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,15 +29,13 @@
  */
 package com.oracle.truffle.llvm.initialization;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionSymbol;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
+import com.oracle.truffle.llvm.runtime.IDGenerater.BitcodeID;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode;
@@ -60,6 +58,9 @@ import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * {@link InitializeSymbolsNode} creates the symbol of all defined functions and globals, and put
  * them into the symbol table. Alias will be unwrapped before they are inserted into the symbol
@@ -79,8 +80,8 @@ public final class InitializeSymbolsNode extends LLVMNode {
     @Child private LLVMAllocateNode allocRwSection;
 
     /**
-     * Contains the offsets of the {@link #globals} to be allocated. -1 represents a pointer type
-     * ({@link LLVMGlobalContainer}).
+     * Contains the offsets of the {@link #globals} to be allocated. -1 represents a pointer type (
+     * {@link LLVMGlobalContainer}).
      */
     @CompilationFinal(dimensions = 1) private final int[] globalOffsets;
     @CompilationFinal(dimensions = 1) private final boolean[] globalIsReadOnly;
@@ -92,7 +93,7 @@ public final class InitializeSymbolsNode extends LLVMNode {
     private final LLVMScope fileScope;
     private final NodeFactory nodeFactory;
 
-    private final int bitcodeID;
+    private final BitcodeID bitcodeID;
     private final int globalLength;
 
     public InitializeSymbolsNode(LLVMParserResult result, boolean lazyParsing, boolean isInternalSulongLibrary, String moduleName) throws Type.TypeOverflowException {
@@ -180,7 +181,7 @@ public final class InitializeSymbolsNode extends LLVMNode {
         allocFunctions(ctx);
 
         if (allocRoSection != null) {
-            ctx.registerReadOnlyGlobals(bitcodeID, roBase, nodeFactory);
+            ctx.registerReadOnlyGlobals(bitcodeID.getId(), roBase, nodeFactory);
         }
         if (allocRwSection != null) {
             ctx.registerGlobals(rwBase, nodeFactory);

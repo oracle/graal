@@ -28,10 +28,10 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.perf.DebugCounter;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Host;
-import com.oracle.truffle.object.DebugCounter;
 
 /**
  * A {@link GuestClassRegistry} maps class names to resolved {@link Klass} instances. Each class
@@ -70,9 +70,9 @@ public final class GuestClassRegistry extends ClassRegistry {
         this.loadClass = classLoader.getKlass().lookupMethod(Name.loadClass, Signature.Class_String);
         this.addClass = classLoader.getKlass().lookupMethod(Name.addClass, Signature._void_Class);
         if (getJavaVersion().modulesEnabled()) {
-            StaticObject unnamedModule = classLoader.getField(getMeta().java_lang_ClassLoader_unnamedModule);
+            StaticObject unnamedModule = getMeta().java_lang_ClassLoader_unnamedModule.getObject(classLoader);
             initUnnamedModule(unnamedModule);
-            unnamedModule.setHiddenField(getMeta().HIDDEN_MODULE_ENTRY, getUnnamedModule());
+            getMeta().HIDDEN_MODULE_ENTRY.setHiddenObject(unnamedModule, getUnnamedModule());
         }
     }
 

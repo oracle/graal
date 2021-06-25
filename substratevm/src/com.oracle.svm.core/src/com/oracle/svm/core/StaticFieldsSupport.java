@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core;
 
+import java.util.Objects;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -55,8 +57,13 @@ public final class StaticFieldsSupport {
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void setData(Object[] staticObjectFields, byte[] staticPrimitiveFields) {
         StaticFieldsSupport support = ImageSingletons.lookup(StaticFieldsSupport.class);
-        support.staticObjectFields = staticObjectFields;
-        support.staticPrimitiveFields = staticPrimitiveFields;
+        support.staticObjectFields = Objects.requireNonNull(staticObjectFields);
+        support.staticPrimitiveFields = Objects.requireNonNull(staticPrimitiveFields);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static boolean dataAvailable() {
+        return ImageSingletons.lookup(StaticFieldsSupport.class).staticObjectFields != null;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

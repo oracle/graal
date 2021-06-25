@@ -607,6 +607,12 @@ CLSS public abstract interface !annotation org.graalvm.nativeimage.c.struct.RawF
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
 intf java.lang.annotation.Annotation
 
+CLSS public abstract interface !annotation org.graalvm.nativeimage.c.struct.RawPointerTo
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract !hasdefault java.lang.Class<? extends org.graalvm.word.WordBase> value()
+
 CLSS public abstract interface !annotation org.graalvm.nativeimage.c.struct.RawStructure
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
@@ -817,9 +823,9 @@ meth public abstract void registerAsAccessed(java.lang.reflect.Field)
 meth public abstract void registerAsInHeap(java.lang.Class<?>)
 meth public abstract void registerAsUnsafeAccessed(java.lang.reflect.Field)
 meth public abstract void registerAsUsed(java.lang.Class<?>)
+meth public abstract void registerClassInitializerReachabilityHandler(java.util.function.Consumer<org.graalvm.nativeimage.hosted.Feature$DuringAnalysisAccess>,java.lang.Class<?>)
 meth public abstract void registerMethodOverrideReachabilityHandler(java.util.function.BiConsumer<org.graalvm.nativeimage.hosted.Feature$DuringAnalysisAccess,java.lang.reflect.Executable>,java.lang.reflect.Executable)
 meth public abstract void registerSubtypeReachabilityHandler(java.util.function.BiConsumer<org.graalvm.nativeimage.hosted.Feature$DuringAnalysisAccess,java.lang.Class<?>>,java.lang.Class<?>)
-meth public abstract void registerClassInitializerReachabilityHandler(java.util.function.Consumer<org.graalvm.nativeimage.hosted.Feature$DuringAnalysisAccess>,java.lang.Class<?>)
 
 CLSS public abstract interface static org.graalvm.nativeimage.hosted.Feature$BeforeCompilationAccess
  outer org.graalvm.nativeimage.hosted.Feature
@@ -885,7 +891,9 @@ hfds MESSAGE
 
 CLSS public final org.graalvm.nativeimage.hosted.RuntimeReflection
 meth public !varargs static void register(boolean,boolean,java.lang.reflect.Field[])
+ anno 0 java.lang.Deprecated()
 meth public !varargs static void register(boolean,java.lang.reflect.Field[])
+ anno 0 java.lang.Deprecated()
 meth public !varargs static void register(java.lang.Class<?>[])
 meth public !varargs static void register(java.lang.reflect.Executable[])
 meth public !varargs static void register(java.lang.reflect.Field[])

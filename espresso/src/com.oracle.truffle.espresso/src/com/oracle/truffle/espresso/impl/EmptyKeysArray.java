@@ -29,7 +29,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 
 @ExportLibrary(InteropLibrary.class)
-public class EmptyKeysArray implements TruffleObject {
+public final class EmptyKeysArray implements TruffleObject {
     public static final EmptyKeysArray INSTANCE = new EmptyKeysArray();
 
     @ExportMessage

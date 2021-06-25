@@ -25,7 +25,7 @@ package com.oracle.truffle.espresso.classfile.constantpool;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
-import com.oracle.truffle.object.DebugCounter;
+import com.oracle.truffle.espresso.perf.DebugCounter;
 
 public interface MethodRefConstant extends MemberRefConstant {
 

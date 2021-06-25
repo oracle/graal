@@ -57,14 +57,6 @@ public interface VMEventListener extends VMListener {
 
     void exceptionThrown(BreakpointInfo info, Object currentThread, Object exception, CallFrame[] callFrames);
 
-    void increaseFieldBreakpointCount();
-
-    void decreaseFieldBreakpointCount();
-
-    void increaseMethodBreakpointCount();
-
-    void decreaseMethodBreakpointCount();
-
     void fieldAccessBreakpointHit(FieldBreakpointEvent event, Object currentThread, CallFrame callFrame);
 
     void fieldModificationBreakpointHit(FieldBreakpointEvent event, Object currentThread, CallFrame callFrame);
@@ -96,8 +88,4 @@ public interface VMEventListener extends VMListener {
     void holdEvents();
 
     void releaseEvents();
-
-    MonitorInfo getMonitorInfo(Object guestThread, Object monitor);
-
-    void sendInitialThreadStartedEvents();
 }

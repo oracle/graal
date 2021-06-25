@@ -55,6 +55,8 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.graalvm.compiler.options.OptionValues;
+
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.util.ClasspathUtils;
 import com.oracle.svm.core.util.InterruptImageBuilding;
@@ -79,7 +81,16 @@ public abstract class AbstractNativeImageClassLoaderSupport {
         classPathClassLoader = new URLClassLoader(Util.verifyClassPathAndConvertToURLs(classpath), defaultSystemClassLoader);
 
         imagecp = Collections.unmodifiableList(Arrays.stream(classPathClassLoader.getURLs()).map(Util::urlToPath).collect(Collectors.toList()));
-        buildcp = Collections.unmodifiableList(Arrays.stream(System.getProperty("java.class.path").split(File.pathSeparator)).map(Paths::get).collect(Collectors.toList()));
+        String builderClassPathString = System.getProperty("java.class.path");
+        String[] builderClassPathEntries = builderClassPathString.isEmpty() ? new String[0] : builderClassPathString.split(File.pathSeparator);
+        if (Arrays.asList(builderClassPathEntries).contains(".")) {
+            VMError.shouldNotReachHere("The classpath of " + NativeImageGeneratorRunner.class.getName() +
+                            " must not contain \".\". This can happen implicitly if the builder runs exclusively on the --module-path" +
+                            " but specifies the " + NativeImageGeneratorRunner.class.getName() + " main class without --module.");
+        }
+        buildcp = Collections.unmodifiableList(Arrays.stream(builderClassPathEntries)
+                        .map(Paths::get).map(Path::toAbsolutePath)
+                        .collect(Collectors.toList()));
     }
 
     List<Path> classpath() {
@@ -100,7 +111,9 @@ public abstract class AbstractNativeImageClassLoaderSupport {
 
     abstract List<Path> applicationModulePath();
 
-    abstract Optional<Object> findModule(String moduleName);
+    abstract Optional<? extends Object> findModule(String moduleName);
+
+    abstract void processAddExportsAndAddOpens(OptionValues parsedHostedOptions);
 
     abstract void initAllClasses(ForkJoinPool executor, ImageClassLoader imageClassLoader);
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,7 @@ import java.util.Objects;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.regex.result.RegexResult;
+import com.oracle.truffle.regex.tregex.parser.flavors.ECMAScriptFlavor;
 import com.oracle.truffle.regex.tregex.parser.flavors.PythonFlavor;
 import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavor;
 import com.oracle.truffle.regex.tregex.parser.flavors.RubyFlavor;
@@ -118,7 +119,7 @@ public final class RegexOptions {
 
     public static final String ENCODING_NAME = "Encoding";
 
-    public static final RegexOptions DEFAULT = new RegexOptions(0, null, Encodings.UTF_16_RAW);
+    public static final RegexOptions DEFAULT = new RegexOptions(0, ECMAScriptFlavor.INSTANCE, Encodings.UTF_16_RAW);
 
     private final int options;
     private final RegexFlavor flavor;
@@ -256,7 +257,7 @@ public final class RegexOptions {
             this.source = source;
             this.src = sourceString;
             this.options = 0;
-            this.flavor = null;
+            this.flavor = ECMAScriptFlavor.INSTANCE;
         }
 
         @TruffleBoundary
@@ -344,7 +345,7 @@ public final class RegexOptions {
             }
             switch (src.charAt(iVal)) {
                 case 'E':
-                    flavor = null;
+                    flavor = ECMAScriptFlavor.INSTANCE;
                     return expectValue(iVal, FLAVOR_ECMASCRIPT, FLAVOR_OPTIONS);
                 case 'R':
                     flavor = RubyFlavor.INSTANCE;

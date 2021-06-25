@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2018, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -63,7 +63,7 @@ public class AArch64HotSpotCRuntimeCallPrologueOp extends AArch64LIRInstruction 
         // Save last Java frame.
         // We cannot save the SP directly so use a temporary register.
         Register scratchRegister = asRegister(scratch);
-        masm.movx(scratchRegister, sp);
+        masm.mov(64, scratchRegister, sp);
         masm.str(64, scratchRegister, masm.makeAddress(64, thread, threadLastJavaSpOffset));
 
         // Get the current PC. Use a label to patch the return address.

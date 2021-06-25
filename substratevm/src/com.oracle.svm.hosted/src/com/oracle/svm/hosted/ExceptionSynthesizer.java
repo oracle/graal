@@ -24,22 +24,23 @@
  */
 package com.oracle.svm.hosted;
 
-import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
-import static jdk.vm.ci.meta.DeoptimizationReason.UnreachedCode;
-
 import java.lang.reflect.GenericSignatureFormatError;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.DeoptimizeNode;
-import org.graalvm.compiler.nodes.Invoke;
+import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 
+import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
+import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.util.VMError;
 
@@ -116,20 +117,12 @@ public final class ExceptionSynthesizer {
         ValueNode messageNode = ConstantNode.forConstant(b.getConstantReflection().forString(message), b.getMetaAccess(), b.getGraph());
         ResolvedJavaMethod exceptionMethod = b.getMetaAccess().lookupJavaMethod(throwExceptionMethod);
         assert exceptionMethod.isStatic();
-        Invoke invoke = b.handleReplacedInvoke(InvokeKind.Static, exceptionMethod, new ValueNode[]{messageNode}, false);
-        if (invoke != null) {
-            /*
-             * If there is an invoke node, i.e., the call was not inlined, append a deopt node to
-             * stop parsing. This way we don't need to make sure that the stack is left in a
-             * consistent state after the new invoke is introduced, e.g., like pushing a dummy value
-             * for a replaced field load.
-             *
-             * If there is no invoke node then the error reporting method call was inlined. In that
-             * case the deopt node is not required since the body of the error reporting method is
-             * "throw ...".
-             */
-            b.add(new DeoptimizeNode(InvalidateReprofile, UnreachedCode));
-        }
+
+        StampPair returnStamp = StampFactory.forDeclaredType(b.getGraph().getAssumptions(), exceptionMethod.getSignature().getReturnType(null), false);
+        MethodCallTargetNode callTarget = b.add(new SubstrateMethodCallTargetNode(InvokeKind.Static, exceptionMethod, new ValueNode[]{messageNode}, returnStamp, null, null));
+        b.add(new InvokeWithExceptionNode(callTarget, null, b.bci()));
+        /* The invoked method always throws an exception, i.e., never returns. */
+        b.add(new LoweredDeadEndNode());
     }
 
     /**

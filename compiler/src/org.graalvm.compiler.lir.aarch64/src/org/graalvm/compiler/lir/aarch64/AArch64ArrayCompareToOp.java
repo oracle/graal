@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -159,16 +159,16 @@ public final class AArch64ArrayCompareToOp extends AArch64LIRInstruction {
         // Calculate minimal length in chars for different kind cases.
         // Conditions could be squashed but let's keep it readable.
         if (isLU || isUL) {
-            masm.lshr(64, length2, length2, 1);
+            masm.lsr(64, length2, length2, 1);
         }
 
         if (isUU) {
-            masm.lshr(64, length1, length1, 1);
-            masm.lshr(64, length2, length2, 1);
+            masm.lsr(64, length1, length1, 1);
+            masm.lsr(64, length2, length2, 1);
         }
 
         masm.cmp(64, length1, length2);
-        masm.cmov(64, length, length1, length2, ConditionFlag.LT);
+        masm.csel(64, length, length1, length2, ConditionFlag.LT);
 
         // One of strings is empty
         masm.cbz(64, length, LENGTH_DIFFER_LABEL);
@@ -176,7 +176,7 @@ public final class AArch64ArrayCompareToOp extends AArch64LIRInstruction {
         // Go back to bytes for not LL cases, because following tail and length calculation is done
         // in byte.
         if (!isLL) {
-            masm.shl(64, length, length, 1);
+            masm.lsl(64, length, length, 1);
         }
 
         masm.mov(64, vecCount, zr);
@@ -188,7 +188,7 @@ public final class AArch64ArrayCompareToOp extends AArch64LIRInstruction {
 
         // Go back to char because vecCount in the following loop is increasing in char.
         if (isLU || isUL) {
-            masm.lshr(64, length, length, 1);
+            masm.lsr(64, length, length, 1);
         }
 
         // MAIN_LOOP - read strings by 8 byte.
@@ -197,15 +197,15 @@ public final class AArch64ArrayCompareToOp extends AArch64LIRInstruction {
             // Load 32 bits and unpack it to entire 64bit register.
             masm.ldr(32, result, AArch64Address.createRegisterOffsetAddress(array1, vecCount, false));
             masm.ubfm(64, temp, result, 0, 7);
-            masm.lshr(64, result, result, 8);
+            masm.lsr(64, result, result, 8);
             masm.bfm(64, temp, result, 48, 7);
-            masm.lshr(64, result, result, 8);
+            masm.lsr(64, result, result, 8);
             masm.bfm(64, temp, result, 32, 7);
-            masm.lshr(64, result, result, 8);
+            masm.lsr(64, result, result, 8);
             masm.bfm(64, temp, result, 16, 7);
             // Unpacked value placed in temp now
 
-            masm.shl(64, result, vecCount, 1);
+            masm.lsl(64, result, vecCount, 1);
             masm.ldr(64, result, AArch64Address.createRegisterOffsetAddress(array2, result, false));
         } else {
             masm.ldr(64, temp, AArch64Address.createRegisterOffsetAddress(array1, vecCount, false));
@@ -226,7 +226,7 @@ public final class AArch64ArrayCompareToOp extends AArch64LIRInstruction {
 
         // Go back to bytes because the following array2's offset is caculated in byte.
         if (isLU || isUL) {
-            masm.shl(64, length, length, 1);
+            masm.lsl(64, length, length, 1);
         }
 
         masm.loadAddress(array2, AArch64Address.createRegisterOffsetAddress(array2, length, false));
@@ -263,8 +263,8 @@ public final class AArch64ArrayCompareToOp extends AArch64LIRInstruction {
         masm.and(64, vecCount, vecCount, ~((8 * CHAR_SIZE_BYTES) - 1)); // Round to byte or short
 
         masm.eor(64, result, temp, result);
-        masm.ashr(64, result, result, vecCount);
-        masm.ashr(64, temp, temp, vecCount);
+        masm.asr(64, result, result, vecCount);
+        masm.asr(64, temp, temp, vecCount);
 
         masm.and(64, result, result, 0xFFFF >>> (16 - (8 * CHAR_SIZE_BYTES))); // 0xFF or 0xFFFF
         masm.and(64, temp, temp, 0xFFFF >>> (16 - (8 * CHAR_SIZE_BYTES)));

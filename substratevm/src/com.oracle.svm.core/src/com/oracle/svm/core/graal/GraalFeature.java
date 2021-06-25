@@ -30,12 +30,12 @@ import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
@@ -60,11 +60,10 @@ public interface GraalFeature extends Feature {
      *
      * @param providers Providers that the lowering can use.
      * @param snippetReflection Snippet reflection providers.
-     * @param invocationPlugins The invocation plugins to add to.
-     * @param analysis true if registering for analysis, false if registering for compilation
-     * @param hosted True if registering for ahead-of-time compilation, false otherwise
+     * @param plugins Contains the invocation plugins to add to.
+     * @param reason The parsing phase that the plugins are registered for
      */
-    default void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, InvocationPlugins invocationPlugins, boolean analysis, boolean hosted) {
+    default void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, Plugins plugins, ParsingReason reason) {
     }
 
     /**
@@ -72,10 +71,9 @@ public interface GraalFeature extends Feature {
      *
      * @param providers Providers that the node plugins can use.
      * @param plugins The Plugins object where node plugins can be added to.
-     * @param analysis true if registering for analysis, false if registering for compilation
-     * @param hosted true if registering for ahead-of-time compilation, false if registering for
+     * @param reason The parsing phase that the plugins are registered for
      */
-    default void registerGraphBuilderPlugins(Providers providers, Plugins plugins, boolean analysis, boolean hosted) {
+    default void registerGraphBuilderPlugins(Providers providers, Plugins plugins, ParsingReason reason) {
     }
 
     /**

@@ -50,7 +50,7 @@ JNIEXPORT OS_DL_HANDLE JNICALL mokapotGetRTLD_DEFAULT() {
   V(AttachCurrentThreadAsDaemon)
 
 
-JNIEXPORT MokapotEnv* JNICALL initializeMokapotContext(TruffleEnv *truffle_env, JNIEnv* env, void* (*fetch_by_name)(const char *)) {
+JNIEXPORT MokapotEnv* JNICALL initializeMokapotContext(JNIEnv* env, void* (*fetch_by_name)(const char *)) {
 
   MokapotEnv *moka_env = (MokapotEnv *) malloc(sizeof(*moka_env));
  
@@ -90,20 +90,24 @@ MokapotEnv* getEnv() {
   return tls_moka_env;
 }
 
-JNIEXPORT void JNICALL disposeMokapotContext(TruffleEnv *truffle_env, MokapotEnv* moka_env) {
+JNIEXPORT void JNICALL disposeMokapotContext(MokapotEnv* moka_env, void (*release_closure)(void *)) {
   struct MokapotNativeInterface_ *functions = (struct MokapotNativeInterface_*) *moka_env;
   struct JNIInvokeInterface_ *java_vm_functions = (struct JNIInvokeInterface_ *)(*(functions->vm));
 
   #define DISPOSE__(name) \
-       (*truffle_env)->releaseClosureRef(truffle_env, functions->name); \
-       functions->name = NULL;
+    if (release_closure != NULL) { \
+      release_closure(functions->name); \
+    } \
+    functions->name = NULL;
 
   VM_METHOD_LIST(DISPOSE__)
   #undef DISPOSE__
 
   #define DISPOSE_INVOCATION_API__(name) \
-      (*truffle_env)->releaseClosureRef(truffle_env, java_vm_functions->name); \
-      java_vm_functions->name = NULL;
+    if (release_closure != NULL) { \
+      release_closure(java_vm_functions->name); \
+    } \
+    java_vm_functions->name = NULL;
 
   JNI_INVOKE_INTERFACE_METHODS(DISPOSE_INVOCATION_API__)
   #undef DISPOSE_INVOCATION_API__
@@ -1369,8 +1373,8 @@ JNIEXPORT jstring JNICALL JVM_GetSimpleBinaryName(JNIEnv *env, jclass ofClass) {
 }
 
 JNIEXPORT jobjectArray JNICALL JVM_GetVmArguments(JNIEnv *env) {
-  UNIMPLEMENTED(JVM_GetVmArguments);
-  return NULL;
+  IMPLEMENTED(JVM_GetVmArguments);
+  return (*getEnv())->JVM_GetVmArguments(env);
 }
 
 JNIEXPORT jboolean JNICALL JVM_HasReferencePendingList(JNIEnv *env) {

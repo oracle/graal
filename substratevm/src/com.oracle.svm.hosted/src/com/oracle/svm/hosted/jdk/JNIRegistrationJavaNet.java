@@ -26,6 +26,8 @@ package com.oracle.svm.hosted.jdk;
 
 import java.net.DatagramPacket;
 import java.net.InetAddress;
+import java.net.Proxy;
+import java.net.SocketAddress;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platforms;
@@ -37,6 +39,7 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.jni.JNIRuntimeAccess;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 
 /**
  * Registration of classes, methods, and fields accessed via JNI by C code of the JDK.
@@ -73,10 +76,9 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
             if (hasExtendedOptionsImpl) {
                 rerunClassInit(a, "sun.net.ExtendedOptionsImpl");
             }
-            if (JavaVersionUtil.JAVA_SPEC >= 11) {
-                /* These two classes cache whether SO_REUSEPORT, added in Java 9, is supported. */
-                rerunClassInit(a, "java.net.AbstractPlainDatagramSocketImpl", "java.net.AbstractPlainSocketImpl");
-            }
+
+            rerunClassInit(a, "java.net.AbstractPlainDatagramSocketImpl", "java.net.AbstractPlainSocketImpl");
+
             if (hasPlatformSocketOptions) {
                 /*
                  * The libextnet was actually introduced in Java 9, but the support for Linux and
@@ -169,6 +171,8 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
                                 method(a, "jdk.net.ExtendedSocketOptions$PlatformSocketOptions", "create"));
             }
         }
+
+        a.registerReachabilityHandler(JNIRegistrationJavaNet::registerDefaultProxySelectorInit, method(a, "sun.net.spi.DefaultProxySelector", "init"));
     }
 
     static void registerInitInetAddressIDs(DuringAnalysisAccess a) {
@@ -295,5 +299,19 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
         }
         RuntimeReflection.register(clazz(a, implClassName));
         RuntimeReflection.register(constructor(a, implClassName));
+    }
+
+    private static void registerDefaultProxySelectorInit(DuringAnalysisAccess a) {
+        if (isWindows() && JavaVersionUtil.JAVA_SPEC >= 11) {
+            DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
+            access.getNativeLibraries().addDynamicNonJniLibrary("winhttp");
+        }
+
+        JNIRuntimeAccess.register(constructor(a, "java.net.Proxy", Proxy.Type.class, SocketAddress.class));
+        JNIRuntimeAccess.register(fields(a, "java.net.Proxy", "NO_PROXY"));
+
+        JNIRuntimeAccess.register(fields(a, "java.net.Proxy$Type", "HTTP", "SOCKS"));
+
+        JNIRuntimeAccess.register(method(a, "java.net.InetSocketAddress", "createUnresolved", String.class, int.class));
     }
 }
