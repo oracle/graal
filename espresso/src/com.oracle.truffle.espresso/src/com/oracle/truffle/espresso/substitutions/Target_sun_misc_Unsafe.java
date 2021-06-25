@@ -982,15 +982,6 @@ public final class Target_sun_misc_Unsafe {
         // field index.
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        if (CompilerDirectives.isPartialEvaluationConstant(f)) {
-            f.setObject(holder, value);
-        } else {
-            putObjectSlowPath(f, holder, value);
-        }
-    }
-
-    @TruffleBoundary
-    private static void putObjectSlowPath(Field f, StaticObject holder, StaticObject value) {
         f.setObject(holder, value);
     }
 
