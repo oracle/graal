@@ -32,6 +32,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
+import com.oracle.svm.util.ClassUtil;
 
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.CallingConvention;
@@ -118,6 +119,6 @@ public class SubstrateForeignCallLinkage implements ForeignCallLinkage {
 
     @Override
     public String toString() {
-        return "RuntimeCall<" + descriptor.getDeclaringClass().getSimpleName() + "." + descriptor.getName() + ">";
+        return "RuntimeCall<" + ClassUtil.getUnqualifiedName(descriptor.getDeclaringClass()) + "." + descriptor.getName() + ">";
     }
 }

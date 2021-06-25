@@ -55,6 +55,7 @@ import org.graalvm.compiler.replacements.PEGraphDecoder;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.util.ClassUtil;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -82,7 +83,7 @@ public class InlineBeforeAnalysis {
 
     @SuppressWarnings("try")
     public static StructuredGraph decodeGraph(BigBang bb, AnalysisMethod method, AnalysisParsedGraph analysisParsedGraph) {
-        DebugContext.Description description = new DebugContext.Description(method, method.getClass().getSimpleName() + ":" + method.getId());
+        DebugContext.Description description = new DebugContext.Description(method, ClassUtil.getUnqualifiedName(method.getClass()) + ":" + method.getId());
         DebugContext debug = new DebugContext.Builder(bb.getOptions(), new GraalDebugHandlersFactory(bb.getProviders().getSnippetReflection())).description(description).build();
 
         StructuredGraph result = new StructuredGraph.Builder(bb.getOptions(), debug)

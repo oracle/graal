@@ -49,6 +49,7 @@ import com.oracle.graal.pointsto.infrastructure.GraphProvider.Purpose;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.phases.SubstrateIntrinsicGraphBuilder;
 import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.svm.util.ClassUtil;
 
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.runtime.JVMCI;
@@ -90,7 +91,7 @@ public final class AnalysisParsedGraph {
         }
 
         OptionValues options = bb.getOptions();
-        Description description = new Description(method, method.getClass().getSimpleName() + ":" + method.getId());
+        Description description = new Description(method, ClassUtil.getUnqualifiedName(method.getClass()) + ":" + method.getId());
         DebugContext debug = new Builder(options, new GraalDebugHandlersFactory(bb.getProviders().getSnippetReflection())).description(description).build();
 
         try (Indent indent = debug.logAndIndent("parse graph %s", method)) {

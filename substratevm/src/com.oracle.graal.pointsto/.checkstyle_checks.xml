@@ -11,7 +11,7 @@
 <module name="Checker">
   <property name="severity" value="error"/>
   <module name="TreeWalker">
-    
+
     <!-- Disallows direct calls to "AnnotatedElement.get(Declared)Annotation(s)". This check can yield false positives,
     i.e., it will match any ".get(Declared)Annotation(s)" calls that are not preceded by "GuardedAnnotationAccess"
     since checkstyle relies only on pattern matching and it cannot determine the type of the call's receiver object. -->
@@ -28,6 +28,21 @@
       <property name="onCommentFormat" value="Checkstyle: disallow direct annotation access"/>
       <property name="checkFormat" value="annotationAccess"/>
       <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Disable annotation access checks"/>
+    </module>
+
+    <module name="RegexpSinglelineJava">
+      <property name="id" value="getSimpleNameCall"/>
+      <metadata name="net.sf.eclipsecs.core.comment" value="Disallow calls to Class.getSimpleName."/>
+      <property name="severity" value="error"/>
+      <property name="format" value="(?&lt;!(\.class|ClassUtil))\.getSimpleName\b"/>
+      <property name="message" value="Calls to Class.getSimpleName are restricted because it loads the enclosing class, which might not be possible. Instead, use com.oracle.svm.util.ClassUtil.getUnqualifiedName. (Use &quot;// Checkstyle: allow Class.getSimpleName ... // Checkstyle: disallow Class.getSimpleName&quot; to disable this check.)"/>
+      <property name="ignoreComments" value="true"/>
+    </module>
+    <module name="SuppressionCommentFilter">
+      <property name="offCommentFormat" value="Checkstyle: allow Class.getSimpleName"/>
+      <property name="onCommentFormat" value="Checkstyle: disallow Class.getSimpleName"/>
+      <property name="idFormat" value="getSimpleNameCall"/>
+      <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Disable Class.getSimpleName calls"/>
     </module>
 
     <module name="AvoidStarImport">

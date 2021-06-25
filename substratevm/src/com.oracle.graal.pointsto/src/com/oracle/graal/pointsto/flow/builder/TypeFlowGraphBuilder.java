@@ -39,6 +39,7 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.svm.util.ClassUtil;
 
 public class TypeFlowGraphBuilder {
     private final BigBang bb;
@@ -138,7 +139,7 @@ public class TypeFlowGraphBuilder {
                 TypeFlow<?> flow = builder.get();
 
                 /* The retain reason is the sink from which it was reached. */
-                PointsToStats.registerTypeFlowRetainReason(bb, flow, (sinkBuilder.isBuildingAnActualParameter() ? "ActualParam=" : "") + sinkBuilder.getFlowClass().getSimpleName());
+                PointsToStats.registerTypeFlowRetainReason(bb, flow, (sinkBuilder.isBuildingAnActualParameter() ? "ActualParam=" : "") + ClassUtil.getUnqualifiedName(sinkBuilder.getFlowClass()));
 
                 /* Mark the builder as materialized. */
                 processed.add(builder);

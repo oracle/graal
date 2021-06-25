@@ -513,10 +513,13 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
          * of a newly allocated SPI object. This only applies to SPIs in the java.security package,
          * but not any of its sub-packages. See java.security.Security.getSpiClass().
          */
+        // Checkstyle: allow Class.getSimpleName
+        String serviceType = serviceClass.getSimpleName();
+        // Checkstyle: disallow Class.getSimpleName
         if (serviceClass.getPackage().getName().equals("java.security")) {
-            registerSpiClass(serviceClass, getSpiClassMethod);
+            registerSpiClass(getSpiClassMethod, serviceType);
         }
-        registerServices(access, trigger, serviceClass.getSimpleName());
+        registerServices(access, trigger, serviceType);
     }
 
     ConcurrentHashMap<String, Boolean> processedServiceClasses = new ConcurrentHashMap<>();
@@ -623,9 +626,9 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
      * MessageDigestSpi. Only available for SPIs in the java.security package, but not any of its
      * sub-packages.
      */
-    private static void registerSpiClass(Class<?> serviceClass, Method getSpiClassMethod) {
+    private static void registerSpiClass(Method getSpiClassMethod, String serviceType) {
         try {
-            Class<?> spiClass = (Class<?>) getSpiClassMethod.invoke(null, serviceClass.getSimpleName());
+            Class<?> spiClass = (Class<?>) getSpiClassMethod.invoke(null, serviceType);
             /* The constructor doesn't need to be registered, objects are not allocated. */
             RuntimeReflection.register(spiClass);
         } catch (IllegalAccessException | InvocationTargetException ex) {

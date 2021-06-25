@@ -24,10 +24,13 @@
  */
 package com.oracle.svm.truffle.nfi;
 
-import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import java.util.IdentityHashMap;
 import java.util.function.Function;
+
 import org.graalvm.nativeimage.hosted.Feature.DuringSetupAccess;
+
+import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
+import com.oracle.svm.util.ClassUtil;
 
 /**
  * Fields that contain native pointers can not be part of the image heap, because the native
@@ -53,7 +56,7 @@ public final class NativeObjectReplacer implements Function<Object, Object> {
     @Override
     public Object apply(Object obj) {
         if (disallowedClasses.containsKey(obj.getClass())) {
-            throw new UnsupportedFeatureException(String.format("Native object (%s) stored in pre-initialized context.", obj.getClass().getSimpleName()));
+            throw new UnsupportedFeatureException(String.format("Native object (%s) stored in pre-initialized context.", ClassUtil.getUnqualifiedName(obj.getClass())));
         }
         return obj;
     }

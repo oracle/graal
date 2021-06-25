@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.impl.ReflectionRegistry;
 import com.oracle.svm.core.TypeResult;
 import com.oracle.svm.core.configure.ReflectionConfigurationParserDelegate;
 import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.util.ClassUtil;
 
 import jdk.vm.ci.meta.MetaUtil;
 
@@ -170,6 +171,6 @@ public class ReflectionRegistryAdapter implements ReflectionConfigurationParserD
 
     @Override
     public String getSimpleName(Class<?> type) {
-        return type.getSimpleName();
+        return ClassUtil.getUnqualifiedName(type);
     }
 }

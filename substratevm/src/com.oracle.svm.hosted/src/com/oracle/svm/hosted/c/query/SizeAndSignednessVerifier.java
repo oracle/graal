@@ -51,6 +51,7 @@ import com.oracle.svm.hosted.c.info.SizableInfo;
 import com.oracle.svm.hosted.c.info.SizableInfo.ElementKind;
 import com.oracle.svm.hosted.c.info.StructBitfieldInfo;
 import com.oracle.svm.hosted.c.info.StructFieldInfo;
+import com.oracle.svm.util.ClassUtil;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -241,7 +242,7 @@ public final class SizeAndSignednessVerifier extends NativeInfoTreeVisitor {
             Class<? extends Annotation> supressionAnnotation = (declaredSize > actualSize) ^ isReturn ? AllowNarrowingCast.class : AllowWideningCast.class;
             if (method.getAnnotation(supressionAnnotation) == null) {
                 addError("Type " + type.toJavaName(false) + " has a size of " + declaredSize + " bytes, but accessed C value has a size of " + actualSize +
-                                " bytes; to suppress this error, use the annotation @" + supressionAnnotation.getSimpleName(), method);
+                                " bytes; to suppress this error, use the annotation @" + ClassUtil.getUnqualifiedName(supressionAnnotation), method);
             }
         }
 
