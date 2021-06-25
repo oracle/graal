@@ -29,6 +29,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -60,7 +61,7 @@ final class SafepointStackSampler {
     private final SourceSectionFilter sourceSectionFilter;
     private final ConcurrentLinkedQueue<StackVisitor> stackVisitorCache = new ConcurrentLinkedQueue<>();
     private final AtomicReference<SampleAction> cachedAction = new AtomicReference<>();
-    private ThreadLocal<SyntheticFrame> syntheticFrame = ThreadLocal.withInitial(() -> null);
+    private final Map<Thread, SyntheticFrame> syntheticFrames = new ConcurrentHashMap<>();
     private boolean overflowed;
 
     SafepointStackSampler(int stackLimit, SourceSectionFilter sourceSectionFilter) {
@@ -116,6 +117,9 @@ final class SafepointStackSampler {
         action.reset();
         cachedAction.set(action);
 
+        for (SyntheticFrame syntheticFrame : syntheticFrames.values()) {
+            perThreadSamples.add(syntheticFrame.stackSample);
+        }
         return perThreadSamples;
     }
 
@@ -127,15 +131,23 @@ final class SafepointStackSampler {
         this.overflowed |= visitorOverflowed;
     }
 
-    public void pushSyntheticFrame(TruffleContext context, LanguageInfo language, String message) {
-        syntheticFrame.set(new SyntheticFrame(context, language, message, syntheticFrame.get(), fetchStackVisitor()));
+    public void pushSyntheticFrame(LanguageInfo language, String message) {
+        Thread thread = Thread.currentThread();
+        SyntheticFrame parent = null;
+        if (syntheticFrames.containsKey(thread)) {
+            parent = syntheticFrames.get(thread);
+        }
+        syntheticFrames.put(thread, new SyntheticFrame(language.getName() + ":" + message, parent));
     }
 
     public void popSyntheticFrame() {
-        SyntheticFrame toPop = this.syntheticFrame.get();
-        this.syntheticFrame.set(toPop.parent);
-        toPop.visitor.synthetic = null;
-        toPop.visitor.reset();
+        Thread thread = Thread.currentThread();
+        SyntheticFrame syntheticFrame = syntheticFrames.get(thread);
+        if (syntheticFrame.parent != null) {
+            syntheticFrames.put(thread, syntheticFrame.parent);
+        } else {
+            syntheticFrames.remove(thread);
+        }
     }
 
     static final class StackSample {
@@ -159,7 +171,6 @@ final class SafepointStackSampler {
 
         private final CallTarget[] targets;
         private final byte[] states;
-        public SyntheticFrame synthetic;
         private Thread thread;
         private int nextFrameIndex;
         private long startTime;
@@ -211,20 +222,22 @@ final class SafepointStackSampler {
         }
 
         void reset() {
-            if (synthetic == null) {
-                Arrays.fill(states, 0, nextFrameIndex, (byte) 0);
-                Arrays.fill(targets, 0, nextFrameIndex, null);
-                nextFrameIndex = 0;
-                thread = null;
-                overflowed = false;
-                this.startTime = 0L;
-                this.endTime = 0L;
-                stackVisitorCache.add(this);
-            }
+            Arrays.fill(states, 0, nextFrameIndex, (byte) 0);
+            Arrays.fill(targets, 0, nextFrameIndex, null);
+            nextFrameIndex = 0;
+            thread = null;
+            overflowed = false;
+            this.startTime = 0L;
+            this.endTime = 0L;
+            stackVisitorCache.add(this);
+        }
+
+        List<StackTraceEntry> createEntries(SourceSectionFilter filter) {
+            return createEntries(filter, null);
         }
 
         @SuppressWarnings("unused")
-        List<StackTraceEntry> createEntries(SourceSectionFilter filter) {
+        List<StackTraceEntry> createEntries(SourceSectionFilter filter, String synthetic) {
             List<StackTraceEntry> entries = new ArrayList<>(nextFrameIndex);
             for (int i = 0; i < nextFrameIndex; i++) {
                 CallTarget target = targets[i];
@@ -235,7 +248,7 @@ final class SafepointStackSampler {
                 }
             }
             if (synthetic != null) {
-                entries.add(new StackTraceEntry(synthetic.language.getName() + ":" + synthetic.message));
+                entries.add(new StackTraceEntry(synthetic));
             }
             return entries;
         }
@@ -260,12 +273,6 @@ final class SafepointStackSampler {
                 // too late to do anything
                 return;
             }
-            SyntheticFrame syntheticFrame = SafepointStackSampler.this.syntheticFrame.get();
-            if (syntheticFrame != null && syntheticFrame.visitor == null) {
-                completed.put(access.getThread(), syntheticFrame.visitor);
-                return;
-            }
-
             StackVisitor visitor = fetchStackVisitor();
             visitor.beforeVisit(access.getLocation());
             Truffle.getRuntime().iterateFrames(visitor);
@@ -291,20 +298,15 @@ final class SafepointStackSampler {
     }
 
     private class SyntheticFrame {
-        final TruffleContext context;
-        final LanguageInfo language;
-        final String message;
         final SyntheticFrame parent;
-        final StackVisitor visitor;
+        final StackSample stackSample;
 
-        public SyntheticFrame(TruffleContext context, LanguageInfo language, String message, SyntheticFrame parent, StackVisitor visitor) {
-            this.context = context;
-            this.language = language;
-            this.message = message;
+        SyntheticFrame(String message, SyntheticFrame parent) {
             this.parent = parent;
-            this.visitor = visitor;
-            Truffle.getRuntime().iterateFrames(this.visitor);
-            this.visitor.synthetic = this;
+            StackVisitor visitor = fetchStackVisitor();
+            Truffle.getRuntime().iterateFrames(visitor);
+            stackSample = new StackSample(Thread.currentThread(), visitor.createEntries(sourceSectionFilter, message), 0, 0, visitor.overflowed);
+            visitor.reset();
         }
     }
 }
