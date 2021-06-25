@@ -90,7 +90,8 @@ public final class ClassLoaderSupportImplJDK11OrLater extends ClassLoaderSupport
             modules = packageToModules.getOrDefault(packageName, Collections.emptySet());
         }
         if (modules.isEmpty()) {
-            throw new MissingResourceException("ResourceBundle cannot be found.", bundleSpec, locale.toLanguageTag());
+            /* If bundle is not located in any module get it via classloader (from ALL_UNNAMED) */
+            return Collections.singletonList(ResourceBundle.getBundle(bundleName, locale, classLoaderSupport.getClassLoader()));
         }
         ArrayList<ResourceBundle> resourceBundles = new ArrayList<>();
         for (Module module : modules) {
