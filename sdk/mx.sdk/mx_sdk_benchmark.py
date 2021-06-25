@@ -672,7 +672,7 @@ class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
                 result["threads"] = threads
                 result["script"] = script
                 result["warmup-requests-per-second"] = warmupRequestsPerSecond
-                result["warmup-duration"] = warmupDuration
+                result["warmup-duration"] = self.adjustWarmup(warmupDuration)
                 result["duration"] = duration
                 results.append(result)
             else:
@@ -687,11 +687,17 @@ class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
                     result["threads"] = threads
                     result["script"] = script[i]
                     result["warmup-requests-per-second"] = warmupRequestsPerSecond[i]
-                    result["warmup-duration"] = warmupDuration[i]
+                    result["warmup-duration"] = self.adjustWarmup(warmupDuration[i])
                     result["duration"] = duration[i]
                     results.append(result)
 
             return results
+
+    def adjustWarmup(self, duration):
+        if self.name() == "shopcart-wrk":
+            return str(int(duration[:-1]) * 2) + duration[-1]
+
+        return duration
 
     def readConfig(self, config, key):
         if key in config:
