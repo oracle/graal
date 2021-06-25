@@ -136,6 +136,7 @@ public final class LLVMContext {
     private boolean[] libraryLoaded;
     // Source cache (for reusing bitcode IDs).
     protected final EconomicMap<BitcodeID, Source> sourceCache = EconomicMap.create();
+    private final EconomicMap<String, CallTarget> defaultLibraryCache = EconomicMap.create();
 
     // signals
     private final LLVMNativePointer sigDfl;
@@ -283,7 +284,8 @@ public final class LLVMContext {
             String[] sulongLibraryNames = language.getCapability(PlatformCapability.class).getSulongDefaultLibraries();
             for (int i = sulongLibraryNames.length - 1; i >= 0; i--) {
                 TruffleFile file = InternalLibraryLocator.INSTANCE.locateLibrary(this, sulongLibraryNames[i], "<default bitcode library>");
-                env.parseInternal(Source.newBuilder("llvm", file).internal(isInternalLibraryFile(file)).build());
+                CallTarget callTarget = env.parseInternal(Source.newBuilder("llvm", file).internal(isInternalLibraryFile(file)).build());
+                defaultLibraryCache.put(file.getPath(), callTarget);
             }
             setLibsulongAuxFunction(SULONG_INIT_CONTEXT);
             setLibsulongAuxFunction(SULONG_DISPOSE_CONTEXT);
