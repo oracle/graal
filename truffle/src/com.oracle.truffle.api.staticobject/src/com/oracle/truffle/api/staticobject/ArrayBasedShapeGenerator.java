@@ -120,7 +120,6 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
         Pair<Class<?>, Class<?>> pair = Pair.create(storageSuperClass, storageFactoryInterface);
         ArrayBasedShapeGenerator<T> sg = (ArrayBasedShapeGenerator<T>) generatorCache.get(pair);
         if (sg == null) {
-            assert !TruffleOptions.AOT;
             Class<?> generatedStorageClass = generateStorage(gcl, storageSuperClass);
             Class<? extends T> generatedFactoryClass = generateFactory(gcl, generatedStorageClass, storageFactoryInterface);
             sg = new ArrayBasedShapeGenerator<>(generatedStorageClass, generatedFactoryClass);

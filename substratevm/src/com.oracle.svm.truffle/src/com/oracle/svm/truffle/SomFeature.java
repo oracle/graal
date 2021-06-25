@@ -32,7 +32,6 @@ import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.hosted.snippets.SubstrateGraphBuilderPlugins;
 import com.oracle.svm.util.ReflectionUtil;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.staticobject.StaticShape;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -49,22 +48,20 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import sun.misc.Unsafe;
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.security.ProtectionDomain;
 import java.util.HashSet;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 
 @AutomaticFeature
 public final class SomFeature implements GraalFeature {
+    private static final String GENERATOR_CLASS_NAME = "com.oracle.truffle.api.staticobject.ArrayBasedShapeGenerator";
+    private static final String GENERATOR_CLASS_LOADER_CLASS_NAME = "com.oracle.truffle.api.staticobject.GeneratorClassLoader";
+    private static ClassLoader generatorClassLoader;
     private final HashSet<Pair<Class<?>, Class<?>>> interceptedArgs = new HashSet<>();
-
-    private final TruffleLanguage<?> lang = new TruffleLanguage<Object>() {
-        @Override
-        protected Object createContext(Env env) {
-            throw new UnsupportedOperationException();
-        }
-    };
 
     @Override
     public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, Plugins plugins, ParsingReason reason) {
@@ -99,18 +96,30 @@ public final class SomFeature implements GraalFeature {
     }
 
     private Class<?> generate(Class<?> storageSuperClass, Class<?> factoryInterface, BeforeAnalysisAccess access) {
-        StaticShape<?> shape = StaticShape.newBuilder(lang).build(storageSuperClass, factoryInterface);
-        Class<?> factoryClass = shape.getFactory().getClass();
-        for (Constructor<?> c : factoryClass.getDeclaredConstructors()) {
-            RuntimeReflection.register(c);
-        }
-        Method getStorageClass = ReflectionUtil.lookupMethod(StaticShape.class, "getStorageClass");
-        getStorageClass.setAccessible(true);
-        Class<?> storageClass;
+        Class<?> shapeGeneratorClass = loadClass(GENERATOR_CLASS_NAME);
+        ClassLoader generatorCL = getGeneratorClassLoader(factoryInterface);
+        Method generatorMethod = ReflectionUtil.lookupMethod(shapeGeneratorClass, "getShapeGenerator", generatorCL.getClass(), Class.class, Class.class);
+        Object generator;
         try {
-            storageClass = Class.class.cast(getStorageClass.invoke(shape));
+            generator = generatorMethod.invoke(null, generatorCL, storageSuperClass, factoryInterface);
         } catch (IllegalAccessException | InvocationTargetException | ClassCastException e) {
             throw JVMCIError.shouldNotReachHere(e);
+        }
+        Class<?> storageClass;
+        Class<?> factoryClass;
+        System.err.println("----> " + shapeGeneratorClass.getName());
+        try {
+            Field storageField = shapeGeneratorClass.getDeclaredField("generatedStorageClass");
+            Field factoryField = shapeGeneratorClass.getDeclaredField("generatedFactoryClass");
+            storageField.setAccessible(true);
+            factoryField.setAccessible(true);
+            storageClass = Class.class.cast(storageField.get(generator));
+            factoryClass = Class.class.cast(factoryField.get(generator));
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw JVMCIError.shouldNotReachHere(e);
+        }
+        for (Constructor<?> c : factoryClass.getDeclaredConstructors()) {
+            RuntimeReflection.register(c);
         }
         for (String fieldName : new String[]{"primitive", "object", "shape"}) {
             access.registerAsUnsafeAccessed(ReflectionUtil.lookupField(storageClass, fieldName));
@@ -123,7 +132,7 @@ public final class SomFeature implements GraalFeature {
     public void beforeCompilation(BeforeCompilationAccess config) {
         // Recompute the offset of the byte and object arrays stored in the cached ShapeGenerator
         Unsafe unsafe = GraalUnsafeAccess.getUnsafe();
-        Class<?> shapeGeneratorClass = getShapeGeneratorClass();
+        Class<?> shapeGeneratorClass = loadClass(GENERATOR_CLASS_NAME);
         long baoFieldOffset = getJvmFieldOffset(unsafe, shapeGeneratorClass, "byteArrayOffset");
         long oaoFieldOffset = getJvmFieldOffset(unsafe, shapeGeneratorClass, "objectArrayOffset");
         long shapeFieldOffset = getJvmFieldOffset(unsafe, shapeGeneratorClass, "shapeOffset");
@@ -137,9 +146,22 @@ public final class SomFeature implements GraalFeature {
         }
     }
 
-    private static Class<?> getShapeGeneratorClass() {
+    private static synchronized ClassLoader getGeneratorClassLoader(Class<?> factoryInterface) {
+        if (generatorClassLoader == null) {
+            Class<?> classLoaderClass = loadClass(GENERATOR_CLASS_LOADER_CLASS_NAME);
+            Constructor<?> constructor = ReflectionUtil.lookupConstructor(classLoaderClass, ClassLoader.class, ProtectionDomain.class);
+            try {
+                generatorClassLoader = ClassLoader.class.cast(constructor.newInstance(factoryInterface.getClassLoader(), factoryInterface.getProtectionDomain()));
+            } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
+                throw JVMCIError.shouldNotReachHere(e);
+            }
+        }
+        return generatorClassLoader;
+    }
+
+    private static Class<?> loadClass(String name) {
         try {
-            return Class.forName("com.oracle.truffle.api.staticobject.ArrayBasedShapeGenerator");
+            return Class.forName(name);
         } catch (ClassNotFoundException e) {
             throw JVMCIError.shouldNotReachHere(e);
         }
