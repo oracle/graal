@@ -347,7 +347,7 @@ class BaseQuarkusBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
         return 's'
 
     def default_stages(self):
-        return ['image', 'run']
+        return ['instrument-image', 'instrument-run', 'image', 'run']
 
     def extra_image_build_argument(self, benchmark, args):
         return ['-J-Djava.util.logging.manager=org.jboss.logmanager.LogManager',
