@@ -54,8 +54,8 @@ import org.junit.experimental.theories.Theory;
 import org.junit.runner.RunWith;
 
 /**
- * These tests are derived from the Static Object Model tutorial (`truffle/docs/StaticObjectModel.md`).
- * Do not modify them without updating the tutorial.
+ * These tests are derived from the Static Object Model tutorial
+ * (`truffle/docs/StaticObjectModel.md`). Do not modify them without updating the tutorial.
  */
 @RunWith(Theories.class)
 public class TutorialTest extends StaticObjectModelTest {
@@ -100,7 +100,7 @@ public class TutorialTest extends StaticObjectModelTest {
         StaticShape.Builder b2 = StaticShape.newBuilder(te.testLanguage);
         StaticProperty s2p1 = new DefaultStaticProperty("property1", StaticPropertyKind.Int, false);
         b2.property(s2p1);
-        StaticShape<DefaultStaticObjectFactory> s2 = b2.build(s1); // passing a shape as argument builds a sub-shape
+        StaticShape<DefaultStaticObjectFactory> s2 = b2.build(s1);
         // Create a static object for the sub-shape
         Object o2 = s2.getFactory().create();
         // Perform property accesses
@@ -148,13 +148,17 @@ public class TutorialTest extends StaticObjectModelTest {
 
     public static class MyStaticObject {
         @SuppressWarnings("unused")
-        public MyStaticObject(String arg1) { }
+        public MyStaticObject(String arg1) {
+        }
+
         @SuppressWarnings("unused")
-        public MyStaticObject(String arg1, Object arg2) { }
+        public MyStaticObject(String arg1, Object arg2) {
+        }
     }
 
     public interface MyStaticObjectInterface {
         MyStaticObject create(String arg1);
+
         MyStaticObject create(String arg1, Object arg2);
     }
 
