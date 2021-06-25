@@ -54,6 +54,12 @@ public class SubstrateStrengthenGraphs extends StrengthenGraphs {
     }
 
     @Override
+    protected AnalysisType getSingleImplementorType(AnalysisType originalType) {
+        HostedType singleImplementorType = ((HostedType) converter.lookup(originalType)).getSingleImplementor();
+        return singleImplementorType == null ? null : singleImplementorType.getWrapped();
+    }
+
+    @Override
     protected AnalysisType getStrengthenStampType(AnalysisType originalType) {
         HostedType strengthenStampType = ((HostedType) converter.lookup(originalType)).getStrengthenStampType();
         return strengthenStampType == null ? null : strengthenStampType.getWrapped();
