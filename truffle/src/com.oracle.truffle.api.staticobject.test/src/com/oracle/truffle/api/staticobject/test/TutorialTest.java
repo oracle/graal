@@ -173,7 +173,7 @@ public class TutorialTest extends StaticObjectModelTest {
         try {
             property.setObject(staticObject, "wrong access type");
             assert false;
-        } catch(IllegalArgumentException e) {
+        } catch (IllegalArgumentException e) {
         }
     }
 
@@ -188,7 +188,7 @@ public class TutorialTest extends StaticObjectModelTest {
         try {
             property.setObject(staticObject2, "wrong shape");
             assert false;
-        } catch(IllegalArgumentException e) {
+        } catch (IllegalArgumentException e) {
         }
     }
 }
