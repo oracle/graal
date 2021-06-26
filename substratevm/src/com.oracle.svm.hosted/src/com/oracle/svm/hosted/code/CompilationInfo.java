@@ -40,6 +40,11 @@ public class CompilationInfo {
     protected final HostedMethod method;
 
     protected final AtomicBoolean inParseQueue = new AtomicBoolean(false);
+    /**
+     * No need for this flag to be atomic, because {@link CompileQueue#compilations} is used to
+     * ensure each method is compiled only once.
+     */
+    protected boolean inCompileQueue;
 
     protected volatile StructuredGraph graph;
 

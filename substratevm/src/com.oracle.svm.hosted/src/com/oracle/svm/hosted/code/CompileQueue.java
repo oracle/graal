@@ -199,6 +199,8 @@ public class CompileQueue {
 
     private volatile boolean inliningProgress;
 
+    private final boolean printMethodHistogram = NativeImageOptions.PrintMethodHistogram.getValue();
+
     public abstract static class CompileReason {
         /**
          * For debugging only: chaining of the compile reason, so that you can track the compilation
@@ -266,7 +268,7 @@ public class CompileQueue {
         public CompileTask(HostedMethod method, CompileReason reason) {
             this.method = method;
             this.reason = reason;
-            if (NativeImageOptions.PrintMethodHistogram.getValue()) {
+            if (printMethodHistogram) {
                 this.allReasons = Collections.synchronizedList(new ArrayList<CompileReason>());
                 this.allReasons.add(reason);
             } else {
@@ -386,7 +388,7 @@ public class CompileQueue {
         } catch (InterruptedException ie) {
             throw new InterruptImageBuilding();
         }
-        if (NativeImageOptions.PrintMethodHistogram.getValue()) {
+        if (printMethodHistogram) {
             printMethodHistogram();
         }
     }
@@ -1108,15 +1110,28 @@ public class CompileQueue {
     }
 
     protected void ensureCompiled(HostedMethod method, CompileReason reason) {
+        /*
+         * Fast non-atomic check if method is already scheduled for compilation, to avoid frequent
+         * access of the ConcurrentHashMap.
+         */
+        if (method.compilationInfo.inCompileQueue) {
+            if (printMethodHistogram) {
+                compilations.get(method).allReasons.add(reason);
+            }
+            return;
+        }
+
         CompileTask task = new CompileTask(method, reason);
         CompileTask oldTask = compilations.putIfAbsent(method, task);
         if (oldTask != null) {
             // Method is already scheduled for compilation.
-            if (oldTask.allReasons != null) {
+            if (printMethodHistogram) {
                 oldTask.allReasons.add(reason);
             }
             return;
         }
+        method.compilationInfo.inCompileQueue = true;
+
         if (method.compilationInfo.specializedArguments != null) {
             // Do the specialization: replace the argument locals with the constant arguments.
             StructuredGraph graph = method.compilationInfo.graph;
