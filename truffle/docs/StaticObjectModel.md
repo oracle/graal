@@ -102,6 +102,39 @@ public class Subshapes {
 }
 ```
 
+## Extending custom base classes
+
+To reduce memory footprint, the language implementor might want static objects to extend the class that represents guest-level objects.
+This is complicated by the fact that [StaticShape.getFactory()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/staticobject/StaticShape.html) must return an instance of the factory class that allocates static objects.
+To achieve this, we first need to declare an interface that:
+* Defines a method for each visible constructor of the static object super class that we want to invoke.
+* The arguments of each method must match those of the corresponding constructor.
+* The return type of each method must be assignable from the static object super class.
+
+For example, if the static objects should extend this class:
+```java
+public class MyStaticObject {
+    public MyStaticObject(String arg1) { }
+    public MyStaticObject(String arg1, Object arg2) { }
+}
+```
+
+We need to declare the following factory interface:
+```java
+public interface MyStaticObjectInterface {
+    MyStaticObject create(String arg1);
+    MyStaticObject create(String arg1, Object arg2);
+}
+```
+
+Finally, this is how to allocate the custom static objects:
+```java
+public void customStaticObject(TruffleLanguage<?> language) {
+    StaticShape<MyStaticObjectInterface> shape = StaticShape.newBuilder(language).build(MyStaticObject.class, MyStaticObjectInterface.class);
+    MyStaticObject staticObject = shape.getFactory().create("arg1");
+}
+```
+
 ## Reducing memory footprint
 
 Reading the Javadoc, you might have noticed that [StaticShape](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/staticobject/StaticShape.html) does not provide an API to access the associated static properties.
@@ -140,37 +173,6 @@ class MyField extends StaticProperty {
 }
 
 new MyField("property1", StaticPropertyKind.Int, false);
-```
-
-Similarly, the language implementor might want static objects to extend the class that represents guest-level objects.
-This is complicated by the fact that [StaticShape.getFactory()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/staticobject/StaticShape.html) must return an instance of the factory class that allocates static objects.
-To achieve this, we first need to declare an interface that:
-* Defines a method for each visible constructor of the static object super class that we want to invoke.
-* The arguments of each method must match those of the corresponding constructor.
-* The return type of each method must be assignable from the static object super class.
-
-For example, if the static objects should extend this class:
-```java
-public class MyStaticObject {
-    public MyStaticObject(String arg1) { }
-    public MyStaticObject(String arg1, Object arg2) { }
-}
-```
-
-We need to declare the following factory interface:
-```java
-public interface MyStaticObjectInterface {
-    MyStaticObject create(String arg1);
-    MyStaticObject create(String arg1, Object arg2);
-}
-```
-
-Finally, this is how to allocate the custom static objects:
-```java
-public void customStaticObject(TruffleLanguage<?> language) {
-    StaticShape<MyStaticObjectInterface> shape = StaticShape.newBuilder(language).build(MyStaticObject.class, MyStaticObjectInterface.class);
-    MyStaticObject staticObject = shape.getFactory().create("arg1");
-}
 ```
 
 It might be tempting to extend also [StaticShape.getFactory()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/staticobject/StaticShape.html), but this is currently not possible since the implementation of the Static Object Model already extends this class. 
