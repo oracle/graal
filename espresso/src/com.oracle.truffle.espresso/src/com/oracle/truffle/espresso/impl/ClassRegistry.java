@@ -55,8 +55,22 @@ import com.oracle.truffle.espresso.substitutions.JavaType;
  */
 public abstract class ClassRegistry implements ContextAccess {
 
+    /**
+     * Storage class used to propagate information in the case of special kinds of class definition
+     * (hidden, anonymous or with a specified protection domain).
+     * 
+     * Regular class definitions will use the {@link #EMPTY} instance.
+     * 
+     * Hidden and Unsafe anonymous classes are handled by not registering them in the class loader
+     * registry.
+     */
     public static final class ClassDefinitionInfo {
         public static final ClassDefinitionInfo EMPTY = new ClassDefinitionInfo(null, null, null, null, null, false, false);
+
+        // Constructor for regular definition, but with a specified protection domain
+        public ClassDefinitionInfo(StaticObject protectionDomain) {
+            this(protectionDomain, null, null, null, null, false, false);
+        }
 
         // Constructor for Unsafe anonymous class definition.
         public ClassDefinitionInfo(StaticObject protectionDomain, ObjectKlass hostKlass, StaticObject[] patches) {

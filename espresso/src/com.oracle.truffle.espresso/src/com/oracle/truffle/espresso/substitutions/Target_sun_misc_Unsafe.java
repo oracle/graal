@@ -206,11 +206,9 @@ public final class Target_sun_misc_Unsafe {
                     @JavaType(byte[].class) StaticObject guestBuf, int offset, int len, @JavaType(ClassLoader.class) StaticObject loader,
                     @JavaType(ProtectionDomain.class) StaticObject pd,
                     @InjectMeta Meta meta) {
-        // TODO(peterssen): Protection domain is ignored.
         byte[] buf = guestBuf.unwrap();
         byte[] bytes = Arrays.copyOfRange(buf, offset, len);
-        Klass klass = meta.getRegistries().defineKlass(meta.getTypes().fromClassGetName(meta.toHostString(name)), bytes, loader);
-        meta.HIDDEN_PROTECTION_DOMAIN.setHiddenObject(klass.mirror(), pd);
+        Klass klass = meta.getRegistries().defineKlass(meta.getTypes().fromClassGetName(meta.toHostString(name)), bytes, loader, new ClassRegistry.ClassDefinitionInfo(pd));
         return klass.mirror();
     }
 

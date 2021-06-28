@@ -214,7 +214,9 @@ public final class ObjectKlass extends Klass {
         this.klassVersion = new KlassVersion(pool, linkedKlass, methods, mirandaMethods, vtable, itable, iKlassTable);
 
         // Only forcefully initialization of the mirror if necessary
-        if (info.protectionDomain != null) {
+        if (info.protectionDomain != null && !StaticObject.isNull(info.protectionDomain)) {
+            // Protection domain should not be host null, and will be initialized to guest null on
+            // mirror creation.
             getMeta().HIDDEN_PROTECTION_DOMAIN.setHiddenObject(mirror(), info.protectionDomain);
         }
         if (info.classData != null) {
