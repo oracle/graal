@@ -86,7 +86,7 @@ class StaticObjectModelTest {
             this.arrayBased = arrayBased;
             context = Context.newBuilder(SomTestLanguage.TEST_LANGUAGE_ID).//
                             allowExperimentalOptions(true).//
-                            option("engine.SomStorageStrategy", this.arrayBased ? "array-based" : "field-based").//
+                            option("engine.StaticObjectStorageStrategy", this.arrayBased ? "array-based" : "field-based").//
                             build();
             context.initialize(SomTestLanguage.TEST_LANGUAGE_ID);
             context.enter();

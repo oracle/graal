@@ -55,7 +55,7 @@ public class LibEspresso {
         // checks and can use unsafe casts.
         // This option needs to be set before calling `Arguments.setupContext()` so that cmd line
         // args can override the default behavior.
-        builder.option("engine.RelaxSomSafetyChecks", "true");
+        builder.option("engine.RelaxStaticObjectSafetyChecks", "true");
 
         int result = Arguments.setupContext(builder, args);
         if (result != JNIErrors.JNI_OK()) {

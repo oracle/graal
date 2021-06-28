@@ -326,7 +326,7 @@ public abstract class StaticShape<T> {
 
         private <T> StaticShape<T> build(ShapeGenerator<T> sg, StaticShape<T> parentShape) {
             CompilerAsserts.neverPartOfCompilation();
-            boolean safetyChecks = !SomAccessor.LANGUAGE.areSomSafetyChecksRelaxed(language);
+            boolean safetyChecks = !SomAccessor.LANGUAGE.areStaticObjectSafetyChecksRelaxed(language);
             StaticShape<T> shape = sg.generateShape(parentShape, staticProperties.values(), safetyChecks);
             for (StaticProperty staticProperty : staticProperties.values()) {
                 staticProperty.initShape(shape);
@@ -401,7 +401,7 @@ public abstract class StaticShape<T> {
         }
 
         private StorageStrategy getStorageStrategy() {
-            String strategy = SomAccessor.LANGUAGE.getSomStorageStrategy(language);
+            String strategy = SomAccessor.LANGUAGE.getStaticObjectStorageStrategy(language);
             switch (strategy) {
                 case "default":
                     return TruffleOptions.AOT ? StorageStrategy.ARRAY_BASED : StorageStrategy.FIELD_BASED;

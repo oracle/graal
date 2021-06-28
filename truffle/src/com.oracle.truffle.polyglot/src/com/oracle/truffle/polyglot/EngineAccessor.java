@@ -1451,13 +1451,13 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public boolean areSomSafetyChecksRelaxed(Object polyglotLanguageInstance) {
-            return ((PolyglotLanguageInstance) polyglotLanguageInstance).getEngine().getEngineOptionValues().get(PolyglotEngineOptions.RelaxSomSafetyChecks);
+        public boolean areStaticObjectSafetyChecksRelaxed(Object polyglotLanguageInstance) {
+            return ((PolyglotLanguageInstance) polyglotLanguageInstance).getEngine().getEngineOptionValues().get(PolyglotEngineOptions.RelaxStaticObjectSafetyChecks);
         }
 
         @Override
-        public String getSomStorageStrategy(Object polyglotLanguageInstance) {
-            return ((PolyglotLanguageInstance) polyglotLanguageInstance).getEngine().getEngineOptionValues().get(PolyglotEngineOptions.SomStorageStrategy).name().toLowerCase().replace('_', '-');
+        public String getStaticObjectStorageStrategy(Object polyglotLanguageInstance) {
+            return ((PolyglotLanguageInstance) polyglotLanguageInstance).getEngine().getEngineOptionValues().get(PolyglotEngineOptions.StaticObjectStorageStrategy).name().toLowerCase().replace('_', '-');
         }
     }
 
