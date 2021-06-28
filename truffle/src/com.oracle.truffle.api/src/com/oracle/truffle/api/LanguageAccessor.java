@@ -616,13 +616,13 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
-        public ClassLoader getSomClassloader(TruffleLanguage<?> language) {
-            return engineAccess().getSomClassloader(language.polyglotLanguageInstance);
+        public ClassLoader getSomClassloader(TruffleLanguage<?> language, Class<?> referenceClass) {
+            return engineAccess().getSomClassloader(language.polyglotLanguageInstance, referenceClass);
         }
 
         @Override
-        public void setSomClassloader(TruffleLanguage<?> language, ClassLoader cl) {
-            engineAccess().setSomClassloader(language.polyglotLanguageInstance, cl);
+        public void setSomClassloader(TruffleLanguage<?> language, Class<?> referenceClass, ClassLoader cl) {
+            engineAccess().setSomClassloader(language.polyglotLanguageInstance, referenceClass, cl);
         }
 
         @Override
