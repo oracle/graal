@@ -614,25 +614,5 @@ final class LanguageAccessor extends Accessor {
         public void performTLAction(ThreadLocalAction action, ThreadLocalAction.Access access) {
             action.perform(access);
         }
-
-        @Override
-        public ClassLoader getStaticObjectClassLoader(TruffleLanguage<?> language, Class<?> referenceClass) {
-            return engineAccess().getStaticObjectClassLoader(language.polyglotLanguageInstance, referenceClass);
-        }
-
-        @Override
-        public void setStaticObjectClassLoader(TruffleLanguage<?> language, Class<?> referenceClass, ClassLoader cl) {
-            engineAccess().setStaticObjectClassLoader(language.polyglotLanguageInstance, referenceClass, cl);
-        }
-
-        @Override
-        public boolean areStaticObjectSafetyChecksRelaxed(TruffleLanguage<?> language) {
-            return engineAccess().areStaticObjectSafetyChecksRelaxed(language.polyglotLanguageInstance);
-        }
-
-        @Override
-        public String getStaticObjectStorageStrategy(TruffleLanguage<?> language) {
-            return engineAccess().getStaticObjectStorageStrategy(language.polyglotLanguageInstance);
-        }
     }
 }

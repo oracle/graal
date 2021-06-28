@@ -760,14 +760,6 @@ public abstract class Accessor {
         public abstract boolean isSideEffectingTLAction(ThreadLocalAction action);
 
         public abstract void performTLAction(ThreadLocalAction action, ThreadLocalAction.Access access);
-
-        public abstract ClassLoader getStaticObjectClassLoader(TruffleLanguage<?> language, Class<?> referenceClass);
-
-        public abstract void setStaticObjectClassLoader(TruffleLanguage<?> language, Class<?> referenceClass, ClassLoader cl);
-
-        public abstract boolean areStaticObjectSafetyChecksRelaxed(TruffleLanguage<?> language);
-
-        public abstract String getStaticObjectStorageStrategy(TruffleLanguage<?> language);
     }
 
     public abstract static class InstrumentSupport extends Support {
