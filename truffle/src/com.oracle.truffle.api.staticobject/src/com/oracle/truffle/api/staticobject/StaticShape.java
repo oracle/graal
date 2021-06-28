@@ -323,10 +323,10 @@ public abstract class StaticShape<T> {
         }
 
         private GeneratorClassLoader getOrCreateClassLoader(Class<?> referenceClass) {
-            ClassLoader cl = SomAccessor.LANGUAGE.getSomClassloader(language, referenceClass);
+            ClassLoader cl = SomAccessor.LANGUAGE.getStaticObjectClassLoader(language, referenceClass);
             if (cl == null) {
                 cl = new GeneratorClassLoader(referenceClass);
-                SomAccessor.LANGUAGE.setSomClassloader(language, referenceClass, cl);
+                SomAccessor.LANGUAGE.setStaticObjectClassLoader(language, referenceClass, cl);
             }
             if (!GeneratorClassLoader.class.isInstance(cl)) {
                 throw new RuntimeException("The Truffle language instance associated to this Builder returned an unexpected class loader");

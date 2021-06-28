@@ -1441,13 +1441,13 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public ClassLoader getSomClassloader(Object polyglotLanguageInstance, Class<?> referenceClass) {
-            return ((PolyglotLanguageInstance) polyglotLanguageInstance).somClassLoaders.get(referenceClass);
+        public ClassLoader getStaticObjectClassLoader(Object polyglotLanguageInstance, Class<?> referenceClass) {
+            return ((PolyglotLanguageInstance) polyglotLanguageInstance).staticObjectClassLoaders.get(referenceClass);
         }
 
         @Override
-        public void setSomClassloader(Object polyglotLanguageInstance, Class<?> referenceClass, ClassLoader cl) {
-            ((PolyglotLanguageInstance) polyglotLanguageInstance).somClassLoaders.put(referenceClass, cl);
+        public void setStaticObjectClassLoader(Object polyglotLanguageInstance, Class<?> referenceClass, ClassLoader cl) {
+            ((PolyglotLanguageInstance) polyglotLanguageInstance).staticObjectClassLoaders.put(referenceClass, cl);
         }
 
         @Override

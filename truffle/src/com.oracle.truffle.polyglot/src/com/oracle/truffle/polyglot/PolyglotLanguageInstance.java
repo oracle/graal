@@ -79,7 +79,7 @@ final class PolyglotLanguageInstance implements VMObject {
     private volatile boolean multiContextInitialized;
     private final Assumption singleContext = Truffle.getRuntime().createAssumption("Single context per language instance.");
 
-    final Map<Class<?>, ClassLoader> somClassLoaders = new ConcurrentHashMap<>();
+    final Map<Class<?>, ClassLoader> staticObjectClassLoaders = new ConcurrentHashMap<>();
 
     /**
      * Direct language lookups in the current language.

@@ -604,9 +604,9 @@ public abstract class Accessor {
 
         public abstract Object getContext(Object polyglotLanguageContext);
 
-        public abstract ClassLoader getSomClassloader(Object polyglotLanguageInstance, Class<?> referenceClass);
+        public abstract ClassLoader getStaticObjectClassLoader(Object polyglotLanguageInstance, Class<?> referenceClass);
 
-        public abstract void setSomClassloader(Object polyglotLanguageInstance, Class<?> referenceClass, ClassLoader cl);
+        public abstract void setStaticObjectClassLoader(Object polyglotLanguageInstance, Class<?> referenceClass, ClassLoader cl);
 
         public abstract boolean areStaticObjectSafetyChecksRelaxed(Object polyglotLanguageInstance);
 
@@ -761,9 +761,9 @@ public abstract class Accessor {
 
         public abstract void performTLAction(ThreadLocalAction action, ThreadLocalAction.Access access);
 
-        public abstract ClassLoader getSomClassloader(TruffleLanguage<?> language, Class<?> referenceClass);
+        public abstract ClassLoader getStaticObjectClassLoader(TruffleLanguage<?> language, Class<?> referenceClass);
 
-        public abstract void setSomClassloader(TruffleLanguage<?> language, Class<?> referenceClass, ClassLoader cl);
+        public abstract void setStaticObjectClassLoader(TruffleLanguage<?> language, Class<?> referenceClass, ClassLoader cl);
 
         public abstract boolean areStaticObjectSafetyChecksRelaxed(TruffleLanguage<?> language);
 
