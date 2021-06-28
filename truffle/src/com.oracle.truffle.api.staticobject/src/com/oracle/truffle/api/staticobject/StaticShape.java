@@ -93,9 +93,21 @@ public abstract class StaticShape<T> {
         FIELD_BASED
     }
 
+    /**
+     * @since 21.3.0
+     */
     protected static final Unsafe UNSAFE = getUnsafe();
+    /**
+     * @since 21.3.0
+     */
     protected final Class<?> storageClass;
+    /**
+     * @since 21.3.0
+     */
     protected final boolean safetyChecks;
+    /**
+     * @since 21.3.0
+     */
     @CompilationFinal //
     protected T factory;
 

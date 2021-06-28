@@ -64,10 +64,12 @@ public final class DefaultStaticProperty extends StaticProperty {
         this.id = id;
     }
 
-    @Override
     /**
      * {@inheritDoc}
+     * 
+     * @since 21.3.0
      */
+    @Override
     public String getId() {
         return id;
     }
