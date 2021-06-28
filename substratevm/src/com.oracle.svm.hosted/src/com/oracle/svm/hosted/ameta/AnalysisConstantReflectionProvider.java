@@ -129,7 +129,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
     private static JavaConstant readUninitializedStaticValue(AnalysisField field) {
         JavaKind kind = field.getJavaKind();
 
-        boolean canHaveConstantValueAttribute = kind.isPrimitive() || field.getType().toJavaName(true).equals("java.lang.String");
+        boolean canHaveConstantValueAttribute = kind.isPrimitive() || field.getType().getName().equals("Ljava/lang/String;");
         if (!canHaveConstantValueAttribute || !field.isFinal()) {
             return JavaConstant.defaultForKind(kind);
         }
