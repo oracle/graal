@@ -114,8 +114,17 @@ To achieve this, we first need to declare an interface that:
 For example, if the static objects should extend this class:
 ```java
 public class MyStaticObject {
-    public MyStaticObject(String arg1) { }
-    public MyStaticObject(String arg1, Object arg2) { }
+    final String arg1;
+    final Object arg2;
+
+    public MyStaticObject(String arg1) {
+        this(arg1, null);
+    }
+
+    public MyStaticObject(String arg1, Object arg2) {
+        this.arg1 = arg1;
+        this.arg2 = arg2;
+    }
 }
 ```
 
@@ -130,10 +139,17 @@ public interface MyStaticObjectInterface {
 Finally, this is how to allocate the custom static objects:
 ```java
 public void customStaticObject(TruffleLanguage<?> language) {
-    StaticShape<MyStaticObjectInterface> shape = StaticShape.newBuilder(language).build(MyStaticObject.class, MyStaticObjectInterface.class);
+    StaticProperty property = new DefaultStaticProperty("arg1", StaticPropertyKind.Object, false);
+    StaticShape<MyStaticObjectInterface> shape = StaticShape.newBuilder(language).property(property).build(MyStaticObject.class, MyStaticObjectInterface.class);
     MyStaticObject staticObject = shape.getFactory().create("arg1");
+    property.setObject(staticObject, "42");
+    assert staticObject.arg1.equals("arg1"); // fields of the custom super class are directly accessible
+    assert property.getObject(staticObject).equals("42"); // static properties are accessible as usual
 }
 ```
+
+As you can see from the example above, fields and methods of the custom parent class are directly accessible and are not hidden by the static properties of the static object.
+
 
 ## Reducing memory footprint
 
