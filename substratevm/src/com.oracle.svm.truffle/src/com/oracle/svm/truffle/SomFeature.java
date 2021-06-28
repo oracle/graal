@@ -137,9 +137,9 @@ public final class SomFeature implements GraalFeature {
     private static synchronized ClassLoader getGeneratorClassLoader(Class<?> factoryInterface) {
         if (generatorClassLoader == null) {
             Class<?> classLoaderClass = loadClass(GENERATOR_CLASS_LOADER_CLASS_NAME);
-            Constructor<?> constructor = ReflectionUtil.lookupConstructor(classLoaderClass, ClassLoader.class, ProtectionDomain.class);
+            Constructor<?> constructor = ReflectionUtil.lookupConstructor(classLoaderClass, Class.class);
             try {
-                generatorClassLoader = ClassLoader.class.cast(constructor.newInstance(factoryInterface.getClassLoader(), factoryInterface.getProtectionDomain()));
+                generatorClassLoader = ClassLoader.class.cast(constructor.newInstance(factoryInterface));
             } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
                 throw JVMCIError.shouldNotReachHere(e);
             }

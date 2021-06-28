@@ -337,7 +337,7 @@ public abstract class StaticShape<T> {
         private GeneratorClassLoader getOrCreateClassLoader(Class<?> referenceClass) {
             ClassLoader cl = SomAccessor.LANGUAGE.getSomClassloader(language);
             if (cl == null) {
-                cl = new GeneratorClassLoader(referenceClass.getClassLoader(), referenceClass.getProtectionDomain());
+                cl = new GeneratorClassLoader(referenceClass);
                 SomAccessor.LANGUAGE.setSomClassloader(language, cl);
             }
             if (!GeneratorClassLoader.class.isInstance(cl)) {
