@@ -374,6 +374,15 @@ public class CompileQueue {
             // timer.
             RestrictHeapAccessAnnotationChecker.check(debug, universe, universe.getMethods());
 
+            /*
+             * The graph in the analysis universe is no longer necessary. This clears the graph for
+             * methods that were not "parsed", i.e., method that were reached by the static analysis
+             * but are no longer reachable now.
+             */
+            for (HostedMethod method : universe.getMethods()) {
+                method.wrapped.setAnalyzedGraph(null);
+            }
+
             if (SubstrateOptions.AOTInline.getValue() && SubstrateOptions.AOTTrivialInline.getValue()) {
                 try (StopTimer ignored = new Timer(imageName, "(inline)").start()) {
                     inlineTrivialMethods(debug);
