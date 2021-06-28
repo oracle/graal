@@ -107,7 +107,6 @@ public final class SomFeature implements GraalFeature {
         }
         Class<?> storageClass;
         Class<?> factoryClass;
-        System.err.println("----> " + shapeGeneratorClass.getName());
         try {
             Field storageField = shapeGeneratorClass.getDeclaredField("generatedStorageClass");
             Field factoryField = shapeGeneratorClass.getDeclaredField("generatedFactoryClass");
