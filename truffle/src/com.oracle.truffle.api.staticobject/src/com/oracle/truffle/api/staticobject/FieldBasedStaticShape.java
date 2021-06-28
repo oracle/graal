@@ -44,7 +44,7 @@ final class FieldBasedStaticShape<T> extends StaticShape<T> {
     private static final PrivilegedToken TOKEN = new FieldBasedPrivilegedToken();
 
     private FieldBasedStaticShape(Class<?> storageClass, boolean safetyChecks) {
-        super(storageClass, safetyChecks, TOKEN);
+        super(TOKEN, storageClass, safetyChecks);
     }
 
     static <T> FieldBasedStaticShape<T> create(Class<?> generatedStorageClass, Class<? extends T> generatedFactoryClass, boolean safetyChecks) {

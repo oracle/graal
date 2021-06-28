@@ -99,10 +99,8 @@ public abstract class StaticShape<T> {
     @CompilationFinal //
     T factory;
 
-    StaticShape(Class<?> storageClass, boolean safetyChecks, PrivilegedToken privilegedToken) {
-        if (privilegedToken == null) {
-            throw new AssertionError("Only known implementations can create subclasses of " + StaticShape.class.getName());
-        }
+    StaticShape(PrivilegedToken privilegedToken, Class<?> storageClass, boolean safetyChecks) {
+        Objects.requireNonNull(privilegedToken);
         this.storageClass = storageClass;
         this.safetyChecks = safetyChecks;
     }

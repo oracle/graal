@@ -59,7 +59,7 @@ final class ArrayBasedStaticShape<T> extends StaticShape<T> {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     private ArrayBasedStaticShape(ArrayBasedStaticShape<T> parentShape, Class<?> storageClass, ArrayBasedPropertyLayout propertyLayout, boolean safetyChecks) {
-        super(storageClass, safetyChecks, TOKEN);
+        super(TOKEN, storageClass, safetyChecks);
         if (parentShape == null) {
             superShapes = new StaticShape[]{this};
         } else {
