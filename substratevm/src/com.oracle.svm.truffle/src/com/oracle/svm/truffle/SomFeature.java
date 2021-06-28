@@ -48,7 +48,6 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import sun.misc.Unsafe;
 
 import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.security.ProtectionDomain;
@@ -105,18 +104,8 @@ public final class SomFeature implements GraalFeature {
         } catch (IllegalAccessException | InvocationTargetException | ClassCastException e) {
             throw JVMCIError.shouldNotReachHere(e);
         }
-        Class<?> storageClass;
-        Class<?> factoryClass;
-        try {
-            Field storageField = shapeGeneratorClass.getDeclaredField("generatedStorageClass");
-            Field factoryField = shapeGeneratorClass.getDeclaredField("generatedFactoryClass");
-            storageField.setAccessible(true);
-            factoryField.setAccessible(true);
-            storageClass = Class.class.cast(storageField.get(generator));
-            factoryClass = Class.class.cast(factoryField.get(generator));
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            throw JVMCIError.shouldNotReachHere(e);
-        }
+        Class<?> storageClass = ReflectionUtil.readField(shapeGeneratorClass, "generatedStorageClass", generator);
+        Class<?> factoryClass = ReflectionUtil.readField(shapeGeneratorClass, "generatedFactoryClass", generator);
         for (Constructor<?> c : factoryClass.getDeclaredConstructors()) {
             RuntimeReflection.register(c);
         }
