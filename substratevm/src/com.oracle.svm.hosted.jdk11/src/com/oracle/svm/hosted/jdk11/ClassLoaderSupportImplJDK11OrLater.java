@@ -96,7 +96,7 @@ public final class ClassLoaderSupportImplJDK11OrLater extends ClassLoaderSupport
         ArrayList<ResourceBundle> resourceBundles = new ArrayList<>();
         for (Module module : modules) {
             Module exportTargetModule = ClassLoaderSupportImplJDK11OrLater.class.getModule();
-            if (!module.isExported(packageName, exportTargetModule)) {
+            if (!module.isOpen(packageName, exportTargetModule)) {
                 Modules.addOpens(module, packageName, exportTargetModule);
             }
             resourceBundles.add(ResourceBundle.getBundle(bundleName, locale, module));
