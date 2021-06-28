@@ -434,9 +434,9 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
                 # Measure time-to-first-response multiple times (without any command mapper hooks as those affect the measurement significantly)
                 self.startDaemonThread(target=BaseMicroserviceBenchmarkSuite.testTimeToFirstResponseInBackground, args=[self])
                 for _ in range(self.TIME_TO_FIRST_RESPONSE_MEASUREMENTS):
-					returnCode = mx.run(server_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
-					if not self.validateReturnCode(returnCode):
-						mx.abort("The server application unexpectedly ended with return code " + str(returnCode))
+                    returnCode = mx.run(server_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
+                    if not self.validateReturnCode(returnCode):
+                        mx.abort("The server application unexpectedly ended with return code " + str(returnCode))
 
                 # Measure startup performance (without RSS tracker)
                 self.startDaemonThread(BaseMicroserviceBenchmarkSuite.testStartupPerformanceInBackground, [self])
@@ -872,7 +872,7 @@ class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
 
         actualThroughput = float(matches[0])
         if actualThroughput < expectedThroughput * 0.97 or actualThroughput > expectedThroughput * 1.03:
-            print("WARNING: Throughput verification failed: expected requests/s: {:.2f}, actual requests/s: {:.2f}".format(expectedThroughput, actualThroughput))
+            mx.warn("Throughput verification failed: expected requests/s: {:.2f}, actual requests/s: {:.2f}".format(expectedThroughput, actualThroughput))
 
     def runWrk1(self, wrkFlags):
         distro = self.getOS()
