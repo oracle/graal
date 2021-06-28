@@ -54,8 +54,6 @@ public final class Field extends Member<Type> implements FieldRef {
     private final ObjectKlass holder;
 
     @CompilationFinal
-    private Klass typeKlassCache;
-    @CompilationFinal
     private FieldVersion fieldVersion;
     @CompilationFinal
     private boolean changedByRedefinition = false;
@@ -139,29 +137,7 @@ public final class Field extends Member<Type> implements FieldRef {
     }
 
     public Klass resolveTypeKlass() {
-        Klass tk = typeKlassCache;
-        if (tk == null) {
-            if (CompilerDirectives.isPartialEvaluationConstant(this)) {
-                // This can be used from contexts where this is not a constant (e.g., Unsafe)
-                // as well as context where this is constant (e.g., field access)
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-            }
-            doResolveType();
-        }
-        return typeKlassCache;
-    }
-
-    @TruffleBoundary
-    private void doResolveType() {
-        synchronized (this) {
-            Klass tk = typeKlassCache;
-            if (tk == null) {
-                tk = holder.getMeta().resolveSymbolOrFail(getType(),
-                        holder.getDefiningClassLoader(),
-                        holder.protectionDomain());
-                typeKlassCache = tk;
-            }
-        }
+        return getFieldVersion().resolveTypeKlass();
     }
 
     public Attribute getAttribute(Symbol<Name> attrName) {
@@ -875,18 +851,27 @@ public final class Field extends Member<Type> implements FieldRef {
         public Klass resolveTypeKlass() {
             Klass tk = typeKlassCache;
             if (tk == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                synchronized (this) {
-                    tk = typeKlassCache;
-                    if (tk == null) {
-                        tk = holder.getMeta().resolveSymbolOrFail(type,
-                                holder.getDefiningClassLoader(),
-                                holder.protectionDomain());
-                        typeKlassCache = tk;
-                    }
+                if (CompilerDirectives.isPartialEvaluationConstant(this)) {
+                    // This can be used from contexts where this is not a constant (e.g., Unsafe)
+                    // as well as context where this is constant (e.g., field access)
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
                 }
+                doResolveType();
             }
             return typeKlassCache;
+        }
+
+        @TruffleBoundary
+        private void doResolveType() {
+            synchronized (this) {
+                Klass tk = typeKlassCache;
+                if (tk == null) {
+                    tk = holder.getMeta().resolveSymbolOrFail(getType(),
+                            holder.getDefiningClassLoader(),
+                            holder.protectionDomain());
+                    typeKlassCache = tk;
+                }
+            }
         }
 
         public Field getField() {
