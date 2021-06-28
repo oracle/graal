@@ -52,7 +52,7 @@ import java.util.function.Supplier;
 /**
  * Interface for Truffle bytecode nodes which can be on-stack replaced.
  *
- * @since 21.2 TODO update
+ * @since 21.3 TODO update
  */
 public abstract class OnStackReplaceableNode extends ExecutableNode implements ReplaceObserver {
     private Object osrState;
@@ -79,7 +79,7 @@ public abstract class OnStackReplaceableNode extends ExecutableNode implements R
      * @param target the target location to execute from (e.g., bytecode index).
      * @return the result of execution.
      */
-    abstract public Object doOSR(VirtualFrame innerFrame, Frame parentFrame, int target);
+    abstract public Object executeOSR(VirtualFrame innerFrame, Frame parentFrame, int target);
 
     /**
      * Reports a back edge to the target location. This information could be used to trigger

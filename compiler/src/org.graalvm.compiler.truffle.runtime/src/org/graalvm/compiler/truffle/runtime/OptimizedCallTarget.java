@@ -1165,7 +1165,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         @Override
         public Object executeOSR(VirtualFrame frame) {
             Frame parentFrame = (Frame) frame.getArguments()[0];
-            return onStackReplaceableNode.doOSR(frame, parentFrame, target);
+            return onStackReplaceableNode.executeOSR(frame, parentFrame, target);
         }
 
         @Override

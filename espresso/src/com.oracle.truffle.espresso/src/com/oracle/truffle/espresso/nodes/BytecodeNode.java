@@ -408,7 +408,7 @@ public final class BytecodeNode extends EspressoMethodNode {
     private final LivenessAnalysis livenessAnalysis;
 
     @Override
-    public Object doOSR(VirtualFrame innerFrame, Frame parentFrame, int target) {
+    public Object executeOSR(VirtualFrame innerFrame, Frame parentFrame, int target) {
         initializeOSRBody(innerFrame, parentFrame, target);
         return executeBodyFromBCI(innerFrame, target);
     }

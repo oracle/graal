@@ -409,7 +409,7 @@ public class OnStackReplaceableNodeTest extends TestWithSynchronousCompiling {
         }
 
         @Override
-        public Object doOSR(VirtualFrame innerFrame, Frame parentFrame, int target) {
+        public Object executeOSR(VirtualFrame innerFrame, Frame parentFrame, int target) {
             return execute(innerFrame);
         }
 
@@ -442,7 +442,7 @@ public class OnStackReplaceableNodeTest extends TestWithSynchronousCompiling {
         }
 
         @Override
-        public Object doOSR(VirtualFrame innerFrame, Frame parentFrame, int target) {
+        public Object executeOSR(VirtualFrame innerFrame, Frame parentFrame, int target) {
             setInt(innerFrame, indexSlot, getInt(parentFrame, indexSlot));
             int numIterations = getInt(parentFrame, numIterationsSlot);
             setInt(innerFrame, numIterationsSlot, numIterations);
@@ -697,7 +697,7 @@ public class OnStackReplaceableNodeTest extends TestWithSynchronousCompiling {
 
         @Override
         @ExplodeLoop
-        public Object doOSR(VirtualFrame innerFrame, Frame parentFrame, int target) {
+        public Object executeOSR(VirtualFrame innerFrame, Frame parentFrame, int target) {
             for (int i = 0; i < regs.length; i++) {
                 setInt(innerFrame, i, getInt(parentFrame, i));
             }

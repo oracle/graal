@@ -54,6 +54,10 @@ public abstract class EspressoInstrumentableNode extends OnStackReplaceableNode 
         return true;
     }
 
+    @Override
+    @GenerateWrapper.Ignore
+    public abstract Object executeOSR(VirtualFrame innerFrame, Frame parentFrame, int target);
+
     EspressoInstrumentableNode() {
         super(EspressoLanguage.getCurrentContext().getLanguage());
     }
