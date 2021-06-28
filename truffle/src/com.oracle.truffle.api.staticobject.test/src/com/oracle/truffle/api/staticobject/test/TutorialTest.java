@@ -146,29 +146,6 @@ public class TutorialTest extends StaticObjectModelTest {
         new MyField("property1", StaticPropertyKind.Int, false);
     }
 
-    public static class MyStaticObject {
-        @SuppressWarnings("unused")
-        public MyStaticObject(String arg1) {
-        }
-
-        @SuppressWarnings("unused")
-        public MyStaticObject(String arg1, Object arg2) {
-        }
-    }
-
-    public interface MyStaticObjectInterface {
-        MyStaticObject create(String arg1);
-
-        MyStaticObject create(String arg1, Object arg2);
-    }
-
-    @Theory
-    @SuppressWarnings("unused")
-    public void memoryFootprint3(TestEnvironment te) {
-        StaticShape<MyStaticObjectInterface> shape = StaticShape.newBuilder(te.testLanguage).build(MyStaticObject.class, MyStaticObjectInterface.class);
-        MyStaticObject staticObject = shape.getFactory().create("arg1");
-    }
-
     @Theory
     public void safetyChecks1(TestEnvironment te) {
         StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
