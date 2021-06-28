@@ -93,23 +93,11 @@ public abstract class StaticShape<T> {
         FIELD_BASED
     }
 
-    /**
-     * @since 21.3.0
-     */
-    protected static final Unsafe UNSAFE = getUnsafe();
-    /**
-     * @since 21.3.0
-     */
-    protected final Class<?> storageClass;
-    /**
-     * @since 21.3.0
-     */
-    protected final boolean safetyChecks;
-    /**
-     * @since 21.3.0
-     */
+    static final Unsafe UNSAFE = getUnsafe();
+    final Class<?> storageClass;
+    final boolean safetyChecks;
     @CompilationFinal //
-    protected T factory;
+    T factory;
 
     StaticShape(Class<?> storageClass, boolean safetyChecks, PrivilegedToken privilegedToken) {
         if (privilegedToken == null) {
