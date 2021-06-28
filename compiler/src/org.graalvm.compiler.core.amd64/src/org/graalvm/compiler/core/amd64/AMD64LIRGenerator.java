@@ -173,7 +173,11 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
                 return JavaConstant.forLong(dead);
             case SINGLE:
                 return JavaConstant.forFloat(Float.intBitsToFloat((int) dead));
+            case MASK16:
+            case MASK64:
+                return JavaConstant.forLong(dead);
             default:
+                assert ((AMD64Kind) kind).isXMM() : "kind " + kind + " not supported in zapping";
                 // we don't support vector types, so just zap with double for all of them
                 return JavaConstant.forDouble(Double.longBitsToDouble(dead));
         }

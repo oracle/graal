@@ -4508,6 +4508,18 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         }
     }
 
+    public final void kmovw(Register dst, AMD64Address src) {
+        assert supports(CPUFeature.AVX512F);
+        assert inRC(MASK, dst);
+
+        // kmovw(KRegister dst, M16 src):
+        // Insn: KMOVW k1, k2/m16
+        // Code: VEX.L0.0F.W0 90 /r
+        vexPrefix(dst, Register.None, src, AVXSize.XMM, P_, M_0F, W0, W0, true, null, null);
+        emitByte(0x90);
+        emitOperandHelper(dst, src, 0);
+    }
+
     public final void kmovd(Register dst, Register src) {
         assert supports(CPUFeature.AVX512BW);
         assert inRC(MASK, dst) || inRC(CPU, dst);
@@ -4578,6 +4590,18 @@ public class AMD64Assembler extends AMD64BaseAssembler {
                 throw GraalError.shouldNotReachHere();
             }
         }
+    }
+
+    public final void kmovq(Register dst, AMD64Address src) {
+        assert supports(CPUFeature.AVX512BW);
+        assert inRC(MASK, dst);
+
+        // kmovq(KRegister dst, M64 src):
+        // Insn: KMOVQ k1, k2/m64
+        // Code: VEX.L0.0F.W1 90 /r
+        vexPrefix(dst, Register.None, src, AVXSize.XMM, P_, M_0F, W1, W1, true, null, null);
+        emitByte(0x90);
+        emitOperandHelper(dst, src, 0);
     }
 
     // Insn: KTESTD k1, k2
