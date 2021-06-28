@@ -163,6 +163,7 @@ public final class SnippetResolvedJavaType implements ResolvedJavaType {
         throw new NoClassDefFoundError();
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public ResolvedJavaType getHostClass() {
         throw new UnsupportedOperationException();

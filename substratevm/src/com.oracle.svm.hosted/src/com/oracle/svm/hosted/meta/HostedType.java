@@ -455,6 +455,7 @@ public abstract class HostedType implements SharedType, WrappedJavaType, Compara
         return isCloneable;
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public ResolvedJavaType getHostClass() {
         return universe.lookup(wrapped.getHostClass());

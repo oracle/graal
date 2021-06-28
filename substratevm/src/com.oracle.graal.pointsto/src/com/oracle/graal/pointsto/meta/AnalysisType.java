@@ -1168,6 +1168,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
         throw JVMCIError.unimplemented();
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public ResolvedJavaType getHostClass() {
         return universe.lookup(wrapped.getHostClass());
