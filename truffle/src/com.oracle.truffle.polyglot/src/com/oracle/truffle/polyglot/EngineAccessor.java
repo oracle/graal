@@ -1457,7 +1457,7 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public String getStaticObjectStorageStrategy(Object polyglotLanguageInstance) {
-            return ((PolyglotLanguageInstance) polyglotLanguageInstance).getEngine().getEngineOptionValues().get(PolyglotEngineOptions.StaticObjectStorageStrategy).name().toLowerCase().replace('_', '-');
+            return ((PolyglotLanguageInstance) polyglotLanguageInstance).getEngine().getEngineOptionValues().get(PolyglotEngineOptions.StaticObjectStorageStrategy).name();
         }
     }
 

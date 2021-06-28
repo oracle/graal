@@ -115,11 +115,11 @@ final class PolyglotEngineOptions {
     }
 
     @Option(category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, help = "" +
-                    "Set the storage strategy used by the Static Object Model.")//
+                    "Set the storage strategy used by the Static Object Model. Accepted values are: ['default', 'array-based', 'field-based']")//
     static final OptionKey<StaticObjectStorageStrategies> StaticObjectStorageStrategy = new OptionKey<>(StaticObjectStorageStrategies.DEFAULT, new OptionType<>("strategy", new Function<String, StaticObjectStorageStrategies>() {
         @Override
         public StaticObjectStorageStrategies apply(String s) {
-            switch (s.toLowerCase().replace('_', '-')) {
+            switch (s) {
                 case "default":
                     return StaticObjectStorageStrategies.DEFAULT;
                 case "array-based":
@@ -127,7 +127,7 @@ final class PolyglotEngineOptions {
                 case "field-based":
                     return StaticObjectStorageStrategies.FIELD_BASED;
                 default:
-                    throw new IllegalArgumentException("Unexpected value for engine option 'SomStorageStrategy': '" + s + "'. Accepted values are: 'default', 'array-based', and 'field-based'.");
+                    throw new IllegalArgumentException("Unexpected value for engine option 'SomStorageStrategy': '" + s + "'. Accepted values are: ['default', 'array-based', 'field-based'].");
             }
         }
     }));

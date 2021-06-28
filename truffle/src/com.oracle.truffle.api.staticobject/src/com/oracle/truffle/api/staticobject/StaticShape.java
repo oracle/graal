@@ -391,11 +391,11 @@ public abstract class StaticShape<T> {
         private StorageStrategy getStorageStrategy() {
             String strategy = SomAccessor.LANGUAGE.getStaticObjectStorageStrategy(language);
             switch (strategy) {
-                case "default":
+                case "DEFAULT":
                     return TruffleOptions.AOT ? StorageStrategy.ARRAY_BASED : StorageStrategy.FIELD_BASED;
-                case "array-based":
+                case "ARRAY_BASED":
                     return StorageStrategy.ARRAY_BASED;
-                case "field-based":
+                case "FIELD_BASED":
                     if (TruffleOptions.AOT) {
                         throw new IllegalArgumentException("The field-based storage strategy is not yet supported on Native Image");
                     }
