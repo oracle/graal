@@ -46,7 +46,7 @@
  */
 
 /**
- * Static object storage model.
+ * Static Object Model APIs to represent the layout of objects that, once defined, do not change the number and the type of their properties. For more information, read the <a href="https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/staticobject/package-summary.html">Javadoc</a> and the <a href="https://github.com/oracle/graal/blob/master/truffle/docs/StaticObjectModel.md">tutorial</a>.
  *
  * @since 21.3.0
  */
