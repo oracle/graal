@@ -1115,7 +1115,7 @@ class GraalVmNativeProperties(GraalVmProject):
         :type image_config: mx_sdk.AbstractNativeImageConfig
         """
         self.image_config = image_config
-        # With Java > 8 there are cases were image_config.get_add_exports is getting called in
+        # With Java > 8 there are cases where image_config.get_add_exports is getting called in
         # mx_sdk_vm_impl.NativePropertiesBuildTask.contents. This only works after the jar_distributions
         # are made into proper modules. Therefore they have to be specified as dependencies here.
         deps = [] if _src_jdk_version == 8 else list(image_config.jar_distributions)
