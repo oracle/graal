@@ -98,9 +98,21 @@ builds += [
   ${linux-amd64} ${labsjdk-ee-11} ${truffleCommon} ${simpleLanguageMavenProjectGate} {name: "gate-external-mvn-simplelanguage-11"},
   ${linux-amd64} ${labsjdk-ee-16} ${truffleCommon} ${simpleLanguageMavenProjectGate} {name: "gate-external-mvn-simplelanguage-16"},
 
-  ${linux-amd64} ${oraclejdk8}    ${truffleCommon} ${eclipse} ${jdt} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], targets : [gate], name: "gate-truffle-8"},
-  ${linux-amd64} ${oraclejdk11}   ${truffleCommon} ${eclipse} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], targets : [gate], name: "gate-truffle-oraclejdk-11"},
-  ${linux-amd64} ${oraclejdk16}   ${truffleCommon} ${eclipse} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], targets : [gate], name: "gate-truffle-oraclejdk-16"},
+  ${linux-amd64} ${oraclejdk8}    ${truffleCommon} ${eclipse} ${jdt} {
+    timelimit : "45:00",
+    run : [["mx", "--strict-compliance", "gate", "--strict-mode"]],
+    targets : [gate],
+    name: "gate-truffle-8"},
+  ${linux-amd64} ${oraclejdk11}   ${truffleCommon} ${eclipse} {
+    environment: {DISABLE_DSL_STATE_BITS_TESTS: "true"},
+    run : [["mx", "--strict-compliance", "gate", "--strict-mode"]],
+    targets : [gate],
+    name: "gate-truffle-oraclejdk-11"},
+  ${linux-amd64} ${oraclejdk16}   ${truffleCommon} ${eclipse} {
+    environment: {DISABLE_DSL_STATE_BITS_TESTS: "true"},
+    run : [["mx", "--strict-compliance", "gate", "--strict-mode"]],
+    targets : [gate],
+    name: "gate-truffle-oraclejdk-16"},
   ${linux-amd64} ${oraclejdk8}    ${truffleCommon} {
     run : [
         ["mx", "build"],

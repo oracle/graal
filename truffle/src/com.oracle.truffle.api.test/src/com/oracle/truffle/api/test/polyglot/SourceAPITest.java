@@ -528,7 +528,9 @@ public class SourceAPITest {
     public void testHttpURL() throws IOException, URISyntaxException {
         URL resource = new URL("http://example.org/test/File.html");
         Source s = Source.newBuilder("TestJS", resource).content("Empty").build();
-        assertEquals(resource, s.getURL());
+        // The URL is converted into URI before comparison to skip the expensive hostname
+        // normalization.
+        assertEquals(resource.toURI(), s.getURL().toURI());
         assertEquals(resource.toURI(), s.getURI());
         assertEquals("File.html", s.getName());
         assertEquals("/test/File.html", s.getPath());
