@@ -182,6 +182,7 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
         typeFlow = null;
         invokedBy = null;
         implementationInvokedBy = null;
+        contextInsensitiveInvoke.set(null);
         if (parsedGraphCacheState.get() instanceof AnalysisParsedGraph) {
             parsedGraphCacheState.set(GRAPH_CACHE_CLEARED);
         }
