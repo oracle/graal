@@ -157,14 +157,16 @@ public final class NativeImageHeapWriter {
         }
     }
 
+    private final boolean useHeapBase = NativeImageHeap.useHeapBase();
+    private final CompressEncoding compressEncoding = ImageSingletons.lookup(CompressEncoding.class);
+
     void writeReference(RelocatableBuffer buffer, int index, Object target, Object reason) {
         assert !(target instanceof WordBase) : "word values are not references";
         mustBeReferenceAligned(index);
         if (target != null) {
             ObjectInfo targetInfo = heap.getObjectInfo(target);
             verifyTargetDidNotChange(target, reason, targetInfo);
-            if (NativeImageHeap.useHeapBase()) {
-                CompressEncoding compressEncoding = ImageSingletons.lookup(CompressEncoding.class);
+            if (useHeapBase) {
                 int shift = compressEncoding.getShift();
                 writeReferenceValue(buffer, index, targetInfo.getAddress() >>> shift);
             } else {
