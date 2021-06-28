@@ -44,7 +44,6 @@ import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.meta.HostedMethod;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -97,7 +96,7 @@ public class DevirtualizeCallsPhase extends Phase {
     private final boolean parseOnce = SubstrateOptions.parseOnce();
 
     private void unreachableInvoke(StructuredGraph graph, Invoke invoke, SubstrateMethodCallTargetNode callTarget) {
-        VMError.guarantee(!parseOnce, "Must be done by StrengthenGraphs");
+        assert !parseOnce : "Must be done by StrengthenGraphs";
 
         /*
          * The invoke has no callee, i.e., it is unreachable. We just insert a always-failing guard
@@ -116,7 +115,7 @@ public class DevirtualizeCallsPhase extends Phase {
     }
 
     private void singleCallee(HostedMethod singleCallee, StructuredGraph graph, Invoke invoke, SubstrateMethodCallTargetNode callTarget) {
-        VMError.guarantee(!parseOnce, "Must be done by StrengthenGraphs");
+        assert !parseOnce : "Must be done by StrengthenGraphs";
 
         /*
          * The invoke has only one callee, i.e., the call can be devirtualized to this callee. This
