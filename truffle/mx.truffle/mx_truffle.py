@@ -230,9 +230,10 @@ def _truffle_gate_runner(args, tasks):
         if t: sigtest(['--check', 'binary'])
     with Task('Truffle UnitTests', tasks) as t:
         if t: unittest(['--suite', 'truffle', '--enable-timing', '--verbose', '--fail-fast'])
-    with Task('Truffle DSL max state bit tests', tasks) as t:
-        if t:
-            _truffle_gate_state_bitwidth_tests()
+    if os.getenv('DISABLE_DSL_STATE_BITS_TESTS', 'false').lower() != 'true':
+        with Task('Truffle DSL max state bit tests', tasks) as t:
+            if t:
+                _truffle_gate_state_bitwidth_tests()
 
 # The Truffle DSL specialization state bit width computation is complicated and
 # rarely used as the default maximum bit width of 32 is rarely exceeded. Therefore
@@ -240,7 +241,7 @@ def _truffle_gate_runner(args, tasks):
 # force using multiple state fields for the tests. This makes sure the tests
 # do not break for rarely used combination of features and bit widths.
 def _truffle_gate_state_bitwidth_tests():
-    runs = [1, 2, 4, 8, 16, 32, 64]
+    runs = [1, 2, 4, 8, 16, 64]
     for run_bits in runs:
         build_args = ['-f', '-p', '--dependencies', 'TRUFFLE_TEST', '--force-javac',
                       '-A-Atruffle.dsl.StateBitWidth={0}'.format(run_bits)]
