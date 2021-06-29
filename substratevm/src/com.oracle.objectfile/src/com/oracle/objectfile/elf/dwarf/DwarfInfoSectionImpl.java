@@ -936,50 +936,67 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             if (range.isDeoptTarget() != deoptTargets) {
                 continue;
             }
-            if (range.withInlinedChildren()) {
-                /*
-                 * Go through the subranges and generate abstract debug entries for inlined methods.
-                 */
-                for (Range subrange : primaryEntry.getSubranges()) {
-                    if (!subrange.isInlined()) {
-                        continue;
-                    }
-                    final String symbolName = subrange.getSymbolName();
-                    if (primaryMap.get(symbolName) == null) {
-                        primaryMap.put(symbolName, pos);
-                        ClassEntry inlinedClassEntry = (ClassEntry) lookupType(subrange.getClassName());
-                        pos = writeMethodLocation(context, inlinedClassEntry, subrange, buffer, pos);
-                        pos = writeAttrNull(buffer, pos);
-                    }
-                }
-            }
+            pos = maybeGenerateAbstractDebugEntriesForInlinedMethods(context, primaryMap, primaryEntry, buffer, pos);
             primaryMap.put(range.getSymbolName(), pos);
             pos = writeMethodLocation(context, classEntry, range, buffer, pos);
-            if (range.withInlinedChildren()) {
-                int depth = 0;
-                /*
-                 * Go through the subranges and generate concrete debug entries for inlined methods.
-                 */
-                for (Range subrange : primaryEntry.getSubranges()) {
-                    if (!subrange.isInlined()) {
-                        continue;
-                    }
-                    Integer subprogramPos = primaryMap.get(subrange.getSymbolName());
-                    assert subprogramPos != null;
-                    int previousPos = pos;
-                    pos = writeInlineSubroutine(context, classEntry, subrange, buffer, pos, subprogramPos - getCUIndex(classEntry), depth);
-                    if (!subrange.withChildren()) {
-                        while (depth > 0) {
-                            pos = writeAttrNull(buffer, pos);
-                            depth--;
-                        }
-                    } else if (previousPos != pos) {
-                        depth++;
-                    }
-                }
-                assert depth == 0 : depth;
-            }
+            pos = maybeGenerateConcreteDebugEntriesForInlinedMethods(context, classEntry, primaryMap, primaryEntry, buffer, pos);
             pos = writeAttrNull(buffer, pos);
+        }
+        return pos;
+    }
+
+    /**
+     * Go through the subranges and generate concrete debug entries for inlined methods.
+     */
+    private int maybeGenerateConcreteDebugEntriesForInlinedMethods(DebugContext context, ClassEntry classEntry,
+                    HashMap<String, Integer> primaryMap, PrimaryEntry primaryEntry, byte[] buffer, int p) {
+        if (!primaryEntry.getPrimary().withInlinedChildren()) {
+            return p;
+        }
+        int pos = p;
+        int depth = 0;
+        for (Range subrange : primaryEntry.getSubranges()) {
+            if (!subrange.isInlined()) {
+                continue;
+            }
+            Integer subprogramPos = primaryMap.get(subrange.getSymbolName());
+            assert subprogramPos != null;
+            int previousPos = pos;
+            int subprogramOffset = subprogramPos - getCUIndex(classEntry);
+            pos = writeInlineSubroutine(context, classEntry, subrange, buffer, pos, subprogramOffset, depth);
+            if (!subrange.withChildren()) {
+                while (depth > 0) {
+                    pos = writeAttrNull(buffer, pos);
+                    depth--;
+                }
+            } else if (previousPos != pos) {
+                depth++;
+            }
+        }
+        assert depth == 0 : depth;
+        return pos;
+    }
+
+    /**
+     * Go through the subranges and generate abstract debug entries for inlined methods.
+     */
+    private int maybeGenerateAbstractDebugEntriesForInlinedMethods(DebugContext context,
+                    HashMap<String, Integer> primaryMap, PrimaryEntry primaryEntry, byte[] buffer, int p) {
+        if (!primaryEntry.getPrimary().withInlinedChildren()) {
+            return p;
+        }
+        int pos = p;
+        for (Range subrange : primaryEntry.getSubranges()) {
+            if (!subrange.isInlined()) {
+                continue;
+            }
+            final String symbolName = subrange.getSymbolName();
+            if (primaryMap.get(symbolName) == null) {
+                primaryMap.put(symbolName, pos);
+                ClassEntry inlinedClassEntry = (ClassEntry) lookupType(subrange.getClassName());
+                pos = writeMethodLocation(context, inlinedClassEntry, subrange, buffer, pos);
+                pos = writeAttrNull(buffer, pos);
+            }
         }
         return pos;
     }
