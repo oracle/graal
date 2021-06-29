@@ -44,7 +44,7 @@ Then, we create [DefaultStaticProperty](https://www.graalvm.org/truffle/javadoc/
   - The third argument is a boolean value that defines if the property can be stored as a final field.
     This gives the compiler the opportunity to perform additional optimizations.
     For example, reads to this property might be constant-folded.
-    It's important to note that the Static Object Model does not check if a property stored as final is assigned before compilation and is not assigned more than once.
+    It's important to note that the Static Object Model does not check if a property stored as final is not assigned more than once and that it is assigned before it is read.
     Doing so might lead to wrong behavior of the program, and it is up to the user to enforce that this cannot happen.
 
 After creating the properties we register them to the builder instance, then we create a new static shape. 
@@ -190,8 +190,6 @@ class MyField extends StaticProperty {
 
 new MyField("property1", StaticPropertyKind.Int, false);
 ```
-
-It might be tempting to extend also [StaticShape.getFactory()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/staticobject/StaticShape.html), but this is currently not possible since the implementation of the Static Object Model already extends this class. 
 
 ## Safety Checks
 
