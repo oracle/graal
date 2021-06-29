@@ -1018,8 +1018,9 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
     private static final class StaticObjectSupport {
         private static final String GENERATOR_CLASS_NAME = "com.oracle.truffle.api.staticobject.ArrayBasedShapeGenerator";
         private static final String GENERATOR_CLASS_LOADER_CLASS_NAME = "com.oracle.truffle.api.staticobject.GeneratorClassLoader";
+        private static final ConcurrentHashMap<Pair<Class<?>, Class<?>>, Object> INTERCEPTED_ARGS = new ConcurrentHashMap<>();
+        private static final Object FILLER_OBJECT = new Object();
         private static ClassLoader generatorClassLoader;
-        private static final HashSet<Pair<Class<?>, Class<?>>> interceptedArgs = new HashSet<>();
 
         static void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, Plugins plugins, ParsingReason reason) {
             if (reason == ParsingReason.PointsToAnalysis) {
@@ -1030,7 +1031,7 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
                         if (!(receiver instanceof SubstrateIntrinsicGraphBuilder)) {
                             Class<?> superClass = getArgumentClass(b, targetMethod, 1, arg1);
                             Class<?> factoryInterface = getArgumentClass(b, targetMethod, 2, arg2);
-                            interceptedArgs.add(Pair.create(superClass, factoryInterface));
+                            INTERCEPTED_ARGS.put(Pair.create(superClass, factoryInterface), FILLER_OBJECT);
                         }
                         return false;
                     }
@@ -1039,11 +1040,11 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         }
 
         static void duringAnalysis(DuringAnalysisAccess access) {
-            for (Pair<Class<?>, Class<?>> args : interceptedArgs) {
+            for (Pair<Class<?>, Class<?>> args : INTERCEPTED_ARGS.keySet()) {
                 generate(args.getLeft(), args.getRight(), access);
                 access.requireAnalysisIteration();
             }
-            interceptedArgs.clear();
+            INTERCEPTED_ARGS.clear();
         }
 
         static void beforeCompilation(BeforeCompilationAccess config) {
