@@ -84,11 +84,11 @@ public final class KillingBeginNode extends AbstractBeginNode implements SingleM
 
     @Override
     public void prepareDelete() {
+        GraalError.guarantee(predecessor() instanceof SingleMemoryKill, "Cannot delete %s as its predecessor %s is not a SingleMemoryKill", this, predecessor());
+        GraalError.guarantee(getKilledLocationIdentity().equals(((SingleMemoryKill) predecessor()).getKilledLocationIdentity()),
+                        "Cannot delete %s as its predecessor %s kills a different location (%s vs. %s)", this, predecessor(), getKilledLocationIdentity(),
+                        ((SingleMemoryKill) predecessor()).getKilledLocationIdentity());
         if (hasUsages()) {
-            GraalError.guarantee(predecessor() instanceof SingleMemoryKill, "Cannot delete %s as it has usages and its predecessor %s is not a SingleMemoryKill", this, predecessor());
-            GraalError.guarantee(getKilledLocationIdentity().equals(((SingleMemoryKill) predecessor()).getKilledLocationIdentity()),
-                            "Cannot delete %s as its predecessor %s kills a different location (%s vs. %s)", this, predecessor(), getKilledLocationIdentity(),
-                            ((SingleMemoryKill) predecessor()).getKilledLocationIdentity());
             // Memory edges are moved to the predecessor.
             replaceAtUsages(predecessor(), InputType.Memory);
         }
