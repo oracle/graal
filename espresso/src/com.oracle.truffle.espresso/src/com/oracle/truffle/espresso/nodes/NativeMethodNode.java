@@ -116,12 +116,6 @@ public final class NativeMethodNode extends EspressoMethodNode {
         }
     }
 
-    @Override
-    public Object executeOSR(VirtualFrame innerFrame, Frame parentFrame, int target) {
-        CompilerDirectives.transferToInterpreter();
-        throw new UnsupportedOperationException("OSR is not supported on native method nodes");
-    }
-
     private void enterThrowsException() {
         if (!throwsException) {
             CompilerDirectives.transferToInterpreterAndInvalidate();

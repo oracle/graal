@@ -40,7 +40,9 @@ import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.OnStackReplaceableNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
@@ -81,7 +83,6 @@ public class OnStackReplaceableNodeTest extends TestWithSynchronousCompiling {
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
         // Interpreter invocation should be OSR compiled and break out of the interpreter loop.
         Assert.assertEquals(42, target.call());
-        Assert.assertTrue("reportOSRBackEdge should increment loop counts", target.getCallAndLoopCount() - target.getCallCount() >= osrThreshold);
     }
 
     /*
@@ -157,16 +158,16 @@ public class OnStackReplaceableNodeTest extends TestWithSynchronousCompiling {
         RootNode rootNode = new Program(osrNode, frameDescriptor);
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
         Assert.assertEquals(FixedIterationLoop.OSR_RESULT, target.call(osrThreshold + 1));
-        OptimizedCallTarget.OSRState osrState = osrNode.getGraalOSRState();
-        OptimizedCallTarget osrTarget = osrState.getOSRCompilations().get(-1);
+        OptimizedCallTarget.OSRMetadata osrMetadata = osrNode.getGraalOSRMetadata();
+        OptimizedCallTarget osrTarget = osrMetadata.getOSRCompilations().get(-1);
         Assert.assertNotNull(osrTarget);
         Assert.assertTrue(osrTarget.isValid());
         osrNode.nodeReplaced(osrNode, new FixedIterationLoop(new FrameDescriptor()), "something changed");
-        Assert.assertTrue(osrState.getOSRCompilations().isEmpty());
+        Assert.assertTrue(osrMetadata.getOSRCompilations().isEmpty());
         Assert.assertFalse(osrTarget.isValid());
         // Calling the node will eventually trigger OSR again (after OSR_POLL_INTERVAL back-edges)
         Assert.assertEquals(FixedIterationLoop.OSR_RESULT, target.call(OptimizedCallTarget.OSR_POLL_INTERVAL + 1));
-        osrTarget = osrState.getOSRCompilations().get(-1);
+        osrTarget = osrMetadata.getOSRCompilations().get(-1);
         Assert.assertNotNull(osrTarget);
         Assert.assertTrue(osrTarget.isValid());
     }
@@ -182,8 +183,8 @@ public class OnStackReplaceableNodeTest extends TestWithSynchronousCompiling {
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
         Assert.assertEquals(FixedIterationLoop.NORMAL_RESULT, target.call(osrThreshold + 1));
         // Compiled call target is still valid.
-        OptimizedCallTarget.OSRState osrState = osrNode.getGraalOSRState();
-        OptimizedCallTarget osrTarget = osrState.getOSRCompilations().get(-1);
+        OptimizedCallTarget.OSRMetadata osrMetadata = osrNode.getGraalOSRMetadata();
+        OptimizedCallTarget osrTarget = osrMetadata.getOSRCompilations().get(-1);
         Assert.assertNotNull(osrTarget);
         Assert.assertTrue(osrTarget.isValid());
 
@@ -204,8 +205,8 @@ public class OnStackReplaceableNodeTest extends TestWithSynchronousCompiling {
         RootNode rootNode = new Program(osrNode, new FrameDescriptor());
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
         Assert.assertEquals(42, target.call());
-        OptimizedCallTarget.OSRState osrState = osrNode.getGraalOSRState();
-        int backEdgeCount = osrState.getBackEdgeCount();
+        OptimizedCallTarget.OSRMetadata osrMetadata = osrNode.getGraalOSRMetadata();
+        int backEdgeCount = osrMetadata.getBackEdgeCount();
         Assert.assertTrue(backEdgeCount > osrThreshold);
         Assert.assertEquals(0, backEdgeCount % OptimizedCallTarget.OSR_POLL_INTERVAL);
     }
@@ -300,9 +301,9 @@ public class OnStackReplaceableNodeTest extends TestWithSynchronousCompiling {
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
         Assert.assertEquals(3 * (osrThreshold + 1), target.call(osrThreshold + 1, 0));
         Assert.assertTrue(bytecodeNode.compiled);
-        OptimizedCallTarget.OSRState osrState = (OptimizedCallTarget.OSRState) bytecodeNode.getOSRState();
-        Assert.assertTrue(osrState.getOSRCompilations().containsKey(0));
-        Assert.assertTrue(osrState.getOSRCompilations().get(0).isValid());
+        OptimizedCallTarget.OSRMetadata osrMetadata = (OptimizedCallTarget.OSRMetadata) bytecodeNode.getOSRMetadata();
+        Assert.assertTrue(osrMetadata.getOSRCompilations().containsKey(0));
+        Assert.assertTrue(osrMetadata.getOSRCompilations().get(0).isValid());
     }
 
     @Test
@@ -314,8 +315,8 @@ public class OnStackReplaceableNodeTest extends TestWithSynchronousCompiling {
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
         Assert.assertEquals(3 * osrThreshold, target.call(osrThreshold, 0));
         Assert.assertFalse(bytecodeNode.compiled);
-        OptimizedCallTarget.OSRState osrState = (OptimizedCallTarget.OSRState) bytecodeNode.getOSRState();
-        Assert.assertTrue(osrState.getOSRCompilations().isEmpty());
+        OptimizedCallTarget.OSRMetadata osrMetadata = (OptimizedCallTarget.OSRMetadata) bytecodeNode.getOSRMetadata();
+        Assert.assertTrue(osrMetadata.getOSRCompilations().isEmpty());
     }
 
     @Test
@@ -329,9 +330,9 @@ public class OnStackReplaceableNodeTest extends TestWithSynchronousCompiling {
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
         Assert.assertEquals(2 * osrThreshold, target.call(osrThreshold, 2));
         Assert.assertTrue(bytecodeNode.compiled);
-        OptimizedCallTarget.OSRState osrState = (OptimizedCallTarget.OSRState) bytecodeNode.getOSRState();
-        Assert.assertTrue(osrState.getOSRCompilations().containsKey(0));
-        Assert.assertTrue(osrState.getOSRCompilations().get(0).isValid());
+        OptimizedCallTarget.OSRMetadata osrMetadata = (OptimizedCallTarget.OSRMetadata) bytecodeNode.getOSRMetadata();
+        Assert.assertTrue(osrMetadata.getOSRCompilations().containsKey(0));
+        Assert.assertTrue(osrMetadata.getOSRCompilations().get(0).isValid());
     }
 
     @Test
@@ -346,48 +347,64 @@ public class OnStackReplaceableNodeTest extends TestWithSynchronousCompiling {
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
         Assert.assertEquals(2 * (osrThreshold - 1), target.call(2, osrThreshold - 1));
         Assert.assertTrue(bytecodeNode.compiled);
-        OptimizedCallTarget.OSRState osrState = (OptimizedCallTarget.OSRState) bytecodeNode.getOSRState();
-        Assert.assertTrue(osrState.getOSRCompilations().containsKey(5));
-        Assert.assertTrue(osrState.getOSRCompilations().get(5).isValid());
+        OptimizedCallTarget.OSRMetadata osrMetadata = (OptimizedCallTarget.OSRMetadata) bytecodeNode.getOSRMetadata();
+        Assert.assertTrue(osrMetadata.getOSRCompilations().containsKey(5));
+        Assert.assertTrue(osrMetadata.getOSRCompilations().get(5).isValid());
     }
 
     public static class Program extends RootNode {
-        @Child OnStackReplaceableNode osrNode;
+        @Child OnStackReplaceableNode<? extends ExecutableNode> osrNode;
 
-        public Program(OnStackReplaceableNode osrNode, FrameDescriptor frameDescriptor) {
+        public Program(OnStackReplaceableNode<? extends ExecutableNode> osrNode, FrameDescriptor frameDescriptor) {
             super(null, frameDescriptor);
             this.osrNode = osrNode;
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
-            return osrNode.execute(frame);
+            return ((ExecutableNode) osrNode).execute(frame);
         }
     }
 
     public static class MaterializedFrameProgram extends Program {
         MaterializedFrame frame;
 
-        public MaterializedFrameProgram(OnStackReplaceableNode osrNode, FrameDescriptor frameDescriptor) {
+        public MaterializedFrameProgram(OnStackReplaceableNode<? extends ExecutableNode> osrNode, FrameDescriptor frameDescriptor) {
             super(osrNode, frameDescriptor);
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
             this.frame = frame.materialize();
-            return osrNode.execute(this.frame);
+            return super.execute(frame);
         }
     }
 
-    abstract static class OnStackReplaceableTestNode extends OnStackReplaceableNode {
+    abstract static class OnStackReplaceableTestNode extends ExecutableNode implements OnStackReplaceableNode<OnStackReplaceableTestNode> {
         public static final int DEFAULT_TARGET = -1;
+        Object osrMetadata;
 
         protected OnStackReplaceableTestNode(TruffleLanguage<?> language) {
             super(language);
         }
 
-        OptimizedCallTarget.OSRState getGraalOSRState() {
-            return (OptimizedCallTarget.OSRState) super.getOSRState();
+        @Override
+        public Object getOSRMetadata() {
+            return osrMetadata;
+        }
+
+        @Override
+        public void setOSRMetadata(Object osrMetadata) {
+            this.osrMetadata = osrMetadata;
+        }
+
+        @Override
+        public TruffleLanguage<?> getLanguage() {
+            return null;
+        }
+
+        OptimizedCallTarget.OSRMetadata getGraalOSRMetadata() {
+            return (OptimizedCallTarget.OSRMetadata) getOSRMetadata();
         }
 
         protected int getInt(Frame frame, FrameSlot frameSlot) {
@@ -574,9 +591,9 @@ public class OnStackReplaceableNodeTest extends TestWithSynchronousCompiling {
 
                 @Override
                 public Void visitFrame(FrameInstance frameInstance) {
-                    if (getGraalOSRState() != null) {
+                    if (getGraalOSRMetadata() != null) {
                         // We should never see the OSR call target in a stack trace.
-                        Assert.assertNotSame(getGraalOSRState().getOSRCompilations().get(DEFAULT_TARGET), frameInstance.getCallTarget());
+                        Assert.assertNotSame(getGraalOSRMetadata().getOSRCompilations().get(DEFAULT_TARGET), frameInstance.getCallTarget());
                     }
                     if (first) {
                         first = false;
@@ -644,11 +661,12 @@ public class OnStackReplaceableNodeTest extends TestWithSynchronousCompiling {
         }
     }
 
-    public static class BytecodeNode extends OnStackReplaceableNode {
+    public static class BytecodeNode extends ExecutableNode implements OnStackReplaceableNode<BytecodeNode> {
         @CompilationFinal(dimensions = 1) private final byte[] bytecodes;
         @CompilationFinal(dimensions = 1) private final FrameSlot[] regs;
 
         boolean compiled;
+        Object osrMetadata;
 
         public static class Bytecode {
             public static final byte RETURN = 0;
@@ -666,6 +684,21 @@ public class OnStackReplaceableNodeTest extends TestWithSynchronousCompiling {
                 this.regs[i] = frameDescriptor.addFrameSlot("$" + i, FrameSlotKind.Int);
             }
             this.compiled = false;
+        }
+
+        @Override
+        public Object getOSRMetadata() {
+            return osrMetadata;
+        }
+
+        @Override
+        public void setOSRMetadata(Object osrMetadata) {
+            this.osrMetadata = osrMetadata;
+        }
+
+        @Override
+        public TruffleLanguage<?> getLanguage() {
+            return null;
         }
 
         protected void setInt(Frame frame, int stackIndex, int value) {

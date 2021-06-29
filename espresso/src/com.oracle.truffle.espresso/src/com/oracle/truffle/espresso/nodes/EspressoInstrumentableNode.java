@@ -31,8 +31,7 @@ import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.nodes.OnStackReplaceableNode;
-import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.EspressoScope;
 import com.oracle.truffle.espresso.classfile.attributes.Local;
 import com.oracle.truffle.espresso.descriptors.ByteSequence;
@@ -44,7 +43,7 @@ import com.oracle.truffle.espresso.impl.Method;
 
 @GenerateWrapper
 @ExportLibrary(NodeLibrary.class)
-public abstract class EspressoInstrumentableNode extends OnStackReplaceableNode implements BciProvider, InstrumentableNode, ContextAccess {
+public abstract class EspressoInstrumentableNode extends Node implements BciProvider, InstrumentableNode, ContextAccess {
 
     public abstract Object execute(VirtualFrame frame);
 
@@ -52,14 +51,6 @@ public abstract class EspressoInstrumentableNode extends OnStackReplaceableNode 
 
     public final boolean isInstrumentable() {
         return true;
-    }
-
-    @Override
-    @GenerateWrapper.Ignore
-    public abstract Object executeOSR(VirtualFrame innerFrame, Frame parentFrame, int target);
-
-    EspressoInstrumentableNode() {
-        super(EspressoLanguage.getCurrentContext().getLanguage());
     }
 
     @Override

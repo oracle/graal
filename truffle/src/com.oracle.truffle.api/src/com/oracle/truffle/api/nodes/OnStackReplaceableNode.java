@@ -46,20 +46,13 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 
-import java.util.concurrent.locks.Lock;
-import java.util.function.Supplier;
 
 /**
  * Interface for Truffle bytecode nodes which can be on-stack replaced.
- *
+ * @param <T> the class implementing this interface, which should be a subclass of {@link Node}.
  * @since 21.3 TODO update
  */
-public abstract class OnStackReplaceableNode extends ExecutableNode implements ReplaceObserver {
-    private Object osrState;
-
-    protected OnStackReplaceableNode(TruffleLanguage<?> language) {
-        super(language);
-    }
+public interface OnStackReplaceableNode<T extends Node> extends ReplaceObserver, NodeInterface {
 
     /**
      * Entrypoint for invoking this node through OSR. Typically, this method will:
@@ -79,19 +72,46 @@ public abstract class OnStackReplaceableNode extends ExecutableNode implements R
      * @param target the target location to execute from (e.g., bytecode index).
      * @return the result of execution.
      */
-    abstract public Object executeOSR(VirtualFrame innerFrame, Frame parentFrame, int target);
+    Object executeOSR(VirtualFrame innerFrame, Frame parentFrame, int target);
+
+    /*
+     * OSRMetadata is a virtual field representing the {@link TruffleRuntime runtime}-specific
+     * metadata required for OSR compilation.
+     * 
+     * Since interfaces cannot declare fields, a class implementing this interface should likely
+     * declare a field for the metadata and proxy accesses through these accessors.
+     */
 
     /**
-     * Reports a back edge to the target location. This information could be used to trigger
-     * on-stack replacement (OSR)
+     * Gets the OSR metadata for this instance.
+     * 
+     * @return the OSR metadata.
+     */
+    Object getOSRMetadata();
+
+    /**
+     * Sets the OSR metadata for this instance.
+     * 
+     * @param osrMetadata the OSR metadata.
+     */
+    void setOSRMetadata(Object osrMetadata);
+
+    /**
+     * Gets the {@link TruffleLanguage} for this node.
+     *
+     * @return the language.
+     */
+    TruffleLanguage<?> getLanguage();
+
+    /**
+     * Reports a back edge to the target location. This information can be used to trigger on-stack
+     * replacement (OSR).
      *
      * @param parentFrame frame at current point of execution
      * @param target target location of the jump (e.g., bytecode index).
      * @return result if OSR was performed, or {@code null} otherwise.
      */
-    public final Object reportOSRBackEdge(VirtualFrame parentFrame, int target) {
-        // Report loop count for the standard compilation path.
-        LoopNode.reportLoopCount(this, 1);
+    default Object reportOSRBackEdge(VirtualFrame parentFrame, int target) {
         if (!CompilerDirectives.inInterpreter()) {
             return null;
         }
@@ -99,30 +119,8 @@ public abstract class OnStackReplaceableNode extends ExecutableNode implements R
     }
 
     @Override
-    public final boolean nodeReplaced(Node oldNode, Node newNode, CharSequence reason) {
+    default boolean nodeReplaced(Node oldNode, Node newNode, CharSequence reason) {
         NodeAccessor.RUNTIME.onOSRNodeReplaced(this, oldNode, newNode, reason);
         return false;
-    }
-
-    public final Object getOSRState() {
-        return osrState;
-    }
-
-    public final Object getOrInitializeOSRState(Supplier<Object> defaultValue) {
-        Lock lock = getLock();
-        lock.lock();
-        try {
-            Object osrState = this.osrState;
-            if (osrState == null) {
-                this.osrState = osrState = defaultValue.get();
-            }
-            return osrState;
-        } finally {
-            lock.unlock();
-        }
-    }
-
-    public final void setOSRState(Object osrState) {
-        this.osrState = osrState;
     }
 }

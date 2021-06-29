@@ -243,6 +243,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -261,8 +262,10 @@ import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.OnStackReplaceableNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.analysis.liveness.LivenessAnalysis;
 import com.oracle.truffle.espresso.bytecode.BytecodeLookupSwitch;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
@@ -355,7 +358,7 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
  * bytecode is first processed/executed without growing or shrinking the stack and only then the
  * {@code top} of the stack index is adjusted depending on the bytecode stack offset.
  */
-public final class BytecodeNode extends EspressoMethodNode {
+public final class BytecodeNode extends EspressoMethodNode implements OnStackReplaceableNode<BytecodeNode> {
 
     private static final DebugCounter EXECUTED_BYTECODES_COUNT = DebugCounter.create("Executed bytecodes");
     private static final DebugCounter QUICKENED_BYTECODES = DebugCounter.create("Quickened bytecodes");
@@ -407,10 +410,27 @@ public final class BytecodeNode extends EspressoMethodNode {
 
     private final LivenessAnalysis livenessAnalysis;
 
+    private Object osrState;
+
     @Override
     public Object executeOSR(VirtualFrame innerFrame, Frame parentFrame, int target) {
         initializeOSRBody(innerFrame, parentFrame, target);
         return executeBodyFromBCI(innerFrame, target);
+    }
+
+    @Override
+    public Object getOSRMetadata() {
+        return osrState;
+    }
+
+    @Override
+    public void setOSRMetadata(Object osrMetadata) {
+        this.osrState = osrMetadata;
+    }
+
+    @Override
+    public TruffleLanguage<?> getLanguage() {
+        return EspressoLanguage.getCurrentContext().getLanguage();
     }
 
     private static final class EspressoOSRReturnException extends ControlFlowException {

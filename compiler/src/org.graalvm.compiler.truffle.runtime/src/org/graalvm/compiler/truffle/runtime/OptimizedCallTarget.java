@@ -130,7 +130,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     private static final WeakReference<OptimizedDirectCallNode> MULTIPLE_CALLS = null;
     private static final String SPLIT_LOG_FORMAT = "[poly-event] %-70s %s";
     private static final int MAX_PROFILED_ARGUMENTS = 256;
-    public static final int OSR_POLL_INTERVAL = 1024; // must be a power of 2 (polling uses bit masks)
+    public static final int OSR_POLL_INTERVAL = 1024; // must be a power of 2 (polling uses bit
+                                                      // masks)
 
     /** The AST to be executed when this call target is called. */
     private final RootNode rootNode;
@@ -343,7 +344,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         this.rootNode = rootNode;
         this.engine = GraalTVMCI.getEngineData(rootNode);
         this.resetCompilationProfile();
-        // Do not adopt children of OSRRootNodes; we want to preserve the parent of the child node(s).
+        // Do not adopt children of OSRRootNodes; we want to preserve the parent of the child
+        // node(s).
         this.uninitializedNodeCount = !(rootNode instanceof BaseOSRRootNode) ? GraalRuntimeAccessor.NODES.adoptChildrenAndCount(rootNode) : -1;
         GraalRuntimeAccessor.NODES.setCallTarget(rootNode, this);
     }
@@ -1027,33 +1029,41 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         this.callAndLoopCount = newLoopCallCount >= oldLoopCallCount ? newLoopCallCount : Integer.MAX_VALUE;
     }
 
-    final Object onOSRBackEdge(OnStackReplaceableNode osrNode, VirtualFrame parentFrame, int target, TruffleLanguage<?> language) {
+    final Object onOSRBackEdge(OnStackReplaceableNode<?> osrNode, VirtualFrame parentFrame, int target, TruffleLanguage<?> language) {
         CompilerAsserts.neverPartOfCompilation();
 
-        OSRState osrState = (OSRState) osrNode.getOSRState();
-        if (osrState == null) { // double checked locking
-            osrState = (OSRState) osrNode.getOrInitializeOSRState(
-                            () -> new OSRState(osrNode, getOptionValue(PolyglotCompilerOptions.OSR), getOptionValue(PolyglotCompilerOptions.OSRCompilationThreshold)));
+        OSRMetadata osrMetadata = (OSRMetadata) osrNode.getOSRMetadata();
+        if (osrMetadata == null) { // double checked locking
+            osrMetadata = ((Node) osrNode).atomic(() -> {
+                OSRMetadata metadata = (OSRMetadata) osrNode.getOSRMetadata();
+                if (metadata == null) {
+                    metadata = new OSRMetadata(osrNode, getOptionValue(PolyglotCompilerOptions.OSR),
+                            getOptionValue(PolyglotCompilerOptions.OSRCompilationThreshold));
+                    osrNode.setOSRMetadata(metadata);
+                }
+                return metadata;
+            });
+
         }
-        return osrState.onOSRBackEdge(parentFrame, target, language);
+        return osrMetadata.onOSRBackEdge(parentFrame, target, language);
     }
 
-    void callNodeReplacedOnOSRTargets(OnStackReplaceableNode osrNode, Node oldNode, Node newNode, CharSequence reason) {
-        OSRState osrState = (OSRState) osrNode.getOSRState();
-        if (osrState != null) {
-            osrState.nodeReplaced(oldNode, newNode, reason);
+    void callNodeReplacedOnOSRTargets(OnStackReplaceableNode<?> osrNode, Node oldNode, Node newNode, CharSequence reason) {
+        OSRMetadata osrMetadata = (OSRMetadata) osrNode.getOSRMetadata();
+        if (osrMetadata != null) {
+            osrMetadata.nodeReplaced(oldNode, newNode, reason);
         }
     }
 
-    public static final class OSRState {
-        private final OnStackReplaceableNode osrNode;
+    public static final class OSRMetadata {
+        private final OnStackReplaceableNode<?> osrNode;
         private final EconomicMap<Integer, OptimizedCallTarget> osrCompilations;
         private final int osrThreshold;
         // TODO: check whether these fields need to be volatile.
         private volatile boolean osrEnabled;
         private int backEdgeCount;
 
-        OSRState(OnStackReplaceableNode osrNode, boolean osrEnabled, int osrThreshold) {
+        OSRMetadata(OnStackReplaceableNode<?> osrNode, boolean osrEnabled, int osrThreshold) {
             this.osrNode = osrNode;
             this.osrCompilations = EconomicMap.create();
             this.osrEnabled = osrEnabled;
@@ -1073,13 +1083,14 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                 synchronized (this) {
                     osrTarget = osrCompilations.get(target);
                     if (osrTarget == null) {
-                        osrTarget = requestOSR(language, osrNode, target);
+                        osrTarget = requestOSR(osrNode, target, language, parentFrame.getFrameDescriptor());
                         osrCompilations.put(target, osrTarget);
                     }
                 }
             }
             if (osrTarget != null && !osrTarget.isCompiling()) {
                 if (osrTarget.isValid()) {
+                    // TODO: What if the frame descriptor changed since we created this call target?
                     if (!GraalRuntimeAccessor.FRAME.getMaterializeCalled(parentFrame.getFrameDescriptor())) {
                         return osrTarget.call(parentFrame);
                     }
@@ -1106,9 +1117,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             return newBackEdgeCount >= osrThreshold && (newBackEdgeCount & (OSR_POLL_INTERVAL - 1)) == 0;
         }
 
-        private synchronized OptimizedCallTarget requestOSR(TruffleLanguage<?> language, OnStackReplaceableNode osrNode, int target) {
+        private synchronized OptimizedCallTarget requestOSR(OnStackReplaceableNode<?> osrNode, int target, TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
             assert !osrCompilations.containsKey(target);
-            OptimizedCallTarget callTarget = GraalTruffleRuntime.getRuntime().createOSRCallTarget(new OSRRootNode(language, osrNode, target));
+            OptimizedCallTarget callTarget = GraalTruffleRuntime.getRuntime().createOSRCallTarget(new OSRRootNode(osrNode, target, language, frameDescriptor));
             callTarget.compile(false);
             if (callTarget.isCompilationFailed()) {
                 osrEnabled = false;
@@ -1153,11 +1164,11 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     private static final class OSRRootNode extends BaseOSRRootNode {
-        @Child private OnStackReplaceableNode onStackReplaceableNode;
+        @Child private OnStackReplaceableNode<?> onStackReplaceableNode;
         private final int target;
 
-        OSRRootNode(TruffleLanguage<?> language, OnStackReplaceableNode onStackReplaceableNode, int target) {
-            super(language, onStackReplaceableNode.getRootNode().getFrameDescriptor());
+        OSRRootNode(OnStackReplaceableNode<?> onStackReplaceableNode, int target, TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+            super(language, frameDescriptor);
             this.onStackReplaceableNode = onStackReplaceableNode;
             this.target = target;
         }
