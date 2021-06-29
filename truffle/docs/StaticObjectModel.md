@@ -113,7 +113,7 @@ To achieve this, we first need to declare an interface that:
 
 For example, if the static objects should extend this class:
 ```java
-public class MyStaticObject {
+public abstract class MyStaticObject {
     final String arg1;
     final Object arg2;
 
