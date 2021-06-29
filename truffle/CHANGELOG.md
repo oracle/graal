@@ -10,6 +10,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 
 ## Version 21.3.0
 * Added the ability to share values between contexts. Guest languages can now use values of the polyglot embedding API using host interop. This no no longer leads to invalid sharing errors.
+* Added `ReflectionLibrary.getUncached` methods.
 
 ## Version 21.2.0
 * Added `TypeDescriptor.subtract(TypeDescriptor)` creating a new `TypeDescriptor` by removing the given type from a union or intersection type.
