@@ -396,6 +396,35 @@ def _is_batik_supported(jdk):
         mx.warn('Batik uses Sun internal class com.sun.image.codec.jpeg.TruncatedFileException which is not present in ' + jdk.home)
         return False
 
+class DaCapoWrapper(object):
+    """
+    A context manager that dumps the stdout and stderr logs of DaCapo and ScalaDacapo
+    executions return with a non-zero exit code.
+    """
+
+    def __init__(self, scratch_dir):
+        """
+        :param str scratch_dir: the directory in which the [Scala]DaCapo logs will be written
+        """
+        self.scratch_dir = scratch_dir
+
+    def __enter__(self):
+        self._logs = self._gather_logs()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if exc_value is not None:
+            for before, after in zip(self._logs, self._gather_logs()):
+                if after.isNewerThan(before):
+                    mx.log('Dumping ' + after.path)
+                    mx.log('```')
+                    with open(after.path) as fp:
+                        mx.log(fp.read())
+                    mx.log('```')
+
+    def _gather_logs(self):
+        return [mx.TimeStampFile(join(self.scratch_dir, name + '.log')) for name in ('stdout', 'stderr')]
+
 def _gate_dacapo(name, iterations, extraVMarguments=None, force_serial_gc=True, set_start_heap_size=True, threads=None):
     vmargs = ['-XX:+UseSerialGC'] if force_serial_gc else []
     if set_start_heap_size:
@@ -404,10 +433,12 @@ def _gate_dacapo(name, iterations, extraVMarguments=None, force_serial_gc=True, 
     dacapoJar = mx.library('DACAPO').get_path(True)
     if name == 'batik' and not _is_batik_supported(jdk):
         return
-    args = ['-n', str(iterations)]
+    scratch_dir = join(os.getcwd(), 'scratch')
+    args = ['-n', str(iterations), '--preserve', '--scratch-directory', scratch_dir]
     if threads is not None:
         args += ['-t', str(threads)]
-    _gate_java_benchmark(vmargs + ['-jar', dacapoJar, name] + args, r'^===== DaCapo 9\.12 ([a-zA-Z0-9_]+) PASSED in ([0-9]+) msec =====')
+    with DaCapoWrapper(scratch_dir):
+        _gate_java_benchmark(vmargs + ['-jar', dacapoJar, name] + args, r'^===== DaCapo 9\.12 ([a-zA-Z0-9_]+) PASSED in ([0-9]+) msec =====')
 
 def jdk_includes_corba(jdk):
     # corba has been removed since JDK11 (http://openjdk.java.net/jeps/320)
@@ -418,8 +449,10 @@ def _gate_scala_dacapo(name, iterations, extraVMarguments=None):
     if name == 'actors' and jdk.javaCompliance >= '9' and jdk_includes_corba(jdk):
         vmargs += ['--add-modules', 'java.corba']
     scalaDacapoJar = mx.library('DACAPO_SCALA').get_path(True)
-    _gate_java_benchmark(vmargs + ['-jar', scalaDacapoJar, name, '-n', str(iterations)], r'^===== DaCapo 0\.1\.0(-SNAPSHOT)? ([a-zA-Z0-9_]+) PASSED in ([0-9]+) msec =====')
-
+    scratch_dir = join(os.getcwd(), 'scratch')
+    with DaCapoWrapper(scratch_dir):
+        args = ['-jar', scalaDacapoJar, name, '-n', str(iterations), '--preserve', '--scratch-directory', scratch_dir]
+        _gate_java_benchmark(vmargs + args, r'^===== DaCapo 0\.1\.0(-SNAPSHOT)? ([a-zA-Z0-9_]+) PASSED in ([0-9]+) msec =====')
 
 def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVMarguments=None, extraUnitTestArguments=None):
     if jdk.javaCompliance >= '9':

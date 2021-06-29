@@ -33,6 +33,7 @@ import mx_sdk_vm_impl
 
 import functools
 import re
+import os
 from mx_gate import Task
 
 from os import environ, listdir, remove, linesep
@@ -96,14 +97,16 @@ def gate_body(args, tasks):
                     # Ensure that fatal errors in libgraal route back to HotSpot
                     testdir = mkdtemp()
                     try:
+                        scratch_dir = join(testdir, 'scratch')
                         cmd = [java_exe,
                                 '-XX:+UseJVMCICompiler',
                                 '-XX:+UseJVMCINativeLibrary',
                                 '-Dlibgraal.CrashAt=length,hashCode',
                                 '-Dlibgraal.CrashAtIsFatal=true',
-                                '-jar', mx.library('DACAPO').get_path(True), 'avrora']
+                                '-jar', mx.library('DACAPO').get_path(True), 'avrora', '--preserve', '--scratch-directory', scratch_dir]
                         out = mx.OutputCapture()
-                        exitcode = mx.run(cmd, cwd=testdir, nonZeroIsFatal=False, out=out)
+                        with mx_compiler.DaCapoWrapper(scratch_dir):
+                            exitcode = mx.run(cmd, cwd=testdir, nonZeroIsFatal=False, out=out)
                         if exitcode == 0:
                             if 'CrashAtIsFatal: no fatalError function pointer installed' in out.data:
                                 # Executing a VM that does not configure fatal errors handling
