@@ -27,7 +27,8 @@ package org.graalvm.compiler.truffle.runtime;
 import java.util.function.Function;
 
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.nodes.OnStackReplaceableNode;
+import com.oracle.truffle.api.nodes.BytecodeOSRNode;
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
@@ -75,19 +76,39 @@ final class GraalRuntimeSupport extends RuntimeSupport {
     }
 
     @Override
-    public Object onOSRBackEdge(OnStackReplaceableNode osrNode, VirtualFrame parentFrame, int target, TruffleLanguage<?> language) {
-        CallTarget callTarget = osrNode.asNode().getRootNode().getCallTarget();
-        if (callTarget instanceof OptimizedCallTarget){
-            return ((OptimizedCallTarget) callTarget).onOSRBackEdge(osrNode, parentFrame, target, language);
+    public Object onOSRBackEdge(BytecodeOSRNode osrNode, VirtualFrame parentFrame, int target, TruffleLanguage<?> language) {
+        CompilerAsserts.neverPartOfCompilation();
+        BytecodeOSRMetadata osrMetadata = (BytecodeOSRMetadata) osrNode.getOSRMetadata();
+
+        if (osrMetadata == null) {
+            osrMetadata = osrNode.asNode().atomic(() -> { // double checked locking
+                BytecodeOSRMetadata metadata = (BytecodeOSRMetadata) osrNode.getOSRMetadata();
+                if (metadata == null) {
+                    OptimizedCallTarget callTarget = (OptimizedCallTarget) osrNode.asNode().getRootNode().getCallTarget();
+                    if (callTarget.getOptionValue(PolyglotCompilerOptions.OSR)) {
+                        metadata = new BytecodeOSRMetadata(osrNode, true, callTarget.getOptionValue(PolyglotCompilerOptions.OSRCompilationThreshold));
+                    } else {
+                        metadata = BytecodeOSRMetadata.DISABLED;
+                    }
+
+                    osrNode.setOSRMetadata(metadata);
+                }
+                return metadata;
+            });
         }
-        return null;
+
+        if (osrMetadata == BytecodeOSRMetadata.DISABLED) {
+            return null;
+        } else {
+            return osrMetadata.onOSRBackEdge(parentFrame, target, language);
+        }
     }
 
     @Override
-    public void onOSRNodeReplaced(OnStackReplaceableNode osrNode, Node oldNode, Node newNode, CharSequence reason) {
-        CallTarget callTarget = osrNode.asNode().getRootNode().getCallTarget();
-        if (callTarget instanceof OptimizedCallTarget){
-            ((OptimizedCallTarget) callTarget).callNodeReplacedOnOSRTargets(osrNode, oldNode, newNode, reason);
+    public void onOSRNodeReplaced(BytecodeOSRNode osrNode, Node oldNode, Node newNode, CharSequence reason) {
+        BytecodeOSRMetadata osrMetadata = (BytecodeOSRMetadata) osrNode.getOSRMetadata();
+        if (osrMetadata != null) {
+            osrMetadata.nodeReplaced(oldNode, newNode, reason);
         }
     }
 

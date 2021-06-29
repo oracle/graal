@@ -47,12 +47,12 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 
 /**
- * Interface for Truffle bytecode nodes which can be on-stack replaced. On-stack replaceable nodes
+ * Interface for Truffle bytecode nodes which can be on-stack replaced (OSR). Bytecode OSR nodes
  * must extend {@link Node} or a subclass of {@link Node}.
  *
  * @since 21.3 TODO update
  */
-public interface OnStackReplaceableNode extends ReplaceObserver, NodeInterface {
+public interface BytecodeOSRNode extends ReplaceObserver, NodeInterface {
 
     /**
      * Entrypoint for invoking this node through OSR. Typically, this method will:
@@ -122,7 +122,7 @@ public interface OnStackReplaceableNode extends ReplaceObserver, NodeInterface {
         try {
             return (Node) this;
         } catch (ClassCastException ex) {
-            throw new IllegalArgumentException("On-stack replaceable node must be of type Node.");
+            throw new IllegalArgumentException("Bytecode OSR node must be of type Node.");
         }
     }
 

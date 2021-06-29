@@ -262,7 +262,7 @@ import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.OnStackReplaceableNode;
+import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.espresso.EspressoLanguage;
@@ -358,7 +358,7 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
  * bytecode is first processed/executed without growing or shrinking the stack and only then the
  * {@code top} of the stack index is adjusted depending on the bytecode stack offset.
  */
-public final class BytecodeNode extends EspressoMethodNode implements OnStackReplaceableNode {
+public final class BytecodeNode extends EspressoMethodNode implements BytecodeOSRNode {
 
     private static final DebugCounter EXECUTED_BYTECODES_COUNT = DebugCounter.create("Executed bytecodes");
     private static final DebugCounter QUICKENED_BYTECODES = DebugCounter.create("Quickened bytecodes");

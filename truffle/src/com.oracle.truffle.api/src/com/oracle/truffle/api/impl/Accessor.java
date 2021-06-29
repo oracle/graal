@@ -67,7 +67,7 @@ import java.util.logging.Level;
 import java.util.logging.LogRecord;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.OnStackReplaceableNode;
+import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
@@ -952,7 +952,7 @@ public abstract class Accessor {
 
         /**
          * Reports a back edge to the target location. This information can be used to trigger
-         * on-stack replacement (OSR) for an {@link OnStackReplaceableNode}.
+         * on-stack replacement (OSR) for an {@link BytecodeOSRNode}.
          *
          * @param osrNode the node which can be on-stack replaced
          * @param parentFrame the frame to be passed for OSR
@@ -960,10 +960,10 @@ public abstract class Accessor {
          * @param language the language of the node
          * @return result if OSR was performed, or {@code null}.
          */
-        public abstract Object onOSRBackEdge(OnStackReplaceableNode osrNode, VirtualFrame parentFrame, int target, TruffleLanguage<?> language);
+        public abstract Object onOSRBackEdge(BytecodeOSRNode osrNode, VirtualFrame parentFrame, int target, TruffleLanguage<?> language);
 
         /**
-         * Reports that a child node of an {@link OnStackReplaceableNode} was replaced. Allows the runtime system to
+         * Reports that a child node of an {@link BytecodeOSRNode} was replaced. Allows the runtime system to
          * invalidate any OSR targets it has created.
          *
          * @param osrNode the node whose child was replaced
@@ -971,7 +971,7 @@ public abstract class Accessor {
          * @param newNode the replacement node
          * @param reason the replacement reason
          */
-        public abstract void onOSRNodeReplaced(OnStackReplaceableNode osrNode, Node oldNode, Node newNode, CharSequence reason);
+        public abstract void onOSRNodeReplaced(BytecodeOSRNode osrNode, Node oldNode, Node newNode, CharSequence reason);
 
         /**
          * Returns the compiler options specified available from the runtime.

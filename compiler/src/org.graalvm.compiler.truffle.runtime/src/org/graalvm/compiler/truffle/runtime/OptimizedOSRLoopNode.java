@@ -88,12 +88,12 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
     /**
      * @param rootFrameDescriptor may be {@code null}.
      */
-    protected OSRRootNode createRootNode(FrameDescriptor rootFrameDescriptor, Class<? extends VirtualFrame> clazz) {
+    protected LoopOSRRootNode createRootNode(FrameDescriptor rootFrameDescriptor, Class<? extends VirtualFrame> clazz) {
         /*
          * Use a new frame descriptor, because the frame that this new root node creates is not
          * used.
          */
-        return new OSRRootNode(this, new FrameDescriptor(), clazz);
+        return new LoopOSRRootNode(this, new FrameDescriptor(), clazz);
     }
 
     @Override
@@ -271,7 +271,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
         });
     }
 
-    private OSRRootNode createRootNodeImpl(RootNode root, Class<? extends VirtualFrame> frameClass) {
+    private LoopOSRRootNode createRootNodeImpl(RootNode root, Class<? extends VirtualFrame> frameClass) {
         return createRootNode(root == null ? null : root.getFrameDescriptor(), frameClass);
     }
 
@@ -425,7 +425,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
         @CompilationFinal(dimensions = 1) private final FrameSlot[] readFrameSlots;
         @CompilationFinal(dimensions = 1) private final FrameSlot[] writtenFrameSlots;
 
-        private VirtualizingOSRRootNode previousRoot;
+        private VirtualizingLoopOSRRootNode previousRoot;
 
         private OptimizedVirtualizingOSRLoopNode(RepeatingNode repeatableNode, int osrThreshold, boolean firstTierBackedgeCounts, FrameSlot[] readFrameSlots, FrameSlot[] writtenFrameSlots) {
             super(repeatableNode, osrThreshold, firstTierBackedgeCounts);
@@ -434,17 +434,17 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
         }
 
         @Override
-        protected OSRRootNode createRootNode(FrameDescriptor rootFrameDescriptor, Class<? extends VirtualFrame> clazz) {
+        protected LoopOSRRootNode createRootNode(FrameDescriptor rootFrameDescriptor, Class<? extends VirtualFrame> clazz) {
             if (readFrameSlots == null || writtenFrameSlots == null) {
                 return super.createRootNode(rootFrameDescriptor, clazz);
             } else {
                 FrameDescriptor frameDescriptor = rootFrameDescriptor == null ? new FrameDescriptor() : rootFrameDescriptor;
                 if (previousRoot == null) {
-                    previousRoot = new VirtualizingOSRRootNode(this, frameDescriptor, clazz, readFrameSlots, writtenFrameSlots);
+                    previousRoot = new VirtualizingLoopOSRRootNode(this, frameDescriptor, clazz, readFrameSlots, writtenFrameSlots);
                 } else {
                     // we want to reuse speculations from a previous compilation so no rewrite loops
                     // occur.
-                    previousRoot = new VirtualizingOSRRootNode(previousRoot, this, frameDescriptor, clazz);
+                    previousRoot = new VirtualizingLoopOSRRootNode(previousRoot, this, frameDescriptor, clazz);
                 }
                 return previousRoot;
             }
@@ -452,7 +452,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
 
     }
 
-    public static class OSRRootNode extends BaseOSRRootNode {
+    public static class LoopOSRRootNode extends BaseOSRRootNode {
 
         protected final Class<? extends VirtualFrame> clazz;
 
@@ -462,7 +462,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
          */
         @Child protected OptimizedOSRLoopNode loopNode;
 
-        OSRRootNode(OptimizedOSRLoopNode loop, FrameDescriptor frameDescriptor, Class<? extends VirtualFrame> clazz) {
+        LoopOSRRootNode(OptimizedOSRLoopNode loop, FrameDescriptor frameDescriptor, Class<? extends VirtualFrame> clazz) {
             super(null, frameDescriptor);
             this.loopNode = loop;
             this.clazz = clazz;
@@ -497,7 +497,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
         }
     }
 
-    private static final class VirtualizingOSRRootNode extends OSRRootNode {
+    private static final class VirtualizingLoopOSRRootNode extends LoopOSRRootNode {
 
         @CompilationFinal(dimensions = 1) private final FrameSlot[] readFrameSlots;
         @CompilationFinal(dimensions = 1) private final FrameSlot[] writtenFrameSlots;
@@ -506,8 +506,8 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
         @CompilationFinal(dimensions = 1) private final byte[] writtenFrameSlotsTags;
         private final int maxTagsLength;
 
-        VirtualizingOSRRootNode(VirtualizingOSRRootNode previousRoot, OptimizedOSRLoopNode loop, FrameDescriptor frameDescriptor,
-                        Class<? extends VirtualFrame> clazz) {
+        VirtualizingLoopOSRRootNode(VirtualizingLoopOSRRootNode previousRoot, OptimizedOSRLoopNode loop, FrameDescriptor frameDescriptor,
+                                    Class<? extends VirtualFrame> clazz) {
             super(loop, frameDescriptor, clazz);
             this.readFrameSlots = previousRoot.readFrameSlots;
             this.writtenFrameSlots = previousRoot.writtenFrameSlots;
@@ -516,9 +516,9 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
             this.maxTagsLength = previousRoot.maxTagsLength;
         }
 
-        VirtualizingOSRRootNode(OptimizedOSRLoopNode loop, FrameDescriptor frameDescriptor,
-                        Class<? extends VirtualFrame> clazz,
-                        FrameSlot[] readFrameSlots, FrameSlot[] writtenFrameSlots) {
+        VirtualizingLoopOSRRootNode(OptimizedOSRLoopNode loop, FrameDescriptor frameDescriptor,
+                                    Class<? extends VirtualFrame> clazz,
+                                    FrameSlot[] readFrameSlots, FrameSlot[] writtenFrameSlots) {
             super(loop, frameDescriptor, clazz);
             this.readFrameSlots = readFrameSlots;
             this.writtenFrameSlots = writtenFrameSlots;

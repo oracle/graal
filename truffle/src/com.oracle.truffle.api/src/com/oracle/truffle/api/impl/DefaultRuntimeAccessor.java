@@ -44,7 +44,7 @@ import java.util.function.Function;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.OnStackReplaceableNode;
+import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
@@ -87,12 +87,12 @@ final class DefaultRuntimeAccessor extends Accessor {
         }
 
         @Override
-        public Object onOSRBackEdge(OnStackReplaceableNode osrNode, VirtualFrame parentFrame, int target, TruffleLanguage<?> language) {
+        public Object onOSRBackEdge(BytecodeOSRNode osrNode, VirtualFrame parentFrame, int target, TruffleLanguage<?> language) {
             return null;
         }
 
         @Override
-        public void onOSRNodeReplaced(OnStackReplaceableNode osrNode, Node oldNode, Node newNode, CharSequence reason) {
+        public void onOSRNodeReplaced(BytecodeOSRNode osrNode, Node oldNode, Node newNode, CharSequence reason) {
             // do nothing
         }
 
