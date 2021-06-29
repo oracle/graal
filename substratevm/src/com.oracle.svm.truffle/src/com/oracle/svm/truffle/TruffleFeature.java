@@ -33,7 +33,6 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
@@ -1075,7 +1074,7 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
             Object generator;
             try {
                 generator = generatorMethod.invoke(null, generatorCL, storageSuperClass, factoryInterface);
-            } catch (IllegalAccessException | InvocationTargetException | ClassCastException e) {
+            } catch (ReflectiveOperationException e) {
                 throw JVMCIError.shouldNotReachHere(e);
             }
             Class<?> storageClass = ReflectionUtil.readField(SHAPE_GENERATOR_CLASS, "generatedStorageClass", generator);
@@ -1097,7 +1096,7 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
                 ClassLoader newCL;
                 try {
                     newCL = ClassLoader.class.cast(constructor.newInstance(factoryInterface));
-                } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
+                } catch (ReflectiveOperationException e) {
                     throw JVMCIError.shouldNotReachHere(e);
                 }
                 cl = CLASS_LOADERS.putIfAbsent(factoryInterface, newCL);
