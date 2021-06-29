@@ -28,7 +28,6 @@ import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
-import org.graalvm.compiler.lir.StandardOp;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
 import jdk.vm.ci.amd64.AMD64;
@@ -40,7 +39,7 @@ import jdk.vm.ci.meta.JavaConstant;
  * Writes well known garbage values to registers.
  */
 @Opcode("ZAP_REGISTER")
-public final class AMD64ZapRegistersOp extends AMD64LIRInstruction implements StandardOp.ZapRegistersOp {
+public final class AMD64ZapRegistersOp extends AMD64LIRInstruction {
     public static final LIRInstructionClass<AMD64ZapRegistersOp> TYPE = LIRInstructionClass.create(AMD64ZapRegistersOp.class);
 
     /**

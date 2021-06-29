@@ -27,7 +27,6 @@ package org.graalvm.compiler.lir.aarch64;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
-import org.graalvm.compiler.lir.StandardOp;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
 import jdk.vm.ci.code.Register;
@@ -37,7 +36,7 @@ import jdk.vm.ci.meta.JavaConstant;
  * Writes well known garbage values to registers.
  */
 @Opcode("ZAP_REGISTER")
-public final class AArch64ZapRegistersOp extends AArch64LIRInstruction implements StandardOp.ZapRegistersOp {
+public final class AArch64ZapRegistersOp extends AArch64LIRInstruction {
     public static final LIRInstructionClass<AArch64ZapRegistersOp> TYPE = LIRInstructionClass.create(AArch64ZapRegistersOp.class);
 
     /**

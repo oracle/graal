@@ -44,7 +44,6 @@ import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LIRValueUtil;
 import org.graalvm.compiler.lir.LabelRef;
 import org.graalvm.compiler.lir.StandardOp;
-import org.graalvm.compiler.lir.StandardOp.ZapRegistersOp;
 import org.graalvm.compiler.lir.SwitchStrategy;
 import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.aarch64.AArch64AddressValue;
@@ -687,7 +686,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public ZapRegistersOp createZapRegisters(Register[] zappedRegisters, JavaConstant[] zapValues) {
+    public LIRInstruction createZapRegisters(Register[] zappedRegisters, JavaConstant[] zapValues) {
         return new AArch64ZapRegistersOp(zappedRegisters, zapValues);
     }
 
