@@ -7,7 +7,7 @@ The full documentation can be found in the [Javadoc](https://www.graalvm.org/tru
 
 The Static Object Model provides abstractions to represent the layout of objects that, once defined, do not change the number and the type of their properties.
 It is particularly well suited for, but not limited to, the implementation of the object model of static programming languages.
-Its APIs define the object layout ([StaticShape](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/staticobject/StaticShape.html)), execute property accesses ([StaticProperty](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/staticobject/StaticProperty.html)), and allocate static objects ([DefaultStaticObjectFactory](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/staticobject/StaticProperty.html)).
+Its APIs define the object layout ([StaticShape](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/staticobject/StaticShape.html)), execute property accesses ([StaticProperty](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/staticobject/StaticProperty.html)), and allocate static objects ([DefaultStaticObjectFactory](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/staticobject/DefaultStaticObjectFactory.html)).
 The implementation is efficient and executes safety checks on property accesses that can be disabled if they are already executed by the language implementation, for example by a verifier.
 
 The Static Object Model does not provide constructs to model the visibility of properties and does not distinguish between static and instance properties.
@@ -67,7 +67,7 @@ public class GettingStarted {
 ## Shape Hierarchies
 
 It is possible to create a shape hierarchy by declaring that a new shape should extend an existing one.
-This is done by passing the parent shape as argument to [Builder.build(StaticShape)](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/staticobject/StaticShape.Builder.html) when creating the child shape.
+This is done by passing the parent shape as argument to [StaticShape.Builder.build(StaticShape)](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/staticobject/StaticShape.Builder.html) when creating the child shape.
 Properties of the parent shape can then be used to access values stored in static objects of the child shape.
 
 In the following example we create a parent shape identical to the one discussed in [the previous section](#getting-started), then we extend it with a child shape that hides one of the properties of the parent shape.
