@@ -28,7 +28,6 @@ import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.phases.SubstrateIntrinsicGraphBuilder;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.hosted.snippets.SubstrateGraphBuilderPlugins;
 import com.oracle.svm.util.ReflectionUtil;
@@ -44,6 +43,9 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
+import org.graalvm.nativeimage.hosted.Feature.BeforeAnalysisAccess;
+import org.graalvm.nativeimage.hosted.Feature.BeforeCompilationAccess;
+import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import sun.misc.Unsafe;
 
@@ -54,15 +56,13 @@ import java.util.HashSet;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 
-@AutomaticFeature
-public final class SomFeature implements GraalFeature {
+public final class StaticObjectSupport {
     private static final String GENERATOR_CLASS_NAME = "com.oracle.truffle.api.staticobject.ArrayBasedShapeGenerator";
     private static final String GENERATOR_CLASS_LOADER_CLASS_NAME = "com.oracle.truffle.api.staticobject.GeneratorClassLoader";
     private static ClassLoader generatorClassLoader;
-    private final HashSet<Pair<Class<?>, Class<?>>> interceptedArgs = new HashSet<>();
+    private static final HashSet<Pair<Class<?>, Class<?>>> interceptedArgs = new HashSet<>();
 
-    @Override
-    public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, Plugins plugins, ParsingReason reason) {
+    public static void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, Plugins plugins, ParsingReason reason) {
         if (reason == ParsingReason.PointsToAnalysis) {
             InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins.getInvocationPlugins(), StaticShape.Builder.class);
             r.register3("build", InvocationPlugin.Receiver.class, Class.class, Class.class, new InvocationPlugin() {
@@ -79,8 +79,7 @@ public final class SomFeature implements GraalFeature {
         }
     }
 
-    @Override
-    public void duringAnalysis(DuringAnalysisAccess access) {
+    public static void duringAnalysis(DuringAnalysisAccess access) {
         for (Pair<Class<?>, Class<?>> args : interceptedArgs) {
             generate(args.getLeft(), args.getRight(), access);
             access.requireAnalysisIteration();
@@ -88,8 +87,7 @@ public final class SomFeature implements GraalFeature {
         interceptedArgs.clear();
     }
 
-    @Override
-    public void beforeCompilation(BeforeCompilationAccess config) {
+    public static void beforeCompilation(BeforeCompilationAccess config) {
         // Recompute the offset of the byte and object arrays stored in the cached ShapeGenerator
         Unsafe unsafe = GraalUnsafeAccess.getUnsafe();
         Class<?> shapeGeneratorClass = loadClass(GENERATOR_CLASS_NAME);
