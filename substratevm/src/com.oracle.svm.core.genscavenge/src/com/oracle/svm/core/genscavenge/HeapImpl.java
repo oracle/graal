@@ -591,7 +591,7 @@ public final class HeapImpl extends Heap {
     private static class HeapDiagnosticsPrinter implements DiagnosticThunk {
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
-        public void invokeWithoutAllocation(Log log) {
+        public void printDiagnostics(Log log) {
             HeapImpl heap = HeapImpl.getHeapImpl();
             GCImpl gc = GCImpl.getGCImpl();
 

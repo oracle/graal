@@ -133,7 +133,7 @@ public final class GreyToBlackObjectVisitor implements ObjectVisitor {
 
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate during printing diagnostics.")
-        public void invokeWithoutAllocation(Log log) {
+        public void printDiagnostics(Log log) {
             if (historyCount > 0) {
                 log.string("[GreyToBlackObjectVisitor.RealDiagnosticReporter.invoke:")
                                 .string("  history / count:  ")

@@ -84,6 +84,8 @@ import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.thread.VMOperationControl.VMOpHistory;
+import com.oracle.svm.core.thread.VMOperationControl.VMOpStatusChange;
 import com.oracle.svm.core.util.RingBuffer;
 import com.oracle.svm.core.util.VMError;
 
@@ -406,7 +408,7 @@ public final class Deoptimizer {
             }
         } else {
             if (installedCode == null) {
-                CodeInfoTable.getRuntimeCodeCache().logTable();
+                CodeInfoTable.getRuntimeCodeCache().logTable(true);
                 throw VMError.shouldNotReachHere(
                                 "Only runtime compiled methods can be invalidated. sp = " + Long.toHexString(sourceSp.rawValue()) + ", returnAddress = " + Long.toHexString(returnAddress.rawValue()));
             }
@@ -751,10 +753,14 @@ public final class Deoptimizer {
         }
     };
 
-    public static void logRecentDeoptimizationEvents(Log log) {
-        log.string("== [Recent Deoptimizer Events: ").newline();
-        recentDeoptimizationEvents.foreach(log, deoptEventsConsumer);
-        log.string("]").newline();
+    public static void logRecentDeoptimizationEvents(Log log, boolean allowJavaHeapAccess) {
+        if (allowJavaHeapAccess) {
+            log.string("Recent deoptimization events: ").newline();
+            recentDeoptimizationEvents.foreach(log, deoptEventsConsumer);
+            log.string("]").newline();
+        } else {
+            log.string("Deoptimization events could not be printed.").newline();
+        }
     }
 
     /**

@@ -48,6 +48,7 @@ import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.stack.JavaStackWalker;
@@ -171,7 +172,7 @@ public class RuntimeCodeCache {
         assert verifyTable();
         if (Options.TraceCodeCache.getValue()) {
             Log.log().string("[" + INFO_ADD + " method: ");
-            logCodeInfo(Log.log(), info);
+            logCodeInfo(Log.log(), info, true);
             Log.log().string("]").newline();
         }
 
@@ -189,7 +190,7 @@ public class RuntimeCodeCache {
         NonmovableArrays.setWord(codeInfos, insertionPoint, info);
 
         if (Options.TraceCodeCache.getValue()) {
-            logTable();
+            logTable(true);
         }
         assert verifyTable();
     }
@@ -232,7 +233,7 @@ public class RuntimeCodeCache {
         assert verifyTable();
         if (Options.TraceCodeCache.getValue()) {
             Log.log().string("[").string(INFO_INVALIDATE).string(" method: ");
-            logCodeInfo(Log.log(), info);
+            logCodeInfo(Log.log(), info, true);
             Log.log().string("]").newline();
         }
 
@@ -264,7 +265,7 @@ public class RuntimeCodeCache {
         RuntimeCodeInfoAccess.partialReleaseAfterInvalidate(info, notifyGC);
 
         if (Options.TraceCodeCache.getValue()) {
-            logTable();
+            logTable(true);
         }
         assert verifyTable();
     }
@@ -293,50 +294,64 @@ public class RuntimeCodeCache {
         return true;
     }
 
-    public void logTable() {
-        logTable(Log.log());
+    public void logTable(boolean allowJavaHeapAccess) {
+        logTable(Log.log(), allowJavaHeapAccess);
     }
 
-    private static final RingBuffer.Consumer<CodeCacheLogEntry> consumer = (context, e) -> e.log(Log.log());
+    private static final RingBuffer.Consumer<CodeCacheLogEntry> PRINT_WITH_JAVA_HEAP_DATA = RuntimeCodeCache::printEntryWithJavaHeapData;
+    private static final RingBuffer.Consumer<CodeCacheLogEntry> PRINT_WITHOUT_JAVA_HEAP_DATA = RuntimeCodeCache::printEntryWithoutJavaHeapData;
 
-    public void logRecentOperations(Log log) {
-        log.string("== [Recent RuntimeCodeCache operations: ");
-        recentCodeCacheOperations.foreach(consumer);
-        log.string("]").newline();
+    public void logRecentOperations(Log log, boolean allowJavaHeapAccess) {
+        log.string("Recent RuntimeCodeCache operations: ");
+        recentCodeCacheOperations.foreach(log, allowJavaHeapAccess ? PRINT_WITH_JAVA_HEAP_DATA : PRINT_WITHOUT_JAVA_HEAP_DATA);
     }
 
-    public void logTable(Log log) {
-        log.string("== [RuntimeCodeCache: ").signed(numCodeInfos).string(" methods");
+    private static void printEntryWithJavaHeapData(Object context, CodeCacheLogEntry entry) {
+        printEntry(context, entry, true);
+    }
+
+    private static void printEntryWithoutJavaHeapData(Object context, CodeCacheLogEntry entry) {
+        printEntry(context, entry, false);
+    }
+
+    private static void printEntry(Object context, CodeCacheLogEntry entry, boolean allowJavaHeapAccess) {
+        Log log = (Log) context;
+        entry.log(log, allowJavaHeapAccess);
+    }
+
+    public void logTable(Log log, boolean allowJavaHeapAccess) {
+        log.string("RuntimeCodeCache contains ").signed(numCodeInfos).string(" methods");
         for (int i = 0; i < numCodeInfos; i++) {
-            logCodeInfo(log, i);
+            logCodeInfo(log, i, allowJavaHeapAccess);
         }
-        log.string("]").newline();
     }
 
     @Uninterruptible(reason = "Must prevent the GC from freeing the CodeInfo object.")
-    private void logCodeInfo(Log log, int i) {
+    private void logCodeInfo(Log log, int i, boolean allowJavaHeapAccess) {
         UntetheredCodeInfo untetheredInfo = NonmovableArrays.getWord(codeInfos, i);
         Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
         try {
             CodeInfo info = CodeInfoAccess.convert(untetheredInfo, tether);
-            logCodeInfo0(log, info);
+            logCodeInfo0(log, info, allowJavaHeapAccess);
         } finally {
             CodeInfoAccess.releaseTether(untetheredInfo, tether);
         }
     }
 
     @Uninterruptible(reason = "Pass the now protected CodeInfo to interruptible code.", calleeMustBe = false)
-    private static void logCodeInfo0(Log log, CodeInfo info) {
+    private static void logCodeInfo0(Log log, CodeInfo info, boolean allowJavaHeapAccess) {
         log.newline().hex(CodeInfoAccess.getCodeStart(info)).string("  ");
-        logCodeInfo(log, info);
+        logCodeInfo(log, info, allowJavaHeapAccess);
     }
 
-    private static void logCodeInfo(Log log, CodeInfo info) {
-        logCodeInfo(log, CodeInfoAccess.getName(info), CodeInfoAccess.getCodeStart(info), CodeInfoAccess.getCodeEnd(info), CodeInfoAccess.getCodeSize(info));
+    private static void logCodeInfo(Log log, CodeInfo info, boolean allowJavaHeapAccess) {
+        logCodeInfo(log, allowJavaHeapAccess, CodeInfoAccess.getName(info), CodeInfoAccess.getCodeStart(info), CodeInfoAccess.getCodeEnd(info), CodeInfoAccess.getCodeSize(info));
     }
 
-    private static void logCodeInfo(Log log, String codeName, CodePointer codeStart, CodePointer codeEnd, UnsignedWord codeSize) {
-        log.string(codeName);
+    private static void logCodeInfo(Log log, boolean allowJavaHeapAccess, String codeName, CodePointer codeStart, CodePointer codeEnd, UnsignedWord codeSize) {
+        if (allowJavaHeapAccess) {
+            log.string(codeName);
+        }
         log.string("  ip: ").hex(codeStart).string(" - ").hex(codeEnd);
         log.string("  size: ").unsigned(codeSize);
         /*
@@ -397,6 +412,7 @@ public class RuntimeCodeCache {
         }
 
         public void setValues(long sequenceNumber, String kind, String codeName, CodePointer codeStart, CodePointer codeEnd, UnsignedWord codeSize) {
+            assert Heap.getHeap().isInImageHeap(kind);
             this.sequenceNumber = sequenceNumber;
             this.kind = kind;
             this.codeName = codeName;
@@ -405,11 +421,11 @@ public class RuntimeCodeCache {
             this.codeSize = codeSize;
         }
 
-        public void log(Log log) {
+        public void log(Log log, boolean allowJavaHeapAccess) {
             log.newline();
             if (kind != null) {
                 log.string(kind).string(": ");
-                logCodeInfo(log, codeName, codeStart, codeEnd, codeSize);
+                logCodeInfo(log, allowJavaHeapAccess, codeName, codeStart, codeEnd, codeSize);
                 log.string(" ").unsigned(sequenceNumber).string(":{");
             } else {
                 log.string("}:").unsigned(sequenceNumber);
