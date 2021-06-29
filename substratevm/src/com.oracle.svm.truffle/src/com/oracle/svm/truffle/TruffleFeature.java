@@ -1021,6 +1021,7 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         private static final ConcurrentHashMap<Pair<Class<?>, Class<?>>, Object> INTERCEPTED_ARGS = new ConcurrentHashMap<>();
         private static final Object FILLER_OBJECT = new Object();
         private static final Map<Class<?>, ClassLoader> CLASS_LOADERS = new ConcurrentHashMap<>();
+        private static final Class<?> SHAPE_GENERATOR_CLASS = loadClass(GENERATOR_CLASS_NAME);
 
         static void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, Plugins plugins, ParsingReason reason) {
             if (reason == ParsingReason.PointsToAnalysis) {
@@ -1050,14 +1051,13 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         static void beforeCompilation(BeforeCompilationAccess config) {
             // Recompute the offset of the byte and object arrays stored in the cached ShapeGenerator
             Unsafe unsafe = GraalUnsafeAccess.getUnsafe();
-            Class<?> shapeGeneratorClass = loadClass(GENERATOR_CLASS_NAME);
-            long baoFieldOffset = getJvmFieldOffset(unsafe, shapeGeneratorClass, "byteArrayOffset");
-            long oaoFieldOffset = getJvmFieldOffset(unsafe, shapeGeneratorClass, "objectArrayOffset");
-            long shapeFieldOffset = getJvmFieldOffset(unsafe, shapeGeneratorClass, "shapeOffset");
-            ConcurrentHashMap<?, ?> generatorCache = ReflectionUtil.readStaticField(shapeGeneratorClass, "generatorCache");
+            long baoFieldOffset = getJvmFieldOffset(unsafe, SHAPE_GENERATOR_CLASS, "byteArrayOffset");
+            long oaoFieldOffset = getJvmFieldOffset(unsafe, SHAPE_GENERATOR_CLASS, "objectArrayOffset");
+            long shapeFieldOffset = getJvmFieldOffset(unsafe, SHAPE_GENERATOR_CLASS, "shapeOffset");
+            ConcurrentHashMap<?, ?> generatorCache = ReflectionUtil.readStaticField(SHAPE_GENERATOR_CLASS, "generatorCache");
             for (Map.Entry<?, ?> entry : generatorCache.entrySet()) {
                 Object shapeGenerator = entry.getValue();
-                Class<?> generatedStorageClass = ReflectionUtil.readField(shapeGeneratorClass, "generatedStorageClass", shapeGenerator);
+                Class<?> generatedStorageClass = ReflectionUtil.readField(SHAPE_GENERATOR_CLASS, "generatedStorageClass", shapeGenerator);
                 unsafe.putInt(shapeGenerator, baoFieldOffset, getNativeImageFieldOffset(config, generatedStorageClass, "primitive"));
                 unsafe.putInt(shapeGenerator, oaoFieldOffset, getNativeImageFieldOffset(config, generatedStorageClass, "object"));
                 unsafe.putInt(shapeGenerator, shapeFieldOffset, getNativeImageFieldOffset(config, generatedStorageClass, "shape"));
@@ -1070,17 +1070,16 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         }
 
         private static Class<?> generate(Class<?> storageSuperClass, Class<?> factoryInterface, BeforeAnalysisAccess access) {
-            Class<?> shapeGeneratorClass = loadClass(GENERATOR_CLASS_NAME);
             ClassLoader generatorCL = getGeneratorClassLoader(factoryInterface);
-            Method generatorMethod = ReflectionUtil.lookupMethod(shapeGeneratorClass, "getShapeGenerator", generatorCL.getClass(), Class.class, Class.class);
+            Method generatorMethod = ReflectionUtil.lookupMethod(SHAPE_GENERATOR_CLASS, "getShapeGenerator", generatorCL.getClass(), Class.class, Class.class);
             Object generator;
             try {
                 generator = generatorMethod.invoke(null, generatorCL, storageSuperClass, factoryInterface);
             } catch (IllegalAccessException | InvocationTargetException | ClassCastException e) {
                 throw JVMCIError.shouldNotReachHere(e);
             }
-            Class<?> storageClass = ReflectionUtil.readField(shapeGeneratorClass, "generatedStorageClass", generator);
-            Class<?> factoryClass = ReflectionUtil.readField(shapeGeneratorClass, "generatedFactoryClass", generator);
+            Class<?> storageClass = ReflectionUtil.readField(SHAPE_GENERATOR_CLASS, "generatedStorageClass", generator);
+            Class<?> factoryClass = ReflectionUtil.readField(SHAPE_GENERATOR_CLASS, "generatedFactoryClass", generator);
             for (Constructor<?> c : factoryClass.getDeclaredConstructors()) {
                 RuntimeReflection.register(c);
             }
