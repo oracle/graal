@@ -1014,12 +1014,11 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
     }
 
     private static final class StaticObjectSupport {
-        private static final String GENERATOR_CLASS_NAME = "com.oracle.truffle.api.staticobject.ArrayBasedShapeGenerator";
-        private static final String GENERATOR_CLASS_LOADER_CLASS_NAME = "com.oracle.truffle.api.staticobject.GeneratorClassLoader";
         private static final ConcurrentHashMap<Pair<Class<?>, Class<?>>, Object> INTERCEPTED_ARGS = new ConcurrentHashMap<>();
         private static final Object FILLER_OBJECT = new Object();
         private static final Map<Class<?>, ClassLoader> CLASS_LOADERS = new ConcurrentHashMap<>();
-        private static final Class<?> SHAPE_GENERATOR_CLASS = loadClass(GENERATOR_CLASS_NAME);
+        private static final Class<?> SHAPE_GENERATOR_CLASS = loadClass("com.oracle.truffle.api.staticobject.ArrayBasedShapeGenerator");
+        private static final Constructor<?> GENERATOR_CLASS_LOADER_CONSTRUCTOR = ReflectionUtil.lookupConstructor(loadClass("com.oracle.truffle.api.staticobject.GeneratorClassLoader"), Class.class);
 
         static void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, Plugins plugins, ParsingReason reason) {
             if (reason == ParsingReason.PointsToAnalysis) {
@@ -1090,11 +1089,9 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         private static ClassLoader getGeneratorClassLoader(Class<?> factoryInterface) {
             ClassLoader cl = CLASS_LOADERS.get(factoryInterface);
             if (cl == null) {
-                Class<?> classLoaderClass = loadClass(GENERATOR_CLASS_LOADER_CLASS_NAME);
-                Constructor<?> constructor = ReflectionUtil.lookupConstructor(classLoaderClass, Class.class);
                 ClassLoader newCL;
                 try {
-                    newCL = ClassLoader.class.cast(constructor.newInstance(factoryInterface));
+                    newCL = ClassLoader.class.cast(GENERATOR_CLASS_LOADER_CONSTRUCTOR.newInstance(factoryInterface));
                 } catch (ReflectiveOperationException e) {
                     throw VMError.shouldNotReachHere(e);
                 }
