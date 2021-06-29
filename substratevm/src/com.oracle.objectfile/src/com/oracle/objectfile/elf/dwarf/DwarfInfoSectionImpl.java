@@ -936,26 +936,26 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             if (range.isDeoptTarget() != deoptTargets) {
                 continue;
             }
-            boolean withInlinedMethods = false;
-            /*
-             * Go through the subranges and generate abstract debug entries for inlined methods.
-             */
-            for (Range subrange : primaryEntry.getSubranges()) {
-                if (!subrange.isInlined()) {
-                    continue;
-                }
-                withInlinedMethods = true;
-                final String symbolName = subrange.getSymbolName();
-                if (primaryMap.get(symbolName) == null) {
-                    primaryMap.put(symbolName, pos);
-                    ClassEntry inlinedClassEntry = (ClassEntry) lookupType(subrange.getClassName());
-                    pos = writeMethodLocation(context, inlinedClassEntry, subrange, buffer, pos);
-                    pos = writeAttrNull(buffer, pos);
+            if (range.withInlinedChildren()) {
+                /*
+                 * Go through the subranges and generate abstract debug entries for inlined methods.
+                 */
+                for (Range subrange : primaryEntry.getSubranges()) {
+                    if (!subrange.isInlined()) {
+                        continue;
+                    }
+                    final String symbolName = subrange.getSymbolName();
+                    if (primaryMap.get(symbolName) == null) {
+                        primaryMap.put(symbolName, pos);
+                        ClassEntry inlinedClassEntry = (ClassEntry) lookupType(subrange.getClassName());
+                        pos = writeMethodLocation(context, inlinedClassEntry, subrange, buffer, pos);
+                        pos = writeAttrNull(buffer, pos);
+                    }
                 }
             }
             primaryMap.put(range.getSymbolName(), pos);
             pos = writeMethodLocation(context, classEntry, range, buffer, pos);
-            if (withInlinedMethods) {
+            if (range.withInlinedChildren()) {
                 int depth = 0;
                 /*
                  * Go through the subranges and generate concrete debug entries for inlined methods.

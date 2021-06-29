@@ -370,6 +370,7 @@ public abstract class DebugInfoBase {
             return primaryRange;
         }
         Range caller = addCallersSubRanges(lineInfo.getCaller(), primaryRange, classEntry, debugContext);
+        caller.setWithInlinedChildren(true);
         final String fileName = lineInfo.fileName();
         final Path filePath = lineInfo.filePath();
         final String className = lineInfo.ownerType();

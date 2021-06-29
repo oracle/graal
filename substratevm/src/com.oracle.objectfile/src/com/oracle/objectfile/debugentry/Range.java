@@ -43,6 +43,7 @@ public class Range {
     private final int line;
     private final boolean isInlined;
     private final boolean withChildren;
+    private boolean withInlinedChildren;
     /*
      * This is null for a primary range.
      */
@@ -73,6 +74,7 @@ public class Range {
         this.isInlined = isInline;
         this.primary = primary;
         this.withChildren = withChildren;
+        this.withInlinedChildren = false;
         this.caller = caller;
     }
 
@@ -182,6 +184,14 @@ public class Range {
 
     public boolean withChildren() {
         return withChildren;
+    }
+
+    public boolean withInlinedChildren() {
+        return withInlinedChildren;
+    }
+
+    public boolean setWithInlinedChildren(boolean withInlinedChildren) {
+        return this.withInlinedChildren = withInlinedChildren;
     }
 
     public Range getCaller() {
