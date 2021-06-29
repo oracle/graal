@@ -30,8 +30,10 @@ import static org.graalvm.compiler.java.BytecodeParserOptions.InlineDuringParsin
 import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createStandardInlineInfo;
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
@@ -102,6 +104,12 @@ import java.util.function.ToLongFunction;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 
+import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
+import com.oracle.graal.pointsto.phases.SubstrateIntrinsicGraphBuilder;
+import com.oracle.svm.hosted.c.GraalAccess;
+import com.oracle.truffle.api.staticobject.StaticShape;
+import jdk.vm.ci.common.JVMCIError;
+import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
@@ -118,6 +126,7 @@ import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.nodes.asserts.NeverPartOfCompilationNode;
 import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
@@ -190,6 +199,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import sun.misc.Unsafe;
 
 public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
 
@@ -996,6 +1006,110 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
                 implementations.add(subType);
             }
             collectImplementations(subType, implementations);
+        }
+    }
+
+    private static final class StaticObjectSupport {
+        private static final String GENERATOR_CLASS_NAME = "com.oracle.truffle.api.staticobject.ArrayBasedShapeGenerator";
+        private static final String GENERATOR_CLASS_LOADER_CLASS_NAME = "com.oracle.truffle.api.staticobject.GeneratorClassLoader";
+        private static ClassLoader generatorClassLoader;
+        private static final HashSet<Pair<Class<?>, Class<?>>> interceptedArgs = new HashSet<>();
+
+        static void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, Plugins plugins, ParsingReason reason) {
+            if (reason == ParsingReason.PointsToAnalysis) {
+                InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins.getInvocationPlugins(), StaticShape.Builder.class);
+                r.register3("build", InvocationPlugin.Receiver.class, Class.class, Class.class, new InvocationPlugin() {
+                    @Override
+                    public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode arg1, ValueNode arg2) {
+                        if (!(receiver instanceof SubstrateIntrinsicGraphBuilder)) {
+                            Class<?> superClass = getArgumentClass(b, targetMethod, 1, arg1);
+                            Class<?> factoryInterface = getArgumentClass(b, targetMethod, 2, arg2);
+                            interceptedArgs.add(Pair.create(superClass, factoryInterface));
+                        }
+                        return false;
+                    }
+                });
+            }
+        }
+
+        static void duringAnalysis(DuringAnalysisAccess access) {
+            for (Pair<Class<?>, Class<?>> args : interceptedArgs) {
+                generate(args.getLeft(), args.getRight(), access);
+                access.requireAnalysisIteration();
+            }
+            interceptedArgs.clear();
+        }
+
+        static void beforeCompilation(BeforeCompilationAccess config) {
+            // Recompute the offset of the byte and object arrays stored in the cached ShapeGenerator
+            Unsafe unsafe = GraalUnsafeAccess.getUnsafe();
+            Class<?> shapeGeneratorClass = loadClass(GENERATOR_CLASS_NAME);
+            long baoFieldOffset = getJvmFieldOffset(unsafe, shapeGeneratorClass, "byteArrayOffset");
+            long oaoFieldOffset = getJvmFieldOffset(unsafe, shapeGeneratorClass, "objectArrayOffset");
+            long shapeFieldOffset = getJvmFieldOffset(unsafe, shapeGeneratorClass, "shapeOffset");
+            ConcurrentHashMap<?, ?> generatorCache = ReflectionUtil.readStaticField(shapeGeneratorClass, "generatorCache");
+            for (Map.Entry<?, ?> entry : generatorCache.entrySet()) {
+                Object shapeGenerator = entry.getValue();
+                Class<?> generatedStorageClass = ReflectionUtil.readField(shapeGeneratorClass, "generatedStorageClass", shapeGenerator);
+                unsafe.putInt(shapeGenerator, baoFieldOffset, getNativeImageFieldOffset(config, generatedStorageClass, "primitive"));
+                unsafe.putInt(shapeGenerator, oaoFieldOffset, getNativeImageFieldOffset(config, generatedStorageClass, "object"));
+                unsafe.putInt(shapeGenerator, shapeFieldOffset, getNativeImageFieldOffset(config, generatedStorageClass, "shape"));
+            }
+        }
+
+        private static Class<?> getArgumentClass(GraphBuilderContext b, ResolvedJavaMethod targetMethod, int parameterIndex, ValueNode arg) {
+            SubstrateGraphBuilderPlugins.checkParameterUsage(arg.isConstant(), b, targetMethod, parameterIndex, "parameter is not a compile time constant");
+            return OriginalClassProvider.getJavaClass(GraalAccess.getOriginalSnippetReflection(), b.getConstantReflection().asJavaType(arg.asJavaConstant()));
+        }
+
+        private static Class<?> generate(Class<?> storageSuperClass, Class<?> factoryInterface, BeforeAnalysisAccess access) {
+            Class<?> shapeGeneratorClass = loadClass(GENERATOR_CLASS_NAME);
+            ClassLoader generatorCL = getGeneratorClassLoader(factoryInterface);
+            Method generatorMethod = ReflectionUtil.lookupMethod(shapeGeneratorClass, "getShapeGenerator", generatorCL.getClass(), Class.class, Class.class);
+            Object generator;
+            try {
+                generator = generatorMethod.invoke(null, generatorCL, storageSuperClass, factoryInterface);
+            } catch (IllegalAccessException | InvocationTargetException | ClassCastException e) {
+                throw JVMCIError.shouldNotReachHere(e);
+            }
+            Class<?> storageClass = ReflectionUtil.readField(shapeGeneratorClass, "generatedStorageClass", generator);
+            Class<?> factoryClass = ReflectionUtil.readField(shapeGeneratorClass, "generatedFactoryClass", generator);
+            for (Constructor<?> c : factoryClass.getDeclaredConstructors()) {
+                RuntimeReflection.register(c);
+            }
+            for (String fieldName : new String[]{"primitive", "object", "shape"}) {
+                access.registerAsUnsafeAccessed(ReflectionUtil.lookupField(storageClass, fieldName));
+            }
+            return storageClass;
+        }
+
+        private static synchronized ClassLoader getGeneratorClassLoader(Class<?> factoryInterface) {
+            if (generatorClassLoader == null) {
+                Class<?> classLoaderClass = loadClass(GENERATOR_CLASS_LOADER_CLASS_NAME);
+                Constructor<?> constructor = ReflectionUtil.lookupConstructor(classLoaderClass, Class.class);
+                try {
+                    generatorClassLoader = ClassLoader.class.cast(constructor.newInstance(factoryInterface));
+                } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
+                    throw JVMCIError.shouldNotReachHere(e);
+                }
+            }
+            return generatorClassLoader;
+        }
+
+        private static Class<?> loadClass(String name) {
+            try {
+                return Class.forName(name);
+            } catch (ClassNotFoundException e) {
+                throw JVMCIError.shouldNotReachHere(e);
+            }
+        }
+
+        private static long getJvmFieldOffset(Unsafe unsafe, Class<?> declaringClass, String fieldName) {
+            return unsafe.objectFieldOffset(ReflectionUtil.lookupField(declaringClass, fieldName));
+        }
+
+        private static int getNativeImageFieldOffset(BeforeCompilationAccess config, Class<?> declaringClass, String fieldName) {
+            return Math.toIntExact(config.objectFieldOffset(ReflectionUtil.lookupField(declaringClass, fieldName)));
         }
     }
 }
