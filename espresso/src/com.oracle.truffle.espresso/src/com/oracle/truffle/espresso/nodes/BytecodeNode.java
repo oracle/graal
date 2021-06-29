@@ -358,7 +358,7 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
  * bytecode is first processed/executed without growing or shrinking the stack and only then the
  * {@code top} of the stack index is adjusted depending on the bytecode stack offset.
  */
-public final class BytecodeNode extends EspressoMethodNode implements OnStackReplaceableNode<BytecodeNode> {
+public final class BytecodeNode extends EspressoMethodNode implements OnStackReplaceableNode {
 
     private static final DebugCounter EXECUTED_BYTECODES_COUNT = DebugCounter.create("Executed bytecodes");
     private static final DebugCounter QUICKENED_BYTECODES = DebugCounter.create("Quickened bytecodes");

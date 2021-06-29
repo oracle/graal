@@ -42,7 +42,6 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.OnStackReplaceableNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
@@ -353,9 +352,9 @@ public class OnStackReplaceableNodeTest extends TestWithSynchronousCompiling {
     }
 
     public static class Program extends RootNode {
-        @Child OnStackReplaceableNode<? extends ExecutableNode> osrNode;
+        @Child OnStackReplaceableNode osrNode;
 
-        public Program(OnStackReplaceableNode<? extends ExecutableNode> osrNode, FrameDescriptor frameDescriptor) {
+        public Program(OnStackReplaceableNode osrNode, FrameDescriptor frameDescriptor) {
             super(null, frameDescriptor);
             this.osrNode = osrNode;
         }
@@ -369,7 +368,7 @@ public class OnStackReplaceableNodeTest extends TestWithSynchronousCompiling {
     public static class MaterializedFrameProgram extends Program {
         MaterializedFrame frame;
 
-        public MaterializedFrameProgram(OnStackReplaceableNode<? extends ExecutableNode> osrNode, FrameDescriptor frameDescriptor) {
+        public MaterializedFrameProgram(OnStackReplaceableNode osrNode, FrameDescriptor frameDescriptor) {
             super(osrNode, frameDescriptor);
         }
 
@@ -380,7 +379,7 @@ public class OnStackReplaceableNodeTest extends TestWithSynchronousCompiling {
         }
     }
 
-    abstract static class OnStackReplaceableTestNode extends ExecutableNode implements OnStackReplaceableNode<OnStackReplaceableTestNode> {
+    abstract static class OnStackReplaceableTestNode extends ExecutableNode implements OnStackReplaceableNode {
         public static final int DEFAULT_TARGET = -1;
         Object osrMetadata;
 
@@ -661,7 +660,7 @@ public class OnStackReplaceableNodeTest extends TestWithSynchronousCompiling {
         }
     }
 
-    public static class BytecodeNode extends ExecutableNode implements OnStackReplaceableNode<BytecodeNode> {
+    public static class BytecodeNode extends ExecutableNode implements OnStackReplaceableNode {
         @CompilationFinal(dimensions = 1) private final byte[] bytecodes;
         @CompilationFinal(dimensions = 1) private final FrameSlot[] regs;
 

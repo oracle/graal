@@ -960,7 +960,7 @@ public abstract class Accessor {
          * @param language the language of the node
          * @return result if OSR was performed, or {@code null}.
          */
-        public abstract Object onOSRBackEdge(OnStackReplaceableNode<?> osrNode, VirtualFrame parentFrame, int target, TruffleLanguage<?> language);
+        public abstract Object onOSRBackEdge(OnStackReplaceableNode osrNode, VirtualFrame parentFrame, int target, TruffleLanguage<?> language);
 
         /**
          * Reports that a child node of an {@link OnStackReplaceableNode} was replaced. Allows the runtime system to
@@ -971,7 +971,7 @@ public abstract class Accessor {
          * @param newNode the replacement node
          * @param reason the replacement reason
          */
-        public abstract void onOSRNodeReplaced(OnStackReplaceableNode<?> osrNode, Node oldNode, Node newNode, CharSequence reason);
+        public abstract void onOSRNodeReplaced(OnStackReplaceableNode osrNode, Node oldNode, Node newNode, CharSequence reason);
 
         /**
          * Returns the compiler options specified available from the runtime.

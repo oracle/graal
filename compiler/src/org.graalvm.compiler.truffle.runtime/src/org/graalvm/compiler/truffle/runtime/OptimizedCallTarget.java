@@ -1029,12 +1029,12 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         this.callAndLoopCount = newLoopCallCount >= oldLoopCallCount ? newLoopCallCount : Integer.MAX_VALUE;
     }
 
-    final Object onOSRBackEdge(OnStackReplaceableNode<?> osrNode, VirtualFrame parentFrame, int target, TruffleLanguage<?> language) {
+    final Object onOSRBackEdge(OnStackReplaceableNode osrNode, VirtualFrame parentFrame, int target, TruffleLanguage<?> language) {
         CompilerAsserts.neverPartOfCompilation();
 
         OSRMetadata osrMetadata = (OSRMetadata) osrNode.getOSRMetadata();
         if (osrMetadata == null) { // double checked locking
-            osrMetadata = ((Node) osrNode).atomic(() -> {
+            osrMetadata = osrNode.asNode().atomic(() -> {
                 OSRMetadata metadata = (OSRMetadata) osrNode.getOSRMetadata();
                 if (metadata == null) {
                     metadata = new OSRMetadata(osrNode, getOptionValue(PolyglotCompilerOptions.OSR),
@@ -1048,7 +1048,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return osrMetadata.onOSRBackEdge(parentFrame, target, language);
     }
 
-    void callNodeReplacedOnOSRTargets(OnStackReplaceableNode<?> osrNode, Node oldNode, Node newNode, CharSequence reason) {
+    void callNodeReplacedOnOSRTargets(OnStackReplaceableNode osrNode, Node oldNode, Node newNode, CharSequence reason) {
         OSRMetadata osrMetadata = (OSRMetadata) osrNode.getOSRMetadata();
         if (osrMetadata != null) {
             osrMetadata.nodeReplaced(oldNode, newNode, reason);
@@ -1056,14 +1056,14 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     public static final class OSRMetadata {
-        private final OnStackReplaceableNode<?> osrNode;
+        private final OnStackReplaceableNode osrNode;
         private final EconomicMap<Integer, OptimizedCallTarget> osrCompilations;
         private final int osrThreshold;
         // TODO: check whether these fields need to be volatile.
         private volatile boolean osrEnabled;
         private int backEdgeCount;
 
-        OSRMetadata(OnStackReplaceableNode<?> osrNode, boolean osrEnabled, int osrThreshold) {
+        OSRMetadata(OnStackReplaceableNode osrNode, boolean osrEnabled, int osrThreshold) {
             this.osrNode = osrNode;
             this.osrCompilations = EconomicMap.create();
             this.osrEnabled = osrEnabled;
@@ -1117,7 +1117,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             return newBackEdgeCount >= osrThreshold && (newBackEdgeCount & (OSR_POLL_INTERVAL - 1)) == 0;
         }
 
-        private synchronized OptimizedCallTarget requestOSR(OnStackReplaceableNode<?> osrNode, int target, TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+        private synchronized OptimizedCallTarget requestOSR(OnStackReplaceableNode osrNode, int target, TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
             assert !osrCompilations.containsKey(target);
             OptimizedCallTarget callTarget = GraalTruffleRuntime.getRuntime().createOSRCallTarget(new OSRRootNode(osrNode, target, language, frameDescriptor));
             callTarget.compile(false);
@@ -1164,10 +1164,10 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     private static final class OSRRootNode extends BaseOSRRootNode {
-        @Child private OnStackReplaceableNode<?> onStackReplaceableNode;
+        @Child private OnStackReplaceableNode onStackReplaceableNode;
         private final int target;
 
-        OSRRootNode(OnStackReplaceableNode<?> onStackReplaceableNode, int target, TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+        OSRRootNode(OnStackReplaceableNode onStackReplaceableNode, int target, TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
             this.onStackReplaceableNode = onStackReplaceableNode;
             this.target = target;

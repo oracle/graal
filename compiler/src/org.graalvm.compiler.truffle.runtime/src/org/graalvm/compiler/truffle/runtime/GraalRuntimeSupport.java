@@ -28,8 +28,6 @@ import java.util.function.Function;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.nodes.OnStackReplaceableNode;
-import org.graalvm.collections.MapCursor;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
@@ -77,8 +75,8 @@ final class GraalRuntimeSupport extends RuntimeSupport {
     }
 
     @Override
-    public Object onOSRBackEdge(OnStackReplaceableNode<?> osrNode, VirtualFrame parentFrame, int target, TruffleLanguage<?> language) {
-        CallTarget callTarget = ((Node) osrNode).getRootNode().getCallTarget();
+    public Object onOSRBackEdge(OnStackReplaceableNode osrNode, VirtualFrame parentFrame, int target, TruffleLanguage<?> language) {
+        CallTarget callTarget = osrNode.asNode().getRootNode().getCallTarget();
         if (callTarget instanceof OptimizedCallTarget){
             return ((OptimizedCallTarget) callTarget).onOSRBackEdge(osrNode, parentFrame, target, language);
         }
@@ -86,8 +84,8 @@ final class GraalRuntimeSupport extends RuntimeSupport {
     }
 
     @Override
-    public void onOSRNodeReplaced(OnStackReplaceableNode<?> osrNode, Node oldNode, Node newNode, CharSequence reason) {
-        CallTarget callTarget = ((Node) osrNode).getRootNode().getCallTarget();
+    public void onOSRNodeReplaced(OnStackReplaceableNode osrNode, Node oldNode, Node newNode, CharSequence reason) {
+        CallTarget callTarget = osrNode.asNode().getRootNode().getCallTarget();
         if (callTarget instanceof OptimizedCallTarget){
             ((OptimizedCallTarget) callTarget).callNodeReplacedOnOSRTargets(osrNode, oldNode, newNode, reason);
         }
