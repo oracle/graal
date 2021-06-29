@@ -50,7 +50,6 @@ import sun.misc.Unsafe;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.security.ProtectionDomain;
 import java.util.HashSet;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
@@ -80,11 +79,6 @@ public final class SomFeature implements GraalFeature {
         }
     }
 
-    private static Class<?> getArgumentClass(GraphBuilderContext b, ResolvedJavaMethod targetMethod, int parameterIndex, ValueNode arg) {
-        SubstrateGraphBuilderPlugins.checkParameterUsage(arg.isConstant(), b, targetMethod, parameterIndex, "parameter is not a compile time constant");
-        return OriginalClassProvider.getJavaClass(GraalAccess.getOriginalSnippetReflection(), b.getConstantReflection().asJavaType(arg.asJavaConstant()));
-    }
-
     @Override
     public void duringAnalysis(DuringAnalysisAccess access) {
         for (Pair<Class<?>, Class<?>> args : interceptedArgs) {
@@ -92,6 +86,29 @@ public final class SomFeature implements GraalFeature {
             access.requireAnalysisIteration();
         }
         interceptedArgs.clear();
+    }
+
+    @Override
+    public void beforeCompilation(BeforeCompilationAccess config) {
+        // Recompute the offset of the byte and object arrays stored in the cached ShapeGenerator
+        Unsafe unsafe = GraalUnsafeAccess.getUnsafe();
+        Class<?> shapeGeneratorClass = loadClass(GENERATOR_CLASS_NAME);
+        long baoFieldOffset = getJvmFieldOffset(unsafe, shapeGeneratorClass, "byteArrayOffset");
+        long oaoFieldOffset = getJvmFieldOffset(unsafe, shapeGeneratorClass, "objectArrayOffset");
+        long shapeFieldOffset = getJvmFieldOffset(unsafe, shapeGeneratorClass, "shapeOffset");
+        ConcurrentHashMap<?, ?> generatorCache = ReflectionUtil.readStaticField(shapeGeneratorClass, "generatorCache");
+        for (Entry<?, ?> entry : generatorCache.entrySet()) {
+            Object shapeGenerator = entry.getValue();
+            Class<?> generatedStorageClass = ReflectionUtil.readField(shapeGeneratorClass, "generatedStorageClass", shapeGenerator);
+            unsafe.putInt(shapeGenerator, baoFieldOffset, getNativeImageFieldOffset(config, generatedStorageClass, "primitive"));
+            unsafe.putInt(shapeGenerator, oaoFieldOffset, getNativeImageFieldOffset(config, generatedStorageClass, "object"));
+            unsafe.putInt(shapeGenerator, shapeFieldOffset, getNativeImageFieldOffset(config, generatedStorageClass, "shape"));
+        }
+    }
+
+    private static Class<?> getArgumentClass(GraphBuilderContext b, ResolvedJavaMethod targetMethod, int parameterIndex, ValueNode arg) {
+        SubstrateGraphBuilderPlugins.checkParameterUsage(arg.isConstant(), b, targetMethod, parameterIndex, "parameter is not a compile time constant");
+        return OriginalClassProvider.getJavaClass(GraalAccess.getOriginalSnippetReflection(), b.getConstantReflection().asJavaType(arg.asJavaConstant()));
     }
 
     private static Class<?> generate(Class<?> storageSuperClass, Class<?> factoryInterface, BeforeAnalysisAccess access) {
@@ -113,25 +130,6 @@ public final class SomFeature implements GraalFeature {
             access.registerAsUnsafeAccessed(ReflectionUtil.lookupField(storageClass, fieldName));
         }
         return storageClass;
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    public void beforeCompilation(BeforeCompilationAccess config) {
-        // Recompute the offset of the byte and object arrays stored in the cached ShapeGenerator
-        Unsafe unsafe = GraalUnsafeAccess.getUnsafe();
-        Class<?> shapeGeneratorClass = loadClass(GENERATOR_CLASS_NAME);
-        long baoFieldOffset = getJvmFieldOffset(unsafe, shapeGeneratorClass, "byteArrayOffset");
-        long oaoFieldOffset = getJvmFieldOffset(unsafe, shapeGeneratorClass, "objectArrayOffset");
-        long shapeFieldOffset = getJvmFieldOffset(unsafe, shapeGeneratorClass, "shapeOffset");
-        ConcurrentHashMap<?, ?> generatorCache = ReflectionUtil.readStaticField(shapeGeneratorClass, "generatorCache");
-        for (Entry<?, ?> entry : generatorCache.entrySet()) {
-            Object shapeGenerator = entry.getValue();
-            Class<?> generatedStorageClass = ReflectionUtil.readField(shapeGeneratorClass, "generatedStorageClass", shapeGenerator);
-            unsafe.putInt(shapeGenerator, baoFieldOffset, getNativeImageFieldOffset(config, generatedStorageClass, "primitive"));
-            unsafe.putInt(shapeGenerator, oaoFieldOffset, getNativeImageFieldOffset(config, generatedStorageClass, "object"));
-            unsafe.putInt(shapeGenerator, shapeFieldOffset, getNativeImageFieldOffset(config, generatedStorageClass, "shape"));
-        }
     }
 
     private static synchronized ClassLoader getGeneratorClassLoader(Class<?> factoryInterface) {
