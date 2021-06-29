@@ -1614,7 +1614,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             // events must be replayed without engine lock.
             final PolyglotContextImpl prev;
             try {
-                prev = enter(context, true, getUncachedLocation(), true, false);
+                prev = enter(context);
             } catch (Throwable t) {
                 throw PolyglotImpl.guestToHostException(context.getHostContext(), t, false);
             }
@@ -1624,7 +1624,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                 throw PolyglotImpl.guestToHostException(context.getHostContext(), t, true);
             } finally {
                 try {
-                    leave(prev, context, true);
+                    leave(prev, context);
                 } catch (Throwable t) {
                     throw PolyglotImpl.guestToHostException(context.getHostContext(), t, false);
                 }
@@ -1779,20 +1779,43 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     }
 
     Object enterIfNeeded(PolyglotContextImpl context, boolean pollSafepoint) {
+        CompilerAsserts.neverPartOfCompilation("not designed for compilation");
         if (needsEnter(context)) {
-            return enter(context, true, getUncachedLocation(), pollSafepoint, false);
+            return enterCached(context, pollSafepoint);
         }
         assert PolyglotContextImpl.currentNotEntered() != null;
         return NO_ENTER;
     }
 
     void leaveIfNeeded(Object prev, PolyglotContextImpl context) {
+        CompilerAsserts.neverPartOfCompilation("not designed for compilation");
         if (prev != NO_ENTER) {
-            leave((PolyglotContextImpl) prev, context, true);
+            leave((PolyglotContextImpl) prev, context);
         }
     }
 
-    PolyglotContextImpl enter(PolyglotContextImpl context, boolean notifyEnter, Node safepointLocation, boolean pollSafepoint, boolean deactivateSafepoints) {
+    /**
+     * Use to enter contexts from paths either compiled or not. If always compiled use
+     * {@link #enterCached(PolyglotContextImpl, boolean)}.
+     */
+    PolyglotContextImpl enter(PolyglotContextImpl context) {
+        if (CompilerDirectives.isPartialEvaluationConstant(this)) {
+            return enterCached(context, true);
+        } else {
+            return enterBoundary(context);
+        }
+    }
+
+    @TruffleBoundary
+    private PolyglotContextImpl enterBoundary(PolyglotContextImpl context) {
+        return enterCached(context, true);
+    }
+
+    /**
+     * Only use to leave contexts from paths that are *always* compiled otherwise use
+     * {@link #enter(PolyglotContextImpl)}.
+     */
+    PolyglotContextImpl enterCached(PolyglotContextImpl context, boolean pollSafepoint) {
         PolyglotContextImpl prev;
         PolyglotThreadInfo info = context.cachedThreadInfo;
         boolean enterReverted = false;
@@ -1808,13 +1831,11 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                  * submitted cached thread info will be null and we will enter slow path, where the
                  * safepoint is polled.
                  */
-                if (notifyEnter) {
-                    try {
-                        info.notifyEnter(this, context);
-                    } catch (Throwable e) {
-                        info.leaveInternal(prev);
-                        throw e;
-                    }
+                try {
+                    info.notifyEnter(this, context);
+                } catch (Throwable e) {
+                    info.leaveInternal(prev);
+                    throw e;
                 }
                 return prev;
             } else {
@@ -1832,7 +1853,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
          * thread. The slow path acquires context lock to ensure ordering for context operations
          * like close.
          */
-        prev = context.enterThreadChanged(notifyEnter, safepointLocation, enterReverted, pollSafepoint, deactivateSafepoints);
+        prev = context.enterThreadChanged(true, enterReverted, pollSafepoint, false);
         assert verifyContext(context);
         return prev;
     }
@@ -1840,9 +1861,31 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     private static boolean verifyContext(PolyglotContextImpl context) {
         PolyglotContextImpl.State localState = context.state;
         return context == PolyglotContextImpl.currentNotEntered() || localState.isInvalidOrClosed();
+
     }
 
-    void leave(PolyglotContextImpl prev, PolyglotContextImpl context, boolean notifyLeft) {
+    /**
+     * Use to leave contexts from paths either compiled or not. If always compiled use
+     * {@link #leaveCached(PolyglotContextImpl, PolyglotContextImpl)}.
+     */
+    void leave(PolyglotContextImpl prev, PolyglotContextImpl context) {
+        if (CompilerDirectives.isPartialEvaluationConstant(this)) {
+            leaveCached(prev, context);
+        } else {
+            leaveBoundary(prev, context);
+        }
+    }
+
+    @TruffleBoundary
+    private void leaveBoundary(PolyglotContextImpl prev, PolyglotContextImpl context) {
+        leaveCached(prev, context);
+    }
+
+    /**
+     * Only use to leave contexts from paths that are *always* compiled otherwise use
+     * {@link #leave(PolyglotContextImpl, PolyglotContextImpl)}.
+     */
+    void leaveCached(PolyglotContextImpl prev, PolyglotContextImpl context) {
         assert context.state.isClosed() ||
                         PolyglotContextImpl.currentNotEntered() == context : "Cannot leave context that is currently not entered. Forgot to enter or leave a context?";
 
@@ -1850,9 +1893,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         PolyglotThreadInfo info = context.cachedThreadInfo;
         if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, info.getThread() == Thread.currentThread())) {
             try {
-                if (notifyLeft) {
-                    info.notifyLeave(this, context);
-                }
+                info.notifyLeave(this, context);
             } finally {
                 info.leaveInternal(prev);
                 entered = false;
@@ -1862,7 +1903,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                 return;
             }
         }
-        context.leaveThreadChanged(prev, notifyLeft, entered);
+        context.leaveThreadChanged(prev, true, entered);
     }
 
     static final class LogConfig {
