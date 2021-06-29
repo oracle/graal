@@ -831,9 +831,9 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     launcher_configs=[
         mx_sdk_vm.LauncherConfig(
             use_modules='image' if USE_NI_JPMS else 'launcher' if not svm_java8() else None,
+            main_module="org.graalvm.nativeimage.driver",
             destination="bin/<exe:native-image>",
             jar_distributions=["substratevm:SVM_DRIVER"],
-            main_module="org.graalvm.nativeimage.driver",
             main_class=_native_image_launcher_main_class(),
             build_args=[],
             extra_jvm_args=_native_image_launcher_extra_jvm_args(),
@@ -841,9 +841,11 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     ],
     library_configs=[
         mx_sdk_vm.LibraryConfig(
+            use_modules='image' if USE_NI_JPMS else 'launcher' if not svm_java8() else None,
             destination="<lib:native-image-agent>",
             jvm_library=True,
             jar_distributions=[
+                'substratevm:SVM_CONFIGURE',
                 'substratevm:JVMTI_AGENT_BASE',
                 'substratevm:SVM_AGENT',
             ],
@@ -853,6 +855,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
             ],
         ),
         mx_sdk_vm.LibraryConfig(
+            use_modules='image' if USE_NI_JPMS else 'launcher' if not svm_java8() else None,
             destination="<lib:native-image-diagnostics-agent>",
             jvm_library=True,
             jar_distributions=[
@@ -1006,6 +1009,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     support_distributions=[],
     launcher_configs=[
         mx_sdk_vm.LauncherConfig(
+            use_modules='image' if USE_NI_JPMS else 'launcher' if not svm_java8() else None,
+            main_module="org.graalvm.nativeimage.configure",
             destination="bin/<exe:native-image-configure>",
             jar_distributions=["substratevm:SVM_CONFIGURE"],
             main_class="com.oracle.svm.configure.ConfigurationTool",
@@ -1086,17 +1091,28 @@ def hellomodule(args):
     proj_dir = join(suite.dir, 'src', 'native-image-module-tests', 'hello.app')
     mx.run_maven(['-e', 'install'], cwd=proj_dir)
     module_path.append(join(proj_dir, 'target', 'hello-app-1.0-SNAPSHOT.jar'))
-    config = GraalVMConfig.build(native_images=['native-image'])
+    config = GraalVMConfig.build(native_images=['native-image', 'lib:native-image-agent', 'lib:native-image-diagnostics-agent'])
     with native_image_context(hosted_assertions=False, config=config) as native_image:
+        module_path_sep = ';' if mx.is_windows() else ':'
+        moduletest_run_args = [
+            '--add-exports=moduletests.hello.lib/hello.privateLib=moduletests.hello.app',
+            '--add-opens=moduletests.hello.lib/hello.privateLib2=moduletests.hello.app',
+            '-p', module_path_sep.join(module_path), '-m', 'moduletests.hello.app'
+        ]
+        mx.log('Running module-tests on JVM:')
         build_dir = join(svmbuild_dir(), 'hellomodule')
+        mx.run([
+            vm_executable_path('java', config),
+            # also test if native-image-agent works
+            '-agentlib:native-image-agent=config-output-dir=' + join(build_dir, 'config-output-dir-{pid}-{datetime}/'),
+            ] + moduletest_run_args)
+
         # Build module into native image
         mx.log('Building image from java modules: ' + str(module_path))
-        module_path_sep = ';' if mx.is_windows() else ':'
         built_image = native_image([
-            '--verbose', '-ea', '-H:Path=' + build_dir,
-            '--add-exports=moduletests.hello.lib/hello.privateLib=moduletests.hello.app',
-            '--add-exports=moduletests.hello.lib/hello.privateLib2=moduletests.hello.app',
-            '-p', module_path_sep.join(module_path), '-m', 'moduletests.hello.app'])
+            '--verbose', '-H:Path=' + build_dir,
+            '--trace-class-initialization=hello.lib.Greeter', # also test native-image-diagnostics-agent
+            ] + moduletest_run_args)
         mx.log('Running image ' + built_image + ' built from module:')
         mx.run([built_image])
 

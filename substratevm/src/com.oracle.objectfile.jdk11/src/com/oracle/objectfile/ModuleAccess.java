@@ -31,11 +31,18 @@ public class ModuleAccess {
     public static void openModuleByClass(Class<?> declaringClass, Class<?> accessingClass) {
         Module declaringModule = declaringClass.getModule();
         String packageName = declaringClass.getPackageName();
-        Module accessingModule = accessingClass == null ? null : accessingClass.getModule();
-        if (accessingModule != null && accessingModule.isNamed()) {
-            if (!declaringModule.isOpen(packageName, accessingModule)) {
-                Modules.addOpens(declaringModule, packageName, accessingModule);
+        Module namedAccessingModule = null;
+        if (accessingClass != null) {
+            Module accessingModule = accessingClass.getModule();
+            if (accessingModule.isNamed()) {
+                namedAccessingModule = accessingModule;
             }
+        }
+        if (namedAccessingModule != null ? declaringModule.isOpen(packageName, namedAccessingModule) : declaringModule.isOpen(packageName)) {
+            return;
+        }
+        if (namedAccessingModule != null) {
+            Modules.addOpens(declaringModule, packageName, namedAccessingModule);
         } else {
             Modules.addOpensToAllUnnamed(declaringModule, packageName);
         }

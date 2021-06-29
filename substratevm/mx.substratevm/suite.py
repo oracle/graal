@@ -1,3 +1,4 @@
+# pylint: disable=line-too-long
 suite = {
     "mxversion": "5.301.0",
     "name": "substratevm",
@@ -1090,7 +1091,8 @@ suite = {
                     "com.oracle.svm.hosted.agent                  to java.instrument",
                     "com.oracle.svm.core.graal.thread             to jdk.internal.vm.compiler",
                     "com.oracle.svm.core.classinitialization      to jdk.internal.vm.compiler",
-                    "* to org.graalvm.nativeimage.driver,org.graalvm.nativeimage.librarysupport,org.graalvm.nativeimage.llvm,com.oracle.svm.svm_enterprise",
+                    "com.oracle.svm.truffle.api                   to org.graalvm.truffle",
+                    "* to org.graalvm.nativeimage.driver,org.graalvm.nativeimage.configure,org.graalvm.nativeimage.librarysupport,org.graalvm.nativeimage.llvm,org.graalvm.nativeimage.agent.jvmtibase,org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.agent.diagnostics,com.oracle.svm.svm_enterprise",
                 ],
                 "opens" : [
                     "com.oracle.svm.core.nodes                    to jdk.internal.vm.compiler",
@@ -1109,6 +1111,8 @@ suite = {
                 ],
                 "uses" : [
                     "org.graalvm.nativeimage.Platform",
+                    "com.oracle.truffle.api.TruffleLanguage.Provider",
+                    "com.oracle.truffle.api.instrumentation.TruffleInstrument.Provider",
                 ],
                 "requiresConcealed": {
                     "jdk.internal.vm.ci": [
@@ -1167,6 +1171,13 @@ suite = {
                 "LIBRARY_SUPPORT",
                 "SVM_DRIVER",
             ],
+            "moduleInfo" : {
+                "name" : "org.graalvm.nativeimage.agent.jvmtibase",
+                "exports" : [
+                    "com.oracle.svm.jvmtiagentbase",
+                    "com.oracle.svm.jvmtiagentbase.jvmti",
+                ],
+            },
         },
 
         "LIBRARY_SUPPORT": {
@@ -1278,6 +1289,7 @@ suite = {
               "name" : "org.graalvm.nativeimage.driver",
               "exports" : [
                 "com.oracle.svm.driver",
+                "com.oracle.svm.driver.metainf",
               ],
               "uses" : [
                 "org.graalvm.compiler.options.OptionDescriptors",
@@ -1304,10 +1316,19 @@ suite = {
                 "JVMTI_AGENT_BASE",
                 "LIBRARY_SUPPORT",
                 "SVM_DRIVER",
+                "SVM_CONFIGURE"
             ],
-            "overlaps" : [
-                "SVM_CONFIGURE",
-            ],
+            "moduleInfo" : {
+                "name" : "org.graalvm.nativeimage.agent.tracing",
+                "exports" : [
+                    "com.oracle.svm.agent",
+                ],
+                "requiresConcealed" : {
+                    "jdk.internal.vm.ci" : [
+                        "jdk.vm.ci.meta",
+                    ],
+                }
+            },
             # vm: included as binary, tool descriptor intentionally not copied
         },
 
@@ -1321,6 +1342,12 @@ suite = {
                 "JVMTI_AGENT_BASE",
                 "LIBRARY_SUPPORT",
             ],
+            "moduleInfo" : {
+                "name" : "org.graalvm.nativeimage.agent.diagnostics",
+                "exports" : [
+                    "com.oracle.svm.diagnosticsagent",
+                ],
+            },
         },
 
         "SVM_CONFIGURE": {
@@ -1333,6 +1360,13 @@ suite = {
             "distDependencies": [
                 "LIBRARY_SUPPORT",
             ],
+            "moduleInfo" : {
+                "name" : "org.graalvm.nativeimage.configure",
+                "exports" : [
+                    "* to org.graalvm.nativeimage.agent.tracing",
+                    "com.oracle.svm.configure",
+                ],
+            },
         },
 
 

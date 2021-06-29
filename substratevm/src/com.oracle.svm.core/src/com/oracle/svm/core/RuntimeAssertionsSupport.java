@@ -184,7 +184,7 @@ public final class RuntimeAssertionsSupport {
     }
 
     private boolean desiredAssertionStatusImpl(String name, ClassLoader classLoader) {
-        boolean isNativeImageClassLoader = ImageSingletons.lookup(ClassLoaderQuery.class).isNativeImageClassLoader(classLoader);
+        boolean isNativeImageClassLoader = ImageSingletons.lookup(ClassLoaderSupport.class).isNativeImageClassLoader(classLoader);
         return desiredAssertionStatusImpl(name, isNativeImageClassLoader ? defaultAssertionStatus : systemAssertionStatus);
     }
 

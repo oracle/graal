@@ -133,6 +133,15 @@ class AbstractNativeImageConfig(_with_metaclass(ABCMeta, object)):
             add_exports.append('--add-exports=' + required_module_name + '/' + required_package_name + "=" + target_modules_str)
         return sorted(add_exports)
 
+    def get_add_exports(self, missing_jars):
+        if self.use_modules is None:
+            return ''
+        distributions = self.jar_distributions
+        distributions_transitive = mx.classpath_entries(distributions)
+        distributions_transitive_clean = [entry for entry in distributions_transitive if str(entry) not in missing_jars]
+        required_exports = mx_javamodules.requiredExports(distributions_transitive_clean, base_jdk())
+        return AbstractNativeImageConfig.get_add_exports_list(required_exports)
+
 
 class LauncherConfig(AbstractNativeImageConfig):
     def __init__(self, destination, jar_distributions, main_class, build_args, is_main_launcher=True,
@@ -148,10 +157,10 @@ class LauncherConfig(AbstractNativeImageConfig):
         :param str custom_launcher_script: Custom launcher script, to be used when not compiled as a native image
         """
         super(LauncherConfig, self).__init__(destination, jar_distributions, build_args, use_modules, home_finder=home_finder, **kwargs)
+        self.main_module = main_module
+        assert self.use_modules is None or self.main_module
         self.main_class = main_class
         self.is_main_launcher = is_main_launcher
-        assert use_modules is None or main_module
-        self.main_module = main_module
         self.default_symlinks = default_symlinks
         self.is_sdk_launcher = is_sdk_launcher
         self.custom_launcher_script = custom_launcher_script
@@ -165,15 +174,6 @@ class LauncherConfig(AbstractNativeImageConfig):
             raise Exception('the relative home path of {} is already set to {} and cannot also be set to {} for {}'.format(
                 language, self.relative_home_paths[language], path, self.destination))
         self.relative_home_paths[language] = path
-
-    def get_add_exports(self, missing_jars):
-        if self.use_modules is None:
-            return ''
-        distributions = self.jar_distributions
-        distributions_transitive = mx.classpath_entries(distributions)
-        distributions_transitive_clean = [entry for entry in distributions_transitive if str(entry) not in missing_jars]
-        required_exports = mx_javamodules.requiredExports(distributions_transitive_clean, base_jdk())
-        return ' '.join(AbstractNativeImageConfig.get_add_exports_list(required_exports))
 
 
 class LanguageLauncherConfig(LauncherConfig):
@@ -191,11 +191,11 @@ class LanguageLauncherConfig(LauncherConfig):
 
 
 class LibraryConfig(AbstractNativeImageConfig):
-    def __init__(self, destination, jar_distributions, build_args, jvm_library=False, **kwargs):
+    def __init__(self, destination, jar_distributions, build_args, jvm_library=False, use_modules=None, **kwargs):
         """
         :param bool jvm_library
         """
-        super(LibraryConfig, self).__init__(destination, jar_distributions, build_args, **kwargs)
+        super(LibraryConfig, self).__init__(destination, jar_distributions, build_args, use_modules, **kwargs)
         self.jvm_library = jvm_library
 
 
