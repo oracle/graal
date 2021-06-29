@@ -1093,7 +1093,7 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
             if (cl == null) {
                 ClassLoader newCL;
                 try {
-                    newCL = ClassLoader.class.cast(GENERATOR_CLASS_LOADER_CONSTRUCTOR.newInstance(factoryInterface));
+                    newCL = (ClassLoader) GENERATOR_CLASS_LOADER_CONSTRUCTOR.newInstance(factoryInterface);
                 } catch (ReflectiveOperationException e) {
                     throw VMError.shouldNotReachHere(e);
                 }
