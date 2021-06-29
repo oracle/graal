@@ -239,6 +239,9 @@ final class SafepointStackSampler {
         @SuppressWarnings("unused")
         List<StackTraceEntry> createEntries(SourceSectionFilter filter, String synthetic) {
             List<StackTraceEntry> entries = new ArrayList<>(nextFrameIndex);
+            if (synthetic != null) {
+                entries.add(new StackTraceEntry(synthetic));
+            }
             for (int i = 0; i < nextFrameIndex; i++) {
                 CallTarget target = targets[i];
                 RootNode root = ((RootCallTarget) target).getRootNode();
@@ -246,9 +249,6 @@ final class SafepointStackSampler {
                 if (sourceSection != null && filter.includes(root, sourceSection)) {
                     entries.add(new StackTraceEntry(VISITOR_TAGS, sourceSection, root, root, states[i]));
                 }
-            }
-            if (synthetic != null) {
-                entries.add(new StackTraceEntry(synthetic));
             }
             return entries;
         }
