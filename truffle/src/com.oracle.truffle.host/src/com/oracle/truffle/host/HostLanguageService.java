@@ -232,43 +232,29 @@ public class HostLanguageService extends AbstractHostService {
     }
 
     @Override
-    public Object migrateValue(Object currentPolygotContext, Object value, Object valuePolyglotContext) {
-        assert currentPolygotContext != valuePolyglotContext;
-        if (!(value instanceof TruffleObject)) {
+    public Object migrateValue(Object targetContext, Object value, Object valueContext) {
+        assert targetContext != valueContext;
+        if (value instanceof TruffleObject) {
+            assert value instanceof TruffleObject;
+            if (HostObject.isInstance(value)) {
+                return HostObject.withContext(value, (HostContext) HostAccessor.ENGINE.getHostContext(targetContext));
+            } else if (value instanceof HostProxy) {
+                return HostProxy.withContext(value, (HostContext) HostAccessor.ENGINE.getHostContext(targetContext));
+            } else if (valueContext == null) {
+                /*
+                 * The only way this can happen is with Value.asValue(TruffleObject). If it happens
+                 * otherwise, its wrong.
+                 */
+                assert value instanceof TruffleObject;
+                return value;
+            } else {
+                // cannot migrate
+                return null;
+            }
+        } else {
             assert InteropLibrary.isValidValue(value);
             return value;
-        } else {
-            return migrateTruffleObject(currentPolygotContext, value, valuePolyglotContext);
         }
-    }
-
-    static Object migrateTruffleObject(Object targetContext, Object value, Object valueContext) {
-        assert value instanceof TruffleObject;
-        if (HostObject.isInstance(value)) {
-            return HostObject.withContext(value, (HostContext) HostAccessor.ENGINE.getHostContext(targetContext));
-        } else if (value instanceof HostProxy) {
-            return HostProxy.withContext(value, (HostContext) HostAccessor.ENGINE.getHostContext(targetContext));
-        } else if (valueContext == null) {
-            /*
-             * The only way this can happen is with Value.asValue(TruffleObject). If it happens
-             * otherwise, its wrong.
-             */
-            assert value instanceof TruffleObject;
-            return value;
-        } else if (value instanceof HostForeignValue) {
-            HostForeignValue otherValue = (HostForeignValue) value;
-            if (otherValue.targetContext == targetContext && otherValue.delegateContext == valueContext) {
-                // reuse wrapper it is already wrapped
-                return otherValue;
-            } else if (otherValue.targetContext == valueContext && otherValue.delegateContext == targetContext) {
-                // unpack foreign value it belongs to that context
-                return otherValue.delegate;
-            } else {
-                return new HostForeignValue(targetContext, otherValue.delegate, valueContext);
-            }
-        }
-        assert value instanceof TruffleObject;
-        return new HostForeignValue(targetContext, value, valueContext);
     }
 
     @Override
