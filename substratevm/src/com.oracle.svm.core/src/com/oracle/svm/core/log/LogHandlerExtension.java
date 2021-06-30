@@ -61,4 +61,13 @@ public interface LogHandlerExtension extends LogHandler {
     default boolean fatalContext(CodePointer callerIP, String msg, Throwable ex) {
         return true;
     }
+
+    /**
+     * Gets the {@link Log} object to be used when {@link #fatalContext} returns true.
+     *
+     * @since 21.3
+     */
+    default Log getFatalLog() {
+        return Log.log();
+    }
 }

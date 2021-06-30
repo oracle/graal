@@ -74,12 +74,37 @@ public class FunctionPointerLogHandler implements LogHandlerExtension {
         if (delegate instanceof LogHandlerExtension) {
             res = ((LogHandlerExtension) delegate).fatalContext(callerIP, msg, ex);
         }
-        if (res && fatalLogFunctionPointer.isNonNull()) {
-            // Switch output to the function pointer that may redirect
-            // to a log file instead of to stdout or stderr.
-            logFunctionPointer = fatalLogFunctionPointer;
-        }
         return res;
+    }
+
+    /**
+     * Sends output to {@link FunctionPointerLogHandler#fatalLogFunctionPointer} if it is non-null.
+     */
+    class FatalLog extends RealLog {
+        @Override
+        protected Log rawBytes(CCharPointer bytes, UnsignedWord length) {
+            if (fatalLogFunctionPointer.isNonNull()) {
+                fatalLogFunctionPointer.invoke(bytes, length);
+            } else {
+                FunctionPointerLogHandler.this.log(bytes, length);
+            }
+            return this;
+        }
+
+        @Override
+        public Log flush() {
+            if (fatalLogFunctionPointer.isNull()) {
+                FunctionPointerLogHandler.this.flush();
+            }
+            return this;
+        }
+    }
+
+    private final FatalLog fatalLog = new FatalLog();
+
+    @Override
+    public Log getFatalLog() {
+        return fatalLogFunctionPointer.isNonNull() ? fatalLog : Log.log();
     }
 
     @Override
