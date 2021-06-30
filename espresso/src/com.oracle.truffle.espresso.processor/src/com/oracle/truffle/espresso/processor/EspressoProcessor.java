@@ -198,6 +198,9 @@ public abstract class EspressoProcessor extends BaseProcessor {
     TypeElement injectProfile;
     private static final String INJECT_PROFILE = "com.oracle.truffle.espresso.substitutions.InjectProfile";
 
+    TypeElement truffleNode;
+    private static final String TRUFFLE_NODE = "com.oracle.truffle.api.nodes.Node";
+
     // Global constants
     private static final String FACTORY = "Factory";
 
@@ -320,6 +323,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
         }
         injectMeta = getTypeElement(INJECT_META);
         injectProfile = getTypeElement(INJECT_PROFILE);
+        truffleNode = getTypeElement(TRUFFLE_NODE);
         processImpl(roundEnv);
         done = true;
         return false;
@@ -356,18 +360,39 @@ public abstract class EspressoProcessor extends BaseProcessor {
     }
 
     /**
-     * For substitutions that use a node, find the execute* (abstract) method.
+     * For substitutions that use a node, find the execute* method. Suitable methods must be
+     * non-private and be called execute*.
      */
     ExecutableElement findNodeExecute(TypeElement node) {
-        for (Element method : node.getEnclosedElements()) {
-            if (method.getKind() == ElementKind.METHOD) {
-                if (method.getModifiers().contains(Modifier.ABSTRACT)) {
-                    return (ExecutableElement) method;
+        if (!env().getTypeUtils().isSubtype(node.asType(), truffleNode.asType())) {
+            getMessager().printMessage(Diagnostic.Kind.ERROR, "(Node) Substitution must inherit from " + truffleNode.getQualifiedName(), node);
+        }
+        ExecutableElement executeMethod = null;
+        TypeElement curElement = node;
+        while (true) {
+            for (Element method : curElement.getEnclosedElements()) {
+                if (method.getKind() == ElementKind.METHOD) {
+                    // Match abstract non-private execute* .
+                    if (method.getSimpleName().toString().startsWith("execute") &&
+                                    !method.getModifiers().contains(Modifier.PRIVATE) &&
+                                    method.getModifiers().contains(Modifier.ABSTRACT)) {
+                        if (executeMethod != null) {
+                            getMessager().printMessage(Diagnostic.Kind.ERROR, "Ambiguous execute* methods found: a unique non-private abstract execute* method is required", node);
+                        }
+                        executeMethod = (ExecutableElement) method;
+                    }
                 }
             }
+            TypeMirror superClass = curElement.getSuperclass();
+            if (TypeKind.NONE.equals(superClass.getKind())) {
+                break;
+            }
+            curElement = asTypeElement(superClass);
         }
-        getMessager().printMessage(Diagnostic.Kind.ERROR, "Node abstract execute* method not found", node);
-        return null;
+        if (executeMethod == null) {
+            getMessager().printMessage(Diagnostic.Kind.ERROR, "Node execute* method not found", node);
+        }
+        return executeMethod;
     }
 
     boolean hasProfileInjection(ExecutableElement method) {
