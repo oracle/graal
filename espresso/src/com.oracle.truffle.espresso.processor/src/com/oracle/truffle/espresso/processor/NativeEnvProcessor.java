@@ -52,7 +52,6 @@ public final class NativeEnvProcessor extends EspressoProcessor {
     private static final String NATIVE_SIGNATURE = FFI_PACKAGE + "." + "NativeSignature";
 
     private static final String HANDLE = JNI_PACKAGE + "." + "Handle";
-    private static final String JNI_IMPL = JNI_PACKAGE + "." + "JniImpl";
 
     private static final String SUBSTITUTIONS_PACKAGE = "com.oracle.truffle.espresso.substitutions";
     private static final String SUBSTITUTOR = "CallableFromNative";
@@ -79,8 +78,6 @@ public final class NativeEnvProcessor extends EspressoProcessor {
 
     // @GenerateNativeEnv
     private TypeElement generateIntrinsification;
-    // @JniImpl
-    private TypeElement jniImpl;
 
     private static final class IntrinsificationTarget {
         // The package for the target intrinsified native env.
@@ -127,14 +124,10 @@ public final class NativeEnvProcessor extends EspressoProcessor {
         super(SUBSTITUTIONS_PACKAGE, SUBSTITUTOR);
     }
 
-    protected void initNfiType() {
-    }
-
     @Override
     void processImpl(RoundEnvironment env) {
         // Set up the different annotations, along with their values, that we will need.
         this.generateIntrinsification = getTypeElement(GENERATE_INTRISIFICATION);
-        this.jniImpl = getTypeElement(JNI_IMPL);
         this.pointerAnnotation = getTypeElement(POINTER);
         this.handleAnnotation = getTypeElement(HANDLE);
 
@@ -213,7 +206,7 @@ public final class NativeEnvProcessor extends EspressoProcessor {
         commitSubstitution(element, targetPackage, substitutorName, classFile);
     }
 
-    boolean isJni(Element vmElement, TypeElement implAnnotation) {
+    private static boolean isJni(Element vmElement, TypeElement implAnnotation) {
         AnnotationMirror mirror = getAnnotation(vmElement, implAnnotation);
         try {
             Boolean value = getAnnotationValue(mirror, "isJni", Boolean.class);
