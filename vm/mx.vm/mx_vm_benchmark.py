@@ -121,10 +121,9 @@ class NativeImageVM(GraalVm):
             self.bmSuite = bm_suite
             self.benchmark_suite_name = bm_suite.benchSuiteName(args) if len(inspect.getargspec(bm_suite.benchSuiteName).args) > 1 else bm_suite.benchSuiteName() # pylint: disable=deprecated-method
             self.benchmark_name = bm_suite.benchmarkName()
-            self.executable, self.classpath_arguments, self.system_properties, self.image_run_args = NativeImageVM.extract_benchmark_arguments(args)
+            self.executable, self.classpath_arguments, self.system_properties, cmd_line_image_run_args = NativeImageVM.extract_benchmark_arguments(args)
             self.extra_image_build_arguments = bm_suite.extra_image_build_argument(self.benchmark_name, args)
-            cmd_line_image_run_args = self.image_run_args
-            self.extra_run_args = bm_suite.extra_run_arg(self.benchmark_name, args, cmd_line_image_run_args)
+            self.image_run_args = bm_suite.extra_run_arg(self.benchmark_name, args, cmd_line_image_run_args)
             self.extra_agent_run_args = bm_suite.extra_agent_run_arg(self.benchmark_name, args, cmd_line_image_run_args)
             self.extra_profile_run_args = bm_suite.extra_profile_run_arg(self.benchmark_name, args, cmd_line_image_run_args)
             self.extra_agent_profile_run_args = bm_suite.extra_agent_profile_run_arg(self.benchmark_name, args, cmd_line_image_run_args)
@@ -567,7 +566,7 @@ class NativeImageVM(GraalVm):
 
     def run_stage_run(self, config, stages, out):
         image_path = os.path.join(config.output_dir, config.final_image_name)
-        with stages.set_command([image_path] + config.extra_run_args) as s:
+        with stages.set_command([image_path] + config.image_run_args) as s:
             s.execute_command(vm=self)
             if s.exit_code == 0:
                 # The image size for benchmarks is tracked by printing on stdout and matching the rule.
