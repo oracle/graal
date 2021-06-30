@@ -33,10 +33,12 @@ import java.util.Objects;
 
 import com.oracle.svm.core.sampling.CallStackFrameMethodData;
 import com.oracle.svm.core.sampling.CallStackFrameMethodInfo;
+import jdk.vm.ci.code.BytecodePosition;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.util.FrequencyEncoder;
 import org.graalvm.compiler.core.common.util.TypeConversion;
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.CalleeSavedRegisters;
@@ -246,7 +248,7 @@ public class FrameInfoEncoder {
     private static int countVirtualObjects(DebugInfo debugInfo) {
         /*
          * We want to know the highest virtual object id in use in this DebugInfo. For that, we have
-         * to recursively visited all VirtualObject in all frames.
+         * to recursively visit all VirtualObject in all frames.
          */
         BitSet visitedVirtualObjects = new BitSet();
         for (BytecodeFrame frame = debugInfo.frame(); frame != null; frame = frame.caller()) {
@@ -257,7 +259,11 @@ public class FrameInfoEncoder {
     }
 
     private static void countVirtualObjects(JavaValue[] values, BitSet visitedVirtualObjects) {
-        for (JavaValue value : values) {
+        for (JavaValue v : values) {
+            JavaValue value = v;
+            if (value instanceof StackLockValue) {
+                value = ((StackLockValue) value).getOwner();
+            }
             if (value instanceof VirtualObject) {
                 VirtualObject virtualObject = (VirtualObject) value;
                 if (!visitedVirtualObjects.get(virtualObject.getId())) {
@@ -413,6 +419,7 @@ public class FrameInfoEncoder {
 
     private void makeVirtualObject(FrameData data, VirtualObject virtualObject, boolean isDeoptEntry) {
         int id = virtualObject.getId();
+
         if (data.virtualObjects[id] != null) {
             return;
         }
