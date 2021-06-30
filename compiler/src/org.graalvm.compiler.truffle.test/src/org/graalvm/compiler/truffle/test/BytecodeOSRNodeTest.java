@@ -624,6 +624,9 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
                             // should get the OSR frame here.
                             int indexInFrame = frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY).getInt(indexSlot);
                             Assert.assertEquals(index, indexInFrame);
+                            if (CompilerDirectives.inCompiledCode()) {
+                                Assert.assertTrue(frameInstance.isVirtualFrame());
+                            }
                         } catch (FrameSlotTypeException e) {
                             throw new IllegalStateException("Error accessing index slot");
                         }
