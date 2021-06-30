@@ -139,7 +139,7 @@ meth public void leave()
 meth public void resetLimits()
 meth public void safepoint()
 supr java.lang.Object
-hfds ALL_HOST_CLASSES,EMPTY,NO_HOST_CLASSES,UNSET_HOST_LOOKUP,impl
+hfds ALL_HOST_CLASSES,EMPTY,NO_HOST_CLASSES,UNSET_HOST_LOOKUP,currentAPI,dispatch,engine,receiver
 
 CLSS public final org.graalvm.polyglot.Context$Builder
  outer org.graalvm.polyglot.Context
@@ -157,6 +157,7 @@ meth public org.graalvm.polyglot.Context$Builder allowHostClassLookup(java.util.
 meth public org.graalvm.polyglot.Context$Builder allowIO(boolean)
 meth public org.graalvm.polyglot.Context$Builder allowNativeAccess(boolean)
 meth public org.graalvm.polyglot.Context$Builder allowPolyglotAccess(org.graalvm.polyglot.PolyglotAccess)
+meth public org.graalvm.polyglot.Context$Builder allowValueSharing(boolean)
 meth public org.graalvm.polyglot.Context$Builder arguments(java.lang.String,java.lang.String[])
 meth public org.graalvm.polyglot.Context$Builder currentWorkingDirectory(java.nio.file.Path)
 meth public org.graalvm.polyglot.Context$Builder engine(org.graalvm.polyglot.Engine)
@@ -178,7 +179,7 @@ meth public org.graalvm.polyglot.Context$Builder resourceLimits(org.graalvm.poly
 meth public org.graalvm.polyglot.Context$Builder serverTransport(org.graalvm.polyglot.io.MessageTransport)
 meth public org.graalvm.polyglot.Context$Builder timeZone(java.time.ZoneId)
 supr java.lang.Object
-hfds allowAllAccess,allowCreateProcess,allowCreateThread,allowExperimentalOptions,allowHostAccess,allowHostClassLoading,allowIO,allowNativeAccess,arguments,currentWorkingDirectory,customFileSystem,customLogHandler,environment,environmentAccess,err,hostAccess,hostClassFilter,hostClassLoader,in,messageTransport,onlyLanguages,options,out,polyglotAccess,processHandler,resourceLimits,sharedEngine,zone
+hfds allowAllAccess,allowCreateProcess,allowCreateThread,allowExperimentalOptions,allowHostAccess,allowHostClassLoading,allowIO,allowNativeAccess,allowValueSharing,arguments,currentWorkingDirectory,customFileSystem,customLogHandler,environment,environmentAccess,err,hostAccess,hostClassFilter,hostClassLoader,in,messageTransport,onlyLanguages,options,out,polyglotAccess,processHandler,resourceLimits,sharedEngine,zone
 
 CLSS public final org.graalvm.polyglot.Engine
 innr public final Builder
@@ -195,7 +196,7 @@ meth public static org.graalvm.polyglot.Engine$Builder newBuilder()
 meth public void close()
 meth public void close(boolean)
 supr java.lang.Object
-hfds EMPTY,JDK8_OR_EARLIER,impl
+hfds EMPTY,JDK8_OR_EARLIER,currentAPI,dispatch,receiver
 hcls APIAccessImpl,ImplHolder,PolyglotInvalid
 
 CLSS public final org.graalvm.polyglot.Engine$Builder
@@ -288,7 +289,7 @@ meth public java.lang.String getName()
 meth public java.lang.String getVersion()
 meth public org.graalvm.options.OptionDescriptors getOptions()
 supr java.lang.Object
-hfds impl
+hfds dispatch,receiver
 
 CLSS public final org.graalvm.polyglot.Language
 meth public boolean isInteractive()
@@ -300,7 +301,7 @@ meth public java.lang.String getVersion()
 meth public java.util.Set<java.lang.String> getMimeTypes()
 meth public org.graalvm.options.OptionDescriptors getOptions()
 supr java.lang.Object
-hfds impl
+hfds dispatch,receiver
 
 CLSS public final org.graalvm.polyglot.PolyglotAccess
 fld public final static org.graalvm.polyglot.PolyglotAccess ALL
@@ -348,7 +349,7 @@ meth public void printStackTrace(java.io.PrintStream)
 meth public void printStackTrace(java.io.PrintWriter)
 meth public void setStackTrace(java.lang.StackTraceElement[])
 supr java.lang.RuntimeException
-hfds impl
+hfds dispatch,impl
 
 CLSS public final org.graalvm.polyglot.PolyglotException$StackFrame
  outer org.graalvm.polyglot.PolyglotException
@@ -366,13 +367,13 @@ CLSS public final org.graalvm.polyglot.ResourceLimitEvent
 meth public java.lang.String toString()
 meth public org.graalvm.polyglot.Context getContext()
 supr java.lang.Object
-hfds impl
+hfds context
 
 CLSS public final org.graalvm.polyglot.ResourceLimits
 innr public final Builder
 meth public static org.graalvm.polyglot.ResourceLimits$Builder newBuilder()
 supr java.lang.Object
-hfds EMPTY,impl
+hfds EMPTY,receiver
 
 CLSS public final org.graalvm.polyglot.ResourceLimits$Builder
  outer org.graalvm.polyglot.ResourceLimits
@@ -421,7 +422,7 @@ meth public static org.graalvm.polyglot.Source$Builder newBuilder(java.lang.Stri
 meth public static org.graalvm.polyglot.Source$Builder newBuilder(java.lang.String,java.net.URL)
 meth public static org.graalvm.polyglot.Source$Builder newBuilder(java.lang.String,org.graalvm.polyglot.io.ByteSequence,java.lang.String)
 supr java.lang.Object
-hfds EMPTY,IMPL,impl
+hfds DISPATCH,EMPTY,receiver
 
 CLSS public org.graalvm.polyglot.Source$Builder
  outer org.graalvm.polyglot.Source
@@ -460,7 +461,7 @@ meth public java.lang.CharSequence getCode()
 meth public java.lang.String toString()
 meth public org.graalvm.polyglot.Source getSource()
 supr java.lang.Object
-hfds IMPL,impl,source
+hfds DISPATCH,receiver,source
 
 CLSS public abstract org.graalvm.polyglot.TypeLiteral<%0 extends java.lang.Object>
 cons protected init()
@@ -571,7 +572,6 @@ meth public void writeBufferInt(java.nio.ByteOrder,long,int)
 meth public void writeBufferLong(java.nio.ByteOrder,long,long)
 meth public void writeBufferShort(java.nio.ByteOrder,long,short)
 supr java.lang.Object
-hfds impl,receiver
 
 CLSS public abstract interface org.graalvm.polyglot.io.ByteSequence
 meth public abstract byte byteAt(int)
