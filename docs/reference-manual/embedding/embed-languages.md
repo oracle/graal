@@ -439,7 +439,7 @@ an explicit engine assigned to it. All contexts associated with an engine share 
 The GraalVM Polyglot API can be used from within a guest language using Java interoperability.
 This can be useful if a script needs to run isolated from the parent context.
 Inside guest languages the `Value` API cannot be used. 
-Instead the language specific interoperoability API for foreign value is used.
+Instead the language-specific interoperability API for foreign values is used.
 Please refer to the individual language documentation for details on how to interoperate with foreign values.
 
 Consider the following code snippet as an example:
@@ -469,7 +469,7 @@ In this code: 
 - `inner = Java.type('org.graalvm.polyglot.Context').create()` the first JS script line looks up the Java host type Context and creates a new inner context instance with no privileges (default).
 - `inner.eval('js', '({data:42})');` evaluates the JavaScript code `({data:42})` in the inner context and returns stores the result.
 - `"value.data"` this line reads the member `data` from the result of the inner context. Note that this result can only be read as long as the inner context is not yet closed.
-- `context.eval("js", "c.close()")` this snippet closes the inner context. It is recommended to always close inner contexts.
+- `context.eval("js", "c.close()")` this snippet closes the inner context. Inner contexts need to be closed manually and are not automatically closed with the parent context.
 - Finally the example is expected to print `Valid true` to the console.
 
 ## Build a Shell for Many Languages
