@@ -586,15 +586,6 @@ class ScalaDaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.ScalaDaCapoBenchma
     def benchmark_resources(self, benchmark):
         return _scala_dacapo_resources[benchmark]
 
-    def extra_agent_run_arg(self, benchmark, args, image_run_args):
-        return super(ScalaDaCapoNativeImageBenchmarkSuite, self).extra_agent_run_arg(benchmark, args, image_run_args)
-
-    def extra_profile_run_arg(self, benchmark, args, image_run_args):
-        return super(ScalaDaCapoNativeImageBenchmarkSuite, self).extra_profile_run_arg(benchmark, args, image_run_args)
-
-    def extra_agent_profile_run_arg(self, benchmark, args, image_run_args):
-        return super(ScalaDaCapoNativeImageBenchmarkSuite, self).extra_agent_profile_run_arg(benchmark, args, image_run_args)
-
     def skip_agent_assertions(self, benchmark, args):
         user_args = super(ScalaDaCapoNativeImageBenchmarkSuite, self).skip_agent_assertions(benchmark, args)
         if user_args is not None:
