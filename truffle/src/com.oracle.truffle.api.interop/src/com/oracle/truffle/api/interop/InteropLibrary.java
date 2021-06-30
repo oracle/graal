@@ -2879,14 +2879,15 @@ public abstract class InteropLibrary extends Library {
     static final InteropLibrary UNCACHED = FACTORY.getUncached();
 
     /**
-     * Utility to detect valid interop value. An interop value is a value that can be passed for any
-     * Object typed parameter or return type. This method is intended to be used for assertions.
-     * This method will be extend with more checked types as the protocol grows.
+     * Utility to check whether a value is a valid interop value. Interop values are all values that
+     * can flow through the language implementation freely and are intended to be used as receivers
+     * for the {@link InteropLibrary}. This method will be extend with more checked types as interop
+     * is extended with further allowed values.
      * <p>
      * It is not recommended to make assumptions about the types of interop values. It is
-     * recommended to exclusively use the interop protocol to check for types. However it sometimes
-     * is necessary to make such assumptions for performance reasons. To verify that these
-     * assumptions continue to hold this method can be used.
+     * recommended to use instance methods in {@link InteropLibrary} to check for interop types
+     * instead. However, it can be useful to make such assumptions for performance reasons. To
+     * verify that these assumptions continue to hold this method can be used.
      *
      * @since 21.3
      */
@@ -2905,16 +2906,14 @@ public abstract class InteropLibrary extends Library {
     }
 
     /**
-     * Utility to detect valid interop protocol value. An interop protocol value is a value that can
-     * be passed for any parameter or return type of the protocol. This method is intended to be
-     * used for assertions, in particular in combination with {@link ReflectionLibrary}. This method
-     * will be extend with more checked types as the protocol grows.
-     * <p>
-     * It is not recommended to make assumptions about the types of interop values. It is
-     * recommended to exclusively use the interop protocol to check for types. However it sometimes
-     * is necessary to make such assumptions for performance reasons. To verify that these
-     * assumptions continue to hold this method can be used.
+     * Utility to check whether a value is a valid interop protocol value. An interop protocol value
+     * is either an {@link #isValidValue(Object) interop value} or a value that might be returned or
+     * passed as parameter by any of the methods in {@link InteropLibrary}. This can be useful to
+     * validate all values received or returned by a wrapper that uses {@link ReflectionLibrary} to
+     * delegate all interop protocol parameters and return values. This method will be extended with
+     * more checked types as interop is extended with further allowed values.
      *
+     * @see #isValidValue(Object)
      * @since 21.3
      */
     @TruffleBoundary
