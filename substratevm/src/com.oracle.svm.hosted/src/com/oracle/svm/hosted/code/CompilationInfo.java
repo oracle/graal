@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted.code;
 
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -76,6 +77,11 @@ public class CompilationInfo {
     protected long numNodesAfterCompilation;
     protected long numDeoptEntryPoints;
     protected long numDuringCallEntryPoints;
+
+    /* Statistics collected when method is put into compile queue. */
+    protected final AtomicLong numDirectCalls = new AtomicLong();
+    protected final AtomicLong numVirtualCalls = new AtomicLong();
+    protected final AtomicLong numEntryPointCalls = new AtomicLong();
 
     public CompilationInfo(HostedMethod method) {
         this.method = method;
