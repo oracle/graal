@@ -81,21 +81,21 @@ public final class Target_java_lang_Object {
     /* As of JDK 14+, these are no longer linked in libjava. */
 
     @Substitution(hasReceiver = true)
-    public static void wait(StaticObject self, long time,
+    public static void wait(@JavaType(Object.class) StaticObject self, long time,
                     @InjectMeta Meta meta,
                     @InjectProfile SubstitutionProfiler profiler) {
         meta.getVM().JVM_MonitorWait(self, time, meta, profiler);
     }
 
     @Substitution(hasReceiver = true)
-    public static void notify(StaticObject self,
+    public static void notify(@JavaType(Object.class) StaticObject self,
                     @InjectMeta Meta meta,
                     @InjectProfile SubstitutionProfiler profiler) {
         meta.getVM().JVM_MonitorNotify(self, profiler);
     }
 
     @Substitution(hasReceiver = true)
-    public static void notifyAll(StaticObject self,
+    public static void notifyAll(@JavaType(Object.class) StaticObject self,
                     @InjectMeta Meta meta,
                     @InjectProfile SubstitutionProfiler profiler) {
         meta.getVM().JVM_MonitorNotifyAll(self, profiler);

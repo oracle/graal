@@ -134,7 +134,6 @@ import com.oracle.truffle.espresso.substitutions.Target_java_lang_System;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread.State;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_ref_Reference;
-import com.oracle.truffle.espresso.substitutions.VMCollector;
 import com.oracle.truffle.espresso.vm.structs.JavaVMAttachArgs;
 import com.oracle.truffle.espresso.vm.structs.JdkVersionInfo;
 import com.oracle.truffle.espresso.vm.structs.Structs;
@@ -1236,7 +1235,6 @@ public final class VM extends NativeEnv implements ContextAccess {
         // Unlike Halt, runs finalizers
     }
 
-<<<<<<< HEAD
     private static String getModuleMain(OptionValues options) {
         String module = options.get(EspressoOptions.Module);
         if (module.length() > 0) {
@@ -1263,13 +1261,6 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     private Map<String, String> buildPropertiesMap() {
         Map<String, String> map = new HashMap<>();
-=======
-    @VmImpl(isJni = true)
-    @TruffleBoundary
-    public @JavaType(Properties.class) StaticObject JVM_InitProperties(@JavaType(Properties.class) StaticObject properties) {
-        Method setProperty = properties.getKlass().lookupMethod(Name.setProperty, Signature.Object_String_String);
->>>>>>> 3229679bb098 (Generate classes in the same package as the declaring class.)
-
         OptionValues options = getContext().getEnv().getOptions();
 
         // Set user-defined system properties.
@@ -1322,10 +1313,9 @@ public final class VM extends NativeEnv implements ContextAccess {
         return map;
     }
 
-    @VmImpl
-    @JniImpl
+    @VmImpl(isJni = true)
     @TruffleBoundary
-    public @Host(Properties.class) StaticObject JVM_InitProperties(@Host(Properties.class) StaticObject properties) {
+    public @JavaType(Properties.class) StaticObject JVM_InitProperties(@JavaType(Properties.class) StaticObject properties) {
         Map<String, String> props = buildPropertiesMap();
         Method setProperty = properties.getKlass().lookupMethod(Name.setProperty, Signature.Object_String_String);
         for (Map.Entry<String, String> entry : props.entrySet()) {
@@ -1334,8 +1324,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         return properties;
     }
 
-    @JniImpl
-    @VmImpl
+    @VmImpl(isJni = true)
     @TruffleBoundary
     public @JavaType(String[].class) StaticObject JVM_GetProperties() {
         Map<String, String> props = buildPropertiesMap();
@@ -1589,12 +1578,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     static private class PrivilegedStack {
-        public static Supplier<PrivilegedStack> supplier = new Supplier<PrivilegedStack>() {
-            @Override
-            public PrivilegedStack get() {
-                return new PrivilegedStack();
-            }
-        };
+        public static Supplier<PrivilegedStack> supplier=new Supplier<PrivilegedStack>(){@Override public PrivilegedStack get(){return new PrivilegedStack();}};
 
         private Element top;
 
@@ -2568,10 +2552,8 @@ public final class VM extends NativeEnv implements ContextAccess {
         return getContext().hasReferencePendingList();
     }
 
-<<<<<<< HEAD
-    @VmImpl
-    @JniImpl
-    public boolean JVM_PhantomReferenceRefersTo(@Host(Reference.class) StaticObject ref, @SuppressWarnings("unused") @Host(Object.class) StaticObject object,
+    @VmImpl(isJni = true)
+    public boolean JVM_PhantomReferenceRefersTo(@JavaType(Reference.class) StaticObject ref, @SuppressWarnings("unused") @JavaType(Object.class) StaticObject object,
                     @InjectProfile SubstitutionProfiler profiler) {
         if (StaticObject.isNull(ref)) {
             profiler.profile(0);
@@ -2583,9 +2565,8 @@ public final class VM extends NativeEnv implements ContextAccess {
         return false;
     }
 
-    @VmImpl
-    @JniImpl
-    public boolean JVM_ReferenceRefersTo(@Host(Reference.class) StaticObject ref, @Host(Object.class) StaticObject object,
+    @VmImpl(isJni = true)
+    public boolean JVM_ReferenceRefersTo(@JavaType(Reference.class) StaticObject ref, @JavaType(Object.class) StaticObject object,
                     @InjectProfile SubstitutionProfiler profiler) {
         if (StaticObject.isNull(ref)) {
             profiler.profile(0);
@@ -2595,9 +2576,8 @@ public final class VM extends NativeEnv implements ContextAccess {
         return Target_java_lang_ref_Reference.get(ref, getMeta()) == object;
     }
 
-    @VmImpl
-    @JniImpl
-    public void JVM_ReferenceClear(@Host(Reference.class) StaticObject ref,
+    @VmImpl(isJni = true)
+    public void JVM_ReferenceClear(@JavaType(Reference.class) StaticObject ref,
                     @InjectProfile SubstitutionProfiler profiler) {
         if (StaticObject.isNull(ref)) {
             profiler.profile(0);
@@ -2606,11 +2586,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         Target_java_lang_ref_Reference.clear(ref, getMeta());
     }
 
-    @VmImpl
-    @JniImpl
-=======
     @VmImpl(isJni = true)
->>>>>>> 3229679bb098 (Generate classes in the same package as the declaring class.)
     @SuppressWarnings("unused")
     public void JVM_InitializeFromArchive(@JavaType(Class.class) StaticObject cls) {
         /*
@@ -2619,21 +2595,17 @@ public final class VM extends NativeEnv implements ContextAccess {
          */
     }
 
-<<<<<<< HEAD
-    @VmImpl
-    @JniImpl
+    @VmImpl(isJni = true)
     public static boolean JVM_IsDumpingClassList() {
         return false;
     }
 
-    @VmImpl
-    @JniImpl
+    @VmImpl(isJni = true)
     public static boolean JVM_IsCDSDumpingEnabled() {
         return false;
     }
 
-    @VmImpl
-    @JniImpl
+    @VmImpl(isJni = true)
     public static boolean JVM_IsSharingEnabled() {
         return false;
     }
@@ -2643,11 +2615,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         return 0L;
     }
 
-    @VmImpl
-    @JniImpl
-=======
     @VmImpl(isJni = true)
->>>>>>> 3229679bb098 (Generate classes in the same package as the declaring class.)
     public void JVM_BeforeHalt() {
         /*
          * currently nop
