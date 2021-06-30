@@ -55,6 +55,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.proxy.Proxy;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -79,12 +80,12 @@ public class ContextSharingTest {
 
     @BeforeClass
     public static void setUp() {
-        context = createContext();
-        secondaryContext = createContext();
+        context = createContext(true);
+        secondaryContext = createContext(true);
     }
 
-    private static Context createContext() {
-        return Context.newBuilder().allowHostAccess(HostAccess.ALL).build();
+    private static Context createContext(boolean sharingEnabled) {
+        return Context.newBuilder().allowHostAccess(HostAccess.ALL).allowValueSharing(sharingEnabled).build();
     }
 
     @AfterClass
@@ -238,9 +239,9 @@ public class ContextSharingTest {
     public void testThreadCheck() throws InterruptedException, ExecutionException {
         ExecutorService service = Executors.newCachedThreadPool();
 
-        Context singleThread = createContext();
+        Context singleThread = createContext(true);
         singleThread.initialize(SINGLE_THREAD);
-        Context multiThread = createContext();
+        Context multiThread = createContext(true);
         multiThread.initialize(MULTI_THREAD);
         ExecutableWaits executable = new ExecutableWaits();
         Value stValue = singleThread.asValue(executable);
@@ -348,8 +349,8 @@ public class ContextSharingTest {
 
     @Test
     public void testClosedCheck() {
-        Context c0 = createContext();
-        Context c1 = createContext();
+        Context c0 = createContext(true);
+        Context c1 = createContext(true);
         Value v0c0 = c0.asValue(new IdentityExecutable(c0));
         Value v0c1 = c1.asValue(v0c0);
         assertEquals(v0c1, v0c1.execute(v0c1));
@@ -364,6 +365,49 @@ public class ContextSharingTest {
         });
 
         c1.close();
+    }
+
+    @Test
+    public void testSharingDisabled() {
+        try (Context c0 = createContext(true);
+                        Context c1 = createContext(false);) {
+
+            // test guest value sharing
+            Value c0ValueGuest = c0.asValue(new IdentityExecutable(c0));
+            AbstractPolyglotTest.assertFails(() -> {
+                c1.asValue(c0ValueGuest);
+            }, PolyglotException.class, ContextSharingTest::assertMigrationError);
+
+            // primitive
+            Value c0ValueInt = c0.asValue(42);
+            AbstractPolyglotTest.assertFails(() -> {
+                c1.asValue(c0ValueInt);
+            }, PolyglotException.class, ContextSharingTest::assertMigrationError);
+
+            Value c0ValueString = c0.asValue("");
+            AbstractPolyglotTest.assertFails(() -> {
+                c1.asValue(c0ValueString);
+            }, PolyglotException.class, ContextSharingTest::assertMigrationError);
+
+            Value c0ValueHost = c0.asValue(this);
+            AbstractPolyglotTest.assertFails(() -> {
+                c1.asValue(c0ValueHost);
+            }, PolyglotException.class, ContextSharingTest::assertMigrationError);
+
+            Value c0ValueProxy = c0.asValue(new Proxy() {
+            });
+            AbstractPolyglotTest.assertFails(() -> {
+                c1.asValue(c0ValueProxy);
+            }, PolyglotException.class, ContextSharingTest::assertMigrationError);
+        }
+    }
+
+    private static void assertMigrationError(PolyglotException e) {
+        assertFalse(e.isHostException());
+        assertTrue(e.isGuestException());
+        assertEquals("A value was tried to be migrated from one context to a different context. " +
+                        "Value migration for the current context was disabled and is therefore disallowed.",
+                        e.getMessage());
     }
 
 }

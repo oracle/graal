@@ -107,6 +107,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.polyglot.PolyglotEngineImpl.CancelExecution;
 import com.oracle.truffle.polyglot.PolyglotEngineImpl.StableLocalLocations;
+import com.oracle.truffle.polyglot.PolyglotLanguageContext.ValueMigrationException;
 import com.oracle.truffle.polyglot.PolyglotLocals.LocalLocation;
 
 final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
@@ -1168,7 +1169,16 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         }
     }
 
+    @TruffleBoundary
+    private RuntimeException failValueSharing() {
+        throw new ValueMigrationException("A value was tried to be migrated from one context to a different context. " +
+                        "Value migration for the current context was disabled and is therefore disallowed.", engine.getUncachedLocation());
+    }
+
     Object migrateValue(Object value, PolyglotContextImpl valueContext) {
+        if (!config.allowValueSharing) {
+            throw failValueSharing();
+        }
         Object result = engine.host.migrateValue(this, value, valueContext);
         if (result != null) {
             // host made sure migration is fine
@@ -2671,7 +2681,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                         allowedLanguages,
                         Collections.emptyMap(),
                         fs, internalFs, engine.logHandler, false, null,
-                        EnvironmentAccess.INHERIT, null, null, null, null, null);
+                        EnvironmentAccess.INHERIT, null, null, null, null, null, true);
 
         final PolyglotContextImpl context = new PolyglotContextImpl(engine, config);
         synchronized (engine.lock) {
