@@ -146,6 +146,8 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         RootNode rootNode = new Program(osrNode, frameDescriptor);
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
         Assert.assertEquals(FixedIterationLoop.NORMAL_RESULT, target.call(osrThreshold + 1));
+        // Compilation should be disabled after a compilation failure.
+        Assert.assertEquals(osrNode.getGraalOSRMetadata(), BytecodeOSRMetadata.DISABLED);
     }
 
     /*
@@ -159,15 +161,17 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
         Assert.assertEquals(FixedIterationLoop.OSR_RESULT, target.call(osrThreshold + 1));
         BytecodeOSRMetadata osrMetadata = osrNode.getGraalOSRMetadata();
-        OptimizedCallTarget osrTarget = osrMetadata.getOSRCompilations().get(-1);
+        OptimizedCallTarget osrTarget = osrMetadata.getOSRCompilations().get(BytecodeOSRTestNode.DEFAULT_TARGET);
         Assert.assertNotNull(osrTarget);
         Assert.assertTrue(osrTarget.isValid());
         osrNode.nodeReplaced(osrNode, new FixedIterationLoop(new FrameDescriptor()), "something changed");
         Assert.assertTrue(osrMetadata.getOSRCompilations().isEmpty());
         Assert.assertFalse(osrTarget.isValid());
+        // Invalidating a target on node replace should not disable compilation.
+        Assert.assertNotEquals(osrNode.getGraalOSRMetadata(), BytecodeOSRMetadata.DISABLED);
         // Calling the node will eventually trigger OSR again (after OSR_POLL_INTERVAL back-edges)
         Assert.assertEquals(FixedIterationLoop.OSR_RESULT, target.call(BytecodeOSRMetadata.OSR_POLL_INTERVAL + 1));
-        osrTarget = osrMetadata.getOSRCompilations().get(-1);
+        osrTarget = osrMetadata.getOSRCompilations().get(BytecodeOSRTestNode.DEFAULT_TARGET);
         Assert.assertNotNull(osrTarget);
         Assert.assertTrue(osrTarget.isValid());
     }
@@ -184,6 +188,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         Assert.assertEquals(FixedIterationLoop.NORMAL_RESULT, target.call(osrThreshold + 1));
         // Compiled call target is still valid.
         BytecodeOSRMetadata osrMetadata = osrNode.getGraalOSRMetadata();
+        Assert.assertNotEquals(osrMetadata, BytecodeOSRMetadata.DISABLED);
         OptimizedCallTarget osrTarget = osrMetadata.getOSRCompilations().get(-1);
         Assert.assertNotNull(osrTarget);
         Assert.assertTrue(osrTarget.isValid());
@@ -291,6 +296,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         Assert.assertEquals(3 * (osrThreshold + 1), target.call(osrThreshold + 1, 0));
         Assert.assertTrue(bytecodeNode.compiled);
         BytecodeOSRMetadata osrMetadata = (BytecodeOSRMetadata) bytecodeNode.getOSRMetadata();
+        Assert.assertNotEquals(osrMetadata, BytecodeOSRMetadata.DISABLED);
         Assert.assertTrue(osrMetadata.getOSRCompilations().containsKey(0));
         Assert.assertTrue(osrMetadata.getOSRCompilations().get(0).isValid());
     }
@@ -305,6 +311,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         Assert.assertEquals(3 * osrThreshold, target.call(osrThreshold, 0));
         Assert.assertFalse(bytecodeNode.compiled);
         BytecodeOSRMetadata osrMetadata = (BytecodeOSRMetadata) bytecodeNode.getOSRMetadata();
+        Assert.assertNotEquals(osrMetadata, BytecodeOSRMetadata.DISABLED);
         Assert.assertTrue(osrMetadata.getOSRCompilations().isEmpty());
     }
 
@@ -320,6 +327,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         Assert.assertEquals(2 * osrThreshold, target.call(osrThreshold, 2));
         Assert.assertTrue(bytecodeNode.compiled);
         BytecodeOSRMetadata osrMetadata = (BytecodeOSRMetadata) bytecodeNode.getOSRMetadata();
+        Assert.assertNotEquals(osrMetadata, BytecodeOSRMetadata.DISABLED);
         Assert.assertTrue(osrMetadata.getOSRCompilations().containsKey(0));
         Assert.assertTrue(osrMetadata.getOSRCompilations().get(0).isValid());
     }
@@ -337,6 +345,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         Assert.assertEquals(2 * (osrThreshold - 1), target.call(2, osrThreshold - 1));
         Assert.assertTrue(bytecodeNode.compiled);
         BytecodeOSRMetadata osrMetadata = (BytecodeOSRMetadata) bytecodeNode.getOSRMetadata();
+        Assert.assertNotEquals(osrMetadata, BytecodeOSRMetadata.DISABLED);
         Assert.assertTrue(osrMetadata.getOSRCompilations().containsKey(5));
         Assert.assertTrue(osrMetadata.getOSRCompilations().get(5).isValid());
     }

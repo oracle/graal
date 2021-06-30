@@ -9,21 +9,19 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 
 public final class BytecodeOSRMetadata {
-    public static final BytecodeOSRMetadata DISABLED = new BytecodeOSRMetadata(null, false, Integer.MAX_VALUE);
-    public static final int OSR_POLL_INTERVAL = 1024; // must be a power of 2 (polling uses bit
-                                                      // masks)
+    // Marker object to indicate that OSR is disabled.
+    public static final BytecodeOSRMetadata DISABLED = new BytecodeOSRMetadata(null, Integer.MAX_VALUE);
+    // Must be a power of 2 (polling uses bit masks)
+    public static final int OSR_POLL_INTERVAL = 1024;
 
     private final BytecodeOSRNode osrNode;
     private final EconomicMap<Integer, OptimizedCallTarget> osrCompilations;
     private final int osrThreshold;
-    // TODO: check whether these fields need to be volatile.
-    private volatile boolean osrEnabled;
     private int backEdgeCount;
 
-    BytecodeOSRMetadata(BytecodeOSRNode osrNode, boolean osrEnabled, int osrThreshold) {
+    BytecodeOSRMetadata(BytecodeOSRNode osrNode, int osrThreshold) {
         this.osrNode = osrNode;
         this.osrCompilations = EconomicMap.create();
-        this.osrEnabled = osrEnabled;
         this.osrThreshold = osrThreshold;
         this.backEdgeCount = 0;
     }
@@ -37,7 +35,7 @@ public final class BytecodeOSRMetadata {
             synchronized (this) {
                 osrTarget = osrCompilations.get(target);
                 if (osrTarget == null) {
-                    osrTarget = requestOSR(osrNode, target, language, parentFrame.getFrameDescriptor());
+                    osrTarget = requestOSR(target, language, parentFrame.getFrameDescriptor());
                     osrCompilations.put(target, osrTarget);
                 }
             }
@@ -62,23 +60,20 @@ public final class BytecodeOSRMetadata {
         /*
          * Increment back edge count and return whether compilation should be polled.
          * 
-         * When OSR compilation is enabled and the OSR threshold is reached, this method will return
-         * true after every OSR_POLL_INTERVAL back-edges. This method is thread-safe, but could
-         * under-count.
+         * When the OSR threshold is reached, this method will return true after every
+         * OSR_POLL_INTERVAL back-edges. This method is thread-safe, but could under-count.
          */
         int newBackEdgeCount = ++backEdgeCount; // Omit overflow check; OSR should trigger long
                                                 // before overflow happens
-        return (newBackEdgeCount >= osrThreshold && (newBackEdgeCount & (OSR_POLL_INTERVAL - 1)) == 0) &&
-                        osrEnabled; // Only incur volatile read if poll condition met
-
+        return (newBackEdgeCount >= osrThreshold && (newBackEdgeCount & (OSR_POLL_INTERVAL - 1)) == 0);
     }
 
-    private synchronized OptimizedCallTarget requestOSR(BytecodeOSRNode osrNode, int target, TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+    private synchronized OptimizedCallTarget requestOSR(int target, TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
         assert !osrCompilations.containsKey(target);
         OptimizedCallTarget callTarget = GraalTruffleRuntime.getRuntime().createOSRCallTarget(new BytecodeOSRRootNode(osrNode, target, language, frameDescriptor));
         callTarget.compile(false);
         if (callTarget.isCompilationFailed()) {
-            osrEnabled = false;
+            osrNode.setOSRMetadata(DISABLED);
             return null;
         }
         osrCompilations.put(target, callTarget);
@@ -89,7 +84,7 @@ public final class BytecodeOSRMetadata {
         OptimizedCallTarget callTarget = osrCompilations.removeKey(target);
         if (callTarget != null) {
             if (callTarget.isCompilationFailed()) {
-                osrEnabled = false;
+                osrNode.setOSRMetadata(DISABLED);
             }
             callTarget.invalidate(reason);
         }
@@ -101,7 +96,7 @@ public final class BytecodeOSRMetadata {
             OptimizedCallTarget callTarget = cursor.getValue();
             if (callTarget != null) {
                 if (callTarget.isCompilationFailed()) {
-                    osrEnabled = false;
+                    osrNode.setOSRMetadata(DISABLED);
                 }
                 callTarget.nodeReplaced(oldNode, newNode, reason);
             }
