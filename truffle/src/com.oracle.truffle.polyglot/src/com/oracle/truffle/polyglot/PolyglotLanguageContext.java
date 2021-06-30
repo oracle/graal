@@ -384,7 +384,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                     assert context.state.isClosing();
                     assert context.state.isInvalidOrClosed();
                     if (t instanceof com.oracle.truffle.api.TruffleException || t instanceof PolyglotEngineImpl.CancelExecution) {
-                        context.engine.getEngineLogger().log(Level.INFO,
+                        context.engine.getEngineLogger().log(Level.FINE,
                                         "Exception was thrown while finalizing a polyglot context that is being cancelled. Such exceptions are expected during cancelling.", t);
                     } else {
                         throw t;
