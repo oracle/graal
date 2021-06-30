@@ -256,6 +256,18 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         Assert.assertTrue(osrNode.hasDeoptimizedYet);
     }
 
+    @Test
+    public void testGetCallerFrameSkipsOSR() {
+        FrameDescriptor frameDescriptor = new FrameDescriptor();
+        CheckGetCallerFrameSkipsOSR osrNode = new CheckGetCallerFrameSkipsOSR(frameDescriptor);
+        RootNode rootNode = new Program(osrNode, frameDescriptor);
+        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
+        Caller caller = new Caller(target);
+        OptimizedCallTarget callerTarget = (OptimizedCallTarget) runtime.createCallTarget(caller);
+        osrNode.caller = callerTarget;
+        Assert.assertEquals(FixedIterationLoop.OSR_RESULT, callerTarget.call(osrThreshold + 1));
+    }
+
     // Bytecode programs
     /*
      * do { input1 -= 1; result += 3; } while (input1); return result;
@@ -602,7 +614,6 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
                 }
             });
         }
-
     }
 
     public static class CheckStackWalkFrame extends StackWalkingFixedIterationLoop {
@@ -660,6 +671,53 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
                 hasDeoptimizedYet = true;
             }
             super.checkStackTrace(index);
+        }
+    }
+
+    public static class Caller extends RootNode {
+        CallTarget toCall;
+
+        protected Caller(CallTarget toCall) {
+            super(null);
+            this.toCall = toCall;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return toCall.call(frame.getArguments());
+        }
+    }
+
+    public static class CheckGetCallerFrameSkipsOSR extends FixedIterationLoop {
+        CallTarget caller; // set after construction
+
+        public CheckGetCallerFrameSkipsOSR(FrameDescriptor frameDescriptor) {
+            super(frameDescriptor);
+        }
+
+        @Override
+        protected Object executeLoop(VirtualFrame frame, int numIterations) {
+            try {
+                for (int i = frame.getInt(indexSlot); i < numIterations; i++) {
+                    frame.setInt(indexSlot, i);
+                    checkCallerFrame();
+                    if (i + 1 < numIterations) { // back-edge will be taken
+                        Object result = reportOSRBackEdge(frame, DEFAULT_TARGET);
+                        if (result != null) {
+                            return result;
+                        }
+                    }
+                }
+                return CompilerDirectives.inCompiledCode() ? OSR_RESULT : NORMAL_RESULT;
+            } catch (FrameSlotTypeException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException("Error accessing index slot");
+            }
+        }
+
+        @TruffleBoundary
+        void checkCallerFrame() {
+            Assert.assertEquals(caller, Truffle.getRuntime().getCallerFrame().getCallTarget());
         }
     }
 

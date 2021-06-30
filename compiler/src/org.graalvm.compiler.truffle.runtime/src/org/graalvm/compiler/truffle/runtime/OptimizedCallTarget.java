@@ -508,6 +508,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return true;
     }
 
+    // This call method is hidden from stack traces.
     public final Object callOSR(Object... args) {
         return doInvoke(args);
     }

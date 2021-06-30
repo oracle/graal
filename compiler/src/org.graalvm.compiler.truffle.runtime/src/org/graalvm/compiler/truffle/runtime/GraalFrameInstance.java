@@ -46,7 +46,6 @@ public class GraalFrameInstance implements FrameInstance {
     public static final Method CALL_INLINED;
     public static final Method CALL_INLINED_CALL;
     public static final Method CALL_INDIRECT;
-    public static final Method CALL_OSR_METHOD;
 
     static {
         try {
@@ -56,7 +55,6 @@ public class GraalFrameInstance implements FrameInstance {
             CALL_INDIRECT = OptimizedCallTarget.class.getDeclaredMethod("callIndirect", Node.class, Object[].class);
 
             CALL_TARGET_METHOD = OptimizedCallTarget.class.getDeclaredMethod("executeRootNode", VirtualFrame.class);
-            CALL_OSR_METHOD = BaseOSRRootNode.class.getDeclaredMethod("callProxy", VirtualFrame.class);
         } catch (NoSuchMethodException | SecurityException e) {
             throw new InternalError(e);
         }

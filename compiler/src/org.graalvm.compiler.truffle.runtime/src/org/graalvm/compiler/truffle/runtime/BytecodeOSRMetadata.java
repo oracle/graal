@@ -44,7 +44,7 @@ public final class BytecodeOSRMetadata {
             if (osrTarget.isValid()) {
                 // TODO: What if the frame descriptor changed since we created this call target?
                 if (!GraalRuntimeAccessor.FRAME.getMaterializeCalled(parentFrame.getFrameDescriptor())) {
-                    return osrTarget.call(parentFrame);
+                    return osrTarget.callOSR(parentFrame);
                 }
                 // We cannot perform OSR if the frame is materialized. The original and OSR
                 // frames could get out of sync, which could lead to inconsistent views of the

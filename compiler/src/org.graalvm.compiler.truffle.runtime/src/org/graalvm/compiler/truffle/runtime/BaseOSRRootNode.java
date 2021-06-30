@@ -40,16 +40,6 @@ public abstract class BaseOSRRootNode extends RootNode {
 
     @Override
     public final Object execute(VirtualFrame frame) {
-        return callProxy(frame);
-    }
-
-    /**
-     * Proxy method for invoking OSR root nodes. This method is used as a marker to detect OSR root
-     * nodes when traversing stack frames.
-     *
-     * @see GraalTruffleRuntime.FrameVisitor#visitFrame(InspectedFrame)
-     */
-    private Object callProxy(VirtualFrame frame) {
         try {
             return executeOSR(frame);
         } finally {
