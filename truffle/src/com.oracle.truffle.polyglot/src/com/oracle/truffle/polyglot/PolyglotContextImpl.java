@@ -375,7 +375,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
     private ExecutorService cleanupExecutorService;
     private Future<?> cleanupFuture;
     private volatile String invalidMessage;
-    private volatile boolean invalidResourceLimit;
+    volatile boolean invalidResourceLimit;
     volatile Thread closingThread;
     private final ReentrantLock closingLock = new ReentrantLock();
     private final ReentrantLock interruptingLock = new ReentrantLock();

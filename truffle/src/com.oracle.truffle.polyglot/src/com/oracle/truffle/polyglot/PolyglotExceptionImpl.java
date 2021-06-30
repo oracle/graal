@@ -101,17 +101,19 @@ final class PolyglotExceptionImpl {
     private final Value guestObject;
     private final String message;
 
-    PolyglotExceptionImpl(PolyglotEngineImpl engine, PolyglotContextImpl.State polyglotContextState, Throwable original) {
-        this(engine.impl, engine, polyglotContextState, null, original, false, false);
+    PolyglotExceptionImpl(PolyglotEngineImpl engine, PolyglotContextImpl.State polyglotContextState, boolean polyglotContextResourceExhausted, Throwable original) {
+        this(engine.impl, engine, polyglotContextState, polyglotContextResourceExhausted, null, original, false, false);
     }
 
     // Exception coming from an instrument
     PolyglotExceptionImpl(PolyglotImpl polyglot, Throwable original) {
-        this(polyglot, null, null, null, original, true, false);
+        this(polyglot, null, null, false, null, original, true, false);
     }
 
     @SuppressWarnings("deprecation")
-    PolyglotExceptionImpl(PolyglotImpl polyglot, PolyglotEngineImpl engine, PolyglotContextImpl.State polyglotContextState, PolyglotLanguageContext languageContext, Throwable original,
+    PolyglotExceptionImpl(PolyglotImpl polyglot, PolyglotEngineImpl engine, PolyglotContextImpl.State polyglotContextState, boolean polyglotContextResourceExhausted,
+                    PolyglotLanguageContext languageContext,
+                    Throwable original,
                     boolean allowInterop,
                     boolean entered) {
         this.polyglot = polyglot;
@@ -121,15 +123,16 @@ final class PolyglotExceptionImpl {
         this.guestFrames = TruffleStackTrace.getStackTrace(original);
         this.showInternalStackFrames = engine == null ? false : engine.engineOptionValues.get(PolyglotEngineOptions.ShowInternalStackFrames);
         Error resourceLimitError = getResourceLimitError(engine, exception);
-        this.resourceExhausted = resourceLimitError != null;
         InteropLibrary interop;
         if (allowInterop && (interop = InteropLibrary.getUncached()).isException(exception)) {
             try {
                 ExceptionType exceptionType = interop.getExceptionType(exception);
                 this.internal = false;
                 boolean truffleException = exception instanceof com.oracle.truffle.api.TruffleException;
-                this.cancelled = (polyglotContextState != null && (polyglotContextState.isCancelling() || polyglotContextState == PolyglotContextImpl.State.CLOSED_CANCELLED) && truffleException) ||
-                                isLegacyTruffleExceptionCancelled(exception);
+                boolean cancelInducedTruffleException = (polyglotContextState != null && (polyglotContextState.isCancelling() || polyglotContextState == PolyglotContextImpl.State.CLOSED_CANCELLED) &&
+                                truffleException);
+                this.cancelled = cancelInducedTruffleException || isLegacyTruffleExceptionCancelled(exception);
+                this.resourceExhausted = resourceLimitError != null || (cancelInducedTruffleException && polyglotContextResourceExhausted);
                 this.syntaxError = exceptionType == ExceptionType.PARSE_ERROR;
                 this.exit = exceptionType == ExceptionType.EXIT;
                 this.exitStatus = this.exit ? interop.getExceptionExitStatus(exception) : 0;
@@ -168,15 +171,16 @@ final class PolyglotExceptionImpl {
             boolean interruptException = (exception instanceof PolyglotEngineImpl.InterruptExecution) || (exception != null && exception.getCause() instanceof InterruptedException) ||
                             (isHostException(engine, exception) && asHostException() instanceof InterruptedException);
             boolean truffleException = exception instanceof com.oracle.truffle.api.TruffleException;
+            boolean cancelInducedTruffleOrInterruptException = (polyglotContextState != null &&
+                            (polyglotContextState.isCancelling() || polyglotContextState == PolyglotContextImpl.State.CLOSED_CANCELLED) &&
+                            (interruptException || truffleException));
             /*
              * In case the exception is not a cancel exception, but the context is in cancelling or
              * cancelled state, set the cancelled flag, but only if the original exception is a
              * truffle exception or interrupt exception.
              */
-            this.cancelled = (polyglotContextState != null && (polyglotContextState.isCancelling() || polyglotContextState == PolyglotContextImpl.State.CLOSED_CANCELLED) &&
-                            (interruptException || truffleException)) ||
-                            (exception instanceof CancelExecution) ||
-                            isLegacyTruffleExceptionCancelled(exception);
+            this.cancelled = cancelInducedTruffleOrInterruptException || (exception instanceof CancelExecution) || isLegacyTruffleExceptionCancelled(exception);
+            this.resourceExhausted = resourceLimitError != null || (cancelInducedTruffleOrInterruptException && polyglotContextResourceExhausted);
             this.interrupted = interruptException && !this.cancelled;
             this.internal = !interrupted && !cancelled && !resourceExhausted;
             this.syntaxError = false;
