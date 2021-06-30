@@ -2881,8 +2881,8 @@ public abstract class InteropLibrary extends Library {
     /**
      * Utility to check whether a value is a valid interop value. Interop values are all values that
      * can flow through the language implementation freely and are intended to be used as receivers
-     * for the {@link InteropLibrary}. This method will be extend with more checked types as interop
-     * is extended with further allowed values.
+     * for the {@link InteropLibrary}. This method will be extended with more checked types as
+     * interop is extended with further allowed values.
      * <p>
      * It is not recommended to make assumptions about the types of interop values. It is
      * recommended to use instance methods in {@link InteropLibrary} to check for interop types
