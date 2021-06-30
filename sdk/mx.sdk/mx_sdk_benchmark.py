@@ -194,17 +194,40 @@ class NativeImageBenchmarkMixin(object):
         return parse_prefixed_args('-Dnative-image.benchmark.extra-image-build-argument=', args)
 
     def extra_run_arg(self, benchmark, args, image_run_args):
+        """Returns all arguments passed to the final image.
+
+        This includes those passed globally on the `mx benchmark` command line after the last `--`.
+        These arguments are passed via the `image_run_args` parameter.
+        """
         return image_run_args + parse_prefixed_args('-Dnative-image.benchmark.extra-run-arg=', args)
 
     def extra_agent_run_arg(self, benchmark, args, image_run_args):
+        """Returns all arguments passed to the agent run.
+
+        This includes those passed globally on the `mx benchmark` command line after the last `--`.
+        These arguments are passed via the `image_run_args` parameter.
+        Conflicting global arguments might be filtered out. The function `strip_args_with_number()` can help with that.
+        """
         return image_run_args + parse_prefixed_args('-Dnative-image.benchmark.extra-agent-run-arg=', args)
 
     def extra_profile_run_arg(self, benchmark, args, image_run_args):
+        """Returns all arguments passed to the profiling run.
+
+        This includes those passed globally on the `mx benchmark` command line after the last `--`.
+        These arguments are passed via the `image_run_args` parameter.
+        Conflicting global arguments might be filtered out. The function `strip_args_with_number()` can help with that.
+        """
         # either use extra profile run args if set or otherwise the extra run args
         extra_profile_run_args = parse_prefixed_args('-Dnative-image.benchmark.extra-profile-run-arg=', args) or parse_prefixed_args('-Dnative-image.benchmark.extra-run-arg=', args)
         return image_run_args + extra_profile_run_args
 
     def extra_agent_profile_run_arg(self, benchmark, args, image_run_args):
+        """Returns all arguments passed to the agent profiling run.
+
+        This includes those passed globally on the `mx benchmark` command line after the last `--`.
+        These arguments are passed via the `image_run_args` parameter.
+        Conflicting global arguments might be filtered out. The function `strip_args_with_number()` can help with that.
+        """
         return image_run_args + parse_prefixed_args('-Dnative-image.benchmark.extra-agent-profile-run-arg=', args)
 
     def benchmark_output_dir(self, _, args):
