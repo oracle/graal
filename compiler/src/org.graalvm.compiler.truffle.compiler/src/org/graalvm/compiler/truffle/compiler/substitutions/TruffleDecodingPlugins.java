@@ -60,8 +60,10 @@ public class TruffleDecodingPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 if (b.getGraph().getCancellable() instanceof TruffleCompilationTask) {
-                    boolean isFirstTier = ((TruffleCompilationTask) b.getGraph().getCancellable()).isFirstTier();
-                    b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(isFirstTier));
+                    TruffleCompilationTask task = (TruffleCompilationTask) b.getGraph().getCancellable();
+                    boolean isFirstTier = task.isFirstTier();
+                    boolean transitionalTier = task.isTransitionalTier();
+                    b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(isFirstTier && transitionalTier));
                     return true;
                 }
                 return false;

@@ -75,6 +75,7 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLi
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsSameOrSplit;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsSpecializationMethod;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsSuppressedFailure;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsTransitionalTier;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsTrivial;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsTruffleBoundary;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsValueType;
@@ -330,6 +331,11 @@ final class TruffleFromLibGraalEntryPoints {
     @TruffleFromLibGraal(IsLastTier)
     static boolean isLastTier(Object task) {
         return ((TruffleCompilationTask) task).isLastTier();
+    }
+
+    @TruffleFromLibGraal(IsTransitionalTier)
+    static boolean isTransitionalTier(Object task) {
+        return ((TruffleCompilationTask) task).isTransitionalTier();
     }
 
     @TruffleFromLibGraal(InliningData)

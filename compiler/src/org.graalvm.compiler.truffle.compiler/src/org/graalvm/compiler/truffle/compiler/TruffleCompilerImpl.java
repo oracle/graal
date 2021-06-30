@@ -940,6 +940,11 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
         }
 
         @Override
+        public boolean isTransitionalTier() {
+            return delegate.isTransitionalTier();
+        }
+
+        @Override
         public String toString() {
             return delegate.toString();
         }

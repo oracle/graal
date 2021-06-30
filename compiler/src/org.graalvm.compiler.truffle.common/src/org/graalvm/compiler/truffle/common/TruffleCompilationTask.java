@@ -50,4 +50,8 @@ public interface TruffleCompilationTask {
     }
 
     TruffleInliningData inliningData();
+
+    default boolean isTransitionalTier() {
+        return isFirstTier();
+    }
 }
