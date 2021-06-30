@@ -453,6 +453,10 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                         _incl_list.append((base_dir + '/Contents/Info.plist', plist_src))
                         _excl_list.append(orig_info_plist)
                         break
+                _incl_list.append((base_dir + '/Contents/MacOS', {
+                    'source_type': 'file',
+                    'path': join(_src_jdk_dir, 'Contents', 'MacOS')
+                }))
             return _incl_list, _excl_list
 
         svm_component = get_component('svm', stage1=True)
