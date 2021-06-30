@@ -101,6 +101,20 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
         return compilable;
     }
 
+    @FunctionalInterface
+    protected interface FrameFunciton {
+        Object execute(VirtualFrame frame);
+    }
+
+    protected RootNode toRootNode(FrameFunciton f) {
+        return new RootNode(null) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return f.execute(frame);
+            }
+        };
+    }
+
     protected OptimizedCallTarget assertPartialEvalEquals(RootNode expected, RootNode actual, Object[] arguments) {
         return assertPartialEvalEquals(expected, actual, arguments, true);
     }
