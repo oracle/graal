@@ -189,6 +189,11 @@ public class ConstantAnnotationMarkerSubstitutionType implements ResolvedJavaTyp
     }
 
     @Override
+    public ResolvedJavaMethod resolveConcreteMethod(ResolvedJavaMethod method, ResolvedJavaType callerType) {
+        return original.resolveConcreteMethod(method, callerType);
+    }
+
+    @Override
     public Assumptions.AssumptionResult<ResolvedJavaMethod> findUniqueConcreteMethod(ResolvedJavaMethod method) {
         return original.findUniqueConcreteMethod(method);
     }

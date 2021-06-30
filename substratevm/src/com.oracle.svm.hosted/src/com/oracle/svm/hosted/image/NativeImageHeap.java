@@ -611,7 +611,9 @@ public final class NativeImageHeap implements ImageHeap {
         final Object reason;
     }
 
-    public static final class ObjectInfo implements ImageHeapObject {
+    private final int imageHeapOffsetInAddressSpace = Heap.getHeap().getImageHeapOffsetInAddressSpace();
+
+    public final class ObjectInfo implements ImageHeapObject {
         private final Object object;
         private final HostedClass clazz;
         private final long size;
@@ -689,7 +691,7 @@ public final class NativeImageHeap implements ImageHeap {
              * the beginning of the heap. So, all heap-base-relative addresses must be adjusted by
              * that offset.
              */
-            return Heap.getHeap().getImageHeapOffsetInAddressSpace() + getOffset();
+            return imageHeapOffsetInAddressSpace + getOffset();
         }
 
         /**

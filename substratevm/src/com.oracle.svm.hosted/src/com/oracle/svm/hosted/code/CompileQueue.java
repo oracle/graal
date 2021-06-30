@@ -29,7 +29,6 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
@@ -199,6 +198,8 @@ public class CompileQueue {
 
     private volatile boolean inliningProgress;
 
+    private final boolean printMethodHistogram = NativeImageOptions.PrintMethodHistogram.getValue();
+
     public abstract static class CompileReason {
         /**
          * For debugging only: chaining of the compile reason, so that you can track the compilation
@@ -259,19 +260,12 @@ public class CompileQueue {
 
         public final HostedMethod method;
         protected final CompileReason reason;
-        protected final List<CompileReason> allReasons;
         public CompilationResult result;
         public final CompilationIdentifier compilationIdentifier;
 
         public CompileTask(HostedMethod method, CompileReason reason) {
             this.method = method;
             this.reason = reason;
-            if (NativeImageOptions.PrintMethodHistogram.getValue()) {
-                this.allReasons = Collections.synchronizedList(new ArrayList<CompileReason>());
-                this.allReasons.add(reason);
-            } else {
-                this.allReasons = null;
-            }
             compilationIdentifier = new SubstrateHostedCompilationIdentifier(method);
         }
 
@@ -372,6 +366,15 @@ public class CompileQueue {
             // timer.
             RestrictHeapAccessAnnotationChecker.check(debug, universe, universe.getMethods());
 
+            /*
+             * The graph in the analysis universe is no longer necessary. This clears the graph for
+             * methods that were not "parsed", i.e., method that were reached by the static analysis
+             * but are no longer reachable now.
+             */
+            for (HostedMethod method : universe.getMethods()) {
+                method.wrapped.setAnalyzedGraph(null);
+            }
+
             if (SubstrateOptions.AOTInline.getValue() && SubstrateOptions.AOTTrivialInline.getValue()) {
                 try (StopTimer ignored = new Timer(imageName, "(inline)").start()) {
                     inlineTrivialMethods(debug);
@@ -386,7 +389,7 @@ public class CompileQueue {
         } catch (InterruptedException ie) {
             throw new InterruptImageBuilding();
         }
-        if (NativeImageOptions.PrintMethodHistogram.getValue()) {
+        if (printMethodHistogram) {
             printMethodHistogram();
         }
     }
@@ -471,14 +474,10 @@ public class CompileQueue {
                 } else {
                     sizeNonDeoptMethods += result.getTargetCodeSize();
                     numberOfNonDeopt += 1;
-                    System.out.format("  ; %6d; %5d; %5d; %4d; %4d;", 0, 0, 0, 0, 0);
+                    System.out.format("  ; %6d; %5d; %5d; %5d; %4d; %4d;", 0, 0, 0, 0, 0, 0);
                 }
 
-                System.out.format(" %4d; %4d; %4d; %s\n",
-                                task.allReasons.stream().filter(t -> t instanceof EntryPointReason).count(),
-                                task.allReasons.stream().filter(t -> t instanceof DirectCallReason).count(),
-                                task.allReasons.stream().filter(t -> t instanceof VirtualCallReason).count(),
-                                method.format("%H.%n(%p) %r"));
+                System.out.format(" %4d; %4d; %4d; %s%n", ci.numEntryPointCalls.get(), ci.numDirectCalls.get(), ci.numVirtualCalls.get(), method.format("%H.%n(%p) %r"));
             }
         }
         System.out.println();
@@ -1108,21 +1107,39 @@ public class CompileQueue {
     }
 
     protected void ensureCompiled(HostedMethod method, CompileReason reason) {
+        CompilationInfo compilationInfo = method.compilationInfo;
+
+        if (printMethodHistogram) {
+            if (reason instanceof DirectCallReason) {
+                compilationInfo.numDirectCalls.incrementAndGet();
+            } else if (reason instanceof VirtualCallReason) {
+                compilationInfo.numVirtualCalls.incrementAndGet();
+            } else if (reason instanceof EntryPointReason) {
+                compilationInfo.numEntryPointCalls.incrementAndGet();
+            }
+        }
+
+        /*
+         * Fast non-atomic check if method is already scheduled for compilation, to avoid frequent
+         * access of the ConcurrentHashMap.
+         */
+        if (compilationInfo.inCompileQueue) {
+            return;
+        }
+
         CompileTask task = new CompileTask(method, reason);
         CompileTask oldTask = compilations.putIfAbsent(method, task);
         if (oldTask != null) {
-            // Method is already scheduled for compilation.
-            if (oldTask.allReasons != null) {
-                oldTask.allReasons.add(reason);
-            }
             return;
         }
-        if (method.compilationInfo.specializedArguments != null) {
+        compilationInfo.inCompileQueue = true;
+
+        if (compilationInfo.specializedArguments != null) {
             // Do the specialization: replace the argument locals with the constant arguments.
-            StructuredGraph graph = method.compilationInfo.graph;
+            StructuredGraph graph = compilationInfo.graph;
 
             int idx = 0;
-            for (ConstantNode argument : method.compilationInfo.specializedArguments) {
+            for (ConstantNode argument : compilationInfo.specializedArguments) {
                 ParameterNode local = graph.getParameter(idx++);
                 if (local != null) {
                     local.replaceAndDelete(ConstantNode.forConstant(argument.asJavaConstant(), runtimeConfig.getProviders().getMetaAccess(), graph));
