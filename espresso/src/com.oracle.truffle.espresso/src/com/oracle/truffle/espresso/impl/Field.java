@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.impl;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
@@ -167,16 +168,16 @@ public final class Field extends Member<Type> implements FieldRef {
     public Object get(StaticObject obj, boolean forceVolatile) {
         // @formatter:off
         switch (getKind()) {
-            case Boolean : return getBoolean(obj, forceVolatile);
-            case Byte    : return getByte(obj, forceVolatile);
-            case Short   : return getShort(obj, forceVolatile);
-            case Char    : return getChar(obj, forceVolatile);
-            case Int     : return getInt(obj, forceVolatile);
-            case Float   : return getFloat(obj, forceVolatile);
-            case Long    : return getLong(obj, forceVolatile);
-            case Double  : return getDouble(obj, forceVolatile);
-            case Object  : return getObject(obj, forceVolatile);
-            default      : throw EspressoError.shouldNotReachHere();
+            case Boolean: return getBoolean(obj, forceVolatile);
+            case Byte: return getByte(obj, forceVolatile);
+            case Short: return getShort(obj, forceVolatile);
+            case Char: return getChar(obj, forceVolatile);
+            case Int: return getInt(obj, forceVolatile);
+            case Float: return getFloat(obj, forceVolatile);
+            case Long: return getLong(obj, forceVolatile);
+            case Double: return getDouble(obj, forceVolatile);
+            case Object: return getObject(obj, forceVolatile);
+            default: throw EspressoError.shouldNotReachHere();
         }
         // @formatter:on
     }
@@ -188,16 +189,16 @@ public final class Field extends Member<Type> implements FieldRef {
     public void set(StaticObject obj, Object value, boolean forceVolatile) {
         // @formatter:off
         switch (getKind()) {
-            case Boolean : setBoolean(obj, (boolean) value, forceVolatile);    break;
-            case Byte    : setByte(obj, (byte) value, forceVolatile);          break;
-            case Short   : setShort(obj, (short) value, forceVolatile);        break;
-            case Char    : setChar(obj, (char) value, forceVolatile);          break;
-            case Int     : setInt(obj, (int) value, forceVolatile);            break;
-            case Float   : setFloat(obj, (float) value, forceVolatile);        break;
-            case Long    : setLong(obj, (long) value, forceVolatile);          break;
-            case Double  : setDouble(obj, (double) value, forceVolatile);      break;
-            case Object  : setObject(obj, value, forceVolatile);               break;
-            default      : throw EspressoError.shouldNotReachHere();
+            case Boolean: setBoolean(obj, (boolean) value, forceVolatile); break;
+            case Byte: setByte(obj, (byte) value, forceVolatile); break;
+            case Short: setShort(obj, (short) value, forceVolatile); break;
+            case Char: setChar(obj, (char) value, forceVolatile); break;
+            case Int: setInt(obj, (int) value, forceVolatile); break;
+            case Float: setFloat(obj, (float) value, forceVolatile); break;
+            case Long: setLong(obj, (long) value, forceVolatile); break;
+            case Double: setDouble(obj, (double) value, forceVolatile); break;
+            case Object: setObject(obj, value, forceVolatile); break;
+            default: throw EspressoError.shouldNotReachHere();
         }
         // @formatter:on
     }
@@ -767,7 +768,7 @@ public final class Field extends Member<Type> implements FieldRef {
         private final Assumption assumption;
         private final Symbol<Symbol.Type> type;
         private final RuntimeConstantPool pool;
-        private volatile Klass typeKlassCache;
+        @CompilationFinal private volatile Klass typeKlassCache;
         @CompilationFinal private Symbol<ModifiedUTF8> genericSignature;
 
         FieldVersion(Symbol<Symbol.Type> type, RuntimeConstantPool pool) {
@@ -815,17 +816,27 @@ public final class Field extends Member<Type> implements FieldRef {
         public Klass resolveTypeKlass() {
             Klass tk = typeKlassCache;
             if (tk == null) {
-                synchronized (this) {
-                    tk = typeKlassCache;
-                    if (tk == null) {
-                        tk = holder.getMeta().resolveSymbolOrFail(type,
-                                        holder.getDefiningClassLoader(),
-                                        holder.protectionDomain());
-                        typeKlassCache = tk;
-                    }
+                if (CompilerDirectives.isPartialEvaluationConstant(this)) {
+                    // This can be used from contexts where this is not a constant (e.g., Unsafe)
+                    // as well as context where this is constant (e.g., field access)
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
                 }
+                doResolveType();
             }
             return typeKlassCache;
+        }
+
+        @TruffleBoundary
+        private void doResolveType() {
+            synchronized (this) {
+                Klass tk = typeKlassCache;
+                if (tk == null) {
+                    tk = holder.getMeta().resolveSymbolOrFail(getType(),
+                                    holder.getDefiningClassLoader(),
+                                    holder.protectionDomain());
+                    typeKlassCache = tk;
+                }
+            }
         }
 
         public Field getField() {

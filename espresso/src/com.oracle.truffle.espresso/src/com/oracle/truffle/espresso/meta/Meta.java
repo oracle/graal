@@ -1701,6 +1701,7 @@ public final class Meta implements ContextAccess {
      * @return The asked Klass, or null if no representation can be found.
      */
     public Klass resolveSymbolOrNull(Symbol<Type> type, @Host(ClassLoader.class) StaticObject classLoader, StaticObject protectionDomain) {
+        CompilerAsserts.partialEvaluationConstant(type);
         assert classLoader != null : "use StaticObject.NULL for BCL";
         // Resolution only resolves references. Bypass loading for primitives.
         Klass k = resolvePrimitive(type);
