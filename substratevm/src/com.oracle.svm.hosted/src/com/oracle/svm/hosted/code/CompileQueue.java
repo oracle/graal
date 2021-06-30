@@ -710,7 +710,7 @@ public class CompileQueue {
 
     public void scheduleEntryPoints() {
         universe.getMethods().stream()
-                        .filter(method -> !ignoreEntryPoint(method) && (method.isEntryPoint() || CompilationInfoSupport.singleton().isForcedCompilation(method)))
+                        .filter(method -> (method.isEntryPoint() || CompilationInfoSupport.singleton().isForcedCompilation(method)) && !ignoreEntryPoint(method))
                         .forEach(method -> ensureCompiled(method, new EntryPointReason()));
         universe.getMethods().stream()
                         .map(method -> method.compilationInfo.getDeoptTargetMethod())
