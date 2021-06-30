@@ -434,13 +434,15 @@ with "js" language, which is the language identifier for JavaScript.
 an explicit engine assigned to it. All contexts associated with an engine share the code.
 - `context.eval(source).asInt()` evaluates the source and returns the result as `Value` instance.
 
-## Embed languages in Guest Languages
+## Embed Guest languages in Guest Languages
 
 The GraalVM Polyglot API can be used from within a guest language using Java interoperability.
 This can be useful if a script needs to run isolated from the parent context.
-Inside guest languages the `Value` API cannot be used. 
-Instead the language-specific interoperability API for foreign values is used.
+In Java as a host language a call to `Context.eval(Source)` returns an instance of `Value`, but since we executing this code as part of a guest language we can use the language-specific interoperability API instead.
+It is therefore possible to use values returned by contexts created inside of a language, like regular values of the language.
+In the example below we can conveniently write `value.data` instead of `value.getMember("data")`.
 Please refer to the individual language documentation for details on how to interoperate with foreign values.
+More information on value sharing between multiple contexts can be found [here](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.Builder.html#allowValueSharing-boolean-).
 
 Consider the following code snippet as an example:
 
