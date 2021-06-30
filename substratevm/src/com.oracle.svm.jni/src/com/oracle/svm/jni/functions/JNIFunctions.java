@@ -839,8 +839,6 @@ public final class JNIFunctions {
                 /*
                  * Ignore exceptions reported during error reporting, we are going to exit anyway.
                  */
-            } finally {
-                Log.exitFatalContext();
             }
         }
         logHandler.fatalError();
