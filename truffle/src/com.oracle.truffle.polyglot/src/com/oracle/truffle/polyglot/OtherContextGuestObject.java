@@ -45,7 +45,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
-import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -71,12 +70,12 @@ final class OtherContextGuestObject implements TruffleObject {
     final Object delegate;
     final PolyglotContextImpl delegateContext;
 
-    OtherContextGuestObject(PolyglotContextImpl thisContext, Object delegate, PolyglotContextImpl delegateContext) {
+    OtherContextGuestObject(PolyglotContextImpl receiverContext, Object delegate, PolyglotContextImpl delegateContext) {
         assert !(delegate instanceof OtherContextGuestObject) : "recursive host foreign value found";
-        assert thisContext != null && delegateContext != null : "Must have associated contexts.";
-        assert thisContext != delegateContext : "no need for foreign value if contexts match";
+        assert receiverContext != null && delegateContext != null : "Must have associated contexts.";
+        assert receiverContext != delegateContext : "no need for foreign value if contexts match";
         this.delegate = delegate;
-        this.receiverContext = thisContext;
+        this.receiverContext = receiverContext;
         this.delegateContext = delegateContext;
     }
 
@@ -109,10 +108,9 @@ final class OtherContextGuestObject implements TruffleObject {
                         @SuppressWarnings("unused") @CachedLibrary("receiver") ReflectionLibrary receiverLibrary,
                         @Cached("getCachedEngine(receiverLibrary)") PolyglotEngineImpl cachedEngine,
                         @CachedLibrary(limit = "CACHE_LIMIT") ReflectionLibrary delegateLibrary,
-                        @CachedLibrary(limit = "1") InteropLibrary exceptionLibrary,
                         @Cached BranchProfile seenOther,
                         @Cached BranchProfile seenError) throws Exception {
-            return sendImpl(cachedEngine, receiver.delegate, message, args, receiver.receiverContext, receiver.delegateContext, delegateLibrary, exceptionLibrary, seenOther, seenError);
+            return sendImpl(cachedEngine, receiver.delegate, message, args, receiver.receiverContext, receiver.delegateContext, delegateLibrary, seenOther, seenError);
         }
 
         @TruffleBoundary
@@ -121,7 +119,6 @@ final class OtherContextGuestObject implements TruffleObject {
             return sendImpl(receiver.receiverContext.engine, receiver.delegate, message, args, receiver.receiverContext,
                             receiver.delegateContext,
                             ReflectionLibrary.getUncached(receiver.delegate),
-                            InteropLibrary.getUncached(),
                             BranchProfile.getUncached(), BranchProfile.getUncached());
         }
 
@@ -132,10 +129,11 @@ final class OtherContextGuestObject implements TruffleObject {
     private static Object sendImpl(PolyglotEngineImpl engine, Object receiver, Message message, Object[] args, PolyglotContextImpl receiverContext,
                     PolyglotContextImpl delegateContext,
                     ReflectionLibrary delegateLibrary,
-                    InteropLibrary exceptionLibrary,
                     BranchProfile seenOther,
                     BranchProfile seenError) throws Exception {
         if (message.getLibraryClass() == InteropLibrary.class) {
+            assert validEnteredContext(receiverContext);
+
             PolyglotContextImpl prev;
             try {
                 prev = engine.enter(delegateContext);
@@ -162,20 +160,9 @@ final class OtherContextGuestObject implements TruffleObject {
                     returnValue = delegateLibrary.send(receiver, message, migratedArgs);
                 }
                 return migrateReturn(returnValue, receiverContext, delegateContext);
-            } catch (AbstractTruffleException e) {
-                seenError.enter();
-                throw new OtherContextException(receiverContext, e, delegateContext);
             } catch (Exception e) {
                 seenError.enter();
-                if (exceptionLibrary.isException(e)) {
-                    throw new OtherContextException(receiverContext, e, delegateContext);
-                } else if (e instanceof InteropException) {
-                    // just rethrow interop exceptions they do not contain values
-                    throw e;
-                } else {
-                    // rethrow internal error
-                    throw e;
-                }
+                throw migrateException(receiverContext, e, delegateContext);
             } finally {
                 try {
                     engine.leave(prev, delegateContext);
@@ -187,6 +174,34 @@ final class OtherContextGuestObject implements TruffleObject {
             seenOther.enter();
             return fallbackSend(message, args);
         }
+    }
+
+    @TruffleBoundary
+    static <T extends Exception> RuntimeException migrateException(PolyglotContextImpl receiverContext, T e, PolyglotContextImpl valueContext) throws T {
+        if (e instanceof OtherContextException) {
+            OtherContextException other = (OtherContextException) e;
+            if (other.receiverContext == receiverContext && other.delegateContext == valueContext) {
+                throw other;
+            } else {
+                throw new OtherContextException(receiverContext, other.delegate, other.delegateContext);
+            }
+        } else if (InteropLibrary.getUncached().isException(e)) {
+            if (e instanceof AbstractTruffleException) {
+                throw new OtherContextException(receiverContext, (AbstractTruffleException) e, valueContext);
+            } else {
+                throw new OtherContextException(receiverContext, e, valueContext);
+            }
+        } else {
+            throw e;
+        }
+    }
+
+    private static boolean validEnteredContext(PolyglotContextImpl receiverContext) {
+        PolyglotContextImpl currentContext = PolyglotContextImpl.currentNotEntered();
+        if (currentContext != null && currentContext != receiverContext) {
+            throw new AssertionError("A foreign context value was used while an invalid parent context was entered.");
+        }
+        return true;
     }
 
     private static RuntimeException toHostException(PolyglotContextImpl context, Throwable e) {
@@ -206,20 +221,20 @@ final class OtherContextGuestObject implements TruffleObject {
         return OTHER_VALUE_UNCACHED.send(OTHER_VALUE, message, args);
     }
 
-    private static Object migrateReturn(Object arg, PolyglotContextImpl thisContext, PolyglotContextImpl delegateContext) {
+    private static Object migrateReturn(Object arg, PolyglotContextImpl receiverContext, PolyglotContextImpl delegateContext) {
         if (arg instanceof TruffleObject) {
-            return thisContext.migrateValue(arg, delegateContext);
+            return receiverContext.migrateValue(arg, delegateContext);
         } else {
             assert InteropLibrary.isValidProtocolValue(arg) : "unexpected interop primitive";
             return arg;
         }
     }
 
-    private static Object migrateArg(Object arg, PolyglotContextImpl targetContext, PolyglotContextImpl delegateContext) {
+    private static Object migrateArg(Object arg, PolyglotContextImpl receiverContext, PolyglotContextImpl delegateContext) {
         if (arg instanceof TruffleObject) {
-            return delegateContext.migrateValue(arg, targetContext);
+            return delegateContext.migrateValue(arg, receiverContext);
         } else if (arg instanceof Object[]) {
-            return migrateArgs(null, (Object[]) arg, targetContext, delegateContext);
+            return migrateArgs(null, (Object[]) arg, receiverContext, delegateContext);
         } else if (arg instanceof InteropLibrary) {
             return InteropLibrary.getUncached();
         } else {
@@ -228,31 +243,31 @@ final class OtherContextGuestObject implements TruffleObject {
         }
     }
 
-    private static Object[] migrateArgs(Message message, Object[] args, PolyglotContextImpl thisContext, PolyglotContextImpl delegateContext) {
+    private static Object[] migrateArgs(Message message, Object[] args, PolyglotContextImpl receiverContext, PolyglotContextImpl delegateContext) {
         if (message != null) {
-            return migrateArgsExplode(message, args, thisContext, delegateContext);
+            return migrateArgsExplode(message, args, receiverContext, delegateContext);
         } else {
             Object[] newArgs = new Object[args.length];
             for (int i = 0; i < args.length; i++) {
-                newArgs[i] = migrateArg(args[i], thisContext, delegateContext);
+                newArgs[i] = migrateArg(args[i], receiverContext, delegateContext);
             }
             return newArgs;
         }
     }
 
     @ExplodeLoop
-    private static Object[] migrateArgsExplode(Message message, Object[] args, PolyglotContextImpl thisContext, PolyglotContextImpl delegateContext) {
+    private static Object[] migrateArgsExplode(Message message, Object[] args, PolyglotContextImpl receiverContext, PolyglotContextImpl delegateContext) {
         int length = message.getParameterCount();
         Object[] newArgs = new Object[length - 1];
         for (int i = 0; i < length - 1; i++) {
-            newArgs[i] = migrateArg(args[i], thisContext, delegateContext);
+            newArgs[i] = migrateArg(args[i], receiverContext, delegateContext);
         }
         return newArgs;
     }
 
     @Override
     public String toString() {
-        return "HostForeignValue[" + //
+        return "OtherContextGuestObject[" + //
                         "targetContext=0x" + Integer.toHexString(System.identityHashCode(receiverContext)) + //
                         ", delegate=(" + delegate.getClass().getSimpleName() + "(0x" + Integer.toHexString(System.identityHashCode(delegate)) + ")" + //
                         ", delegateContext=0x" + Integer.toHexString(System.identityHashCode(delegateContext));
@@ -263,7 +278,7 @@ final class OtherContextGuestObject implements TruffleObject {
     static class OtherContextException extends AbstractTruffleException {
 
         final PolyglotContextImpl receiverContext;
-        final Throwable delegate;
+        final Exception delegate;
         final PolyglotContextImpl delegateContext;
 
         OtherContextException(PolyglotContextImpl receiverContext, AbstractTruffleException delegate, PolyglotContextImpl delegateContext) {
@@ -296,10 +311,9 @@ final class OtherContextGuestObject implements TruffleObject {
                             @SuppressWarnings("unused") @CachedLibrary("receiver") ReflectionLibrary receiverLibrary,
                             @Cached("getCachedEngine(receiverLibrary)") PolyglotEngineImpl cachedEngine,
                             @CachedLibrary(limit = "CACHE_LIMIT") ReflectionLibrary delegateLibrary,
-                            @CachedLibrary(limit = "1") InteropLibrary exceptionLibrary,
                             @Cached BranchProfile seenOther,
                             @Cached BranchProfile seenError) throws Exception {
-                return sendImpl(cachedEngine, receiver.delegate, message, args, receiver.receiverContext, receiver.delegateContext, delegateLibrary, exceptionLibrary, seenOther, seenError);
+                return sendImpl(cachedEngine, receiver.delegate, message, args, receiver.receiverContext, receiver.delegateContext, delegateLibrary, seenOther, seenError);
             }
 
             @TruffleBoundary
@@ -308,7 +322,6 @@ final class OtherContextGuestObject implements TruffleObject {
                 return sendImpl(receiver.receiverContext.engine, receiver.delegate, message, args, receiver.receiverContext,
                                 receiver.delegateContext,
                                 ReflectionLibrary.getUncached(receiver.delegate),
-                                InteropLibrary.getUncached(),
                                 BranchProfile.getUncached(), BranchProfile.getUncached());
             }
 

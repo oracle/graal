@@ -971,16 +971,29 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         }
     }
 
+    PolyglotLanguage requireLanguage(String id) {
+        checkState();
+        PolyglotLanguage language = idToLanguage.get(id);
+        if (language == null) {
+            throw throwNotInstalled(id, idToLanguage.keySet());
+        }
+        return language;
+    }
+
+    private static RuntimeException throwNotInstalled(String id, Set<String> allLanguages) {
+        String misspelledGuess = matchSpellingError(allLanguages, id);
+        String didYouMean = "";
+        if (misspelledGuess != null) {
+            didYouMean = String.format("Did you mean '%s'? ", misspelledGuess);
+        }
+        throw PolyglotEngineException.illegalArgument(String.format("A language with id '%s' is not installed. %sInstalled languages are: %s.", id, didYouMean, allLanguages));
+    }
+
     public Language requirePublicLanguage(String id) {
         checkState();
         Language language = idToPublicLanguage.get(id);
         if (language == null) {
-            String misspelledGuess = matchSpellingError(idToPublicLanguage.keySet(), id);
-            String didYouMean = "";
-            if (misspelledGuess != null) {
-                didYouMean = String.format("Did you mean '%s'? ", misspelledGuess);
-            }
-            throw PolyglotEngineException.illegalArgument(String.format("A language with id '%s' is not installed. %sInstalled languages are: %s.", id, didYouMean, getLanguages().keySet()));
+            throw throwNotInstalled(id, idToPublicLanguage.keySet());
         }
         return language;
     }
