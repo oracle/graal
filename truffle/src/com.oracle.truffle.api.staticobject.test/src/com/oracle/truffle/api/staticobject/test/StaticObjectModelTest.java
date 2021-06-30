@@ -50,29 +50,29 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 class StaticObjectModelTest {
-    @Registration(id = SomTestLanguage.TEST_LANGUAGE_ID, name = SomTestLanguage.TEST_LANGUAGE_NAME)
-    public static class SomTestLanguage extends TruffleLanguage<SomTestContext> {
+    @Registration(id = TestLanguage.TEST_LANGUAGE_ID, name = TestLanguage.TEST_LANGUAGE_NAME)
+    public static class TestLanguage extends TruffleLanguage<TestContext> {
         static final String TEST_LANGUAGE_NAME = "Test Language for the Static Object Model";
         static final String TEST_LANGUAGE_ID = "som-test";
 
         @Override
-        protected SomTestContext createContext(Env env) {
-            return new SomTestContext(this);
+        protected TestContext createContext(Env env) {
+            return new TestContext(this);
         }
 
-        static SomTestContext getCurrentContext() {
-            return getCurrentContext(SomTestLanguage.class);
+        static TestContext getCurrentContext() {
+            return getCurrentContext(TestLanguage.class);
         }
     }
 
-    static class SomTestContext {
-        private final SomTestLanguage language;
+    static class TestContext {
+        private final TestLanguage language;
 
-        SomTestContext(SomTestLanguage language) {
+        TestContext(TestLanguage language) {
             this.language = language;
         }
 
-        SomTestLanguage getLanguage() {
+        TestLanguage getLanguage() {
             return language;
         }
     }
@@ -84,13 +84,13 @@ class StaticObjectModelTest {
 
         TestEnvironment(boolean arrayBased) {
             this.arrayBased = arrayBased;
-            context = Context.newBuilder(SomTestLanguage.TEST_LANGUAGE_ID).//
+            context = Context.newBuilder(TestLanguage.TEST_LANGUAGE_ID).//
                             allowExperimentalOptions(true).//
                             option("engine.StaticObjectStorageStrategy", this.arrayBased ? "array-based" : "field-based").//
                             build();
-            context.initialize(SomTestLanguage.TEST_LANGUAGE_ID);
+            context.initialize(TestLanguage.TEST_LANGUAGE_ID);
             context.enter();
-            testLanguage = SomTestLanguage.getCurrentContext().getLanguage();
+            testLanguage = TestLanguage.getCurrentContext().getLanguage();
             context.leave();
         }
 
