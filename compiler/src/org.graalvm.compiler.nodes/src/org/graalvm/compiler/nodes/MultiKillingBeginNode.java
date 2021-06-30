@@ -42,6 +42,8 @@ import org.graalvm.word.LocationIdentity;
 /**
  * A begin node that kills multiple memory locations. See {@link KillingBeginNode} for a version
  * with a single killed location.
+ *
+ * @see WithExceptionNode for more details
  */
 @NodeInfo(allowedUsageTypes = {Memory}, cycles = CYCLES_0, size = SIZE_0)
 public final class MultiKillingBeginNode extends AbstractBeginNode implements MultiMemoryKill, Simplifiable {
