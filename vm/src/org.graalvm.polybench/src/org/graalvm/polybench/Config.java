@@ -29,6 +29,7 @@ import java.util.List;
 
 class Config {
     String path;
+    String className;
     int warmupIterations;
     int iterations;
     Mode mode;
@@ -37,6 +38,7 @@ class Config {
 
     Config() {
         this.path = null;
+        this.className = null;
         this.warmupIterations = 20;
         this.iterations = 30;
         this.mode = Mode.standard;
