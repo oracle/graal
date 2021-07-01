@@ -91,7 +91,7 @@ public final class GreyToBlackObjectVisitor implements ObjectVisitor {
     }
 
     /** A ring buffer of visited objects for diagnostics. */
-    static final class DiagnosticReporter implements DiagnosticThunk {
+    static final class DiagnosticReporter extends DiagnosticThunk {
 
         static class Options {
             @Option(help = "Length of GreyToBlackObjectVisitor history for diagnostics. 0 implies no history is kept.") //
@@ -131,8 +131,14 @@ public final class GreyToBlackObjectVisitor implements ObjectVisitor {
             historyCount += 1;
         }
 
+        @Override
+        public int maxInvocations() {
+            return 1;
+        }
+
+        @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate during printing diagnostics.")
-        public void printDiagnostics(Log log) {
+        public void printDiagnostics(Log log, int invocationCount) {
             if (historyCount > 0) {
                 log.string("[GreyToBlackObjectVisitor.RealDiagnosticReporter.invoke:")
                                 .string("  history / count:  ")
