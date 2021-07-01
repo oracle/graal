@@ -32,12 +32,12 @@ public final class BytecodeOSRMetadata {
         if (!incrementAndPoll()) {
             return null;
         }
-        if (compilationFailed) {
-            // Note: we poll this field to minimize volatile reads. In effect, another thread
-            // disabling OSR eventually propagates to this thread.
+        if (compilationFailed || parentFrame.getFrameDescriptor().canMaterialize()) {
+            // Note: we poll the compilationFailed field to minimize volatile reads.
             osrNode.setOSRMetadata(DISABLED);
             return null;
         }
+
         OptimizedCallTarget osrTarget = osrCompilations.get(target);
         if (osrTarget == null) {
             synchronized (this) {
@@ -50,14 +50,9 @@ public final class BytecodeOSRMetadata {
         }
         if (osrTarget != null && !osrTarget.isCompiling()) {
             if (osrTarget.isValid()) {
-                // TODO: What if the frame descriptor changed since we created this call target?
-                if (!GraalRuntimeAccessor.FRAME.getMaterializeCalled(parentFrame.getFrameDescriptor())) {
-                    return osrTarget.callOSR(parentFrame);
-                }
-                // We cannot perform OSR if the frame is materialized. The original and OSR
-                // frames could get out of sync, which could lead to inconsistent views of the
-                // program state.
-                return null;
+                // Quick check, in case the frame somehow changed after compilation.
+                assert !parentFrame.getFrameDescriptor().canMaterialize();
+                return osrTarget.callOSR(parentFrame);
             }
             invalidateOSRTarget(target, "OSR compilation failed or cancelled");
         }

@@ -82,6 +82,9 @@ final class DefaultVirtualFrame implements VirtualFrame {
 
     @Override
     public MaterializedFrame materialize() {
+        if (!getFrameDescriptor().canMaterialize()) {
+            throw new IllegalArgumentException("Cannot materialize a frame for which materialization was explicitly disallowed.");
+        }
         return new DefaultMaterializedFrame(this);
     }
 

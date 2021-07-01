@@ -44,6 +44,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 
@@ -190,6 +191,36 @@ public class FrameTest {
 
                 assertTrue("Really materialized: " + materialized, materialized instanceof MaterializedFrame);
                 assertEquals("It's my frame", frame, readWrite);
+                return this;
+            }
+        }
+
+        FrameRootNode frn = new FrameRootNode();
+        Object ret = Truffle.getRuntime().createCallTarget(frn).call();
+        assertEquals("Returns itself", frn, ret);
+    }
+
+    @Test
+    public void framesCannotBeMaterialized() {
+        Assume.assumeFalse(CompileImmediatelyCheck.isCompileImmediately());
+        final TruffleRuntime runtime = Truffle.getRuntime();
+
+        class FrameRootNode extends RootNode {
+
+            FrameRootNode() {
+                super(null, new FrameDescriptor(false));
+            }
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                FrameInstance frameInstance = runtime.getCurrentFrame();
+                frameInstance.getFrame(FrameInstance.FrameAccess.READ_WRITE); // succeeds
+                try {
+                    frameInstance.getFrame(FrameInstance.FrameAccess.MATERIALIZE);
+                    Assert.fail("materializing a non-materializeable frame should fail");
+                } catch (IllegalArgumentException ex) {
+                    // fall through
+                }
                 return this;
             }
         }
