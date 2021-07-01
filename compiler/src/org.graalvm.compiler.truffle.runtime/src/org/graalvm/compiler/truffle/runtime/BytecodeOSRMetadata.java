@@ -18,16 +18,24 @@ public final class BytecodeOSRMetadata {
     private final EconomicMap<Integer, OptimizedCallTarget> osrCompilations;
     private final int osrThreshold;
     private int backEdgeCount;
+    private volatile boolean compilationFailed;
 
     BytecodeOSRMetadata(BytecodeOSRNode osrNode, int osrThreshold) {
         this.osrNode = osrNode;
         this.osrCompilations = EconomicMap.create();
         this.osrThreshold = osrThreshold;
         this.backEdgeCount = 0;
+        this.compilationFailed = false;
     }
 
     final Object onOSRBackEdge(VirtualFrame parentFrame, int target, TruffleLanguage<?> language) {
         if (!incrementAndPoll()) {
+            return null;
+        }
+        if (compilationFailed) {
+            // Note: we poll this field to minimize volatile reads. In effect, another thread
+            // disabling OSR eventually propagates to this thread.
+            osrNode.setOSRMetadata(DISABLED);
             return null;
         }
         OptimizedCallTarget osrTarget = osrCompilations.get(target);
@@ -56,13 +64,13 @@ public final class BytecodeOSRMetadata {
         return null;
     }
 
+    /**
+     * Increment back edge count and return whether compilation should be polled.
+     *
+     * When the OSR threshold is reached, this method will return true after every OSR_POLL_INTERVAL
+     * back-edges. This method is thread-safe, but could under-count.
+     */
     private boolean incrementAndPoll() {
-        /*
-         * Increment back edge count and return whether compilation should be polled.
-         * 
-         * When the OSR threshold is reached, this method will return true after every
-         * OSR_POLL_INTERVAL back-edges. This method is thread-safe, but could under-count.
-         */
         int newBackEdgeCount = ++backEdgeCount; // Omit overflow check; OSR should trigger long
                                                 // before overflow happens
         return (newBackEdgeCount >= osrThreshold && (newBackEdgeCount & (OSR_POLL_INTERVAL - 1)) == 0);
@@ -73,7 +81,7 @@ public final class BytecodeOSRMetadata {
         OptimizedCallTarget callTarget = GraalTruffleRuntime.getRuntime().createOSRCallTarget(new BytecodeOSRRootNode(osrNode, target, language, frameDescriptor));
         callTarget.compile(false);
         if (callTarget.isCompilationFailed()) {
-            osrNode.setOSRMetadata(DISABLED);
+            markCompilationFailed();
             return null;
         }
         osrCompilations.put(target, callTarget);
@@ -84,7 +92,7 @@ public final class BytecodeOSRMetadata {
         OptimizedCallTarget callTarget = osrCompilations.removeKey(target);
         if (callTarget != null) {
             if (callTarget.isCompilationFailed()) {
-                osrNode.setOSRMetadata(DISABLED);
+                markCompilationFailed();
             }
             callTarget.invalidate(reason);
         }
@@ -96,12 +104,17 @@ public final class BytecodeOSRMetadata {
             OptimizedCallTarget callTarget = cursor.getValue();
             if (callTarget != null) {
                 if (callTarget.isCompilationFailed()) {
-                    osrNode.setOSRMetadata(DISABLED);
+                    markCompilationFailed();
                 }
                 callTarget.nodeReplaced(oldNode, newNode, reason);
             }
         }
         osrCompilations.clear();
+    }
+
+    private void markCompilationFailed() {
+        compilationFailed = true; // indicate to all threads that compilation will fail
+        osrNode.setOSRMetadata(DISABLED); // disable OSR on the current thread
     }
 
     // for testing
