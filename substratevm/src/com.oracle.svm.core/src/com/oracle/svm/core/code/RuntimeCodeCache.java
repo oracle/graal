@@ -48,7 +48,6 @@ import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
-import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackFrameVisitor;
@@ -81,7 +80,6 @@ public class RuntimeCodeCache {
     public RuntimeCodeCache() {
     }
 
-    /** Tear down the heap, return all allocated virtual memory chunks to VirtualMemoryProvider. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public final void tearDown() {
         NonmovableArrays.releaseUnmanagedArray(codeInfos);

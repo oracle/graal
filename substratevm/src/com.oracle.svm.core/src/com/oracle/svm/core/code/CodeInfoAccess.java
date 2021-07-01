@@ -142,6 +142,25 @@ public final class CodeInfoAccess {
         return cast(info).getState();
     }
 
+    public static String stateToString(int codeInfoState) {
+        switch (codeInfoState) {
+            case CodeInfo.STATE_CREATED:
+                return "created";
+            case CodeInfo.STATE_CODE_CONSTANTS_LIVE:
+                return "code constants live";
+            case CodeInfo.STATE_NON_ENTRANT:
+                return "non entrant";
+            case CodeInfo.STATE_READY_FOR_INVALIDATION:
+                return "ready for invalidation";
+            case CodeInfo.STATE_PARTIALLY_FREED:
+                return "partially freed";
+            case CodeInfo.STATE_UNREACHABLE:
+                return "unreachable";
+            default:
+                return "invalid state";
+        }
+    }
+
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isAlive(CodeInfo info) {
         return isAliveState(cast(info).getState());

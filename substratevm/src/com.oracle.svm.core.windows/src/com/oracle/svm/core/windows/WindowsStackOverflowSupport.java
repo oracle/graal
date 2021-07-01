@@ -41,6 +41,7 @@ import com.oracle.svm.core.windows.headers.MemoryAPI;
 
 @Platforms({Platform.WINDOWS.class})
 class WindowsStackOverflowSupport implements StackOverflowCheck.OSSupport {
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
     public UnsignedWord lookupStackBase() {
         int sizeOfMInfo = SizeOf.get(MemoryAPI.MEMORY_BASIC_INFORMATION.class);
@@ -61,7 +62,7 @@ class WindowsStackOverflowSupport implements StackOverflowCheck.OSSupport {
         return stackBottom.add(stackSize);
     }
 
-    @Uninterruptible(reason = "Called while thread is being attached to the VM, i.e., when the thread state is not yet set up.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
     public UnsignedWord lookupStackEnd() {
         MemoryAPI.MEMORY_BASIC_INFORMATION minfo = StackValue.get(MemoryAPI.MEMORY_BASIC_INFORMATION.class);

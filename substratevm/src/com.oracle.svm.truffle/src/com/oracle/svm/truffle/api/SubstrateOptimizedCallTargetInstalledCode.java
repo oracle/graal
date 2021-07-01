@@ -148,11 +148,16 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
         Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
         try { // Indicates to GC that the code can be freed once there are no activations left
             CodeInfo codeInfo = CodeInfoAccess.convert(untetheredInfo, tether);
-            CodeInfoAccess.setState(codeInfo, CodeInfo.STATE_NON_ENTRANT);
-            RuntimeCodeInfoHistory.singleton().logMakeNonEntrant(codeInfo);
+            invalidateWithoutDeoptimization1(codeInfo);
         } finally {
             CodeInfoAccess.releaseTether(untetheredInfo, tether);
         }
+    }
+
+    @Uninterruptible(reason = "Now that the CodeInfo is tether, we can call interruptible code.", calleeMustBe = false)
+    private static void invalidateWithoutDeoptimization1(CodeInfo codeInfo) {
+        CodeInfoAccess.setState(codeInfo, CodeInfo.STATE_NON_ENTRANT);
+        RuntimeCodeInfoHistory.singleton().logMakeNonEntrant(codeInfo);
     }
 
     static Object doInvoke(SubstrateOptimizedCallTarget callTarget, Object[] args) {

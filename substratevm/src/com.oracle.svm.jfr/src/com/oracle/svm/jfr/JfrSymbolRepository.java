@@ -163,7 +163,7 @@ public class JfrSymbolRepository implements JfrConstantPool {
 
     private static class JfrSymbolHashtable extends UninterruptibleHashtable<JfrSymbol> {
         @Platforms(Platform.HOSTED_ONLY.class)
-        public JfrSymbolHashtable() {
+        JfrSymbolHashtable() {
             super("JfrSymbolHashtable");
         }
 

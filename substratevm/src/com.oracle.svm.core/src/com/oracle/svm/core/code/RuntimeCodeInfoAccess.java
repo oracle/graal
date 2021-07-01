@@ -208,6 +208,7 @@ public final class RuntimeCodeInfoAccess {
     static void partialReleaseAfterInvalidate(CodeInfo info, boolean notifyGC) {
         InstalledCodeObserverSupport.removeObservers(RuntimeCodeInfoAccess.getCodeObserverHandles(info));
         releaseMemory(info, notifyGC);
+        RuntimeCodeInfoHistory.singleton().logInvalidate(info);
     }
 
     @Uninterruptible(reason = "Prevent the GC from running - otherwise, it could accidentally visit the freed memory.")
@@ -228,7 +229,6 @@ public final class RuntimeCodeInfoAccess {
          * walk even when CodeInfo data is already partially freed.
          */
         CodeInfoAccess.setState(info, CodeInfo.STATE_PARTIALLY_FREED);
-        RuntimeCodeInfoHistory.singleton().logInvalidate(info);
     }
 
     public static CodePointer allocateCodeMemory(UnsignedWord size) {
@@ -279,7 +279,6 @@ public final class RuntimeCodeInfoAccess {
         if (!cast(info).getAllObjectsAreInImageHeap()) {
             forEachArray(info, RELEASE_ACTION);
         }
-        RuntimeCodeInfoHistory.singleton().logFree(info);
         ImageSingletons.lookup(UnmanagedMemorySupport.class).free(info);
     }
 

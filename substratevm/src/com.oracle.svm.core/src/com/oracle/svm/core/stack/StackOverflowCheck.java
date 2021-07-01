@@ -89,12 +89,13 @@ public interface StackOverflowCheck {
      */
     interface OSSupport {
         /** The highest address of the stack or zero if not supported. */
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         default UnsignedWord lookupStackBase() {
             return WordFactory.zero();
         }
 
         /** The lowest address of the stack. */
-        @Uninterruptible(reason = "Called while thread is being attached to the VM, i.e., when the thread state is not yet set up.")
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         UnsignedWord lookupStackEnd();
     }
 

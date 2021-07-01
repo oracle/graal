@@ -656,7 +656,7 @@ public class SubstrateDiagnostics {
         }
     }
 
-    public static abstract class DiagnosticThunk {
+    public abstract static class DiagnosticThunk {
         /**
          * Prints diagnostic information. This method may be invoked multiple times if an error
          * (e.g., exception or segfault) occurred while executing this method. A typical

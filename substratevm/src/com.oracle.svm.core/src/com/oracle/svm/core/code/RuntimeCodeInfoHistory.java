@@ -94,7 +94,7 @@ public class RuntimeCodeInfoHistory {
 
     private static void printCodeInfo(Log log, boolean allowJavaHeapAccess, CodeInfo codeInfo, int codeInfoState, String codeName, CodePointer codeStart, CodePointer codeEnd, UnsignedWord codeSize) {
         log.string("[").zhex(codeInfo).string(" - ").zhex(((UnsignedWord) codeInfo).add(RuntimeCodeInfoAccess.getSizeOfCodeInfo()).subtract(1)).string("]");
-        log.string(" (").string(CodeInfo.stateToString(codeInfoState)).string(")");
+        log.string(" (").string(CodeInfoAccess.stateToString(codeInfoState)).string(")");
         if (allowJavaHeapAccess) {
             log.spaces(1).string(codeName);
         }
