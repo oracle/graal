@@ -44,14 +44,14 @@ public abstract class UninterruptibleHashtable<T extends UninterruptibleEntry<T>
     private int size;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public UninterruptibleHashtable() {
-        this(DEFAULT_TABLE_LENGTH);
+    public UninterruptibleHashtable(String name) {
+        this(name, DEFAULT_TABLE_LENGTH);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public UninterruptibleHashtable(int primeLength) {
+    public UninterruptibleHashtable(String name, int primeLength) {
         this.table = createTable(primeLength);
-        this.mutex = new VMMutex();
+        this.mutex = new VMMutex(name);
         this.size = 0;
     }
 

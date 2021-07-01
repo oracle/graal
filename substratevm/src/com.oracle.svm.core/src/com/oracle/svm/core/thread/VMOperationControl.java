@@ -445,7 +445,7 @@ public final class VMOperationControl {
             this.nativeSafepointOperations = new NativeVMOperationQueue(prefix + "NativeSafepointOperations");
             this.javaNonSafepointOperations = new JavaVMOperationQueue(prefix + "JavaNonSafepointOperations");
             this.javaSafepointOperations = new JavaVMOperationQueue(prefix + "JavaSafepointOperations");
-            this.mutex = createMutex(needsLocking);
+            this.mutex = createMutex(prefix + "VMOperationControlWorkQueue", needsLocking);
             this.operationQueued = createCondition();
             this.operationFinished = createCondition();
         }
@@ -675,9 +675,9 @@ public final class VMOperationControl {
         }
 
         @Platforms(value = Platform.HOSTED_ONLY.class)
-        private static VMMutex createMutex(boolean needsLocking) {
+        private static VMMutex createMutex(String mutexName, boolean needsLocking) {
             if (needsLocking) {
-                return new VMMutex();
+                return new VMMutex(mutexName);
             }
             return null;
         }

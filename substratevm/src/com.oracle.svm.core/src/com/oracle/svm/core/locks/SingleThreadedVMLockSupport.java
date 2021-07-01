@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.locks;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -37,7 +38,7 @@ import com.oracle.svm.core.util.VMError;
  * Support of {@link VMMutex} and {@link VMCondition} in single-threaded environments. No real
  * locking is necessary.
  */
-final class SingleThreadedVMLockSupport {
+final class SingleThreadedVMLockSupport extends VMLockSupport {
     // Empty class to have the same name as the source file.
 }
 
@@ -47,7 +48,7 @@ final class SingleThreadedVMLockFeature implements Feature {
     private final ClassInstanceReplacer<VMMutex, VMMutex> mutexReplacer = new ClassInstanceReplacer<VMMutex, VMMutex>(VMMutex.class) {
         @Override
         protected VMMutex createReplacement(VMMutex source) {
-            return new SingleThreadedVMMutex();
+            return new SingleThreadedVMMutex(source.getName());
         }
     };
 
@@ -65,6 +66,7 @@ final class SingleThreadedVMLockFeature implements Feature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
+        ImageSingletons.add(VMLockSupport.class, new SingleThreadedVMLockSupport());
         access.registerObjectReplacer(mutexReplacer);
         access.registerObjectReplacer(conditionReplacer);
     }
@@ -79,7 +81,8 @@ final class SingleThreadedVMLockFeature implements Feature {
 
 final class SingleThreadedVMMutex extends VMMutex {
     @Platforms(Platform.HOSTED_ONLY.class)
-    protected SingleThreadedVMMutex() {
+    protected SingleThreadedVMMutex(String name) {
+        super(name);
     }
 
     @Override

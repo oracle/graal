@@ -30,16 +30,15 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.code.RuntimeCodeCache.CodeInfoVisitor;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
 
@@ -243,6 +242,31 @@ public class RuntimeCodeInfoMemory {
         return (index + 1 < length) ? (index + 1) : 0;
     }
 
+    /** Potentially unsafe and may therefore only be used when printing diagnostics. */
+    public void logTable(Log log, boolean allowJavaHeapAccess) {
+        log.string("RuntimeCodeInfoMemory contains ").signed(count).string(" methods");
+        for (int i = 0; i < NonmovableArrays.lengthOf(table); i++) {
+            logCodeInfo(log, i, allowJavaHeapAccess);
+        }
+    }
+
+    @Uninterruptible(reason = "Must prevent the GC from freeing the CodeInfo object.")
+    private void logCodeInfo(Log log, int i, boolean allowJavaHeapAccess) {
+        UntetheredCodeInfo untetheredInfo = NonmovableArrays.getWord(table, i);
+        Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
+        try {
+            CodeInfo info = CodeInfoAccess.convert(untetheredInfo, tether);
+            logCodeInfo0(log, info, allowJavaHeapAccess);
+        } finally {
+            CodeInfoAccess.releaseTether(untetheredInfo, tether);
+        }
+    }
+
+    @Uninterruptible(reason = "Pass the now protected CodeInfo to interruptible code.", calleeMustBe = false)
+    private static void logCodeInfo0(Log log, CodeInfo info, boolean allowJavaHeapAccess) {
+        RuntimeCodeInfoHistory.printCodeInfo(log, info, allowJavaHeapAccess);
+    }
+
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void tearDown() {
         if (table.isNonNull()) {
@@ -262,13 +286,5 @@ public class RuntimeCodeInfoMemory {
             NonmovableArrays.releaseUnmanagedArray(table);
             table = NonmovableArrays.nullArray();
         }
-    }
-}
-
-@AutomaticFeature
-class RuntimeMethodInfoMemoryFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(RuntimeCodeInfoMemory.class, new RuntimeCodeInfoMemory());
     }
 }

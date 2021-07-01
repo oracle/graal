@@ -59,7 +59,6 @@ import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.PhysicalMemory;
-import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.ReferenceHandlerThreadSupport;
 import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.heap.RuntimeCodeInfoGCSupport;
@@ -82,7 +81,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 
 public final class HeapImpl extends Heap {
     /** Synchronization means for notifying {@link #refPendingList} waiters without deadlocks. */
-    private static final VMMutex REF_MUTEX = new VMMutex();
+    private static final VMMutex REF_MUTEX = new VMMutex("ReferencePendingList");
     private static final VMCondition REF_CONDITION = new VMCondition(REF_MUTEX);
 
     // Singleton instances, created during image generation.
@@ -113,7 +112,8 @@ public final class HeapImpl extends Heap {
         this.gcImpl = new GCImpl(access);
         this.runtimeCodeInfoGcSupport = new RuntimeCodeInfoGCSupportImpl();
         this.heapPolicy = new HeapPolicy();
-        SubstrateDiagnostics.DiagnosticThunkRegister.getSingleton().register(new HeapDiagnosticsPrinter());
+        SubstrateDiagnostics.DiagnosticThunkRegister.getSingleton().register(new DumpHeapSettingsAndStatistics());
+        SubstrateDiagnostics.DiagnosticThunkRegister.getSingleton().register(new DumpChunkInformation());
     }
 
     @Fold
@@ -588,11 +588,16 @@ public final class HeapImpl extends Heap {
         }
     }
 
-    private static class HeapDiagnosticsPrinter implements DiagnosticThunk {
+    private static class DumpHeapSettingsAndStatistics extends DiagnosticThunk {
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
-        public void printDiagnostics(Log log) {
-            HeapImpl heap = HeapImpl.getHeapImpl();
+        public void printDiagnostics(Log log, int invocationCount) {
+            if (invocationCount == 0) {
+                printHeapSettingsAndStatistics(log);
+            }
+        }
+
+        private static void printHeapSettingsAndStatistics(Log log) {
             GCImpl gc = GCImpl.getGCImpl();
 
             log.string("[Heap settings and statistics: ").indent(true);
@@ -607,7 +612,20 @@ public final class HeapImpl extends Heap {
             log.string("Complete collections: ").unsigned(accounting.getCompleteCollectionCount());
             log.redent(false).string("]").newline();
             log.newline();
+        }
+    }
 
+    private static class DumpChunkInformation extends DiagnosticThunk {
+        @Override
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
+        public void printDiagnostics(Log log, int invocationCount) {
+            if (invocationCount == 0) {
+                printChunkInformation(log);
+            }
+        }
+
+        private static void printChunkInformation(Log log) {
+            HeapImpl heap = HeapImpl.getHeapImpl();
             heap.logImageHeapPartitionBoundaries(log).newline();
             zapValuesToLog(log).newline();
             heap.report(log, true).newline();

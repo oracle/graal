@@ -191,7 +191,7 @@ public final class RuntimeCodeInfoAccess {
     }
 
     public static CodeInfo allocateMethodInfo(NonmovableObjectArray<Object> objectData) {
-        CodeInfoImpl info = UnmanagedMemory.calloc(SizeOf.unsigned(CodeInfoImpl.class));
+        CodeInfoImpl info = UnmanagedMemory.calloc(getSizeOfCodeInfo());
 
         assert objectData.isNonNull() && NonmovableArrays.lengthOf(objectData) == CodeInfoImpl.OBJFIELDS_COUNT;
         info.setObjectFields(objectData);
@@ -199,6 +199,10 @@ public final class RuntimeCodeInfoAccess {
         // Make the object visible to the GC (before writing any heap data into the object).
         RuntimeCodeInfoMemory.singleton().add(info);
         return info;
+    }
+
+    public static UnsignedWord getSizeOfCodeInfo() {
+        return SizeOf.unsigned(CodeInfoImpl.class);
     }
 
     static void partialReleaseAfterInvalidate(CodeInfo info, boolean notifyGC) {
@@ -224,6 +228,7 @@ public final class RuntimeCodeInfoAccess {
          * walk even when CodeInfo data is already partially freed.
          */
         CodeInfoAccess.setState(info, CodeInfo.STATE_PARTIALLY_FREED);
+        RuntimeCodeInfoHistory.singleton().logInvalidate(info);
     }
 
     public static CodePointer allocateCodeMemory(UnsignedWord size) {
@@ -274,6 +279,7 @@ public final class RuntimeCodeInfoAccess {
         if (!cast(info).getAllObjectsAreInImageHeap()) {
             forEachArray(info, RELEASE_ACTION);
         }
+        RuntimeCodeInfoHistory.singleton().logFree(info);
         ImageSingletons.lookup(UnmanagedMemorySupport.class).free(info);
     }
 

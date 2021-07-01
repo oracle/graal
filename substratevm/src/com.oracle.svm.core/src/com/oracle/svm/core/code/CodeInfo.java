@@ -74,4 +74,22 @@ public interface CodeInfo extends UntetheredCodeInfo {
     @DuplicatedInNativeCode //
     int STATE_UNREACHABLE = STATE_PARTIALLY_FREED + 1;
 
+    public static String stateToString(int codeInfoState) {
+        switch (codeInfoState) {
+            case STATE_CREATED:
+                return "created";
+            case STATE_CODE_CONSTANTS_LIVE:
+                return "code constants live";
+            case STATE_NON_ENTRANT:
+                return "non entrant";
+            case STATE_READY_FOR_INVALIDATION:
+                return "ready for invalidation";
+            case STATE_PARTIALLY_FREED:
+                return "partially freed";
+            case STATE_UNREACHABLE:
+                return "unreachable";
+            default:
+                return "invalid state";
+        }
+    }
 }

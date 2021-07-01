@@ -109,7 +109,7 @@ public abstract class VMThreads {
      * still holds that mutex.</li>
      * </ul>
      */
-    protected static final VMMutex THREAD_MUTEX = new VMMutex();
+    protected static final VMMutex THREAD_MUTEX = new VMMutex("Thread");
 
     /**
      * A condition variable for waiting for and notifying on changes to the {@link IsolateThread}
@@ -139,10 +139,11 @@ public abstract class VMThreads {
     private static final FastThreadLocalWord<OSThreadId> OSThreadIdTL = FastThreadLocalFactory.createWord();
     protected static final FastThreadLocalWord<OSThreadHandle> OSThreadHandleTL = FastThreadLocalFactory.createWord();
     public static final FastThreadLocalWord<Isolate> IsolateTL = FastThreadLocalFactory.createWord();
+    /** The highest stack address. */
     public static final FastThreadLocalWord<UnsignedWord> StackBase = FastThreadLocalFactory.createWord();
     /**
-     * The end of the stack. Note that this value does not necessarily match the value that is used
-     * for the stack overflow check.
+     * The lowest stack address. Note that this value does not necessarily match the value that is
+     * used for the stack overflow check.
      */
     public static final FastThreadLocalWord<UnsignedWord> StackEnd = FastThreadLocalFactory.createWord();
 

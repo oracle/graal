@@ -28,6 +28,7 @@ import static com.oracle.svm.core.annotate.RestrictHeapAccess.Access.NO_ALLOCATI
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
@@ -150,16 +151,17 @@ public abstract class SubstrateSegfaultHandler {
         Log log = Log.enterFatalContext(logHandler, (CodePointer) callerIP, msg, null);
         if (log != null) {
             log.newline();
-            log.string(msg).newline();
-
+            log.string("[ [ SubstrateSegfaultHandler caught a segfault in thread ").zhex(CurrentIsolate.getCurrentThread()).string(" ] ]").newline();
             ImageSingletons.lookup(SubstrateSegfaultHandler.class).printSignalInfo(log, signalInfo);
 
             PointerBase sp = RegisterDumper.singleton().getSP(context);
             PointerBase ip = RegisterDumper.singleton().getIP(context);
             SubstrateDiagnostics.print(log, (Pointer) sp, (CodePointer) ip, context);
-
-            log.string("Segfault detected, aborting process. Use runtime option -R:-InstallSegfaultHandler if you don't want to use SubstrateSegfaultHandler.").newline();
-            log.newline();
+            boolean printedDiagnostics = SubstrateDiagnostics.print(log, (Pointer) sp, (CodePointer) ip, context);
+            if (printedDiagnostics) {
+                log.string("Segfault detected, aborting process. Use runtime option -R:-InstallSegfaultHandler if you don't want to use SubstrateSegfaultHandler.").newline();
+                log.newline();
+            }
         }
         logHandler.fatalError();
     }

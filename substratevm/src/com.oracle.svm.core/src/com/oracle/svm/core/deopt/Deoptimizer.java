@@ -408,7 +408,6 @@ public final class Deoptimizer {
             }
         } else {
             if (installedCode == null) {
-                CodeInfoTable.getRuntimeCodeCache().logTable(true);
                 throw VMError.shouldNotReachHere(
                                 "Only runtime compiled methods can be invalidated. sp = " + Long.toHexString(sourceSp.rawValue()) + ", returnAddress = " + Long.toHexString(returnAddress.rawValue()));
             }
