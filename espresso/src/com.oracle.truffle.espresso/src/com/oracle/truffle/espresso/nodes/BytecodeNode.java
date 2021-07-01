@@ -243,7 +243,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -265,7 +264,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.analysis.liveness.LivenessAnalysis;
 import com.oracle.truffle.espresso.bytecode.BytecodeLookupSwitch;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
@@ -426,11 +424,6 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
     @Override
     public void setOSRMetadata(Object osrMetadata) {
         this.osrState = osrMetadata;
-    }
-
-    @Override
-    public TruffleLanguage<?> getLanguage() {
-        return EspressoLanguage.getCurrentContext().getLanguage();
     }
 
     private static final class EspressoOSRReturnException extends ControlFlowException {
@@ -1711,7 +1704,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                 LoopNode.reportLoopCount(this, REPORT_LOOP_STRIDE);
                 loopCount[0] = 0;
             }
-            Object osrResult = reportOSRBackEdge(frame, targetBCI);
+            Object osrResult = BytecodeOSRNode.reportOSRBackEdge(this, frame, targetBCI);
             if (osrResult != null) {
                 throw new EspressoOSRReturnException(osrResult);
             }

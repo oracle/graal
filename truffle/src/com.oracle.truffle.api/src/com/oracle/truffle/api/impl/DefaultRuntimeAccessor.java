@@ -42,7 +42,6 @@ package com.oracle.truffle.api.impl;
 
 import java.util.function.Function;
 
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import org.graalvm.options.OptionDescriptors;
@@ -87,7 +86,7 @@ final class DefaultRuntimeAccessor extends Accessor {
         }
 
         @Override
-        public Object onOSRBackEdge(BytecodeOSRNode osrNode, VirtualFrame parentFrame, int target, TruffleLanguage<?> language) {
+        public Object onOSRBackEdge(BytecodeOSRNode osrNode, VirtualFrame parentFrame, int target) {
             return null;
         }
 

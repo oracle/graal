@@ -43,6 +43,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import org.graalvm.compiler.truffle.runtime.BytecodeOSRMetadata;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
@@ -156,7 +157,8 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
     @Test
     public void testInvalidateOnNodeReplaced() {
         FrameDescriptor frameDescriptor = new FrameDescriptor();
-        FixedIterationLoop osrNode = new FixedIterationLoop(frameDescriptor);
+        Node childToReplace = new Node() {};
+        FixedIterationLoop osrNode = new FixedIterationLoopWithChild(frameDescriptor, childToReplace);
         RootNode rootNode = new Program(osrNode, frameDescriptor);
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
         Assert.assertEquals(FixedIterationLoop.OSR_RESULT, target.call(osrThreshold + 1));
@@ -164,7 +166,8 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         OptimizedCallTarget osrTarget = osrMetadata.getOSRCompilations().get(BytecodeOSRTestNode.DEFAULT_TARGET);
         Assert.assertNotNull(osrTarget);
         Assert.assertTrue(osrTarget.isValid());
-        osrNode.nodeReplaced(osrNode, new FixedIterationLoop(new FrameDescriptor()), "something changed");
+
+        childToReplace.replace(new Node() {});
         Assert.assertTrue(osrMetadata.getOSRCompilations().isEmpty());
         Assert.assertFalse(osrTarget.isValid());
         // Invalidating a target on node replace should not disable compilation.
@@ -408,11 +411,6 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
             this.osrMetadata = osrMetadata;
         }
 
-        @Override
-        public TruffleLanguage<?> getLanguage() {
-            return null;
-        }
-
         BytecodeOSRMetadata getGraalOSRMetadata() {
             return (BytecodeOSRMetadata) getOSRMetadata();
         }
@@ -447,7 +445,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
                 if (CompilerDirectives.inCompiledCode()) {
                     return 42;
                 }
-                Object result = reportOSRBackEdge(frame, DEFAULT_TARGET);
+                Object result = BytecodeOSRNode.reportOSRBackEdge(this, frame, DEFAULT_TARGET);
                 if (result != null) {
                     return result;
                 }
@@ -489,7 +487,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
                 for (int i = frame.getInt(indexSlot); i < numIterations; i++) {
                     frame.setInt(indexSlot, i);
                     if (i + 1 < numIterations) { // back-edge will be taken
-                        Object result = reportOSRBackEdge(frame, DEFAULT_TARGET);
+                        Object result = BytecodeOSRNode.reportOSRBackEdge(this, frame, DEFAULT_TARGET);
                         if (result != null) {
                             return result;
                         }
@@ -518,7 +516,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
                 for (int i = frame.getInt(indexSlot); i < numIterations; i++) {
                     frame.setInt(indexSlot, i);
                     if (i + 1 < numIterations) { // back-edge will be taken
-                        Object result = reportOSRBackEdge(frame, DEFAULT_TARGET);
+                        Object result = BytecodeOSRNode.reportOSRBackEdge(this, frame, DEFAULT_TARGET);
                         if (result != null) {
                             return OSR_IN_FIRST_LOOP;
                         }
@@ -527,7 +525,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
                 for (int i = frame.getInt(indexSlot); i < 2 * numIterations; i++) {
                     frame.setInt(indexSlot, i);
                     if (i + 1 < 2 * numIterations) { // back-edge will be taken
-                        Object result = reportOSRBackEdge(frame, DEFAULT_TARGET);
+                        Object result = BytecodeOSRNode.reportOSRBackEdge(this, frame, DEFAULT_TARGET);
                         if (result != null) {
                             return OSR_IN_SECOND_LOOP;
                         }
@@ -551,13 +549,21 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
             for (int i = 0; i < numIterations; i++) {
                 CompilerAsserts.neverPartOfCompilation();
                 if (i + 1 < numIterations) { // back-edge will be taken
-                    Object result = reportOSRBackEdge(frame, DEFAULT_TARGET);
+                    Object result = BytecodeOSRNode.reportOSRBackEdge(this, frame, DEFAULT_TARGET);
                     if (result != null) {
                         return result;
                     }
                 }
             }
             return CompilerDirectives.inCompiledCode() ? OSR_RESULT : NORMAL_RESULT;
+        }
+    }
+
+    public static class FixedIterationLoopWithChild extends FixedIterationLoop {
+        @Child Node child;
+        public FixedIterationLoopWithChild(FrameDescriptor frameDescriptor, Node child) {
+            super(frameDescriptor);
+            this.child = child;
         }
     }
 
@@ -573,7 +579,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
                     frame.setInt(indexSlot, i);
                     checkStackTrace(i);
                     if (i + 1 < numIterations) { // back-edge will be taken
-                        Object result = reportOSRBackEdge(frame, DEFAULT_TARGET);
+                        Object result = BytecodeOSRNode.reportOSRBackEdge(this, frame, DEFAULT_TARGET);
                         if (result != null) {
                             return result;
                         }
@@ -702,7 +708,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
                     frame.setInt(indexSlot, i);
                     checkCallerFrame();
                     if (i + 1 < numIterations) { // back-edge will be taken
-                        Object result = reportOSRBackEdge(frame, DEFAULT_TARGET);
+                        Object result = BytecodeOSRNode.reportOSRBackEdge(this, frame, DEFAULT_TARGET);
                         if (result != null) {
                             return result;
                         }
@@ -754,11 +760,6 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         @Override
         public void setOSRMetadata(Object osrMetadata) {
             this.osrMetadata = osrMetadata;
-        }
-
-        @Override
-        public TruffleLanguage<?> getLanguage() {
-            return null;
         }
 
         protected void setInt(Frame frame, int stackIndex, int value) {
@@ -829,7 +830,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
                         if (value != 0) {
                             int target = bci + bytecodes[bci + 2];
                             if (target < bci) { // back-edge
-                                Object result = reportOSRBackEdge(frame, target);
+                                Object result = BytecodeOSRNode.reportOSRBackEdge(this, frame, target);
                                 if (result != null) {
                                     return result;
                                 }

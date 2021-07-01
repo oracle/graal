@@ -76,15 +76,21 @@ final class GraalRuntimeSupport extends RuntimeSupport {
     }
 
     @Override
-    public Object onOSRBackEdge(BytecodeOSRNode osrNode, VirtualFrame parentFrame, int target, TruffleLanguage<?> language) {
+    public Object onOSRBackEdge(BytecodeOSRNode osrNode, VirtualFrame parentFrame, int target) {
         CompilerAsserts.neverPartOfCompilation();
-        BytecodeOSRMetadata osrMetadata = (BytecodeOSRMetadata) osrNode.getOSRMetadata();
+        Node node;
+        try {
+            node = (Node) osrNode;
+        } catch (ClassCastException ex) {
+            throw new IllegalArgumentException("Bytecode OSR node must be of type Node.");
+        }
 
+        BytecodeOSRMetadata osrMetadata = (BytecodeOSRMetadata) osrNode.getOSRMetadata();
         if (osrMetadata == null) {
-            osrMetadata = osrNode.asNode().atomic(() -> { // double checked locking
+            osrMetadata = node.atomic(() -> { // double checked locking
                 BytecodeOSRMetadata metadata = (BytecodeOSRMetadata) osrNode.getOSRMetadata();
                 if (metadata == null) {
-                    OptimizedCallTarget callTarget = (OptimizedCallTarget) osrNode.asNode().getRootNode().getCallTarget();
+                    OptimizedCallTarget callTarget = (OptimizedCallTarget) node.getRootNode().getCallTarget();
                     if (callTarget.getOptionValue(PolyglotCompilerOptions.OSR)) {
                         metadata = new BytecodeOSRMetadata(osrNode, callTarget.getOptionValue(PolyglotCompilerOptions.OSRCompilationThreshold));
                     } else {
@@ -102,6 +108,7 @@ final class GraalRuntimeSupport extends RuntimeSupport {
         if (osrMetadata == BytecodeOSRMetadata.DISABLED) {
             return null;
         } else {
+            TruffleLanguage<?> language = GraalRuntimeAccessor.NODES.getLanguage(node.getRootNode());
             return osrMetadata.onOSRBackEdge(parentFrame, target, language);
         }
     }

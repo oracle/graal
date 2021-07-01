@@ -957,10 +957,9 @@ public abstract class Accessor {
          * @param osrNode the node which can be on-stack replaced
          * @param parentFrame the frame to be passed for OSR
          * @param target the target location of the jump (e.g., bytecode index)
-         * @param language the language of the node
          * @return result if OSR was performed, or {@code null}.
          */
-        public abstract Object onOSRBackEdge(BytecodeOSRNode osrNode, VirtualFrame parentFrame, int target, TruffleLanguage<?> language);
+        public abstract Object onOSRBackEdge(BytecodeOSRNode osrNode, VirtualFrame parentFrame, int target);
 
         /**
          * Reports that a child node of an {@link BytecodeOSRNode} was replaced. Allows the runtime system to

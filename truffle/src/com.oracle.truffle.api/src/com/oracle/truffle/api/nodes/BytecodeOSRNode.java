@@ -41,8 +41,6 @@
 package com.oracle.truffle.api.nodes;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.ReplaceObserver;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 
@@ -52,7 +50,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
  *
  * @since 21.3 TODO update
  */
-public interface BytecodeOSRNode extends ReplaceObserver, NodeInterface {
+public interface BytecodeOSRNode extends NodeInterface {
 
     /**
      * Entrypoint for invoking this node through OSR. Typically, this method will:
@@ -97,38 +95,18 @@ public interface BytecodeOSRNode extends ReplaceObserver, NodeInterface {
     void setOSRMetadata(Object osrMetadata);
 
     /**
-     * Gets the {@link TruffleLanguage} for this node.
-     *
-     * @return the language.
-     */
-    TruffleLanguage<?> getLanguage();
-
-    /**
      * Reports a back edge to the target location. This information can be used to trigger on-stack
      * replacement (OSR).
      *
-     * @param parentFrame frame at current point of execution
+     * @param osrNode the node for which to report a back-edge.
+     * @param parentFrame frame at current point of execution.
      * @param target target location of the jump (e.g., bytecode index).
      * @return result if OSR was performed, or {@code null} otherwise.
      */
-    default Object reportOSRBackEdge(VirtualFrame parentFrame, int target) {
+    static Object reportOSRBackEdge(BytecodeOSRNode osrNode, VirtualFrame parentFrame, int target) {
         if (!CompilerDirectives.inInterpreter()) {
             return null;
         }
-        return NodeAccessor.RUNTIME.onOSRBackEdge(this, parentFrame, target, getLanguage());
-    }
-
-    default Node asNode() {
-        try {
-            return (Node) this;
-        } catch (ClassCastException ex) {
-            throw new IllegalArgumentException("Bytecode OSR node must be of type Node.");
-        }
-    }
-
-    @Override
-    default boolean nodeReplaced(Node oldNode, Node newNode, CharSequence reason) {
-        NodeAccessor.RUNTIME.onOSRNodeReplaced(this, oldNode, newNode, reason);
-        return false;
+        return NodeAccessor.RUNTIME.onOSRBackEdge(osrNode, parentFrame, target);
     }
 }
