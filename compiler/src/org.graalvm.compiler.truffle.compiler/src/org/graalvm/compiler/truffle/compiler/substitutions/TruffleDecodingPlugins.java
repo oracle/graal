@@ -56,14 +56,12 @@ public class TruffleDecodingPlugins {
         final ResolvedJavaType graalCompilerDirectivesType = getRuntime().resolveType(metaAccess, "org.graalvm.compiler.truffle.runtime.GraalCompilerDirectives");
         Registration r = new Registration(plugins, new ResolvedJavaSymbol(graalCompilerDirectivesType));
         r.setAllowOverwrite(true);
-        r.register0("inFirstTier", new InvocationPlugin() {
+        r.register0("hasNextTier", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 if (b.getGraph().getCancellable() instanceof TruffleCompilationTask) {
                     TruffleCompilationTask task = (TruffleCompilationTask) b.getGraph().getCancellable();
-                    boolean isFirstTier = task.isFirstTier();
-                    boolean transitionalTier = task.isTransitionalTier();
-                    b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(isFirstTier && transitionalTier));
+                    b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(task.hasNextTier()));
                     return true;
                 }
                 return false;

@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.GraalCompilerDirectives;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
@@ -32,6 +31,7 @@ import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -66,7 +66,7 @@ public class EngineModeTest extends TestWithSynchronousCompiling {
         OptimizedCallTarget target = (OptimizedCallTarget) GraalTruffleRuntime.getRuntime().createCallTarget(new RootNode(null) {
             @Override
             public Object execute(VirtualFrame frame) {
-                if (GraalCompilerDirectives.inFirstTier()) {
+                if (GraalCompilerDirectives.hasNextTier()) {
                     CompilerAsserts.neverPartOfCompilation("First tier guarded code should not be evaluated in latency mode");
                 }
                 return null;
@@ -121,47 +121,43 @@ public class EngineModeTest extends TestWithSynchronousCompiling {
     public void testLatencyNoInlining() {
         setupContext(MODE, LATENCY, "engine.CompileOnly", ROOT);
         GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
-        AbstractSplittingStrategyTest.SplitCountingListener listener = new AbstractSplittingStrategyTest.SplitCountingListener();
-        try {
-            runtime.addListener(listener);
-            OptimizedCallTarget inner = (OptimizedCallTarget) runtime.createCallTarget(new RootNode(null) {
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    if (CompilerDirectives.inCompiledCode()) {
-                        fail();
-                    }
-                    return null;
+        OptimizedCallTarget inner = (OptimizedCallTarget) runtime.createCallTarget(new RootNode(null) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                if (CompilerDirectives.inCompiledCode()) {
+                    fail();
                 }
+                return null;
+            }
 
-                @CompilerDirectives.TruffleBoundary
-                private void fail() {
-                    Assert.fail("Should not inline in latency mode");
-                }
+            @CompilerDirectives.TruffleBoundary
+            private void fail() {
+                Assert.fail("Should not inline in latency mode");
+            }
 
-                @Override
-                public boolean isCloningAllowed() {
-                    return true;
-                }
-            });
-            DirectCallNode directCallNode = runtime.createDirectCallNode(inner);
-            DirectCallNode directCallNode2 = runtime.createDirectCallNode(inner);
+            @Override
+            public boolean isCloningAllowed() {
+                return true;
+            }
+        });
+        DirectCallNode directCallNode = runtime.createDirectCallNode(inner);
+        DirectCallNode directCallNode2 = runtime.createDirectCallNode(inner);
 
-            OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(new RootNode(null) {
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    directCallNode.call();
-                    directCallNode2.call();
-                    return null;
-                }
+        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(new RootNode(null) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                directCallNode.call();
+                directCallNode2.call();
+                return null;
+            }
 
-                @Override
-                public String getName() {
-                    return ROOT;
-                }
-            });
-            compileAndAssertLatency(target);
-        } finally {
-            runtime.removeListener(listener);
-        }
+            @Override
+            public String getName() {
+                return ROOT;
+            }
+        });
+        compileAndAssertLatency(target);
+        Assert.assertNull(directCallNode.getClonedCallTarget());
+        Assert.assertNull(directCallNode2.getClonedCallTarget());
     }
 }

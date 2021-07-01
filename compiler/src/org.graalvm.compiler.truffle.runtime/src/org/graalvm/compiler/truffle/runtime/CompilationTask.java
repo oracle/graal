@@ -155,7 +155,7 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
     }
 
     @Override
-    public boolean isTransitionalTier() {
+    public boolean hasNextTier() {
         if (isLastTier()) {
             return false;
         }
