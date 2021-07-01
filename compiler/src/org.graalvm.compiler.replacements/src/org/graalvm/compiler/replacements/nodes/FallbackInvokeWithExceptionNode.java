@@ -43,6 +43,13 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
  * Placeholder for a fallback call from a {@link MacroStateSplitWithExceptionNode}.
+ *
+ * The {@link #fallbackFunctionCallThrowing()} intrinsic can be used in snippets that lower a
+ * {@link MacroStateSplitWithExceptionNode}. The {@link FallbackInvokeWithExceptionNode} will be
+ * replaced with the {@linkplain MacroStateSplitWithExceptionNode#createInvoke original call} of the
+ * macro node. This can be useful for handling exceptional and/or slow path cases.
+ *
+ * Currently, only one {@link FallbackInvokeWithExceptionNode} is allowed per snippet.
  */
 // @formatter:off
 @NodeInfo(allowedUsageTypes = {Value, Memory},
@@ -62,6 +69,9 @@ public final class FallbackInvokeWithExceptionNode extends WithExceptionNode imp
         return LocationIdentity.any();
     }
 
+    /**
+     * @see FallbackInvokeWithExceptionNode
+     */
     @NodeIntrinsic
     public static native void fallbackFunctionCallThrowing();
 }
