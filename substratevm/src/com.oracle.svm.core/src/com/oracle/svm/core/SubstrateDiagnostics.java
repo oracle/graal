@@ -167,8 +167,34 @@ public class SubstrateDiagnostics {
         state.clear();
     }
 
+    static void dumpRuntimeCompilation(Log log) {
+        try {
+            RuntimeCodeInfoHistory.singleton().printRecentOperations(log, true);
+        } catch (Exception e) {
+            dumpException(log, "DumpCodeCacheHistory", e);
+        }
+
+        log.newline();
+        try {
+            RuntimeCodeInfoMemory.singleton().printTable(log, true);
+        } catch (Exception e) {
+            dumpException(log, "DumpRuntimeCodeInfoMemory", e);
+        }
+
+        log.newline();
+        try {
+            Deoptimizer.logRecentDeoptimizationEvents(log, true);
+        } catch (Exception e) {
+            dumpException(log, "DumpRecentDeoptimizations", e);
+        }
+    }
+
     private static void dumpException(Log log, DiagnosticThunk thunk, Throwable e) {
-        log.newline().string("[!!! Exception while dumping ").string(thunk.getClass().getName()).string(": ").string(e.getClass().getName()).string("]").newline();
+        dumpException(log, thunk.getClass().getName(), e);
+    }
+
+    private static void dumpException(Log log, String currentDumper, Throwable e) {
+        log.newline().string("[!!! Exception while executing ").string(currentDumper).string(": ").string(e.getClass().getName()).string("]").newline();
     }
 
     @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.")
@@ -490,7 +516,7 @@ public class SubstrateDiagnostics {
         }
     }
 
-    private static class DumpRuntimeCodeCache extends DiagnosticThunk {
+    private static class DumpRuntimeCodeInfoMemory extends DiagnosticThunk {
         @Override
         public int maxInvocations() {
             return 2;
@@ -500,7 +526,7 @@ public class SubstrateDiagnostics {
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
         public void printDiagnostics(Log log, int invocationCount) {
             if (DeoptimizationSupport.enabled()) {
-                RuntimeCodeInfoMemory.singleton().logTable(log, invocationCount == 1);
+                RuntimeCodeInfoMemory.singleton().printTable(log, invocationCount == 1);
             }
         }
     }
@@ -666,7 +692,7 @@ public class SubstrateDiagnostics {
         DiagnosticThunkRegister() {
             this.diagnosticThunks = new DiagnosticThunk[]{new DumpRegisters(), new DumpInstructions(), new DumpTopOfCurrentThreadStack(), new DumpDeoptStubPointer(), new DumpTopFrame(),
                             new DumpThreads(), new DumpThreadLocals(), new DumpCurrentVMOperations(), new DumpVMOperationHistory(), new DumpCodeCacheHistory(),
-                            new DumpRuntimeCodeCache(), new DumpRecentDeoptimizations(), new DumpCounters(), new DumpCurrentThreadFrameAnchors(), new DumpCurrentThreadRawStackTrace(),
+                            new DumpRuntimeCodeInfoMemory(), new DumpRecentDeoptimizations(), new DumpCounters(), new DumpCurrentThreadFrameAnchors(), new DumpCurrentThreadRawStackTrace(),
                             new DumpCurrentThreadDecodedStackTrace(), new DumpOtherStackTraces(), new VMLockSupport.DumpVMMutexes()};
         }
 

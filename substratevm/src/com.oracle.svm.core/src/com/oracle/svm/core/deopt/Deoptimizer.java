@@ -84,8 +84,6 @@ import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
-import com.oracle.svm.core.thread.VMOperationControl.VMOpHistory;
-import com.oracle.svm.core.thread.VMOperationControl.VMOpStatusChange;
 import com.oracle.svm.core.util.RingBuffer;
 import com.oracle.svm.core.util.VMError;
 

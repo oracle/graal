@@ -243,7 +243,7 @@ public class RuntimeCodeInfoMemory {
     }
 
     /** Potentially unsafe and may therefore only be used when printing diagnostics. */
-    public void logTable(Log log, boolean allowJavaHeapAccess) {
+    public void printTable(Log log, boolean allowJavaHeapAccess) {
         log.string("RuntimeCodeInfoMemory contains ").signed(count).string(" methods");
         for (int i = 0; i < NonmovableArrays.lengthOf(table); i++) {
             logCodeInfo(log, i, allowJavaHeapAccess);
