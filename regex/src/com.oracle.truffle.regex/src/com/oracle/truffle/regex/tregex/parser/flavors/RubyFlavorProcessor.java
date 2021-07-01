@@ -355,7 +355,22 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
      */
     private CodePointSetAccumulator curCharClass = new CodePointSetAccumulator();
     /**
-     * A temporary buffer for case folding and inverting character classes.
+     * The characters which are allowed to be full case-foldable (i.e. they are allowed to cross
+     * the ASCII boundary) in this character class. This set is constructed as the set of all
+     * characters that are included in the character class by being mentioned either:
+     * <ul>
+     *     <li>literally, as in [a]</li>
+     *     <li>as part of a range, e.g. [a-c]</li>
+     *     <li>through a POSIX character property other than [[:word:]] and [[:ascii:]]</li>
+     *     <li>through a Unicode property other than \p{Ascii}</li>
+     *     <li>through a character type other than \w or \W</li>
+     * </ul>
+     * This includes character mentioned inside negations, intersections and other nested character
+     * classes.
+     */
+    private CodePointSetAccumulator fullyFoldableCharacters = new CodePointSetAccumulator();
+    /**
+     * A temporary buffer for inverting character classes.
      */
     private CodePointSetAccumulator charClassTmp = new CodePointSetAccumulator();
     /**
@@ -557,12 +572,10 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
 
     /**
      * Emits a matcher (either a character class expression or a literal character) that would match
-     * the contents of {@code curCharClass}. Case-folding is performed if the IGNORECASE flag is
-     * set.
+     * the contents of {@code curCharClass}.
      */
     private void emitCharSet() {
         if (!silent) {
-            caseFold();
             if (curCharClass.matchesSingleChar()) {
                 emitCharNoCasing(curCharClass.get().getLo(0), false);
             } else {
@@ -593,14 +606,9 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
     }
 
     /**
-     * If the IGNORECASE flag is set, this method modifies {@code curCharClass} to contains its
-     * closure on case mapping. Otherwise, it should do nothing. Currently, it bails out, because
-     * Ruby-style case folding is not implemented.
+     * This method modifies {@code curCharClass} to contains its closure on case mapping.
      */
     private void caseFold() {
-        if (!getLocalFlags().isIgnoreCase()) {
-            return;
-        }
         bailOut("Ruby-style case folding is not supported");
     }
 
@@ -1177,6 +1185,9 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                 }
                 if (inCharClass) {
                     curCharClass.addSet(charSet);
+                    if (getLocalFlags().isIgnoreCase() && className != 'w' && className != 'W') {
+                        fullyFoldableCharacters.addSet(charSet);
+                    }
                 } else {
                     emitCharSet(charSet);
                 }
@@ -1217,6 +1228,9 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                     }
                     if (inCharClass) {
                         curCharClass.addSet(property);
+                        if (getLocalFlags().isIgnoreCase() && propertySpec.toLowerCase() != "ascii") {
+                            fullyFoldableCharacters.addSet(property);
+                        }
                     } else {
                         emitCharSet(property);
                     }
@@ -1616,7 +1630,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
      * already parsed.
      */
     private void characterClass() {
-        curCharClass.clear();
+        curCharClassClear();
         collectCharClass();
         emitCharSet();
     }
@@ -1656,11 +1670,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                     break;
                 case '&':
                     if (match("&")) {
-                        CodePointSetAccumulator curCharClassBackup = curCharClass;
-                        curCharClass = acquireCodePointSetAccumulator();
-                        collectCharClass();
-                        curCharClassBackup.intersectWith(curCharClass.get());
-                        curCharClass = curCharClassBackup;
+                        charClassIntersection();
                         break classBody;
                     } else {
                         lowerBound = Optional.of(ch);
@@ -1679,9 +1689,9 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                 switch (ch) {
                     case ']':
                         if (lowerBound.isPresent()) {
-                            curCharClass.addCodePoint(lowerBound.get());
+                            curCharClassAddCodePoint(lowerBound.get());
                         }
-                        curCharClass.addCodePoint('-');
+                        curCharClassAddCodePoint('-');
                         break classBody;
                     case '\\':
                         upperBound = classEscape();
@@ -1697,14 +1707,10 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                     case '&':
                         if (match("&")) {
                             if (lowerBound.isPresent()) {
-                                curCharClass.addCodePoint(lowerBound.get());
+                                curCharClassAddCodePoint(lowerBound.get());
                             }
-                            curCharClass.addCodePoint('-');
-                            CodePointSetAccumulator curCharClassBackup = curCharClass;
-                            curCharClass = acquireCodePointSetAccumulator();
-                            collectCharClass();
-                            curCharClassBackup.intersectWith(curCharClass.get());
-                            curCharClass = curCharClassBackup;
+                            curCharClassAddCodePoint('-');
+                            charClassIntersection();
                             break classBody;
                         } else {
                             upperBound = Optional.of(ch);
@@ -1719,14 +1725,38 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                     if (!lowerBound.isPresent() || !upperBound.isPresent() || upperBound.get() < lowerBound.get()) {
                         throw syntaxErrorAt(RbErrorMessages.badCharacterRange(inPattern.substring(rangeStart, position)), rangeStart);
                     }
-                    curCharClass.addRange(lowerBound.get(), upperBound.get());
+                    curCharClassAddRange(lowerBound.get(), upperBound.get());
                 }
             } else if (lowerBound.isPresent()) {
-                curCharClass.addCodePoint(lowerBound.get());
+                curCharClassAddCodePoint(lowerBound.get());
             }
+        }
+        if (getLocalFlags().isIgnoreCase()) {
+            caseFold();
         }
         if (negated) {
             negateCharClass();
+        }
+    }
+
+    private void curCharClassClear() {
+        curCharClass.clear();
+        if (getLocalFlags().isIgnoreCase()) {
+            fullyFoldableCharacters.clear();
+        }
+    }
+
+    private void curCharClassAddCodePoint(int codepoint) {
+        curCharClass.addCodePoint(codepoint);
+        if (getLocalFlags().isIgnoreCase()) {
+            fullyFoldableCharacters.addCodePoint(codepoint);
+        }
+    }
+
+    private void curCharClassAddRange(int lower, int upper) {
+        curCharClass.addRange(lower, upper);
+        if (getLocalFlags().isIgnoreCase()) {
+            fullyFoldableCharacters.addRange(lower, upper);
         }
     }
 
@@ -1742,6 +1772,22 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
 
     private void releaseCodePointSetAccumulator(CodePointSetAccumulator accumulator) {
         charClassPool.add(accumulator);
+    }
+
+    private void charClassIntersection() {
+        CodePointSetAccumulator curCharClassBackup = curCharClass;
+        CodePointSetAccumulator foldableCharsBackup = fullyFoldableCharacters;
+        curCharClass = acquireCodePointSetAccumulator();
+        if (getLocalFlags().isIgnoreCase()) {
+            fullyFoldableCharacters = acquireCodePointSetAccumulator();
+        }
+        collectCharClass();
+        curCharClassBackup.intersectWith(curCharClass.get());
+        curCharClass = curCharClassBackup;
+        if (getLocalFlags().isIgnoreCase()) {
+            foldableCharsBackup.addSet(fullyFoldableCharacters.get());
+            fullyFoldableCharacters = foldableCharsBackup;
+        }
     }
 
     /**
@@ -1788,9 +1834,12 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                 assert getLocalFlags().isDefault() || getLocalFlags().isUnicode();
                 charSet = UNICODE_POSIX_CHAR_CLASSES.get(className);
             }
-            charSet.appendRangesTo(curCharClass.get(), 0, charSet.size());
             if (negated) {
-                negateCharClass();
+                charSet = charSet.createInverse(inSource.getEncoding());
+            }
+            curCharClass.addSet(charSet);
+            if (getLocalFlags().isIgnoreCase() && !getLocalFlags().isAscii() && !className.equals("word") && !className.equals("ascii")) {
+                fullyFoldableCharacters.addSet(charSet);
             }
             return PosixClassParseResult.WasNestedPosixClass;
         } else {
