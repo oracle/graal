@@ -590,20 +590,19 @@ public final class HeapImpl extends Heap {
 
     private static class DumpHeapSettingsAndStatistics extends DiagnosticThunk {
         @Override
-        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
-        public void printDiagnostics(Log log, int invocationCount) {
-            if (invocationCount == 0) {
-                printHeapSettingsAndStatistics(log);
-            }
+        public int maxInvocations() {
+            return 1;
         }
 
-        private static void printHeapSettingsAndStatistics(Log log) {
+        @Override
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
+        public void printDiagnostics(Log log, int invocationCount) {
             GCImpl gc = GCImpl.getGCImpl();
 
             log.string("[Heap settings and statistics: ").indent(true);
             log.string("Supports isolates: ").bool(SubstrateOptions.SpawnIsolates.getValue()).newline();
             if (ImageSingletons.lookup(CompressEncoding.class).hasBase()) {
-                log.string("Heap base: ").hex(KnownIntrinsics.heapBase()).newline();
+                log.string("Heap base: ").zhex(KnownIntrinsics.heapBase()).newline();
             }
             log.string("Object reference size: ").signed(ConfigurationValues.getObjectLayout().getReferenceSize()).newline();
 
@@ -617,11 +616,14 @@ public final class HeapImpl extends Heap {
 
     private static class DumpChunkInformation extends DiagnosticThunk {
         @Override
+        public int maxInvocations() {
+            return 1;
+        }
+
+        @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
         public void printDiagnostics(Log log, int invocationCount) {
-            if (invocationCount == 0) {
-                printChunkInformation(log);
-            }
+            printChunkInformation(log);
         }
 
         private static void printChunkInformation(Log log) {

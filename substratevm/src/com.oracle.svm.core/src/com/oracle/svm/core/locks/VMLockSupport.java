@@ -42,14 +42,13 @@ public abstract class VMLockSupport {
 
     public static class DumpVMMutexes extends DiagnosticThunk {
         @Override
-        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
-        public void printDiagnostics(Log log, int invocationCount) {
-            if (invocationCount == 0) {
-                printVMMutexes(log);
-            }
+        public int maxInvocations() {
+            return 1;
         }
 
-        private static void printVMMutexes(Log log) {
+        @Override
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
+        public void printDiagnostics(Log log, int invocationCount) {
             log.string("VM mutexes:").newline();
             log.indent(true);
 

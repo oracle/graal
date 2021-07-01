@@ -135,19 +135,19 @@ public final class ImageHeapWalker {
     }
 
     static void logPartitionBoundaries(Log log, ImageHeapInfo imageHeapInfo) {
-        log.string("ReadOnly Primitives: ").hex(Word.objectToUntrackedPointer(imageHeapInfo.firstReadOnlyPrimitiveObject)).string(" .. ").hex(
+        log.string("ReadOnly Primitives: ").zhex(Word.objectToUntrackedPointer(imageHeapInfo.firstReadOnlyPrimitiveObject)).string(" .. ").zhex(
                         Word.objectToUntrackedPointer(imageHeapInfo.lastReadOnlyPrimitiveObject)).newline();
-        log.string("ReadOnly References: ").hex(Word.objectToUntrackedPointer(imageHeapInfo.firstReadOnlyReferenceObject)).string(" .. ").hex(
+        log.string("ReadOnly References: ").zhex(Word.objectToUntrackedPointer(imageHeapInfo.firstReadOnlyReferenceObject)).string(" .. ").zhex(
                         Word.objectToUntrackedPointer(imageHeapInfo.lastReadOnlyReferenceObject)).newline();
-        log.string("ReadOnly Relocatables: ").hex(Word.objectToUntrackedPointer(imageHeapInfo.firstReadOnlyRelocatableObject)).string(" .. ").hex(
+        log.string("ReadOnly Relocatables: ").zhex(Word.objectToUntrackedPointer(imageHeapInfo.firstReadOnlyRelocatableObject)).string(" .. ").zhex(
                         Word.objectToUntrackedPointer(imageHeapInfo.lastReadOnlyRelocatableObject)).newline();
-        log.string("Writable Primitives: ").hex(Word.objectToUntrackedPointer(imageHeapInfo.firstWritablePrimitiveObject)).string(" .. ").hex(
+        log.string("Writable Primitives: ").zhex(Word.objectToUntrackedPointer(imageHeapInfo.firstWritablePrimitiveObject)).string(" .. ").zhex(
                         Word.objectToUntrackedPointer(imageHeapInfo.lastWritablePrimitiveObject)).newline();
-        log.string("Writable References: ").hex(Word.objectToUntrackedPointer(imageHeapInfo.firstWritableReferenceObject)).string(" .. ").hex(
+        log.string("Writable References: ").zhex(Word.objectToUntrackedPointer(imageHeapInfo.firstWritableReferenceObject)).string(" .. ").zhex(
                         Word.objectToUntrackedPointer(imageHeapInfo.lastWritableReferenceObject)).newline();
-        log.string("Writable Huge: ").hex(Word.objectToUntrackedPointer(imageHeapInfo.firstWritableHugeObject)).string(" .. ").hex(
+        log.string("Writable Huge: ").zhex(Word.objectToUntrackedPointer(imageHeapInfo.firstWritableHugeObject)).string(" .. ").zhex(
                         Word.objectToUntrackedPointer(imageHeapInfo.lastWritableHugeObject)).newline();
-        log.string("ReadOnly Huge: ").hex(Word.objectToUntrackedPointer(imageHeapInfo.firstReadOnlyHugeObject)).string(" .. ").hex(
+        log.string("ReadOnly Huge: ").zhex(Word.objectToUntrackedPointer(imageHeapInfo.firstReadOnlyHugeObject)).string(" .. ").zhex(
                         Word.objectToUntrackedPointer(imageHeapInfo.lastReadOnlyHugeObject));
     }
 }

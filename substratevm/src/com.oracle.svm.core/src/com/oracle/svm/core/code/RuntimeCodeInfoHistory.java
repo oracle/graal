@@ -123,7 +123,7 @@ public class RuntimeCodeInfoHistory {
 
     private static void printEntry(Object context, CodeCacheLogEntry entry, boolean allowJavaHeapAccess) {
         Log log = (Log) context;
-        entry.log(log, allowJavaHeapAccess);
+        entry.print(log, allowJavaHeapAccess);
     }
 
     private static class CodeCacheLogEntry {
@@ -152,7 +152,7 @@ public class RuntimeCodeInfoHistory {
             this.codeSize = codeSize;
         }
 
-        public void log(Log log, boolean allowJavaHeapAccess) {
+        public void print(Log log, boolean allowJavaHeapAccess) {
             if (kind != null) {
                 log.unsigned(timestamp).string(" - ").string(kind).string(": ");
                 printCodeInfo(log, allowJavaHeapAccess, codeInfo, codeInfoState, codeName, codeStart, codeEnd, codeSize);

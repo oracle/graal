@@ -271,7 +271,7 @@ final class HeapChunkProvider {
             if (unusedAlignedChunks.get().isNonNull()) {
                 log.newline().string("aligned chunks:").redent(true);
                 for (AlignedHeapChunk.AlignedHeader aChunk = unusedAlignedChunks.get(); aChunk.isNonNull(); aChunk = HeapChunk.getNext(aChunk)) {
-                    log.newline().hex(aChunk).string(" (").hex(AlignedHeapChunk.getObjectsStart(aChunk)).string("-").hex(HeapChunk.getTopPointer(aChunk)).string(")");
+                    log.newline().zhex(aChunk).string(" (").zhex(AlignedHeapChunk.getObjectsStart(aChunk)).string("-").zhex(HeapChunk.getTopPointer(aChunk)).string(")");
                 }
                 log.redent(false);
             }

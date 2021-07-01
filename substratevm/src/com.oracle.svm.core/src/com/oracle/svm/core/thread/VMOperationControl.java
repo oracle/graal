@@ -193,7 +193,7 @@ public final class VMOperationControl {
         }
     }
 
-    public static void logCurrentVMOperation(Log log, boolean allowJavaHeapAccess) {
+    public static void printCurrentVMOperation(Log log, boolean allowJavaHeapAccess) {
         /*
          * All reads in this method are racy as the currently executed VM operation could finish and
          * a different VM operation could start. So, the read data is not necessarily consistent.
@@ -213,7 +213,7 @@ public final class VMOperationControl {
         log.newline();
     }
 
-    public static void logRecentEvents(Log log, boolean allowJavaHeapAccess) {
+    public static void printRecentEvents(Log log, boolean allowJavaHeapAccess) {
         get().history.print(log, allowJavaHeapAccess);
     }
 

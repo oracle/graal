@@ -382,7 +382,7 @@ public class RealLog extends Log {
         } else {
             string(value.getClass().getName());
             string("@");
-            hex(Word.objectToUntrackedPointer(value));
+            zhex(Word.objectToUntrackedPointer(value));
         }
         return this;
     }
