@@ -34,7 +34,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.MissingResourceException;
 import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -80,19 +79,17 @@ public final class ClassLoaderSupportImplJDK11OrLater extends ClassLoaderSupport
             bundleName = specParts[0];
         }
         String packageName = packageName(bundleName);
-        if (packageName == null) {
-            throw new MissingResourceException("ResourceBundle does not seem to be a fully qualified class name.", bundleName, locale.toLanguageTag());
-        }
-        Set<Module> modules;
+        Set<Module> modules = null;
         if (moduleName != null) {
             modules = classLoaderSupport.findModule(moduleName).stream().collect(Collectors.toSet());
-        } else {
+        } else if (packageName != null) {
             modules = packageToModules.getOrDefault(packageName, Collections.emptySet());
         }
-        if (modules.isEmpty()) {
+        if (modules == null || modules.isEmpty()) {
             /* If bundle is not located in any module get it via classloader (from ALL_UNNAMED) */
             return Collections.singletonList(ResourceBundle.getBundle(bundleName, locale, classLoaderSupport.getClassLoader()));
         }
+        assert packageName != null;
         ArrayList<ResourceBundle> resourceBundles = new ArrayList<>();
         for (Module module : modules) {
             Module exportTargetModule = ClassLoaderSupportImplJDK11OrLater.class.getModule();
