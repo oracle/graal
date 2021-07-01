@@ -175,28 +175,19 @@ class RenaissanceNativeImageBenchmarkSuite(mx_java_benchmarks.RenaissanceBenchma
         return mx.library(lib).get_path(True)
 
     def extra_agent_run_arg(self, benchmark, args, image_run_args):
-        user_args = super(RenaissanceNativeImageBenchmarkSuite, self).extra_agent_run_arg(benchmark, args, [])
-        if not user_args:
-            # remove -r X argument from image run args
-            image_run_args = mx_sdk_benchmark.strip_args_with_number('-r', image_run_args)
-            user_args = ['-r', '1']
-        return image_run_args + user_args
+        user_args = super(RenaissanceNativeImageBenchmarkSuite, self).extra_agent_run_arg(benchmark, args, image_run_args)
+        # remove -r X argument from image run args
+        return ['-r', '1'] + mx_sdk_benchmark.strip_args_with_number('-r', user_args)
 
     def extra_profile_run_arg(self, benchmark, args, image_run_args):
-        user_args = super(RenaissanceNativeImageBenchmarkSuite, self).extra_profile_run_arg(benchmark, args, [])
-        if not user_args:
-            # remove -r X argument from image run args
-            image_run_args = mx_sdk_benchmark.strip_args_with_number('-r', image_run_args)
-            user_args = ['-r', '1']
-        return image_run_args + user_args
+        user_args = super(RenaissanceNativeImageBenchmarkSuite, self).extra_profile_run_arg(benchmark, args, image_run_args)
+        # remove -r X argument from image run args
+        return ['-r', '1'] + mx_sdk_benchmark.strip_args_with_number('-r', user_args)
 
     def extra_agent_profile_run_arg(self, benchmark, args, image_run_args):
-        user_args = super(RenaissanceNativeImageBenchmarkSuite, self).extra_agent_profile_run_arg(benchmark, args, [])
-        if not user_args:
-            # remove -r X argument from image run args
-            image_run_args = mx_sdk_benchmark.strip_args_with_number('-r', image_run_args)
-            user_args = ['-r', '10']
-        return image_run_args + user_args
+        user_args = super(RenaissanceNativeImageBenchmarkSuite, self).extra_agent_profile_run_arg(benchmark, args, image_run_args)
+        # remove -r X argument from image run args
+        return ['-r', '10'] + mx_sdk_benchmark.strip_args_with_number('-r', user_args)
 
     def skip_agent_assertions(self, benchmark, args):
         user_args = super(RenaissanceNativeImageBenchmarkSuite, self).skip_agent_assertions(benchmark, args)
@@ -451,30 +442,19 @@ class DaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.DaCapoBenchmarkSuite, B
         return _dacapo_resources[benchmark]
 
     def extra_agent_run_arg(self, benchmark, args, image_run_args):
-        user_args = super(DaCapoNativeImageBenchmarkSuite, self).extra_agent_run_arg(benchmark, args, [])
-        if not user_args:
-            # remove -n X argument from image run args
-            image_run_args = mx_sdk_benchmark.strip_args_with_number('-n', image_run_args)
-            user_args = ['-n', '1']
-        return image_run_args + user_args
+        user_args = super(DaCapoNativeImageBenchmarkSuite, self).extra_agent_run_arg(benchmark, args, image_run_args)
+        # remove -n X argument from image run args
+        return ['-n', '1'] + mx_sdk_benchmark.strip_args_with_number('-n', user_args)
 
     def extra_profile_run_arg(self, benchmark, args, image_run_args):
-        user_args = super(DaCapoNativeImageBenchmarkSuite, self).extra_profile_run_arg(benchmark, args, [])
-        if not user_args:
-            # remove -n X argument from image run args
-            image_run_args = mx_sdk_benchmark.strip_args_with_number('-n', image_run_args)
-            # extra-profile-run-arg is used to pass a number of instrumentation image run iterations
-            user_args = ['-n', '1']
-        return image_run_args + user_args
+        user_args = super(DaCapoNativeImageBenchmarkSuite, self).extra_profile_run_arg(benchmark, args, image_run_args)
+        # remove -n X argument from image run args
+        return ['-n', '1'] + mx_sdk_benchmark.strip_args_with_number('-n', user_args)
 
     def extra_agent_profile_run_arg(self, benchmark, args, image_run_args):
-        user_args = super(DaCapoNativeImageBenchmarkSuite, self).extra_agent_profile_run_arg(benchmark, args, [])
-        if not user_args:
-            # remove -n X argument from image run args
-            image_run_args = mx_sdk_benchmark.strip_args_with_number('-n', image_run_args)
-            # extra-agent-profile-run-arg is used to pass a number of agent runs to provide profiles
-            user_args = ['-n', '10']
-        return image_run_args + user_args
+        user_args = super(DaCapoNativeImageBenchmarkSuite, self).extra_agent_profile_run_arg(benchmark, args, image_run_args)
+        # remove -n X argument from image run args
+        return ['-n', '10'] + mx_sdk_benchmark.strip_args_with_number('-n', user_args)
 
     def skip_agent_assertions(self, benchmark, args):
         default_args = _DACAPO_SKIP_AGENT_ASSERTIONS[benchmark] if benchmark in _DACAPO_SKIP_AGENT_ASSERTIONS else []
@@ -587,16 +567,19 @@ class ScalaDaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.ScalaDaCapoBenchma
         return _scala_dacapo_resources[benchmark]
 
     def extra_agent_run_arg(self, benchmark, args, image_run_args):
-        image_run_args = mx_sdk_benchmark.strip_args_with_number('-n', image_run_args)
-        return super(ScalaDaCapoNativeImageBenchmarkSuite, self).extra_agent_run_arg(benchmark, args, image_run_args)
+        user_args = super(ScalaDaCapoNativeImageBenchmarkSuite, self).extra_agent_run_arg(benchmark, args, image_run_args)
+        # remove -n X argument from image run args
+        return mx_sdk_benchmark.strip_args_with_number('-n', user_args) + ['-n', '1']
 
     def extra_profile_run_arg(self, benchmark, args, image_run_args):
-        image_run_args = mx_sdk_benchmark.strip_args_with_number('-n', image_run_args)
-        return super(ScalaDaCapoNativeImageBenchmarkSuite, self).extra_profile_run_arg(benchmark, args, image_run_args)
+        user_args = super(ScalaDaCapoNativeImageBenchmarkSuite, self).extra_profile_run_arg(benchmark, args, image_run_args)
+        # remove -n X argument from image run args
+        return mx_sdk_benchmark.strip_args_with_number('-n', user_args) + ['-n', '1']
 
     def extra_agent_profile_run_arg(self, benchmark, args, image_run_args):
-        image_run_args = mx_sdk_benchmark.strip_args_with_number('-n', image_run_args)
-        return super(ScalaDaCapoNativeImageBenchmarkSuite, self).extra_agent_profile_run_arg(benchmark, args, image_run_args)
+        user_args = super(ScalaDaCapoNativeImageBenchmarkSuite, self).extra_agent_profile_run_arg(benchmark, args, image_run_args)
+        # remove -n X argument from image run args
+        return mx_sdk_benchmark.strip_args_with_number('-n', user_args) + ['-n', '10']
 
     def skip_agent_assertions(self, benchmark, args):
         user_args = super(ScalaDaCapoNativeImageBenchmarkSuite, self).skip_agent_assertions(benchmark, args)
