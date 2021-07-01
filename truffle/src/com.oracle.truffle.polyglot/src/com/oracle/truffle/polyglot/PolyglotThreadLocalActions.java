@@ -95,6 +95,11 @@ final class PolyglotThreadLocalActions {
         initialize();
     }
 
+    boolean hasActiveEvents() {
+        assert Thread.holdsLock(context);
+        return !activeEvents.isEmpty();
+    }
+
     private void initialize() {
         OptionValuesImpl options = this.context.engine.getEngineOptionValues();
         if (options.get(PolyglotEngineOptions.SafepointALot)) {
