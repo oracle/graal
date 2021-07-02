@@ -68,7 +68,7 @@ public final class RuntimeOptionParser {
     /**
      * The prefix for XOptions available in an application based on Substrate VM.
      */
-    private static final String X_OPTION_PREFIX = "-X";
+    static final String X_OPTION_PREFIX = "-X";
 
     /**
      * Parse and consume all standard options and system properties supported by Substrate VM. The

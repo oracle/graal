@@ -32,35 +32,29 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.util.VMError;
 
 /**
  * A parser for the HotSpot-like memory sizing options "-Xmn", "-Xms", "-Xmx", "-Xss". Every option
  * has a corresponding {@link RuntimeOptionKey} in {@link SubstrateOptions}.
  */
 public final class XOptions {
-    private static final XFlag[] XOPTIONS = {new XFlag("ms", SubstrateGCOptions.MinHeapSize), new XFlag("mx", SubstrateGCOptions.MaxHeapSize), new XFlag("mn", SubstrateGCOptions.MaxNewSize),
-                    new XFlag("ss", SubstrateOptions.StackSize)};
+    private static final XFlag[] XOPTIONS = {
+                    new XFlag("ms", SubstrateGCOptions.MinHeapSize),
+                    new XFlag("mx", SubstrateGCOptions.MaxHeapSize),
+                    new XFlag("mn", SubstrateGCOptions.MaxNewSize),
+                    new XFlag("ss", SubstrateOptions.StackSize)
+    };
 
     /**
      * Parses an XOption from a name and a value (e.g., from "mx2g") and adds it to the given map.
      */
     public static boolean parse(String keyAndValue, EconomicMap<OptionKey<?>, Object> values, boolean exitOnError) {
-        for (XOptions.XFlag xFlag : XOPTIONS) {
-            if (keyAndValue.startsWith(xFlag.name)) {
-                final String valueString = keyAndValue.substring(xFlag.name.length());
-                try {
-                    long value = SubstrateOptionsParser.parseLong(valueString);
-                    xFlag.optionKey.update(values, value);
-                    return true;
-                } catch (NumberFormatException nfe) {
-                    if (exitOnError) {
-                        Log.logStream().println("error: Wrong value for option -X'" + keyAndValue + "' is not a valid number.");
-                        System.exit(1);
-                    } else {
-                        throw new IllegalArgumentException("Invalid option '-X" + keyAndValue + "' does not specify a valid number.");
-                    }
-                }
-            }
+        XFlag xFlag = findXFlag(keyAndValue);
+        if (xFlag != null) {
+            long value = parse(xFlag, keyAndValue, exitOnError);
+            xFlag.optionKey.update(values, value);
+            return true;
         }
         return false;
     }
@@ -71,19 +65,37 @@ public final class XOptions {
      * number.
      */
     public static boolean setOption(String keyAndValue) {
-        for (XOptions.XFlag xFlag : XOPTIONS) {
-            if (keyAndValue.startsWith(xFlag.name)) {
-                final String valueString = keyAndValue.substring(xFlag.name.length());
-                try {
-                    long value = SubstrateOptionsParser.parseLong(valueString);
-                    RuntimeOptionValues.singleton().update(xFlag.optionKey, value);
-                    return true;
-                } catch (NumberFormatException nfe) {
-                    throw new IllegalArgumentException("Invalid option '-X" + keyAndValue + "' does not specify a valid number.");
-                }
-            }
+        XFlag xFlag = findXFlag(keyAndValue);
+        if (xFlag != null) {
+            long value = parse(xFlag, keyAndValue, false);
+            RuntimeOptionValues.singleton().update(xFlag.optionKey, value);
+            return true;
         }
         return false;
+    }
+
+    private static XFlag findXFlag(String keyAndValue) {
+        for (XFlag xFlag : XOPTIONS) {
+            if (keyAndValue.startsWith(xFlag.name)) {
+                return xFlag;
+            }
+        }
+        return null;
+    }
+
+    private static long parse(XFlag xFlag, String keyAndValue, boolean exitOnError) {
+        final String valueString = keyAndValue.substring(xFlag.name.length());
+        try {
+            return SubstrateOptionsParser.parseLong(valueString);
+        } catch (NumberFormatException nfe) {
+            if (exitOnError) {
+                Log.logStream().println("error: Wrong value for option '" + RuntimeOptionParser.X_OPTION_PREFIX + keyAndValue + "' is not a valid number.");
+                System.exit(1);
+                throw VMError.shouldNotReachHere();
+            } else {
+                throw new IllegalArgumentException("Invalid option '" + RuntimeOptionParser.X_OPTION_PREFIX + keyAndValue + "' does not specify a valid number.");
+            }
+        }
     }
 
     private static class XFlag {
