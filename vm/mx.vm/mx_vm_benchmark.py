@@ -808,7 +808,7 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
     def benchmarkList(self, bmSuiteArgs):
         if not hasattr(self, "_benchmarks"):
             self._benchmarks = []
-            for group in ["interpreter", "compiler"]:
+            for group in ["interpreter", "compiler", "warmup"]:
                 dir_path = os.path.join(self._get_benchmark_root(), group)
                 for f in os.listdir(dir_path):
                     f_path = os.path.join(dir_path, f)
@@ -851,6 +851,8 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
             return "compile-time"
         elif metric == "partial-evaluation-time":
             return "pe-time"
+        elif metric == "one-shot":
+            return "one-shot"
         else:
             return "time"
 
