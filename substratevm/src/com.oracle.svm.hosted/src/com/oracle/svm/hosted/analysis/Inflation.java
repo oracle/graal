@@ -477,6 +477,14 @@ public class Inflation extends BigBang {
         if (handledUnknownValueFields.contains(field)) {
             return;
         }
+        if (!field.isAccessed()) {
+            /*
+             * Field is not reachable yet, so do no process it. In particular, we must not register
+             * types listed in the @UnknownObjectField annotation as allocated when the field is not
+             * yet reachable
+             */
+            return;
+        }
 
         UnknownObjectField unknownObjectField = field.getAnnotation(UnknownObjectField.class);
         UnknownPrimitiveField unknownPrimitiveField = field.getAnnotation(UnknownPrimitiveField.class);
@@ -488,14 +496,8 @@ public class Inflation extends BigBang {
 
             List<AnalysisType> aAnnotationTypes = extractAnnotationTypes(field, unknownObjectField);
 
-            /*
-             * Only if an UnknownValue field is really accessed, we register all the field's
-             * sub-types as allocated.
-             */
-            if (field.isAccessed()) {
-                for (AnalysisType type : aAnnotationTypes) {
-                    type.registerAsAllocated(null);
-                }
+            for (AnalysisType type : aAnnotationTypes) {
+                type.registerAsAllocated(null);
             }
 
             /*
