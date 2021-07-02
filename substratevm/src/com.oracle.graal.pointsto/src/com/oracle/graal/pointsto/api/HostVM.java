@@ -37,7 +37,6 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
@@ -107,10 +106,6 @@ public interface HostVM {
     void methodAfterParsingHook(BigBang bb, AnalysisMethod method, StructuredGraph graph);
 
     void methodBeforeTypeFlowCreationHook(BigBang bb, AnalysisMethod method, StructuredGraph graph);
-
-    default AnalysisParsedGraph parseBytecode(BigBang bb, AnalysisMethod analysisMethod) {
-        return AnalysisParsedGraph.parseBytecode(bb, analysisMethod);
-    }
 
     default boolean hasNeverInlineDirective(@SuppressWarnings("unused") ResolvedJavaMethod method) {
         /* No inlining by the static analysis unless explicitly overwritten by the VM. */

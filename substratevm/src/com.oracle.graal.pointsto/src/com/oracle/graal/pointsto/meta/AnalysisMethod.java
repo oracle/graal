@@ -612,7 +612,7 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
                         continue;
                     }
 
-                    AnalysisParsedGraph graph = bb.getHostVM().parseBytecode(bb, this);
+                    AnalysisParsedGraph graph = AnalysisParsedGraph.parseBytecode(bb, this);
 
                     /*
                      * Since we still hold the parsing lock, the transition form "parsing" to

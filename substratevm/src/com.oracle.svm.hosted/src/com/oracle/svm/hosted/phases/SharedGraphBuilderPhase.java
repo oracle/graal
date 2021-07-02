@@ -99,10 +99,6 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             this.allowIncompleteClassPath = allowIncompleteClasspath;
         }
 
-        public GraphBuilderConfiguration getGraphBuilderConfig() {
-            return graphBuilderConfig;
-        }
-
         @Override
         protected RuntimeException throwParserError(Throwable e) {
             if (e instanceof UserException) {
