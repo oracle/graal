@@ -332,6 +332,7 @@ import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeSpecialNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeStaticNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeVirtualNodeGen;
 import com.oracle.truffle.espresso.perf.DebugCounter;
+import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
@@ -1263,6 +1264,8 @@ public final class BytecodeNode extends EspressoMethodNode {
                         BaseQuickNode quickNode = nodes[readCPI(curBCI)];
                         if (quickNode.removedByRedefintion()) {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
+                            // block while class redefinition is ongoing
+                            ClassRedefinition.check();
                             synchronized (this) {
                                 // re-check if node was already replaced by another thread
                                 if (quickNode != nodes[readCPI(curBCI)]) {

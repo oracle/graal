@@ -28,7 +28,6 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.meta.JavaKind;
-import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.staticobject.StaticProperty;
 
@@ -92,9 +91,6 @@ final class LinkedField extends StaticProperty {
     }
 
     ParserField getParserField() {
-        // block execution during class redefinition
-        ClassRedefinition.check();
-
         ParserField current = parserField;
         if (!current.getRedefineAssumption().isValid()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();

@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
@@ -132,13 +133,13 @@ public final class ClassRedefinition {
     }
 
     public static void check() {
+        CompilerAsserts.neverPartOfCompilation();
         // block until redefinition is done
         if (locked) {
             if (redefineThread == Thread.currentThread()) {
                 // let the redefine thread pass
                 return;
             }
-            CompilerDirectives.transferToInterpreter();
             synchronized (redefineLock) {
                 while (locked) {
                     try {
@@ -148,8 +149,6 @@ public final class ClassRedefinition {
                     }
                 }
             }
-            // re-check in case a new redefinition was kicked off
-            check();
         }
     }
 
