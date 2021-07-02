@@ -312,4 +312,13 @@ public class RubyTests extends RegexTestBase {
         test("(?<!ass)", "", "\u2728", 0, true, 0, 0);
         test("(?<!ass)", "i", "x", 0, true, 0, 0);
     }
+
+    @Test
+    public void ruby16145() {
+        // https://bugs.ruby-lang.org/issues/16145
+        test("[xo]", "i", "SHOP", 0, true, 2, 3);
+        test("[\u00e9]", "i", "CAF\u00c9", 0, true, 3, 4);
+        test("[x\u00e9]", "i", "CAF\u00c9", 0, true, 3, 4);
+        test("[x\u00c9]", "i", "CAF\u00c9", 0, true, 3, 4);
+    }
 }
