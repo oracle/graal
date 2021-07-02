@@ -33,7 +33,6 @@ import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -45,6 +44,7 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ClassUtil;
 
 public final class PredefinedClassesSupport {
     public static final class Options {
@@ -104,6 +104,15 @@ public final class PredefinedClassesSupport {
         }
     }
 
+    /**
+     * Register a class that cannot be loaded via a byte array of its class data, only with
+     * {@link #loadClass(ClassLoader, ProtectionDomain, Class)} or {@link #loadClassIfNotLoaded}.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void registerClass(Class<?> clazz) {
+        singleton().predefinedClasses.add(clazz);
+    }
+
     @Platforms(Platform.HOSTED_ONLY.class)
     public static boolean isPredefined(Class<?> clazz) {
         return singleton().predefinedClasses.contains(clazz);
@@ -120,21 +129,37 @@ public final class PredefinedClassesSupport {
             throw VMError.unsupportedFeature("Defining a class from new bytecodes at run time is not supported. Class " + name +
                             " with hash " + hash + " was not provided during the image build. Please see BuildConfiguration.md.");
         }
-        return singleton().load(classLoader, protectionDomain, clazz);
+        loadClass(classLoader, protectionDomain, clazz);
+        return clazz;
     }
 
-    private Class<?> load(ClassLoader classLoader, ProtectionDomain protectionDomain, Class<?> clazz) {
+    public static void loadClass(ClassLoader classLoader, ProtectionDomain protectionDomain, Class<?> clazz) {
+        boolean loaded = loadClassIfNotLoaded(classLoader, protectionDomain, clazz);
+        if (!loaded) {
+            if (classLoader == clazz.getClassLoader()) {
+                throw new LinkageError("loader " + classLoader + " attempted duplicate class definition for " + clazz.getName() + " defined by " + clazz.getClassLoader());
+            } else {
+                throw VMError.unsupportedFeature("A predefined class can be loaded (defined) at runtime only once by a single class loader. " +
+                                "Hierarchies of class loaders and distinct sets of classes are not supported. Class " + clazz.getName() + " has already " +
+                                "been loaded by class loader: " + clazz.getClassLoader());
+            }
+        }
+    }
+
+    /**
+     * Load the class if it has not already been loaded. Returns {@code true} if the class has been
+     * loaded as a result of this call, {@code false} otherwise. Throws if an error occurred.
+     */
+    public static boolean loadClassIfNotLoaded(ClassLoader classLoader, ProtectionDomain protectionDomain, Class<?> clazz) {
+        return singleton().loadClass0(classLoader, protectionDomain, clazz);
+    }
+
+    private boolean loadClass0(ClassLoader classLoader, ProtectionDomain protectionDomain, Class<?> clazz) {
         lock.lock();
         try {
             boolean alreadyLoaded = (loadedClassesByName.get(clazz.getName()) == clazz);
             if (alreadyLoaded) {
-                if (classLoader == clazz.getClassLoader()) {
-                    throw new LinkageError("loader " + classLoader + " attempted duplicate class definition for " + clazz.getName() + " defined by " + clazz.getClassLoader());
-                } else {
-                    throw VMError.unsupportedFeature("A predefined class can be loaded (defined) at runtime only once by a single class loader. " +
-                                    "Hierarchies of class loaders and distinct sets of classes are not supported. Class " + clazz.getName() + " has already " +
-                                    "been loaded by class loader: " + clazz.getClassLoader());
-                }
+                return false;
             }
 
             throwIfUnresolvable(clazz.getSuperclass(), classLoader);
@@ -152,7 +177,7 @@ public final class PredefinedClassesSupport {
                 hub.setProtectionDomainAtRuntime(protectionDomain);
             }
             loadedClassesByName.put(clazz.getName(), clazz);
-            return clazz;
+            return true;
         } finally {
             lock.unlock();
         }
@@ -163,24 +188,18 @@ public final class PredefinedClassesSupport {
             return;
         }
         DynamicHub hub = DynamicHub.fromClass(clazz);
-        if (!hub.isLoaded()) {
-            throwResolutionError(clazz.getName());
+        if (!hub.isLoaded() || !ClassUtil.isSameOrParentLoader(clazz.getClassLoader(), classLoader)) {
+            String name = clazz.getName();
+            // NoClassDefFoundError with ClassNotFoundException required by Java VM spec, 5.3
+            NoClassDefFoundError error = new NoClassDefFoundError(name.replace('.', '/'));
+            error.initCause(new ClassNotFoundException(name));
+            throw error;
         }
-        if (!isSameOrParent(clazz.getClassLoader(), classLoader)) { // common case: same loader
-            throwResolutionError(clazz.getName());
-        }
-    }
-
-    private static void throwResolutionError(String name) {
-        // NoClassDefFoundError with ClassNotFoundException required by Java VM specification, 5.3
-        NoClassDefFoundError error = new NoClassDefFoundError(name.replace('.', '/'));
-        error.initCause(new ClassNotFoundException(name));
-        throw error;
     }
 
     static Class<?> getLoadedForNameOrNull(String name, ClassLoader classLoader) {
         Class<?> clazz = singleton().getLoaded(name);
-        if (clazz == null || !isSameOrParent(clazz.getClassLoader(), classLoader)) {
+        if (clazz == null || !ClassUtil.isSameOrParentLoader(clazz.getClassLoader(), classLoader)) {
             return null;
         }
         return clazz;
@@ -195,23 +214,14 @@ public final class PredefinedClassesSupport {
         }
     }
 
-    private static boolean isSameOrParent(ClassLoader parent, ClassLoader child) {
-        if (parent == null) {
-            return true; // boot loader: any loader's parent
-        }
-        ClassLoader c = child;
-        do {
-            if (c == parent) { // common case
-                return true;
-            }
-            c = c.getParent();
-        } while (c != null);
-        return false;
-    }
-
+    @Platforms(Platform.HOSTED_ONLY.class)
     public static class TestingBackdoor {
-        public static UnmodifiableEconomicMap<String, Class<?>> getPredefinedClasses() {
-            return singleton().predefinedClassesByHash;
+        public static Set<Class<?>> getConfigurationPredefinedClasses() {
+            Set<Class<?>> set = new HashSet<>();
+            for (Class<?> clazz : singleton().predefinedClassesByHash.getValues()) {
+                set.add(clazz);
+            }
+            return set; // excludes internal classes such as proxy classes
         }
     }
 }

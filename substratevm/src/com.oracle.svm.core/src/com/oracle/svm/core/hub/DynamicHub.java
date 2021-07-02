@@ -100,8 +100,8 @@ import sun.security.util.SecurityConstants;
 public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedElement, java.lang.reflect.Type, GenericDeclaration, Serializable,
                 Target_java_lang_invoke_TypeDescriptor_OfField<DynamicHub>, Target_java_lang_constant_Constable {
 
-    /** Marker that a value must be obtained from the companion object. */
-    private static final Object FROM_COMPANION = new Object();
+    /** Marker value for {@link #classLoader}. */
+    static final Object NO_CLASS_LOADER = new Object();
 
     @Substitute //
     @TargetElement(onlyWith = JDK11OrLater.class) //
@@ -362,7 +362,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         this.componentType = componentHub;
         this.sourceFileName = sourceFileName;
         this.modifiers = modifiers;
-        this.classLoader = PredefinedClassesSupport.isPredefined(hostedJavaClass) ? FROM_COMPANION : classLoader;
+        this.classLoader = PredefinedClassesSupport.isPredefined(hostedJavaClass) ? NO_CLASS_LOADER : classLoader;
         setFlag(IS_HIDDED_FLAG_BIT, isHidden);
         setFlag(IS_RECORD_FLAG_BIT, isRecord);
         this.nestHost = nestHost;
@@ -741,14 +741,14 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Substitute
     private ClassLoader getClassLoader0() {
-        if (classLoader == FROM_COMPANION) {
+        if (classLoader == NO_CLASS_LOADER) {
             return companion.get().getClassLoader();
         }
         return (ClassLoader) classLoader;
     }
 
     public boolean isLoaded() {
-        return classLoader != FROM_COMPANION || (companion.isPresent() && companion.get().hasClassLoader());
+        return classLoader != NO_CLASS_LOADER || (companion.isPresent() && companion.get().hasClassLoader());
     }
 
     void setClassLoaderAtRuntime(ClassLoader loader) {

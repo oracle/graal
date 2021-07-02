@@ -61,6 +61,10 @@ public class ClassPredefinitionFeature implements Feature {
     public void afterRegistration(AfterRegistrationAccess arg) {
         ImageSingletons.add(PredefinedClassesSupport.class, new PredefinedClassesSupport());
 
+        /*
+         * NOTE: loading the class predefinition configuration should be done as early as possible
+         * so that their classes are already known for other configuration (reflection, proxies).
+         */
         AfterRegistrationAccessImpl access = (AfterRegistrationAccessImpl) arg;
         PredefinedClassesRegistry registry = new PredefinedClassesRegistryImpl();
         ImageSingletons.add(PredefinedClassesRegistry.class, registry);

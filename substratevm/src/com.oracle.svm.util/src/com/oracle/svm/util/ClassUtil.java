@@ -47,6 +47,20 @@ public final class ClassUtil {
         return name.substring(name.lastIndexOf('.') + 1); // strip the package name
     }
 
+    public static boolean isSameOrParentLoader(ClassLoader parent, ClassLoader child) {
+        if (parent == null) {
+            return true; // boot loader: any loader's parent
+        }
+        ClassLoader c = child;
+        while (c != null) {
+            if (c == parent) {
+                return true;
+            }
+            c = c.getParent();
+        }
+        return false;
+    }
+
     private ClassUtil() {
     }
 }
