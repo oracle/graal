@@ -349,6 +349,7 @@ class GraalTags:
     bootstraplite = ['bootstraplite', 'bootstrap', 'fulltest']
     bootstrapfullverify = ['bootstrapfullverify', 'fulltest']
     test = ['test', 'fulltest']
+    unittest = ['unittest', 'test', 'fulltest']
     coverage = ['coverage']
     benchmarktest = ['benchmarktest', 'fulltest']
     ctw = ['ctw', 'fulltest']
@@ -579,7 +580,7 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
 
 
 graal_unit_test_runs = [
-    UnitTestRun('UnitTests', [], tags=GraalTags.test + GraalTags.coverage),
+    UnitTestRun('UnitTests', [], tags=GraalTags.unittest + GraalTags.coverage),
 ]
 
 _registers = {
