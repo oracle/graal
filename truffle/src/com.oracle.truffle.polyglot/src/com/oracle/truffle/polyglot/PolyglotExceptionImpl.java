@@ -127,13 +127,14 @@ final class PolyglotExceptionImpl {
             try {
                 ExceptionType exceptionType = interop.getExceptionType(exception);
                 this.internal = false;
-                this.cancelled = (polyglotContextState != null && (polyglotContextState.isCancelling() || polyglotContextState == PolyglotContextImpl.State.CLOSED_CANCELLED)) ||
+                boolean truffleException = exception instanceof com.oracle.truffle.api.TruffleException;
+                this.cancelled = (polyglotContextState != null && (polyglotContextState.isCancelling() || polyglotContextState == PolyglotContextImpl.State.CLOSED_CANCELLED) && truffleException) ||
                                 isLegacyTruffleExceptionCancelled(exception);
                 this.syntaxError = exceptionType == ExceptionType.PARSE_ERROR;
                 this.exit = exceptionType == ExceptionType.EXIT;
                 this.exitStatus = this.exit ? interop.getExceptionExitStatus(exception) : 0;
                 this.incompleteSource = this.syntaxError ? interop.isExceptionIncompleteSource(exception) : false;
-                this.interrupted = exceptionType == ExceptionType.INTERRUPT;
+                this.interrupted = (exceptionType == ExceptionType.INTERRUPT) && !this.cancelled;
 
                 if (interop.hasSourceLocation(exception)) {
                     this.sourceLocation = newSourceSection(interop.getSourceLocation(exception));
@@ -159,15 +160,24 @@ final class PolyglotExceptionImpl {
                 throw CompilerDirectives.shouldNotReachHere(ume);
             }
         } else {
-            this.cancelled = (polyglotContextState != null && (polyglotContextState.isCancelling() || polyglotContextState == PolyglotContextImpl.State.CLOSED_CANCELLED)) ||
-                            (exception instanceof CancelExecution) ||
-                            isLegacyTruffleExceptionCancelled(exception);
             /*
              * When polyglot context is invalid, we cannot obtain the exception type from
              * InterruptExecution exception via interop. Please note that in this case the
              * InterruptExecution was thrown before the context was made invalid.
              */
-            this.interrupted = (exception instanceof PolyglotEngineImpl.InterruptExecution) || (exception != null && exception.getCause() instanceof InterruptedException);
+            boolean interruptException = (exception instanceof PolyglotEngineImpl.InterruptExecution) || (exception != null && exception.getCause() instanceof InterruptedException) ||
+                            (isHostException(engine, exception) && asHostException() instanceof InterruptedException);
+            boolean truffleException = exception instanceof com.oracle.truffle.api.TruffleException;
+            /*
+             * In case the exception is not a cancel exception, but the context is in cancelling or
+             * cancelled state, set the cancelled flag, but only if the original exception is a
+             * truffle exception or interrupt exception.
+             */
+            this.cancelled = (polyglotContextState != null && (polyglotContextState.isCancelling() || polyglotContextState == PolyglotContextImpl.State.CLOSED_CANCELLED) &&
+                            (interruptException || truffleException)) ||
+                            (exception instanceof CancelExecution) ||
+                            isLegacyTruffleExceptionCancelled(exception);
+            this.interrupted = interruptException && !this.cancelled;
             this.internal = !interrupted && !cancelled && !resourceExhausted;
             this.syntaxError = false;
             this.incompleteSource = false;
@@ -489,13 +499,19 @@ final class PolyglotExceptionImpl {
      * printStackTrace.
      */
     private abstract static class PrintStreamOrWriter {
-        /** Returns the object to be locked when using this StreamOrWriter. */
+        /**
+         * Returns the object to be locked when using this StreamOrWriter.
+         */
         abstract Object lock();
 
-        /** Prints the specified string. */
+        /**
+         * Prints the specified string.
+         */
         abstract void print(Object o);
 
-        /** Prints the specified string as a line on this StreamOrWriter. */
+        /**
+         * Prints the specified string as a line on this StreamOrWriter.
+         */
         abstract void println(Object o);
 
         abstract void printStackTrace(Throwable t);
