@@ -263,7 +263,7 @@ final class HeapChunkProvider {
     }
 
     Log report(Log log, boolean traceHeapChunks) {
-        log.string("[Unused:").indent(true);
+        log.string("Unused:").indent(true);
         log.string("aligned: ").signed(bytesInUnusedAlignedChunks.get())
                         .string("/")
                         .signed(bytesInUnusedAlignedChunks.get().unsignedDivide(HeapPolicy.getAlignedHeapChunkSize()));
@@ -276,7 +276,7 @@ final class HeapChunkProvider {
                 log.redent(false);
             }
         }
-        log.redent(false).string("]");
+        log.redent(false);
         return log;
     }
 

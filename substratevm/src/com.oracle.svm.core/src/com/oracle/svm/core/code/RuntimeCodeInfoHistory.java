@@ -69,15 +69,14 @@ public class RuntimeCodeInfoHistory {
         assert VMOperation.isInProgressAtSafepoint();
 
         traceCodeCache(kind, info, true);
-        recentOperations.next().setValues(kind, info, CodeInfoAccess.getState(info), CodeInfoAccess.getName(info), CodeInfoAccess.getCodeStart(info), CodeInfoAccess.getCodeEnd(info),
-                        CodeInfoAccess.getCodeSize(info));
+        recentOperations.next().setValues(kind, info, CodeInfoAccess.getState(info), CodeInfoAccess.getName(info), CodeInfoAccess.getCodeStart(info), CodeInfoAccess.getCodeEnd(info));
     }
 
     public void logFree(CodeInfo info) {
         assert VMOperation.isInProgressAtSafepoint() || VMThreads.isTearingDown();
 
         traceCodeCache("Freed", info, false);
-        recentOperations.next().setValues("Freed", info, CodeInfoAccess.getState(info), null, CodeInfoAccess.getCodeStart(info), CodeInfoAccess.getCodeEnd(info), CodeInfoAccess.getCodeSize(info));
+        recentOperations.next().setValues("Freed", info, CodeInfoAccess.getState(info), null, CodeInfoAccess.getCodeStart(info), CodeInfoAccess.getCodeEnd(info));
     }
 
     private static void traceCodeCache(String kind, CodeInfo info, boolean allowJavaHeapAccess) {
@@ -89,17 +88,16 @@ public class RuntimeCodeInfoHistory {
 
     static void printCodeInfo(Log log, CodeInfo info, boolean allowJavaHeapAccess) {
         printCodeInfo(log, allowJavaHeapAccess, info, CodeInfoAccess.getState(info), CodeInfoAccess.getName(info), CodeInfoAccess.getCodeStart(info),
-                        CodeInfoAccess.getCodeEnd(info), CodeInfoAccess.getCodeSize(info));
+                        CodeInfoAccess.getCodeEnd(info));
     }
 
-    private static void printCodeInfo(Log log, boolean allowJavaHeapAccess, CodeInfo codeInfo, int codeInfoState, String codeName, CodePointer codeStart, CodePointer codeEnd, UnsignedWord codeSize) {
-        log.string("[").zhex(codeInfo).string(" - ").zhex(((UnsignedWord) codeInfo).add(RuntimeCodeInfoAccess.getSizeOfCodeInfo()).subtract(1)).string("]");
-        log.string(" (").string(CodeInfoAccess.stateToString(codeInfoState)).string(")");
+    private static void printCodeInfo(Log log, boolean allowJavaHeapAccess, CodeInfo codeInfo, int codeInfoState, String codeName, CodePointer codeStart, CodePointer codeEnd) {
+        log.string("CodeInfo (").zhex(codeInfo).string(" - ").zhex(((UnsignedWord) codeInfo).add(RuntimeCodeInfoAccess.getSizeOfCodeInfo()).subtract(1)).string("), ")
+                        .string(CodeInfoAccess.stateToString(codeInfoState));
         if (allowJavaHeapAccess) {
-            log.spaces(1).string(codeName);
+            log.string(" - ").string(codeName);
         }
-        log.string(", ip: [").zhex(codeStart).string(" - ").zhex(codeEnd).string("]");
-        log.string(", size: ").unsigned(codeSize);
+        log.string(", ip: (").zhex(codeStart).string(" - ").zhex(codeEnd).string(")");
         log.newline();
         /*
          * Note that we are not trying to output the InstalledCode object. It is not a pinned
@@ -109,8 +107,9 @@ public class RuntimeCodeInfoHistory {
     }
 
     public void printRecentOperations(Log log, boolean allowJavaHeapAccess) {
-        log.string("Recent RuntimeCodeCache operations: ");
+        log.string("Recent RuntimeCodeInfo operations: ").indent(true);
         recentOperations.foreach(log, allowJavaHeapAccess ? PRINT_WITH_JAVA_HEAP_DATA : PRINT_WITHOUT_JAVA_HEAP_DATA);
+        log.indent(false);
     }
 
     private static void printEntryWithJavaHeapData(Object context, CodeCacheLogEntry entry) {
@@ -134,13 +133,12 @@ public class RuntimeCodeInfoHistory {
         private int codeInfoState;
         private CodePointer codeStart;
         private CodePointer codeEnd;
-        private UnsignedWord codeSize;
 
         @Platforms(Platform.HOSTED_ONLY.class)
         CodeCacheLogEntry() {
         }
 
-        public void setValues(String kind, CodeInfo codeInfo, int codeInfoState, String codeName, CodePointer codeStart, CodePointer codeEnd, UnsignedWord codeSize) {
+        public void setValues(String kind, CodeInfo codeInfo, int codeInfoState, String codeName, CodePointer codeStart, CodePointer codeEnd) {
             assert Heap.getHeap().isInImageHeap(kind);
             this.timestamp = System.currentTimeMillis();
             this.kind = kind;
@@ -149,13 +147,12 @@ public class RuntimeCodeInfoHistory {
             this.codeName = codeName;
             this.codeStart = codeStart;
             this.codeEnd = codeEnd;
-            this.codeSize = codeSize;
         }
 
         public void print(Log log, boolean allowJavaHeapAccess) {
             if (kind != null) {
-                log.unsigned(timestamp).string(" - ").string(kind).string(": ");
-                printCodeInfo(log, allowJavaHeapAccess, codeInfo, codeInfoState, codeName, codeStart, codeEnd, codeSize);
+                log.unsigned(timestamp).string(" - ").string(kind).spaces(1);
+                printCodeInfo(log, allowJavaHeapAccess, codeInfo, codeInfoState, codeName, codeStart, codeEnd);
             }
         }
     }

@@ -750,14 +750,10 @@ public final class Deoptimizer {
         }
     };
 
-    public static void logRecentDeoptimizationEvents(Log log, boolean allowJavaHeapAccess) {
-        if (allowJavaHeapAccess) {
-            log.string("Recent deoptimization events: ").newline();
-            recentDeoptimizationEvents.foreach(log, deoptEventsConsumer);
-            log.string("]").newline();
-        } else {
-            log.string("Deoptimization events could not be printed.").newline();
-        }
+    public static void logRecentDeoptimizationEvents(Log log) {
+        log.string("Recent deoptimization events:").indent(true);
+        recentDeoptimizationEvents.foreach(log, deoptEventsConsumer);
+        log.indent(false);
     }
 
     /**

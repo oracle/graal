@@ -148,7 +148,7 @@ public final class Space {
 
     /** Report some statistics about this Space. */
     public Log report(Log log, boolean traceHeapChunks) {
-        log.string("[").string(getName()).string(":").indent(true);
+        log.string(getName()).string(":").indent(true);
         accounting.report(log);
         if (traceHeapChunks) {
             if (getFirstAlignedHeapChunk().isNonNull()) {
@@ -166,7 +166,7 @@ public final class Space {
                 log.redent(false);
             }
         }
-        log.redent(false).string("]");
+        log.redent(false);
         return log;
     }
 

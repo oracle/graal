@@ -49,8 +49,7 @@ public abstract class VMLockSupport {
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
         public void printDiagnostics(Log log, int invocationCount) {
-            log.string("VM mutexes:").newline();
-            log.indent(true);
+            log.string("Locked VM mutexes:").indent(true);
 
             VMLockSupport support = ImageSingletons.lookup(VMLockSupport.class);
             VMMutex[] mutexes = support.getMutexes();
@@ -60,15 +59,16 @@ public abstract class VMLockSupport {
                 for (int i = 0; i < mutexes.length; i++) {
                     VMMutex mutex = mutexes[i];
                     IsolateThread owner = mutex.owner;
-                    if (owner.isNonNull()) {
-                        log.string(mutex.getName()).string(" is locked by ");
-                        if (owner.equal(VMMutex.UNSPECIFIED_OWNER)) {
-                            log.string(" an unspecified thread.");
-                        } else {
-                            log.string(" thread ").zhex(owner);
-                        }
-                        log.newline();
+                    // TEMP (chaeubl):
+// if (owner.isNonNull()) {
+                    log.string(mutex.getName()).string(" is locked by ");
+                    if (owner.equal(VMMutex.UNSPECIFIED_OWNER)) {
+                        log.string("an unspecified thread.");
+                    } else {
+                        log.string("thread ").zhex(owner);
                     }
+                    log.newline();
+// }
                 }
             }
 

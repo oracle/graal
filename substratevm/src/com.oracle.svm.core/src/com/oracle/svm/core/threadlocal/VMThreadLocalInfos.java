@@ -65,13 +65,13 @@ public class VMThreadLocalInfos {
             log.signed(info.offset).string(" (").signed(info.sizeInBytes).string(" bytes): ").string(info.name).string(" = ");
             if (info.threadLocalClass == FastThreadLocalInt.class) {
                 int value = primitiveData(thread).readInt(WordFactory.signed(info.offset));
-                log.string("(int) ").signed(value).string("  ").zhex(value);
+                log.string("(int) ").signed(value).string(" (").zhex(value).string(")");
             } else if (info.threadLocalClass == FastThreadLocalLong.class) {
                 long value = primitiveData(thread).readLong(WordFactory.signed(info.offset));
-                log.string("(long) ").signed(value).string("  ").zhex(value);
+                log.string("(long) ").signed(value).string(" (").zhex(value).string(")");
             } else if (info.threadLocalClass == FastThreadLocalWord.class) {
                 WordBase value = primitiveData(thread).readWord(WordFactory.signed(info.offset));
-                log.string("(Word) ").signed(value).string("  ").zhex(value.rawValue());
+                log.string("(Word) ").signed(value).string(" (").zhex(value.rawValue()).string(")");
             } else if (info.threadLocalClass == FastThreadLocalObject.class) {
                 if (allowJavaHeapAccess) {
                     Object value = ObjectAccess.readObject(objectData(thread), WordFactory.signed(info.offset));
@@ -79,7 +79,7 @@ public class VMThreadLocalInfos {
                     if (value == null) {
                         log.string("null");
                     } else {
-                        log.string(value.getClass().getName()).string("  ").zhex(Word.objectToUntrackedPointer(value).rawValue());
+                        log.string(value.getClass().getName()).string(" (").zhex(Word.objectToUntrackedPointer(value).rawValue()).string(")");
                     }
                 } else {
                     Word value = ReferenceAccess.singleton().readObjectAsUntrackedPointer(Word.objectToUntrackedPointer(objectData(thread)).add(info.offset), true);
@@ -88,7 +88,7 @@ public class VMThreadLocalInfos {
             } else if (info.threadLocalClass == FastThreadLocalBytes.class) {
                 log.string("(bytes) ").indent(true);
                 log.hexdump(primitiveData(thread).add(WordFactory.signed(info.offset)), 8, info.sizeInBytes / 8);
-                log.indent(false);
+                log.redent(false);
             } else {
                 log.string("unknown class ").string(info.threadLocalClass.getName());
             }

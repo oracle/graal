@@ -267,20 +267,17 @@ public final class HeapImpl extends Heap {
         report(log, HeapPolicyOptions.TraceHeapChunks.getValue());
     }
 
-    Log report(Log log, boolean traceHeapChunks) {
-        log.string("[Heap:").indent(true);
+    void report(Log log, boolean traceHeapChunks) {
+        log.string("Heap:").indent(true);
         getYoungGeneration().report(log, traceHeapChunks).newline();
         getOldGeneration().report(log, traceHeapChunks).newline();
-        getChunkProvider().report(log, traceHeapChunks);
-        log.redent(false).string("]");
-        return log;
+        getChunkProvider().report(log, traceHeapChunks).indent(false);
     }
 
-    Log logImageHeapPartitionBoundaries(Log log) {
-        log.string("[Native image heap boundaries: ").indent(true);
+    void logImageHeapPartitionBoundaries(Log log) {
+        log.string("Native image heap boundaries:").indent(true);
         ImageHeapWalker.logPartitionBoundaries(log, imageHeapInfo);
-        log.redent(false).string("]");
-        return log;
+        log.indent(false);
     }
 
     /** Log the zap values to make it easier to search for them. */
@@ -599,7 +596,7 @@ public final class HeapImpl extends Heap {
         public void printDiagnostics(Log log, int invocationCount) {
             GCImpl gc = GCImpl.getGCImpl();
 
-            log.string("[Heap settings and statistics: ").indent(true);
+            log.string("Heap settings and statistics:").indent(true);
             log.string("Supports isolates: ").bool(SubstrateOptions.SpawnIsolates.getValue()).newline();
             if (ImageSingletons.lookup(CompressEncoding.class).hasBase()) {
                 log.string("Heap base: ").zhex(KnownIntrinsics.heapBase()).newline();
@@ -608,9 +605,8 @@ public final class HeapImpl extends Heap {
 
             GCAccounting accounting = gc.getAccounting();
             log.string("Incremental collections: ").unsigned(accounting.getIncrementalCollectionCount()).newline();
-            log.string("Complete collections: ").unsigned(accounting.getCompleteCollectionCount());
-            log.redent(false).string("]").newline();
-            log.newline();
+            log.string("Complete collections: ").unsigned(accounting.getCompleteCollectionCount()).newline();
+            log.indent(false);
         }
     }
 
@@ -623,14 +619,10 @@ public final class HeapImpl extends Heap {
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
         public void printDiagnostics(Log log, int invocationCount) {
-            printChunkInformation(log);
-        }
-
-        private static void printChunkInformation(Log log) {
             HeapImpl heap = HeapImpl.getHeapImpl();
-            heap.logImageHeapPartitionBoundaries(log).newline();
+            heap.logImageHeapPartitionBoundaries(log);
             zapValuesToLog(log).newline();
-            heap.report(log, true).newline();
+            heap.report(log, true);
             log.newline();
         }
     }
