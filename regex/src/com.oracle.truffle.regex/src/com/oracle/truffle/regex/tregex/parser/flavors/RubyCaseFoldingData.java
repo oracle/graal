@@ -40,14 +40,15 @@
  */
 package com.oracle.truffle.regex.tregex.parser.flavors;
 
-import org.graalvm.collections.EconomicMap;
+import java.util.SortedMap;
+import java.util.TreeMap;
 
 public class RubyCaseFoldingData {
 
-    public static final EconomicMap<Integer, int[]> CASE_FOLD;
+    public static final SortedMap<Integer, int[]> CASE_FOLD;
 
     static {
-        CASE_FOLD = EconomicMap.create(1490);
+        CASE_FOLD = new TreeMap<>();
 
         CASE_FOLD.put(0x0041, new int[]{0x0061});
         CASE_FOLD.put(0x0042, new int[]{0x0062});

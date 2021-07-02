@@ -617,6 +617,23 @@ public interface SortedListOfRanges extends CharacterSet {
         }
     }
 
+    static void invert(SortedListOfRanges a, Encoding encoding, RangesBuffer target) {
+        target.clear();
+        if (a.isEmpty()) {
+            target.appendRange(encoding.getMinValue(), encoding.getMaxValue());
+            return;
+        }
+        if (a.getMin() > encoding.getMinValue()) {
+            target.appendRange(encoding.getMinValue(), a.getMin() - 1);
+        }
+        for (int i = 1; i < a.size(); i++) {
+            target.appendRange(a.getHi(i - 1) + 1, a.getLo(i) - 1);
+        }
+        if (a.getMax() < encoding.getMaxValue()) {
+            target.appendRange(a.getMax() + 1, encoding.getMaxValue());
+        }
+    }
+
     /**
      * Returns {@code true} if this list is empty.
      */

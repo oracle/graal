@@ -49,6 +49,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.BiConsumer;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -355,22 +356,22 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
      */
     private CodePointSetAccumulator curCharClass = new CodePointSetAccumulator();
     /**
-     * The characters which are allowed to be full case-foldable (i.e. they are allowed to cross
-     * the ASCII boundary) in this character class. This set is constructed as the set of all
-     * characters that are included in the character class by being mentioned either:
+     * The characters which are allowed to be full case-foldable (i.e. they are allowed to cross the
+     * ASCII boundary) in this character class. This set is constructed as the set of all characters
+     * that are included in the character class by being mentioned either:
      * <ul>
-     *     <li>literally, as in [a]</li>
-     *     <li>as part of a range, e.g. [a-c]</li>
-     *     <li>through a POSIX character property other than [[:word:]] and [[:ascii:]]</li>
-     *     <li>through a Unicode property other than \p{Ascii}</li>
-     *     <li>through a character type other than \w or \W</li>
+     * <li>literally, as in [a]</li>
+     * <li>as part of a range, e.g. [a-c]</li>
+     * <li>through a POSIX character property other than [[:word:]] and [[:ascii:]]</li>
+     * <li>through a Unicode property other than \p{Ascii}</li>
+     * <li>through a character type other than \w or \W</li>
      * </ul>
      * This includes character mentioned inside negations, intersections and other nested character
      * classes.
      */
     private CodePointSetAccumulator fullyFoldableCharacters = new CodePointSetAccumulator();
     /**
-     * A temporary buffer for inverting character classes.
+     * A temporary buffer for case-folding character classes.
      */
     private CodePointSetAccumulator charClassTmp = new CodePointSetAccumulator();
     /**
@@ -605,24 +606,6 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         }
     }
 
-    /**
-     * This method modifies {@code curCharClass} to contains its closure on case mapping.
-     */
-    private void caseFold() {
-        bailOut("Ruby-style case folding is not supported");
-    }
-
-    /**
-     * Invert the contents of the character set stored in {@code curCharClass}.
-     */
-    private void negateCharClass() {
-        charClassTmp.clear();
-        curCharClass.invert(charClassTmp, inSource.getEncoding());
-        CodePointSetAccumulator swap = curCharClass;
-        curCharClass = charClassTmp;
-        charClassTmp = swap;
-    }
-
     // Error reporting
 
     private RegexSyntaxException syntaxErrorAtEnd(String message) {
@@ -649,6 +632,10 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
 
     private static boolean isHexDigit(int c) {
         return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+    }
+
+    private static boolean isAscii(int c) {
+        return c < 128;
     }
 
     // First pass - identifying capture groups
@@ -1228,7 +1215,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                     }
                     if (inCharClass) {
                         curCharClass.addSet(property);
-                        if (getLocalFlags().isIgnoreCase() && propertySpec.toLowerCase() != "ascii") {
+                        if (getLocalFlags().isIgnoreCase() && !propertySpec.equalsIgnoreCase("ascii")) {
                             fullyFoldableCharacters.addSet(property);
                         }
                     } else {
@@ -1632,7 +1619,20 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
     private void characterClass() {
         curCharClassClear();
         collectCharClass();
-        emitCharSet();
+        if (getLocalFlags().isIgnoreCase()) {
+            List<String> multiCodePointExpansions = caseClosureMultiCodePoint();
+            if (multiCodePointExpansions.size() > 0) {
+                emitSnippet("(?:");
+                emitCharSet();
+                emitSnippet("|");
+                emitSnippet(String.join("|", multiCodePointExpansions));
+                emitSnippet(")");
+            } else {
+                emitCharSet();
+            }
+        } else {
+            emitCharSet();
+        }
     }
 
     private void collectCharClass() {
@@ -1732,10 +1732,10 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
             }
         }
         if (getLocalFlags().isIgnoreCase()) {
-            caseFold();
+            caseClosure();
         }
         if (negated) {
-            negateCharClass();
+            curCharClass.invert(inSource.getEncoding());
         }
     }
 
@@ -1846,6 +1846,84 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
             position = restorePosition;
             return PosixClassParseResult.TryNestedClass;
         }
+    }
+
+    /**
+     * Calls the argument on any element of the character class which has a case-folding.
+     */
+    private void caseFoldCharClass(BiConsumer<Integer, int[]> caseFoldItem) {
+        if (curCharClass.get().size() < RubyCaseFoldingData.CASE_FOLD.size()) {
+            for (Range r : curCharClass) {
+                RubyCaseFoldingData.CASE_FOLD.subMap(r.lo, r.hi + 1).forEach((Integer from, int[] to) -> {
+                    caseFoldItem.accept(from, to);
+                });
+            }
+        } else {
+            RubyCaseFoldingData.CASE_FOLD.forEach((Integer from, int[] to) -> {
+                if (curCharClass.get().contains(from)) {
+                    caseFoldItem.accept(from, to);
+                }
+            });
+        }
+    }
+
+    private boolean acceptableCaseFold(int from, int to) {
+        // Characters which are not "fully case-foldable" are only treated as equivalent if the
+        // relation doesn't cross the ASCII boundary.
+        return fullyFoldableCharacters.get().contains(from) || isAscii(from) == isAscii(to);
+    }
+
+    /**
+     * This method modifies {@code curCharClass} to contains its closure on case mapping.
+     */
+    private void caseClosure() {
+        charClassTmp.clear();
+
+        caseFoldCharClass((from, to) -> {
+            if (to.length == 1) {
+                // Add the case-folded version to the character class...
+                if (acceptableCaseFold(from, to[0])) {
+                    charClassTmp.addCodePoint(to[0]);
+                }
+            }
+            // ... and also any characters which case-fold to the same.
+            for (int unfolding : RubyCaseUnfoldingTrie.findSingleCharUnfoldings(to)) {
+                if (unfolding != from && acceptableCaseFold(from, unfolding)) {
+                    charClassTmp.addCodePoint(unfolding);
+                }
+            }
+        });
+
+        // We also handle all the characters which might have no case-folding, i.e. they case-fold
+        // to themselves.
+        for (Range r : curCharClass) {
+            for (int codepoint = r.lo; codepoint <= r.hi; codepoint++) {
+                for (int unfolding : RubyCaseUnfoldingTrie.findSingleCharUnfoldings(codepoint)) {
+                    if (acceptableCaseFold(codepoint, unfolding)) {
+                        charClassTmp.addCodePoint(unfolding);
+                    }
+                }
+            }
+        }
+
+        curCharClass.addSet(charClassTmp.get());
+    }
+
+    private List<String> caseClosureMultiCodePoint() {
+        List<String> multiCodePointExpansions = new ArrayList<>();
+
+        caseFoldCharClass((from, to) -> {
+            // TODO: Instead of this check, we should modify caseFoldUnfoldString so that it
+            // filters out unfoldings whose first character sits on the other side of the ASCII
+            // boundary as from.
+            if (acceptableCaseFold(from, to[0])) {
+                if (to.length > 1) {
+                    multiCodePointExpansions.add(RubyCaseFolding.caseFoldUnfoldString(to));
+                }
+            }
+        });
+
+        return multiCodePointExpansions;
     }
 
     /**

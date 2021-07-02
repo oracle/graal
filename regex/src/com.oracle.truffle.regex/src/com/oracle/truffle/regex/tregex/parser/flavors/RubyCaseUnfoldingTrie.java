@@ -41,11 +41,11 @@
 package com.oracle.truffle.regex.tregex.parser.flavors;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.UnmodifiableMapCursor;
 
 public final class RubyCaseUnfoldingTrie {
 
@@ -53,11 +53,7 @@ public final class RubyCaseUnfoldingTrie {
 
     static {
         CASE_UNFOLD = new RubyCaseUnfoldingTrie(0);
-
-        UnmodifiableMapCursor<Integer, int[]> caseFoldEntries = RubyCaseFoldingData.CASE_FOLD.getEntries();
-        while (caseFoldEntries.advance()) {
-            CASE_UNFOLD.add(caseFoldEntries.getKey(), caseFoldEntries.getValue(), 0);
-        }
+        RubyCaseFoldingData.CASE_FOLD.forEach((k, v) -> CASE_UNFOLD.add(k, v, 0));
     }
 
     private final List<Integer> codepoints;
@@ -156,5 +152,24 @@ public final class RubyCaseUnfoldingTrie {
         unfoldings.sort(Comparator.comparingInt(Unfolding::getStart).thenComparing(Comparator.comparingInt(Unfolding::getLength).reversed()));
 
         return unfoldings;
+    }
+
+    public static List<Integer> findSingleCharUnfoldings(int[] caseFolded) {
+        RubyCaseUnfoldingTrie state = CASE_UNFOLD;
+
+        for (int codepoint : caseFolded) {
+            assert state.hasChildAt(codepoint);
+            state = state.getChildAt(codepoint);
+        }
+
+        return state.getCodepoints();
+    }
+
+    public static List<Integer> findSingleCharUnfoldings(int caseFolded) {
+        if (CASE_UNFOLD.hasChildAt(caseFolded)) {
+            return CASE_UNFOLD.getChildAt(caseFolded).getCodepoints();
+        } else {
+            return Collections.emptyList();
+        }
     }
 }

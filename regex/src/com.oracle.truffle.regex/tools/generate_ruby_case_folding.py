@@ -100,15 +100,16 @@ print(r"""/*
  */
 package com.oracle.truffle.regex.tregex.parser.flavors;
 
-import org.graalvm.collections.EconomicMap;
+import java.util.SortedMap;
+import java.util.TreeMap;
 
 public class RubyCaseFoldingData {{
 
-    public static final EconomicMap<Integer, int[]> CASE_FOLD;
+    public static final SortedMap<Integer, int[]> CASE_FOLD;
 
     static {{
-        CASE_FOLD = EconomicMap.create({capacity});
+        CASE_FOLD = new TreeMap<>();
 
-{entries}
+{}
     }}
-}}""".format(capacity = len(entries), entries = "\n".join(entries)))
+}}""".format("\n".join(entries)))
