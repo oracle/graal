@@ -634,7 +634,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
     }
 
-    private static boolean isAscii(int c) {
+    static boolean isAscii(int c) {
         return c < 128;
     }
 
@@ -1913,13 +1913,9 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         List<String> multiCodePointExpansions = new ArrayList<>();
 
         caseFoldCharClass((from, to) -> {
-            // TODO: Instead of this check, we should modify caseFoldUnfoldString so that it
-            // filters out unfoldings whose first character sits on the other side of the ASCII
-            // boundary as from.
-            if (acceptableCaseFold(from, to[0])) {
-                if (to.length > 1) {
-                    multiCodePointExpansions.add(RubyCaseFolding.caseFoldUnfoldString(to));
-                }
+            if (to.length > 1) {
+                assert !isAscii(from);
+                multiCodePointExpansions.add(RubyCaseFolding.caseFoldUnfoldString(to, !fullyFoldableCharacters.get().contains(from)));
             }
         });
 

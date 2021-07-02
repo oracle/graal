@@ -269,4 +269,30 @@ public class RubyTests extends RegexTestBase {
         test("[^a]", "i", "a", 0, false);
         test("[[^a]]", "i", "a", 0, false);
     }
+
+    @Test
+    public void multiCodePointCaseFoldAcrossAsciiBoundary() {
+        test("\\A[\\W]\\z", "i", "\ufb00", 0, true, 0, 1);
+        // When \ufb00 is not fully case-foldable (because it is contributed by \W), it shouldn't
+        // be able to match 'ff', because its first character crosses the ASCII boundary from
+        // \ufb00.
+        test("\\A[\\W]\\z", "i", "ff", 0, false);
+
+        test("\\A[\\p{L}]\\z", "i", "\ufb00", 0, true, 0, 1);
+        // When \ufb00 is contributed by some other means, e.g. \p{L}, then it is fully
+        // case-foldable and can cross the ASCII boundary.
+        test("\\A[\\p{L}]\\z", "i", "ff", 0, true, 0, 2);
+
+        test("\\A[\\W]\\z", "i", "\ufb03", 0, true, 0, 1);
+        // This violates the ASCII boundary restriction...
+        test("\\A[\\W]\\z", "i", "ffi", 0, false);
+        // but it doesn't mean that we drop all multi-code-point expansions. The following
+        // expansion, where the first character is not ASCII, is fine.
+        test("\\A[\\W]\\z", "i", "\ufb00i", 0, true, 0, 2);
+
+        // And when \ufb00 is fully case-foldable, all expansions are valid.
+        test("\\A[\\p{L}]\\z", "i", "\ufb03", 0, true, 0, 1);
+        test("\\A[\\p{L}]\\z", "i", "ffi", 0, true, 0, 3);
+        test("\\A[\\p{L}]\\z", "i", "\ufb00i", 0, true, 0, 2);
+    }
 }
