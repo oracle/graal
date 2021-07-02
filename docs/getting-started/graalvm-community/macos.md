@@ -18,25 +18,27 @@ Note that in macOS, the JDK installation path is: `/Library/Java/JavaVirtualMach
 Follow these steps to install GraalVM Community on the macOS operating system:
 
 1. Navigate to [GraalVM Releases repository on GitHub](https://github.com/graalvm/graalvm-ce-builds/releases). Depending on the workload, select Java 11 based or Java 8 based distribution for macOS, and download.
-2. Unzip the archive:
-```shell
- tar -xzf graalvm-ce-java<version>-darvin-amd64-<version>.tar.gz
-```
-Alternatively, open the file in Finder.
+2. Unzip the archive.
+  ```shell
+   tar -xzf graalvm-ce-java<version>-darvin-amd64-<version>.tar.gz
+  ```
+  Alternatively, open the file in Finder.
+  > Note: If you are using macOS Catalina and later you may need to remove the quarantine attribute. See [Installation Notes](#installation-notes) below.
+
 3.  Move the downloaded package to its proper location, the `/Library/Java/JavaVirtualMachines` directory. Since this is a system directory, `sudo` is required:
-```shell
-sudo mv graalvm-ce-java<version>-<version> /Library/Java/JavaVirtualMachines
-```
+  ```shell
+  sudo mv graalvm-ce-java<version>-<version> /Library/Java/JavaVirtualMachines
+  ```
 To verify if the move is successful and to get a list of all installed JDKs, run `/usr/libexec/java_home -V`.
 4. There can be multiple JDKs installed on the machine. The next step is to configure the runtime environment:
   - Point the `PATH` environment variable to the GraalVM `bin` directory:
-  ```shell
-  export PATH=/Library/Java/JavaVirtualMachines/<graalvm>/Contents/Home/bin:$PATH
-  ```
+    ```shell
+    export PATH=/Library/Java/JavaVirtualMachines/<graalvm>/Contents/Home/bin:$PATH
+    ```
   - Set the `JAVA_HOME` environment variable to resolve to the GraalVM installation directory:
-  ```shell
-  export JAVA_HOME=/Library/Java/JavaVirtualMachines/<graalvm>/Contents/Home
-  ```
+    ```shell
+    export JAVA_HOME=/Library/Java/JavaVirtualMachines/<graalvm>/Contents/Home
+    ```
 5. To check whether the installation was successful, run the `java -version` command.
 Optionally, you can specify GraalVM as the default JRE or JDK installation in your Java IDE.
 
@@ -52,16 +54,10 @@ sudo xattr -r -d com.apple.quarantine /path/to/GRAALVM_HOME
 ```
 
 #### On JAVA_HOME Command
-The information property file, _Info.plist_, is in the top level _Contents_
-folder. This means that GraalVM participates in the macOS-specific
-`/usr/libexec/java_home` mechanism. Depending on other JDK 8 installation(s)
-available, it is now possible that `/usr/libexec/java_home -v1.8` returns
-`/Library/Java/JavaVirtualMachines/<graalvm>/Contents/Home`.
-You can run `/usr/libexec/java_home -v1.8 -V` to see the complete list of 1.8
-JVMs available to the `java_home` command. This command sorts the JVMs
-in decreasing version order and chooses the top one as the default for the
-specified version. Within a specific version, the sort order appears to be
-stable but is unspecified.
+The information property file, _Info.plist_, is in the top level _Contents_ folder.
+This means that GraalVM Enterprise participates in the macOS-specific `/usr/libexec/java_home` mechanism. Depending on other JDK 8 installation(s) available, it is now possible that `/usr/libexec/java_home -v1.8` returns `/Library/Java/JavaVirtualMachines/<graalvm>/Contents/Home`.
+You can run `/usr/libexec/java_home -v1.8 -V` to see the complete list of 1.8 JVMs available to the `java_home` command. This command sorts the JVMs in decreasing version order and chooses the top one as the default for the specified version.
+Within a specific version, the sort order appears to be stable but is unspecified.
 
 ## Supported Functionalities
 
