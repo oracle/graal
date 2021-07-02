@@ -518,7 +518,6 @@ public class TruffleContextTest extends AbstractPolyglotTest {
         TruffleContext expectedContext;
         int executeCount = 0;
 
-        @SuppressWarnings("static-method")
         @ExportMessage
         @TruffleBoundary
         final boolean isException() {
@@ -564,7 +563,7 @@ public class TruffleContextTest extends AbstractPolyglotTest {
         Object result = innerContext.eval(null, newTruffleSource());
         assertEquals(42, result);
 
-        // test that objects that cross the boundary enterd in the inner context
+        // test that objects that cross the boundary are entered in the inner context
         EvalContextTestObject innerObject = new EvalContextTestObject();
         EvalContextTestObject outerObject = new EvalContextTestObject();
         setupLanguageThatReturns(() -> innerObject);

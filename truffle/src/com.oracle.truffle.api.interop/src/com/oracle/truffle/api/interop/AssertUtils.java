@@ -123,7 +123,7 @@ final class AssertUtils {
     }
 
     static boolean validInteropReturn(Object receiver, Object arg) {
-        assert isInteropValue(arg) : violationReturn(receiver, arg);
+        assert InteropLibrary.isValidValue(arg) : violationReturn(receiver, arg);
         return true;
     }
 
@@ -174,11 +174,6 @@ final class AssertUtils {
         return String.format("Pre-condition contract violation for receiver %s and argument %s. " +
                         "Argument must not be null.",
                         formatValue(receiver), formatValue(arg));
-    }
-
-    @SuppressWarnings("deprecation")
-    static boolean isInteropValue(Object o) {
-        return InteropLibrary.isValidValue(o);
     }
 
     static boolean validArguments(Object receiver, Object[] args) {

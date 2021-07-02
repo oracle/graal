@@ -1826,7 +1826,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     }
 
     /**
-     * Only use to leave contexts from paths that are *always* compiled otherwise use
+     * Only use to enter contexts from paths that are *always* compiled otherwise use
      * {@link #enter(PolyglotContextImpl)}.
      */
     PolyglotContextImpl enterCached(PolyglotContextImpl context, boolean pollSafepoint) {

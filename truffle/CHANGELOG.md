@@ -12,7 +12,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added `TruffleContext.Builder.initializeCreatorContext(boolean)` that allows to disable initialization of the language that created the inner context.
 
 ## Version 21.3.0
-* Added the ability to share values between contexts. Guest languages can now use values of the polyglot embedding API using host interop. This no no longer leads to invalid sharing errors.
+* Added the ability to share values between contexts. Guest languages can now use values of the polyglot embedding API using host interop. This no longer leads to invalid sharing errors.
 * Added `ReflectionLibrary.getUncached` methods.
 
 ## Version 21.2.0

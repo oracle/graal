@@ -126,14 +126,12 @@ final class OtherContextGuestObject implements TruffleObject {
 
     private static final Message IDENTICAL = Message.resolve(InteropLibrary.class, "isIdentical");
 
-    private static Object sendImpl(PolyglotEngineImpl engine, Object receiver, Message message, Object[] args, PolyglotContextImpl receiverContext,
+    static Object sendImpl(PolyglotEngineImpl engine, Object receiver, Message message, Object[] args, PolyglotContextImpl receiverContext,
                     PolyglotContextImpl delegateContext,
                     ReflectionLibrary delegateLibrary,
                     BranchProfile seenOther,
                     BranchProfile seenError) throws Exception {
         if (message.getLibraryClass() == InteropLibrary.class) {
-            assert validEnteredContext(receiverContext);
-
             PolyglotContextImpl prev;
             try {
                 prev = engine.enter(delegateContext);
@@ -194,14 +192,6 @@ final class OtherContextGuestObject implements TruffleObject {
         } else {
             throw e;
         }
-    }
-
-    private static boolean validEnteredContext(PolyglotContextImpl receiverContext) {
-        PolyglotContextImpl currentContext = PolyglotContextImpl.currentNotEntered();
-        if (currentContext != null && currentContext != receiverContext) {
-            throw new AssertionError("A foreign context value was used while an invalid parent context was entered.");
-        }
-        return true;
     }
 
     private static RuntimeException toHostException(PolyglotContextImpl context, Throwable e) {

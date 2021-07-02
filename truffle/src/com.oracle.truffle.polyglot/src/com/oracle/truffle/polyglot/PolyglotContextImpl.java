@@ -744,7 +744,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
     }
 
     /**
-     * Use to enter context if its guaranteed to be called rarely and configuration flexibility is
+     * Use to enter context if it's guaranteed to be called rarely and configuration flexibility is
      * needed. Otherwise use {@link PolyglotEngineImpl#enter(PolyglotContextImpl)}.
      */
     @TruffleBoundary
