@@ -360,7 +360,7 @@ def _remove_empty_entries(a):
         return []
     return [x for x in a if x]
 
-def _gate_java_benchmark(args, successRe):
+def _gate_java_benchmark(args, successRe, cwd=None):
     """
     Runs a Java benchmark and aborts if the benchmark process exits with a non-zero
     exit code or the `successRe` pattern is not in the output of the benchmark process.
@@ -370,7 +370,7 @@ def _gate_java_benchmark(args, successRe):
     """
     out = mx.OutputCapture()
     try:
-        run_java(args, out=mx.TeeOutputCapture(out), err=subprocess.STDOUT)
+        run_java(args, out=mx.TeeOutputCapture(out), err=subprocess.STDOUT, cwd=cwd)
     finally:
         jvmErrorFile = re.search(r'(([A-Z]:|/).*[/\\]hs_err_pid[0-9]+\.log)', out.data)
         if jvmErrorFile:
@@ -452,7 +452,12 @@ def _gate_scala_dacapo(name, iterations, extraVMarguments=None):
     scratch_dir = join(os.getcwd(), 'scratch')
     with DaCapoWrapper(scratch_dir):
         args = ['-jar', scalaDacapoJar, name, '-n', str(iterations), '--preserve', '--scratch-directory', scratch_dir]
-        _gate_java_benchmark(vmargs + args, r'^===== DaCapo 0\.1\.0(-SNAPSHOT)? ([a-zA-Z0-9_]+) PASSED in ([0-9]+) msec =====')
+        cwd = None
+        if name == 'scaladoc':
+            # GR-32428: scaladoc scans $PWD for package.class files which can cause problems
+            # so run it in a directory most likely not containing extraneous package.class files.
+            cwd = dirname(scalaDacapoJar)
+        _gate_java_benchmark(vmargs + args, r'^===== DaCapo 0\.1\.0(-SNAPSHOT)? ([a-zA-Z0-9_]+) PASSED in ([0-9]+) msec =====', cwd=cwd)
 
 def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVMarguments=None, extraUnitTestArguments=None):
     if jdk.javaCompliance >= '9':
