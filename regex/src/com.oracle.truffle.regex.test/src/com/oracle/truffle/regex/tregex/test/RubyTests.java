@@ -295,4 +295,10 @@ public class RubyTests extends RegexTestBase {
         test("\\A[\\p{L}]\\z", "i", "ffi", 0, true, 0, 3);
         test("\\A[\\p{L}]\\z", "i", "\ufb00i", 0, true, 0, 2);
     }
+
+    @Test
+    public void caseClosureDoesntEscapeEncodingRange() {
+        // This shouldn't throw an AssertionError because of encountering the 'st' ligature.
+        testLatin1("test", "i", "test", 0, true, 0, 4);
+    }
 }

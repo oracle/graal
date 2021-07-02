@@ -564,7 +564,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
     private void emitChar(int codepoint) {
         if (!silent) {
             if (getLocalFlags().isIgnoreCase()) {
-                emitSnippet(RubyCaseFolding.caseFoldUnfoldString(new int[]{codepoint}));
+                emitSnippet(RubyCaseFolding.caseFoldUnfoldString(new int[]{codepoint}, inSource.getEncoding().getFullSet()));
             } else {
                 emitCharNoCasing(codepoint, false);
             }
@@ -914,7 +914,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
             }
 
             if (getLocalFlags().isIgnoreCase()) {
-                String caseFoldSnippet = RubyCaseFolding.caseFoldUnfoldString(codepointsBuffer.toArray());
+                String caseFoldSnippet = RubyCaseFolding.caseFoldUnfoldString(codepointsBuffer.toArray(), inSource.getEncoding().getFullSet());
                 emitSnippet(caseFoldSnippet);
             } else {
                 for (int i = 0; i < codepointsBuffer.length(); i++) {
@@ -1906,6 +1906,9 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
             }
         }
 
+        // Only include characters that are admissible in the given encoding.
+        charClassTmp.intersectWith(inSource.getEncoding().getFullSet());
+
         curCharClass.addSet(charClassTmp.get());
     }
 
@@ -1915,7 +1918,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         caseFoldCharClass((from, to) -> {
             if (to.length > 1) {
                 assert !isAscii(from);
-                multiCodePointExpansions.add(RubyCaseFolding.caseFoldUnfoldString(to, !fullyFoldableCharacters.get().contains(from)));
+                multiCodePointExpansions.add(RubyCaseFolding.caseFoldUnfoldString(to, inSource.getEncoding().getFullSet(), !fullyFoldableCharacters.get().contains(from)));
             }
         });
 
