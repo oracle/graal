@@ -126,39 +126,6 @@ public class CipherBlockChainingSubstitutions {
         }
     }
 
-    /**
-     * Variation for platforms (e.g. SPARC) that need do key expansion in stubs due to compatibility
-     * issues between Java key expansion and hardware crypto instructions.
-     */
-    @MethodSubstitution(isStatic = false, value = "decrypt")
-    static int decryptWithOriginalKey(Object rcvr, byte[] in, int inOffset, int inLength, byte[] out, int outOffset) {
-        Object realReceiver = piCastNonNull(rcvr, HotSpotReplacementsUtil.methodHolderClass(INJECTED_INTRINSIC_CONTEXT));
-        Object embeddedCipher = RawLoadNode.load(realReceiver, embeddedCipherOffset(INJECTED_INTRINSIC_CONTEXT), JavaKind.Object, LocationIdentity.any());
-        if (in != out && doInstanceof(aesCryptType(INJECTED_INTRINSIC_CONTEXT), embeddedCipher)) {
-            Object aesCipher = piCastNonNull(embeddedCipher, aesCryptType(INJECTED_INTRINSIC_CONTEXT));
-            crypt(realReceiver, in, inOffset, inLength, out, outOffset, aesCipher, false, true);
-            return inLength;
-        } else {
-            return decryptWithOriginalKey(realReceiver, in, inOffset, inLength, out, outOffset);
-        }
-    }
-
-    /**
-     * @see #decryptWithOriginalKey(Object, byte[], int, int, byte[], int)
-     */
-    @MethodSubstitution(isStatic = false, value = "implDecrypt")
-    static int implDecryptWithOriginalKey(Object rcvr, byte[] in, int inOffset, int inLength, byte[] out, int outOffset) {
-        Object realReceiver = piCastNonNull(rcvr, HotSpotReplacementsUtil.methodHolderClass(INJECTED_INTRINSIC_CONTEXT));
-        Object embeddedCipher = RawLoadNode.load(realReceiver, embeddedCipherOffset(INJECTED_INTRINSIC_CONTEXT), JavaKind.Object, LocationIdentity.any());
-        if (in != out && doInstanceof(aesCryptType(INJECTED_INTRINSIC_CONTEXT), embeddedCipher)) {
-            Object aesCipher = piCastNonNull(embeddedCipher, aesCryptType(INJECTED_INTRINSIC_CONTEXT));
-            crypt(realReceiver, in, inOffset, inLength, out, outOffset, aesCipher, false, true);
-            return inLength;
-        } else {
-            return implDecryptWithOriginalKey(realReceiver, in, inOffset, inLength, out, outOffset);
-        }
-    }
-
     private static void crypt(Object rcvr, byte[] in, int inOffset, int inLength, byte[] out, int outOffset, Object embeddedCipher, boolean encrypt, boolean withOriginalKey) {
         AESCryptSubstitutions.checkArgs(in, inOffset, out, outOffset);
         Object realReceiver = piCastNonNull(rcvr, HotSpotReplacementsUtil.methodHolderClass(INJECTED_INTRINSIC_CONTEXT));

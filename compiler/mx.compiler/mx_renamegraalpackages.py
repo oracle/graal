@@ -62,14 +62,10 @@ def renamegraalpackages(args):
 
     for proj_dir in [join(vc_dir, x) for x in os.listdir(vc_dir) if exists(join(vc_dir, x, 'mx.' + x, 'suite.py'))]:
         for dirpath, _, filenames in os.walk(proj_dir):
-            if args.version >= 15 and "sparc" in dirpath:
-                # Remove SPARC port for JDK 15
-                shutil.rmtree(dirpath)
-            else:
-                for filename in filenames:
-                    if filename.endswith('.java') or filename == 'suite.py' or filename == 'generate_unicode_properties.py' or filename == "mx_substratevm.py" or "META-INF" in dirpath:
-                        filepath = join(dirpath, filename)
-                        rename_packages(filepath)
+            for filename in filenames:
+                if filename.endswith('.java') or filename == 'suite.py' or filename == 'generate_unicode_properties.py' or filename == "mx_substratevm.py" or "META-INF" in dirpath:
+                    filepath = join(dirpath, filename)
+                    rename_packages(filepath)
 
         # move directories according to new package name
         for old_name, new_name in package_renamings.items():

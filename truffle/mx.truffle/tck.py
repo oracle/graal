@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -145,8 +145,7 @@ class _MvnClassPathEntry(_ClassPathEntry):
         if ret_code != 0:
             if self.required:
                 raise Abort('Cannot download artifact {0} '.format(self))
-            else:
-                return False
+            return False
         else:
             return True
 

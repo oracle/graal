@@ -113,9 +113,6 @@ public class SubstrateUtil {
             case "arm64":
                 arch = "aarch64";
                 break;
-            case "sparcv9":
-                arch = "sparc";
-                break;
         }
         return arch;
     }

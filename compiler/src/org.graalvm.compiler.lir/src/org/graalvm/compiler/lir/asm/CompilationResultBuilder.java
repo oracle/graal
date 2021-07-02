@@ -165,8 +165,7 @@ public class CompilationResultBuilder {
 
     /**
      * These position maps are used for estimating offsets of forward branches. Used for
-     * architectures where certain branch instructions have limited displacement such as ARM tbz or
-     * SPARC cbcond.
+     * architectures where certain branch instructions have limited displacement such as ARM tbz.
      */
     private EconomicMap<Label, Integer> labelBindLirPositions;
     private EconomicMap<LIRInstruction, Integer> lirPositions;
