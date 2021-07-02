@@ -3,6 +3,7 @@ layout: docs
 toc_group: tools
 link_title: Chrome Debugger
 permalink: /tools/chrome-debugger/
+redirect_from: /docs/tools/chrome-debugger/
 ---
 
 # Chrome Debugger
