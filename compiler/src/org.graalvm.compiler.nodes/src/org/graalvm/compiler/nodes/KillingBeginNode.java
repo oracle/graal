@@ -28,17 +28,23 @@ import static org.graalvm.compiler.nodeinfo.InputType.Memory;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
+import org.graalvm.compiler.nodes.spi.Simplifiable;
+import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.word.LocationIdentity;
 
 /**
  * A begin node that kills a single memory location. See {@link MultiKillingBeginNode} for a version
  * with multiple killed locations.
+ *
+ * @see WithExceptionNode for more details
  */
 @NodeInfo(allowedUsageTypes = {Memory}, cycles = CYCLES_0, size = SIZE_0)
-public final class KillingBeginNode extends AbstractBeginNode implements SingleMemoryKill {
+public final class KillingBeginNode extends AbstractBeginNode implements SingleMemoryKill, Simplifiable {
 
     public static final NodeClass<KillingBeginNode> TYPE = NodeClass.create(KillingBeginNode.class);
     protected LocationIdentity locationIdentity;
@@ -64,5 +70,31 @@ public final class KillingBeginNode extends AbstractBeginNode implements SingleM
     @Override
     public LocationIdentity getKilledLocationIdentity() {
         return locationIdentity;
+    }
+
+    @Override
+    public void simplify(SimplifierTool tool) {
+        if (predecessor() instanceof FixedWithNextNode && predecessor() instanceof SingleMemoryKill) {
+            SingleMemoryKill predecessor = (SingleMemoryKill) predecessor();
+            if (getKilledLocationIdentity().equals(predecessor.getKilledLocationIdentity())) {
+                // This killing begin node can be removed.
+                tool.addToWorkList(next());
+                graph().removeFixed(this);
+            }
+        }
+    }
+
+    @Override
+    public void prepareDelete() {
+        GraalError.guarantee(predecessor() instanceof SingleMemoryKill, "Cannot delete %s as its predecessor %s is not a SingleMemoryKill", this, predecessor());
+        GraalError.guarantee(getKilledLocationIdentity().equals(((SingleMemoryKill) predecessor()).getKilledLocationIdentity()),
+                        "Cannot delete %s as its predecessor %s kills a different location (%s vs. %s)", this, predecessor(), getKilledLocationIdentity(),
+                        ((SingleMemoryKill) predecessor()).getKilledLocationIdentity());
+        if (hasUsages()) {
+            // Memory edges are moved to the predecessor.
+            replaceAtUsages(predecessor(), InputType.Memory);
+        }
+        // The guards are moved up to the preceding begin node.
+        super.prepareDelete();
     }
 }
