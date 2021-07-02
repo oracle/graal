@@ -301,4 +301,15 @@ public class RubyTests extends RegexTestBase {
         // This shouldn't throw an AssertionError because of encountering the 'st' ligature.
         testLatin1("test", "i", "test", 0, true, 0, 4);
     }
+
+    @Test
+    public void ruby13671() {
+        // https://bugs.ruby-lang.org/issues/13671
+        test("(?<!ass)", "i", "\u2728", 0, true, 0, 0);
+        test("(?<!bss)", "i", "\u2728", 0, true, 0, 0);
+        test("(?<!as)", "i", "\u2728", 0, true, 0, 0);
+        test("(?<!ss)", "i", "\u2728", 0, true, 0, 0);
+        test("(?<!ass)", "", "\u2728", 0, true, 0, 0);
+        test("(?<!ass)", "i", "x", 0, true, 0, 0);
+    }
 }
