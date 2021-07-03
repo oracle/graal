@@ -25,13 +25,13 @@
  */
 package org.graalvm.compiler.lir.aarch64;
 
+import static jdk.vm.ci.aarch64.AArch64.r8;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
-import static jdk.vm.ci.aarch64.AArch64.r8;
-import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static jdk.vm.ci.code.ValueUtil.isRegister;
 
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
@@ -42,6 +42,7 @@ import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.StandardOp.LabelHoldingOp;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
+import org.graalvm.compiler.lir.gen.DiagnosticLIRGeneratorTool.ZapRegistersAfterInstruction;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.InvokeTarget;
@@ -127,7 +128,7 @@ public class AArch64Call {
         }
     }
 
-    public abstract static class ForeignCallOp extends CallOp implements LabelHoldingOp {
+    public abstract static class ForeignCallOp extends CallOp implements LabelHoldingOp, ZapRegistersAfterInstruction {
         protected final ForeignCallLinkage callTarget;
         protected final Label label;
 

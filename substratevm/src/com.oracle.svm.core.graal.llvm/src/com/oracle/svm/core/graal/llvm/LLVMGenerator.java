@@ -66,7 +66,6 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LabelRef;
-import org.graalvm.compiler.lir.StandardOp;
 import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.VirtualStackSlot;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
@@ -1365,17 +1364,17 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     }
 
     @Override
-    public StandardOp.ZapRegistersOp createZapRegisters(Register[] zappedRegisters, JavaConstant[] zapValues) {
+    public LIRInstruction createZapRegisters(Register[] zappedRegisters, JavaConstant[] zapValues) {
         throw unimplemented("the LLVM backend doesn't support diagnostic operations");
     }
 
     @Override
-    public StandardOp.ZapRegistersOp createZapRegisters(Register[] zappedRegisters) {
+    public LIRInstruction createZapRegisters(Register[] zappedRegisters) {
         throw unimplemented("the LLVM backend doesn't support diagnostic operations");
     }
 
     @Override
-    public StandardOp.ZapRegistersOp createZapRegisters() {
+    public LIRInstruction createZapRegisters() {
         throw unimplemented("the LLVM backend doesn't support diagnostic operations");
     }
 
