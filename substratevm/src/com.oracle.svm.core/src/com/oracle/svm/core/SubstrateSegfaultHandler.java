@@ -142,19 +142,22 @@ public abstract class SubstrateSegfaultHandler {
     }
 
     private static void dumpInterruptibly(RegisterDumper.Context context) {
-        Log log = Log.log();
-        log.autoflush(true);
+        PointerBase callerIP = RegisterDumper.singleton().getIP(context);
+        LogHandler logHandler = ImageSingletons.lookup(LogHandler.class);
+        String msg = "[ [ SubstrateSegfaultHandler caught a segfault. ] ]";
+        Log log = Log.enterFatalContext(logHandler, (CodePointer) callerIP, msg, null);
+        if (log != null) {
+            log.newline();
+            log.string(msg).newline();
 
-        log.newline();
-        log.string("[ [ SubstrateSegfaultHandler caught a segfault. ] ]").newline();
+            PointerBase sp = RegisterDumper.singleton().getSP(context);
+            PointerBase ip = RegisterDumper.singleton().getIP(context);
+            SubstrateDiagnostics.print(log, (Pointer) sp, (CodePointer) ip, context);
 
-        PointerBase sp = RegisterDumper.singleton().getSP(context);
-        PointerBase ip = RegisterDumper.singleton().getIP(context);
-        SubstrateDiagnostics.print(log, (Pointer) sp, (CodePointer) ip, context);
-
-        log.string("Segfault detected, aborting process. Use runtime option -R:-InstallSegfaultHandler if you don't want to use SubstrateSegfaultHandler.").newline();
-        log.newline();
-        ImageSingletons.lookup(LogHandler.class).fatalError();
+            log.string("Segfault detected, aborting process. Use runtime option -R:-InstallSegfaultHandler if you don't want to use SubstrateSegfaultHandler.").newline();
+            log.newline();
+        }
+        logHandler.fatalError();
     }
 
     static class SingleIsolateSegfaultSetup implements IsolateListener {

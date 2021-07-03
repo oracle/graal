@@ -2062,10 +2062,10 @@ class ConsoleBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
         return self.name()
 
     def helloWorldPath(self):
-            helloWorld = mx.distribution("GRAAL_BENCH_CONSOLE")
-            if helloWorld:
-                return helloWorld.path
-            return None
+        helloWorld = mx.distribution("GRAAL_BENCH_CONSOLE")
+        if helloWorld:
+            return helloWorld.path
+        return None
 
     def classpathAndMainClass(self, benchmark):
         main_class = _consoleConfig.get(benchmark)["mainClass"]
@@ -2084,7 +2084,7 @@ class ConsoleBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
         vmArgs = self.runArgs(bmSuiteArgs)
         runArgs = self.runArgs(bmSuiteArgs)
         appArgs = self.appArgs(benchmarks[0])
-        return (vmArgs + self.classpathAndMainClass(benchmarks[0]) + runArgs + appArgs)
+        return vmArgs + self.classpathAndMainClass(benchmarks[0]) + runArgs + appArgs
 
     def benchmarkList(self, bmSuiteArgs):
         return sorted(_consoleConfig.keys())
