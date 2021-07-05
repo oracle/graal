@@ -994,8 +994,6 @@ suite = {
             "annotationProcessors": [
             ],
             "javaCompliance": "11+",
-            "multiReleaseJarVersion": "11",
-            "overlayTarget" : "com.oracle.svm.configure",
             "spotbugs": "false",
         },
 
@@ -1372,6 +1370,7 @@ suite = {
             "mainClass": "com.oracle.svm.configure.ConfigurationTool",
             "dependencies": [
                 "com.oracle.svm.configure",
+                "com.oracle.svm.configure.jdk11",
             ],
             "distDependencies": [
                 "LIBRARY_SUPPORT",
