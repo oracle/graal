@@ -2,14 +2,14 @@
   "README": "This file contains definitions that are useful for the hocon and jsonnet CI files of multiple repositories.",
 
   "jdks": {
-    "openjdk8":           {"name": "openjdk",   "version": "8u302+06-jvmci-20.3-b17", "platformspecific": true },
-    "oraclejdk8":         {"name": "oraclejdk", "version": "8u301+09-jvmci-20.3-b17", "platformspecific": true },
-    "oraclejdk8Debug":    {"name": "oraclejdk", "version": "8u301+09-jvmci-20.3-b17-fastdebug", "platformspecific": true },
+    "openjdk8":           {"name": "openjdk",   "version": "8u302+07-jvmci-20.3-b18-20210701094739-2ec0a060f7", "platformspecific": true },
+    "oraclejdk8":         {"name": "oraclejdk", "version": "8u301+09-jvmci-20.3-b18-20210613184540-0ecbe1598b", "platformspecific": true },
+    "oraclejdk8Debug":    {"name": "oraclejdk", "version": "8u301+09-jvmci-20.3-b18-20210613184540-0ecbe1598b-fastdebug", "platformspecific": true },
 
     "openjdk11":          {"name": "openjdk",   "version": "11.0.3+7", "platformspecific": true },
     "oraclejdk11":        {"name": "oraclejdk", "version": "11.0.6+8", "platformspecific": true },
-    "labsjdk-ce-11":      {"name": "labsjdk",   "version": "ce-11.0.12+5-jvmci-20.3-b17", "platformspecific": true },
-    "labsjdk-ee-11":      {"name": "labsjdk",   "version": "ee-11.0.12+8-jvmci-20.3-b17", "platformspecific": true },
+    "labsjdk-ce-11":      {"name": "labsjdk",   "version": "ce-11.0.12+6-jvmci-20.3-b18-20210630220146-2272682e6e_bacae9ada6", "platformspecific": true },
+    "labsjdk-ee-11":      {"name": "labsjdk",   "version": "ee-11.0.12+8-jvmci-20.3-b18-20210624145617-972e357ea4_8b1c537602+4ee920cf35", "platformspecific": true },
 
     "oraclejdk15":        {"name": "oraclejdk", "version": "15.0.1+6", "platformspecific": true },
     "labsjdk-ce-15":      {"name": "labsjdk",   "version": "ce-15.0.1+9-jvmci-20.3-b09", "platformspecific": true },
