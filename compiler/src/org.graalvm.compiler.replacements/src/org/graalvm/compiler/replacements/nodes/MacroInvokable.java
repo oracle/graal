@@ -90,6 +90,12 @@ public interface MacroInvokable extends Invokable, Lowerable {
         return true;
     }
 
+    @Override
+    default void setBci(int bci) {
+        // nothing to do here, macro nodes get bci during construction
+        GraalError.shouldNotReachHere("macro nodes get bci during construction");
+    }
+
     /**
      * Replaces this node with an invoke of the {@linkplain #getTargetMethod() target method}.
      *
