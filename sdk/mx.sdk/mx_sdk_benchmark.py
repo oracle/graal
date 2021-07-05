@@ -233,7 +233,7 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
     terminates and the application is killed with SIGTERM.
     """
 
-    TIME_TO_FIRST_RESPONSE_MEASUREMENTS = 10
+    NumTimeToFirstResponseMeasurements = 10
 
     def __init__(self):
         super(BaseMicroserviceBenchmarkSuite, self).__init__()
@@ -365,10 +365,10 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
 
     @staticmethod
     def testTimeToFirstResponseInBackground(benchmarkSuite):
-        mx.log("--------------------------------------------");
+        mx.log("--------------------------------------------")
         mx.log("Started time-to-first-response measurements.")
-        mx.log("--------------------------------------------");
-        for _ in range(benchmarkSuite.TIME_TO_FIRST_RESPONSE_MEASUREMENTS):
+        mx.log("--------------------------------------------")
+        for _ in range(benchmarkSuite.NumTimeToFirstResponseMeasurements):
             measureTimeToFirstResponse(benchmarkSuite)
             if not BaseMicroserviceBenchmarkSuite.waitForPort(benchmarkSuite.servicePort()):
                 mx.abort("Failed to find server application in {0}".format(BaseMicroserviceBenchmarkSuite.__name__))
@@ -377,9 +377,9 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
 
     @staticmethod
     def testStartupPerformanceInBackground(benchmarkSuite):
-        mx.log("-----------------------------------------");
+        mx.log("-----------------------------------------")
         mx.log("Started startup performance measurements.")
-        mx.log("-----------------------------------------");
+        mx.log("-----------------------------------------")
         if not BaseMicroserviceBenchmarkSuite.waitForPort(benchmarkSuite.servicePort()):
             mx.abort("Failed to find server application in {0}".format(BaseMicroserviceBenchmarkSuite.__name__))
         benchmarkSuite.testStartupPerformance()
@@ -388,9 +388,9 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
 
     @staticmethod
     def testPeakPerformanceInBackground(benchmarkSuite, warmup=True):
-        mx.log("--------------------------------------");
+        mx.log("--------------------------------------")
         mx.log("Started peak performance measurements.")
-        mx.log("--------------------------------------");
+        mx.log("--------------------------------------")
         if not BaseMicroserviceBenchmarkSuite.waitForPort(benchmarkSuite.servicePort()):
             mx.abort("Failed to find server application in {0}".format(BaseMicroserviceBenchmarkSuite.__name__))
         benchmarkSuite.testPeakPerformance(warmup)
@@ -399,9 +399,9 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
 
     @staticmethod
     def calibrateLatencyTestInBackground(benchmarkSuite):
-        mx.log("---------------------------------------------");
+        mx.log("---------------------------------------------")
         mx.log("Started calibration for latency measurements.")
-        mx.log("---------------------------------------------");
+        mx.log("---------------------------------------------")
         if not BaseMicroserviceBenchmarkSuite.waitForPort(benchmarkSuite.servicePort()):
             mx.abort("Failed to find server application in {0}".format(BaseMicroserviceBenchmarkSuite.__name__))
         benchmarkSuite.calibrateLatencyTest()
@@ -410,9 +410,9 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
 
     @staticmethod
     def testLatencyInBackground(benchmarkSuite):
-        mx.log("-----------------------------");
+        mx.log("-----------------------------")
         mx.log("Started latency measurements.")
-        mx.log("-----------------------------");
+        mx.log("-----------------------------")
         if not BaseMicroserviceBenchmarkSuite.waitForPort(benchmarkSuite.servicePort()):
             mx.abort("Failed to find server application in {0}".format(BaseMicroserviceBenchmarkSuite.__name__))
         benchmarkSuite.testLatency()
@@ -433,7 +433,7 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
 
                 # Measure time-to-first-response multiple times (without any command mapper hooks as those affect the measurement significantly)
                 self.startDaemonThread(target=BaseMicroserviceBenchmarkSuite.testTimeToFirstResponseInBackground, args=[self])
-                for _ in range(self.TIME_TO_FIRST_RESPONSE_MEASUREMENTS):
+                for _ in range(self.NumTimeToFirstResponseMeasurements):
                     returnCode = mx.run(server_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
                     if not self.validateReturnCode(returnCode):
                         mx.abort("The server application unexpectedly ended with return code " + str(returnCode))
@@ -536,8 +536,8 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
             # Measure time-to-first-response (without any command mapper hooks as those affect the measurement significantly)
             mx.disable_command_mapper_hooks()
             self.startDaemonThread(BaseMicroserviceBenchmarkSuite.testTimeToFirstResponseInBackground, [self])
-            for _ in range(self.TIME_TO_FIRST_RESPONSE_MEASUREMENTS):
-                 datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
+            for _ in range(self.NumTimeToFirstResponseMeasurements):
+                datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
             mx.enable_command_mapper_hooks()
 
             # Measure startup performance (without RSS tracker)
