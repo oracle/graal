@@ -323,7 +323,7 @@ public abstract class StaticProperty {
      */
     public final boolean compareAndSwapBoolean(Object obj, boolean expect, boolean update) {
         checkKind(StaticPropertyKind.Boolean);
-        return CASSupport.compareAndSwapBoolean(shape.getStorage(obj, true), offset, expect, update);
+        return CASSupport.compareAndSetBoolean(shape.getStorage(obj, true), offset, expect, update);
     }
 
     /**
@@ -424,7 +424,7 @@ public abstract class StaticProperty {
      */
     public final boolean compareAndSwapByte(Object obj, byte expect, byte update) {
         checkKind(StaticPropertyKind.Byte);
-        return CASSupport.compareAndSwapByte(shape.getStorage(obj, true), offset, expect, update);
+        return CASSupport.compareAndSetByte(shape.getStorage(obj, true), offset, expect, update);
     }
 
     /**
@@ -525,7 +525,7 @@ public abstract class StaticProperty {
      */
     public final boolean compareAndSwapChar(Object obj, char expect, char update) {
         checkKind(StaticPropertyKind.Char);
-        return CASSupport.compareAndSwapChar(shape.getStorage(obj, true), offset, expect, update);
+        return CASSupport.compareAndSetChar(shape.getStorage(obj, true), offset, expect, update);
     }
 
     /**
@@ -627,7 +627,7 @@ public abstract class StaticProperty {
      */
     public final boolean compareAndSwapDouble(Object obj, double expect, double update) {
         checkKind(StaticPropertyKind.Double);
-        return CASSupport.compareAndSwapDouble(shape.getStorage(obj, true), offset, expect, update);
+        return CASSupport.compareAndSetDouble(shape.getStorage(obj, true), offset, expect, update);
     }
 
     /**
@@ -729,7 +729,7 @@ public abstract class StaticProperty {
      */
     public final boolean compareAndSwapFloat(Object obj, float expect, float update) {
         checkKind(StaticPropertyKind.Float);
-        return CASSupport.compareAndSwapFloat(shape.getStorage(obj, true), offset, expect, update);
+        return CASSupport.compareAndSetFloat(shape.getStorage(obj, true), offset, expect, update);
     }
 
     /**
@@ -1094,7 +1094,7 @@ public abstract class StaticProperty {
      */
     public final boolean compareAndSwapShort(Object obj, short expect, short update) {
         checkKind(StaticPropertyKind.Short);
-        return CASSupport.compareAndSwapShort(shape.getStorage(obj, true), offset, expect, update);
+        return CASSupport.compareAndSetShort(shape.getStorage(obj, true), offset, expect, update);
     }
 
     /**
@@ -1132,13 +1132,13 @@ public abstract class StaticProperty {
     /**
      * Temporary class to enable support for compare and swap/exchange for sub-word fields.
      * <p>
-     * This class will be removed in favor of overlayed classes: one for version &lt=8 and &gt= 9.
-     * This class corresponds to the &lt=8 version.
+     * This class will be moved, in favor of overlay classes: one for version &lt=8 and &gt= 9. This
+     * class corresponds to the &lt=8 version.
      * <p>
      * The version for &gt=9 will be able to call directly into host Unsafe methods to get better
      * performance.
      */
-    private static class CASSupport {
+    private static final class CASSupport {
         private CASSupport() {
         }
 
@@ -1146,33 +1146,33 @@ public abstract class StaticProperty {
             return ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN;
         }
 
-        private static boolean compareAndSwapByte(Object o, long offset,
+        private static boolean compareAndSetByte(Object o, long offset,
                         byte expected,
                         byte x) {
             return compareAndExchangeByte(o, offset, expected, x) == expected;
         }
 
-        private static boolean compareAndSwapBoolean(Object o, long offset,
+        private static boolean compareAndSetBoolean(Object o, long offset,
                         boolean expected,
                         boolean x) {
             byte byteExpected = expected ? (byte) 1 : (byte) 0;
             byte byteX = x ? (byte) 1 : (byte) 0;
-            return compareAndSwapByte(o, offset, byteExpected, byteX);
+            return compareAndSetByte(o, offset, byteExpected, byteX);
         }
 
-        private static boolean compareAndSwapShort(Object o, long offset,
+        private static boolean compareAndSetShort(Object o, long offset,
                         short expected,
                         short x) {
             return compareAndExchangeShort(o, offset, expected, x) == expected;
         }
 
-        private static boolean compareAndSwapChar(Object o, long offset,
+        private static boolean compareAndSetChar(Object o, long offset,
                         char expected,
                         char x) {
-            return compareAndSwapShort(o, offset, (short) expected, (short) x);
+            return compareAndSetShort(o, offset, (short) expected, (short) x);
         }
 
-        private static boolean compareAndSwapFloat(Object o, long offset,
+        private static boolean compareAndSetFloat(Object o, long offset,
                         float expected,
                         float x) {
             return UNSAFE.compareAndSwapInt(o, offset,
@@ -1180,7 +1180,7 @@ public abstract class StaticProperty {
                             Float.floatToRawIntBits(x));
         }
 
-        private static boolean compareAndSwapDouble(Object o, long offset,
+        private static boolean compareAndSetDouble(Object o, long offset,
                         double expected,
                         double x) {
             return UNSAFE.compareAndSwapLong(o, offset,
@@ -1202,8 +1202,9 @@ public abstract class StaticProperty {
             int fullWord;
             do {
                 fullWord = UNSAFE.getIntVolatile(o, wordOffset);
-                if ((fullWord & mask) != maskedExpected)
+                if ((fullWord & mask) != maskedExpected) {
                     return (byte) ((fullWord & mask) >> shift);
+                }
             } while (!UNSAFE.compareAndSwapInt(o, wordOffset,
                             fullWord, (fullWord & ~mask) | maskedX));
             return expected;
@@ -1234,8 +1235,9 @@ public abstract class StaticProperty {
             int fullWord;
             do {
                 fullWord = UNSAFE.getIntVolatile(o, wordOffset);
-                if ((fullWord & mask) != maskedExpected)
+                if ((fullWord & mask) != maskedExpected) {
                     return (short) ((fullWord & mask) >> shift);
+                }
             } while (!UNSAFE.compareAndSwapInt(o, wordOffset,
                             fullWord, (fullWord & ~mask) | maskedX));
             return expected;
