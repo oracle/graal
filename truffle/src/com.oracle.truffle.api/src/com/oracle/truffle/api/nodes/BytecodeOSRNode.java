@@ -76,8 +76,10 @@ public interface BytecodeOSRNode extends NodeInterface {
      * OSRMetadata is a virtual field representing the {@link TruffleRuntime runtime}-specific
      * metadata required for OSR compilation.
      * 
-     * Since interfaces cannot declare fields, a class implementing this interface should likely
-     * declare a field for the metadata and proxy accesses through these accessors.
+     * Since interfaces cannot declare fields, a class implementing this interface should declare a
+     * field for the metadata and proxy accesses through these accessors.
+     *
+     * NOTE: this field should be volatile for thread-safety.
      */
 
     /**

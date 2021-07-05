@@ -408,7 +408,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
 
     private final LivenessAnalysis livenessAnalysis;
 
-    private Object osrState;
+    private volatile Object osrState;
 
     @Override
     public Object executeOSR(VirtualFrame innerFrame, Frame parentFrame, int target) {

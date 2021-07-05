@@ -5,8 +5,9 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.MapCursor;
+
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class BytecodeOSRMetadata {
     // Marker object to indicate that OSR is disabled.
@@ -15,25 +16,26 @@ public final class BytecodeOSRMetadata {
     public static final int OSR_POLL_INTERVAL = 1024;
 
     private final BytecodeOSRNode osrNode;
-    private final EconomicMap<Integer, OptimizedCallTarget> osrCompilations;
+    private final Map<Integer, OptimizedCallTarget> osrCompilations;
     private final int osrThreshold;
     private int backEdgeCount;
     private volatile boolean compilationFailed;
 
     BytecodeOSRMetadata(BytecodeOSRNode osrNode, int osrThreshold) {
         this.osrNode = osrNode;
-        this.osrCompilations = EconomicMap.create();
+        this.osrCompilations = new ConcurrentHashMap<>();
         this.osrThreshold = osrThreshold;
         this.backEdgeCount = 0;
         this.compilationFailed = false;
     }
 
     final Object onOSRBackEdge(VirtualFrame parentFrame, int target, TruffleLanguage<?> language) {
-        if (!incrementAndPoll()) {
+        if (!incrementAndPoll() || compilationFailed) {
+            // note: incur volatile read of compilationFailed only if poll succeeds
             return null;
         }
-        if (compilationFailed || parentFrame.getFrameDescriptor().canMaterialize()) {
-            // Note: we poll the compilationFailed field to minimize volatile reads.
+        if (parentFrame.getFrameDescriptor().canMaterialize()) {
+            // If the frame is materializeable, give up on OSR. State could become inconsistent.
             osrNode.setOSRMetadata(DISABLED);
             return null;
         }
@@ -44,7 +46,9 @@ public final class BytecodeOSRMetadata {
                 osrTarget = osrCompilations.get(target);
                 if (osrTarget == null) {
                     osrTarget = requestOSR(target, language, parentFrame.getFrameDescriptor());
-                    osrCompilations.put(target, osrTarget);
+                    if (osrTarget != null) {
+                        osrCompilations.put(target, osrTarget);
+                    }
                 }
             }
         }
@@ -84,7 +88,7 @@ public final class BytecodeOSRMetadata {
     }
 
     private synchronized void invalidateOSRTarget(int target, CharSequence reason) {
-        OptimizedCallTarget callTarget = osrCompilations.removeKey(target);
+        OptimizedCallTarget callTarget = osrCompilations.remove(target);
         if (callTarget != null) {
             if (callTarget.isCompilationFailed()) {
                 markCompilationFailed();
@@ -94,9 +98,7 @@ public final class BytecodeOSRMetadata {
     }
 
     synchronized void nodeReplaced(Node oldNode, Node newNode, CharSequence reason) {
-        MapCursor<Integer, OptimizedCallTarget> cursor = osrCompilations.getEntries();
-        while (cursor.advance()) {
-            OptimizedCallTarget callTarget = cursor.getValue();
+        for (OptimizedCallTarget callTarget : osrCompilations.values()) {
             if (callTarget != null) {
                 if (callTarget.isCompilationFailed()) {
                     markCompilationFailed();
@@ -108,12 +110,16 @@ public final class BytecodeOSRMetadata {
     }
 
     private void markCompilationFailed() {
-        compilationFailed = true; // indicate to all threads that compilation will fail
-        osrNode.setOSRMetadata(DISABLED); // disable OSR on the current thread
+        /*
+         * Replace this object with the DISABLED marker object. Another thread may already have a
+         * handle to this object, so also mark the failure internally so we can avoid recompilation.
+         */
+        compilationFailed = true;
+        osrNode.setOSRMetadata(DISABLED);
     }
 
     // for testing
-    public EconomicMap<Integer, OptimizedCallTarget> getOSRCompilations() {
+    public Map<Integer, OptimizedCallTarget> getOSRCompilations() {
         return osrCompilations;
     }
 
