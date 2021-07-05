@@ -393,6 +393,22 @@ suite = {
             "workingSets": "SVM",
         },
 
+        "com.oracle.svm.hosted.jdk8": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.svm.hosted",
+            ],
+            "javaCompliance": "8",
+            "overlayTarget" : "com.oracle.svm.hosted",
+            "checkstyle" : "com.oracle.svm.hosted",
+            "checkPackagePrefix" : "false",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+            ],
+            "workingSets": "SVM",
+        },
+
         "com.oracle.svm.hosted.jdk11": {
             "subDir": "src",
             "sourceDirs": ["src"],
