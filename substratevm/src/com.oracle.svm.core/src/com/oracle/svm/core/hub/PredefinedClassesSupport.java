@@ -129,6 +129,9 @@ public final class PredefinedClassesSupport {
             throw VMError.unsupportedFeature("Defining a class from new bytecodes at run time is not supported. Class " + name +
                             " with hash " + hash + " was not provided during the image build. Please see BuildConfiguration.md.");
         }
+        if (expectedName != null && !expectedName.equals(clazz.getName())) {
+            throw new NoClassDefFoundError(clazz.getName() + " (wrong name: " + expectedName + ')');
+        }
         loadClass(classLoader, protectionDomain, clazz);
         return clazz;
     }
