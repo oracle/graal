@@ -226,8 +226,8 @@ public abstract class StaticProperty {
 
     /**
      * Atomically sets the {@link Object} value represented by this StaticProperty and stored in the
-     * specified static object to {@code newValue} if the current value, referred to as the
-     * <em>witness value</em>, {@code ==} the expected value.
+     * specified static object to {@code newValue} if the current value, referred to as the <em>
+     * witness value </em>, {@code ==} the expected value.
      *
      * @param obj the static object that stores the static property value
      * @param expect the expected value
@@ -238,8 +238,8 @@ public abstract class StaticProperty {
      *             compatible with this static property
      */
     public final Object compareAndExchangeObject(Object obj, Object expect, Object update) {
-        checkKind(StaticPropertyKind.Boolean);
-        return CASSupport.compareAndExchangeObject(shape.getStorage(obj, true), offset, expect, update);
+        checkKind(StaticPropertyKind.Object);
+        return CASSupport.compareAndExchangeObject(shape.getStorage(obj, false), offset, expect, update);
     }
 
     // boolean field access
@@ -429,8 +429,8 @@ public abstract class StaticProperty {
 
     /**
      * Atomically sets the byte value represented by this StaticProperty and stored in the specified
-     * static object to {@code newValue} if the current value, referred to as the
-     * <em>witness value</em>, {@code ==} the expected value.
+     * static object to {@code newValue} if the current value, referred to as the <em>witness
+     * value</em>, {@code ==} the expected value.
      *
      * @param obj the static object that stores the static property value
      * @param expect the expected value
@@ -530,8 +530,8 @@ public abstract class StaticProperty {
 
     /**
      * Atomically sets the char value represented by this StaticProperty and stored in the specified
-     * static object to {@code newValue} if the current value, referred to as the
-     * <em>witness value</em>, {@code ==} the expected value.
+     * static object to {@code newValue} if the current value, referred to as the <em> witness value
+     * </em>, {@code ==} the expected value.
      *
      * @param obj the static object that stores the static property value
      * @param expect the expected value
@@ -835,8 +835,8 @@ public abstract class StaticProperty {
 
     /**
      * Atomically sets the int value represented by this StaticProperty and stored in the specified
-     * static object to {@code newValue} if the current value, referred to as the
-     * <em>witness value</em>, {@code ==} the expected value.
+     * static object to {@code newValue} if the current value, referred to as the <em>witness
+     * value</em>, {@code ==} the expected value.
      *
      * @param obj the static object that stores the static property value
      * @param expect the expected value
@@ -965,8 +965,8 @@ public abstract class StaticProperty {
 
     /**
      * Atomically sets the long value represented by this StaticProperty and stored in the specified
-     * static object to {@code newValue} if the current value, referred to as the
-     * <em>witness value</em>, {@code ==} the expected value.
+     * static object to {@code newValue} if the current value, referred to as the <em>witness
+     * value</em>, {@code ==} the expected value.
      *
      * @param obj the static object that stores the static property value
      * @param expect the expected value

@@ -311,9 +311,11 @@ public final class Target_sun_misc_Unsafe {
 
     // region compareAndExchange*
 
-    @Substitution(hasReceiver = true, nameProvider = Unsafe11.class)
+    @Substitution(hasReceiver = true, nameProvider = SharedUnsafeObjectAccessToReference.class)
     public static @Host(Object.class) StaticObject compareAndExchangeObject(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset,
-                    @Host(Object.class) StaticObject before, @Host(Object.class) StaticObject after, @InjectMeta Meta meta) {
+                    @Host(Object.class) StaticObject before,
+                    @Host(Object.class) StaticObject after,
+                    @InjectMeta Meta meta) {
         if (isNullOrArray(holder)) {
             UnsafeAccess.checkAllowed(meta);
             return (StaticObject) UnsafeSupport.compareAndExchangeObject(unwrapNullOrArray(holder), offset, before, after);
@@ -1504,19 +1506,6 @@ public final class Target_sun_misc_Unsafe {
         @Override
         public String[] substitutionClassNames() {
             return NAMES;
-        }
-    }
-
-    public static class UnsafeObjectToReference extends Unsafe11 {
-        public static SubstitutionNamesProvider INSTANCE = new UnsafeObjectToReference();
-
-        @Override
-        public String[] getMethodNames(String name) {
-            String[] res = super.getMethodNames(name);
-            for (int i = 0; i < res.length; i++) {
-                res[i] = res[i].replace("Object", "Reference");
-            }
-            return res;
         }
     }
 }
