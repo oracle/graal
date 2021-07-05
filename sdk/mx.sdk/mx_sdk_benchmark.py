@@ -466,7 +466,7 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
                 return returnCode
             elif stage == 'agent' or 'instrument-run' in stage:
                 # For the agent and the instrumented run, it is sufficient to run the peak performance workload.
-                self.startDaemonThread(BaseMicroserviceBenchmarkSuite.testPeakPerformanceInBackground, [self, False]).start()
+                self.startDaemonThread(BaseMicroserviceBenchmarkSuite.testPeakPerformanceInBackground, [self, False])
                 return mx.run(server_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
             else:
                 mx.abort("Unexpected stage: " + stage)
