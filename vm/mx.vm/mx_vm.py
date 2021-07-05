@@ -30,13 +30,13 @@ from __future__ import print_function
 
 import mx
 import mx_gate
+import mx_jardistribution
 import mx_sdk_vm, mx_sdk_vm_impl
 import mx_vm_benchmark
 import mx_vm_gate
 
 import os
-from os.path import join, relpath
-
+from os.path import basename, isdir, join, relpath
 
 _suite = mx.suite('vm')
 """:type: mx.SourceSuite | mx.Suite"""
@@ -220,6 +220,52 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
             ))
             # add bitcode to the layout of the benchmark distribution
             _add_project_to_dist('./', 'benchmarks.interpreter.llvm.native')
+
+        if mx_sdk_vm_impl.has_component('Java on Truffle'):
+            java_benchmarks = join(_suite.dir, 'benchmarks', 'interpreter', 'java')
+            for f in os.listdir(java_benchmarks):
+                if isdir(join(java_benchmarks, f)) and not f.startswith("."):
+                    main_class = basename(f)
+                    simple_name = main_class.split(".")[-1]
+                    
+                    project_name = 'benchmarks.interpreter.espresso.' + simple_name.lower()                    
+                    register_project(mx.JavaProject(
+                        suite=_suite,
+                        subDir=None,
+                        srcDirs=[join(_suite.dir, 'benchmarks', 'interpreter', 'java', main_class)],
+                        deps=[],
+                        name=project_name,
+                        d=join(_suite.dir, 'benchmarks', 'interpreter', 'java', main_class),
+                        javaCompliance='1.8+',
+                        checkstyleProj=project_name,
+                        workingSets=None,
+                        theLicense=None,
+                        testProject=True,
+                        defaultBuild=False,
+                    ))
+
+                    dist_name = 'POLYBENCH_ESPRESSO_' + simple_name.upper()
+                    register_distribution(mx_jardistribution.JARDistribution(
+                        suite=_suite,
+                        subDir=None,
+                        srcDirs=[''],
+                        sourcesPath=[],
+                        deps=[project_name],
+                        mainClass=main_class,
+                        name=dist_name,
+                        path=simple_name + '.jar',
+                        platformDependent=False,
+                        distDependencies=[],
+                        javaCompliance='1.8+',
+                        excludedLibs=[],
+                        workingSets=None,
+                        theLicense=None,
+                        testProject=True,
+                        defaultBuild=False,
+                    ))
+                    # add jars to the layout of the benchmark distribution
+                    _add_project_to_dist(join('.', 'interpreter', simple_name + '.jar'), dist_name,
+                        source='dependency:{name}/polybench-espresso-' + simple_name.lower() + '.jar')
 
 
 class GraalVmSymlinks(mx.Project):
