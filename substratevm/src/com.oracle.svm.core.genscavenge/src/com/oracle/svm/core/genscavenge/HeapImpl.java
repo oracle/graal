@@ -81,7 +81,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 
 public final class HeapImpl extends Heap {
     /** Synchronization means for notifying {@link #refPendingList} waiters without deadlocks. */
-    private static final VMMutex REF_MUTEX = new VMMutex("ReferencePendingList");
+    private static final VMMutex REF_MUTEX = new VMMutex("referencePendingList");
     private static final VMCondition REF_CONDITION = new VMCondition(REF_MUTEX);
 
     // Singleton instances, created during image generation.

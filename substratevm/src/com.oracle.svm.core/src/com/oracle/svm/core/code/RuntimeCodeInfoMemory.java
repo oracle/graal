@@ -31,8 +31,10 @@ import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
@@ -254,27 +256,34 @@ public class RuntimeCodeInfoMemory {
 
     /** Potentially unsafe and may therefore only be used when printing diagnostics. */
     public void printTable(Log log, boolean allowJavaHeapAccess) {
-        log.string("RuntimeCodeInfoMemory contains ").signed(count).string(" methods");
-        for (int i = 0; i < NonmovableArrays.lengthOf(table); i++) {
-            logCodeInfo(log, i, allowJavaHeapAccess);
+        assert VMOperation.isInProgressAtSafepoint() || SubstrateDiagnostics.isInProgressByCurrentThread();
+        log.string("RuntimeCodeInfoMemory contains ").signed(count).string(" methods:").indent(true);
+        if (table.isNonNull()) {
+            for (int i = 0; i < NonmovableArrays.lengthOf(table); i++) {
+                logCodeInfo(log, i, allowJavaHeapAccess);
+            }
         }
+        log.indent(false);
     }
 
     @Uninterruptible(reason = "Must prevent the GC from freeing the CodeInfo object.")
     private void logCodeInfo(Log log, int i, boolean allowJavaHeapAccess) {
-        UntetheredCodeInfo untetheredInfo = NonmovableArrays.getWord(table, i);
-        Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
-        try {
-            CodeInfo info = CodeInfoAccess.convert(untetheredInfo, tether);
-            logCodeInfo0(log, info, allowJavaHeapAccess);
-        } finally {
-            CodeInfoAccess.releaseTether(untetheredInfo, tether);
+        UntetheredCodeInfo info = NonmovableArrays.getWord(table, i);
+        if (info.isNonNull()) {
+            /*
+             * Newly created CodeInfo objects do ont have a tether yet. So, we can't use tethering
+             * to keep the CodeInfo object alive. Instead, we read all relevant values in
+             * uninterruptible code and pass those values to interruptible code that does the
+             * printing.
+             */
+            String name = allowJavaHeapAccess ? UntetheredCodeInfoAccess.getName(info) : null;
+            logCodeInfo0(log, info, UntetheredCodeInfoAccess.getState(info), name, UntetheredCodeInfoAccess.getCodeStart(info), UntetheredCodeInfoAccess.getCodeEnd(info));
         }
     }
 
     @Uninterruptible(reason = "Pass the now protected CodeInfo to interruptible code.", calleeMustBe = false)
-    private static void logCodeInfo0(Log log, CodeInfo info, boolean allowJavaHeapAccess) {
-        RuntimeCodeInfoHistory.printCodeInfo(log, info, allowJavaHeapAccess);
+    private static void logCodeInfo0(Log log, UntetheredCodeInfo codeInfo, int state, String name, CodePointer codeStart, CodePointer codeEnd) {
+        RuntimeCodeInfoHistory.printCodeInfo(log, codeInfo, state, name, codeStart, codeEnd);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

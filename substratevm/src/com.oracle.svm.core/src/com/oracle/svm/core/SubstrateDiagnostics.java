@@ -140,8 +140,7 @@ public class SubstrateDiagnostics {
         Log log = state.log;
         if (state.diagnosticThunkIndex > 0) {
             log.newline();
-            log.string("An error occurred while printing diagnostics. The remaining part of this section will be skipped.").newline();
-            log.resetIndentation();
+            log.string("An error occurred while printing diagnostics. The remaining part of this section will be skipped.").resetIndentation().newline();
         }
 
         // Print the various sections of the diagnostics and skip all sections that were already
@@ -168,6 +167,7 @@ public class SubstrateDiagnostics {
     }
 
     static void dumpRuntimeCompilation(Log log) {
+        assert VMOperation.isInProgressAtSafepoint();
         try {
             RuntimeCodeInfoHistory.singleton().printRecentOperations(log, true);
         } catch (Exception e) {
@@ -194,7 +194,8 @@ public class SubstrateDiagnostics {
     }
 
     private static void dumpException(Log log, String currentDumper, Throwable e) {
-        log.newline().string("[!!! Exception while executing ").string(currentDumper).string(": ").string(e.getClass().getName()).string("]").newline();
+        log.newline().string("[!!! Exception while executing ").string(currentDumper).string(": ").string(e.getClass().getName()).string("]");
+        log.resetIndentation().newline();
     }
 
     @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.")
@@ -339,7 +340,11 @@ public class SubstrateDiagnostics {
 
             UnsignedWord stackBase = VMThreads.StackBase.get();
             if (stackBase.equal(0)) {
-                log.string("Cannot print stack information as the stack base is unknown.").newline();
+                /*
+                 * We have to be careful here and not dump too much of the stack: if there are not
+                 * many frames on the stack, we segfault when going past the beginning of the stack.
+                 */
+                log.hexdump(state.sp, 8, 16);
             } else {
                 int bytesToPrint = 512;
                 UnsignedWord availableBytes = stackBase.subtract(sp);
@@ -571,25 +576,6 @@ public class SubstrateDiagnostics {
         }
     }
 
-    private static class DumpCurrentThreadRawStackTrace extends DiagnosticThunk {
-        @Override
-        public int maxInvocations() {
-            return 1;
-        }
-
-        @Override
-        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
-        public void printDiagnostics(Log log, int invocationCount) {
-            log.string("Raw stacktrace:").indent(true);
-            /*
-             * We have to be careful here and not dump too much of the stack: if there are not many
-             * frames on the stack, we segfault when going past the beginning of the stack.
-             */
-            log.hexdump(state.sp, 8, 16);
-            log.indent(false);
-        }
-    }
-
     private static class DumpCurrentThreadDecodedStackTrace extends DiagnosticThunk {
         @Override
         public int maxInvocations() {
@@ -630,8 +616,7 @@ public class SubstrateDiagnostics {
                         continue;
                     }
                     try {
-                        log.string("Thread ").zhex(vmThread.rawValue()).newline();
-                        log.indent(true);
+                        log.string("Thread ").zhex(vmThread.rawValue()).string(":").indent(true);
                         printFrameAnchors(log, vmThread);
                         printStacktrace(log, vmThread);
                         log.indent(false);
@@ -643,8 +628,7 @@ public class SubstrateDiagnostics {
         }
 
         private static void printStacktrace(Log log, IsolateThread vmThread) {
-            log.string("Full stacktrace").newline();
-            log.indent(true);
+            log.string("Full stacktrace:").indent(true);
             JavaStackWalker.walkThread(vmThread, StackFramePrintVisitor.SINGLETON, log);
             log.indent(false);
         }
@@ -686,8 +670,8 @@ public class SubstrateDiagnostics {
         DiagnosticThunkRegister() {
             this.diagnosticThunks = new DiagnosticThunk[]{new DumpRegisters(), new DumpInstructions(), new DumpTopOfCurrentThreadStack(), new DumpDeoptStubPointer(), new DumpTopFrame(),
                             new DumpThreads(), new DumpCurrentThreadLocals(), new DumpCurrentVMOperation(), new DumpVMOperationHistory(), new DumpCodeCacheHistory(),
-                            new DumpRuntimeCodeInfoMemory(), new DumpRecentDeoptimizations(), new DumpCounters(), new DumpCurrentThreadFrameAnchors(), new DumpCurrentThreadRawStackTrace(),
-                            new DumpCurrentThreadDecodedStackTrace(), new DumpOtherStackTraces(), new VMLockSupport.DumpVMMutexes()};
+                            new DumpRuntimeCodeInfoMemory(), new DumpRecentDeoptimizations(), new DumpCounters(), new DumpCurrentThreadFrameAnchors(), new DumpCurrentThreadDecodedStackTrace(),
+                            new DumpOtherStackTraces(), new VMLockSupport.DumpVMMutexes()};
         }
 
         /** Register a diagnostic thunk to be called after a segfault. */

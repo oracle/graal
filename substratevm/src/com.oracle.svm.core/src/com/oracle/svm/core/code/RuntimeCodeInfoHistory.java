@@ -86,16 +86,16 @@ public class RuntimeCodeInfoHistory {
         }
     }
 
-    static void printCodeInfo(Log log, CodeInfo info, boolean allowJavaHeapAccess) {
-        printCodeInfo(log, allowJavaHeapAccess, info, CodeInfoAccess.getState(info), CodeInfoAccess.getName(info), CodeInfoAccess.getCodeStart(info),
-                        CodeInfoAccess.getCodeEnd(info));
+    private static void printCodeInfo(Log log, CodeInfo info, boolean allowJavaHeapAccess) {
+        String name = allowJavaHeapAccess ? CodeInfoAccess.getName(info) : null;
+        printCodeInfo(log, info, CodeInfoAccess.getState(info), name, CodeInfoAccess.getCodeStart(info), CodeInfoAccess.getCodeEnd(info));
     }
 
-    private static void printCodeInfo(Log log, boolean allowJavaHeapAccess, CodeInfo codeInfo, int codeInfoState, String codeName, CodePointer codeStart, CodePointer codeEnd) {
+    static void printCodeInfo(Log log, UntetheredCodeInfo codeInfo, int state, String name, CodePointer codeStart, CodePointer codeEnd) {
         log.string("CodeInfo (").zhex(codeInfo).string(" - ").zhex(((UnsignedWord) codeInfo).add(RuntimeCodeInfoAccess.getSizeOfCodeInfo()).subtract(1)).string("), ")
-                        .string(CodeInfoAccess.stateToString(codeInfoState));
-        if (allowJavaHeapAccess) {
-            log.string(" - ").string(codeName);
+                        .string(CodeInfoAccess.stateToString(state));
+        if (name != null) {
+            log.string(" - ").string(name);
         }
         log.string(", ip: (").zhex(codeStart).string(" - ").zhex(codeEnd).string(")");
         log.newline();
@@ -107,7 +107,7 @@ public class RuntimeCodeInfoHistory {
     }
 
     public void printRecentOperations(Log log, boolean allowJavaHeapAccess) {
-        log.string("Recent RuntimeCodeInfo operations: ").indent(true);
+        log.string("Recent RuntimeCodeInfo operations (oldest first): ").indent(true);
         recentOperations.foreach(log, allowJavaHeapAccess ? PRINT_WITH_JAVA_HEAP_DATA : PRINT_WITHOUT_JAVA_HEAP_DATA);
         log.indent(false);
     }
@@ -152,7 +152,8 @@ public class RuntimeCodeInfoHistory {
         public void print(Log log, boolean allowJavaHeapAccess) {
             if (kind != null) {
                 log.unsigned(timestamp).string(" - ").string(kind).spaces(1);
-                printCodeInfo(log, allowJavaHeapAccess, codeInfo, codeInfoState, codeName, codeStart, codeEnd);
+                String name = allowJavaHeapAccess ? codeName : null;
+                printCodeInfo(log, codeInfo, codeInfoState, name, codeStart, codeEnd);
             }
         }
     }

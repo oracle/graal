@@ -109,7 +109,7 @@ public abstract class VMThreads {
      * still holds that mutex.</li>
      * </ul>
      */
-    protected static final VMMutex THREAD_MUTEX = new VMMutex("Thread");
+    protected static final VMMutex THREAD_MUTEX = new VMMutex("thread");
 
     /**
      * A condition variable for waiting for and notifying on changes to the {@link IsolateThread}
