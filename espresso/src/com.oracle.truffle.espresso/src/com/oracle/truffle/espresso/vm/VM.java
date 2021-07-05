@@ -1769,7 +1769,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @SuppressWarnings("unused")
     public @JavaType(Object.class) StaticObject JVM_GetStackAccessControlContext(@JavaType(Class.class) StaticObject cls) {
         if (getJavaVersion().java11OrEarlier()) {
-            return getACCBefore11();
+            return getACCUntil11();
         } else {
             return getACCAfter12();
         }
@@ -1822,7 +1822,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         return getAccFromContext(domains, isPrivileged[0], context);
     }
 
-    private StaticObject getACCBefore11() {
+    private StaticObject getACCUntil11() {
         ArrayList<StaticObject> domains = new ArrayList<>();
         final PrivilegedStack stack = getPrivilegedStack();
         final boolean[] isPrivileged = new boolean[]{false};

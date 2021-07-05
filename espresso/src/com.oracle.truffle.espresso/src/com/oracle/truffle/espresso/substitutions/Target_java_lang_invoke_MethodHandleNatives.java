@@ -35,13 +35,13 @@ import static com.oracle.truffle.espresso.classfile.Constants.REF_putField;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_putStatic;
 import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.None;
 import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.Constants.ALL_KINDS;
+import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.Constants.CONSTANTS;
+import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.Constants.CONSTANTS_BEFORE_16;
 import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.Constants.MN_IS_CONSTRUCTOR;
 import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.Constants.MN_IS_FIELD;
 import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.Constants.MN_IS_METHOD;
 import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.Constants.MN_REFERENCE_KIND_MASK;
 import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.Constants.MN_REFERENCE_KIND_SHIFT;
-import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.Constants.before16;
-import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.Constants.constants;
 
 import java.lang.invoke.CallSite;
 import java.lang.invoke.MethodHandle;
@@ -189,11 +189,11 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
     public static int getNamedCon(int which, @JavaType(Object[].class) StaticObject name,
                     @InjectMeta Meta meta) {
         if (name.getKlass() == meta.java_lang_Object_array && name.length() > 0) {
-            if (which < constants.size()) {
-                if (which < before16 && !meta.getJavaVersion().java16OrLater()) {
+            if (which < CONSTANTS.size()) {
+                if (which >= CONSTANTS_BEFORE_16 && !meta.getJavaVersion().java16OrLater()) {
                     return 0;
                 }
-                Pair<String, Integer> pair = constants.get(which);
+                Pair<String, Integer> pair = CONSTANTS.get(which);
                 meta.getInterpreterToVM().setArrayObject(meta.toGuestString(pair.getLeft()), 0, name);
                 return pair.getRight();
             }
@@ -649,31 +649,31 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
          */
         public static final int ALL_KINDS = MN_IS_CONSTRUCTOR | MN_IS_FIELD | MN_IS_METHOD | MN_IS_TYPE;
 
-        static List<Pair<String, Integer>> constants;
-        static int before16;
+        static final List<Pair<String, Integer>> CONSTANTS;
+        static final int CONSTANTS_BEFORE_16;
 
         static {
-            constants = new ArrayList<>();
-            constants.add(Pair.create("MN_IS_METHOD", MN_IS_METHOD));
-            constants.add(Pair.create("MN_IS_CONSTRUCTOR", MN_IS_CONSTRUCTOR));
-            constants.add(Pair.create("MN_IS_FIELD", MN_IS_FIELD));
-            constants.add(Pair.create("MN_IS_TYPE", MN_IS_TYPE));
-            constants.add(Pair.create("MN_CALLER_SENSITIVE", MN_CALLER_SENSITIVE));
-            constants.add(Pair.create("MN_TRUSTED_FINAL", MN_TRUSTED_FINAL));
-            constants.add(Pair.create("MN_SEARCH_SUPERCLASSES", MN_SEARCH_SUPERCLASSES));
-            constants.add(Pair.create("MN_SEARCH_INTERFACES", MN_SEARCH_INTERFACES));
-            constants.add(Pair.create("MN_REFERENCE_KIND_SHIFT", MN_REFERENCE_KIND_SHIFT));
-            constants.add(Pair.create("MN_REFERENCE_KIND_MASK", MN_REFERENCE_KIND_MASK));
+            CONSTANTS = new ArrayList<>();
+            CONSTANTS.add(Pair.create("MN_IS_METHOD", MN_IS_METHOD));
+            CONSTANTS.add(Pair.create("MN_IS_CONSTRUCTOR", MN_IS_CONSTRUCTOR));
+            CONSTANTS.add(Pair.create("MN_IS_FIELD", MN_IS_FIELD));
+            CONSTANTS.add(Pair.create("MN_IS_TYPE", MN_IS_TYPE));
+            CONSTANTS.add(Pair.create("MN_CALLER_SENSITIVE", MN_CALLER_SENSITIVE));
+            CONSTANTS.add(Pair.create("MN_TRUSTED_FINAL", MN_TRUSTED_FINAL));
+            CONSTANTS.add(Pair.create("MN_SEARCH_SUPERCLASSES", MN_SEARCH_SUPERCLASSES));
+            CONSTANTS.add(Pair.create("MN_SEARCH_INTERFACES", MN_SEARCH_INTERFACES));
+            CONSTANTS.add(Pair.create("MN_REFERENCE_KIND_SHIFT", MN_REFERENCE_KIND_SHIFT));
+            CONSTANTS.add(Pair.create("MN_REFERENCE_KIND_MASK", MN_REFERENCE_KIND_MASK));
 
-            before16 = constants.size();
+            CONSTANTS_BEFORE_16 = CONSTANTS.size();
 
-            constants.add(Pair.create("NESTMATE_CLASS", NESTMATE_CLASS));
-            constants.add(Pair.create("HIDDEN_CLASS", HIDDEN_CLASS));
-            constants.add(Pair.create("STRONG_LOADER_LINK", STRONG_LOADER_LINK));
-            constants.add(Pair.create("ACCESS_VM_ANNOTATIONS", ACCESS_VM_ANNOTATIONS));
-            constants.add(Pair.create("LM_MODULE", LM_MODULE));
-            constants.add(Pair.create("LM_UNCONDITIONAL", LM_UNCONDITIONAL));
-            constants.add(Pair.create("LM_TRUSTED", LM_TRUSTED));
+            CONSTANTS.add(Pair.create("NESTMATE_CLASS", NESTMATE_CLASS));
+            CONSTANTS.add(Pair.create("HIDDEN_CLASS", HIDDEN_CLASS));
+            CONSTANTS.add(Pair.create("STRONG_LOADER_LINK", STRONG_LOADER_LINK));
+            CONSTANTS.add(Pair.create("ACCESS_VM_ANNOTATIONS", ACCESS_VM_ANNOTATIONS));
+            CONSTANTS.add(Pair.create("LM_MODULE", LM_MODULE));
+            CONSTANTS.add(Pair.create("LM_UNCONDITIONAL", LM_UNCONDITIONAL));
+            CONSTANTS.add(Pair.create("LM_TRUSTED", LM_TRUSTED));
         }
     }
 

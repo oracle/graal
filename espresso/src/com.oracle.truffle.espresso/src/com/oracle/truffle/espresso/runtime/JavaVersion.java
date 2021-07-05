@@ -58,7 +58,7 @@ public final class JavaVersion {
     }
 
     public boolean java15OrLater() {
-        return version >= 16;
+        return version >= 15;
     }
 
     public boolean java16OrLater() {
