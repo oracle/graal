@@ -227,7 +227,7 @@ final class StackOverflowCheckImpl implements StackOverflowCheck {
          * ensures that any future calls to protectYellowZone() do not modify the stack boundary
          * again.
          */
-        yellowZoneStateTL.set(0xfefefefe);
+        yellowZoneStateTL.set(0x7EFEFEFE);
     }
 }
 
