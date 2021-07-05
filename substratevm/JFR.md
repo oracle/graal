@@ -6,7 +6,7 @@ JFR is a production time profiling system built into OpenJDK. It is now supporte
 
 ## Compiling with JFR
 
-JFR must be included at compile time. First compile the native image with the flag `-H:+AllowVMInspection`.
+JFR must first be included at compile time. To do so, compile the native image with the flag `-H:+AllowVMInspection`.
 
 For example:
 ```
@@ -15,7 +15,7 @@ mx native-image -H:+AllowVMInspection MyJavaApp
 
 ## Enabling JFR
 
-When JFR is included, JFR flags will be available at run time to enable the system and start a recording
+For native images with JFR included, flags will be available at run time to enable the system and start a recording
 
 Use `-XX:+FlightRecorder` to enable JFR and `-XX:StartFlightRecording` to start a recording.
 
@@ -50,7 +50,7 @@ The following key-value pairs are supported:
 
 ## JFR Logging
 
-The JFR system also has a separate flag `-XX:FlightRecorderLogging` that is used to configure logging for the JFR system
+The JFR system also has a separate flag `-XX:FlightRecorderLogging` that is used to configure logging for the JFR system. This is mostly useful when developing JFR.
 
 Usage: `-XX:FlightRecorderLogging=[tag1[+tag2...][*][=level][,...]]`
 
