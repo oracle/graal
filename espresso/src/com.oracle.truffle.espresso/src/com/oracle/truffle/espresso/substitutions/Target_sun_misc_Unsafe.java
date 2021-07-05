@@ -48,6 +48,7 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.impl.ParserKlass;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -310,19 +311,19 @@ public final class Target_sun_misc_Unsafe {
 
     // region compareAndExchange*
 
-    /*
-     * Java 8 does not have these instructions in Unsafe. Implement them by ourselves.
-     */
-
     @Substitution(hasReceiver = true, nameProvider = UnsafeObjectToReference.class)
     public static @Host(Object.class) StaticObject compareAndExchangeObject(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset,
                     @Host(Object.class) StaticObject before, @Host(Object.class) StaticObject after, @InjectMeta Meta meta) {
         if (isNullOrArray(holder)) {
-            return (StaticObject) CASSupport.compareAndExchangeObject(UnsafeAccess.getIfAllowed(meta), unwrapNullOrArray(holder), offset, before, after);
+            UnsafeAccess.checkAllowed(meta);
+            return (StaticObject) UnsafeSupport.compareAndExchangeObject(unwrapNullOrArray(holder), offset, before, after);
         }
         // TODO(peterssen): Current workaround assumes it's a field access, offset <-> field index.
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
+        if (f.getKind() != JavaKind.Object) {
+            throw EspressoError.shouldNotReachHere();
+        }
         return f.compareAndExchangeObject(holder, before, after);
     }
 
@@ -330,7 +331,8 @@ public final class Target_sun_misc_Unsafe {
     public static int compareAndExchangeInt(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, int before,
                     int after, @InjectMeta Meta meta) {
         if (isNullOrArray(holder)) {
-            return CASSupport.compareAndExchangeInt(UnsafeAccess.getIfAllowed(meta), unwrapNullOrArray(holder), offset, before, after);
+            UnsafeAccess.checkAllowed(meta);
+            return UnsafeSupport.compareAndExchangeInt(unwrapNullOrArray(holder), offset, before, after);
         }
         // TODO(peterssen): Current workaround assumes it's a field access, offset <-> field index.
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
@@ -345,23 +347,16 @@ public final class Target_sun_misc_Unsafe {
         }
     }
 
-    @Substitution(hasReceiver = true, nameProvider = Unsafe11.class)
-    public static long compareAndExchangeLong(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, long before,
-                    long after, @InjectMeta Meta meta) {
-        if (isNullOrArray(holder)) {
-            return CASSupport.compareAndExchangeLong(UnsafeAccess.getIfAllowed(meta), unwrapNullOrArray(holder), offset, before, after);
-        }
-        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
-        assert f != null;
-        switch (f.getKind()) {
-            case Long:
-                return f.compareAndExchangeLong(holder, before, after);
-            case Double:
-                return Double.doubleToRawLongBits(f.compareAndExchangeDouble(holder, Double.longBitsToDouble(before), Double.longBitsToDouble(after)));
-            default:
-                throw EspressoError.shouldNotReachHere();
-        }
-    }
+    /*
+     * The following three methods are there to enable atomic operations on sub-word fields, which
+     * would be impossible due to the safety checks in the static object model.
+     * 
+     * All sub-word CAE operations route to `compareAndExchangeInt` in Java code, which, if left
+     * as-is would access, for example, byte fields as ints, which is forbidden by the object model.
+     * 
+     * As a workaround, create a substitution for sub-words CAE operations (to which CAS are routed
+     * in Java code), and check the field kind to call the corresponding static property method.
+     */
 
     @Substitution(hasReceiver = true)
     public static byte compareAndExchangeByte(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset,
@@ -369,7 +364,8 @@ public final class Target_sun_misc_Unsafe {
                     byte after,
                     @InjectMeta Meta meta) {
         if (isNullOrArray(holder)) {
-            return CASSupport.compareAndExchangeByte(UnsafeAccess.getIfAllowed(meta), unwrapNullOrArray(holder), offset, before, after);
+            UnsafeAccess.checkAllowed(meta);
+            return UnsafeSupport.compareAndExchangeByte(unwrapNullOrArray(holder), offset, before, after);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
@@ -389,7 +385,8 @@ public final class Target_sun_misc_Unsafe {
                     short after,
                     @InjectMeta Meta meta) {
         if (isNullOrArray(holder)) {
-            return CASSupport.compareAndExchangeShort(UnsafeAccess.getIfAllowed(meta), unwrapNullOrArray(holder), offset, before, after);
+            UnsafeAccess.checkAllowed(meta);
+            return UnsafeSupport.compareAndExchangeShort(unwrapNullOrArray(holder), offset, before, after);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
@@ -398,6 +395,25 @@ public final class Target_sun_misc_Unsafe {
                 return f.compareAndExchangeShort(holder, before, after);
             case Char:
                 return (short) f.compareAndExchangeChar(holder, (char) before, (char) after);
+            default:
+                throw EspressoError.shouldNotReachHere();
+        }
+    }
+
+    @Substitution(hasReceiver = true, nameProvider = Unsafe11.class)
+    public static long compareAndExchangeLong(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, long before,
+                    long after, @InjectMeta Meta meta) {
+        if (isNullOrArray(holder)) {
+            UnsafeAccess.checkAllowed(meta);
+            return UnsafeSupport.compareAndExchangeLong(unwrapNullOrArray(holder), offset, before, after);
+        }
+        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        assert f != null;
+        switch (f.getKind()) {
+            case Long:
+                return f.compareAndExchangeLong(holder, before, after);
+            case Double:
+                return Double.doubleToRawLongBits(f.compareAndExchangeDouble(holder, Double.longBitsToDouble(before), Double.longBitsToDouble(after)));
             default:
                 throw EspressoError.shouldNotReachHere();
         }
@@ -1524,196 +1540,6 @@ public final class Target_sun_misc_Unsafe {
                 res[i] = res[i].replace("Object", "Reference");
             }
             return res;
-        }
-    }
-
-    /**
-     * Temporary class to enable support for compare and swap/exchange for sub-word fields.
-     * <p>
-     * This class will be removed in favor of overlayed classes: one for version &lt=8 and &gt= 9.
-     * This class corresponds to the &lt=8 version.
-     * <p>
-     * The version for &gt=9 will be able to call directly into host Unsafe methods to get better
-     * performance.
-     */
-    @SuppressWarnings("unused")
-    private static class CASSupport {
-        private CASSupport() {
-        }
-
-        private static boolean isBigEndian() {
-            return ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN;
-        }
-
-        private static boolean compareAndSwapByte(Unsafe u,
-                        Object o, long offset,
-                        byte expected,
-                        byte x) {
-            return compareAndExchangeByte(u, o, offset, expected, x) == expected;
-        }
-
-        private static boolean compareAndSwapBoolean(Unsafe u,
-                        Object o, long offset,
-                        boolean expected,
-                        boolean x) {
-            byte byteExpected = expected ? (byte) 1 : (byte) 0;
-            byte byteX = x ? (byte) 1 : (byte) 0;
-            return compareAndSwapByte(u, o, offset, byteExpected, byteX);
-        }
-
-        private static boolean compareAndSwapShort(Unsafe u,
-                        Object o, long offset,
-                        short expected,
-                        short x) {
-            return compareAndExchangeShort(u, o, offset, expected, x) == expected;
-        }
-
-        private static boolean compareAndSwapChar(Unsafe u,
-                        Object o, long offset,
-                        char expected,
-                        char x) {
-            return compareAndSwapShort(u, o, offset, (short) expected, (short) x);
-        }
-
-        private static boolean compareAndSwapFloat(Unsafe u,
-                        Object o, long offset,
-                        float expected,
-                        float x) {
-            return u.compareAndSwapInt(o, offset,
-                            Float.floatToRawIntBits(expected),
-                            Float.floatToRawIntBits(x));
-        }
-
-        private static boolean compareAndSwapDouble(Unsafe u,
-                        Object o, long offset,
-                        double expected,
-                        double x) {
-            return u.compareAndSwapLong(o, offset,
-                            Double.doubleToRawLongBits(expected),
-                            Double.doubleToRawLongBits(x));
-        }
-
-        private static byte compareAndExchangeByte(Unsafe u,
-                        Object o, long offset,
-                        byte expected,
-                        byte x) {
-            long wordOffset = offset & ~3;
-            int shift = (int) (offset & 3) << 3;
-            if (isBigEndian()) {
-                shift = 24 - shift;
-            }
-            int mask = 0xFF << shift;
-            int maskedExpected = (expected & 0xFF) << shift;
-            int maskedX = (x & 0xFF) << shift;
-            int fullWord;
-            do {
-                fullWord = u.getIntVolatile(o, wordOffset);
-                if ((fullWord & mask) != maskedExpected)
-                    return (byte) ((fullWord & mask) >> shift);
-            } while (!u.compareAndSwapInt(o, wordOffset,
-                            fullWord, (fullWord & ~mask) | maskedX));
-            return expected;
-        }
-
-        private static boolean compareAndExchangeBoolean(Unsafe u,
-                        Object o, long offset,
-                        boolean expected,
-                        boolean x) {
-            byte byteExpected = expected ? (byte) 1 : (byte) 0;
-            byte byteX = x ? (byte) 1 : (byte) 0;
-            return compareAndExchangeByte(u, o, offset, byteExpected, byteX) != 0;
-        }
-
-        private static short compareAndExchangeShort(Unsafe u,
-                        Object o, long offset,
-                        short expected,
-                        short x) {
-            if ((offset & 3) == 3) {
-                throw new IllegalArgumentException("Update spans the word, not supported");
-            }
-            long wordOffset = offset & ~3;
-            int shift = (int) (offset & 3) << 3;
-            if (isBigEndian()) {
-                shift = 16 - shift;
-            }
-            int mask = 0xFFFF << shift;
-            int maskedExpected = (expected & 0xFFFF) << shift;
-            int maskedX = (x & 0xFFFF) << shift;
-            int fullWord;
-            do {
-                fullWord = u.getIntVolatile(o, wordOffset);
-                if ((fullWord & mask) != maskedExpected)
-                    return (short) ((fullWord & mask) >> shift);
-            } while (!u.compareAndSwapInt(o, wordOffset,
-                            fullWord, (fullWord & ~mask) | maskedX));
-            return expected;
-        }
-
-        private static char compareAndExchangeChar(Unsafe u,
-                        Object o, long offset,
-                        char expected,
-                        char x) {
-            return (char) compareAndExchangeShort(u, o, offset, (short) expected, (short) x);
-        }
-
-        private static int compareAndExchangeInt(Unsafe u,
-                        Object o, long offset,
-                        int expected,
-                        int x) {
-            int result;
-            do {
-                result = u.getIntVolatile(o, offset);
-                if (result != expected) {
-                    return result;
-                }
-            } while (!u.compareAndSwapInt(o, offset, expected, x));
-            return expected;
-        }
-
-        private static Object compareAndExchangeObject(Unsafe u,
-                        Object o, long offset,
-                        Object expected,
-                        Object x) {
-            Object result;
-            do {
-                result = u.getObjectVolatile(o, offset);
-                if (result != expected) {
-                    return result;
-                }
-            } while (!u.compareAndSwapObject(o, offset, expected, x));
-            return expected;
-        }
-
-        private static float compareAndExchangeFloat(Unsafe u,
-                        Object o, long offset,
-                        float expected,
-                        float x) {
-            return Float.intBitsToFloat(compareAndExchangeInt(u, o, offset,
-                            Float.floatToRawIntBits(expected),
-                            Float.floatToRawIntBits(x)));
-        }
-
-        private static long compareAndExchangeLong(Unsafe u,
-                        Object o, long offset,
-                        long expected,
-                        long x) {
-            long result;
-            do {
-                result = u.getLongVolatile(o, offset);
-                if (result != expected) {
-                    return result;
-                }
-            } while (!u.compareAndSwapLong(o, offset, expected, x));
-            return expected;
-        }
-
-        private static double compareAndExchangeDouble(Unsafe u,
-                        Object o, long offset,
-                        double expected,
-                        double x) {
-            return Double.longBitsToDouble(compareAndExchangeLong(u, o, offset,
-                            Double.doubleToRawLongBits(expected),
-                            Double.doubleToRawLongBits(x)));
         }
     }
 }
