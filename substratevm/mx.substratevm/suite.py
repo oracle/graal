@@ -773,24 +773,6 @@ suite = {
             "spotbugs" : "false",
         },
 
-        "com.oracle.objectfile.jdk11" : {
-            "subDir": "src",
-            "sourceDirs" : ["src"],
-            "dependencies" : [
-                "com.oracle.objectfile"
-            ],
-            "requiresConcealed" : {
-                "java.base" : ["jdk.internal.module"],
-            },
-            "checkstyle" : "com.oracle.svm.hosted",
-            "javaCompliance" : "11+",
-            "multiReleaseJarVersion": "11",
-            "overlayTarget" : "com.oracle.objectfile",
-            "annotationProcessors" : ["compiler:GRAAL_PROCESSOR"],
-            "workingSets" : "SVM",
-            "spotbugs" : "false",
-        },
-
         "com.oracle.svm.graal": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -1238,6 +1220,8 @@ suite = {
                 "com.oracle.objectfile.io",
                 "com.oracle.objectfile.debuginfo",
               ],
+
+              "requires" : ["jdk.unsupported"],
               "requiresConcealed" : {
                 "java.base" : [
                   "sun.nio.ch",
