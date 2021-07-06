@@ -118,7 +118,7 @@ final class SafepointStackSampler {
         cachedAction.set(action);
 
         for (SyntheticFrame syntheticFrame : syntheticFrames.values()) {
-            perThreadSamples.add(syntheticFrame.stackSample);
+            perThreadSamples.add(syntheticFrame.stackSample());
         }
         return perThreadSamples;
     }
@@ -137,7 +137,7 @@ final class SafepointStackSampler {
         if (syntheticFrames.containsKey(thread)) {
             parent = syntheticFrames.get(thread);
         }
-        syntheticFrames.put(thread, new SyntheticFrame(language.getName() + ":" + message, parent));
+        syntheticFrames.put(thread, new SyntheticFrame(parent, thread, language, message));
     }
 
     public void popSyntheticFrame() {
@@ -302,14 +302,34 @@ final class SafepointStackSampler {
 
     private class SyntheticFrame {
         final SyntheticFrame parent;
-        final StackSample stackSample;
+        final StackVisitor visitor;
+        final Thread thread;
+        final LanguageInfo language;
+        final String message;
+        StackSample stackSample;
 
-        SyntheticFrame(String message, SyntheticFrame parent) {
+        /**
+         * Created on the interpreter thread, keep as fast as possible
+         */
+        public SyntheticFrame(SyntheticFrame parent, Thread thread, LanguageInfo language, String message) {
             this.parent = parent;
-            StackVisitor visitor = fetchStackVisitor();
+            this.thread = thread;
+            this.language = language;
+            this.message = message;
+            this.visitor = fetchStackVisitor();
             Truffle.getRuntime().iterateFrames(visitor);
-            stackSample = new StackSample(Thread.currentThread(), visitor.createEntries(sourceSectionFilter, message), 0, 0, visitor.overflowed);
-            visitor.resetAndReturn();
+        }
+
+        /**
+         * Read on the sampling thread
+         */
+        private StackSample stackSample() {
+            if (stackSample == null) {
+                String languageMessage = language.getName() + ":" + message;
+                stackSample = new StackSample(thread, visitor.createEntries(sourceSectionFilter, languageMessage), 0, 0, visitor.overflowed);
+                visitor.resetAndReturn();
+            }
+            return stackSample;
         }
     }
 }
