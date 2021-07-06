@@ -42,6 +42,7 @@ package com.oracle.truffle.api.staticobject.test;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.staticobject.DefaultStaticProperty;
 import com.oracle.truffle.api.staticobject.StaticProperty;
 import org.graalvm.polyglot.Context;
@@ -104,7 +105,15 @@ class StaticObjectModelTest {
         }
     }
 
-    String guessGeneratedFieldName(StaticProperty property) {
+    static TestEnvironment[] getTestEnvironments() {
+        if (TruffleOptions.AOT) {
+            return new TestEnvironment[]{new TestEnvironment(true)};
+        } else {
+            return new TestEnvironment[]{new TestEnvironment(true), new TestEnvironment(false)};
+        }
+    }
+
+    static String guessGeneratedFieldName(StaticProperty property) {
         // The format of generated field names with the field-based storage might change at any
         // time. Do not depend on it!
         if (property instanceof DefaultStaticProperty) {

@@ -65,7 +65,7 @@ public class BuilderPropertyTest extends StaticObjectModelTest {
 
     @BeforeClass
     public static void setup() {
-        environments = new TestEnvironment[]{new TestEnvironment(true), new TestEnvironment(false)};
+        environments = getTestEnvironments();
     }
 
     @AfterClass
