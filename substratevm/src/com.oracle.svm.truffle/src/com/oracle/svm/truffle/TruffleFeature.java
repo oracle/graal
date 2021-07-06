@@ -1048,7 +1048,8 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         }
 
         static void beforeCompilation(BeforeCompilationAccess config) {
-            // Recompute the offset of the byte and object arrays stored in the cached ShapeGenerator
+            // Recompute the offset of the byte and object arrays stored in the cached
+            // ShapeGenerator
             ConcurrentHashMap<?, ?> generatorCache = ReflectionUtil.readStaticField(SHAPE_GENERATOR_CLASS, "generatorCache");
             for (Map.Entry<?, ?> entry : generatorCache.entrySet()) {
                 Object shapeGenerator = entry.getValue();
