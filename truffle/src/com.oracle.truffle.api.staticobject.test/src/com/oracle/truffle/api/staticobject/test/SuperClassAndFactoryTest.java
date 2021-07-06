@@ -53,7 +53,7 @@ import org.junit.runner.RunWith;
 import java.util.regex.Pattern;
 
 @RunWith(Theories.class)
-public class ShapeAndFactoryTest extends StaticObjectModelTest {
+public class SuperClassAndFactoryTest extends StaticObjectModelTest {
     @DataPoints //
     public static TestEnvironment[] environments;
 
