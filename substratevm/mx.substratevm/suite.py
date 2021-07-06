@@ -422,8 +422,6 @@ suite = {
             },
             "javaCompliance": "11+",
             "checkstyle" : "com.oracle.svm.hosted",
-            "multiReleaseJarVersion": "11",
-            "overlayTarget": "com.oracle.svm.hosted",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
             ],
@@ -442,8 +440,6 @@ suite = {
                     ["jdk.vm.ci.meta"],
             },
             "javaCompliance": "14+",
-            "multiReleaseJarVersion": "14",
-            "overlayTarget" : "com.oracle.svm.hosted",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
             ],
@@ -1058,6 +1054,8 @@ suite = {
                 "com.oracle.svm.graal",
                 "com.oracle.svm.truffle",
                 "com.oracle.svm.hosted",
+                "com.oracle.svm.hosted.jdk11",
+                "com.oracle.svm.hosted.jdk14",
                 "com.oracle.svm.core",
                 "com.oracle.svm.core.graal.amd64",
                 "com.oracle.svm.core.graal.aarch64",
