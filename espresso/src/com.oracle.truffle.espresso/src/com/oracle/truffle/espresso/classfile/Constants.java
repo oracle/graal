@@ -54,6 +54,9 @@ public final class Constants {
     public static final int ACC_CALLER_SENSITIVE = 0x00080000;
     public static final int ACC_LAMBDA_FORM_HIDDEN = 0x00100000;
 
+    public static final int FIELD_ID_TYPE = 0x01000000;
+    public static final int FIELD_ID_OBFUSCATE = 0x02000000;
+
     public static final int JVM_ACC_WRITTEN_FLAGS = 0x00007FFF;
 
     // Table 4.1-A. Class access and property modifiers.
