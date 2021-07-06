@@ -105,7 +105,6 @@ import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
-import com.oracle.graal.pointsto.phases.SubstrateIntrinsicGraphBuilder;
 import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.truffle.api.staticobject.StaticShape;
 import org.graalvm.collections.Pair;
@@ -197,7 +196,6 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import sun.misc.Unsafe;
 
 public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
 
@@ -1029,12 +1027,16 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
                 InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins.getInvocationPlugins(), StaticShape.Builder.class);
                 r.register3("build", InvocationPlugin.Receiver.class, Class.class, Class.class, new InvocationPlugin() {
                     @Override
+                    public boolean inlineOnly() {
+                        // Use the plugin only during parsing.
+                        return true;
+                    }
+
+                    @Override
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode arg1, ValueNode arg2) {
-                        if (!(receiver instanceof SubstrateIntrinsicGraphBuilder)) {
-                            Class<?> superClass = getArgumentClass(b, targetMethod, 1, arg1);
-                            Class<?> factoryInterface = getArgumentClass(b, targetMethod, 2, arg2);
-                            INTERCEPTED_ARGS.put(Pair.create(superClass, factoryInterface), FILLER_OBJECT);
-                        }
+                        Class<?> superClass = getArgumentClass(b, targetMethod, 1, arg1);
+                        Class<?> factoryInterface = getArgumentClass(b, targetMethod, 2, arg2);
+                        INTERCEPTED_ARGS.put(Pair.create(superClass, factoryInterface), FILLER_OBJECT);
                         return false;
                     }
                 });
