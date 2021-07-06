@@ -59,43 +59,43 @@ class AArch64UContextRegisterDumperFeature implements Feature {
 
 class AArch64UContextRegisterDumper implements UContextRegisterDumper {
     @Override
-    public void dumpRegisters(Log log, ucontext_t uContext) {
+    public void dumpRegisters(Log log, ucontext_t uContext, boolean printLocationInfo) {
         mcontext_t sigcontext = uContext.uc_mcontext();
         GregsPointer regs = sigcontext.regs();
-        dumpReg(log, "R0  ", regs.read(0));
-        dumpReg(log, "R1  ", regs.read(1));
-        dumpReg(log, "R2  ", regs.read(2));
-        dumpReg(log, "R3  ", regs.read(3));
-        dumpReg(log, "R4  ", regs.read(4));
-        dumpReg(log, "R5  ", regs.read(5));
-        dumpReg(log, "R6  ", regs.read(6));
-        dumpReg(log, "R7  ", regs.read(7));
-        dumpReg(log, "R8  ", regs.read(8));
-        dumpReg(log, "R9  ", regs.read(9));
-        dumpReg(log, "R10 ", regs.read(10));
-        dumpReg(log, "R11 ", regs.read(11));
-        dumpReg(log, "R12 ", regs.read(12));
-        dumpReg(log, "R13 ", regs.read(13));
-        dumpReg(log, "R14 ", regs.read(14));
-        dumpReg(log, "R15 ", regs.read(15));
-        dumpReg(log, "R16 ", regs.read(16));
-        dumpReg(log, "R17 ", regs.read(17));
-        dumpReg(log, "R18 ", regs.read(18));
-        dumpReg(log, "R19 ", regs.read(19));
-        dumpReg(log, "R20 ", regs.read(20));
-        dumpReg(log, "R21 ", regs.read(21));
-        dumpReg(log, "R22 ", regs.read(22));
-        dumpReg(log, "R23 ", regs.read(23));
-        dumpReg(log, "R24 ", regs.read(24));
-        dumpReg(log, "R25 ", regs.read(25));
-        dumpReg(log, "R26 ", regs.read(26));
-        dumpReg(log, "R27 ", regs.read(27));
-        dumpReg(log, "R28 ", regs.read(28));
-        dumpReg(log, "R29 ", regs.read(29));
-        dumpReg(log, "R30 ", regs.read(30));
-        dumpReg(log, "R31 ", regs.read(31));
-        dumpReg(log, "SP  ", sigcontext.sp());
-        dumpReg(log, "PC  ", sigcontext.pc());
+        dumpReg(log, "R0  ", regs.read(0), printLocationInfo);
+        dumpReg(log, "R1  ", regs.read(1), printLocationInfo);
+        dumpReg(log, "R2  ", regs.read(2), printLocationInfo);
+        dumpReg(log, "R3  ", regs.read(3), printLocationInfo);
+        dumpReg(log, "R4  ", regs.read(4), printLocationInfo);
+        dumpReg(log, "R5  ", regs.read(5), printLocationInfo);
+        dumpReg(log, "R6  ", regs.read(6), printLocationInfo);
+        dumpReg(log, "R7  ", regs.read(7), printLocationInfo);
+        dumpReg(log, "R8  ", regs.read(8), printLocationInfo);
+        dumpReg(log, "R9  ", regs.read(9), printLocationInfo);
+        dumpReg(log, "R10 ", regs.read(10), printLocationInfo);
+        dumpReg(log, "R11 ", regs.read(11), printLocationInfo);
+        dumpReg(log, "R12 ", regs.read(12), printLocationInfo);
+        dumpReg(log, "R13 ", regs.read(13), printLocationInfo);
+        dumpReg(log, "R14 ", regs.read(14), printLocationInfo);
+        dumpReg(log, "R15 ", regs.read(15), printLocationInfo);
+        dumpReg(log, "R16 ", regs.read(16), printLocationInfo);
+        dumpReg(log, "R17 ", regs.read(17), printLocationInfo);
+        dumpReg(log, "R18 ", regs.read(18), printLocationInfo);
+        dumpReg(log, "R19 ", regs.read(19), printLocationInfo);
+        dumpReg(log, "R20 ", regs.read(20), printLocationInfo);
+        dumpReg(log, "R21 ", regs.read(21), printLocationInfo);
+        dumpReg(log, "R22 ", regs.read(22), printLocationInfo);
+        dumpReg(log, "R23 ", regs.read(23), printLocationInfo);
+        dumpReg(log, "R24 ", regs.read(24), printLocationInfo);
+        dumpReg(log, "R25 ", regs.read(25), printLocationInfo);
+        dumpReg(log, "R26 ", regs.read(26), printLocationInfo);
+        dumpReg(log, "R27 ", regs.read(27), printLocationInfo);
+        dumpReg(log, "R28 ", regs.read(28), printLocationInfo);
+        dumpReg(log, "R29 ", regs.read(29), printLocationInfo);
+        dumpReg(log, "R30 ", regs.read(30), printLocationInfo);
+        dumpReg(log, "R31 ", regs.read(31), printLocationInfo);
+        dumpReg(log, "SP  ", sigcontext.sp(), printLocationInfo);
+        dumpReg(log, "PC  ", sigcontext.pc(), printLocationInfo);
     }
 
     @Override

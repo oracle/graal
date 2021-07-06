@@ -51,6 +51,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicWord;
 import com.oracle.svm.core.locks.VMLockSupport;
 import com.oracle.svm.core.log.Log;
@@ -108,6 +109,12 @@ public class SubstrateDiagnostics {
             result += thunks.getThunk(i).maxInvocations();
         }
         return result;
+    }
+
+    public static void printLocationInfo(Log log, UnsignedWord value) {
+        if (value.notEqual(0) && !RuntimeCodeInfoMemory.singleton().printLocationInfo(log, value) && !VMThreads.printLocationInfo(log, value) && !Heap.getHeap().printLocationInfo(log, value)) {
+            log.string("is an unknown value");
+        }
     }
 
     /** Prints extensive diagnostic information to the given Log. */
@@ -277,7 +284,7 @@ public class SubstrateDiagnostics {
     private static class DumpRegisters extends DiagnosticThunk {
         @Override
         public int maxInvocations() {
-            return 1;
+            return 2;
         }
 
         @Override
@@ -286,7 +293,7 @@ public class SubstrateDiagnostics {
             RegisterDumper.Context context = state.context;
             if (context.isNonNull()) {
                 log.string("General purpose register values:").indent(true);
-                RegisterDumper.singleton().dumpRegisters(log, context);
+                RegisterDumper.singleton().dumpRegisters(log, context, invocationCount == 1);
                 log.indent(false);
             }
         }

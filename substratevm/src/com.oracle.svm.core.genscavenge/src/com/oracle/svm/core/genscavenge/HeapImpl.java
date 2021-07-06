@@ -144,8 +144,8 @@ public final class HeapImpl extends Heap {
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public boolean isInImageHeap(Pointer pointer) {
-        return imageHeapInfo.isInImageHeap(pointer) || (AuxiliaryImageHeap.isPresent() && AuxiliaryImageHeap.singleton().containsObject(pointer));
+    public boolean isInImageHeap(Pointer objPointer) {
+        return imageHeapInfo.isInImageHeap(objPointer) || (AuxiliaryImageHeap.isPresent() && AuxiliaryImageHeap.singleton().containsObject(objPointer));
     }
 
     @Override
@@ -276,7 +276,7 @@ public final class HeapImpl extends Heap {
 
     void logImageHeapPartitionBoundaries(Log log) {
         log.string("Native image heap boundaries:").indent(true);
-        ImageHeapWalker.logPartitionBoundaries(log, imageHeapInfo);
+        imageHeapInfo.print(log);
         log.indent(false);
     }
 
@@ -583,6 +583,107 @@ public final class HeapImpl extends Heap {
         } finally {
             REF_MUTEX.unlock();
         }
+    }
+
+    @Override
+    public boolean printLocationInfo(Log log, UnsignedWord v) {
+        Pointer value = (Pointer) v;
+        if (imageHeapInfo.isInReadOnlyPrimitivePartition(value)) {
+            log.string("points into the image heap (read-only primitives)");
+            return true;
+        }
+
+        if (imageHeapInfo.isInReadOnlyReferencePartition(value)) {
+            log.string("points into the image heap (read-only references)");
+            return true;
+        }
+
+        if (imageHeapInfo.isInReadOnlyRelocatablePartition(value)) {
+            log.string("points into the image heap (read-only relocatables)");
+            return true;
+        }
+
+        if (imageHeapInfo.isInWritablePrimitivePartition(value)) {
+            log.string("points into the image heap (writable primitives)");
+            return true;
+        }
+
+        if (imageHeapInfo.isInWritableReferencePartition(value)) {
+            log.string("points into the image heap (writable references)");
+            return true;
+        }
+
+        if (imageHeapInfo.isInWritableHugePartition(value)) {
+            log.string("points into the image heap (writable huge)");
+            return true;
+        }
+
+        if (imageHeapInfo.isInReadOnlyHugePartition(value)) {
+            log.string("points into the image heap (read-only huge)");
+            return true;
+        }
+
+        if (AuxiliaryImageHeap.isPresent() && AuxiliaryImageHeap.singleton().containsObject(value)) {
+            log.string("points into the auxiliary image heap");
+            return true;
+        }
+
+        if (isInYoungGen(value)) {
+            log.string("points into the young generation");
+            return true;
+        }
+
+        if (isInOldGen(value)) {
+            log.string("points into the old generation");
+            return true;
+        }
+
+        return false;
+    }
+
+    boolean isInHeap(Pointer ptr) {
+        return isInImageHeap(ptr) || isInYoungGen(ptr) || isInOldGen(ptr);
+    }
+
+    private boolean isInYoungGen(Pointer ptr) {
+        if (findPointerInSpace(youngGeneration.getEden(), ptr)) {
+            return true;
+        }
+
+        for (int i = 0; i < youngGeneration.getMaxSurvivorSpaces(); i++) {
+            if (findPointerInSpace(youngGeneration.getSurvivorFromSpaceAt(i), ptr)) {
+                return true;
+            }
+            if (findPointerInSpace(youngGeneration.getSurvivorToSpaceAt(i), ptr)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isInOldGen(Pointer ptr) {
+        return findPointerInSpace(oldGeneration.getFromSpace(), ptr) || findPointerInSpace(oldGeneration.getToSpace(), ptr);
+    }
+
+    private static boolean findPointerInSpace(Space space, Pointer p) {
+        AlignedHeapChunk.AlignedHeader aChunk = space.getFirstAlignedHeapChunk();
+        while (aChunk.isNonNull()) {
+            Pointer start = AlignedHeapChunk.getObjectsStart(aChunk);
+            if (start.belowOrEqual(p) && p.belowThan(HeapChunk.getTopPointer(aChunk))) {
+                return true;
+            }
+            aChunk = HeapChunk.getNext(aChunk);
+        }
+
+        UnalignedHeapChunk.UnalignedHeader uChunk = space.getFirstUnalignedHeapChunk();
+        while (uChunk.isNonNull()) {
+            Pointer start = UnalignedHeapChunk.getObjectStart(uChunk);
+            if (start.belowOrEqual(p) && p.belowThan(HeapChunk.getTopPointer(uChunk))) {
+                return true;
+            }
+            uChunk = HeapChunk.getNext(uChunk);
+        }
+        return false;
     }
 
     private static class DumpHeapSettingsAndStatistics extends DiagnosticThunk {

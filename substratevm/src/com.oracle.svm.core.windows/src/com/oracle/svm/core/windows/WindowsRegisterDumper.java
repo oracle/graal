@@ -53,29 +53,29 @@ class WindowsRegisterDumperFeature implements Feature {
 
 public class WindowsRegisterDumper implements RegisterDumper {
     @Override
-    public void dumpRegisters(Log log, Context context) {
-        dumpRegisters(log, (CONTEXT) context);
+    public void dumpRegisters(Log log, Context context, boolean printLocationInfo) {
+        dumpRegisters(log, (CONTEXT) context, printLocationInfo);
     }
 
-    private static void dumpRegisters(Log log, CONTEXT context) {
-        dumpReg(log, "RAX ", context.Rax());
-        dumpReg(log, "RBX ", context.Rbx());
-        dumpReg(log, "RCX ", context.Rcx());
-        dumpReg(log, "RDX ", context.Rdx());
-        dumpReg(log, "RBP ", context.Rbp());
-        dumpReg(log, "RSI ", context.Rsi());
-        dumpReg(log, "RDI ", context.Rdi());
-        dumpReg(log, "RSP ", context.Rsp());
-        dumpReg(log, "R8  ", context.R8());
-        dumpReg(log, "R9  ", context.R9());
-        dumpReg(log, "R10 ", context.R10());
-        dumpReg(log, "R11 ", context.R11());
-        dumpReg(log, "R12 ", context.R12());
-        dumpReg(log, "R13 ", context.R13());
-        dumpReg(log, "R14 ", context.R14());
-        dumpReg(log, "R15 ", context.R15());
-        dumpReg(log, "EFL ", context.EFlags());
-        dumpReg(log, "RIP ", context.Rip());
+    private static void dumpRegisters(Log log, CONTEXT context, boolean printLocationInfo) {
+        dumpReg(log, "RAX ", context.Rax(), printLocationInfo);
+        dumpReg(log, "RBX ", context.Rbx(), printLocationInfo);
+        dumpReg(log, "RCX ", context.Rcx(), printLocationInfo);
+        dumpReg(log, "RDX ", context.Rdx(), printLocationInfo);
+        dumpReg(log, "RBP ", context.Rbp(), printLocationInfo);
+        dumpReg(log, "RSI ", context.Rsi(), printLocationInfo);
+        dumpReg(log, "RDI ", context.Rdi(), printLocationInfo);
+        dumpReg(log, "RSP ", context.Rsp(), printLocationInfo);
+        dumpReg(log, "R8  ", context.R8(), printLocationInfo);
+        dumpReg(log, "R9  ", context.R9(), printLocationInfo);
+        dumpReg(log, "R10 ", context.R10(), printLocationInfo);
+        dumpReg(log, "R11 ", context.R11(), printLocationInfo);
+        dumpReg(log, "R12 ", context.R12(), printLocationInfo);
+        dumpReg(log, "R13 ", context.R13(), printLocationInfo);
+        dumpReg(log, "R14 ", context.R14(), printLocationInfo);
+        dumpReg(log, "R15 ", context.R15(), printLocationInfo);
+        dumpReg(log, "EFL ", context.EFlags(), printLocationInfo);
+        dumpReg(log, "RIP ", context.Rip(), printLocationInfo);
     }
 
     @Override

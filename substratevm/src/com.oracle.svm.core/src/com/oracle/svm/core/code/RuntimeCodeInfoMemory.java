@@ -32,6 +32,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateDiagnostics;
@@ -254,20 +255,20 @@ public class RuntimeCodeInfoMemory {
         return (index + 1 < length) ? (index + 1) : 0;
     }
 
-    /** Potentially unsafe and may therefore only be used when printing diagnostics. */
     public void printTable(Log log, boolean allowJavaHeapAccess) {
-        assert VMOperation.isInProgressAtSafepoint() || SubstrateDiagnostics.isInProgressByCurrentThread();
+        assert VMOperation.isInProgressAtSafepoint() ||
+                        SubstrateDiagnostics.isInProgressByCurrentThread() : "outside of a safepoint, this may only be used for printing diagnostics as the table could be freed at any time";
         log.string("RuntimeCodeInfoMemory contains ").signed(count).string(" methods:").indent(true);
         if (table.isNonNull()) {
             for (int i = 0; i < NonmovableArrays.lengthOf(table); i++) {
-                logCodeInfo(log, i, allowJavaHeapAccess);
+                printCodeInfo(log, i, allowJavaHeapAccess);
             }
         }
         log.indent(false);
     }
 
     @Uninterruptible(reason = "Must prevent the GC from freeing the CodeInfo object.")
-    private void logCodeInfo(Log log, int i, boolean allowJavaHeapAccess) {
+    private void printCodeInfo(Log log, int i, boolean allowJavaHeapAccess) {
         UntetheredCodeInfo info = NonmovableArrays.getWord(table, i);
         if (info.isNonNull()) {
             /*
@@ -277,12 +278,12 @@ public class RuntimeCodeInfoMemory {
              * printing.
              */
             String name = allowJavaHeapAccess ? UntetheredCodeInfoAccess.getName(info) : null;
-            logCodeInfo0(log, info, UntetheredCodeInfoAccess.getState(info), name, UntetheredCodeInfoAccess.getCodeStart(info), UntetheredCodeInfoAccess.getCodeEnd(info));
+            printCodeInfo0(log, info, UntetheredCodeInfoAccess.getState(info), name, UntetheredCodeInfoAccess.getCodeStart(info), UntetheredCodeInfoAccess.getCodeEnd(info));
         }
     }
 
     @Uninterruptible(reason = "Pass the now protected CodeInfo to interruptible code.", calleeMustBe = false)
-    private static void logCodeInfo0(Log log, UntetheredCodeInfo codeInfo, int state, String name, CodePointer codeStart, CodePointer codeEnd) {
+    private static void printCodeInfo0(Log log, UntetheredCodeInfo codeInfo, int state, String name, CodePointer codeStart, CodePointer codeEnd) {
         RuntimeCodeInfoHistory.printCodeInfo(log, codeInfo, state, name, codeStart, codeEnd);
     }
 
@@ -305,5 +306,33 @@ public class RuntimeCodeInfoMemory {
             NonmovableArrays.releaseUnmanagedArray(table);
             table = NonmovableArrays.nullArray();
         }
+    }
+
+    public boolean printLocationInfo(Log log, UnsignedWord value) {
+        assert SubstrateDiagnostics.isInProgressByCurrentThread() : "may only be used for printing diagnostics as the table could be freed at any time";
+        if (table.isNonNull()) {
+            for (int i = 0; i < NonmovableArrays.lengthOf(table); i++) {
+                // TEMP (chaeubl): print the name of the code info object if javaAccess is allowed
+                UntetheredCodeInfo info = NonmovableArrays.getWord(table, i);
+                if (info.equal(value)) {
+                    log.string("is a CodeInfo object");
+                    return true;
+                }
+
+                UnsignedWord codeInfoEnd = ((UnsignedWord) info).add(RuntimeCodeInfoAccess.getSizeOfCodeInfo());
+                if (value.aboveOrEqual(value) && value.belowThan(codeInfoEnd)) {
+                    log.string("points within a CodeInfo object");
+                    return true;
+                }
+
+                UnsignedWord codeStart = (UnsignedWord) UntetheredCodeInfoAccess.getCodeStart(info);
+                UnsignedWord codeEnd = (UnsignedWord) UntetheredCodeInfoAccess.getCodeEnd(info);
+                if (value.aboveOrEqual(codeStart) && value.belowOrEqual(codeEnd)) {
+                    log.string("is at codeStart+").unsigned(value.subtract(codeStart)).string(" in CodeInfo ").zhex(info);
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }

@@ -35,10 +35,12 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
+import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -166,7 +168,10 @@ public abstract class Heap {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public abstract boolean isInImageHeap(Object object);
 
-    /** Returns true if the object at the given address is located in the image heap. */
+    /**
+     * Returns true if the object at the given address is located in the image heap. This method
+     * only works reliably for pointers to the start of an object.
+     */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public abstract boolean isInImageHeap(Pointer objectPtr);
 
@@ -187,4 +192,10 @@ public abstract class Heap {
      * May return {@code null}.
      */
     public abstract Reference<?> getAndClearReferencePendingList();
+
+    /**
+     * If the passed value is within the Java heap, this method prints some information about that
+     * value and returns true. Otherwise, the method returns false.
+     */
+    public abstract boolean printLocationInfo(Log log, UnsignedWord value);
 }

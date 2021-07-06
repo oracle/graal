@@ -359,7 +359,7 @@ public final class HeapVerifier {
             return true;
         }
 
-        if (!isInHeap(referencedObject)) {
+        if (!HeapImpl.getHeapImpl().isInHeap(referencedObject)) {
             Log.log().string("Object reference at ").zhex(reference).string(" points outside the Java heap: ").zhex(referencedObject).string(". ");
             if (parentObject != null) {
                 Log.log().string("The object that contains the invalid reference is of type ").string(parentObject.getClass().getName()).newline();
@@ -370,54 +370,6 @@ public final class HeapVerifier {
         }
 
         return true;
-    }
-
-    private static boolean isInHeap(Pointer ptr) {
-        HeapImpl heap = HeapImpl.getHeapImpl();
-        return heap.isInImageHeap(ptr) || isInYoungGen(ptr) || isInOldGen(ptr);
-    }
-
-    private static boolean isInYoungGen(Pointer ptr) {
-        YoungGeneration youngGen = HeapImpl.getHeapImpl().getYoungGeneration();
-        if (findPointerInSpace(youngGen.getEden(), ptr)) {
-            return true;
-        }
-
-        for (int i = 0; i < youngGen.getMaxSurvivorSpaces(); i++) {
-            if (findPointerInSpace(youngGen.getSurvivorFromSpaceAt(i), ptr)) {
-                return true;
-            }
-            if (findPointerInSpace(youngGen.getSurvivorToSpaceAt(i), ptr)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static boolean isInOldGen(Pointer ptr) {
-        OldGeneration oldGen = HeapImpl.getHeapImpl().getOldGeneration();
-        return findPointerInSpace(oldGen.getFromSpace(), ptr) || findPointerInSpace(oldGen.getToSpace(), ptr);
-    }
-
-    private static boolean findPointerInSpace(Space space, Pointer p) {
-        AlignedHeapChunk.AlignedHeader aChunk = space.getFirstAlignedHeapChunk();
-        while (aChunk.isNonNull()) {
-            Pointer start = AlignedHeapChunk.getObjectsStart(aChunk);
-            if (start.belowOrEqual(p) && p.belowThan(HeapChunk.getTopPointer(aChunk))) {
-                return true;
-            }
-            aChunk = HeapChunk.getNext(aChunk);
-        }
-
-        UnalignedHeapChunk.UnalignedHeader uChunk = space.getFirstUnalignedHeapChunk();
-        while (uChunk.isNonNull()) {
-            Pointer start = UnalignedHeapChunk.getObjectStart(uChunk);
-            if (start.belowOrEqual(p) && p.belowThan(HeapChunk.getTopPointer(uChunk))) {
-                return true;
-            }
-            uChunk = HeapChunk.getNext(uChunk);
-        }
-        return false;
     }
 
     private static class ImageHeapRegionVerifier implements MemoryWalker.ImageHeapRegionVisitor {

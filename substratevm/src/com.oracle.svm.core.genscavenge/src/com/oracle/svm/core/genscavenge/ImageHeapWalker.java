@@ -133,23 +133,6 @@ public final class ImageHeapWalker {
         } while (current.belowOrEqual(lastPointer));
         return true;
     }
-
-    static void logPartitionBoundaries(Log log, ImageHeapInfo imageHeapInfo) {
-        log.string("ReadOnly Primitives: ").zhex(Word.objectToUntrackedPointer(imageHeapInfo.firstReadOnlyPrimitiveObject)).string(" .. ").zhex(
-                        Word.objectToUntrackedPointer(imageHeapInfo.lastReadOnlyPrimitiveObject)).newline();
-        log.string("ReadOnly References: ").zhex(Word.objectToUntrackedPointer(imageHeapInfo.firstReadOnlyReferenceObject)).string(" .. ").zhex(
-                        Word.objectToUntrackedPointer(imageHeapInfo.lastReadOnlyReferenceObject)).newline();
-        log.string("ReadOnly Relocatables: ").zhex(Word.objectToUntrackedPointer(imageHeapInfo.firstReadOnlyRelocatableObject)).string(" .. ").zhex(
-                        Word.objectToUntrackedPointer(imageHeapInfo.lastReadOnlyRelocatableObject)).newline();
-        log.string("Writable Primitives: ").zhex(Word.objectToUntrackedPointer(imageHeapInfo.firstWritablePrimitiveObject)).string(" .. ").zhex(
-                        Word.objectToUntrackedPointer(imageHeapInfo.lastWritablePrimitiveObject)).newline();
-        log.string("Writable References: ").zhex(Word.objectToUntrackedPointer(imageHeapInfo.firstWritableReferenceObject)).string(" .. ").zhex(
-                        Word.objectToUntrackedPointer(imageHeapInfo.lastWritableReferenceObject)).newline();
-        log.string("Writable Huge: ").zhex(Word.objectToUntrackedPointer(imageHeapInfo.firstWritableHugeObject)).string(" .. ").zhex(
-                        Word.objectToUntrackedPointer(imageHeapInfo.lastWritableHugeObject)).newline();
-        log.string("ReadOnly Huge: ").zhex(Word.objectToUntrackedPointer(imageHeapInfo.firstReadOnlyHugeObject)).string(" .. ").zhex(
-                        Word.objectToUntrackedPointer(imageHeapInfo.lastReadOnlyHugeObject));
-    }
 }
 
 abstract class MemoryWalkerAccessBase implements MemoryWalker.NativeImageHeapRegionAccess<ImageHeapInfo> {

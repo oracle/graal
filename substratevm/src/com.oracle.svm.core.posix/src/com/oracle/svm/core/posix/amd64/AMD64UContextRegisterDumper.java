@@ -59,26 +59,26 @@ class AMD64UContextRegisterDumperFeature implements Feature {
 
 class AMD64UContextRegisterDumper implements UContextRegisterDumper {
     @Override
-    public void dumpRegisters(Log log, ucontext_t uContext) {
+    public void dumpRegisters(Log log, ucontext_t uContext, boolean printLocationInfo) {
         GregsPointer gregs = uContext.uc_mcontext_gregs();
-        dumpReg(log, "RAX ", gregs.read(GregEnum.REG_RAX()));
-        dumpReg(log, "RBX ", gregs.read(GregEnum.REG_RBX()));
-        dumpReg(log, "RCX ", gregs.read(GregEnum.REG_RCX()));
-        dumpReg(log, "RDX ", gregs.read(GregEnum.REG_RDX()));
-        dumpReg(log, "RBP ", gregs.read(GregEnum.REG_RBP()));
-        dumpReg(log, "RSI ", gregs.read(GregEnum.REG_RSI()));
-        dumpReg(log, "RDI ", gregs.read(GregEnum.REG_RDI()));
-        dumpReg(log, "RSP ", gregs.read(GregEnum.REG_RSP()));
-        dumpReg(log, "R8  ", gregs.read(GregEnum.REG_R8()));
-        dumpReg(log, "R9  ", gregs.read(GregEnum.REG_R9()));
-        dumpReg(log, "R10 ", gregs.read(GregEnum.REG_R10()));
-        dumpReg(log, "R11 ", gregs.read(GregEnum.REG_R11()));
-        dumpReg(log, "R12 ", gregs.read(GregEnum.REG_R12()));
-        dumpReg(log, "R13 ", gregs.read(GregEnum.REG_R13()));
-        dumpReg(log, "R14 ", gregs.read(GregEnum.REG_R14()));
-        dumpReg(log, "R15 ", gregs.read(GregEnum.REG_R15()));
-        dumpReg(log, "EFL ", gregs.read(GregEnum.REG_EFL()));
-        dumpReg(log, "RIP ", gregs.read(GregEnum.REG_RIP()));
+        dumpReg(log, "RAX ", gregs.read(GregEnum.REG_RAX()), printLocationInfo);
+        dumpReg(log, "RBX ", gregs.read(GregEnum.REG_RBX()), printLocationInfo);
+        dumpReg(log, "RCX ", gregs.read(GregEnum.REG_RCX()), printLocationInfo);
+        dumpReg(log, "RDX ", gregs.read(GregEnum.REG_RDX()), printLocationInfo);
+        dumpReg(log, "RBP ", gregs.read(GregEnum.REG_RBP()), printLocationInfo);
+        dumpReg(log, "RSI ", gregs.read(GregEnum.REG_RSI()), printLocationInfo);
+        dumpReg(log, "RDI ", gregs.read(GregEnum.REG_RDI()), printLocationInfo);
+        dumpReg(log, "RSP ", gregs.read(GregEnum.REG_RSP()), printLocationInfo);
+        dumpReg(log, "R8  ", gregs.read(GregEnum.REG_R8()), printLocationInfo);
+        dumpReg(log, "R9  ", gregs.read(GregEnum.REG_R9()), printLocationInfo);
+        dumpReg(log, "R10 ", gregs.read(GregEnum.REG_R10()), printLocationInfo);
+        dumpReg(log, "R11 ", gregs.read(GregEnum.REG_R11()), printLocationInfo);
+        dumpReg(log, "R12 ", gregs.read(GregEnum.REG_R12()), printLocationInfo);
+        dumpReg(log, "R13 ", gregs.read(GregEnum.REG_R13()), printLocationInfo);
+        dumpReg(log, "R14 ", gregs.read(GregEnum.REG_R14()), printLocationInfo);
+        dumpReg(log, "R15 ", gregs.read(GregEnum.REG_R15()), printLocationInfo);
+        dumpReg(log, "EFL ", gregs.read(GregEnum.REG_EFL()), printLocationInfo);
+        dumpReg(log, "RIP ", gregs.read(GregEnum.REG_RIP()), printLocationInfo);
     }
 
     @Override
