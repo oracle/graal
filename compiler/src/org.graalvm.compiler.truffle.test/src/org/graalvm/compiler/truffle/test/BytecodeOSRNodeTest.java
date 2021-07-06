@@ -38,7 +38,6 @@ import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
-import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -257,16 +256,46 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         Assert.assertTrue(osrNode.hasDeoptimizedYet);
     }
 
+    /*
+     * Test that getCallerFrame returns the correct frame when OSR is involved.
+     *
+     * Specifically, if X calls Y, and Y is OSRed, it should correctly skip over both the OSR and
+     * original Y frames, returning X's frame.
+     */
     @Test
     public void testGetCallerFrameSkipsOSR() {
         FrameDescriptor frameDescriptor = new FrameDescriptor(false);
         CheckGetCallerFrameSkipsOSR osrNode = new CheckGetCallerFrameSkipsOSR(frameDescriptor);
         RootNode rootNode = new Program(osrNode, frameDescriptor);
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
-        Caller caller = new Caller(target);
+        RootNode caller = new CheckGetCallerFrameSkipsOSR.Caller(target);
         OptimizedCallTarget callerTarget = (OptimizedCallTarget) runtime.createCallTarget(caller);
         osrNode.caller = callerTarget;
         Assert.assertEquals(FixedIterationLoop.OSR_RESULT, callerTarget.call(osrThreshold + 1));
+    }
+
+    /*
+     * Test that the frame transfer helper works as expected, both on OSR enter and exit.
+     */
+    @Test
+    public void testFrameTransfer() {
+        FrameDescriptor frameDescriptor = new FrameDescriptor(false);
+        RootNode rootNode = new Program(new FrameTransferringNode(frameDescriptor), frameDescriptor);
+        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
+        Assert.assertEquals(42, target.call());
+    }
+
+    /*
+     * Test that the frame transfer helper works even if a tag does not match the frame slot kind.
+     * 
+     * Updating the tag will trigger deopt, but OSR should retry after it is updated.
+     */
+    @Test
+    public void testFrameTransferWithTagUpdate() {
+        FrameDescriptor frameDescriptor = new FrameDescriptor(false);
+        RootNode rootNode = new Program(new FrameTransferringNodeWithTagUpdate(frameDescriptor), frameDescriptor);
+        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
+        Assert.assertEquals(42, target.call());
     }
 
     // Bytecode programs
@@ -379,7 +408,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
 
     abstract static class BytecodeOSRTestNode extends ExecutableNode implements BytecodeOSRNode {
         public static final int DEFAULT_TARGET = -1;
-        Object osrMetadata;
+        @CompilationFinal volatile Object osrMetadata;
 
         protected BytecodeOSRTestNode(TruffleLanguage<?> language) {
             super(language);
@@ -665,20 +694,6 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         }
     }
 
-    public static class Caller extends RootNode {
-        CallTarget toCall;
-
-        protected Caller(CallTarget toCall) {
-            super(null);
-            this.toCall = toCall;
-        }
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            return toCall.call(frame.getArguments());
-        }
-    }
-
     public static class CheckGetCallerFrameSkipsOSR extends FixedIterationLoop {
         CallTarget caller; // set after construction
 
@@ -710,6 +725,161 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         void checkCallerFrame() {
             Assert.assertEquals(caller, Truffle.getRuntime().getCallerFrame().getCallTarget());
         }
+
+        public static class Caller extends RootNode {
+            CallTarget toCall;
+
+            protected Caller(CallTarget toCall) {
+                super(null);
+                this.toCall = toCall;
+            }
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return toCall.call(frame.getArguments());
+            }
+        }
+    }
+
+    public static class FrameTransferringNode extends BytecodeOSRTestNode {
+        @CompilationFinal FrameSlot booleanSlot;
+        @CompilationFinal FrameSlot byteSlot;
+        @CompilationFinal FrameSlot doubleSlot;
+        @CompilationFinal FrameSlot floatSlot;
+        @CompilationFinal FrameSlot intSlot;
+        @CompilationFinal FrameSlot longSlot;
+        @CompilationFinal FrameSlot objectSlot;
+        @CompilationFinal Object o1;
+        @CompilationFinal Object o2;
+
+        public FrameTransferringNode(FrameDescriptor frameDescriptor) {
+            super(null);
+            booleanSlot = frameDescriptor.addFrameSlot("booleanValue", FrameSlotKind.Boolean);
+            byteSlot = frameDescriptor.addFrameSlot("byteValue", FrameSlotKind.Byte);
+            doubleSlot = frameDescriptor.addFrameSlot("doubleValue", FrameSlotKind.Double);
+            floatSlot = frameDescriptor.addFrameSlot("floatValue", FrameSlotKind.Float);
+            intSlot = frameDescriptor.addFrameSlot("intValue", FrameSlotKind.Int);
+            longSlot = frameDescriptor.addFrameSlot("longValue", FrameSlotKind.Long);
+            objectSlot = frameDescriptor.addFrameSlot("objectValue", FrameSlotKind.Object);
+            o1 = new Object();
+            o2 = new Object();
+        }
+
+        @Override
+        public Object executeOSR(VirtualFrame innerFrame, Frame parentFrame, int target) {
+            BytecodeOSRNode.doOSRFrameTransfer(this, parentFrame, innerFrame);
+            try {
+                return executeLoop(innerFrame);
+            } finally {
+                BytecodeOSRNode.doOSRFrameTransfer(this, innerFrame, parentFrame);
+            }
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            Assert.assertFalse(CompilerDirectives.inCompiledCode());
+            setRegularFrame(frame);
+            return executeLoop(frame);
+        }
+
+        public Object executeLoop(VirtualFrame frame) {
+            // This node only terminates in compiled code.
+            while (true) {
+                if (CompilerDirectives.inCompiledCode()) {
+                    checkRegularFrame(frame);
+                    setOSRFrame(frame);
+                    return 42;
+                }
+                Object result = BytecodeOSRNode.reportOSRBackEdge(this, frame, DEFAULT_TARGET);
+                if (result != null) {
+                    checkOSRFrame(frame);
+                    return result;
+                }
+            }
+        }
+
+        public void setRegularFrame(VirtualFrame frame) {
+            frame.setBoolean(booleanSlot, true);
+            frame.setByte(byteSlot, Byte.MIN_VALUE);
+            frame.setDouble(doubleSlot, Double.MIN_VALUE);
+            frame.setFloat(floatSlot, Float.MIN_VALUE);
+            frame.setInt(intSlot, Integer.MIN_VALUE);
+            frame.setLong(longSlot, Long.MIN_VALUE);
+            frame.setObject(objectSlot, o1);
+        }
+
+        public void checkRegularFrame(VirtualFrame frame) {
+            try {
+                Assert.assertTrue(frame.getBoolean(booleanSlot));
+                Assert.assertEquals(Byte.MIN_VALUE, frame.getByte(byteSlot));
+                checkDoubleExact(Double.MIN_VALUE, frame.getDouble(doubleSlot));
+                checkDoubleExact(Float.MIN_VALUE, frame.getFloat(floatSlot));
+                Assert.assertEquals(Integer.MIN_VALUE, frame.getInt(intSlot));
+                Assert.assertEquals(Long.MIN_VALUE, frame.getLong(longSlot));
+                Assert.assertEquals(o1, frame.getObject(objectSlot));
+            } catch (FrameSlotTypeException ex) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException("Error accessing index slot");
+            }
+        }
+
+        public void setOSRFrame(VirtualFrame frame) {
+            frame.setBoolean(booleanSlot, false);
+            frame.setByte(byteSlot, Byte.MAX_VALUE);
+            frame.setDouble(doubleSlot, Double.MAX_VALUE);
+            frame.setFloat(floatSlot, Float.MAX_VALUE);
+            frame.setInt(intSlot, Integer.MAX_VALUE);
+            frame.setLong(longSlot, Long.MAX_VALUE);
+            frame.setObject(objectSlot, o2);
+        }
+
+        public void checkOSRFrame(VirtualFrame frame) {
+            try {
+                Assert.assertFalse(frame.getBoolean(booleanSlot));
+                Assert.assertEquals(Byte.MAX_VALUE, frame.getByte(byteSlot));
+                checkDoubleExact(Double.MAX_VALUE, frame.getDouble(doubleSlot));
+                checkDoubleExact(Float.MAX_VALUE, frame.getFloat(floatSlot));
+                Assert.assertEquals(Integer.MAX_VALUE, frame.getInt(intSlot));
+                Assert.assertEquals(Long.MAX_VALUE, frame.getLong(longSlot));
+                Assert.assertEquals(o2, frame.getObject(objectSlot));
+            } catch (FrameSlotTypeException ex) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException("Error accessing index slot");
+            }
+        }
+
+        @TruffleBoundary
+        void checkDoubleExact(double expected, double actual) {
+            Assert.assertEquals(expected, actual, 0);
+        }
+    }
+
+    public static class FrameTransferringNodeWithTagUpdate extends FrameTransferringNode {
+        public FrameTransferringNodeWithTagUpdate(FrameDescriptor frameDescriptor) {
+            super(frameDescriptor);
+        }
+
+        @Override
+        public void setRegularFrame(VirtualFrame frame) {
+            super.setRegularFrame(frame);
+            frame.setObject(intSlot, o1);
+        }
+
+        @Override
+        public void checkRegularFrame(VirtualFrame frame) {
+            try {
+                Assert.assertTrue(frame.getBoolean(booleanSlot));
+                Assert.assertEquals(Byte.MIN_VALUE, frame.getByte(byteSlot));
+                checkDoubleExact(Double.MIN_VALUE, frame.getDouble(doubleSlot));
+                checkDoubleExact(Float.MIN_VALUE, frame.getFloat(floatSlot));
+                Assert.assertEquals(o1, frame.getObject(intSlot));
+                Assert.assertEquals(Long.MIN_VALUE, frame.getLong(longSlot));
+                Assert.assertEquals(o1, frame.getObject(objectSlot));
+            } catch (FrameSlotTypeException ex) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException("Error accessing index slot");
+            }
+        }
     }
 
     public static class BytecodeNode extends ExecutableNode implements BytecodeOSRNode {
@@ -717,7 +887,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         @CompilationFinal(dimensions = 1) private final FrameSlot[] regs;
 
         boolean compiled;
-        Object osrMetadata;
+        @CompilationFinal volatile Object osrMetadata;
 
         public static class Bytecode {
             public static final byte RETURN = 0;

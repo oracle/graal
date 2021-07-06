@@ -79,7 +79,7 @@ public interface BytecodeOSRNode extends NodeInterface {
      * Since interfaces cannot declare fields, a class implementing this interface should declare a
      * field for the metadata and proxy accesses through these accessors.
      *
-     * NOTE: this field should be volatile for thread-safety.
+     * NOTE: this field should be marked {@code volatile} and {@link CompilationFinal}.
      */
 
     /**
@@ -110,5 +110,20 @@ public interface BytecodeOSRNode extends NodeInterface {
             return null;
         }
         return NodeAccessor.RUNTIME.onOSRBackEdge(osrNode, parentFrame, target);
+    }
+
+    /**
+     * Transfers state from the {@code source} frame into the {@code target} frame. The frames must
+     * have the same layout as the frame passed when executing the {@code osrNode}.
+     * 
+     * This helper can be used when implementing {@link #executeOSR} to transfer state between OSR
+     * and parent frames.
+     * 
+     * @param osrNode the node being on-stack replaced.
+     * @param source the frame to transfer state from
+     * @param target the frame to transfer state into
+     */
+    static void doOSRFrameTransfer(BytecodeOSRNode osrNode, Frame source, Frame target) {
+        NodeAccessor.RUNTIME.doOSRFrameTransfer(osrNode, source, target);
     }
 }

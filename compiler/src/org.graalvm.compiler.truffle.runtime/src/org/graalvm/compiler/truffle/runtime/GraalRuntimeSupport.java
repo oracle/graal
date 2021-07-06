@@ -27,6 +27,9 @@ package org.graalvm.compiler.truffle.runtime;
 import java.util.function.Function;
 
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.options.OptionDescriptors;
@@ -92,7 +95,13 @@ final class GraalRuntimeSupport extends RuntimeSupport {
                 if (metadata == null) {
                     OptimizedCallTarget callTarget = (OptimizedCallTarget) node.getRootNode().getCallTarget();
                     if (callTarget.getOptionValue(PolyglotCompilerOptions.OSR)) {
-                        metadata = new BytecodeOSRMetadata(osrNode, callTarget.getOptionValue(PolyglotCompilerOptions.OSRCompilationThreshold));
+                        FrameDescriptor frameDescriptor = parentFrame.getFrameDescriptor();
+                        FrameSlot[] frameSlots = frameDescriptor.getSlots().toArray(new FrameSlot[0]);
+                        byte[] frameTags = new byte[frameSlots.length];
+                        for (int i = 0; i < frameSlots.length; i++) {
+                            frameTags[i] = frameDescriptor.getFrameSlotKind(frameSlots[i]).tag;
+                        }
+                        metadata = new BytecodeOSRMetadata(osrNode, callTarget.getOptionValue(PolyglotCompilerOptions.OSRCompilationThreshold), frameSlots, frameTags);
                     } else {
                         metadata = BytecodeOSRMetadata.DISABLED;
                     }
@@ -119,6 +128,12 @@ final class GraalRuntimeSupport extends RuntimeSupport {
         if (osrMetadata != null) {
             osrMetadata.nodeReplaced(oldNode, newNode, reason);
         }
+    }
+
+    @Override
+    public void doOSRFrameTransfer(BytecodeOSRNode osrNode, Frame source, Frame target) {
+        BytecodeOSRMetadata osrMetadata = (BytecodeOSRMetadata) osrNode.getOSRMetadata();
+        osrMetadata.executeTransfer((FrameWithoutBoxing) source, (FrameWithoutBoxing) target);
     }
 
     @Override

@@ -42,6 +42,7 @@ package com.oracle.truffle.api.impl;
 
 import java.util.function.Function;
 
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import org.graalvm.options.OptionDescriptors;
@@ -94,6 +95,12 @@ final class DefaultRuntimeAccessor extends Accessor {
         public void onOSRNodeReplaced(BytecodeOSRNode osrNode, Node oldNode, Node newNode, CharSequence reason) {
             // do nothing
         }
+
+        @Override
+        public void doOSRFrameTransfer(BytecodeOSRNode osrNode, Frame source, Frame target) {
+            throw new UnsupportedOperationException();
+        }
+
 
         @Override
         public OptionDescriptors getEngineOptionDescriptors() {
