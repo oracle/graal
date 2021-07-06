@@ -91,9 +91,11 @@ final class LinkedKlassFieldLayout {
      * Makes sure that the field IDs passed to the shape builder are all unique.
      */
     private static LinkedField.IdMode getIdMode(ParserKlass parserKlass) {
+        ParserField[] parserFields = parserKlass.getFields();
+
         boolean noDup = true;
-        Set<String> present = new HashSet<>();
-        for (ParserField parserField : parserKlass.getFields()) {
+        Set<String> present = new HashSet<>(parserFields.length);
+        for (ParserField parserField : parserFields) {
             if (!present.add(parserField.getName().toString())) {
                 noDup = false;
                 break;
@@ -104,7 +106,7 @@ final class LinkedKlassFieldLayout {
             return LinkedField.IdMode.REGULAR;
         }
         present.clear();
-        for (ParserField parserField : parserKlass.getFields()) {
+        for (ParserField parserField : parserFields) {
             String id = LinkedField.idFromNameAndType(parserField.getName(), parserField.getType());
             if (!present.add(id)) {
                 // Concatenating name and type does not result in no duplicates. Give up giving
