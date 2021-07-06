@@ -176,7 +176,7 @@ public final class CPUSampler implements Closeable {
 
             @Override
             public void onContextClosed(TruffleContext context) {
-                // TODO GR-32021
+                // TODO GR-32021 make the results of CPUSampler per-context.
             }
         }, true);
     }

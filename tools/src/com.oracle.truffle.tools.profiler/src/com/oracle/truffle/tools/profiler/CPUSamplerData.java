@@ -25,11 +25,13 @@
 package com.oracle.truffle.tools.profiler;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.LongSummaryStatistics;
 import java.util.Map;
 
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.tools.profiler.CPUSampler.Payload;
+import com.sun.javafx.scene.transform.TransformUtils;
 
 /**
  * Execution profile of a particular context.
@@ -46,7 +48,7 @@ public final class CPUSamplerData {
     final long samplesTaken;
     final long intervalMs;
 
-    public CPUSamplerData(TruffleContext context, Map<Thread, Collection<ProfilerNode<Payload>>> threadData, LongSummaryStatistics biasStatistics, LongSummaryStatistics durationStatistics,
+    CPUSamplerData(TruffleContext context, Map<Thread, Collection<ProfilerNode<Payload>>> threadData, LongSummaryStatistics biasStatistics, LongSummaryStatistics durationStatistics,
                     long samplesTaken,
                     long intervalMs) {
         this.context = context;
@@ -72,7 +74,7 @@ public final class CPUSamplerData {
      * @since 21.3.0
      */
     public Map<Thread, Collection<ProfilerNode<Payload>>> getThreadData() {
-        return threadData;
+        return Collections.unmodifiableMap(threadData);
     }
 
     /**
@@ -99,7 +101,9 @@ public final class CPUSamplerData {
      * @return A {@link LongSummaryStatistics} of the sample bias.
      */
     public LongSummaryStatistics getSampleBias() {
-        return biasStatistics;
+        LongSummaryStatistics statistics = new LongSummaryStatistics();
+        statistics.combine(biasStatistics);
+        return statistics;
     }
 
     /**
@@ -109,7 +113,9 @@ public final class CPUSamplerData {
      * @return A {@link LongSummaryStatistics} of the sample duration.
      */
     public LongSummaryStatistics getSampleDuration() {
-        return durationStatistics;
+        LongSummaryStatistics statistics = new LongSummaryStatistics();
+        statistics.combine(durationStatistics);
+        return statistics;
     }
 
 }
