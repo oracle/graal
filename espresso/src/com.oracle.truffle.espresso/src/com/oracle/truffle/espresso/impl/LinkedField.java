@@ -71,18 +71,31 @@ final class LinkedField extends StaticProperty {
      */
     @Override
     protected String getId() {
-        int flags = getFlags();
         Symbol<Name> name = getName();
+        switch (idMode()) {
+            case WITH_TYPE:
+                // Field name and type.
+                return idFromNameAndType(name, getType());
+            case OBFUSCATED:
+                // "{primitive, hidden, reference}Field{slot}"
+                return (getKind().isPrimitive() ? "primitive" : (isHidden() ? "hidden" : "reference")) + "Field" + slot;
+            case REGULAR:
+                // Regular name
+                return name.toString();
+            default:
+                throw EspressoError.shouldNotReachHere();
+        }
+    }
+
+    private IdMode idMode() {
+        int flags = getFlags();
         if ((flags & FIELD_ID_TYPE) == FIELD_ID_TYPE) {
             // Field name and type.
-            return idFromNameAndType(name, getType());
+            return IdMode.WITH_TYPE;
         } else if ((flags & FIELD_ID_OBFUSCATE) == FIELD_ID_OBFUSCATE) {
-            // "{primitive, hidden, reference}Field{slot}"
-
-            return (getKind().isPrimitive() ? "primitive" : (isHidden() ? "hidden" : "reference")) + "Field" + slot;
+            return IdMode.OBFUSCATED;
         } else {
-            // Regular name
-            return name.toString();
+            return IdMode.REGULAR;
         }
     }
 
@@ -157,7 +170,7 @@ final class LinkedField extends StaticProperty {
 
     public void redefine(ParserField newParserField) {
         ParserField old = parserField;
-        parserField = newParserField;
+        parserField = maybeCorrectParserField(newParserField, idMode());
         old.getRedefineAssumption().invalidate();
     }
 }
