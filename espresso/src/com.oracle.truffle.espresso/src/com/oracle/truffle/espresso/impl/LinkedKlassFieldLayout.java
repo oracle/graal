@@ -105,7 +105,8 @@ final class LinkedKlassFieldLayout {
         }
         present.clear();
         for (ParserField parserField : parserKlass.getFields()) {
-            if (!present.add(LinkedField.idFromNameAndType(parserField.getName(), parserField.getType()))) {
+            String id = LinkedField.idFromNameAndType(parserField.getName(), parserField.getType());
+            if (!present.add(id)) {
                 // Concatenating name and type does not result in no duplicates. Give up giving
                 // meaningful information as an ID, and fall back to field{n}
                 return LinkedField.IdMode.OBFUSCATED;
