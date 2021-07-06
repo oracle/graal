@@ -41,7 +41,6 @@ import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.util.UnsignedUtils;

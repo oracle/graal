@@ -37,7 +37,6 @@ import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.util.UnsignedUtils;
 
