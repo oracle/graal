@@ -107,7 +107,6 @@ import java.util.stream.Collectors;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.truffle.api.staticobject.StaticShape;
-import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
@@ -453,6 +452,8 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
     @SuppressWarnings("deprecation")
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
+        StaticObjectSupport.beforeAnalysis(access);
+
         BeforeAnalysisAccessImpl config = (BeforeAnalysisAccessImpl) access;
 
         getLanguageClasses().forEach(RuntimeReflection::registerForReflectiveInstantiation);
@@ -625,8 +626,6 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
 
     @Override
     public void duringAnalysis(DuringAnalysisAccess access) {
-        StaticObjectSupport.duringAnalysis(access);
-
         if (firstAnalysisRun) {
             firstAnalysisRun = false;
             Object keep = invokeStaticMethod("com.oracle.truffle.polyglot.PolyglotContextImpl", "resetSingleContextState", Collections.singleton(boolean.class), false);
@@ -1012,8 +1011,6 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
     }
 
     private static final class StaticObjectSupport {
-        private static final ConcurrentHashMap<Pair<Class<?>, Class<?>>, Object> INTERCEPTED_ARGS = new ConcurrentHashMap<>();
-        private static final Object FILLER_OBJECT = new Object();
         private static final Map<Class<?>, ClassLoader> CLASS_LOADERS = new ConcurrentHashMap<>();
         private static final Constructor<?> GENERATOR_CLASS_LOADER_CONSTRUCTOR = ReflectionUtil.lookupConstructor(loadClass("com.oracle.truffle.api.staticobject.GeneratorClassLoader"), Class.class);
         private static final Class<?> SHAPE_GENERATOR_CLASS = loadClass("com.oracle.truffle.api.staticobject.ArrayBasedShapeGenerator");
@@ -1021,6 +1018,7 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         private static final Field SHAPE_GENERATOR_OAO_FIELD = ReflectionUtil.lookupField(SHAPE_GENERATOR_CLASS, "objectArrayOffset");
         private static final Field SHAPE_GENERATOR_SO_FIELD = ReflectionUtil.lookupField(SHAPE_GENERATOR_CLASS, "shapeOffset");
         private static final Method VALIDATE_CLASSES_METHOD = ReflectionUtil.lookupMethod(StaticShape.Builder.class, "validateClasses", Class.class, Class.class);
+        private static BeforeAnalysisAccess access;
 
         static void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, Plugins plugins, ParsingReason reason) {
             if (reason == ParsingReason.PointsToAnalysis) {
@@ -1036,20 +1034,15 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode arg1, ValueNode arg2) {
                         Class<?> superClass = getArgumentClass(b, targetMethod, 1, arg1);
                         Class<?> factoryInterface = getArgumentClass(b, targetMethod, 2, arg2);
-                        INTERCEPTED_ARGS.put(Pair.create(superClass, factoryInterface), FILLER_OBJECT);
+                        generate(superClass, factoryInterface, access);
                         return false;
                     }
                 });
             }
         }
 
-        static void duringAnalysis(DuringAnalysisAccess access) {
-            for (Pair<Class<?>, Class<?>> args : INTERCEPTED_ARGS.keySet()) {
-                if (generate(args.getLeft(), args.getRight(), access)) {
-                    access.requireAnalysisIteration();
-                }
-            }
-            INTERCEPTED_ARGS.clear();
+        static void beforeAnalysis(BeforeAnalysisAccess access) {
+            StaticObjectSupport.access = access;
         }
 
         static void beforeCompilation(BeforeCompilationAccess config) {
