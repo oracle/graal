@@ -49,6 +49,7 @@ import org.graalvm.polyglot.Context;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 
 class StaticObjectModelTest {
     @Registration(id = TestLanguage.TEST_LANGUAGE_ID, name = TestLanguage.TEST_LANGUAGE_NAME)
@@ -80,14 +81,17 @@ class StaticObjectModelTest {
 
     static class TestEnvironment {
         final boolean arrayBased;
+        final boolean relaxChecks;
         final TruffleLanguage<?> testLanguage;
         final Context context;
 
-        TestEnvironment(boolean arrayBased) {
+        TestEnvironment(boolean arrayBased, boolean relaxChecks) {
             this.arrayBased = arrayBased;
+            this.relaxChecks = relaxChecks;
             context = Context.newBuilder(TestLanguage.TEST_LANGUAGE_ID).//
                             allowExperimentalOptions(true).//
                             option("engine.StaticObjectStorageStrategy", this.arrayBased ? "array-based" : "field-based").//
+                            option("engine.RelaxStaticObjectSafetyChecks", this.relaxChecks ? "true" : "false").//
                             build();
             context.initialize(TestLanguage.TEST_LANGUAGE_ID);
             context.enter();
@@ -101,16 +105,21 @@ class StaticObjectModelTest {
 
         @Override
         public String toString() {
-            return (arrayBased ? "Array-based" : "Field-based") + " storage";
+            return (arrayBased ? "Array-based" : "Field-based") + " storage " + (relaxChecks ? "without" : "with") + " safety checks";
         }
     }
 
     static TestEnvironment[] getTestEnvironments() {
-        if (TruffleOptions.AOT) {
-            return new TestEnvironment[]{new TestEnvironment(true)};
-        } else {
-            return new TestEnvironment[]{new TestEnvironment(true), new TestEnvironment(false)};
+        ArrayList<TestEnvironment> tests = new ArrayList<>();
+        // AOT mode does not yet support field-based storage
+        boolean[] arrayBased = TruffleOptions.AOT ? new boolean[] {true} : new boolean[] {true, false};
+        boolean[] relaxChecks = new boolean[] {true, false};
+        for (boolean ab : arrayBased) {
+            for (boolean rc : relaxChecks) {
+                tests.add(new TestEnvironment(ab, rc));
+            }
         }
+        return tests.toArray(new TestEnvironment[tests.size()]);
     }
 
     static String guessGeneratedFieldName(StaticProperty property) {
