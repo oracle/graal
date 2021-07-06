@@ -633,8 +633,6 @@ suite = {
                 "compiler:GRAAL_PROCESSOR",
             ],
             "javaCompliance" : "11+",
-            "multiReleaseJarVersion": "11",
-            "overlayTarget" : "com.oracle.svm.driver",
             "spotbugs": "false",
         },
 
@@ -1278,6 +1276,7 @@ suite = {
             "mainClass": "com.oracle.svm.driver.NativeImage",
             "dependencies": [
                 "com.oracle.svm.driver",
+                "com.oracle.svm.driver.jdk11",
                 "svm-compiler-flags-builder",
             ],
             "distDependencies": [

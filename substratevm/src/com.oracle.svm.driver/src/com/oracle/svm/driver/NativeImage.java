@@ -1687,7 +1687,7 @@ public class NativeImage {
             /* Duplicate entries are silently ignored like with the java command */
             return;
         }
-        List<String> moduleNames = ModuleAccess.getModuleNames(mpEntry);
+        List<String> moduleNames = getModuleNames(mpEntry);
         if (moduleNames.size() == 1) {
             String moduleName = moduleNames.get(0);
             if (getBuilderModuleNames().contains(moduleName)) {
@@ -1700,6 +1700,17 @@ public class NativeImage {
 
         imageModulePath.add(mpEntry);
         processClasspathNativeImageMetaInf(mpEntry);
+    }
+
+    @SuppressWarnings("unchecked")
+    List<String> getModuleNames(Path... modulePathEntries) {
+        try {
+            Class<?> moduleAccess = Class.forName("com.oracle.svm.driver.jdk11.ModuleAccess");
+            Method getModuleNames = moduleAccess.getMethod("getModuleNames", Path[].class);
+            return (List<String>) getModuleNames.invoke(null, (Object) modulePathEntries);
+        } catch (ReflectiveOperationException e) {
+            throw showError("com.oracle.svm.driver.jdk11.ModuleAccess.getModuleNames only available on Java > 8");
+        }
     }
 
     /**
