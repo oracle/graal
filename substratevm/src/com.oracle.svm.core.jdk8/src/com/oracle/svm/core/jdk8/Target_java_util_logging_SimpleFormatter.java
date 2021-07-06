@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,43 +22,35 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.svm.core.jdk8;
 
-package com.oracle.svm.core.jdk;
+//Checkstyle: allow reflection
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URL;
-import java.net.URLConnection;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.InjectAccessors;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.JDK8OrEarlier;
 
-public class JDKVersionSpecificResourceBuilder {
+import sun.util.logging.LoggingSupport;
 
-    public static Object buildResource(String name, URL url, URLConnection urlConnection) {
-        return new sun.misc.Resource() {
+class FormatAccessors {
+    private static String format = null;
 
-            @Override
-            public String getName() {
-                return name;
-            }
-
-            @Override
-            public URL getURL() {
-                return url;
-            }
-
-            @Override
-            public URL getCodeSourceURL() {
-                return null;
-            }
-
-            @Override
-            public InputStream getInputStream() throws IOException {
-                return urlConnection.getInputStream();
-            }
-
-            @Override
-            public int getContentLength() throws IOException {
-                return urlConnection.getContentLength();
-            }
-        };
+    public static String getFormat() {
+        if (format == null) {
+            /*
+             * If multiple threads are doing the initialization at the same time it is not a problem
+             * because they will all get to the same result in the end.
+             */
+            format = LoggingSupport.getSimpleFormat();
+        }
+        return format;
     }
+}
+
+@TargetClass(value = java.util.logging.SimpleFormatter.class, onlyWith = JDK8OrEarlier.class)
+public final class Target_java_util_logging_SimpleFormatter {
+
+    @Alias @InjectAccessors(FormatAccessors.class)//
+    private static String format;
 }
