@@ -125,81 +125,81 @@ public class BuilderPropertyTest extends StaticObjectModelTest {
 
     @Theory
     public void propertyName(TestEnvironment te) throws NoSuchFieldException {
-        Assume.assumeFalse(te.arrayBased);
-
-        StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
-        StaticProperty property = new DefaultStaticProperty("property", StaticPropertyKind.Int, false);
-        builder.property(property);
-        StaticShape<DefaultStaticObjectFactory> shape = builder.build();
-        Object object = shape.getFactory().create();
-        object.getClass().getField(guessGeneratedFieldName(property));
+        if (!te.arrayBased) {
+            StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
+            StaticProperty property = new DefaultStaticProperty("property", StaticPropertyKind.Int, false);
+            builder.property(property);
+            StaticShape<DefaultStaticObjectFactory> shape = builder.build();
+            Object object = shape.getFactory().create();
+            object.getClass().getField(guessGeneratedFieldName(property));
+        }
     }
 
     @Theory
     public void propertyFinal(TestEnvironment te) throws NoSuchFieldException {
-        Assume.assumeFalse(te.arrayBased);
-
-        StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
-        StaticProperty p1 = new DefaultStaticProperty("p1", StaticPropertyKind.Int, true);
-        StaticProperty p2 = new DefaultStaticProperty("p2", StaticPropertyKind.Int, false);
-        builder.property(p1);
-        builder.property(p2);
-        StaticShape<DefaultStaticObjectFactory> shape = builder.build();
-        Object object = shape.getFactory().create();
-        Field f1 = object.getClass().getField(guessGeneratedFieldName(p1));
-        Field f2 = object.getClass().getField(guessGeneratedFieldName(p2));
-        Assert.assertTrue(Modifier.isFinal(f1.getModifiers()));
-        Assert.assertFalse(Modifier.isFinal(f2.getModifiers()));
+        if (!te.arrayBased) {
+            StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
+            StaticProperty p1 = new DefaultStaticProperty("p1", StaticPropertyKind.Int, true);
+            StaticProperty p2 = new DefaultStaticProperty("p2", StaticPropertyKind.Int, false);
+            builder.property(p1);
+            builder.property(p2);
+            StaticShape<DefaultStaticObjectFactory> shape = builder.build();
+            Object object = shape.getFactory().create();
+            Field f1 = object.getClass().getField(guessGeneratedFieldName(p1));
+            Field f2 = object.getClass().getField(guessGeneratedFieldName(p2));
+            Assert.assertTrue(Modifier.isFinal(f1.getModifiers()));
+            Assert.assertFalse(Modifier.isFinal(f2.getModifiers()));
+        }
     }
 
     @Theory
     public void propertyKind(TestEnvironment te) throws NoSuchFieldException {
-        Assume.assumeFalse(te.arrayBased);
-
-        StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
-        StaticPropertyKind[] kinds = StaticPropertyKind.values();
-        StaticProperty[] properties = new StaticProperty[kinds.length];
-        for (int i = 0; i < properties.length; i++) {
-            properties[i] = new DefaultStaticProperty(kinds[i].name(), kinds[i], false);
-            builder.property(properties[i]);
-        }
-        StaticShape<DefaultStaticObjectFactory> shape = builder.build();
-        Object object = shape.getFactory().create();
-        for (int i = 0; i < properties.length; i++) {
-            Class<?> expectedType;
-            switch (kinds[i]) {
-                case Boolean:
-                    expectedType = boolean.class;
-                    break;
-                case Byte:
-                    expectedType = byte.class;
-                    break;
-                case Char:
-                    expectedType = char.class;
-                    break;
-                case Double:
-                    expectedType = double.class;
-                    break;
-                case Float:
-                    expectedType = float.class;
-                    break;
-                case Int:
-                    expectedType = int.class;
-                    break;
-                case Long:
-                    expectedType = long.class;
-                    break;
-                case Object:
-                    expectedType = Object.class;
-                    break;
-                case Short:
-                    expectedType = short.class;
-                    break;
-                default:
-                    expectedType = null;
-                    Assert.fail("Unexpected type: " + kinds[i]);
+        if (!te.arrayBased) {
+            StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
+            StaticPropertyKind[] kinds = StaticPropertyKind.values();
+            StaticProperty[] properties = new StaticProperty[kinds.length];
+            for (int i = 0; i < properties.length; i++) {
+                properties[i] = new DefaultStaticProperty(kinds[i].name(), kinds[i], false);
+                builder.property(properties[i]);
             }
-            Assert.assertEquals(expectedType, object.getClass().getField(guessGeneratedFieldName(properties[i])).getType());
+            StaticShape<DefaultStaticObjectFactory> shape = builder.build();
+            Object object = shape.getFactory().create();
+            for (int i = 0; i < properties.length; i++) {
+                Class<?> expectedType;
+                switch (kinds[i]) {
+                    case Boolean:
+                        expectedType = boolean.class;
+                        break;
+                    case Byte:
+                        expectedType = byte.class;
+                        break;
+                    case Char:
+                        expectedType = char.class;
+                        break;
+                    case Double:
+                        expectedType = double.class;
+                        break;
+                    case Float:
+                        expectedType = float.class;
+                        break;
+                    case Int:
+                        expectedType = int.class;
+                        break;
+                    case Long:
+                        expectedType = long.class;
+                        break;
+                    case Object:
+                        expectedType = Object.class;
+                        break;
+                    case Short:
+                        expectedType = short.class;
+                        break;
+                    default:
+                        expectedType = null;
+                        Assert.fail("Unexpected type: " + kinds[i]);
+                }
+                Assert.assertEquals(expectedType, object.getClass().getField(guessGeneratedFieldName(properties[i])).getType());
+            }
         }
     }
 
