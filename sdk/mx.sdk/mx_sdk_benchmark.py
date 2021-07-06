@@ -233,7 +233,7 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
     terminates and the application is killed with SIGTERM.
     """
 
-    NumTimeToFirstResponseMeasurements = 10
+    NumMeasureTimeToFirstResponse = 10
 
     def __init__(self):
         super(BaseMicroserviceBenchmarkSuite, self).__init__()
@@ -358,7 +358,7 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
             proc.send_signal(signal.SIGTERM)
             # We can't use proc.wait() as this would destroy the return code for the code that started the subprocess.
             while proc.is_running():
-                pass
+                time.sleep(0.01)
             return True
         else:
             return False
@@ -368,7 +368,7 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
         mx.log("--------------------------------------------")
         mx.log("Started time-to-first-response measurements.")
         mx.log("--------------------------------------------")
-        for _ in range(benchmarkSuite.NumTimeToFirstResponseMeasurements):
+        for _ in range(benchmarkSuite.NumMeasureTimeToFirstResponse):
             measureTimeToFirstResponse(benchmarkSuite)
             if not BaseMicroserviceBenchmarkSuite.waitForPort(benchmarkSuite.servicePort()):
                 mx.abort("Failed to find server application in {0}".format(BaseMicroserviceBenchmarkSuite.__name__))
@@ -433,7 +433,7 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
 
                 # Measure time-to-first-response multiple times (without any command mapper hooks as those affect the measurement significantly)
                 self.startDaemonThread(target=BaseMicroserviceBenchmarkSuite.testTimeToFirstResponseInBackground, args=[self])
-                for _ in range(self.NumTimeToFirstResponseMeasurements):
+                for _ in range(self.NumMeasureTimeToFirstResponse):
                     returnCode = mx.run(server_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
                     if not self.validateReturnCode(returnCode):
                         mx.abort("The server application unexpectedly ended with return code " + str(returnCode))
@@ -536,7 +536,7 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
             # Measure time-to-first-response (without any command mapper hooks as those affect the measurement significantly)
             mx.disable_command_mapper_hooks()
             self.startDaemonThread(BaseMicroserviceBenchmarkSuite.testTimeToFirstResponseInBackground, [self])
-            for _ in range(self.NumTimeToFirstResponseMeasurements):
+            for _ in range(self.NumMeasureTimeToFirstResponse):
                 datapoints += super(BaseMicroserviceBenchmarkSuite, self).run(benchmarks, remainder)
             mx.enable_command_mapper_hooks()
 
@@ -672,7 +672,7 @@ class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
                 result["threads"] = threads
                 result["script"] = script
                 result["warmup-requests-per-second"] = warmupRequestsPerSecond
-                result["warmup-duration"] = self.adjustWarmup(warmupDuration)
+                result["warmup-duration"] = warmupDuration
                 result["duration"] = duration
                 results.append(result)
             else:
@@ -687,17 +687,11 @@ class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
                     result["threads"] = threads
                     result["script"] = script[i]
                     result["warmup-requests-per-second"] = warmupRequestsPerSecond[i]
-                    result["warmup-duration"] = self.adjustWarmup(warmupDuration[i])
+                    result["warmup-duration"] = warmupDuration[i]
                     result["duration"] = duration[i]
                     results.append(result)
 
             return results
-
-    def adjustWarmup(self, duration):
-        if self.name() == "shopcart-wrk":
-            return str(int(duration[:-1]) * 2) + duration[-1]
-
-        return duration
 
     def readConfig(self, config, key):
         if key in config:
