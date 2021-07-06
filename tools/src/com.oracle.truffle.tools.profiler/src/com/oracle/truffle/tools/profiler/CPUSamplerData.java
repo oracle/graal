@@ -31,7 +31,6 @@ import java.util.Map;
 
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.tools.profiler.CPUSampler.Payload;
-import com.sun.javafx.scene.transform.TransformUtils;
 
 /**
  * Execution profile of a particular context.

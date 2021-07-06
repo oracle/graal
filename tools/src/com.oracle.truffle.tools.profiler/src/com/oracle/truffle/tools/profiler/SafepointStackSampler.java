@@ -315,9 +315,9 @@ final class SafepointStackSampler {
         StackSample stackSample;
 
         /**
-         * Created on the interpreter thread, keep as fast as possible
+         * Created on the interpreter thread, keep as fast as possible.
          */
-        public SyntheticFrame(SyntheticFrame parent, Thread thread, LanguageInfo language, String message) {
+        SyntheticFrame(SyntheticFrame parent, Thread thread, LanguageInfo language, String message) {
             this.parent = parent;
             this.thread = thread;
             this.language = language;
@@ -327,7 +327,7 @@ final class SafepointStackSampler {
         }
 
         /**
-         * Read on the sampling thread
+         * Read on the sampling thread.
          */
         private StackSample stackSample() {
             if (stackSample == null) {
