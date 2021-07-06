@@ -217,6 +217,7 @@ import com.oracle.truffle.llvm.runtime.nodes.op.LLVMPointerCompareNode;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMPointerCompareNode.LLVMNegateNode;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMVectorArithmeticNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMVectorCompareNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessElemPtrSymbolNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessSymbolNode;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessSymbolNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMUnsupportedInstructionNode;
@@ -272,6 +273,8 @@ public class CommonNodeFactory {
                 return LLVMManagedPointerLiteralNodeGen.create(LLVMManagedPointer.cast(value));
             } else if (value instanceof LLVMGlobal || value instanceof LLVMFunction) {
                 return LLVMAccessSymbolNodeGen.create((LLVMSymbol) value);
+            } else if (value instanceof LLVMElemPtrSymbol) {
+                return LLVMAccessElemPtrSymbolNodeGen.create((LLVMElemPtrSymbol) value);
             } else {
                 throw new AssertionError(value.getClass());
             }

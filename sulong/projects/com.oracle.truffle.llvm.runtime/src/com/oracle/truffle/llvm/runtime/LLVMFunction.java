@@ -139,4 +139,14 @@ public final class LLVMFunction extends LLVMSymbol {
             fixedCodeAssumption.invalidate();
         }
     }
+
+    @Override
+    public boolean isElemPtrExpression() {
+        return false;
+    }
+
+    @Override
+    public LLVMElemPtrSymbol asElemPtrExpression() {
+        throw new IllegalStateException("Function " + getName() + " is not a getElementPointer symbol.");
+    }
 }
