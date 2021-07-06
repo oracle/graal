@@ -33,6 +33,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
@@ -1021,6 +1022,7 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         private static final Field SHAPE_GENERATOR_BAO_FIELD = ReflectionUtil.lookupField(SHAPE_GENERATOR_CLASS, "byteArrayOffset");
         private static final Field SHAPE_GENERATOR_OAO_FIELD = ReflectionUtil.lookupField(SHAPE_GENERATOR_CLASS, "objectArrayOffset");
         private static final Field SHAPE_GENERATOR_SO_FIELD = ReflectionUtil.lookupField(SHAPE_GENERATOR_CLASS, "shapeOffset");
+        private static final Method VALIDATE_CLASSES_METHOD = ReflectionUtil.lookupMethod(StaticShape.Builder.class, "validateClasses", Class.class, Class.class);
 
         static void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, Plugins plugins, ParsingReason reason) {
             if (reason == ParsingReason.PointsToAnalysis) {
@@ -1041,8 +1043,9 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
 
         static void duringAnalysis(DuringAnalysisAccess access) {
             for (Pair<Class<?>, Class<?>> args : INTERCEPTED_ARGS.keySet()) {
-                generate(args.getLeft(), args.getRight(), access);
-                access.requireAnalysisIteration();
+                if (generate(args.getLeft(), args.getRight(), access)) {
+                    access.requireAnalysisIteration();
+                }
             }
             INTERCEPTED_ARGS.clear();
         }
@@ -1069,7 +1072,18 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
             return OriginalClassProvider.getJavaClass(GraalAccess.getOriginalSnippetReflection(), b.getConstantReflection().asJavaType(arg.asJavaConstant()));
         }
 
-        private static Class<?> generate(Class<?> storageSuperClass, Class<?> factoryInterface, BeforeAnalysisAccess access) {
+        private static boolean generate(Class<?> storageSuperClass, Class<?> factoryInterface, BeforeAnalysisAccess access) {
+            try {
+                VALIDATE_CLASSES_METHOD.invoke(null, storageSuperClass, factoryInterface);
+            } catch (ReflectiveOperationException e) {
+                if (e instanceof InvocationTargetException && e.getCause() instanceof IllegalArgumentException) {
+                    // Do not generate classes that will fail validation at run time.
+                    registerReflectionAccessesForRuntimeValidation(storageSuperClass, factoryInterface);
+                    return false;
+                }
+                throw VMError.shouldNotReachHere(e);
+            }
+
             ClassLoader generatorCL = getGeneratorClassLoader(factoryInterface);
             Method generatorMethod = ReflectionUtil.lookupMethod(SHAPE_GENERATOR_CLASS, "getShapeGenerator", generatorCL.getClass(), Class.class, Class.class);
             Object generator;
@@ -1086,7 +1100,7 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
             for (String fieldName : new String[]{"primitive", "object", "shape"}) {
                 access.registerAsUnsafeAccessed(ReflectionUtil.lookupField(storageClass, fieldName));
             }
-            return storageClass;
+            return true;
         }
 
         private static ClassLoader getGeneratorClassLoader(Class<?> factoryInterface) {
@@ -1116,6 +1130,23 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
 
         private static int getNativeImageFieldOffset(BeforeCompilationAccess config, Class<?> declaringClass, String fieldName) {
             return Math.toIntExact(config.objectFieldOffset(ReflectionUtil.lookupField(declaringClass, fieldName)));
+        }
+
+        private static void registerReflectionAccessesForRuntimeValidation(Class<?> storageSuperClass, Class<?> factoryInterface) {
+            for (Method m : factoryInterface.getMethods()) {
+                RuntimeReflection.register(m);
+            }
+            for (Constructor<?> c : storageSuperClass.getDeclaredConstructors()) {
+                RuntimeReflection.register(c);
+            }
+            for (Class<?> clazz = storageSuperClass; clazz != null; clazz = clazz.getSuperclass()) {
+                try {
+                    Method m = clazz.getDeclaredMethod("clone");
+                    RuntimeReflection.register(m);
+                } catch (NoSuchMethodException e) {
+                    // Swallow the error, check the super class
+                }
+            }
         }
     }
 }
