@@ -263,8 +263,6 @@ import com.oracle.svm.hosted.option.HostedOptionProvider;
 import com.oracle.svm.hosted.phases.CInterfaceInvocationPlugin;
 import com.oracle.svm.hosted.phases.ConstantFoldLoadFieldPlugin;
 import com.oracle.svm.hosted.phases.EarlyConstantFoldLoadFieldPlugin;
-import com.oracle.svm.hosted.phases.ExperimentalNativeImageInlineDuringParsingPlugin;
-import com.oracle.svm.hosted.phases.ExperimentalNativeImageInlineDuringParsingSupport;
 import com.oracle.svm.hosted.phases.InjectedAccessorsPlugin;
 import com.oracle.svm.hosted.phases.IntrinsifyMethodHandlesInvocationPlugin;
 import com.oracle.svm.hosted.phases.SubstrateClassInitializationPlugin;
@@ -844,9 +842,6 @@ public class NativeImageGenerator {
                 ImageSingletons.add(RuntimeClassInitializationSupport.class, classInitializationSupport);
                 ClassInitializationFeature.processClassInitializationOptions(classInitializationSupport);
 
-                /* Initialize the registry for the inline decisions */
-                ImageSingletons.add(ExperimentalNativeImageInlineDuringParsingSupport.class, new ExperimentalNativeImageInlineDuringParsingSupport());
-
                 featureHandler.registerFeatures(loader, debug);
                 AfterRegistrationAccessImpl access = new AfterRegistrationAccessImpl(featureHandler, loader, originalMetaAccess, mainEntryPoint, debug);
                 featureHandler.forEachFeature(feature -> feature.afterRegistration(access));
@@ -1141,10 +1136,6 @@ public class NativeImageGenerator {
         SubstrateReplacements replacements = (SubstrateReplacements) providers.getReplacements();
         plugins.appendInlineInvokePlugin(replacements);
 
-        if (nativeImageInlineDuringParsingEnabled()) {
-            plugins.appendInlineInvokePlugin(new ExperimentalNativeImageInlineDuringParsingPlugin(reason, providers));
-        }
-
         plugins.appendNodePlugin(new IntrinsifyMethodHandlesInvocationPlugin(reason, providers, aUniverse, hUniverse));
         plugins.appendNodePlugin(new DeletedFieldsPlugin());
         plugins.appendNodePlugin(new InjectedAccessorsPlugin());
@@ -1238,12 +1229,6 @@ public class NativeImageGenerator {
                 ((HostedProviders) backend.getProviders()).setGraphBuilderPlugins(plugins);
             }
         }
-    }
-
-    public static boolean nativeImageInlineDuringParsingEnabled() {
-        return ExperimentalNativeImageInlineDuringParsingPlugin.Options.OldInlineBeforeAnalysis.getValue() &&
-                        !ImageSingletons.lookup(ExperimentalNativeImageInlineDuringParsingSupport.class).isNativeImageInlineDuringParsingDisabled() &&
-                        !DeoptTester.Options.DeoptimizeAll.getValue();
     }
 
     @SuppressWarnings("try")
