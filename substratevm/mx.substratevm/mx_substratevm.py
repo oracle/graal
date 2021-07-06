@@ -358,6 +358,7 @@ def svm_gate_body(args, tasks):
                 # See class javadoc for details.
                 native_unittest(['com.oracle.truffle.api.test.polyglot.ContextPreInitializationNativeImageTest'] + truffle_args)
                 native_unittest(['com.oracle.truffle.api.test.TruffleSafepointTest'] + truffle_args)
+                native_unittest(['com.oracle.truffle.api.staticobject.test'] + truffle_args)
 
     with Task('Run Truffle NFI unittests with SVM image', tasks, tags=["svmjunit"]) as t:
         if t:
