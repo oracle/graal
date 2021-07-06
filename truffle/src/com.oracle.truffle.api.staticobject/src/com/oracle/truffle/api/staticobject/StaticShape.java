@@ -160,12 +160,9 @@ public abstract class StaticShape<T> {
 
     final <U> U cast(Object obj, Class<U> type) {
         if (safetyChecks) {
-            try {
-                return type.cast(obj);
-            } catch (ClassCastException e) {
-                throw new IllegalArgumentException("Object '" + obj + "' of class '" + obj.getClass().getName() + "' does not have the expected shape", e);
-            }
+            return checkedCast(obj, type);
         } else {
+            assert checkedCast(obj, type) != null;
             return SomAccessor.RUNTIME.unsafeCast(obj, type, true, false, false);
         }
     }
@@ -175,6 +172,14 @@ public abstract class StaticShape<T> {
         // Builder.validate() makes sure that the factory class implements a single interface
         assert factory.getClass().getInterfaces().length == 1;
         return (Class<T>) factory.getClass().getInterfaces()[0];
+    }
+
+    private static <U> U checkedCast(Object obj, Class<U> type) {
+        try {
+            return type.cast(obj);
+        } catch (ClassCastException e) {
+            throw new IllegalArgumentException("Object '" + obj + "' of class '" + obj.getClass().getName() + "' does not have the expected shape", e);
+        }
     }
 
     private static Unsafe getUnsafe() {

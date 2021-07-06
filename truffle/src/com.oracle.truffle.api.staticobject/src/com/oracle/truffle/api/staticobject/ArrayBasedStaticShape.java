@@ -91,16 +91,19 @@ final class ArrayBasedStaticShape<T> extends StaticShape<T> {
         Object receiverObject = cast(obj, storageClass);
         if (safetyChecks) {
             checkShape(receiverObject);
+        } else {
+            assert checkShape(receiverObject);
         }
         return UNSAFE.getObject(receiverObject, (long) (primitive ? propertyLayout.byteArrayOffset : propertyLayout.objectArrayOffset));
     }
 
-    private void checkShape(Object receiverObject) {
+    private boolean checkShape(Object receiverObject) {
         ArrayBasedStaticShape<?> receiverShape = cast(UNSAFE.getObject(receiverObject, (long) propertyLayout.shapeOffset), ArrayBasedStaticShape.class);
         if (this != receiverShape && (receiverShape.superShapes.length < superShapes.length || receiverShape.superShapes[superShapes.length - 1] != this)) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new IllegalArgumentException("Incompatible shape on property access. Expected '" + this + "' got '" + receiverShape + "'.");
         }
+        return true;
     }
 
     private ArrayBasedPropertyLayout getPropertyLayout() {
