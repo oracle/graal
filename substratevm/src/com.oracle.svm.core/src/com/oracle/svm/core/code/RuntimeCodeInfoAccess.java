@@ -26,6 +26,7 @@ package com.oracle.svm.core.code;
 
 import java.util.EnumSet;
 
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.function.CodePointer;
@@ -201,6 +202,7 @@ public final class RuntimeCodeInfoAccess {
         return info;
     }
 
+    @Fold
     public static UnsignedWord getSizeOfCodeInfo() {
         return SizeOf.unsigned(CodeInfoImpl.class);
     }

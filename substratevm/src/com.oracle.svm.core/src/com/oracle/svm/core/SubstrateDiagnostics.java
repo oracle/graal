@@ -91,6 +91,7 @@ public class SubstrateDiagnostics {
         return state.diagnosticThread.get().isNonNull();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isInProgressByCurrentThread() {
         return state.diagnosticThread.get() == CurrentIsolate.getCurrentThread();
     }
@@ -111,8 +112,9 @@ public class SubstrateDiagnostics {
         return result;
     }
 
-    public static void printLocationInfo(Log log, UnsignedWord value) {
-        if (value.notEqual(0) && !RuntimeCodeInfoMemory.singleton().printLocationInfo(log, value) && !VMThreads.printLocationInfo(log, value) && !Heap.getHeap().printLocationInfo(log, value)) {
+    public static void printLocationInfo(Log log, UnsignedWord value, boolean allowJavaHeapAccess) {
+        if (value.notEqual(0) && !RuntimeCodeInfoMemory.singleton().printLocationInfo(log, value, allowJavaHeapAccess) && !VMThreads.printLocationInfo(log, value, allowJavaHeapAccess) &&
+                        !Heap.getHeap().printLocationInfo(log, value, allowJavaHeapAccess)) {
             log.string("is an unknown value");
         }
     }
@@ -284,7 +286,7 @@ public class SubstrateDiagnostics {
     private static class DumpRegisters extends DiagnosticThunk {
         @Override
         public int maxInvocations() {
-            return 2;
+            return 3;
         }
 
         @Override
@@ -293,7 +295,7 @@ public class SubstrateDiagnostics {
             RegisterDumper.Context context = state.context;
             if (context.isNonNull()) {
                 log.string("General purpose register values:").indent(true);
-                RegisterDumper.singleton().dumpRegisters(log, context, invocationCount == 1);
+                RegisterDumper.singleton().dumpRegisters(log, context, invocationCount <= 2, invocationCount == 1);
                 log.indent(false);
             }
         }
@@ -644,9 +646,9 @@ public class SubstrateDiagnostics {
     public abstract static class DiagnosticThunk {
         /**
          * Prints diagnostic information. This method may be invoked multiple times if an error
-         * (e.g., exception or segfault) occurred while executing this method. A typical
-         * implementation will therefore execute different code depending on the invocation count.
-         * When the method is invoked for the first time, the invocation count is 1.
+         * (e.g., exception or segfault) occurred during execution. However, the method will only be
+         * invoked at most {@link #maxInvocations()} times. When the method is invoked for the first
+         * time, the argument invocationCount is 1.
          */
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate during printing diagnostics.")
         public abstract void printDiagnostics(Log log, int invocationCount);

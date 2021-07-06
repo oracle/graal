@@ -42,17 +42,15 @@ class LinuxStackOverflowSupport implements StackOverflowCheck.OSSupport {
     public UnsignedWord lookupStackBase() {
         Pthread.pthread_attr_t attr = StackValue.get(Pthread.pthread_attr_t.class);
         PosixUtils.checkStatusIs0(Pthread.pthread_getattr_np(Pthread.pthread_self(), attr), "LinuxStackOverflowSupport: pthread_getattr_np");
-        UnsignedWord result = lookupStackStart(attr);
-        PosixUtils.checkStatusIs0(Pthread.pthread_attr_destroy(attr), "LinuxStackOverflowSupport: pthread_attr_destroy");
-        return result;
-    }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static UnsignedWord lookupStackStart(Pthread.pthread_attr_t attr) {
         WordPointer stackaddrPtr = StackValue.get(WordPointer.class);
         WordPointer stacksizePtr = StackValue.get(WordPointer.class);
         PosixUtils.checkStatusIs0(Pthread.pthread_attr_getstack(attr, stackaddrPtr, stacksizePtr), "LinuxStackOverflowSupport: pthread_attr_getstack");
-        return stackaddrPtr.read();
+        PosixUtils.checkStatusIs0(Pthread.pthread_attr_destroy(attr), "LinuxStackOverflowSupport: pthread_attr_destroy");
+
+        UnsignedWord stackaddr = stackaddrPtr.read();
+        UnsignedWord stacksize = stacksizePtr.read();
+        return stackaddr.add(stacksize);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -61,7 +59,10 @@ class LinuxStackOverflowSupport implements StackOverflowCheck.OSSupport {
         Pthread.pthread_attr_t attr = StackValue.get(Pthread.pthread_attr_t.class);
         PosixUtils.checkStatusIs0(Pthread.pthread_getattr_np(Pthread.pthread_self(), attr), "LinuxStackOverflowSupport: pthread_getattr_np");
 
-        UnsignedWord stackaddr = lookupStackStart(attr);
+        WordPointer stackaddrPtr = StackValue.get(WordPointer.class);
+        WordPointer stacksizePtr = StackValue.get(WordPointer.class);
+        PosixUtils.checkStatusIs0(Pthread.pthread_attr_getstack(attr, stackaddrPtr, stacksizePtr), "LinuxStackOverflowSupport: pthread_attr_getstack");
+        UnsignedWord stackaddr = stackaddrPtr.read();
 
         /*
          * The block of memory returned by pthread_attr_getstack() includes guard pages where

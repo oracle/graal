@@ -194,7 +194,11 @@ public final class ImageHeapInfo {
         return asImageHeapChunk(offsetOfFirstWritableUnalignedChunk);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static Word getObjectEnd(Object obj) {
+        if (obj == null) {
+            return WordFactory.nullPointer();
+        }
         return Word.objectToUntrackedPointer(obj).add(LayoutEncoding.getSizeFromObject(obj));
     }
 

@@ -308,31 +308,60 @@ public class RuntimeCodeInfoMemory {
         }
     }
 
-    public boolean printLocationInfo(Log log, UnsignedWord value) {
+    @Uninterruptible(reason = "Must prevent the GC from freeing the CodeInfo object.")
+    public boolean printLocationInfo(Log log, UnsignedWord value, boolean allowJavaHeapAccess) {
         assert SubstrateDiagnostics.isInProgressByCurrentThread() : "may only be used for printing diagnostics as the table could be freed at any time";
         if (table.isNonNull()) {
             for (int i = 0; i < NonmovableArrays.lengthOf(table); i++) {
-                // TEMP (chaeubl): print the name of the code info object if javaAccess is allowed
                 UntetheredCodeInfo info = NonmovableArrays.getWord(table, i);
-                if (info.equal(value)) {
-                    log.string("is a CodeInfo object");
-                    return true;
-                }
+                if (info.isNonNull()) {
+                    if (info.equal(value)) {
+                        String name = allowJavaHeapAccess ? UntetheredCodeInfoAccess.getName(info) : null;
+                        printIsCodeInfoObject(log, name);
+                        return true;
+                    }
 
-                UnsignedWord codeInfoEnd = ((UnsignedWord) info).add(RuntimeCodeInfoAccess.getSizeOfCodeInfo());
-                if (value.aboveOrEqual(value) && value.belowThan(codeInfoEnd)) {
-                    log.string("points within a CodeInfo object");
-                    return true;
-                }
+                    UnsignedWord codeInfoEnd = ((UnsignedWord) info).add(RuntimeCodeInfoAccess.getSizeOfCodeInfo());
+                    if (value.aboveOrEqual((UnsignedWord) info) && value.belowThan(codeInfoEnd)) {
+                        String name = allowJavaHeapAccess ? UntetheredCodeInfoAccess.getName(info) : null;
+                        printInsideCodeInfo(log, info, name);
+                        return true;
+                    }
 
-                UnsignedWord codeStart = (UnsignedWord) UntetheredCodeInfoAccess.getCodeStart(info);
-                UnsignedWord codeEnd = (UnsignedWord) UntetheredCodeInfoAccess.getCodeEnd(info);
-                if (value.aboveOrEqual(codeStart) && value.belowOrEqual(codeEnd)) {
-                    log.string("is at codeStart+").unsigned(value.subtract(codeStart)).string(" in CodeInfo ").zhex(info);
-                    return true;
+                    UnsignedWord codeStart = (UnsignedWord) UntetheredCodeInfoAccess.getCodeStart(info);
+                    UnsignedWord codeEnd = (UnsignedWord) UntetheredCodeInfoAccess.getCodeEnd(info);
+                    if (value.aboveOrEqual(codeStart) && value.belowOrEqual(codeEnd)) {
+                        String name = allowJavaHeapAccess ? UntetheredCodeInfoAccess.getName(info) : null;
+                        printInsideInstructions(log, value, info, codeStart, name);
+                        return true;
+                    }
                 }
             }
         }
         return false;
+    }
+
+    @Uninterruptible(reason = "CodeInfo no longer needs to be protected from the GC.", calleeMustBe = false)
+    private static void printIsCodeInfoObject(Log log, String name) {
+        log.string("is a CodeInfo object");
+        if (name != null) {
+            log.string(" (").string(name).string(")");
+        }
+    }
+
+    @Uninterruptible(reason = "CodeInfo no longer needs to be protected from the GC.", calleeMustBe = false)
+    private static void printInsideCodeInfo(Log log, UntetheredCodeInfo info, String name) {
+        log.string("points inside the CodeInfo object ").zhex(info);
+        if (name != null) {
+            log.string(" (").string(name).string(")");
+        }
+    }
+
+    @Uninterruptible(reason = "CodeInfo no longer needs to be protected from the GC.", calleeMustBe = false)
+    private static void printInsideInstructions(Log log, UnsignedWord value, UntetheredCodeInfo info, UnsignedWord codeStart, String name) {
+        log.string("is at codeStart+").unsigned(value.subtract(codeStart)).string(" of CodeInfo ").zhex(info);
+        if (name != null) {
+            log.string(" (").string(name).string(")");
+        }
     }
 }

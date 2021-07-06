@@ -52,6 +52,9 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.genscavenge.AlignedHeapChunk.AlignedHeader;
+import com.oracle.svm.core.genscavenge.ThreadLocalAllocation.Descriptor;
+import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.GC;
 import com.oracle.svm.core.heap.Heap;
@@ -62,6 +65,7 @@ import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.heap.ReferenceHandlerThreadSupport;
 import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.heap.RuntimeCodeInfoGCSupport;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
@@ -586,59 +590,59 @@ public final class HeapImpl extends Heap {
     }
 
     @Override
-    public boolean printLocationInfo(Log log, UnsignedWord v) {
-        Pointer value = (Pointer) v;
-        if (imageHeapInfo.isInReadOnlyPrimitivePartition(value)) {
+    public boolean printLocationInfo(Log log, UnsignedWord value, boolean allowJavaHeapAccess) {
+        if (ImageSingletons.lookup(CompressEncoding.class).hasBase() && value.equal(KnownIntrinsics.heapBase())) {
+            log.string("is the heap base");
+            return true;
+        }
+
+        Pointer ptr = (Pointer) value;
+        if (printLocationInfo(log, ptr)) {
+            if (allowJavaHeapAccess && ObjectHeaderImpl.pointsToObjectHeader(ptr)) {
+                DynamicHub hub = ObjectHeaderImpl.getObjectHeaderImpl().readDynamicHubFromPointer(ptr);
+                log.indent(true);
+                log.string("hub=").string(hub.getName());
+                log.redent(false);
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private boolean printLocationInfo(Log log, Pointer ptr) {
+        if (imageHeapInfo.isInReadOnlyPrimitivePartition(ptr)) {
             log.string("points into the image heap (read-only primitives)");
             return true;
-        }
-
-        if (imageHeapInfo.isInReadOnlyReferencePartition(value)) {
+        } else if (imageHeapInfo.isInReadOnlyReferencePartition(ptr)) {
             log.string("points into the image heap (read-only references)");
             return true;
-        }
-
-        if (imageHeapInfo.isInReadOnlyRelocatablePartition(value)) {
+        } else if (imageHeapInfo.isInReadOnlyRelocatablePartition(ptr)) {
             log.string("points into the image heap (read-only relocatables)");
             return true;
-        }
-
-        if (imageHeapInfo.isInWritablePrimitivePartition(value)) {
+        } else if (imageHeapInfo.isInWritablePrimitivePartition(ptr)) {
             log.string("points into the image heap (writable primitives)");
             return true;
-        }
-
-        if (imageHeapInfo.isInWritableReferencePartition(value)) {
+        } else if (imageHeapInfo.isInWritableReferencePartition(ptr)) {
             log.string("points into the image heap (writable references)");
             return true;
-        }
-
-        if (imageHeapInfo.isInWritableHugePartition(value)) {
+        } else if (imageHeapInfo.isInWritableHugePartition(ptr)) {
             log.string("points into the image heap (writable huge)");
             return true;
-        }
-
-        if (imageHeapInfo.isInReadOnlyHugePartition(value)) {
+        } else if (imageHeapInfo.isInReadOnlyHugePartition(ptr)) {
             log.string("points into the image heap (read-only huge)");
             return true;
-        }
-
-        if (AuxiliaryImageHeap.isPresent() && AuxiliaryImageHeap.singleton().containsObject(value)) {
+        } else if (AuxiliaryImageHeap.isPresent() && AuxiliaryImageHeap.singleton().containsObject(ptr)) {
             log.string("points into the auxiliary image heap");
             return true;
-        }
-
-        if (isInYoungGen(value)) {
+        } else if (isInYoungGen(ptr)) {
             log.string("points into the young generation");
             return true;
-        }
-
-        if (isInOldGen(value)) {
+        } else if (isInOldGen(ptr)) {
             log.string("points into the old generation");
             return true;
+        } else {
+            return printTlabInfo(log, ptr);
         }
-
-        return false;
     }
 
     boolean isInHeap(Pointer ptr) {
@@ -686,6 +690,45 @@ public final class HeapImpl extends Heap {
         return false;
     }
 
+    /**
+     * Accessing the TLAB of other threads is a highly unsafe operation and can cause crashes. So,
+     * this only makes sense for printing diagnostics as it is very likely that register values
+     * point to TLABs.
+     */
+    private static boolean printTlabInfo(Log log, Pointer ptr) {
+        assert SubstrateDiagnostics.isInProgressByCurrentThread() : "can cause crashes, so it may only be used while printing diagnostics";
+        for (IsolateThread thread = VMThreads.firstThreadUnsafe(); thread.isNonNull(); thread = VMThreads.nextThread(thread)) {
+            ThreadLocalAllocation.Descriptor tlab = getTlabUnsafe(thread);
+            AlignedHeader aChunk = tlab.getAlignedChunk();
+            while (aChunk.isNonNull()) {
+                Pointer dataStart = AlignedHeapChunk.getObjectsStart(aChunk);
+                Pointer dataEnd = AlignedHeapChunk.getObjectsEnd(aChunk);
+                if (ptr.aboveOrEqual(dataStart) && ptr.belowThan(dataEnd)) {
+                    log.string("points into an aligned TLAB chunk of thread ").zhex(thread);
+                    return true;
+                }
+                aChunk = HeapChunk.getNext(aChunk);
+            }
+
+            UnalignedHeader uChunk = tlab.getUnalignedChunk();
+            while (uChunk.isNonNull()) {
+                Pointer dataStart = UnalignedHeapChunk.getObjectStart(uChunk);
+                Pointer dataEnd = UnalignedHeapChunk.getObjectEnd(uChunk);
+                if (ptr.aboveOrEqual(dataStart) && ptr.belowThan(dataEnd)) {
+                    log.string("points into an unaligned TLAB chunk of thread ").zhex(thread);
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    @Uninterruptible(reason = "This whole method is unsafe, so it is only uninterruptible to satisfy the checks.")
+    private static Descriptor getTlabUnsafe(IsolateThread thread) {
+        assert SubstrateDiagnostics.isInProgressByCurrentThread() : "can cause crashes, so it may only be used while printing diagnostics";
+        return ThreadLocalAllocation.getTlab(thread);
+    }
+
     private static class DumpHeapSettingsAndStatistics extends DiagnosticThunk {
         @Override
         public int maxInvocations() {
@@ -703,6 +746,7 @@ public final class HeapImpl extends Heap {
                 log.string("Heap base: ").zhex(KnownIntrinsics.heapBase()).newline();
             }
             log.string("Object reference size: ").signed(ConfigurationValues.getObjectLayout().getReferenceSize()).newline();
+            log.string("Aligned chunk size: ").unsigned(HeapPolicy.getAlignedHeapChunkSize()).newline();
 
             GCAccounting accounting = gc.getAccounting();
             log.string("Incremental collections: ").unsigned(accounting.getIncrementalCollectionCount()).newline();

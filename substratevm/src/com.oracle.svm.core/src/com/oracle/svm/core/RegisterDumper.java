@@ -41,11 +41,11 @@ public interface RegisterDumper {
         return ImageSingletons.lookup(RegisterDumper.class);
     }
 
-    static void dumpReg(Log log, String label, long value, boolean printLocationInfo) {
+    static void dumpReg(Log log, String label, long value, boolean printLocationInfo, boolean allowJavaHeapAccess) {
         log.string(label).zhex(value);
         if (printLocationInfo) {
             log.spaces(1);
-            SubstrateDiagnostics.printLocationInfo(log, WordFactory.unsigned(value));
+            SubstrateDiagnostics.printLocationInfo(log, WordFactory.unsigned(value), allowJavaHeapAccess);
         }
         log.newline();
     }
@@ -53,7 +53,7 @@ public interface RegisterDumper {
     interface Context extends PointerBase {
     }
 
-    void dumpRegisters(Log log, Context context, boolean printLocationInfo);
+    void dumpRegisters(Log log, Context context, boolean printLocationInfo, boolean allowJavaHeapAccess);
 
     PointerBase getHeapBase(Context context);
 

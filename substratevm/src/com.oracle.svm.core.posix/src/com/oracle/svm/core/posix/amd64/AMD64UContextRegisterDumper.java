@@ -59,26 +59,26 @@ class AMD64UContextRegisterDumperFeature implements Feature {
 
 class AMD64UContextRegisterDumper implements UContextRegisterDumper {
     @Override
-    public void dumpRegisters(Log log, ucontext_t uContext, boolean printLocationInfo) {
+    public void dumpRegisters(Log log, ucontext_t uContext, boolean printLocationInfo, boolean allowJavaHeapAccess) {
         GregsPointer gregs = uContext.uc_mcontext_gregs();
-        dumpReg(log, "RAX ", gregs.read(GregEnum.REG_RAX()), printLocationInfo);
-        dumpReg(log, "RBX ", gregs.read(GregEnum.REG_RBX()), printLocationInfo);
-        dumpReg(log, "RCX ", gregs.read(GregEnum.REG_RCX()), printLocationInfo);
-        dumpReg(log, "RDX ", gregs.read(GregEnum.REG_RDX()), printLocationInfo);
-        dumpReg(log, "RBP ", gregs.read(GregEnum.REG_RBP()), printLocationInfo);
-        dumpReg(log, "RSI ", gregs.read(GregEnum.REG_RSI()), printLocationInfo);
-        dumpReg(log, "RDI ", gregs.read(GregEnum.REG_RDI()), printLocationInfo);
-        dumpReg(log, "RSP ", gregs.read(GregEnum.REG_RSP()), printLocationInfo);
-        dumpReg(log, "R8  ", gregs.read(GregEnum.REG_R8()), printLocationInfo);
-        dumpReg(log, "R9  ", gregs.read(GregEnum.REG_R9()), printLocationInfo);
-        dumpReg(log, "R10 ", gregs.read(GregEnum.REG_R10()), printLocationInfo);
-        dumpReg(log, "R11 ", gregs.read(GregEnum.REG_R11()), printLocationInfo);
-        dumpReg(log, "R12 ", gregs.read(GregEnum.REG_R12()), printLocationInfo);
-        dumpReg(log, "R13 ", gregs.read(GregEnum.REG_R13()), printLocationInfo);
-        dumpReg(log, "R14 ", gregs.read(GregEnum.REG_R14()), printLocationInfo);
-        dumpReg(log, "R15 ", gregs.read(GregEnum.REG_R15()), printLocationInfo);
-        dumpReg(log, "EFL ", gregs.read(GregEnum.REG_EFL()), printLocationInfo);
-        dumpReg(log, "RIP ", gregs.read(GregEnum.REG_RIP()), printLocationInfo);
+        dumpReg(log, "RAX ", gregs.read(GregEnum.REG_RAX()), printLocationInfo, allowJavaHeapAccess);
+        dumpReg(log, "RBX ", gregs.read(GregEnum.REG_RBX()), printLocationInfo, allowJavaHeapAccess);
+        dumpReg(log, "RCX ", gregs.read(GregEnum.REG_RCX()), printLocationInfo, allowJavaHeapAccess);
+        dumpReg(log, "RDX ", gregs.read(GregEnum.REG_RDX()), printLocationInfo, allowJavaHeapAccess);
+        dumpReg(log, "RBP ", gregs.read(GregEnum.REG_RBP()), printLocationInfo, allowJavaHeapAccess);
+        dumpReg(log, "RSI ", gregs.read(GregEnum.REG_RSI()), printLocationInfo, allowJavaHeapAccess);
+        dumpReg(log, "RDI ", gregs.read(GregEnum.REG_RDI()), printLocationInfo, allowJavaHeapAccess);
+        dumpReg(log, "RSP ", gregs.read(GregEnum.REG_RSP()), printLocationInfo, allowJavaHeapAccess);
+        dumpReg(log, "R8  ", gregs.read(GregEnum.REG_R8()), printLocationInfo, allowJavaHeapAccess);
+        dumpReg(log, "R9  ", gregs.read(GregEnum.REG_R9()), printLocationInfo, allowJavaHeapAccess);
+        dumpReg(log, "R10 ", gregs.read(GregEnum.REG_R10()), printLocationInfo, allowJavaHeapAccess);
+        dumpReg(log, "R11 ", gregs.read(GregEnum.REG_R11()), printLocationInfo, allowJavaHeapAccess);
+        dumpReg(log, "R12 ", gregs.read(GregEnum.REG_R12()), printLocationInfo, allowJavaHeapAccess);
+        dumpReg(log, "R13 ", gregs.read(GregEnum.REG_R13()), printLocationInfo, allowJavaHeapAccess);
+        dumpReg(log, "R14 ", gregs.read(GregEnum.REG_R14()), printLocationInfo, allowJavaHeapAccess);
+        dumpReg(log, "R15 ", gregs.read(GregEnum.REG_R15()), printLocationInfo, allowJavaHeapAccess);
+        dumpReg(log, "EFL ", gregs.read(GregEnum.REG_EFL()), printLocationInfo, allowJavaHeapAccess);
+        dumpReg(log, "RIP ", gregs.read(GregEnum.REG_RIP()), printLocationInfo, allowJavaHeapAccess);
     }
 
     @Override

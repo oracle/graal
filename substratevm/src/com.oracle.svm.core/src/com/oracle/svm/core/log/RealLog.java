@@ -450,6 +450,7 @@ public class RealLog extends Log {
     @NeverInline("Logging is always slow-path code")
     @Override
     public Log zhex(long value) {
+        string("0x");
         int zeros = Long.numberOfLeadingZeros(value);
         int hexZeros = zeros / 4;
         for (int i = 0; i < hexZeros; i += 1) {
@@ -462,6 +463,7 @@ public class RealLog extends Log {
     }
 
     private Log zhex(int value, int wordSizeInBytes) {
+        string("0x");
         int zeros = Integer.numberOfLeadingZeros(value) - 32 + (wordSizeInBytes * 8);
         int hexZeros = zeros / 4;
         for (int i = 0; i < hexZeros; i += 1) {

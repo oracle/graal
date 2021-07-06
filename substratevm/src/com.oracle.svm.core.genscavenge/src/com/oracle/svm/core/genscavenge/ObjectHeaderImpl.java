@@ -144,6 +144,27 @@ public final class ObjectHeaderImpl extends ObjectHeader {
         return (DynamicHub) objectValue;
     }
 
+    private static Pointer extractDynamicHubFromObjectHeader(UnsignedWord header) {
+        UnsignedWord pointerBits = clearBits(header);
+        if (ReferenceAccess.singleton().haveCompressedReferences()) {
+            UnsignedWord compressedBits = pointerBits.unsignedShiftRight(getCompressionShift());
+            return KnownIntrinsics.heapBase().add(compressedBits.shiftLeft(getCompressionShift()));
+        } else {
+            return (Pointer) pointerBits;
+        }
+    }
+
+    public static boolean pointsToObjectHeader(Pointer ptr) {
+        UnsignedWord potentialObjectHeader = ObjectHeaderImpl.readHeaderFromPointer(ptr);
+        Pointer potentialDynamicHub = ObjectHeaderImpl.extractDynamicHubFromObjectHeader(potentialObjectHeader);
+        if (Heap.getHeap().isInImageHeap(potentialDynamicHub)) {
+            UnsignedWord potentialHeaderOfDynamicHub = ObjectHeaderImpl.readHeaderFromPointer(potentialDynamicHub);
+            Pointer potentialHubOfDynamicHub = ObjectHeaderImpl.extractDynamicHubFromObjectHeader(potentialHeaderOfDynamicHub);
+            return potentialHubOfDynamicHub.equal(Word.objectToUntrackedPointer(DynamicHub.class));
+        }
+        return false;
+    }
+
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
     public Word encodeAsUnmanagedObjectHeader(DynamicHub hub) {
