@@ -34,7 +34,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.MissingResourceException;
 import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -80,9 +79,6 @@ public final class ClassLoaderSupportImplJDK11OrLater extends ClassLoaderSupport
             bundleName = specParts[0];
         }
         String packageName = packageName(bundleName);
-        if (packageName == null) {
-            throw new MissingResourceException("ResourceBundle does not seem to be a fully qualified class name.", bundleName, locale.toLanguageTag());
-        }
         Set<Module> modules;
         if (moduleName != null) {
             modules = classLoaderSupport.findModule(moduleName).stream().collect(Collectors.toSet());
@@ -107,8 +103,7 @@ public final class ClassLoaderSupportImplJDK11OrLater extends ClassLoaderSupport
     private static String packageName(String bundleName) {
         int classSep = bundleName.replace('/', '.').lastIndexOf('.');
         if (classSep == -1) {
-            /* The bundle is not specified via a java.class or java.properties format. */
-            return null;
+            return ""; /* unnamed package */
         }
         return bundleName.substring(0, classSep);
     }
