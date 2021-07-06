@@ -348,7 +348,7 @@ def svm_gate_body(args, tasks):
 
     with Task('Run Truffle unittests with SVM image', tasks, tags=["svmjunit"]) as t:
         if t:
-            truffle_args = ['--build-args', '--macro:truffle',
+            truffle_args = ['--build-args', '-ea', '-esa', '--macro:truffle',
                                         '-H:MaxRuntimeCompileMethods=5000',
                                         '-H:+TruffleCheckBlackListedMethods',
                                         '--run-args', '--very-verbose', '--enable-timing']
