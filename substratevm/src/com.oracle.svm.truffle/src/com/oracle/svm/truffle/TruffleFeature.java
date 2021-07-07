@@ -1135,11 +1135,8 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
                 RuntimeReflection.register(c);
             }
             for (Class<?> clazz = storageSuperClass; clazz != null; clazz = clazz.getSuperclass()) {
-                try {
-                    Method m = clazz.getDeclaredMethod("clone");
+                for (Method m : clazz.getDeclaredMethods()) {
                     RuntimeReflection.register(m);
-                } catch (NoSuchMethodException e) {
-                    // Swallow the error, check the super class
                 }
             }
         }

@@ -288,6 +288,7 @@ public abstract class StaticShape<T> {
          * constructor of superClass
          * <li>the return type of every method in factoryInterface must be assignable from the
          * superClass
+         * <li>superClass does not have abstract methods
          * <li>if superClass is {@link Cloneable}, it cannot override {@link Object#clone()} with a
          * final method
          * </ul>
@@ -302,8 +303,9 @@ public abstract class StaticShape<T> {
          * @throws IllegalArgumentException if factoryInterface is not an interface, if the
          *             arguments of a method in factoryInterface do not match those of a visible
          *             constructor in superClass, if the return type of a method in factoryInterface
-         *             is not assignable from superClass, or if superClass is {@link Cloneable} and
-         *             overrides {@link Object#clone()} with a final method.
+         *             is not assignable from superClass, if superClass has abstract methods or if
+         *             superClass is {@link Cloneable} and overrides {@link Object#clone()} with a
+         *             final method.
          * @throws RuntimeException if a static property was added to more than one builder or
          *             multiple times to the same builder
          * @since 21.3.0
@@ -353,6 +355,8 @@ public abstract class StaticShape<T> {
         }
 
         private static void validateClasses(Class<?> storageSuperClass, Class<?> storageFactoryInterface) {
+            // Reflective accesses must be registered by TruffleFeature.StaticObjectSupport, or these checks might be performed at image build time but not at run time.
+            // This would probably lead to class generation at run time, which is not supported by Native Image.
             CompilerAsserts.neverPartOfCompilation();
             if (!storageFactoryInterface.isInterface()) {
                 throw new IllegalArgumentException(storageFactoryInterface.getName() + " must be an interface.");
@@ -370,6 +374,13 @@ public abstract class StaticShape<T> {
                     storageSuperClass.getDeclaredConstructor(m.getParameterTypes());
                 } catch (NoSuchMethodException e) {
                     throw new IllegalArgumentException("Method '" + m + "' does not match any constructor in '" + storageSuperClass.getName() + "'", e);
+                }
+            }
+            for (Class<?> c = storageSuperClass; c != null; c = c.getSuperclass()) {
+                for (Method m : c.getDeclaredMethods()) {
+                    if (Modifier.isAbstract(m.getModifiers())) {
+                        throw new IllegalArgumentException("'" + storageSuperClass.getName() + "' has abstract methods");
+                    }
                 }
             }
             if (Cloneable.class.isAssignableFrom(storageSuperClass)) {
