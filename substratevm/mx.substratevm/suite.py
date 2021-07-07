@@ -620,9 +620,6 @@ suite = {
             "sourceDirs": [
                 "src",
             ],
-            "dependencies": [
-                "com.oracle.svm.driver",
-            ],
             "checkstyle": "com.oracle.svm.driver",
             "workingSets": "SVM",
             "annotationProcessors": [
