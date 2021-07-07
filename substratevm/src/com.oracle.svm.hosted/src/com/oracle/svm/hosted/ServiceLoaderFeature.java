@@ -80,6 +80,7 @@ import com.oracle.svm.hosted.analysis.Inflation;
  * For each service interface, a single service loader file is added as a resource to the image. The
  * single file combines all the individual files that can come from different .jar files.
  *
+ *
  * Unfortunately, state of the art module support in SVM is not sophisticated enough to allow the
  * original ServiceLoader infrastructure to discover providers registered in modules. Therefore, as
  * a temporary solution, we're disabling the ModuleServicesLookupIterator in favour of the
