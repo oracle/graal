@@ -33,7 +33,7 @@ meth public void setMode(com.oracle.truffle.tools.profiler.CPUSampler$Mode)
 meth public void setPeriod(long)
 meth public void setStackLimit(int)
 supr java.lang.Object
-hfds COPY_PAYLOAD,DEFAULT_FILTER,MERGE_PAYLOAD,PAYLOAD_FACTORY,activeContexts,closed,collecting,delay,env,filter,gatherSelfHitTimes,period,safepointStackSampler,samplerTask,samplerThread,samplesTaken,stackLimit,syntheticFrames
+hfds COPY_PAYLOAD,DEFAULT_FILTER,MERGE_PAYLOAD,PAYLOAD_FACTORY,activeContexts,closed,collecting,delay,env,filter,gatherSelfHitTimes,period,safepointStackSampler,samplerTask,samplerThread,samplesTaken,stackLimit
 hcls SamplingTimerTask
 
 CLSS public final static !enum com.oracle.truffle.tools.profiler.CPUSampler$Mode
@@ -58,7 +58,6 @@ supr java.lang.Object
 hfds compiledHitCount,interpretedHitCount,selfCompiledHitCount,selfHitTimes,selfInterpretedHitCount
 
 CLSS public final com.oracle.truffle.tools.profiler.CPUSamplerData
-cons public init(com.oracle.truffle.api.TruffleContext,java.util.Map<java.lang.Thread,java.util.Collection<com.oracle.truffle.tools.profiler.ProfilerNode<com.oracle.truffle.tools.profiler.CPUSampler$Payload>>>,java.util.LongSummaryStatistics,java.util.LongSummaryStatistics,long,long)
 meth public com.oracle.truffle.api.TruffleContext getContext()
 meth public java.util.LongSummaryStatistics getSampleBias()
 meth public java.util.LongSummaryStatistics getSampleDuration()
