@@ -246,13 +246,19 @@ class ReflectionProcessor extends AbstractProcessor {
             }
 
             case "getBundleImplJDK8OrEarlier": {
-                expectSize(args, 4);
-                resourceConfiguration.addBundle(condition, (String) args.get(0));
+                expectSize(args, 5);
+                String baseName = (String) args.get(0);
+                String localeTag = (String) args.get(1);
+                String className = (String) args.get(4);
+                resourceConfiguration.addBundle(condition, className, baseName, localeTag);
                 break;
             }
             case "getBundleImplJDK11OrLater": {
-                expectSize(args, 5);
-                resourceConfiguration.addBundle(condition, (String) args.get(2));
+                expectSize(args, 6);
+                String baseName = (String) args.get(2);
+                String localeTag = (String) args.get(3);
+                String className = (String) args.get(5);
+                resourceConfiguration.addBundle(condition, className, baseName, localeTag);
                 break;
             }
             default:

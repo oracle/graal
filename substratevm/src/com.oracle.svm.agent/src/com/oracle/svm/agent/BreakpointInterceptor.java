@@ -647,11 +647,15 @@ final class BreakpointInterceptor {
         JNIObjectHandle loader = getObjectArgument(2);
         JNIObjectHandle control = getObjectArgument(3);
         JNIObjectHandle result = Support.callStaticObjectMethodLLLL(jni, bp.clazz, bp.method, baseName, locale, loader, control);
+        String className = Tracer.UNKNOWN_VALUE;
         if (clearException(jni)) {
             result = nullHandle();
+        } else {
+            className = extractClassName(jni, result);
         }
+        String languageTag = fromJniString(jni, callObjectMethod(jni, locale, agent.handles().javaUtilLocaleToLanguageTag));
         traceBreakpoint(jni, nullHandle(), nullHandle(), callerClass, "getBundleImplJDK8OrEarlier", result.notEqual(nullHandle()),
-                        state.getFullStackTraceOrNull(), fromJniString(jni, baseName), Tracer.UNKNOWN_VALUE, Tracer.UNKNOWN_VALUE, Tracer.UNKNOWN_VALUE);
+                        state.getFullStackTraceOrNull(), fromJniString(jni, baseName), languageTag, Tracer.UNKNOWN_VALUE, Tracer.UNKNOWN_VALUE, className);
         return true;
     }
 
@@ -671,12 +675,27 @@ final class BreakpointInterceptor {
         JNIObjectHandle locale = getObjectArgument(3);
         JNIObjectHandle control = getObjectArgument(4);
         JNIObjectHandle result = Support.callStaticObjectMethodLLLLL(jni, bp.clazz, bp.method, callerModule, module, baseName, locale, control);
+        String className = Tracer.UNKNOWN_VALUE;
         if (clearException(jni)) {
             result = nullHandle();
+        } else {
+            className = extractClassName(jni, result);
         }
+        String languageTag = fromJniString(jni, callObjectMethod(jni, locale, agent.handles().javaUtilLocaleToLanguageTag));
         traceBreakpoint(jni, nullHandle(), nullHandle(), callerClass, "getBundleImplJDK11OrLater", result.notEqual(nullHandle()),
-                        state.getFullStackTraceOrNull(), Tracer.UNKNOWN_VALUE, Tracer.UNKNOWN_VALUE, fromJniString(jni, baseName), Tracer.UNKNOWN_VALUE, Tracer.UNKNOWN_VALUE);
+                        state.getFullStackTraceOrNull(), Tracer.UNKNOWN_VALUE, Tracer.UNKNOWN_VALUE, fromJniString(jni, baseName), languageTag, Tracer.UNKNOWN_VALUE, className);
         return true;
+    }
+
+    private static String extractClassName(JNIEnvironment jni, JNIObjectHandle result) {
+        JNIObjectHandle clazz = callObjectMethod(jni, result, agent.handles().javaLangObjectGetClass);
+        if (!clearException(jni)) {
+            JNIObjectHandle classNameHandle = callObjectMethod(jni, clazz, agent.handles().javaLangClassGetName);
+            if (!clearException(jni)) {
+                return fromJniString(jni, classNameHandle);
+            }
+        }
+        return Tracer.UNKNOWN_VALUE;
     }
 
     private static boolean loadClass(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {
