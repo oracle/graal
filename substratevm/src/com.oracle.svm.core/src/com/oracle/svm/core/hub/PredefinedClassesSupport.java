@@ -35,15 +35,39 @@ import java.util.concurrent.locks.ReentrantLock;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
 
 public final class PredefinedClassesSupport {
+    public static final class Options {
+        /**
+         * This option controls only support for the user-facing mechanism working with bytecodes
+         * (class data). Internal support (needed for proxy classes) remains active either way.
+         */
+        @Option(help = "Enable support for predefining additional classes.") //
+        static final HostedOptionKey<Boolean> SupportPredefinedClasses = new HostedOptionKey<>(true);
+    }
+
+    public static final String ENABLE_BYTECODES_OPTION = SubstrateOptionsParser.commandArgument(Options.SupportPredefinedClasses, "+");
+
+    @Fold
+    public static boolean supportsBytecodes() {
+        return Options.SupportPredefinedClasses.getValue();
+    }
+
+    public static RuntimeException throwBytecodeSupportDisabled() {
+        assert !supportsBytecodes();
+        throw VMError.unsupportedFeature("Loading classes from bytecodes at runtime is not supported. " +
+                        "Consider predefining classes and enable class predefinition during the image build using option: " + ENABLE_BYTECODES_OPTION);
+    }
 
     @Fold
     static PredefinedClassesSupport singleton() {
@@ -86,6 +110,9 @@ public final class PredefinedClassesSupport {
     }
 
     public static Class<?> loadClass(ClassLoader classLoader, String expectedName, byte[] data, int offset, int length, ProtectionDomain protectionDomain) {
+        if (!supportsBytecodes()) {
+            throw throwBytecodeSupportDisabled();
+        }
         String hash = hash(data, offset, length);
         Class<?> clazz = singleton().predefinedClassesByHash.get(hash);
         if (clazz == null) {
