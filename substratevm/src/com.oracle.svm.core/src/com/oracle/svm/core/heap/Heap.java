@@ -170,7 +170,7 @@ public abstract class Heap {
 
     /**
      * Returns true if the object at the given address is located in the image heap. This method
-     * only works reliably for pointers to the start of an object.
+     * only works reliably for pointers that point to the start of an object.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public abstract boolean isInImageHeap(Pointer objectPtr);

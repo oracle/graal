@@ -57,7 +57,7 @@ public class VMMutex {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public VMMutex() {
-        this.name = "Unspecified";
+        this.name = "unspecified";
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

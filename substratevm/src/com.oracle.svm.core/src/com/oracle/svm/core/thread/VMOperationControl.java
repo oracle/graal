@@ -203,14 +203,14 @@ public final class VMOperationControl {
         if (op == null) {
             log.string("No VMOperation in progress").newline();
         } else if (allowJavaHeapAccess) {
-            log.string("VMOperation in progress: ").string(op.getName()).newline();
-            log.string("  safepoint: ").bool(op.getCausesSafepoint()).newline();
-            log.string("  queuingThread: ").zhex(control.inProgress.queueingThread.rawValue()).newline();
-            log.string("  executingThread: ").zhex(control.inProgress.executingThread.rawValue()).newline();
+            log.string("VMOperation in progress: ").string(op.getName()).indent(true);
+            log.string("Safepoint: ").bool(op.getCausesSafepoint()).newline();
+            log.string("QueuingThread: ").zhex(control.inProgress.queueingThread.rawValue()).newline();
+            log.string("ExecutingThread: ").zhex(control.inProgress.executingThread.rawValue()).newline();
+            log.indent(false);
         } else {
             log.string("VMOperation in progress: ").zhex(Word.objectToUntrackedPointer(op)).newline();
         }
-        log.newline();
     }
 
     public static void printRecentEvents(Log log, boolean allowJavaHeapAccess) {

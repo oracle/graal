@@ -238,6 +238,7 @@ public class RuntimeCodeCache {
         NonmovableArrays.setWord(codeInfos, numCodeInfos, WordFactory.nullPointer());
 
         RuntimeCodeInfoAccess.partialReleaseAfterInvalidate(info, notifyGC);
+        RuntimeCodeInfoHistory.singleton().logInvalidate(info);
         assert verifyTable();
     }
 

@@ -154,7 +154,7 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
         }
     }
 
-    @Uninterruptible(reason = "Now that the CodeInfo is tether, we can call interruptible code.", calleeMustBe = false)
+    @Uninterruptible(reason = "Call interruptible code now that the CodeInfo is tethered.", calleeMustBe = false)
     private static void invalidateWithoutDeoptimization1(CodeInfo codeInfo) {
         CodeInfoAccess.setState(codeInfo, CodeInfo.STATE_NON_ENTRANT);
         RuntimeCodeInfoHistory.singleton().logMakeNonEntrant(codeInfo);

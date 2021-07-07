@@ -520,7 +520,7 @@ public class RealLog extends Log {
                     zhex(base.readLong(offset));
                     break;
             }
-            if ((offset + sanitizedWordsize) % 16 == 0) {
+            if ((offset + sanitizedWordsize) % 16 == 0 && (offset + sanitizedWordsize) < sanitizedWordsize * numWords) {
                 newline();
             }
         }

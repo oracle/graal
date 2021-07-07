@@ -51,11 +51,15 @@ public abstract class VMLockSupport {
         public void printDiagnostics(Log log, int invocationCount) {
             log.string("VM mutexes:").indent(true);
 
-            VMLockSupport support = ImageSingletons.lookup(VMLockSupport.class);
-            VMMutex[] mutexes = support.getMutexes();
-            if (mutexes == null) {
+            VMLockSupport support = null;
+            if (ImageSingletons.contains(VMLockSupport.class)) {
+                support = ImageSingletons.lookup(VMLockSupport.class);
+            }
+
+            if (support == null || support.getMutexes() == null) {
                 log.string("No mutex information is available.");
             } else {
+                VMMutex[] mutexes = support.getMutexes();
                 for (int i = 0; i < mutexes.length; i++) {
                     VMMutex mutex = mutexes[i];
                     IsolateThread owner = mutex.owner;

@@ -210,7 +210,6 @@ public final class RuntimeCodeInfoAccess {
     static void partialReleaseAfterInvalidate(CodeInfo info, boolean notifyGC) {
         InstalledCodeObserverSupport.removeObservers(RuntimeCodeInfoAccess.getCodeObserverHandles(info));
         releaseMemory(info, notifyGC);
-        RuntimeCodeInfoHistory.singleton().logInvalidate(info);
     }
 
     @Uninterruptible(reason = "Prevent the GC from running - otherwise, it could accidentally visit the freed memory.")

@@ -272,7 +272,7 @@ public class RuntimeCodeInfoMemory {
         UntetheredCodeInfo info = NonmovableArrays.getWord(table, i);
         if (info.isNonNull()) {
             /*
-             * Newly created CodeInfo objects do ont have a tether yet. So, we can't use tethering
+             * Newly created CodeInfo objects do not have a tether yet. So, we can't use tethering
              * to keep the CodeInfo object alive. Instead, we read all relevant values in
              * uninterruptible code and pass those values to interruptible code that does the
              * printing.
@@ -282,7 +282,7 @@ public class RuntimeCodeInfoMemory {
         }
     }
 
-    @Uninterruptible(reason = "Pass the now protected CodeInfo to interruptible code.", calleeMustBe = false)
+    @Uninterruptible(reason = "CodeInfo no longer needs to be protected from the GC.", calleeMustBe = false)
     private static void printCodeInfo0(Log log, UntetheredCodeInfo codeInfo, int state, String name, CodePointer codeStart, CodePointer codeEnd) {
         RuntimeCodeInfoHistory.printCodeInfo(log, codeInfo, state, name, codeStart, codeEnd);
     }
