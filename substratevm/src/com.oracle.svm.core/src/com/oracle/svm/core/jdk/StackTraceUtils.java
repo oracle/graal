@@ -26,6 +26,7 @@ package com.oracle.svm.core.jdk;
 
 import java.util.ArrayList;
 
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.util.DirectAnnotationAccess;
 import org.graalvm.word.Pointer;
@@ -34,6 +35,8 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.stack.JavaStackFrameVisitor;
 import com.oracle.svm.core.stack.JavaStackWalker;
+import com.oracle.svm.core.thread.JavaContinuations;
+import com.oracle.svm.core.thread.Target_java_lang_Continuation;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -129,6 +132,15 @@ public class StackTraceUtils {
             return false;
         }
 
+        if (JavaContinuations.useLoom() && clazz == Target_java_lang_Continuation.class) {
+            // Skip intrinsics in JDK
+            if ("enterSpecial".equals(frameInfo.getSourceMethodName())) {
+                return false;
+            } else if ("doYield".equals(frameInfo.getSourceMethodName())) {
+                return false;
+            }
+        }
+
         return true;
     }
 
@@ -157,6 +169,12 @@ public class StackTraceUtils {
         }
 
         return true;
+    }
+
+    public static ClassLoader latestUserDefinedClassLoader(Pointer startSP) {
+        GetLatestUserDefinedClassLoaderVisitor visitor = new GetLatestUserDefinedClassLoaderVisitor();
+        JavaStackWalker.walkCurrentThread(startSP, visitor);
+        return visitor.result;
     }
 }
 
@@ -261,5 +279,38 @@ class GetClassContextVisitor extends JavaStackFrameVisitor {
             trace.add(frameInfo.getSourceClass());
         }
         return true;
+    }
+}
+
+class GetLatestUserDefinedClassLoaderVisitor extends JavaStackFrameVisitor {
+    ClassLoader result;
+
+    GetLatestUserDefinedClassLoaderVisitor() {
+    }
+
+    @Override
+    public boolean visitFrame(FrameInfoQueryResult frameInfo) {
+        if (!StackTraceUtils.shouldShowFrame(frameInfo, true, true, false)) {
+            // Skip internal frames.
+            return true;
+        }
+
+        ClassLoader classLoader = frameInfo.getSourceClass().getClassLoader();
+        if (classLoader == null || isExtensionOrPlatformLoader(classLoader)) {
+            // Skip bootstrap and platform/extension class loader.
+            return true;
+        }
+
+        result = classLoader;
+        return false;
+    }
+
+    private static boolean isExtensionOrPlatformLoader(ClassLoader classLoader) {
+        if (JavaVersionUtil.JAVA_SPEC > 8) {
+            return classLoader == Target_jdk_internal_loader_ClassLoaders.platformClassLoader();
+        }
+
+        // We neither use sun.misc.Launcher nor ExtClassLoader in Native Image.
+        return false;
     }
 }

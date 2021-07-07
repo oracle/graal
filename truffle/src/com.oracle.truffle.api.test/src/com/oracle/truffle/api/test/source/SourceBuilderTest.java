@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -544,7 +544,9 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
         setupEnv();
         URL resource = new URL("http://example.org/test/File.html");
         Source s = Source.newBuilder("TestJS", resource).content("Empty").build();
-        assertEquals(resource, s.getURL());
+        // The URL is converted into URI before comparison to skip the expensive hostname
+        // normalization.
+        assertEquals(resource.toURI(), s.getURL().toURI());
         assertEquals(resource.toURI(), s.getURI());
         assertEquals("File.html", s.getName());
         assertEquals("/test/File.html", s.getPath());
@@ -552,7 +554,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
     }
 
     @Test
-    public void testBuiltFromSourceLiteral() {
+    public void testBuiltFromSourceLiteral() throws URISyntaxException {
         final String code = "test code";
         final String description = "test description";
         for (int cached = 0; cached <= 1; cached++) {
@@ -568,7 +570,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
     }
 
     @Test
-    public void testBuiltFromBinarySource() {
+    public void testBuiltFromBinarySource() throws URISyntaxException {
         setupEnv();
         ByteSequence bytes = ByteSequence.create(new byte[]{1, 2, 3, 4, 5, 6, 7, 8});
         Source source1 = Source.newBuilder("Lang", bytes, "testName").build();
@@ -578,7 +580,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
     }
 
     @Test
-    public void testBuiltFromSourceReader() throws IOException {
+    public void testBuiltFromSourceReader() throws IOException, URISyntaxException {
         setupEnv();
         StringReader reader = new StringReader("test\ncode");
         Source source1 = Source.newBuilder("Lang", reader, "testName").build();
@@ -588,7 +590,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
     }
 
     @Test
-    public void testBuiltFromSourceFile() {
+    public void testBuiltFromSourceFile() throws URISyntaxException {
         setupEnv();
         File file = new File("some.tjs");
         final TruffleFile truffleFile = languageEnv.getPublicTruffleFile(file.getAbsolutePath());
@@ -599,7 +601,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
     }
 
     @Test
-    public void testBuiltFromSourceURL() throws IOException {
+    public void testBuiltFromSourceURL() throws IOException, URISyntaxException {
         setupEnv();
         URL resource = new URL("http://example.org/test/File.html");
         Source source1 = Source.newBuilder("Lang", resource).content("Empty").build();
@@ -609,7 +611,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
     }
 
     @Test
-    public void testBuiltFromNoContentSource() {
+    public void testBuiltFromNoContentSource() throws URISyntaxException {
         setupEnv();
         // Relative file
         TruffleFile truffleFile = languageEnv.getPublicTruffleFile("some/path");
@@ -619,7 +621,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
         assertNewSourceChanged(source1);
     }
 
-    private static void assertSameProperties(Source s1, Source s2) {
+    private static void assertSameProperties(Source s1, Source s2) throws URISyntaxException {
         assertEquals(s1.hasBytes(), s2.hasBytes());
         assertEquals(s1.hasCharacters(), s2.hasCharacters());
         if (s1.hasCharacters()) {
@@ -635,7 +637,11 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
         assertEquals(s1.getName(), s2.getName());
         assertEquals(s1.getPath(), s2.getPath());
         assertEquals(s1.getURI(), s2.getURI());
-        assertEquals(s1.getURL(), s2.getURL());
+        URL url1 = s1.getURL();
+        URL url2 = s2.getURL();
+        // The URL is converted into URI before comparison to skip the expensive hostname
+        // normalization.
+        assertEquals(url1 == null ? null : url1.toURI(), url2 == null ? null : url2.toURI());
         assertEquals(s1.isInteractive(), s2.isInteractive());
         assertEquals(s1.isInternal(), s2.isInternal());
     }
@@ -738,13 +744,15 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
         TruffleFile file = languageEnv.getPublicTruffleFile(testFile.getPath());
         Source src = Source.newBuilder("lang", file).encoding(StandardCharsets.UTF_16LE).build();
         assertEquals(content, src.getCharacters().toString());
+        src = Source.newBuilder("TestTxt", file).encoding(StandardCharsets.UTF_16LE).build();
+        assertEquals(content, src.getCharacters().toString());
 
         testFile = File.createTempFile("test", ".xml").getAbsoluteFile();
         try (FileOutputStream out = new FileOutputStream(testFile)) {
             out.write(xmlContent.getBytes(Charset.forName("windows-1250")));
         }
         file = languageEnv.getPublicTruffleFile(testFile.getPath());
-        src = Source.newBuilder("lang", file).build();
+        src = Source.newBuilder("TestFooXML", file).build();
         assertEquals(xmlContent, src.getCharacters().toString());
 
         testFile = File.createTempFile("test", ".txt").getAbsoluteFile();
@@ -752,7 +760,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
             out.write(content.getBytes(StandardCharsets.UTF_8));
         }
         file = languageEnv.getPublicTruffleFile(testFile.getPath());
-        src = Source.newBuilder("lang", file).build();
+        src = Source.newBuilder("TestTxt", file).build();
         assertEquals(content, src.getCharacters().toString());
     }
 
@@ -769,19 +777,21 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
         }
         Source src = Source.newBuilder("lang", testFile.toURI().toURL()).encoding(StandardCharsets.UTF_16LE).build();
         assertEquals(content, src.getCharacters().toString());
+        src = Source.newBuilder("TestTxt", testFile.toURI().toURL()).encoding(StandardCharsets.UTF_16LE).build();
+        assertEquals(content, src.getCharacters().toString());
 
         testFile = File.createTempFile("test", ".xml").getAbsoluteFile();
         try (FileOutputStream out = new FileOutputStream(testFile)) {
             out.write(xmlContent.getBytes(Charset.forName("windows-1250")));
         }
-        src = Source.newBuilder("lang", testFile.toURI().toURL()).build();
+        src = Source.newBuilder("TestFooXML", testFile.toURI().toURL()).build();
         assertEquals(xmlContent, src.getCharacters().toString());
 
         testFile = File.createTempFile("test", ".txt").getAbsoluteFile();
         try (FileOutputStream out = new FileOutputStream(testFile)) {
             out.write(content.getBytes(StandardCharsets.UTF_8));
         }
-        src = Source.newBuilder("lang", testFile.toURI().toURL()).build();
+        src = Source.newBuilder("TestTxt", testFile.toURI().toURL()).build();
         assertEquals(content, src.getCharacters().toString());
     }
 
@@ -926,7 +936,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
     public static class TestJSLanguage extends ProxyLanguage {
     }
 
-    @Registration(id = "TestTxt", name = "", byteMimeTypes = "text/plain", fileTypeDetectors = CommonMIMETypeTestDetector.class)
+    @Registration(id = "TestTxt", name = "", characterMimeTypes = "text/plain", fileTypeDetectors = CommonMIMETypeTestDetector.class)
     public static class TestTxtLanguage extends ProxyLanguage {
     }
 

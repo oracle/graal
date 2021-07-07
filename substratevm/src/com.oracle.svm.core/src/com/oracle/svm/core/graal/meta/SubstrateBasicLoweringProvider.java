@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,6 +39,7 @@ import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.CompressionNode.CompressionOp;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.DeadEndNode;
 import org.graalvm.compiler.nodes.FieldLocationIdentity;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
@@ -69,6 +70,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.graal.nodes.FloatingWordCastNode;
 import com.oracle.svm.core.graal.nodes.SubstrateCompressionNode;
+import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.graal.nodes.SubstrateFieldLocationIdentity;
 import com.oracle.svm.core.graal.nodes.SubstrateNarrowOopStamp;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
@@ -133,6 +135,8 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
     public void lower(Node n, LoweringTool tool) {
         if (n instanceof AssertionNode) {
             lowerAssertionNode((AssertionNode) n);
+        } else if (n instanceof DeadEndNode) {
+            lowerDeadEnd((DeadEndNode) n);
         } else {
             super.lower(n, tool);
         }
@@ -160,7 +164,7 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
     }
 
     @Override
-    protected ValueNode createReadArrayComponentHub(StructuredGraph graph, ValueNode arrayHub, FixedNode anchor) {
+    protected ValueNode createReadArrayComponentHub(StructuredGraph graph, ValueNode arrayHub, boolean isKnownObjectArray, FixedNode anchor) {
         ConstantNode componentHubOffset = ConstantNode.forIntegerKind(target.wordJavaKind, runtimeConfig.getComponentHubOffset(), graph);
         AddressNode componentHubAddress = graph.unique(new OffsetAddressNode(arrayHub, componentHubOffset));
         FloatingReadNode componentHubRef = graph.unique(new FloatingReadNode(componentHubAddress, NamedLocationIdentity.FINAL_LOCATION, null, hubStamp, null, BarrierType.NONE));
@@ -216,6 +220,10 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
     private static void lowerAssertionNode(AssertionNode n) {
         // we discard the assertion if it was not handled by any other lowering
         n.graph().removeFixed(n);
+    }
+
+    protected void lowerDeadEnd(DeadEndNode deadEnd) {
+        deadEnd.replaceAndDelete(deadEnd.graph().add(new LoweredDeadEndNode()));
     }
 
     @Override

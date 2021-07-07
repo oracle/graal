@@ -24,22 +24,36 @@
  */
 package com.oracle.svm.hosted.meta;
 
-import org.graalvm.compiler.core.common.spi.JavaConstantFieldProvider;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+
+import com.oracle.svm.hosted.ameta.AnalysisConstantFieldProvider;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 @Platforms(Platform.HOSTED_ONLY.class)
-public class HostedConstantFieldProvider extends JavaConstantFieldProvider {
+public class HostedConstantFieldProvider extends SharedConstantFieldProvider {
 
-    public HostedConstantFieldProvider(MetaAccessProvider metaAccess) {
-        super(metaAccess);
+    public HostedConstantFieldProvider(MetaAccessProvider metaAccess, ClassInitializationSupport classInitializationSupport) {
+        super(metaAccess, classInitializationSupport);
     }
 
+    /**
+     * Note that this method must return true for all cases where
+     * {@link AnalysisConstantFieldProvider} returned true. Otherwise fields that were constant
+     * folded during analysis are not constant folded for compilation.
+     */
     @Override
-    protected boolean isFinalField(ResolvedJavaField field, ConstantFieldTool<?> tool) {
-        return ((HostedField) field).allowConstantFolding();
+    public boolean isFinalField(ResolvedJavaField f, ConstantFieldTool<?> tool) {
+        HostedField field = (HostedField) f;
+
+        if (field.location == HostedField.LOC_UNMATERIALIZED_STATIC_CONSTANT) {
+            return true;
+        } else if (!field.wrapped.isWritten()) {
+            return true;
+        }
+        return super.isFinalField(field, tool);
     }
 }

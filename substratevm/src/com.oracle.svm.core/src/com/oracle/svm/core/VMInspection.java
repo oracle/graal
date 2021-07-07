@@ -31,11 +31,9 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.TimeZone;
+import java.util.function.BooleanSupplier;
 
-import com.oracle.svm.core.thread.JavaThreads;
 import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionType;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -48,9 +46,9 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.ThreadStackPrinter.StackFramePrintVisitor;
+import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 
@@ -69,30 +67,34 @@ public class VMInspection implements Feature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        RuntimeSupport.getRuntimeSupport().addStartupHook(() -> {
-            DumpAllStacks.install();
-            if (VMInspectionOptions.AllowVMInspection.getValue() && !Platform.includedIn(WINDOWS.class)) {
-                /* We have enough signals to enable the rest. */
-                DumpHeapReport.install();
-                if (DeoptimizationSupport.enabled()) {
-                    DumpRuntimeCompilation.install();
-                }
-            }
-        });
+        RuntimeSupport.getRuntimeSupport().addStartupHook(new VMInspectionStartupHook());
     }
 
     @Fold
     public static boolean isEnabled() {
         return VMInspectionOptions.AllowVMInspection.getValue();
     }
+
+    public static final class IsEnabled implements BooleanSupplier {
+        @Override
+        public boolean getAsBoolean() {
+            return VMInspection.isEnabled();
+        }
+    }
 }
 
-class VMInspectionOptions {
-    @Option(help = "Enables features that allow the VM to be inspected during runtime.", type = OptionType.User) //
-    public static final HostedOptionKey<Boolean> AllowVMInspection = new HostedOptionKey<>(false);
-
-    @Option(help = "Dumps all thread stacktraces on SIGQUIT/SIGBREAK.", type = OptionType.User) //
-    public static final HostedOptionKey<Boolean> DumpThreadStacksOnSignal = new HostedOptionKey<>(false);
+final class VMInspectionStartupHook implements Runnable {
+    @Override
+    public void run() {
+        DumpAllStacks.install();
+        if (VMInspectionOptions.AllowVMInspection.getValue() && !Platform.includedIn(WINDOWS.class)) {
+            /* We have enough signals to enable the rest. */
+            DumpHeapReport.install();
+            if (DeoptimizationSupport.enabled()) {
+                DumpRuntimeCompilation.install();
+            }
+        }
+    }
 }
 
 class DumpAllStacks implements SignalHandler {
@@ -173,7 +175,7 @@ class DumpRuntimeCompilation implements SignalHandler {
     public void handle(Signal arg0) {
         JavaVMOperation.enqueueBlockingSafepoint("DumpRuntimeCompilation", () -> {
             Log log = Log.log();
-            SubstrateUtil.dumpRuntimeCompilation(log);
+            SubstrateDiagnostics.dumpRuntimeCompilation(log);
             log.flush();
         });
     }

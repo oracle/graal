@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -164,7 +164,7 @@ public class CompilationFinalPartialEvaluationTest extends PartialEvaluationTest
     public void compilationFinalTest1() {
         FrameDescriptor fd = new FrameDescriptor();
         AbstractTestNode result = new CompilationFinalTestNode();
-        assertPartialEvalEquals("constant42", new RootTestNode(fd, "compilationFinalTest", result));
+        assertPartialEvalEquals(CompilationFinalPartialEvaluationTest::constant42, new RootTestNode(fd, "compilationFinalTest", result));
     }
 
     @CompilationFinal(dimensions = 1) private static final long[] POWERS_OF_100 = {1L, 100L, 10000L, 21, 100000000L, 10000000000L, 1000000000000L, 100000000000000L, 10000000000000000L,
@@ -172,7 +172,7 @@ public class CompilationFinalPartialEvaluationTest extends PartialEvaluationTest
 
     @Test
     public void compilationFinalTest2() {
-        assertPartialEvalEquals("constant42", new RootNode(null) {
+        assertPartialEvalEquals(CompilationFinalPartialEvaluationTest::constant42, new RootNode(null) {
 
             @CompilationFinal private int i = 3;
 

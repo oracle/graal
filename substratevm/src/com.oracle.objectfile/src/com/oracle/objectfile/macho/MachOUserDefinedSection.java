@@ -36,7 +36,6 @@ import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.ObjectFile.Element;
 import com.oracle.objectfile.ObjectFile.RelocationKind;
-import com.oracle.objectfile.ObjectFile.RelocationRecord;
 import com.oracle.objectfile.ObjectFile.Segment;
 import com.oracle.objectfile.ObjectFile.Symbol;
 import com.oracle.objectfile.io.AssemblyBuffer;
@@ -160,7 +159,7 @@ public class MachOUserDefinedSection extends MachOSection implements ObjectFile.
     }
 
     @Override
-    public RelocationRecord markRelocationSite(int offset, ByteBuffer bb, RelocationKind k, String symbolName, boolean useImplicitAddend, Long explicitAddend) {
+    public void markRelocationSite(int offset, ByteBuffer bb, RelocationKind k, String symbolName, boolean useImplicitAddend, Long explicitAddend) {
         MachORelocationElement el = getOrCreateRelocationElement(useImplicitAddend);
         AssemblyBuffer sbb = new AssemblyBuffer(bb);
         sbb.setByteOrder(getOwner().getByteOrder());
@@ -215,7 +214,5 @@ public class MachOUserDefinedSection extends MachOSection implements ObjectFile.
         sbb.pop();
         RelocationInfo rec = new RelocationInfo(el, this, offset, length, k, symbolName, createAsLocalReloc);
         el.add(rec);
-
-        return rec;
     }
 }

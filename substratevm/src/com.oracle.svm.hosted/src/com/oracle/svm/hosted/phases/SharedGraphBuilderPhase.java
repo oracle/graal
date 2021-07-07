@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,29 +24,39 @@
  */
 package com.oracle.svm.hosted.phases;
 
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.type.StampPair;
+import org.graalvm.compiler.graph.Node.NodeIntrinsic;
+import org.graalvm.compiler.java.BciBlockMapping;
 import org.graalvm.compiler.java.BytecodeParser;
+import org.graalvm.compiler.java.FrameStateBuilder;
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.GeneratedInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
+import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.word.WordTypes;
 
 import com.oracle.graal.pointsto.constraints.TypeInstantiationException;
 import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.deopt.DeoptimizationSupport;
+import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.UserError.UserException;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ExceptionSynthesizer;
-import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.NativeImageOptions;
 
 import jdk.vm.ci.meta.JavaField;
@@ -89,10 +99,6 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             this.allowIncompleteClassPath = allowIncompleteClasspath;
         }
 
-        public GraphBuilderConfiguration getGraphBuilderConfig() {
-            return graphBuilderConfig;
-        }
-
         @Override
         protected RuntimeException throwParserError(Throwable e) {
             if (e instanceof UserException) {
@@ -107,6 +113,26 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
 
         private boolean checkWordTypes() {
             return getWordTypes() != null;
+        }
+
+        @Override
+        protected boolean disableLoopSafepoint() {
+            return super.disableLoopSafepoint() || method.getAnnotation(Uninterruptible.class) != null;
+        }
+
+        /**
+         * {@link Fold} and {@link NodeIntrinsic} can be deferred during parsing/decoding. Only by
+         * the end of {@linkplain SnippetTemplate#instantiate Snippet instantiation} do they need to
+         * have been processed.
+         *
+         * This is how SVM handles snippets. They are parsed with plugins disabled and then encoded
+         * and stored in the image. When the snippet is needed at runtime the graph is decoded and
+         * the plugins are run during the decoding process. If they aren't handled at this point
+         * then they will never be handled.
+         */
+        @Override
+        public boolean canDeferPlugin(GeneratedInvocationPlugin plugin) {
+            return plugin.getSource().equals(Fold.class) || plugin.getSource().equals(NodeIntrinsic.class);
         }
 
         @Override
@@ -308,21 +334,6 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         }
 
         @Override
-        protected boolean shouldComplementProbability() {
-            /*
-             * Probabilities from AOT profiles are about canonical conditions as they are coming
-             * from Graal IR. That is, they are collected after `BytecodeParser` has done conversion
-             * to Graal IR. Unfortunately, `BytecodeParser` assumes that probabilities are about
-             * original conditions and loads them before conversion to Graal IR.
-             *
-             * Therefore, in order to maintain correct probabilities we need to prevent
-             * `BytecodeParser` from complementing probability during transformations such as
-             * negation of a condition, or elimination of logical negation.
-             */
-            return !HostedConfiguration.instance().isUsingAOTProfiles();
-        }
-
-        @Override
         public MethodCallTargetNode createMethodCallTarget(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, StampPair returnStamp, JavaTypeProfile profile) {
             boolean isStatic = targetMethod.isStatic();
             if (!isStatic) {
@@ -332,7 +343,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                 checkWordType(args[i + (isStatic ? 0 : 1)], targetMethod.getSignature().getParameterType(i, null), "call argument");
             }
 
-            return super.createMethodCallTarget(invokeKind, targetMethod, args, returnStamp, profile);
+            return new SubstrateMethodCallTargetNode(invokeKind, targetMethod, args, returnStamp, profile, null);
         }
 
         @Override
@@ -373,6 +384,47 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         @Override
         public boolean isPluginEnabled(GraphBuilderPlugin plugin) {
             return true;
+        }
+
+        protected static boolean isDeoptimizationEnabled() {
+            return DeoptimizationSupport.enabled() && !SubstrateUtil.isBuildingLibgraal();
+        }
+
+        protected boolean isMethodDeoptTarget() {
+            return method instanceof SharedMethod && ((SharedMethod) method).isDeoptTarget();
+        }
+
+        @Override
+        protected boolean asyncExceptionLiveness() {
+            /*
+             * If deoptimization is enabled, then must assume that any method can deoptimize at any
+             * point while throwing an exception.
+             */
+            return isDeoptimizationEnabled();
+        }
+
+        @Override
+        protected void clearNonLiveLocalsAtTargetCreation(BciBlockMapping.BciBlock block, FrameStateBuilder state) {
+            /*
+             * In order to match potential DeoptEntryNodes, within runtime compiled code it is not
+             * possible to clear non-live locals at the start of a exception dispatch block if
+             * deoptimizations can be present, as exception dispatch blocks have the same deopt bci
+             * as the exception.
+             */
+            if ((!(isDeoptimizationEnabled() && block instanceof BciBlockMapping.ExceptionDispatchBlock)) || isMethodDeoptTarget()) {
+                super.clearNonLiveLocalsAtTargetCreation(block, state);
+            }
+        }
+
+        @Override
+        protected void clearNonLiveLocalsAtLoopExitCreation(BciBlockMapping.BciBlock block, FrameStateBuilder state) {
+            /*
+             * In order to match potential DeoptEntryNodes, within runtime compiled code it is not
+             * possible to clear non-live locals when deoptimizations can be present.
+             */
+            if (!isDeoptimizationEnabled() || isMethodDeoptTarget()) {
+                super.clearNonLiveLocalsAtLoopExitCreation(block, state);
+            }
         }
     }
 }

@@ -46,7 +46,7 @@ import java.util.Iterator;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.buffer.ObjectArrayBuffer;
-import com.oracle.truffle.regex.util.CompilationFinalBitSet;
+import com.oracle.truffle.regex.util.TBitSet;
 
 /**
  * This class provides an algorithm for converting a list of NFA transitions into a set of DFA
@@ -67,7 +67,7 @@ public abstract class StateTransitionCanonicalizer<SI extends StateIndex<? super
     @SuppressWarnings("unchecked") private ObjectArrayBuffer<T>[] transitionLists = new ObjectArrayBuffer[INITIAL_CAPACITY];
     @SuppressWarnings("unchecked") private StateSet<SI, S>[] targetStateSets = new StateSet[INITIAL_CAPACITY];
     private CodePointSet[] matcherBuilders = new CodePointSet[INITIAL_CAPACITY];
-    private CompilationFinalBitSet leadsToFinalState = new CompilationFinalBitSet(INITIAL_CAPACITY);
+    private TBitSet leadsToFinalState = new TBitSet(INITIAL_CAPACITY);
     private int resultLength = 0;
 
     private final SI stateIndex;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,11 @@ package com.oracle.truffle.regex.result;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
+@ExportLibrary(InteropLibrary.class)
 public final class SingleResultLazyStart extends LazyResult {
 
     private int start = -1;
@@ -103,5 +107,15 @@ public final class SingleResultLazyStart extends LazyResult {
             debugForceEvaluation();
         }
         return "[" + start + ", " + getEnd() + "]";
+    }
+
+    @TruffleBoundary
+    @ExportMessage
+    @Override
+    public Object toDisplayString(boolean allowSideEffects) {
+        if (allowSideEffects) {
+            return "TRegexLazyResult" + toString();
+        }
+        return "TRegexLazyResult[" + (isStartCalculated() ? start : "_not computed yet_") + ", " + getEnd() + ']';
     }
 }

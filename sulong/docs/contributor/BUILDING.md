@@ -93,7 +93,7 @@ mx --dynamicimport /compiler --jdk jvmci lli ...
 
 ## Debugging
 
-See [debugging](../user/DEBUGGING.md) for information how to debug C programs or
+See [debugging](../user/Debugging.md) for information how to debug C programs or
 LLVM bitcode running inside GraalVM. Note that for debugging options to be available from
 `mx`, the tools suite needs to be built and imported (`mx --dynamicimport /tools lli --inspect ...`).
 

@@ -40,9 +40,9 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
-import com.oracle.truffle.regex.tregex.util.Exceptions;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 /**
@@ -135,7 +135,7 @@ public class PositionAssertion extends Term {
             case DOLLAR:
                 return "$";
         }
-        throw Exceptions.shouldNotReachHere();
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     @TruffleBoundary

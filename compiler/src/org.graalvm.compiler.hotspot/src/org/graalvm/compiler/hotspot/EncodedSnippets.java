@@ -344,7 +344,7 @@ public class EncodedSnippets {
 
     private static void postDecode(DebugContext debug, StructuredGraph result, ResolvedJavaMethod original) {
         debug.dump(DebugContext.VERBOSE_LEVEL, result, "Before PartialIntrinsicCallTargetNode replacement");
-        for (PartialIntrinsicCallTargetNode partial : result.getNodes().filter(PartialIntrinsicCallTargetNode.class)) {
+        for (PartialIntrinsicCallTargetNode partial : result.getNodes(PartialIntrinsicCallTargetNode.TYPE)) {
             // Ensure the orignal method matches
             assert partial.checkName(original);
             ValueNode[] arguments = partial.arguments().toArray(new ValueNode[partial.arguments().size()]);
@@ -373,7 +373,7 @@ public class EncodedSnippets {
                         IntrinsicContext.CompilationContext context, EncodedGraph encodedGraph, boolean mustSucceed) {
             super(providers.getCodeCache().getTarget().arch, result, providers, null,
                             replacements.getGraphBuilderPlugins().getInvocationPlugins(), new InlineInvokePlugin[0], parameterPlugin,
-                            null, null, null, new ConcurrentHashMap<>(), new ConcurrentHashMap<>());
+                            null, null, null, new ConcurrentHashMap<>(), new ConcurrentHashMap<>(), false);
             this.method = method;
             this.encodedGraph = encodedGraph;
             this.mustSucceed = mustSucceed;

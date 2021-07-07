@@ -25,19 +25,20 @@
 package com.oracle.svm.hosted.c;
 
 import static org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
-import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.BiFunction;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
+import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.BeginNode;
@@ -54,10 +55,11 @@ import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.nodes.calc.SignExtendNode;
+import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess;
@@ -68,6 +70,7 @@ import org.graalvm.compiler.serviceprovider.BufferUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataImpl;
@@ -82,7 +85,6 @@ import com.oracle.svm.hosted.image.RelocatableBuffer;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -120,70 +122,63 @@ public class CGlobalDataFeature implements GraalFeature {
     }
 
     @Override
-    public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, InvocationPlugins invocationPlugins, boolean analysis, boolean hosted) {
-        Registration r = new Registration(invocationPlugins, CGlobalData.class);
+    public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, Plugins plugins, ParsingReason reason) {
+        Registration r = new Registration(plugins.getInvocationPlugins(), CGlobalData.class);
         r.register1("get", Receiver.class, new InvocationPlugin() {
             @Override
-            public boolean apply(GraphBuilderContext builderContext, ResolvedJavaMethod targetMethod, Receiver receiver) {
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 ValueNode cGlobalDataNode = receiver.get();
                 if (cGlobalDataNode.isConstant()) {
                     CGlobalDataImpl<?> data = (CGlobalDataImpl<?>) SubstrateObjectConstant.asObject(cGlobalDataNode.asConstant());
                     CGlobalDataInfo info = CGlobalDataFeature.this.map.get(data);
-                    builderContext.addPush(targetMethod.getSignature().getReturnKind(), new CGlobalDataLoadAddressNode(info));
+                    b.addPush(targetMethod.getSignature().getReturnKind(), new CGlobalDataLoadAddressNode(info));
                 } else {
-                    ConstantNode nonConstantRegistryNode = ConstantNode.forConstant(nonConstantRegistryJavaConstant, builderContext.getMetaAccess(), builderContext.getGraph());
+                    ConstantNode registry = ConstantNode.forConstant(nonConstantRegistryJavaConstant, b.getMetaAccess(), b.getGraph());
 
-                    ResolvedJavaMethod getCGlobalDataInfoResolvedMethod = builderContext.getMetaAccess().lookupJavaMethod(getCGlobalDataInfoMethod);
-                    ValueNode cGlobalDataInfo = (ValueNode) builderContext.handleReplacedInvoke(InvokeKind.Virtual, getCGlobalDataInfoResolvedMethod,
-                                    new ValueNode[]{nonConstantRegistryNode, cGlobalDataNode}, false);
-                    builderContext.pop(cGlobalDataInfo.getStackKind());
+                    ValueNode info = (ValueNode) b.handleReplacedInvoke(InvokeKind.Virtual, b.getMetaAccess().lookupJavaMethod(getCGlobalDataInfoMethod),
+                                    new ValueNode[]{registry, cGlobalDataNode}, false);
+                    b.pop(info.getStackKind());
+                    info = b.nullCheckedValue(info);
 
-                    ResolvedJavaType resolvedJavaType = builderContext.getMetaAccess().lookupJavaType(CGlobalDataInfo.class);
-                    if (resolvedJavaType instanceof AnalysisType) {
-                        ((AnalysisType) resolvedJavaType).registerAsReachable();
+                    ResolvedJavaType infoType = b.getMetaAccess().lookupJavaType(CGlobalDataInfo.class);
+                    if (infoType instanceof AnalysisType) {
+                        ((AnalysisType) infoType).registerAsReachable();
                     }
 
-                    ResolvedJavaField offset = builderContext.getMetaAccess().lookupJavaField(offsetField);
-                    ValueNode offsetFieldNode = builderContext.add(LoadFieldNode.create(builderContext.getAssumptions(), cGlobalDataInfo, offset)); // cGlobalDataInfo.offset
+                    ValueNode offset = b.add(LoadFieldNode.create(b.getAssumptions(), info, b.getMetaAccess().lookupJavaField(offsetField)));
+                    CGlobalDataLoadAddressNode baseAddress = b.add(new CGlobalDataLoadAddressNode(cGlobalDataBaseAddress));
 
-                    CGlobalDataLoadAddressNode cGlobalDataBaseAddressNode = builderContext.add(new CGlobalDataLoadAddressNode(cGlobalDataBaseAddress));
                     /* Both operands should have the same bits size */
-                    ValueNode cGlobalDataInfoOffsetWidened = builderContext.getGraph()
-                                    .addOrUnique(SignExtendNode.create(offsetFieldNode, IntegerStamp.getBits(cGlobalDataBaseAddressNode.stamp(NodeView.DEFAULT)), NodeView.DEFAULT));
-                    OffsetAddressNode cGlobalDataAddress = builderContext.add(new OffsetAddressNode(cGlobalDataBaseAddressNode, cGlobalDataInfoOffsetWidened));
+                    ValueNode offsetWidened = b.getGraph().addOrUnique(SignExtendNode.create(offset, IntegerStamp.getBits(baseAddress.stamp(NodeView.DEFAULT)), NodeView.DEFAULT));
+                    ValueNode address = b.add(new AddNode(baseAddress, offsetWidened));
 
-                    /* Should not dereference the address if CGlobalDataInfo is not a reference */
-                    ResolvedJavaField isSymbolReference = builderContext.getMetaAccess().lookupJavaField(isSymbolReferenceField);
-                    ValueNode isSymbolReferenceNode = builderContext.add(LoadFieldNode.create(builderContext.getAssumptions(), cGlobalDataInfo, isSymbolReference)); // cGlobalDataInfo.isSymbolReference
-                    LogicNode logicNode = IntegerEqualsNode.create(isSymbolReferenceNode, ConstantNode.forBoolean(false, builderContext.getGraph()), NodeView.DEFAULT);
+                    /* Do not dereference the address if CGlobalDataInfo is not a reference */
+                    ValueNode isSymbolReference = b.add(LoadFieldNode.create(b.getAssumptions(), info, b.getMetaAccess().lookupJavaField(isSymbolReferenceField)));
+                    LogicNode condition = IntegerEqualsNode.create(isSymbolReference, ConstantNode.forBoolean(false, b.getGraph()), NodeView.DEFAULT);
+                    ReadNode readValue = b.add(new ReadNode(b.add(OffsetAddressNode.create(address)), NamedLocationIdentity.ANY_LOCATION,
+                                    baseAddress.stamp(NodeView.DEFAULT), OnHeapMemoryAccess.BarrierType.NONE));
 
-                    AddNode calculatedAddress = builderContext.add(new AddNode(cGlobalDataAddress.getBase(), cGlobalDataAddress.getOffset()));
-                    ReadNode cGlobalDataValue = builderContext.add(new ReadNode(
-                                    cGlobalDataAddress,
-                                    NamedLocationIdentity.ANY_LOCATION,
-                                    cGlobalDataBaseAddressNode.stamp(NodeView.DEFAULT),
-                                    OnHeapMemoryAccess.BarrierType.NONE));
-
-                    AbstractBeginNode trueBegin = builderContext.add(new BeginNode());
+                    AbstractBeginNode trueBegin = b.add(new BeginNode());
                     FixedWithNextNode predecessor = (FixedWithNextNode) trueBegin.predecessor();
                     predecessor.setNext(null);
-                    AbstractBeginNode falseBegin = builderContext.add(new BeginNode());
+                    AbstractBeginNode falseBegin = b.add(new BeginNode());
                     trueBegin.setNext(null);
-                    IfNode ifNode = builderContext.add(new IfNode(logicNode, trueBegin, falseBegin, VERY_SLOW_PATH_PROBABILITY));
+                    IfNode ifNode = b.add(new IfNode(condition, trueBegin, falseBegin, BranchProbabilityNode.NOT_LIKELY_PROFILE));
                     falseBegin.setNext(null);
                     predecessor.setNext(ifNode);
 
-                    EndNode thenEnd = builderContext.add(new EndNode());
+                    EndNode thenEnd = b.add(new EndNode());
                     trueBegin.setNext(thenEnd);
-                    EndNode elseEnd = builderContext.add(new EndNode());
+                    EndNode elseEnd = b.add(new EndNode());
                     falseBegin.setNext(elseEnd);
-                    AbstractMergeNode merge = builderContext.add(new MergeNode());
+
+                    AbstractMergeNode merge = b.add(new MergeNode());
                     merge.addForwardEnd(thenEnd);
                     merge.addForwardEnd(elseEnd);
-
-                    ValuePhiNode phiNode = new ValuePhiNode(cGlobalDataBaseAddressNode.stamp(NodeView.DEFAULT), merge, new ValueNode[]{calculatedAddress, cGlobalDataValue});
-                    builderContext.push(targetMethod.getSignature().getReturnKind(), builderContext.getGraph().addOrUnique(phiNode));
-                    builderContext.setStateAfter(merge);
+                    ValuePhiNode phiNode = new ValuePhiNode(StampFactory.pointer(), merge, new ValueNode[]{address, readValue});
+                    phiNode.inferStamp();
+                    b.push(targetMethod.getSignature().getReturnKind(), b.getGraph().addOrUnique(phiNode));
+                    b.setStateAfter(merge);
                 }
                 return true;
             }
@@ -201,6 +196,36 @@ public class CGlobalDataFeature implements GraalFeature {
                             }
                             return cGlobalDataInfo;
                         });
+    }
+
+    /**
+     * Makes the provided object available in the binary as a global symbol
+     *
+     * Warning: Global symbols are affected by linking and loading rules that are OS dependent. So
+     * accessing a global symbol content at run time using the symbol name could return a different
+     * content than the one provided at build time. This happens for example on Linux when a shared
+     * library is loaded and the main executable already defines a symbol with the same name.
+     */
+    public void registerWithGlobalSymbol(CGlobalData<?> obj) {
+        registerWithGlobalSymbolImpl(obj);
+    }
+
+    /**
+     * Same as {@link #registerWithGlobalSymbol(CGlobalData)} but hides the provided object so that
+     * it will not show up in the dynamic symbol table of the final image.
+     */
+    public void registerWithGlobalHiddenSymbol(CGlobalData<?> obj) {
+        registerWithGlobalSymbolImpl(obj).makeHiddenSymbol();
+    }
+
+    private CGlobalDataInfo registerWithGlobalSymbolImpl(CGlobalData<?> obj) {
+        CGlobalDataInfo info = registerAsAccessedOrGet(obj);
+        info.makeGlobalSymbol();
+        return info;
+    }
+
+    public Set<String> getGlobalHiddenSymbols() {
+        return map.entrySet().stream().filter(entry -> entry.getValue().isGlobalSymbol() && entry.getValue().isHiddenSymbol()).map(entry -> entry.getKey().symbolName).collect(Collectors.toSet());
     }
 
     private Object replaceObject(Object obj) {
@@ -249,7 +274,11 @@ public class CGlobalDataFeature implements GraalFeature {
         return totalSize;
     }
 
-    public void writeData(RelocatableBuffer buffer, BiFunction<Integer, String, ?> createSymbol, BiFunction<Integer, String, ?> createSymbolReference) {
+    public interface SymbolConsumer {
+        void apply(int offset, String symbolName, boolean isGlobalSymbol);
+    }
+
+    public void writeData(RelocatableBuffer buffer, SymbolConsumer createSymbol, SymbolConsumer createSymbolReference) {
         assert isLayouted() : "Not layouted yet";
         ByteBuffer bufferBytes = buffer.getByteBuffer();
         int start = bufferBytes.position();
@@ -262,10 +291,10 @@ public class CGlobalDataFeature implements GraalFeature {
             }
             CGlobalDataImpl<?> data = info.getData();
             if (data.symbolName != null && !info.isSymbolReference()) {
-                createSymbol.apply(info.getOffset(), data.symbolName);
+                createSymbol.apply(info.getOffset(), data.symbolName, info.isGlobalSymbol());
             }
             if (data.nonConstant) {
-                createSymbolReference.apply(info.getOffset(), data.symbolName);
+                createSymbolReference.apply(info.getOffset(), data.symbolName, info.isGlobalSymbol());
             }
         }
     }

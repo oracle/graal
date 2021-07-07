@@ -692,11 +692,11 @@ C, C++, Fortran, Rust and inspect with JavaScript, Ruby & co.!
 
 ### Minimal Overhead when Accessing Locals
 
-GraalVM [Insight](Insight.md) is capable to access local variables. Is that for free
-or is there an inherent slowdown associated with each variable access? The answer
-is: **it depends**!
+GraalVM [Insight](Insight.md) is capable to access local variables. Moreover it
+is almost for free. Insight code accessing local variables blends with the 
+actual function code defining them and there is no visible slowdown.
 
-Let's demonstrate the issue on [sieve.js](../../vm/benchmarks/agentscript/sieve.js) -
+Let's demonstrate the this on [sieve.js](../../vm/benchmarks/agentscript/sieve.js) -
 an algorithm to compute hundred thousand of prime numbers. It keeps the
 so far found prime numbers in a linked list constructed via following
 function:
@@ -752,51 +752,101 @@ all hundred thousand prime numbers, we print the result. Let's try it:
 ```bash
 $ graalvm/bin/js  -e "var count=50" --insight=sieve-filter1.js --file sieve.js | grep Hundred | tail -n 2
 Hundred thousand prime numbers from 2 to 1299709 has sum 62260698721
-Hundred thousand prime numbers in 288 ms
+Hundred thousand prime numbers in 74 ms
 ```
 
-Well, there is a significant slowdown. What is it's reason? The primary reason
-for the slowdown is the ability of GraalVM to inline the Insight frame access
-to the local variable `frame.number`. Let's demonstrate it. Right now there are three
-accesses - let's replace them with a single one:
+No slowdown at all. [Insight](Insight.md) gives us great instrumentation capabilities - when combined with
+the great inlining algorithms of [GraalVM](http://graalvm.org/downloads)
+we can even access local variables with almost no performance penalty!
+
+### Accessing whole Stack
+
+There is a way for [Insight](Insight.md) to access the whole execution stack.
+Following code snippet shows how to do that:
+
 ```js
-insight.on('enter', (ctx, frame) => {
-    let n = frame.number;
-    sum += n;
-    if (n > max) {
-        max = n;
-    }
+insight.on("return", function(ctx, frame) {
+  print("dumping locals");
+  ctx.iterateFrames((at, vars) => {
+      for (let p in vars) {
+          print(`    at ${at.name} (${at.source.name}:${at.line}:${at.column}) ${p} has value ${vars[p]}`);
+      }
+  });
+  print("end of locals");
 }, {
-  roots: true,
-  rootNameFilter: 'Filter'
+  roots: true
 });
 ```
 
-after storing the `frame.number` into the temporary variable `n` we get following
-performance results:
+Whenever the [Insight](Insight.md) hook is triggered it prints the current execution
+stack with `name` of the function, `source.name`, `line` and `column`. Moreover
+it also prints values of all local `vars` at each frame. It is also possible to
+modify values of existing variables by assigning new values to them: `vars.n = 42`.
+Accessing whole stack is flexible, but unlike [access to locals in the current
+execution frame](Insight-Manual.md#modifying-local-variables), it is not fast
+operation. Use rarely, if you want your program to continue running at full speed!
 
-```bash
-$ graalvm/bin/js -e "var count=50" --insight=sieve-filter2.js --file sieve.js | grep Hundred | tail -n 2
-Hundred thousand prime numbers from 2 to 1299709 has sum 62260698721
-Hundred thousand prime numbers in 151 ms
+### Heap Dumping
+
+[Insight](Insight.md) can be used to snapshot a region of your program heap during
+the execution. Use `--heap.dump=/path/to/output.hprof` option together with
+regular `--insight` one. The [Insight](Insight.md) 
+script is going to get access to `heap` object with `dump` function.
+Place your hook whereever needed and at the right moment dump the heap:
+
+```js
+insight.on('return', (ctx, frame) => {
+    heap.dump({
+        format: '1.0',
+        depth: 50, // set max depth for traversing object references
+        events: [
+            {
+                stack : [
+                    {
+                        at : ctx, // location of dump sieve.js:73
+                        frame : {
+                            // assemble frame content as you want
+                            primes : frame.primes, // capture primes object
+                            cnt : frame.cnt, // capture cnt value
+                        },
+                        depth : 10 // optionally override depth to ten references
+                    }, // there can be more stack elements like this one
+                ]
+            },
+            // there can be multiple events like the previous one
+        ],
+    }); 
+    throw 'Heap dump written!';
+}, {
+    roots: true,
+    rootNameFilter: 'measure'
+});
 ```
 
-Faster. That confirms our expectations - the access to `frame.number` isn't
-inlined - e.g. it is not optimized enough right now. If we just could get
-better inlining!
-
-Luckily we can. [GraalVM EE](https://www.graalvm.org/downloads/) is known for having better inlining characteristics
-than GraalVM CE. Let's try to use it:
+Save the code snippet as `dump.js` file.
+Get the [sieve.js](../../vm/benchmarks/agentscript/sieve.js) file and
+launch it as:
 
 ```bash
-$ graalvm-ee/bin/js -e "var count=50" --insight=sieve-filter1.js --file sieve.js | grep Hundred | tail -n 2
-Hundred thousand prime numbers from 2 to 1299709 has sum 62260698721
-Hundred thousand prime numbers in 76 ms
+$ graalvm/bin/js --insight=dump.js --heap.dump=dump.hprof --file sieve.js
 ```
 
-Voilà! [Insight](Insight.md) gives us great instrumentation capabilities - when combined with
-the great inlining algorithms of [GraalVM Enterprise Edition](http://graalvm.org/downloads)
-we can even access local variables with almost no performance penalty!
+![Heap Stack](Insight-HeapStack.png)
+
+A `dump.hprof` file is going to be created at the end of `measure` function
+capturing the state of the memory of your progam. 
+Inspect the generated `.hprof` file with regular tools like
+[VisualVM](https://www.graalvm.org/tools/visualvm/) or [NetBeans](http://netbeans.org):
+
+![Heap Inspect](Insight-HeapInspect.png)
+
+The previous picture shows heap dump taken at the end of `measure` function in the
+[sieve.js](../../vm/benchmarks/agentscript/sieve.js) script. The function has just
+computed one hundred thousand (count available in variable `cnt`) prime numbers.
+The picture shows a linked list `Filter` holding prime numbers from `2` to `17`.
+The rest of the linked list is hidden (only references up to depth `10` were 
+requested) behind `unreachable` object. Last variable `x` shows the number of 
+searched natural numbers to compute all the prime numbers.
 
 <!--
 

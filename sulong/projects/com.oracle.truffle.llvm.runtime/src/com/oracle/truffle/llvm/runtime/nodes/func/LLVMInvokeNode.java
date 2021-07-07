@@ -150,12 +150,6 @@ public abstract class LLVMInvokeNode extends LLVMControlFlowNode {
     public abstract void execute(VirtualFrame frame);
 
     @Override
-    public boolean needsBranchProfiling() {
-        // we can't use branch profiling because the control flow happens via exception handling
-        return false;
-    }
-
-    @Override
     public boolean hasTag(Class<? extends Tag> tag) {
         if (tag == StandardTags.CallTag.class) {
             return getSourceLocation() != null;

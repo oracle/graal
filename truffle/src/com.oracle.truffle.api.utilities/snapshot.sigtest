@@ -126,8 +126,6 @@ meth public void invalidate(java.lang.String)
 supr java.lang.Object
 hfds first,name,second
 
-CLSS abstract interface com.oracle.truffle.api.utilities.package-info
-
 CLSS public abstract interface java.io.Serializable
 
 CLSS public abstract interface java.lang.Comparable<%0 extends java.lang.Object>

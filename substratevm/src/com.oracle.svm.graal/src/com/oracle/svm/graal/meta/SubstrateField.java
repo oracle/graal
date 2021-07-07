@@ -28,6 +28,7 @@ import static com.oracle.svm.core.util.VMError.unimplemented;
 
 import java.lang.annotation.Annotation;
 
+import com.oracle.svm.core.util.VMError;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -71,6 +72,8 @@ public class SubstrateField implements SharedField {
     final boolean truffleCloneableField;
 
     public SubstrateField(MetaAccessProvider originalMetaAccess, ResolvedJavaField original, int modifiers, HostedStringDeduplication stringTable) {
+        VMError.guarantee(!original.isInternal(), "Internal fields are not supported for JIT compilation");
+
         this.modifiers = modifiers;
         this.name = stringTable.deduplicate(original.getName(), true);
         this.hashCode = original.hashCode();
@@ -151,7 +154,7 @@ public class SubstrateField implements SharedField {
 
     @Override
     public boolean isInternal() {
-        throw unimplemented();
+        return false;
     }
 
     @Override

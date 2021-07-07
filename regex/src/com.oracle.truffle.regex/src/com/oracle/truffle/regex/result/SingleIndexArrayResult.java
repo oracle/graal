@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,11 @@ import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
+@ExportLibrary(InteropLibrary.class)
 public final class SingleIndexArrayResult extends RegexResult {
 
     @CompilationFinal(dimensions = 1) private final int[] indices;
@@ -71,5 +75,12 @@ public final class SingleIndexArrayResult extends RegexResult {
     @Override
     public String toString() {
         return Arrays.toString(indices);
+    }
+
+    @TruffleBoundary
+    @ExportMessage
+    @Override
+    public Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+        return "TRegexResult" + toString();
     }
 }

@@ -34,6 +34,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.function.BiConsumer;
+import java.util.logging.Handler;
 
 import org.graalvm.launcher.AbstractLanguageLauncher;
 import org.graalvm.options.OptionCategory;
@@ -103,6 +104,11 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
                         break;
                     case "partial-evaluation-time":
                         config.metric = new CompilationTimeMetric(CompilationTimeMetric.MetricType.PARTIAL_EVALUATION);
+                        break;
+                    case "one-shot":
+                        config.metric = new OneShotMetric();
+                        config.warmupIterations = 0;
+                        config.iterations = 1;
                         break;
                     default:
                         throw new IllegalArgumentException("Unknown metric: " + value);
@@ -206,7 +212,10 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
                 throw new AssertionError("Unknown execution-mode: " + config.mode);
         }
         contextBuilder.options(config.metric.getEngineOptions(config));
-
+        Handler handler = config.metric.getLogHandler();
+        if (handler != null) {
+            contextBuilder.logHandler(handler);
+        }
         try (Context context = contextBuilder.build()) {
             log("::: Initializing :::");
 
@@ -223,7 +232,7 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
                 throw abort("Error while examining source file '" + file + "': " + e.getMessage());
             }
 
-            context.eval(source);
+            Value evalSource = context.eval(source);
 
             log("language: " + source.getLanguage());
             log("type:     " + (source.hasBytes() ? "binary" : "source code"));
@@ -232,12 +241,12 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
             log("");
 
             log("::: Running warmup :::");
-            repeatIterations(context, language, source.getName(), true, config.warmupIterations);
+            repeatIterations(context, language, source.getName(), evalSource, true, config.warmupIterations);
             log("");
 
             log("::: Running :::");
             config.metric.reset();
-            repeatIterations(context, language, source.getName(), false, config.iterations);
+            repeatIterations(context, language, source.getName(), evalSource, false, config.iterations);
             log("");
         } catch (Throwable t) {
             throw abort(t);
@@ -252,8 +261,8 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
         return String.format("%.2f", v);
     }
 
-    private void repeatIterations(Context context, String languageId, String name, boolean warmup, int iterations) {
-        Value run = lookup(context, languageId, "run");
+    private void repeatIterations(Context context, String languageId, String name, Value evalSource, boolean warmup, int iterations) {
+        Value run = lookup(context, languageId, evalSource, "run");
         // Enter explicitly to avoid context switches for each iteration.
         context.enter();
         try {
@@ -281,9 +290,14 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
         }
     }
 
-    private Value lookup(Context context, String languageId, String memberName) {
+    private Value lookup(Context context, String languageId, Value evalSource, String memberName) {
         Value result;
         switch (languageId) {
+            case "llvm":
+                if (!evalSource.canExecute()) {
+                    throw abort("No main function found: " + evalSource);
+                }
+                return evalSource;
             case "wasm":
                 result = context.getBindings(languageId).getMember("main").getMember(memberName);
                 break;

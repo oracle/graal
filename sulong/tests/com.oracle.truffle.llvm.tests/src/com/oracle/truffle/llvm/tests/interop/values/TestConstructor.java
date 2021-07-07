@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -54,7 +54,7 @@ public class TestConstructor implements TruffleObject {
             Object ret = constructor.call(args);
             return ret;
         } else {
-            throw ArityException.create(arity, args.length);
+            throw ArityException.create(arity, arity, args.length);
         }
     }
 

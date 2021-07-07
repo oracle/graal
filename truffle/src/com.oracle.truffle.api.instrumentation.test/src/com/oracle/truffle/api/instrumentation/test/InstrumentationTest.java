@@ -82,6 +82,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
@@ -116,6 +117,7 @@ import com.oracle.truffle.api.instrumentation.SourceFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.instrumentation.ThreadsListener;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -546,6 +548,78 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
             Assert.fail("No exception was thrown.");
         } catch (PolyglotException ex) {
             Assert.assertTrue(ex.getMessage(), ex.getMessage().contains("MyLanguageException"));
+        }
+    }
+
+    @Test
+    public void testAttached() {
+        checkAttached(instrumentEnv.getInstrumenter().attachLoadSourceListener(SourceFilter.ANY, s -> {
+        }, true));
+        checkAttached(instrumentEnv.getInstrumenter().attachExecuteSourceListener(SourceFilter.ANY, s -> {
+        }, true));
+        checkAttached(instrumentEnv.getInstrumenter().attachAllocationListener(AllocationEventFilter.ANY, new AllocationListener() {
+            @Override
+            public void onEnter(AllocationEvent event) {
+            }
+
+            @Override
+            public void onReturnValue(AllocationEvent event) {
+            }
+        }));
+        checkAttached(instrumentEnv.getInstrumenter().attachErrConsumer(new PipedOutputStream()));
+        checkAttached(instrumentEnv.getInstrumenter().attachOutConsumer(new PipedOutputStream()));
+        checkAttached(instrumentEnv.getInstrumenter().attachExecutionEventFactory(SourceSectionFilter.ANY, e -> null));
+        checkAttached(instrumentEnv.getInstrumenter().attachThreadsListener(new ThreadsListener() {
+            @Override
+            public void onThreadInitialized(TruffleContext c, Thread thread) {
+            }
+
+            @Override
+            public void onThreadDisposed(TruffleContext c, Thread thread) {
+            }
+        }, true));
+    }
+
+    private static void checkAttached(EventBinding<?> binding) {
+        assertTrue(binding.isAttached());
+        try {
+            binding.attach();
+            fail("Should not allow a second attach.");
+        } catch (IllegalStateException ex) {
+            // O.K.
+        }
+    }
+
+    @Test
+    public void testTwoPhaseAttach() {
+        checkTwoPhaseAttach(instrumentEnv.getInstrumenter().createLoadSourceBinding(SourceFilter.ANY, s -> {
+        }, true));
+        checkTwoPhaseAttach(instrumentEnv.getInstrumenter().createExecuteSourceBinding(SourceFilter.ANY, s -> {
+        }, true));
+        checkTwoPhaseAttach(instrumentEnv.getInstrumenter().createLoadSourceSectionBinding(SourceSectionFilter.ANY, s -> {
+        }, true));
+    }
+
+    private static void checkTwoPhaseAttach(EventBinding<?> binding) {
+        assertFalse(binding.isAttached());
+        assertFalse(binding.isDisposed());
+        binding.attach();
+        try {
+            binding.attach();
+            fail("Should not allow a second attach.");
+        } catch (IllegalStateException ex) {
+            // O.K.
+        }
+        assertTrue(binding.isAttached());
+        assertFalse(binding.isDisposed());
+        binding.dispose();
+        assertFalse(binding.isAttached());
+        assertTrue(binding.isDisposed());
+        try {
+            binding.attach();
+            fail("Should not allow attach after dispose.");
+        } catch (IllegalStateException ex) {
+            // O.K.
         }
     }
 

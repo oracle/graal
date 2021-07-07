@@ -49,6 +49,7 @@ public class WasmFunction {
     private WasmCodeEntry codeEntry;
     private final int typeIndex;
     private int typeEquivalenceClass;
+    private String debugName;
 
     /**
      * Represents a WebAssembly function.
@@ -100,7 +101,14 @@ public class WasmFunction {
         if (exportedName != null) {
             return exportedName;
         }
+        if (debugName != null) {
+            return debugName;
+        }
         return "wasm-function:" + index;
+    }
+
+    public void setDebugName(String debugName) {
+        this.debugName = debugName;
     }
 
     public WasmCodeEntry codeEntry() {

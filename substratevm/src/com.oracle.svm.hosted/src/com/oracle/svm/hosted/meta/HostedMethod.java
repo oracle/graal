@@ -74,7 +74,6 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
     private final ConstantPool constantPool;
     private final ExceptionHandler[] handlers;
     protected StaticAnalysisResults staticAnalysisResults;
-    private final boolean hasNeverInlineDirective;
     protected int vtableIndex = -1;
 
     /**
@@ -94,6 +93,8 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
     public final CompilationInfo compilationInfo;
     private final LocalVariableTable localVariableTable;
 
+    private final String uniqueShortName;
+
     public HostedMethod(HostedUniverse universe, AnalysisMethod wrapped, HostedType holder, Signature signature, ConstantPool constantPool, ExceptionHandler[] handlers) {
         this.wrapped = wrapped;
         this.holder = holder;
@@ -101,6 +102,7 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
         this.constantPool = constantPool;
         this.handlers = handlers;
         this.compilationInfo = new CompilationInfo(this);
+        this.uniqueShortName = SubstrateUtil.uniqueShortName(this);
 
         LocalVariableTable newLocalVariableTable = null;
         if (wrapped.getLocalVariableTable() != null) {
@@ -122,7 +124,6 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
             }
         }
         localVariableTable = newLocalVariableTable;
-        hasNeverInlineDirective = SubstrateUtil.NativeImageLoadingShield.isNeverInline(wrapped);
     }
 
     @Override
@@ -161,6 +162,10 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
 
     public boolean isCompiled() {
         return compiled;
+    }
+
+    public String getUniqueShortName() {
+        return uniqueShortName;
     }
 
     /*
@@ -383,7 +388,7 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
 
     @Override
     public boolean hasNeverInlineDirective() {
-        return hasNeverInlineDirective;
+        return wrapped.hasNeverInlineDirective();
     }
 
     @Override

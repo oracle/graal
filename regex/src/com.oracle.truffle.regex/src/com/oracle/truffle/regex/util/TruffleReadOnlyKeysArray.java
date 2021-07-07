@@ -55,6 +55,7 @@ public class TruffleReadOnlyKeysArray extends AbstractRegexObject {
 
     @CompilationFinal(dimensions = 1) private final String[] keys;
 
+    @TruffleBoundary
     public TruffleReadOnlyKeysArray(String... keys) {
         this.keys = keys;
         Arrays.sort(this.keys);
@@ -86,5 +87,11 @@ public class TruffleReadOnlyKeysArray extends AbstractRegexObject {
             throw InvalidArrayIndexException.create(index);
         }
         return keys[(int) index];
+    }
+
+    @TruffleBoundary
+    @Override
+    public String toString() {
+        return "TRegexReadOnlyArray{" + "keys=" + Arrays.toString(keys) + '}';
     }
 }

@@ -33,11 +33,17 @@ public final class Script {
     private final int id;
     private final String url;
     private final Source source;
+    private final Source sourceLoaded;
 
     public Script(int id, String url, Source source) {
+        this(id, url, source, source);
+    }
+
+    public Script(int id, String url, Source source, Source sourceLoaded) {
         this.id = id;
         this.url = url;
         this.source = source;
+        this.sourceLoaded = sourceLoaded;
     }
 
     public int getId() {
@@ -50,6 +56,10 @@ public final class Script {
 
     public Source getSource() {
         return source;
+    }
+
+    public Source getSourceLoaded() {
+        return sourceLoaded;
     }
 
     public CharSequence getCharacters() {

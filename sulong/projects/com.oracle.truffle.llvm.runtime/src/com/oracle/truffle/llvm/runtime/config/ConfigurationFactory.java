@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -62,4 +62,14 @@ public interface ConfigurationFactory<KEY> {
     Configuration createConfiguration(LLVMLanguage language, ContextExtension.Registry ctxExtRegistry, KEY key);
 
     List<OptionDescriptor> getOptionDescriptors();
+
+    /**
+     * Returns the name of the configuration.
+     */
+    String getName();
+
+    /**
+     * Returns a hint for the user on {@link #parseOptions required options} for this configuration.
+     */
+    String getHint();
 }

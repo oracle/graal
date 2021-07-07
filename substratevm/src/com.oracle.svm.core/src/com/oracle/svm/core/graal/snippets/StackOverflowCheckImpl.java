@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.graal.snippets;
 
-import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.LUDICROUSLY_SLOW_PATH_PROBABILITY;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.EXTREMELY_SLOW_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 
 import java.util.Map;
@@ -74,7 +74,7 @@ import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
-import com.oracle.svm.core.graal.nodes.UnreachableNode;
+import org.graalvm.compiler.nodes.UnreachableNode;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
 import com.oracle.svm.core.meta.SharedMethod;
@@ -170,6 +170,11 @@ final class StackOverflowCheckImpl implements StackOverflowCheck {
                             "2) Frames of native code filled the stack, and now there is not even enough stack space left to throw a regular StackOverflowError; " +
                             "3) An internal VM error occurred.");
         }
+    }
+
+    @Override
+    public boolean isYellowZoneAvailable() {
+        return yellowZoneStateTL.get() > STATE_YELLOW_ENABLED;
     }
 
     @Uninterruptible(reason = "Atomically manipulating state of multiple thread local variables.")
@@ -284,7 +289,7 @@ final class StackOverflowCheckSnippets extends SubstrateTemplates implements Sni
              */
             stackBoundary = stackBoundary.add(WordFactory.unsigned(deoptFrameSize));
         }
-        if (probability(LUDICROUSLY_SLOW_PATH_PROBABILITY, KnownIntrinsics.readStackPointer().belowOrEqual(stackBoundary))) {
+        if (probability(EXTREMELY_SLOW_PATH_PROBABILITY, KnownIntrinsics.readStackPointer().belowOrEqual(stackBoundary))) {
 
             /*
              * This check is constant folded during snippet lowering, to avoid setting up a boolean

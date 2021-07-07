@@ -26,6 +26,7 @@ package com.oracle.svm.jni;
 
 import java.util.function.Predicate;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.word.PointerBase;
 
@@ -54,6 +55,13 @@ public class JNIThreadLocalPinnedObjects {
         return pin.addressOfArrayElement(0);
     }
 
+    /**
+     * Unpins the first object in the pinned objects list matching a predicate.
+     * 
+     * @param p Predicate determining whether to unpin an object.
+     * @return {@code true} if an object was unpinned, {@code false} if no object in the pinned
+     *         objects list matched the predicate.
+     */
     private static boolean unpinFirst(Predicate<PinnedObjectListNode> p) {
         PinnedObjectListNode previous = null;
         PinnedObjectListNode current = pinnedObjectsListHead.get();
@@ -78,7 +86,8 @@ public class JNIThreadLocalPinnedObjects {
     }
 
     public static boolean unpinArrayByAddress(PointerBase address) {
-        return unpinFirst(n -> n.object.getObject().getClass().isArray() && n.object.addressOfArrayElement(0) == address);
+        JNISupport support = ImageSingletons.lookup(JNISupport.class);
+        return unpinFirst(n -> support.isArrayLayout(n.object.getObject().getClass()) && n.object.addressOfArrayElement(0) == address);
     }
 
     static int pinnedObjectCount() {

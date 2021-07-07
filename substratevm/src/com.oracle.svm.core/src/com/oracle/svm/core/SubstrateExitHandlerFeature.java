@@ -37,8 +37,15 @@ public class SubstrateExitHandlerFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         if (SubstrateOptions.InstallExitHandlers.getValue() && ImageInfo.isExecutable()) {
-            RuntimeSupport.getRuntimeSupport().addStartupHook(Target_java_lang_Terminator::setup);
+            RuntimeSupport.getRuntimeSupport().addStartupHook(new SubstrateExitHandlerStartupHook());
         }
+    }
+}
+
+final class SubstrateExitHandlerStartupHook implements Runnable {
+    @Override
+    public void run() {
+        Target_java_lang_Terminator.setup();
     }
 }
 

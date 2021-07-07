@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -71,8 +71,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.logging.Handler;
+import java.util.logging.Level;
 import java.util.logging.LogRecord;
 
+import com.oracle.truffle.api.ContextLocal;
+import com.oracle.truffle.api.ContextThreadLocal;
+import com.oracle.truffle.api.ThreadLocalAction;
+import com.oracle.truffle.api.TruffleLogger;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
@@ -106,6 +111,8 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.RootNode;
 import java.util.Optional;
+import java.util.stream.Collectors;
+
 import org.graalvm.collections.Pair;
 
 public class ContextPreInitializationTest {
@@ -134,8 +141,6 @@ public class ContextPreInitializationTest {
         ContextPreInitializationTestSecondLanguage.lookupService = false;
         ContextPreInitializationFirstInstrument.actions = null;
         BaseLanguage.actions.clear();
-        BaseLanguage.parseStdOutOutput.clear();
-        BaseLanguage.parseStdErrOutput.clear();
         resetSystemPropertiesOptions();
         resetLanguageHomes();
         patchableLanguages.clear();
@@ -147,8 +152,10 @@ public class ContextPreInitializationTest {
         setPatchable();
         final String stdOutContent = "output";
         final String stdErrContent = "error";
-        BaseLanguage.parseStdOutOutput.put(FIRST, stdOutContent);
-        BaseLanguage.parseStdErrOutput.put(FIRST, stdErrContent);
+        BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_EXECUTE, (env) -> {
+            write(env.out(), stdOutContent);
+            write(env.err(), stdErrContent);
+        });
         doContextPreinitialize();
         List<CountingContext> contexts = new ArrayList<>(emittedContexts);
         assertEquals(0, contexts.size());
@@ -169,10 +176,14 @@ public class ContextPreInitializationTest {
         final String firstStdErrContent = "first-error";
         final String secondStdOutContent = "second-output";
         final String secondStdErrContent = "second-error";
-        BaseLanguage.parseStdOutOutput.put(FIRST, firstStdOutContent);
-        BaseLanguage.parseStdErrOutput.put(FIRST, firstStdErrContent);
-        BaseLanguage.parseStdOutOutput.put(SECOND, secondStdOutContent);
-        BaseLanguage.parseStdErrOutput.put(SECOND, secondStdErrContent);
+        BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_EXECUTE, (env) -> {
+            write(env.out(), firstStdOutContent);
+            write(env.err(), firstStdErrContent);
+        });
+        BaseLanguage.registerAction(ContextPreInitializationTestSecondLanguage.class, ActionKind.ON_EXECUTE, (env) -> {
+            write(env.out(), secondStdOutContent);
+            write(env.err(), secondStdErrContent);
+        });
         doContextPreinitialize(FIRST);
         List<CountingContext> contexts = new ArrayList<>(emittedContexts);
         assertEquals(1, contexts.size());
@@ -279,8 +290,8 @@ public class ContextPreInitializationTest {
         assertEquals(1, firstLangCtx.initializeContextCount);
         assertEquals(0, firstLangCtx.patchContextCount);
         assertEquals(0, firstLangCtx.disposeContextCount);
-        assertEquals(0, firstLangCtx.initializeThreadCount);
-        assertEquals(0, firstLangCtx.disposeThreadCount);
+        assertEquals(1, firstLangCtx.initializeThreadCount);
+        assertEquals(1, firstLangCtx.disposeThreadCount);
         final Context ctx = Context.create();
         Value res = ctx.eval(Source.create(FIRST, "test"));
         assertEquals("test", res.asString());
@@ -290,8 +301,8 @@ public class ContextPreInitializationTest {
         assertEquals(1, firstLangCtx.initializeContextCount);
         assertEquals(1, firstLangCtx.patchContextCount);
         assertEquals(0, firstLangCtx.disposeContextCount);
-        assertEquals(1, firstLangCtx.initializeThreadCount);
-        assertEquals(0, firstLangCtx.disposeThreadCount);
+        assertEquals(2, firstLangCtx.initializeThreadCount);
+        assertEquals(1, firstLangCtx.disposeThreadCount);
         res = ctx.eval(Source.create(SECOND, "test"));
         assertEquals("test", res.asString());
         contexts = new ArrayList<>(emittedContexts);
@@ -302,8 +313,8 @@ public class ContextPreInitializationTest {
         assertEquals(1, firstLangCtx.initializeContextCount);
         assertEquals(1, firstLangCtx.patchContextCount);
         assertEquals(0, firstLangCtx.disposeContextCount);
-        assertEquals(1, firstLangCtx.initializeThreadCount);
-        assertEquals(0, firstLangCtx.disposeThreadCount);
+        assertEquals(2, firstLangCtx.initializeThreadCount);
+        assertEquals(1, firstLangCtx.disposeThreadCount);
         assertEquals(1, secondLangCtx.createContextCount);
         assertEquals(1, secondLangCtx.initializeContextCount);
         assertEquals(0, secondLangCtx.patchContextCount);
@@ -317,8 +328,8 @@ public class ContextPreInitializationTest {
         assertEquals(1, firstLangCtx.initializeContextCount);
         assertEquals(1, firstLangCtx.patchContextCount);
         assertEquals(1, firstLangCtx.disposeContextCount);
-        assertEquals(1, firstLangCtx.initializeThreadCount);
-        assertEquals(1, firstLangCtx.disposeThreadCount);
+        assertEquals(2, firstLangCtx.initializeThreadCount);
+        assertEquals(2, firstLangCtx.disposeThreadCount);
         assertEquals(1, secondLangCtx.createContextCount);
         assertEquals(1, secondLangCtx.initializeContextCount);
         assertEquals(0, secondLangCtx.patchContextCount);
@@ -341,14 +352,14 @@ public class ContextPreInitializationTest {
         assertEquals(1, firstLangCtx.initializeContextCount);
         assertEquals(0, firstLangCtx.patchContextCount);
         assertEquals(0, firstLangCtx.disposeContextCount);
-        assertEquals(0, firstLangCtx.initializeThreadCount);
-        assertEquals(0, firstLangCtx.disposeThreadCount);
+        assertEquals(1, firstLangCtx.initializeThreadCount);
+        assertEquals(1, firstLangCtx.disposeThreadCount);
         assertEquals(1, secondLangCtx.createContextCount);
         assertEquals(1, secondLangCtx.initializeContextCount);
         assertEquals(0, secondLangCtx.patchContextCount);
         assertEquals(0, secondLangCtx.disposeContextCount);
-        assertEquals(0, secondLangCtx.initializeThreadCount);
-        assertEquals(0, secondLangCtx.disposeThreadCount);
+        assertEquals(1, secondLangCtx.initializeThreadCount);
+        assertEquals(1, secondLangCtx.disposeThreadCount);
         final Context ctx = Context.create();
         Value res = ctx.eval(Source.create(FIRST, "test"));
         assertEquals("test", res.asString());
@@ -358,14 +369,14 @@ public class ContextPreInitializationTest {
         assertEquals(1, firstLangCtx.initializeContextCount);
         assertEquals(1, firstLangCtx.patchContextCount);
         assertEquals(0, firstLangCtx.disposeContextCount);
-        assertEquals(1, firstLangCtx.initializeThreadCount);
-        assertEquals(0, firstLangCtx.disposeThreadCount);
+        assertEquals(2, firstLangCtx.initializeThreadCount);
+        assertEquals(1, firstLangCtx.disposeThreadCount);
         assertEquals(1, secondLangCtx.createContextCount);
         assertEquals(1, secondLangCtx.initializeContextCount);
         assertEquals(1, secondLangCtx.patchContextCount);
         assertEquals(0, secondLangCtx.disposeContextCount);
-        assertEquals(1, secondLangCtx.initializeThreadCount);
-        assertEquals(0, secondLangCtx.disposeThreadCount);
+        assertEquals(2, secondLangCtx.initializeThreadCount);
+        assertEquals(1, secondLangCtx.disposeThreadCount);
         res = ctx.eval(Source.create(SECOND, "test"));
         assertEquals("test", res.asString());
         contexts = new ArrayList<>(emittedContexts);
@@ -374,14 +385,14 @@ public class ContextPreInitializationTest {
         assertEquals(1, firstLangCtx.initializeContextCount);
         assertEquals(1, firstLangCtx.patchContextCount);
         assertEquals(0, firstLangCtx.disposeContextCount);
-        assertEquals(1, firstLangCtx.initializeThreadCount);
-        assertEquals(0, firstLangCtx.disposeThreadCount);
+        assertEquals(2, firstLangCtx.initializeThreadCount);
+        assertEquals(1, firstLangCtx.disposeThreadCount);
         assertEquals(1, secondLangCtx.createContextCount);
         assertEquals(1, secondLangCtx.initializeContextCount);
         assertEquals(1, secondLangCtx.patchContextCount);
         assertEquals(0, secondLangCtx.disposeContextCount);
-        assertEquals(1, secondLangCtx.initializeThreadCount);
-        assertEquals(0, secondLangCtx.disposeThreadCount);
+        assertEquals(2, secondLangCtx.initializeThreadCount);
+        assertEquals(1, secondLangCtx.disposeThreadCount);
         ctx.close();
         contexts = new ArrayList<>(emittedContexts);
         assertEquals(2, contexts.size());
@@ -389,14 +400,14 @@ public class ContextPreInitializationTest {
         assertEquals(1, firstLangCtx.initializeContextCount);
         assertEquals(1, firstLangCtx.patchContextCount);
         assertEquals(1, firstLangCtx.disposeContextCount);
-        assertEquals(1, firstLangCtx.initializeThreadCount);
-        assertEquals(1, firstLangCtx.disposeThreadCount);
+        assertEquals(2, firstLangCtx.initializeThreadCount);
+        assertEquals(2, firstLangCtx.disposeThreadCount);
         assertEquals(1, secondLangCtx.createContextCount);
         assertEquals(1, secondLangCtx.initializeContextCount);
         assertEquals(1, secondLangCtx.patchContextCount);
         assertEquals(1, secondLangCtx.disposeContextCount);
-        assertEquals(1, secondLangCtx.initializeThreadCount);
-        assertEquals(1, secondLangCtx.disposeThreadCount);
+        assertEquals(2, secondLangCtx.initializeThreadCount);
+        assertEquals(2, secondLangCtx.disposeThreadCount);
     }
 
     @Test
@@ -413,14 +424,14 @@ public class ContextPreInitializationTest {
         assertEquals(1, firstLangCtx.initializeContextCount);
         assertEquals(0, firstLangCtx.patchContextCount);
         assertEquals(0, firstLangCtx.disposeContextCount);
-        assertEquals(0, firstLangCtx.initializeThreadCount);
-        assertEquals(0, firstLangCtx.disposeThreadCount);
+        assertEquals(1, firstLangCtx.initializeThreadCount);
+        assertEquals(1, firstLangCtx.disposeThreadCount);
         assertEquals(1, secondLangCtx.createContextCount);
         assertEquals(1, secondLangCtx.initializeContextCount);
         assertEquals(0, secondLangCtx.patchContextCount);
         assertEquals(0, secondLangCtx.disposeContextCount);
-        assertEquals(0, secondLangCtx.initializeThreadCount);
-        assertEquals(0, secondLangCtx.disposeThreadCount);
+        assertEquals(1, secondLangCtx.initializeThreadCount);
+        assertEquals(1, secondLangCtx.disposeThreadCount);
         final Context ctx = Context.create();
         Value res = ctx.eval(Source.create(FIRST, "test"));
         assertEquals("test", res.asString());
@@ -434,14 +445,14 @@ public class ContextPreInitializationTest {
         assertEquals(1, firstLangCtx.initializeContextCount);
         assertEquals(1, firstLangCtx.patchContextCount);
         assertEquals(1, firstLangCtx.disposeContextCount);
-        assertEquals(1, firstLangCtx.initializeThreadCount); // Close initializes thread
-        assertEquals(1, firstLangCtx.disposeThreadCount);    // Close initializes thread
+        assertEquals(2, firstLangCtx.initializeThreadCount); // Close initializes thread
+        assertEquals(2, firstLangCtx.disposeThreadCount);    // Close initializes thread
         assertEquals(1, secondLangCtx.createContextCount);
         assertEquals(1, secondLangCtx.initializeContextCount);
         assertEquals(1, secondLangCtx.patchContextCount);
         assertEquals(1, secondLangCtx.disposeContextCount);
-        assertEquals(1, secondLangCtx.initializeThreadCount);    // Close initializes thread
-        assertEquals(1, secondLangCtx.disposeThreadCount);       // Close initializes thread
+        assertEquals(2, secondLangCtx.initializeThreadCount);    // Close initializes thread
+        assertEquals(2, secondLangCtx.disposeThreadCount);       // Close initializes thread
         assertEquals(1, firstLangCtx2.createContextCount);
         assertEquals(1, firstLangCtx2.initializeContextCount);
         assertEquals(0, firstLangCtx2.patchContextCount);
@@ -454,20 +465,20 @@ public class ContextPreInitializationTest {
         assertEquals(1, firstLangCtx.initializeContextCount);
         assertEquals(1, firstLangCtx.patchContextCount);
         assertEquals(1, firstLangCtx.disposeContextCount);
-        assertEquals(1, firstLangCtx.initializeThreadCount);
-        assertEquals(1, firstLangCtx.disposeThreadCount);
+        assertEquals(2, firstLangCtx.initializeThreadCount);
+        assertEquals(2, firstLangCtx.disposeThreadCount);
         assertEquals(1, secondLangCtx.createContextCount);
         assertEquals(1, secondLangCtx.initializeContextCount);
         assertEquals(1, secondLangCtx.patchContextCount);
         assertEquals(1, secondLangCtx.disposeContextCount);
-        assertEquals(1, secondLangCtx.initializeThreadCount);
-        assertEquals(1, secondLangCtx.disposeThreadCount);
+        assertEquals(2, secondLangCtx.initializeThreadCount);
+        assertEquals(2, secondLangCtx.disposeThreadCount);
         assertEquals(1, firstLangCtx2.createContextCount);
         assertEquals(1, firstLangCtx2.initializeContextCount);
         assertEquals(0, firstLangCtx2.patchContextCount);
-        assertEquals(1, firstLangCtx.disposeContextCount);
-        assertEquals(1, firstLangCtx.initializeThreadCount);
-        assertEquals(1, firstLangCtx.disposeThreadCount);
+        assertEquals(1, firstLangCtx2.disposeContextCount);
+        assertEquals(1, firstLangCtx2.initializeThreadCount);
+        assertEquals(1, firstLangCtx2.disposeThreadCount);
     }
 
     @Test
@@ -610,24 +621,24 @@ public class ContextPreInitializationTest {
         assertEquals(1, secondLangCtx.initializeContextCount);
         assertEquals(0, secondLangCtx.patchContextCount);
         assertEquals(0, secondLangCtx.disposeContextCount);
-        assertEquals(0, secondLangCtx.initializeThreadCount);
-        assertEquals(0, secondLangCtx.disposeThreadCount);
+        assertEquals(1, secondLangCtx.initializeThreadCount);
+        assertEquals(1, secondLangCtx.disposeThreadCount);
         final CountingContext firstLangCtx = findContext(FIRST, contexts);
         assertNotNull(firstLangCtx);
         assertEquals(1, firstLangCtx.createContextCount);
         assertEquals(1, firstLangCtx.initializeContextCount);
         assertEquals(0, firstLangCtx.patchContextCount);
         assertEquals(0, firstLangCtx.disposeContextCount);
-        assertEquals(0, firstLangCtx.initializeThreadCount);
-        assertEquals(0, firstLangCtx.disposeThreadCount);
+        assertEquals(1, firstLangCtx.initializeThreadCount);
+        assertEquals(1, firstLangCtx.disposeThreadCount);
         final CountingContext internalLangCtx = findContext(INTERNAL, contexts);
         assertNotNull(internalLangCtx);
         assertEquals(1, internalLangCtx.createContextCount);
         assertEquals(1, internalLangCtx.initializeContextCount);
         assertEquals(0, internalLangCtx.patchContextCount);
         assertEquals(0, internalLangCtx.disposeContextCount);
-        assertEquals(0, internalLangCtx.initializeThreadCount);
-        assertEquals(0, internalLangCtx.disposeThreadCount);
+        assertEquals(1, internalLangCtx.initializeThreadCount);
+        assertEquals(1, internalLangCtx.disposeThreadCount);
         final Context ctx = Context.create();
         Value res = ctx.eval(Source.create(SECOND, "test"));
         assertEquals("test", res.asString());
@@ -637,20 +648,20 @@ public class ContextPreInitializationTest {
         assertEquals(1, secondLangCtx.initializeContextCount);
         assertEquals(1, secondLangCtx.patchContextCount);
         assertEquals(0, secondLangCtx.disposeContextCount);
-        assertEquals(1, secondLangCtx.initializeThreadCount);
-        assertEquals(0, secondLangCtx.disposeThreadCount);
+        assertEquals(2, secondLangCtx.initializeThreadCount);
+        assertEquals(1, secondLangCtx.disposeThreadCount);
         assertEquals(1, firstLangCtx.createContextCount);
         assertEquals(1, firstLangCtx.initializeContextCount);
         assertEquals(1, firstLangCtx.patchContextCount);
         assertEquals(0, firstLangCtx.disposeContextCount);
-        assertEquals(1, firstLangCtx.initializeThreadCount);
-        assertEquals(0, firstLangCtx.disposeThreadCount);
+        assertEquals(2, firstLangCtx.initializeThreadCount);
+        assertEquals(1, firstLangCtx.disposeThreadCount);
         assertEquals(1, internalLangCtx.createContextCount);
         assertEquals(1, internalLangCtx.initializeContextCount);
         assertEquals(1, internalLangCtx.patchContextCount);
         assertEquals(0, internalLangCtx.disposeContextCount);
-        assertEquals(1, internalLangCtx.initializeThreadCount);
-        assertEquals(0, internalLangCtx.disposeThreadCount);
+        assertEquals(2, internalLangCtx.initializeThreadCount);
+        assertEquals(1, internalLangCtx.disposeThreadCount);
         assertTrue(internalLangCtx.patchContextOrder < firstLangCtx.patchContextOrder);
         assertTrue(firstLangCtx.patchContextOrder < secondLangCtx.patchContextOrder);
         ctx.close();
@@ -660,20 +671,20 @@ public class ContextPreInitializationTest {
         assertEquals(1, secondLangCtx.initializeContextCount);
         assertEquals(1, secondLangCtx.patchContextCount);
         assertEquals(1, secondLangCtx.disposeContextCount);
-        assertEquals(1, secondLangCtx.initializeThreadCount);
-        assertEquals(1, secondLangCtx.disposeThreadCount);
+        assertEquals(2, secondLangCtx.initializeThreadCount);
+        assertEquals(2, secondLangCtx.disposeThreadCount);
         assertEquals(1, firstLangCtx.createContextCount);
         assertEquals(1, firstLangCtx.initializeContextCount);
         assertEquals(1, firstLangCtx.patchContextCount);
         assertEquals(1, firstLangCtx.disposeContextCount);
-        assertEquals(1, firstLangCtx.initializeThreadCount);
-        assertEquals(1, firstLangCtx.disposeThreadCount);
+        assertEquals(2, firstLangCtx.initializeThreadCount);
+        assertEquals(2, firstLangCtx.disposeThreadCount);
         assertEquals(1, internalLangCtx.createContextCount);
         assertEquals(1, internalLangCtx.initializeContextCount);
         assertEquals(1, internalLangCtx.patchContextCount);
         assertEquals(1, internalLangCtx.disposeContextCount);
-        assertEquals(1, internalLangCtx.initializeThreadCount);
-        assertEquals(1, internalLangCtx.disposeThreadCount);
+        assertEquals(2, internalLangCtx.initializeThreadCount);
+        assertEquals(2, internalLangCtx.disposeThreadCount);
     }
 
     @Test
@@ -690,24 +701,24 @@ public class ContextPreInitializationTest {
         assertEquals(1, secondLangCtx.initializeContextCount);
         assertEquals(0, secondLangCtx.patchContextCount);
         assertEquals(0, secondLangCtx.disposeContextCount);
-        assertEquals(0, secondLangCtx.initializeThreadCount);
-        assertEquals(0, secondLangCtx.disposeThreadCount);
+        assertEquals(1, secondLangCtx.initializeThreadCount);
+        assertEquals(1, secondLangCtx.disposeThreadCount);
         final CountingContext firstLangCtx = findContext(FIRST, contexts);
         assertNotNull(firstLangCtx);
         assertEquals(1, firstLangCtx.createContextCount);
         assertEquals(1, firstLangCtx.initializeContextCount);
         assertEquals(0, firstLangCtx.patchContextCount);
         assertEquals(0, firstLangCtx.disposeContextCount);
-        assertEquals(0, firstLangCtx.initializeThreadCount);
-        assertEquals(0, firstLangCtx.disposeThreadCount);
+        assertEquals(1, firstLangCtx.initializeThreadCount);
+        assertEquals(1, firstLangCtx.disposeThreadCount);
         final CountingContext internalLangCtx = findContext(INTERNAL, contexts);
         assertNotNull(internalLangCtx);
         assertEquals(1, internalLangCtx.createContextCount);
         assertEquals(1, internalLangCtx.initializeContextCount);
         assertEquals(0, internalLangCtx.patchContextCount);
         assertEquals(0, internalLangCtx.disposeContextCount);
-        assertEquals(0, internalLangCtx.initializeThreadCount);
-        assertEquals(0, internalLangCtx.disposeThreadCount);
+        assertEquals(1, internalLangCtx.initializeThreadCount);
+        assertEquals(1, internalLangCtx.disposeThreadCount);
         final Context ctx = Context.create();
         Value res = ctx.eval(Source.create(SECOND, "test"));
         assertEquals("test", res.asString());
@@ -729,20 +740,20 @@ public class ContextPreInitializationTest {
         assertEquals(1, secondLangCtx.initializeContextCount);
         assertEquals(0, secondLangCtx.patchContextCount);
         assertEquals(1, secondLangCtx.disposeContextCount);
-        assertEquals(1, secondLangCtx.initializeThreadCount);
-        assertEquals(1, secondLangCtx.disposeThreadCount);
+        assertEquals(2, secondLangCtx.initializeThreadCount);
+        assertEquals(2, secondLangCtx.disposeThreadCount);
         assertEquals(1, firstLangCtx.createContextCount);
         assertEquals(1, firstLangCtx.initializeContextCount);
         assertEquals(0, firstLangCtx.patchContextCount);
         assertEquals(1, firstLangCtx.disposeContextCount);
-        assertEquals(1, firstLangCtx.initializeThreadCount);
-        assertEquals(1, firstLangCtx.disposeThreadCount);
+        assertEquals(2, firstLangCtx.initializeThreadCount);
+        assertEquals(2, firstLangCtx.disposeThreadCount);
         assertEquals(1, internalLangCtx.createContextCount);
         assertEquals(1, internalLangCtx.initializeContextCount);
         assertEquals(1, internalLangCtx.patchContextCount);
         assertEquals(1, internalLangCtx.disposeContextCount);
-        assertEquals(1, internalLangCtx.initializeThreadCount);
-        assertEquals(1, internalLangCtx.disposeThreadCount);
+        assertEquals(2, internalLangCtx.initializeThreadCount);
+        assertEquals(2, internalLangCtx.disposeThreadCount);
         assertEquals(1, secondLangCtx2.createContextCount);
         assertEquals(1, secondLangCtx2.initializeContextCount);
         assertEquals(0, secondLangCtx2.patchContextCount);
@@ -768,20 +779,20 @@ public class ContextPreInitializationTest {
         assertEquals(1, secondLangCtx.initializeContextCount);
         assertEquals(0, secondLangCtx.patchContextCount);
         assertEquals(1, secondLangCtx.disposeContextCount);
-        assertEquals(1, secondLangCtx.initializeThreadCount);
-        assertEquals(1, secondLangCtx.disposeThreadCount);
+        assertEquals(2, secondLangCtx.initializeThreadCount);
+        assertEquals(2, secondLangCtx.disposeThreadCount);
         assertEquals(1, firstLangCtx.createContextCount);
         assertEquals(1, firstLangCtx.initializeContextCount);
         assertEquals(0, firstLangCtx.patchContextCount);
         assertEquals(1, firstLangCtx.disposeContextCount);
-        assertEquals(1, firstLangCtx.initializeThreadCount);
-        assertEquals(1, firstLangCtx.disposeThreadCount);
+        assertEquals(2, firstLangCtx.initializeThreadCount);
+        assertEquals(2, firstLangCtx.disposeThreadCount);
         assertEquals(1, internalLangCtx.createContextCount);
         assertEquals(1, internalLangCtx.initializeContextCount);
         assertEquals(1, internalLangCtx.patchContextCount);
         assertEquals(1, internalLangCtx.disposeContextCount);
-        assertEquals(1, internalLangCtx.initializeThreadCount);
-        assertEquals(1, internalLangCtx.disposeThreadCount);
+        assertEquals(2, internalLangCtx.initializeThreadCount);
+        assertEquals(2, internalLangCtx.disposeThreadCount);
         assertEquals(1, secondLangCtx2.createContextCount);
         assertEquals(1, secondLangCtx2.initializeContextCount);
         assertEquals(0, secondLangCtx2.patchContextCount);
@@ -817,8 +828,8 @@ public class ContextPreInitializationTest {
         assertEquals(1, firstLangCtx.initializeContextCount);
         assertEquals(0, firstLangCtx.patchContextCount);
         assertEquals(0, firstLangCtx.disposeContextCount);
-        assertEquals(0, firstLangCtx.initializeThreadCount);
-        assertEquals(0, firstLangCtx.disposeThreadCount);
+        assertEquals(1, firstLangCtx.initializeThreadCount);
+        assertEquals(1, firstLangCtx.disposeThreadCount);
         try {
             Context.create();
             Assert.fail("Should not reach here.");
@@ -831,8 +842,8 @@ public class ContextPreInitializationTest {
         assertEquals(1, firstLangCtx.initializeContextCount);
         assertEquals(1, firstLangCtx.patchContextCount);
         assertEquals(1, firstLangCtx.disposeContextCount);
-        assertEquals(1, firstLangCtx.initializeThreadCount);
-        assertEquals(1, firstLangCtx.disposeThreadCount);
+        assertEquals(2, firstLangCtx.initializeThreadCount);
+        assertEquals(2, firstLangCtx.disposeThreadCount);
     }
 
     @Test
@@ -852,14 +863,14 @@ public class ContextPreInitializationTest {
         assertEquals(1, firstLangCtx.initializeContextCount);
         assertEquals(0, firstLangCtx.patchContextCount);
         assertEquals(0, firstLangCtx.disposeContextCount);
-        assertEquals(0, firstLangCtx.initializeThreadCount);
-        assertEquals(0, firstLangCtx.disposeThreadCount);
+        assertEquals(1, firstLangCtx.initializeThreadCount);
+        assertEquals(1, firstLangCtx.disposeThreadCount);
         assertEquals(1, secondLangCtx.createContextCount);
         assertEquals(1, secondLangCtx.initializeContextCount);
         assertEquals(0, secondLangCtx.patchContextCount);
         assertEquals(0, secondLangCtx.disposeContextCount);
-        assertEquals(0, secondLangCtx.initializeThreadCount);
-        assertEquals(0, secondLangCtx.disposeThreadCount);
+        assertEquals(1, secondLangCtx.initializeThreadCount);
+        assertEquals(1, secondLangCtx.disposeThreadCount);
         try {
             Context.create();
             Assert.fail("Should not reach here.");
@@ -872,15 +883,15 @@ public class ContextPreInitializationTest {
         assertEquals(1, firstLangCtx.initializeContextCount);
         assertEquals(1, firstLangCtx.patchContextCount);
         assertEquals(1, firstLangCtx.disposeContextCount);
-        assertEquals(1, firstLangCtx.initializeThreadCount); // Close initializes thread
-        assertEquals(1, firstLangCtx.disposeThreadCount);
+        assertEquals(2, firstLangCtx.initializeThreadCount); // Close initializes thread
+        assertEquals(2, firstLangCtx.disposeThreadCount);
         // Close initializes thread
         assertEquals(1, secondLangCtx.createContextCount);
         assertEquals(1, secondLangCtx.initializeContextCount);
         assertEquals(0, secondLangCtx.patchContextCount);
         assertEquals(1, secondLangCtx.disposeContextCount);
-        assertEquals(1, secondLangCtx.initializeThreadCount);    // Close initializes thread
-        assertEquals(1, secondLangCtx.disposeThreadCount);       // Close initializes thread
+        assertEquals(2, secondLangCtx.initializeThreadCount);    // Close initializes thread
+        assertEquals(2, secondLangCtx.disposeThreadCount);       // Close initializes thread
     }
 
     @Test
@@ -917,8 +928,8 @@ public class ContextPreInitializationTest {
         assertEquals(1, firstLangCtx.initializeContextCount);
         assertEquals(0, firstLangCtx.patchContextCount);
         assertEquals(0, firstLangCtx.disposeContextCount);
-        assertEquals(0, firstLangCtx.initializeThreadCount);
-        assertEquals(0, firstLangCtx.disposeThreadCount);
+        assertEquals(1, firstLangCtx.initializeThreadCount);
+        assertEquals(1, firstLangCtx.disposeThreadCount);
         Engine.create().close();
         final Context ctx = Context.create();
         Value res = ctx.eval(Source.create(FIRST, "test"));
@@ -929,8 +940,8 @@ public class ContextPreInitializationTest {
         assertEquals(1, firstLangCtx.initializeContextCount);
         assertEquals(1, firstLangCtx.patchContextCount);
         assertEquals(0, firstLangCtx.disposeContextCount);
-        assertEquals(1, firstLangCtx.initializeThreadCount);
-        assertEquals(0, firstLangCtx.disposeThreadCount);
+        assertEquals(2, firstLangCtx.initializeThreadCount);
+        assertEquals(1, firstLangCtx.disposeThreadCount);
         ctx.close();
         contexts = new ArrayList<>(emittedContexts);
         assertEquals(1, contexts.size());
@@ -938,8 +949,8 @@ public class ContextPreInitializationTest {
         assertEquals(1, firstLangCtx.initializeContextCount);
         assertEquals(1, firstLangCtx.patchContextCount);
         assertEquals(1, firstLangCtx.disposeContextCount);
-        assertEquals(1, firstLangCtx.initializeThreadCount);
-        assertEquals(1, firstLangCtx.disposeThreadCount);
+        assertEquals(2, firstLangCtx.initializeThreadCount);
+        assertEquals(2, firstLangCtx.disposeThreadCount);
     }
 
     @Test
@@ -972,8 +983,8 @@ public class ContextPreInitializationTest {
         assertEquals(1, firstLangCtx.initializeContextCount);
         assertEquals(0, firstLangCtx.patchContextCount);
         assertEquals(0, firstLangCtx.disposeContextCount);
-        assertEquals(0, firstLangCtx.initializeThreadCount);
-        assertEquals(0, firstLangCtx.disposeThreadCount);
+        assertEquals(1, firstLangCtx.initializeThreadCount);
+        assertEquals(1, firstLangCtx.disposeThreadCount);
         final TestHandler testHandler = new TestHandler("engine.com.oracle.truffle.polyglot.PolyglotLanguageContext");
         final Context ctx = Context.newBuilder().option("log.engine.level", "FINE").logHandler(testHandler).build();
         Value res = ctx.eval(Source.create(FIRST, "test"));
@@ -987,8 +998,8 @@ public class ContextPreInitializationTest {
         assertEquals(1, firstLangCtx.initializeContextCount);
         assertEquals(1, firstLangCtx.patchContextCount);
         assertEquals(0, firstLangCtx.disposeContextCount);
-        assertEquals(1, firstLangCtx.initializeThreadCount);
-        assertEquals(0, firstLangCtx.disposeThreadCount);
+        assertEquals(2, firstLangCtx.initializeThreadCount);
+        assertEquals(1, firstLangCtx.disposeThreadCount);
         ctx.close();
         contexts = new ArrayList<>(emittedContexts);
         assertEquals(1, contexts.size());
@@ -996,8 +1007,135 @@ public class ContextPreInitializationTest {
         assertEquals(1, firstLangCtx.initializeContextCount);
         assertEquals(1, firstLangCtx.patchContextCount);
         assertEquals(1, firstLangCtx.disposeContextCount);
-        assertEquals(1, firstLangCtx.initializeThreadCount);
-        assertEquals(1, firstLangCtx.disposeThreadCount);
+        assertEquals(2, firstLangCtx.initializeThreadCount);
+        assertEquals(2, firstLangCtx.disposeThreadCount);
+    }
+
+    @Test
+    public void testEngineBoundLoggers() throws Exception {
+        String loggerName = "engine";
+        String loggerLevelOptionName = String.format("log.%s.level", loggerName);
+        setPatchable(FIRST);
+        // In context pre-initialization there is no sdk Context to set log handler,
+        // logging is done to System.err
+        BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_INITIALIZE_CONTEXT, (env) -> {
+            Object engine = TestAPIAccessor.engineAccess().getCurrentPolyglotEngine();
+            TruffleLogger log = getEngineLogger(engine);
+            log.log(Level.INFO, "preInit:info");
+            log.log(Level.FINEST, "preInit:finest");
+        });
+        BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_PATCH_CONTEXT, (env) -> {
+            Object engine = TestAPIAccessor.engineAccess().getCurrentPolyglotEngine();
+            TruffleLogger log = getEngineLogger(engine);
+            log.log(Level.INFO, "patch:info");
+            log.log(Level.FINEST, "patch:finest");
+        });
+        final PrintStream origErr = System.err;
+        final ByteArrayOutputStream preInitErr = new ByteArrayOutputStream();
+        String origLogFile = System.getProperty("polyglot.log.file");
+        try (PrintStream printStream = new PrintStream(preInitErr)) {
+            System.setErr(printStream);
+            System.setProperty("polyglot." + loggerLevelOptionName, "FINE");
+            System.clearProperty("polyglot.log.file");
+            doContextPreinitialize(FIRST);
+        } finally {
+            System.setErr(origErr);
+            System.clearProperty("polyglot." + loggerLevelOptionName);
+            if (origLogFile != null) {
+                System.setProperty("polyglot.log.file", origLogFile);
+            }
+        }
+        final String preInitLog = preInitErr.toString("UTF-8");
+        assertTrue(preInitLog.contains("preInit:info"));
+        assertFalse(preInitLog.contains("preInit:finest"));
+        List<CountingContext> contexts = new ArrayList<>(emittedContexts);
+        assertEquals(1, contexts.size());
+        final CountingContext firstLangCtx = findContext(FIRST, contexts);
+        assertNotNull(firstLangCtx);
+        final TestHandler testHandler = new TestHandler(loggerName);
+        try (Context ctx = Context.newBuilder().option(loggerLevelOptionName, "FINEST").logHandler(testHandler).build()) {
+            Value res = ctx.eval(Source.create(FIRST, "test"));
+            assertEquals("test", res.asString());
+            Set<String> messages = testHandler.logs.stream().map(LogRecord::getMessage).collect(Collectors.toSet());
+            assertTrue(messages.contains("patch:info"));
+            assertTrue(messages.contains("patch:finest"));
+        }
+    }
+
+    private static TruffleLogger getEngineLogger(Object engine) {
+        try {
+            Class<?> clz = Class.forName("com.oracle.truffle.polyglot.PolyglotEngineImpl");
+            Method m = clz.getDeclaredMethod("getEngineLogger");
+            m.setAccessible(true);
+            return (TruffleLogger) m.invoke(engine);
+        } catch (ReflectiveOperationException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Test
+    public void testContextBoundLogger() throws Exception {
+        String logger1Name = String.format("%s.bound", FIRST);
+        String logger1LevelOptionName = String.format("log.%s.level", logger1Name);
+        String logger2Name = String.format("%s.bound2", FIRST);
+        String logger2LevelOptionName = String.format("log.%s.level", logger2Name);
+        AtomicReference<TruffleLogger> loggerRef = new AtomicReference<>();
+        setPatchable(FIRST);
+        // In context pre-initialization there is no sdk Context to set log handler,
+        // logging is done to System.err
+        BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_INITIALIZE_CONTEXT, (env) -> {
+            env.getLogger("bound").log(Level.INFO, "bound:preInit:info");
+            env.getLogger("bound").log(Level.FINEST, "bound:preInit:finest");
+            TruffleLogger log = env.getLogger("bound2");
+            loggerRef.set(log);
+            log.log(Level.INFO, "bound2:preInit:info");
+            log.log(Level.FINEST, "bound2:preInit:finest");
+        });
+        BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_PATCH_CONTEXT, (env) -> {
+            env.getLogger("bound").log(Level.INFO, "bound:patch:info");
+            env.getLogger("bound").log(Level.FINEST, "bound:patch:finest");
+            TruffleLogger log = loggerRef.get();
+            Assert.assertNotNull(log);
+            log.log(Level.INFO, "bound2:patch:info");
+            log.log(Level.FINEST, "bound2:patch:finest");
+        });
+        final PrintStream origErr = System.err;
+        final ByteArrayOutputStream preInitErr = new ByteArrayOutputStream();
+        String origLogFile = System.getProperty("polyglot.log.file");
+        try (PrintStream printStream = new PrintStream(preInitErr)) {
+            System.setErr(printStream);
+            System.setProperty("polyglot." + logger1LevelOptionName, "FINE");
+            System.setProperty("polyglot." + logger2LevelOptionName, "FINE");
+            System.clearProperty("polyglot.log.file");
+            doContextPreinitialize(FIRST);
+        } finally {
+            System.setErr(origErr);
+            System.clearProperty("polyglot." + logger1LevelOptionName);
+            System.clearProperty("polyglot." + logger2LevelOptionName);
+            if (origLogFile != null) {
+                System.setProperty("polyglot.log.file", origLogFile);
+            }
+        }
+        final String preInitLog = preInitErr.toString("UTF-8");
+        assertTrue(preInitLog.contains("bound:preInit:info"));
+        assertTrue(preInitLog.contains("bound2:preInit:info"));
+        assertFalse(preInitLog.contains("bound:preInit:finest"));
+        assertFalse(preInitLog.contains("bound2:preInit:finest"));
+
+        List<CountingContext> contexts = new ArrayList<>(emittedContexts);
+        assertEquals(1, contexts.size());
+        final CountingContext firstLangCtx = findContext(FIRST, contexts);
+        assertNotNull(firstLangCtx);
+        final TestHandler testHandler = new TestHandler(logger1Name, logger2Name);
+        try (Context ctx = Context.newBuilder().option(logger1LevelOptionName, "FINEST").option(logger2LevelOptionName, "FINEST").logHandler(testHandler).build()) {
+            Value res = ctx.eval(Source.create(FIRST, "test"));
+            assertEquals("test", res.asString());
+            assertEquals(4, testHandler.logs.size());
+            assertEquals("bound:patch:info", testHandler.logs.get(0).getMessage());
+            assertEquals("bound:patch:finest", testHandler.logs.get(1).getMessage());
+            assertEquals("bound2:patch:info", testHandler.logs.get(2).getMessage());
+            assertEquals("bound2:patch:finest", testHandler.logs.get(3).getMessage());
+        }
     }
 
     @Test
@@ -1062,8 +1200,8 @@ public class ContextPreInitializationTest {
         assertEquals(1, secondLangCtx.initializeContextCount);
         assertEquals(0, secondLangCtx.patchContextCount);
         assertEquals(0, secondLangCtx.disposeContextCount);
-        assertEquals(0, secondLangCtx.initializeThreadCount);
-        assertEquals(0, secondLangCtx.disposeThreadCount);
+        assertEquals(1, secondLangCtx.initializeThreadCount);
+        assertEquals(1, secondLangCtx.disposeThreadCount);
         CountingContext firstLangCtx = findContext(FIRST, contexts);
         assertNotNull(firstLangCtx);
         assertEquals(1, firstLangCtx.createContextCount);
@@ -1081,8 +1219,8 @@ public class ContextPreInitializationTest {
         assertEquals(1, secondLangCtx.initializeContextCount);
         assertEquals(1, secondLangCtx.patchContextCount);
         assertEquals(0, secondLangCtx.disposeContextCount);
-        assertEquals(1, secondLangCtx.initializeThreadCount);
-        assertEquals(0, secondLangCtx.disposeThreadCount);
+        assertEquals(2, secondLangCtx.initializeThreadCount);
+        assertEquals(1, secondLangCtx.disposeThreadCount);
         assertEquals(1, firstLangCtx.createContextCount);
         assertEquals(0, firstLangCtx.initializeContextCount);
         assertEquals(1, firstLangCtx.patchContextCount);
@@ -1096,8 +1234,8 @@ public class ContextPreInitializationTest {
         assertEquals(1, secondLangCtx.initializeContextCount);
         assertEquals(1, secondLangCtx.patchContextCount);
         assertEquals(1, secondLangCtx.disposeContextCount);
-        assertEquals(1, secondLangCtx.initializeThreadCount);
-        assertEquals(1, secondLangCtx.disposeThreadCount);
+        assertEquals(2, secondLangCtx.initializeThreadCount);
+        assertEquals(2, secondLangCtx.disposeThreadCount);
         assertEquals(1, firstLangCtx.createContextCount);
         assertEquals(0, firstLangCtx.initializeContextCount);
         assertEquals(1, firstLangCtx.patchContextCount);
@@ -1122,8 +1260,8 @@ public class ContextPreInitializationTest {
         assertEquals(1, secondLangCtx.initializeContextCount);
         assertEquals(0, secondLangCtx.patchContextCount);
         assertEquals(0, secondLangCtx.disposeContextCount);
-        assertEquals(0, secondLangCtx.initializeThreadCount);
-        assertEquals(0, secondLangCtx.disposeThreadCount);
+        assertEquals(1, secondLangCtx.initializeThreadCount);
+        assertEquals(1, secondLangCtx.disposeThreadCount);
         CountingContext firstLangCtx = findContext(FIRST, contexts);
         assertNotNull(firstLangCtx);
         assertEquals(1, firstLangCtx.createContextCount);
@@ -1149,8 +1287,8 @@ public class ContextPreInitializationTest {
         assertEquals(1, secondLangCtx.initializeContextCount);
         assertEquals(0, secondLangCtx.patchContextCount);
         assertEquals(1, secondLangCtx.disposeContextCount);
-        assertEquals(1, secondLangCtx.initializeThreadCount);
-        assertEquals(1, secondLangCtx.disposeThreadCount);
+        assertEquals(2, secondLangCtx.initializeThreadCount);
+        assertEquals(2, secondLangCtx.disposeThreadCount);
         assertEquals(1, firstLangCtx.createContextCount);
         assertEquals(0, firstLangCtx.initializeContextCount);
         assertEquals(1, firstLangCtx.patchContextCount);
@@ -1177,8 +1315,8 @@ public class ContextPreInitializationTest {
         assertEquals(1, secondLangCtx.initializeContextCount);
         assertEquals(0, secondLangCtx.patchContextCount);
         assertEquals(1, secondLangCtx.disposeContextCount);
-        assertEquals(1, secondLangCtx.initializeThreadCount);
-        assertEquals(1, secondLangCtx.disposeThreadCount);
+        assertEquals(2, secondLangCtx.initializeThreadCount);
+        assertEquals(2, secondLangCtx.disposeThreadCount);
         assertEquals(1, firstLangCtx.createContextCount);
         assertEquals(0, firstLangCtx.initializeContextCount);
         assertEquals(1, firstLangCtx.patchContextCount);
@@ -1251,8 +1389,8 @@ public class ContextPreInitializationTest {
             assertEquals(1, firstLangCtx.initializeContextCount);
             assertEquals(1, firstLangCtx.patchContextCount);
             assertEquals(0, firstLangCtx.disposeContextCount);
-            assertEquals(1, firstLangCtx.initializeThreadCount);
-            assertEquals(0, firstLangCtx.disposeThreadCount);
+            assertEquals(2, firstLangCtx.initializeThreadCount);
+            assertEquals(1, firstLangCtx.disposeThreadCount);
             assertEquals(1, instrumentCreateCount.get());
         }
     }
@@ -1283,8 +1421,8 @@ public class ContextPreInitializationTest {
             assertEquals(1, firstLangCtx.initializeContextCount);
             assertEquals(1, firstLangCtx.patchContextCount);
             assertEquals(1, firstLangCtx.disposeContextCount);
-            assertEquals(1, firstLangCtx.initializeThreadCount);
-            assertEquals(1, firstLangCtx.disposeThreadCount);
+            assertEquals(2, firstLangCtx.initializeThreadCount);
+            assertEquals(2, firstLangCtx.disposeThreadCount);
             assertEquals(1, newFirstLangCtx.createContextCount);
             assertEquals(1, newFirstLangCtx.initializeContextCount);
             assertEquals(0, newFirstLangCtx.patchContextCount);
@@ -1556,14 +1694,14 @@ public class ContextPreInitializationTest {
         assertEquals(1, firstLangCtx.initializeContextCount);
         assertEquals(0, firstLangCtx.patchContextCount);
         assertEquals(0, firstLangCtx.disposeContextCount);
-        assertEquals(0, firstLangCtx.initializeThreadCount);
-        assertEquals(0, firstLangCtx.disposeThreadCount);
+        assertEquals(1, firstLangCtx.initializeThreadCount);
+        assertEquals(1, firstLangCtx.disposeThreadCount);
         assertEquals(1, secondLangCtx.createContextCount);
         assertEquals(1, secondLangCtx.initializeContextCount);
         assertEquals(0, secondLangCtx.patchContextCount);
         assertEquals(0, secondLangCtx.disposeContextCount);
-        assertEquals(0, secondLangCtx.initializeThreadCount);
-        assertEquals(0, secondLangCtx.disposeThreadCount);
+        assertEquals(1, secondLangCtx.initializeThreadCount);
+        assertEquals(1, secondLangCtx.disposeThreadCount);
         try (Context ctx = Context.create()) {
             Value res = ctx.eval(Source.create(FIRST, "test"));
             assertEquals("test", res.asString());
@@ -1577,20 +1715,174 @@ public class ContextPreInitializationTest {
             assertEquals(1, firstLangCtx.initializeContextCount);
             assertEquals(1, firstLangCtx.patchContextCount);
             assertEquals(1, firstLangCtx.disposeContextCount);
-            assertEquals(1, firstLangCtx.initializeThreadCount); // Close initializes thread
-            assertEquals(1, firstLangCtx.disposeThreadCount);    // Close initializes thread
+            assertEquals(2, firstLangCtx.initializeThreadCount); // Close initializes thread
+            assertEquals(2, firstLangCtx.disposeThreadCount);    // Close initializes thread
             assertEquals(1, secondLangCtx.createContextCount);
             assertEquals(1, secondLangCtx.initializeContextCount);
             assertEquals(1, secondLangCtx.patchContextCount);
             assertEquals(1, secondLangCtx.disposeContextCount);
-            assertEquals(1, secondLangCtx.initializeThreadCount);    // Close initializes thread
-            assertEquals(1, secondLangCtx.disposeThreadCount);       // Close initializes thread
+            assertEquals(2, secondLangCtx.initializeThreadCount);    // Close initializes thread
+            assertEquals(2, secondLangCtx.disposeThreadCount);       // Close initializes thread
             assertEquals(1, firstLangCtx2.createContextCount);
             assertEquals(1, firstLangCtx2.initializeContextCount);
             assertEquals(0, firstLangCtx2.patchContextCount);
             assertEquals(0, firstLangCtx2.disposeContextCount);
             assertEquals(1, firstLangCtx2.initializeThreadCount);
             assertEquals(0, firstLangCtx2.disposeThreadCount);
+        }
+    }
+
+    @Test
+    public void testContextThreadLocals() throws Exception {
+        BaseLanguage.registerAction(BaseLanguage.class, ActionKind.ON_INITIALIZE_CONTEXT, (env) -> {
+            ContextThreadLocal<AtomicInteger> threadState = ContextPreInitializationTestFirstLanguage.getThreadStateReference();
+            assertEquals(0, threadState.get().getAndIncrement());
+        });
+        BaseLanguage.registerAction(BaseLanguage.class, ActionKind.ON_PATCH_CONTEXT, (env) -> {
+            ContextThreadLocal<AtomicInteger> threadState = ContextPreInitializationTestFirstLanguage.getThreadStateReference();
+            assertEquals(0, threadState.get().get());
+        });
+        setPatchable(FIRST);
+        doContextPreinitialize(FIRST);
+    }
+
+    @Test
+    public void testContextLocals() throws Exception {
+        BaseLanguage.registerAction(BaseLanguage.class, ActionKind.ON_INITIALIZE_CONTEXT, (env) -> {
+            ContextLocal<AtomicInteger> threadState = ContextPreInitializationTestFirstLanguage.getStateReference();
+            assertEquals(0, threadState.get().getAndIncrement());
+        });
+        BaseLanguage.registerAction(BaseLanguage.class, ActionKind.ON_PATCH_CONTEXT, (env) -> {
+            ContextLocal<AtomicInteger> threadState = ContextPreInitializationTestFirstLanguage.getStateReference();
+            assertEquals(1, threadState.get().get());
+        });
+        setPatchable(FIRST);
+        doContextPreinitialize(FIRST);
+    }
+
+    @Test
+    public void testUsePreInitializedContextOptionEnabled() throws Exception {
+        setPatchable(FIRST);
+        doContextPreinitialize(FIRST);
+        List<CountingContext> contexts = new ArrayList<>(emittedContexts);
+        assertEquals(1, contexts.size());
+        CountingContext firstLangCtx = findContext(FIRST, contexts);
+        assertNotNull(firstLangCtx);
+        assertEquals(1, firstLangCtx.createContextCount);
+        assertEquals(1, firstLangCtx.initializeContextCount);
+        try (Context ctx = Context.newBuilder().allowExperimentalOptions(true).option("engine.UsePreInitializedContext", "true").build()) {
+            Value res = ctx.eval(Source.create(FIRST, "test"));
+            assertEquals("test", res.asString());
+            contexts = new ArrayList<>(emittedContexts);
+            assertEquals(1, contexts.size());
+            assertEquals(1, firstLangCtx.createContextCount);
+            assertEquals(1, firstLangCtx.initializeContextCount);
+            assertEquals(1, firstLangCtx.patchContextCount);
+        }
+    }
+
+    @Test
+    public void testUsePreInitializedContextOptionDisabled() throws Exception {
+        setPatchable(FIRST);
+        doContextPreinitialize(FIRST);
+        List<CountingContext> contexts = new ArrayList<>(emittedContexts);
+        assertEquals(1, contexts.size());
+        CountingContext firstLangCtx = findContext(FIRST, contexts);
+        assertNotNull(firstLangCtx);
+        assertEquals(1, firstLangCtx.createContextCount);
+        assertEquals(1, firstLangCtx.initializeContextCount);
+        try (Context ctx = Context.newBuilder().allowExperimentalOptions(true).option("engine.UsePreInitializedContext", "false").build()) {
+            Value res = ctx.eval(Source.create(FIRST, "test"));
+            assertEquals("test", res.asString());
+            contexts = new ArrayList<>(emittedContexts);
+            assertEquals(2, contexts.size());
+            contexts = new ArrayList<>(emittedContexts);
+            contexts.remove(firstLangCtx);
+            CountingContext firstLangCtx2 = findContext(FIRST, contexts);
+            assertEquals(1, firstLangCtx.createContextCount);
+            assertEquals(1, firstLangCtx.initializeContextCount);
+            assertEquals(0, firstLangCtx.patchContextCount);
+            assertEquals(1, firstLangCtx2.createContextCount);
+            assertEquals(1, firstLangCtx2.initializeContextCount);
+            assertEquals(0, firstLangCtx2.patchContextCount);
+        }
+    }
+
+    @Test
+    public void testThreadLocalActions() throws Exception {
+        BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_EXECUTE, (env) -> {
+            env.submitThreadLocal(new Thread[]{Thread.currentThread()}, new ThreadLocalAction(false, false) {
+                @Override
+                protected void perform(Access access) {
+                    // Empty action just to do TraceStackTraceInterval logging
+                }
+            });
+        });
+        setPatchable(FIRST);
+        doContextPreinitialize(FIRST);
+        List<CountingContext> contexts = new ArrayList<>(emittedContexts);
+        assertEquals(1, contexts.size());
+        CountingContext firstLangCtx = findContext(FIRST, contexts);
+        assertNotNull(firstLangCtx);
+        assertEquals(1, firstLangCtx.createContextCount);
+        assertEquals(1, firstLangCtx.initializeContextCount);
+        TestHandler handler = new TestHandler("engine");
+        try (Context ctx = Context.newBuilder().allowExperimentalOptions(true).logHandler(handler).option("engine.TraceThreadLocalActions", "true").build()) {
+            Value res = ctx.eval(Source.create(FIRST, "test"));
+            assertEquals("test", res.asString());
+            contexts = new ArrayList<>(emittedContexts);
+            assertEquals(1, contexts.size());
+            assertEquals(1, firstLangCtx.createContextCount);
+            assertEquals(1, firstLangCtx.initializeContextCount);
+            assertEquals(1, firstLangCtx.patchContextCount);
+        }
+        Optional<String> message = handler.logs.stream().map((r) -> r.getMessage()).filter((m) -> m.contains("[tl]")).findAny();
+        assertTrue(message.isPresent());
+    }
+
+    @Test
+    @SuppressWarnings("try")
+    public void testRestrictedPermittedLanguagesMatched() throws Exception {
+        setPatchable(FIRST, SECOND, INTERNAL);
+        ContextPreInitializationTestFirstLanguage.callDependentLanguage = true;
+        ContextPreInitializationTestSecondLanguage.callDependentLanguageInCreate = true;
+        doContextPreinitialize(FIRST, SECOND);
+        List<CountingContext> contexts = new ArrayList<>(emittedContexts);
+        assertEquals(3, contexts.size());
+        CountingContext firstLangCtx = findContext(FIRST, contexts);
+        assertNotNull(firstLangCtx);
+        CountingContext secondLangCtx = findContext(SECOND, contexts);
+        assertNotNull(secondLangCtx);
+        CountingContext internalLangCtx = findContext(INTERNAL, contexts);
+        assertNotNull(internalLangCtx);
+        try (Context ctx = Context.newBuilder(SECOND).allowPolyglotAccess(PolyglotAccess.ALL).build()) {
+            ctx.eval(Source.create(SECOND, "test"));
+            contexts = new ArrayList<>(emittedContexts);
+            assertEquals(3, contexts.size());
+        }
+    }
+
+    @Test
+    @SuppressWarnings("try")
+    public void testRestrictedPermittedLanguagesUnmatched() throws Exception {
+        setPatchable(FIRST, SECOND, INTERNAL, SHARED);
+        ContextPreInitializationTestFirstLanguage.callDependentLanguage = true;
+        ContextPreInitializationTestSecondLanguage.callDependentLanguageInCreate = true;
+        doContextPreinitialize(FIRST, SECOND, SHARED);
+        List<CountingContext> contexts = new ArrayList<>(emittedContexts);
+        assertEquals(4, contexts.size());
+        CountingContext firstLangCtx = findContext(FIRST, contexts);
+        assertNotNull(firstLangCtx);
+        CountingContext secondLangCtx = findContext(SECOND, contexts);
+        assertNotNull(secondLangCtx);
+        CountingContext internalLangCtx = findContext(INTERNAL, contexts);
+        assertNotNull(internalLangCtx);
+        CountingContext sharedLangCtx = findContext(SHARED, contexts);
+        assertNotNull(sharedLangCtx);
+        try (Context ctx = Context.newBuilder(SECOND).allowPolyglotAccess(PolyglotAccess.ALL).build()) {
+            ctx.eval(Source.create(SECOND, "test"));
+            contexts = new ArrayList<>(emittedContexts);
+            assertEquals(7, contexts.size());
         }
     }
 
@@ -1728,6 +2020,15 @@ public class ContextPreInitializationTest {
         return id;
     }
 
+    private static void write(final OutputStream out, final String content) {
+        try {
+            out.write(content.getBytes("UTF-8"));
+            out.flush();
+        } catch (IOException ioe) {
+            throw new RuntimeException(ioe);
+        }
+    }
+
     static class CountingContext {
         private final String id;
         private TruffleLanguage.Env env;
@@ -1786,12 +2087,12 @@ public class ContextPreInitializationTest {
     enum ActionKind {
         ON_INITIALIZE_CONTEXT,
         ON_PATCH_CONTEXT,
+        ON_EXECUTE,
         ON_FINALIZE_CONTEXT
     }
 
     static class BaseLanguage extends TruffleLanguage<CountingContext> {
-        static Map<String, String> parseStdOutOutput = new HashMap<>();
-        static Map<String, String> parseStdErrOutput = new HashMap<>();
+
         static Map<Pair<Class<? extends BaseLanguage>, ActionKind>, Consumer<TruffleLanguage.Env>> actions = new HashMap<>();
 
         static void registerAction(Class<? extends BaseLanguage> languageClass, ActionKind kind, Consumer<TruffleLanguage.Env> action) {
@@ -1872,7 +2173,7 @@ public class ContextPreInitializationTest {
             return Truffle.getRuntime().createCallTarget(new RootNode(this) {
                 @Override
                 public Object execute(VirtualFrame frame) {
-                    executeImpl(lookupContextReference(languageClass).get(), getLanguageInfo());
+                    executeImpl(lookupContextReference(languageClass).get());
                     return result;
                 }
             });
@@ -1884,25 +2185,9 @@ public class ContextPreInitializationTest {
         }
 
         @CompilerDirectives.TruffleBoundary
-        private static void executeImpl(CountingContext ctx, LanguageInfo info) {
-            String msg = parseStdOutOutput.get(info.getId());
-            if (msg != null) {
-                write(ctx.environment().out(), msg);
-            }
-            msg = parseStdErrOutput.get(info.getId());
-            if (msg != null) {
-                write(ctx.environment().err(), msg);
-            }
-            assertEquals(0, ctx.disposeContextCount);
-        }
-
-        private static void write(final OutputStream out, final String content) {
-            try {
-                out.write(content.getBytes("UTF-8"));
-                out.flush();
-            } catch (IOException ioe) {
-                throw new RuntimeException(ioe);
-            }
+        private void executeImpl(CountingContext context) {
+            findAction(ActionKind.ON_EXECUTE).ifPresent((c) -> c.accept(context.environment()));
+            assertEquals(0, context.disposeContextCount);
         }
 
         Optional<Consumer<Env>> findAction(ActionKind kind) {
@@ -1941,6 +2226,22 @@ public class ContextPreInitializationTest {
         public static final OptionKey<String> ServiceKind = new OptionKey<>(Service.Kind.IMAGE_BUILD_TIME.name());
 
         private static boolean callDependentLanguage;
+
+        private final ContextThreadLocal<AtomicInteger> threadState;
+        private final ContextLocal<AtomicInteger> state;
+
+        public ContextPreInitializationTestFirstLanguage() {
+            threadState = createContextThreadLocal((context, thread) -> new AtomicInteger());
+            state = createContextLocal((context) -> new AtomicInteger());
+        }
+
+        static ContextThreadLocal<AtomicInteger> getThreadStateReference() {
+            return getCurrentLanguage(ContextPreInitializationTestFirstLanguage.class).threadState;
+        }
+
+        static ContextLocal<AtomicInteger> getStateReference() {
+            return getCurrentLanguage(ContextPreInitializationTestFirstLanguage.class).state;
+        }
 
         @Override
         protected CountingContext createContext(Env env) {

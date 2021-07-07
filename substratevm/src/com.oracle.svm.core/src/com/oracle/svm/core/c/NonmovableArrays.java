@@ -43,8 +43,9 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.MemoryUtil;
+import com.oracle.svm.core.JavaMemoryUtil;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.Heap;
@@ -74,6 +75,8 @@ import com.oracle.svm.core.util.VMError;
  * via {@link #getHostedArray} and they must be cast back via {@link #fromImageHeap} at runtime.
  */
 public final class NonmovableArrays {
+
+    @Platforms(Platform.HOSTED_ONLY.class) //
     private static final HostedNonmovableArray<?> HOSTED_NULL_VALUE = new HostedNonmovableObjectArray<>(null);
 
     private static final UninterruptibleUtils.AtomicLong runtimeArraysInExistence = new UninterruptibleUtils.AtomicLong(0);
@@ -158,7 +161,7 @@ public final class NonmovableArrays {
         }
         assert srcPos >= 0 && destPos >= 0 && length >= 0 && srcPos + length <= lengthOf(src) && destPos + length <= lengthOf(dest);
         assert readHub(src) == readHub(dest) : "copying is only allowed with same component types";
-        MemoryUtil.copyConjointMemoryAtomic(addressOf(src, srcPos), addressOf(dest, destPos), WordFactory.unsigned(length << readElementShift(dest)));
+        UnmanagedMemoryUtil.copy(addressOf(src, srcPos), addressOf(dest, destPos), WordFactory.unsigned(length << readElementShift(dest)));
     }
 
     /** Provides an array for which {@link NonmovableArray#isNull()} returns {@code true}. */
@@ -283,7 +286,8 @@ public final class NonmovableArrays {
         assert srcPos >= 0 && destPos >= 0 && length >= 0 && srcPos + length <= lengthOf(src) && destPos + length <= ArrayLengthNode.arrayLength(dest);
         Pointer destAddressAtPos = Word.objectToUntrackedPointer(dest).add(LayoutEncoding.getArrayElementOffset(destHub.getLayoutEncoding(), destPos));
         if (LayoutEncoding.isPrimitiveArray(destHub.getLayoutEncoding())) {
-            MemoryUtil.copyConjointMemoryAtomic(addressOf(src, srcPos), destAddressAtPos, WordFactory.unsigned(length << readElementShift(src)));
+            Pointer srcAddressAtPos = addressOf(src, srcPos);
+            JavaMemoryUtil.copyPrimitiveArrayForward(srcAddressAtPos, destAddressAtPos, WordFactory.unsigned(length << readElementShift(src)));
         } else { // needs barriers
             Object[] destArr = (Object[]) dest;
             for (int i = 0; i < length; i++) {
@@ -423,7 +427,7 @@ public final class NonmovableArrays {
             return (T) hosted[index];
         }
         assert matches(array, false, ConfigurationValues.getObjectLayout().getReferenceSize());
-        return (T) KnownIntrinsics.convertUnknownValue(ReferenceAccess.singleton().readObjectAt(addressOf(array, index), true), Object.class);
+        return (T) ReferenceAccess.singleton().readObjectAt(addressOf(array, index), true);
     }
 
     /** Writes the value at the given index in an object array. */

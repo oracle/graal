@@ -54,7 +54,7 @@ public class DeoptimizationRuntime {
     @NeverInline("Access of caller frame")
     private static void deoptimize(long actionAndReason, SpeculationReason speculation) {
         /*
-         * In cases where we doeptimize because of a StackOverflowError, we do not immediately want
+         * In cases where we deoptimize because of a StackOverflowError, we do not immediately want
          * to create and throw another StackOverflowError. Therefore, we enable the yellow zone. The
          * actual deoptimization operation is a VMOperation and would enable the yellow zone anyway.
          */
@@ -84,7 +84,7 @@ public class DeoptimizationRuntime {
         }
     }
 
-    private static void traceDeoptimization(long actionAndReason, SpeculationReason speculation, DeoptimizationAction action, Pointer sp, CodePointer ip) {
+    public static void traceDeoptimization(long actionAndReason, SpeculationReason speculation, DeoptimizationAction action, Pointer sp, CodePointer ip) {
         Log log = Log.log().string("[Deoptimization initiated").newline();
 
         SubstrateInstalledCode installedCode = CodeInfoTable.lookupInstalledCode(ip);

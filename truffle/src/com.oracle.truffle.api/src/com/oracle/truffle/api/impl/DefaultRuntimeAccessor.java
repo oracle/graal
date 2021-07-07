@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -71,6 +71,11 @@ final class DefaultRuntimeAccessor extends Accessor {
 
         DefaultRuntimeSupport(Object permission) {
             super(permission);
+        }
+
+        @Override
+        public ThreadLocalHandshake getThreadLocalHandshake() {
+            return DefaultThreadLocalHandshake.SINGLETON;
         }
 
         @Override
@@ -177,6 +182,41 @@ final class DefaultRuntimeAccessor extends Accessor {
         @Override
         public boolean isOSRRootNode(RootNode rootNode) {
             return false;
+        }
+
+        @Override
+        public int getObjectAlignment() {
+            throw new UnsupportedOperationException();
+        }
+
+        @SuppressWarnings("unused")
+        @Override
+        public int getArrayBaseOffset(Class<?> componentType) {
+            throw new UnsupportedOperationException();
+        }
+
+        @SuppressWarnings("unused")
+        @Override
+        public int getArrayIndexScale(Class<?> componentType) {
+            throw new UnsupportedOperationException();
+        }
+
+        @SuppressWarnings("unused")
+        @Override
+        public int getBaseInstanceSize(Class<?> type) {
+            throw new UnsupportedOperationException();
+        }
+
+        @SuppressWarnings("unused")
+        @Override
+        public Object[] getNonPrimitiveResolvedFields(Class<?> type) {
+            throw new UnsupportedOperationException();
+        }
+
+        @SuppressWarnings("unused")
+        @Override
+        public Object getFieldValue(Object resolvedJavaField, Object obj) {
+            throw new UnsupportedOperationException();
         }
     }
 

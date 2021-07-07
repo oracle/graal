@@ -28,17 +28,40 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import com.oracle.svm.configure.json.JsonPrintable;
+import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.core.util.UserError;
 
 import jdk.vm.ci.meta.JavaKind;
 
-public class TypeConfiguration implements JsonPrintable {
+public class TypeConfiguration implements ConfigurationBase {
     private final ConcurrentMap<String, ConfigurationType> types = new ConcurrentHashMap<>();
+
+    public TypeConfiguration() {
+    }
+
+    public TypeConfiguration(TypeConfiguration other) {
+        for (ConfigurationType configurationType : other.types.values()) {
+            types.put(configurationType.getQualifiedJavaName(), new ConfigurationType(configurationType));
+        }
+    }
+
+    public void removeAll(TypeConfiguration other) {
+        for (Map.Entry<String, ConfigurationType> typeEntry : other.types.entrySet()) {
+            types.computeIfPresent(typeEntry.getKey(), (key, value) -> {
+                if (value.equals(typeEntry.getValue())) {
+                    return null;
+                }
+                assert value.getQualifiedJavaName().equals(typeEntry.getValue().getQualifiedJavaName());
+                value.removeAll(typeEntry.getValue());
+                return value.isEmpty() ? null : value;
+            });
+        }
+    }
 
     public ConfigurationType get(String qualifiedJavaName) {
         return types.get(qualifiedJavaName);
@@ -77,14 +100,20 @@ public class TypeConfiguration implements JsonPrintable {
     @Override
     public void printJson(JsonWriter writer) throws IOException {
         writer.append('[');
-        String prefix = "\n";
+        String prefix = "";
         List<ConfigurationType> list = new ArrayList<>(types.values());
         list.sort(Comparator.comparing(ConfigurationType::getQualifiedJavaName));
         for (ConfigurationType value : list) {
-            writer.append(prefix);
+            writer.append(prefix).newline();
             value.printJson(writer);
-            prefix = ",\n";
+            prefix = ",";
         }
-        writer.newline().append(']').newline();
+        writer.newline().append(']');
     }
+
+    @Override
+    public boolean isEmpty() {
+        return types.isEmpty();
+    }
+
 }

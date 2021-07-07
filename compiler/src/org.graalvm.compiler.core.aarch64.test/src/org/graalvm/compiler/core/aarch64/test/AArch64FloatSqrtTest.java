@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2019, Arm Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -32,8 +32,8 @@ import java.util.function.Predicate;
 
 public class AArch64FloatSqrtTest extends AArch64MatchRuleTest {
 
-    private static final Predicate<LIRInstruction> p1 = op -> op.name().equals("SQRT");
-    private static final Predicate<LIRInstruction> p2 = op -> op.name().equals("AArch64FloatConvert");
+    private static final Predicate<LIRInstruction> p1 = op -> op.name().equals("FSQRT");
+    private static final Predicate<LIRInstruction> p2 = op -> op.name().equals("AArch64Convert$FloatConvertOp");
 
     public float floatSqrt(float f) {
         return (float) Math.sqrt(f);

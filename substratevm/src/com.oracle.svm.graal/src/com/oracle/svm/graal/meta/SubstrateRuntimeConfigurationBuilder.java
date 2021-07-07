@@ -30,10 +30,12 @@ import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecodeProvider;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
+import org.graalvm.compiler.nodes.spi.LoopsDataProvider;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
 
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -57,25 +59,23 @@ public class SubstrateRuntimeConfigurationBuilder extends SharedRuntimeConfigura
 
     private final AnalysisUniverse aUniverse;
     private final ConstantReflectionProvider originalReflectionProvider;
-    private final ClassInitializationSupport classInitializationSupport;
 
     public SubstrateRuntimeConfigurationBuilder(OptionValues options, SVMHost hostVM, AnalysisUniverse aUniverse, MetaAccessProvider metaAccess,
                     ConstantReflectionProvider originalReflectionProvider, Function<Providers, SubstrateBackend> backendProvider, NativeLibraries nativeLibraries,
-                    ClassInitializationSupport classInitializationSupport) {
-        super(options, hostVM, metaAccess, backendProvider, nativeLibraries);
+                    ClassInitializationSupport classInitializationSupport, LoopsDataProvider loopsDataProvider) {
+        super(options, hostVM, metaAccess, backendProvider, nativeLibraries, classInitializationSupport, loopsDataProvider);
         this.aUniverse = aUniverse;
         this.originalReflectionProvider = originalReflectionProvider;
-        this.classInitializationSupport = classInitializationSupport;
     }
 
     @Override
     protected ConstantReflectionProvider createConstantReflectionProvider(Providers p) {
-        return new AnalysisConstantReflectionProvider(aUniverse, originalReflectionProvider, classInitializationSupport);
+        return new AnalysisConstantReflectionProvider(aUniverse, metaAccess, originalReflectionProvider, classInitializationSupport);
     }
 
     @Override
     protected ConstantFieldProvider createConstantFieldProvider(Providers p) {
-        return new AnalysisConstantFieldProvider(aUniverse, p.getMetaAccess(), (AnalysisConstantReflectionProvider) p.getConstantReflection(), classInitializationSupport);
+        return new AnalysisConstantFieldProvider(aUniverse, (AnalysisMetaAccess) p.getMetaAccess(), (AnalysisConstantReflectionProvider) p.getConstantReflection(), classInitializationSupport);
     }
 
     @Override
@@ -91,4 +91,5 @@ public class SubstrateRuntimeConfigurationBuilder extends SharedRuntimeConfigura
         }
         return new SubstrateCodeCacheProvider(ConfigurationValues.getTarget(), registerConfig);
     }
+
 }

@@ -53,11 +53,10 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-import jdk.vm.ci.code.CompilationRequest;
-import jdk.vm.ci.code.CompilationRequestResult;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.code.DisassemblerProvider;
 import org.graalvm.compiler.core.GraalServiceThread;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
@@ -92,7 +91,6 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.serviceprovider.IsolateUtil;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
-import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluatorConfiguration;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerBase;
 import org.graalvm.compiler.truffle.compiler.hotspot.TruffleCallBoundaryInstrumentationFactory;
@@ -100,16 +98,16 @@ import org.graalvm.compiler.truffle.compiler.substitutions.GraphBuilderInvocatio
 import org.graalvm.compiler.truffle.compiler.substitutions.GraphDecoderInvocationPluginProvider;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.libgraal.LibGraal;
-import org.graalvm.libgraal.jni.JNI;
-import org.graalvm.libgraal.jni.JNIExceptionWrapper;
-import org.graalvm.libgraal.jni.JNILibGraalScope;
-import org.graalvm.libgraal.jni.JNIUtil;
+import org.graalvm.libgraal.jni.LibGraalNativeBridgeSupport;
+import org.graalvm.nativebridge.jni.JNI;
+import org.graalvm.nativebridge.jni.JNIExceptionWrapper;
+import org.graalvm.nativebridge.jni.JNIMethodScope;
+import org.graalvm.nativebridge.jni.JNIUtil;
+import org.graalvm.nativebridge.jni.NativeBridgeSupport;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.VMRuntime;
-import org.graalvm.nativeimage.c.type.CTypeConversion;
-import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.word.Pointer;
@@ -120,6 +118,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -135,7 +134,6 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.option.XOptions;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.UserError.UserException;
 import com.oracle.svm.core.util.VMError;
@@ -147,6 +145,8 @@ import com.oracle.svm.jni.hosted.JNIFeature;
 import com.oracle.svm.reflect.hosted.ReflectionFeature;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.vm.ci.code.CompilationRequest;
+import jdk.vm.ci.code.CompilationRequestResult;
 import jdk.vm.ci.common.NativeImageReinitialize;
 import jdk.vm.ci.hotspot.HotSpotConstantReflectionProvider;
 import jdk.vm.ci.hotspot.HotSpotJVMCIBackendFactory;
@@ -159,16 +159,16 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.services.Services;
 
-public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFeature {
+class LibGraalOptions {
+    // @formatter:off
+    @Option(help = "Converts an exception triggered by the CrashAt option into a fatal error " +
+            "if a non-null pointer was passed in the _fatal option to JNI_CreateJavaVM. " +
+            "This option exists for the purpose of testing fatal error handling in libgraal.")
+    static final RuntimeOptionKey<Boolean> CrashAtIsFatal = new RuntimeOptionKey<>(false);
+    // @formatter:on
+}
 
-    static class Options {
-        // @formatter:off
-        @Option(help = "Converts an exception triggered by the CrashAt option into a fatal error " +
-                       "if a non-null pointer was passed in the _fatal option to JNI_CreateJavaVM. " +
-                       "This option exists for the purpose of testing fatal error handling in libgraal.")
-        static final RuntimeOptionKey<Boolean> CrashAtIsFatal = new RuntimeOptionKey<>(false);
-        // @formatter:on
-    }
+public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFeature {
 
     private HotSpotReplacementsImpl hotSpotSubstrateReplacements;
 
@@ -194,6 +194,11 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
         public boolean getAsBoolean() {
             return ImageSingletons.contains(LibGraalFeature.class);
         }
+    }
+
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        ImageSingletons.add(NativeBridgeSupport.class, new LibGraalNativeBridgeSupport());
     }
 
     @Override
@@ -347,7 +352,7 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
                         source.check(tokens.length == 4, "Expected 4 tokens for a field");
                         String fieldName = tokens[2];
                         try {
-                            registry.register(false, false, clazz.getDeclaredField(fieldName));
+                            registry.register(false, clazz.getDeclaredField(fieldName));
                         } catch (NoSuchFieldException e) {
                             throw source.error("Field %s.%s not found", clazz.getTypeName(), fieldName);
                         } catch (NoClassDefFoundError e) {
@@ -435,6 +440,8 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
     @SuppressWarnings({"try", "unchecked"})
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
+        FeatureImpl.BeforeAnalysisAccessImpl impl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
+        DebugContext debug = impl.getBigBang().getDebug();
 
         // Services that will not be loaded if native-image is run
         // with -XX:-UseJVMCICompiler.
@@ -444,9 +451,8 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
         GraalServices.load(PartialEvaluatorConfiguration.class);
         GraalServices.load(HotSpotCodeCacheListener.class);
         GraalServices.load(HotSpotMBeanOperationProvider.class);
+        GraalServices.load(DisassemblerProvider.class);
 
-        FeatureImpl.BeforeAnalysisAccessImpl impl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
-        DebugContext debug = impl.getBigBang().getDebug();
         try (DebugContext.Scope scope = debug.scope("SnippetSupportEncode")) {
             InvocationPlugins compilerPlugins = hotSpotSubstrateReplacements.getGraphBuilderPlugins().getInvocationPlugins();
             MetaAccessProvider metaAccess = hotSpotSubstrateReplacements.getProviders().getMetaAccess();
@@ -507,7 +513,7 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
         for (List<?> list : services.values()) {
             list.removeIf(o -> {
                 String name = o.getClass().getName();
-                if (name.contains(".aarch64.") || name.contains(".sparc.") || name.contains(".amd64.")) {
+                if (name.contains(".aarch64.") || name.contains(".amd64.")) {
                     return !name.contains(archPackage);
                 }
                 return false;
@@ -576,7 +582,7 @@ final class Target_jdk_vm_ci_hotspot_SharedLibraryJVMCIReflection {
 
     @Substitute
     static Object convertUnknownValue(Object object) {
-        return KnownIntrinsics.convertUnknownValue(object, Object.class);
+        return object;
     }
 
     // Annotations are currently unsupported in libgraal. These substitutions will turn their use
@@ -633,7 +639,7 @@ final class Target_org_graalvm_compiler_hotspot_HotSpotGraalCompiler {
         // This scope is required to allow Graal compilations of host methods to call methods
         // on the TruffleCompilerRuntime. This is, for example, required to find out about
         // Truffle-specific method annotations.
-        try (JNILibGraalScope<TruffleToLibGraal.Id> scope = new JNILibGraalScope<>(null, env)) {
+        try (JNIMethodScope scope = new JNIMethodScope("<called from VM>", env)) {
             return compiler.compileMethod(request, true, compiler.getGraalRuntime().getOptions());
         }
     }
@@ -710,11 +716,6 @@ final class Target_org_graalvm_compiler_hotspot_HotSpotGraalOptionValues {
 
     @Substitute
     private static OptionValues initializeOptions() {
-        // Sanity check
-        if (!XOptions.getXmn().getPrefix().equals("-X")) {
-            throw new InternalError("Expected " + XOptions.getXmn().getPrefixAndName() + " to start with -X");
-        }
-
         // Parse "graal." options.
         RuntimeOptionValues options = RuntimeOptionValues.singleton();
         options.update(HotSpotGraalOptionValues.parseOptions());
@@ -734,15 +735,14 @@ final class Target_org_graalvm_compiler_hotspot_HotSpotGraalOptionValues {
             String name = e.getKey();
             if (name.startsWith("libgraal.")) {
                 if (name.startsWith("libgraal.X")) {
-                    String[] xarg = {"-" + name.substring("libgraal.".length()) + e.getValue()};
-                    String[] unknown = XOptions.singleton().parse(xarg, false);
-                    if (unknown.length == 0) {
+                    String xarg = name.substring("libgraal.X.".length()) + e.getValue();
+                    if (XOptions.setOption(xarg)) {
                         continue;
                     }
-                } else {
-                    String value = e.getValue();
-                    optionSettings.put(name.substring("libgraal.".length()), value);
                 }
+
+                String value = e.getValue();
+                optionSettings.put(name.substring("libgraal.".length()), value);
             }
         }
         if (!optionSettings.isEmpty()) {
@@ -771,7 +771,7 @@ final class Target_org_graalvm_compiler_truffle_common_TruffleCompilerRuntimeIns
 final class Target_org_graalvm_compiler_core_GraalServiceThread {
     @Substitute()
     void beforeRun() {
-        GraalServiceThread thread = KnownIntrinsics.convertUnknownValue(this, GraalServiceThread.class);
+        GraalServiceThread thread = SubstrateUtil.cast(this, GraalServiceThread.class);
         if (!LibGraal.attachCurrentThread(thread.isDaemon(), null)) {
             throw new InternalError("Couldn't attach to HotSpot runtime");
         }
@@ -789,16 +789,10 @@ final class Target_org_graalvm_compiler_core_GraalCompiler {
     @SuppressWarnings("unused")
     @Substitute()
     private static void notifyCrash(String crashMessage) {
-        if (LibGraalFeature.Options.CrashAtIsFatal.getValue()) {
+        if (LibGraalOptions.CrashAtIsFatal.getValue()) {
             LogHandler handler = ImageSingletons.lookup(LogHandler.class);
             if (handler instanceof FunctionPointerLogHandler) {
-                FunctionPointerLogHandler fpHandler = (FunctionPointerLogHandler) handler;
-                if (fpHandler.getFatalErrorFunctionPointer().isNonNull()) {
-                    try (CCharPointerHolder holder = CTypeConversion.toCString(crashMessage)) {
-                        handler.log(holder.get(), WordFactory.unsigned(crashMessage.getBytes().length));
-                    }
-                    handler.fatalError();
-                }
+                VMError.shouldNotReachHere(crashMessage);
             }
             // If changing this message, update the test for it in mx_vm_gate.py
             System.out.println("CrashAtIsFatal: no fatalError function pointer installed");

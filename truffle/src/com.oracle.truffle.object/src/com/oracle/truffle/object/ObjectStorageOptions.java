@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,11 +40,11 @@
  */
 package com.oracle.truffle.object;
 
-import static com.oracle.truffle.api.object.Layout.OPTION_PREFIX;
-
 /** @since 0.17 or earlier */
 @Deprecated
 public final class ObjectStorageOptions {
+    @SuppressWarnings("deprecation") private static final String OPTION_PREFIX = com.oracle.truffle.api.object.Layout.OPTION_PREFIX;
+
     private ObjectStorageOptions() {
     }
 

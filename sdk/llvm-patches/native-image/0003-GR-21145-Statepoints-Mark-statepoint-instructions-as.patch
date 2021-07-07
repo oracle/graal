@@ -1,7 +1,7 @@
 From f9539da2e76ac217c8693fc853a85be472c4c02b Mon Sep 17 00:00:00 2001
 From: Loic Ottet <loic.ottet@oracle.com>
 Date: Wed, 12 Feb 2020 14:04:45 +0100
-Subject: [PATCH 3/4] [GR-21145][Statepoints] Mark statepoint instructions as
+Subject: [PATCH 3/6] [GR-21145][Statepoints] Mark statepoint instructions as
  clobbering LR on AArch64
 
 ---
@@ -170,5 +170,5 @@ index bf489cbbae65..d710c5a115b2 100644
  ; CHECK-NEXT:       Process Implicit Definitions
  ; CHECK-NEXT:       Remove unreachable machine basic blocks
 -- 
-2.28.0
+2.31.1
 

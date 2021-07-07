@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,9 +33,9 @@ import java.nio.ByteBuffer;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -66,9 +66,9 @@ public abstract class LLVMPolyglotAsString extends LLVMIntrinsic {
     @Child WriteStringNode writeString = WriteStringNodeGen.create();
 
     @Specialization
-    long doAsString(VirtualFrame frame, Object object, Object buffer, long buflen, LLVMCharset charset) {
+    long doAsString(Object object, Object buffer, long buflen, LLVMCharset charset) {
         ByteBuffer result = encodeString.execute(object, charset);
-        return writeString.execute(frame, result, buffer, buflen, charset.zeroTerminatorLen);
+        return writeString.execute(result, buffer, buflen, charset.zeroTerminatorLen);
     }
 
     abstract static class EncodeStringNode extends LLVMNode {
@@ -106,11 +106,12 @@ public abstract class LLVMPolyglotAsString extends LLVMIntrinsic {
         }
     }
 
+    @ImportStatic(CompilerDirectives.class)
     abstract static class WriteStringNode extends LLVMNode {
 
-        protected abstract long execute(VirtualFrame frame, ByteBuffer source, Object target, long targetLen, int zeroTerminatorLen);
+        protected abstract long execute(ByteBuffer source, Object target, long targetLen, int zeroTerminatorLen);
 
-        @Specialization(guards = "srcBuffer.getClass() == srcBufferClass")
+        @Specialization(guards = "isExact(srcBuffer, srcBufferClass)")
         long doWrite(ByteBuffer srcBuffer, LLVMPointer target, long targetLen, int zeroTerminatorLen,
                         @Cached("srcBuffer.getClass()") Class<? extends ByteBuffer> srcBufferClass,
                         @Cached LLVMI8OffsetStoreNode write) {

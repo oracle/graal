@@ -31,7 +31,6 @@ import static com.oracle.graal.pointsto.reports.ReportUtils.LAST_CHILD;
 import static com.oracle.graal.pointsto.reports.ReportUtils.fieldComparator;
 import static com.oracle.graal.pointsto.reports.ReportUtils.positionComparator;
 
-import java.io.File;
 import java.io.PrintWriter;
 import java.util.ArrayDeque;
 import java.util.Arrays;
@@ -60,8 +59,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public final class ObjectTreePrinter extends ObjectScanner {
 
-    public static void print(BigBang bigbang, String path, String reportName) {
-        ReportUtils.report("object tree", path + File.separatorChar + "reports", "object_tree_" + reportName, "txt",
+    public static void print(BigBang bigbang, String reportsPath, String reportName) {
+        ReportUtils.report("object tree", reportsPath, "object_tree_" + reportName, "txt",
                         writer -> ObjectTreePrinter.doPrint(writer, bigbang));
     }
 
@@ -295,7 +294,7 @@ public final class ObjectTreePrinter extends ObjectScanner {
     private final SimpleMatcher defaultSuppressRootMatcher;
 
     private ObjectTreePrinter(BigBang bigbang) {
-        super(bigbang, new ReusableSet());
+        super(bigbang, null, new ReusableSet());
 
         /* Use linked hash map for predictable iteration order. */
         this.constantToNode = new LinkedHashMap<>();

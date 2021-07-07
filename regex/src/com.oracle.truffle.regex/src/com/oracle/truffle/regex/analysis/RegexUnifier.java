@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,6 @@
 package com.oracle.truffle.regex.analysis;
 
 import com.oracle.truffle.regex.RegexFlags;
-import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.tregex.parser.RegexLexer;
@@ -62,7 +61,7 @@ public final class RegexUnifier {
 
     public RegexUnifier(RegexSource source) {
         this.source = source;
-        this.lexer = new RegexLexer(source, RegexFlags.parseFlags(source.getFlags()), RegexOptions.DEFAULT);
+        this.lexer = new RegexLexer(source, RegexFlags.parseFlags(source));
         this.dump = new StringBuilder(source.getPattern().length());
     }
 

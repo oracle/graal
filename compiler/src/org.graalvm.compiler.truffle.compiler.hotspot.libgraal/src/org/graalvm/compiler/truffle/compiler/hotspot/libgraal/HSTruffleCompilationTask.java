@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,26 +24,30 @@
  */
 package org.graalvm.compiler.truffle.compiler.hotspot.libgraal;
 
-import org.graalvm.libgraal.jni.HSObject;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.HasNextTier;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.InliningData;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsCancelled;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsLastTier;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilationTaskGen.callInliningData;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilationTaskGen.callIsCancelled;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilationTaskGen.callIsLastTier;
-import static org.graalvm.libgraal.jni.JNILibGraalScope.env;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilationTaskGen.callHasNextTier;
+import static org.graalvm.nativebridge.jni.JNIMethodScope.env;
 
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
-import org.graalvm.libgraal.jni.JNILibGraalScope;
-import org.graalvm.libgraal.jni.JNI.JObject;
-import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal;
+import org.graalvm.compiler.truffle.common.TruffleInliningData;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal;
+import org.graalvm.nativebridge.jni.HSObject;
+import org.graalvm.nativebridge.jni.JNI.JObject;
+import org.graalvm.nativebridge.jni.JNIMethodScope;
 
 /**
  * Proxy for a {@code Supplier<Boolean>} object in the HotSpot heap.
  */
 final class HSTruffleCompilationTask extends HSObject implements TruffleCompilationTask {
 
-    HSTruffleCompilationTask(JNILibGraalScope<TruffleToLibGraal.Id> scope, JObject handle) {
-        super(scope, handle);
+    HSTruffleCompilationTask(JObject handle) {
+        super(JNIMethodScope.scope(), handle);
     }
 
     @TruffleFromLibGraal(IsCancelled)
@@ -52,9 +56,21 @@ final class HSTruffleCompilationTask extends HSObject implements TruffleCompilat
         return callIsCancelled(env(), getHandle());
     }
 
+    @TruffleFromLibGraal(HasNextTier)
+    @Override
+    public boolean hasNextTier() {
+        return callHasNextTier(env(), getHandle());
+    }
+
     @TruffleFromLibGraal(IsLastTier)
     @Override
     public boolean isLastTier() {
         return callIsLastTier(env(), getHandle());
+    }
+
+    @TruffleFromLibGraal(InliningData)
+    @Override
+    public TruffleInliningData inliningData() {
+        return new HSTruffleInliningData(JNIMethodScope.scope(), callInliningData(env(), getHandle()));
     }
 }

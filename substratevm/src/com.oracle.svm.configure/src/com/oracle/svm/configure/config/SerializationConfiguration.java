@@ -25,53 +25,68 @@
  */
 package com.oracle.svm.configure.config;
 
-import com.oracle.svm.configure.json.JsonPrintable;
-import com.oracle.svm.configure.json.JsonWriter;
-
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class SerializationConfiguration implements JsonPrintable {
+import com.oracle.svm.configure.ConfigurationBase;
+import com.oracle.svm.configure.json.JsonWriter;
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.configure.SerializationConfigurationParser;
 
-    private final ConcurrentHashMap<String, Set<Long>> serializations = new ConcurrentHashMap<>();
+public class SerializationConfiguration implements ConfigurationBase {
 
-    public void add(String serializationTargetClass, Long checksum) {
-        Set<Long> ret = serializations.get(serializationTargetClass);
-        if (ret == null) {
-            ret = new HashSet<>();
-            serializations.put(serializationTargetClass, ret);
-        }
-        ret.add(checksum);
+    private static final String KEY_SEPARATOR = "|";
+
+    private final Set<String> serializations = ConcurrentHashMap.newKeySet();
+
+    public SerializationConfiguration() {
     }
 
-    public boolean contains(String serializationTargetClass, Long checksum) {
-        return serializations.contains(serializationTargetClass) && serializations.get(serializationTargetClass).contains(checksum);
+    public SerializationConfiguration(SerializationConfiguration other) {
+        this.serializations.addAll(other.serializations);
+    }
+
+    public void removeAll(SerializationConfiguration other) {
+        serializations.removeAll(other.serializations);
+    }
+
+    public void add(String serializationTargetClass, String customTargetConstructorClass) {
+        serializations.add(mapNameAndConstructor(serializationTargetClass, customTargetConstructorClass));
+    }
+
+    public boolean contains(String serializationTargetClass, String customTargetConstructorClass) {
+        return serializations.contains(mapNameAndConstructor(serializationTargetClass, customTargetConstructorClass));
+    }
+
+    private static String mapNameAndConstructor(String serializationTargetClass, String customTargetConstructorClass) {
+        return serializationTargetClass + (customTargetConstructorClass != null ? KEY_SEPARATOR + customTargetConstructorClass : "");
     }
 
     @Override
     public void printJson(JsonWriter writer) throws IOException {
         writer.append('[').indent();
         String prefix = "";
-        for (Map.Entry<String, Set<Long>> entry : serializations.entrySet()) {
-            for (Long value : entry.getValue()) {
-                writer.append(prefix);
-                writer.newline().append('{');
-                writer.newline();
-                writer.quote("name").append(":").quote(entry.getKey());
-                if (value != null) {
-                    writer.append(",").newline();
-                    writer.quote("checksum").append(':').append(value.toString()).newline();
-                } else {
-                    writer.newline();
-                }
-                writer.append('}');
-                prefix = ",";
+        for (String entry : serializations) {
+            writer.append(prefix);
+            writer.newline().append('{').newline();
+            String[] serializationKeyValues = SubstrateUtil.split(entry, KEY_SEPARATOR, 2);
+            String className = serializationKeyValues[0];
+            writer.quote(SerializationConfigurationParser.NAME_KEY).append(":").quote(className);
+            if (serializationKeyValues.length > 1) {
+                writer.append(",").newline();
+                writer.quote(SerializationConfigurationParser.CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY).append(":").quote(serializationKeyValues[1]);
             }
+            writer.newline().append('}');
+            prefix = ",";
         }
         writer.unindent().newline();
-        writer.append(']').newline();
+        writer.append(']');
     }
+
+    @Override
+    public boolean isEmpty() {
+        return serializations.isEmpty();
+    }
+
 }

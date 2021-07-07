@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,7 +36,7 @@ import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.graph.Node.NodeIntrinsicFactory;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.spi.CanonicalizerTool;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNegationNode;
@@ -58,6 +58,10 @@ import jdk.vm.ci.meta.TriState;
 
 /**
  * The {@code InstanceOfNode} represents an instanceof test.
+ * <p>
+ * A Java instanceof test normally returns {@code false} when the tested object is {@code null}.
+ * However, if the node {@linkplain #allowsNull() allows null}, the test should return {@code true}
+ * for {@code null} values.
  */
 @NodeInfo(cycles = CYCLES_8, size = SIZE_8)
 @NodeIntrinsicFactory

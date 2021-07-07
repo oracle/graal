@@ -24,8 +24,8 @@
  */
 package com.oracle.objectfile;
 
-import java.io.Closeable;
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -52,8 +52,6 @@ import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import com.oracle.objectfile.elf.ELFObjectFile;
 import com.oracle.objectfile.macho.MachOObjectFile;
 import com.oracle.objectfile.pecoff.PECoffObjectFile;
-
-import sun.nio.ch.DirectBuffer;
 
 /**
  * Abstract superclass for object files. An object file is a binary container for sections,
@@ -281,11 +279,11 @@ public abstract class ObjectFile {
         AARCH64_R_AARCH64_ADD_ABS_LO12_NC,
         AARCH64_R_LD_PREL_LO19,
         AARCH64_R_GOT_LD_PREL19,
+        AARCH64_R_AARCH64_LDST128_ABS_LO12_NC,
         AARCH64_R_AARCH64_LDST64_ABS_LO12_NC,
         AARCH64_R_AARCH64_LDST32_ABS_LO12_NC,
         AARCH64_R_AARCH64_LDST16_ABS_LO12_NC,
-        AARCH64_R_AARCH64_LDST8_ABS_LO12_NC,
-        AARCH64_R_AARCH64_LDST128_ABS_LO12_NC;
+        AARCH64_R_AARCH64_LDST8_ABS_LO12_NC;
 
         public static RelocationKind getDirect(int relocationSize) {
             switch (relocationSize) {
@@ -410,9 +408,8 @@ public abstract class ObjectFile {
          *            bytes
          * @param useImplicitAddend whether the current bytes are to be used as an addend
          * @param explicitAddend a full-width addend, or null if useImplicitAddend is true
-         * @return the relocation record created (or found, if it exists already)
          */
-        RelocationRecord markRelocationSite(int offset, ByteBuffer bb, RelocationKind k, String symbolName, boolean useImplicitAddend, Long explicitAddend);
+        void markRelocationSite(int offset, ByteBuffer bb, RelocationKind k, String symbolName, boolean useImplicitAddend, Long explicitAddend);
 
         /**
          * Force the creation of a relocation section/element for this section, and return it. This
@@ -443,7 +440,7 @@ public abstract class ObjectFile {
          * passed a buffer. It uses the byte array accessed by {@link #getContent} and
          * {@link #setContent}.
          */
-        RelocationRecord markRelocationSite(int offset, RelocationKind k, String symbolName, boolean useImplicitAddend, Long explicitAddend);
+        void markRelocationSite(int offset, RelocationKind k, String symbolName, boolean useImplicitAddend, Long explicitAddend);
     }
 
     public interface NobitsSectionImpl extends ElementImpl {
@@ -1268,12 +1265,36 @@ public abstract class ObjectFile {
         int totalSize = bake(sortedObjectFileElements);
         try {
             ByteBuffer buffer = outputChannel.map(MapMode.READ_WRITE, 0, totalSize);
-            try (Closeable ignored = () -> ((DirectBuffer) buffer).cleaner().clean()) {
+            try {
                 writeBuffer(sortedObjectFileElements, buffer);
+            } finally {
+                cleanBuffer(buffer); // unmap immediately
             }
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private static void cleanBuffer(ByteBuffer buffer) throws IOException {
+        // The Cleaner class returned by DirectBuffer.cleaner() was moved from to jdk.internal from
+        // sun.misc, so we need to call it reflectively to ensure binary compatibility between JDKs
+        Object cleaner;
+        try {
+            Class<? extends ByteBuffer> bufferClass = buffer.getClass();
+            ModuleAccess.openModuleByClass(bufferClass, ObjectFile.class);
+            cleaner = getMethodAndSetAccessible(bufferClass, "cleaner").invoke(buffer);
+            Class<?> cleanerClass = cleaner.getClass();
+            ModuleAccess.openModuleByClass(cleanerClass, ObjectFile.class);
+            getMethodAndSetAccessible(cleanerClass, "clean").invoke(cleaner);
+        } catch (ReflectiveOperationException e) {
+            throw new IOException("Could not clean mapped ByteBuffer", e);
+        }
+    }
+
+    private static Method getMethodAndSetAccessible(Class<?> clazz, String name, Class<?>... parameterTypes) throws NoSuchMethodException {
+        Method method = clazz.getMethod(name, parameterTypes);
+        method.setAccessible(true);
+        return method;
     }
 
     /*

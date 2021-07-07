@@ -50,7 +50,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Objects;
 
-import org.graalvm.wasm.ModuleLimits;
 import org.graalvm.wasm.ImportDescriptor;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmCustomSection;
@@ -61,41 +60,13 @@ import org.graalvm.wasm.constants.ImportIdentifier;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 
+import com.oracle.truffle.api.CompilerDirectives;
+
 public class Module extends Dictionary {
-    // Limits specified by https://www.w3.org/TR/wasm-js-api/#limits
-    private static final int MODULE_SIZE_LIMIT = 1 << 30;
-    private static final int TYPE_COUNT_LIMIT = 1000000;
-    private static final int FUNCTION_COUNT_LIMIT = 1000000;
-    private static final int IMPORT_COUNT_LIMIT = 100000;
-    private static final int EXPORT_COUNT_LIMIT = 100000;
-    private static final int GLOBAL_COUNT_LIMIT = 1000000;
-    private static final int DATA_SEGMENT_LIMIT = 100000;
-    private static final int ELEMENT_SEGMENT_LIMIT = 10000000;
-    private static final int FUNCTION_SIZE_LIMIT = 7654321;
-    private static final int PARAM_COUNT_LIMIT = 1000;
-    private static final int RETURN_COUNT_LIMIT = 1;
-    private static final int LOCAL_COUNT_LIMIT = 50000;
-    private static final int TABLE_SIZE_LIMIT = 10000000;
-    private static final int MEMORY_SIZE_LIMIT = 32767;
-    private static final ModuleLimits LIMITS = new ModuleLimits(
-                    MODULE_SIZE_LIMIT,
-                    TYPE_COUNT_LIMIT,
-                    FUNCTION_COUNT_LIMIT,
-                    IMPORT_COUNT_LIMIT,
-                    EXPORT_COUNT_LIMIT,
-                    GLOBAL_COUNT_LIMIT,
-                    DATA_SEGMENT_LIMIT,
-                    ELEMENT_SEGMENT_LIMIT,
-                    FUNCTION_SIZE_LIMIT,
-                    PARAM_COUNT_LIMIT,
-                    RETURN_COUNT_LIMIT,
-                    LOCAL_COUNT_LIMIT,
-                    TABLE_SIZE_LIMIT,
-                    MEMORY_SIZE_LIMIT);
     private final WasmModule module;
 
     public Module(WasmContext context, byte[] source) {
-        this.module = context.readModule(source, LIMITS);
+        this.module = context.readModule(source, JsConstants.JS_LIMITS);
         addMembers(new Object[]{
                         "exports", new Executable(args -> exports()),
                         "imports", new Executable(args -> imports()),
@@ -105,13 +76,13 @@ public class Module extends Dictionary {
 
     public Sequence<ModuleExportDescriptor> exports() {
         final ArrayList<ModuleExportDescriptor> list = new ArrayList<>();
-        for (String name : module.exportedSymbols()) {
-            WasmFunction f = module.exportedFunctions().get(name);
-            Integer globalIndex = module.exportedGlobals().get(name);
+        for (final String name : module.exportedSymbols()) {
+            final WasmFunction f = module.exportedFunctions().get(name);
+            final Integer globalIndex = module.exportedGlobals().get(name);
 
-            if (Objects.equals(module.exportedMemory(), name)) {
+            if (module.exportedMemoryNames().contains(name)) {
                 list.add(new ModuleExportDescriptor(name, memory.name(), null));
-            } else if (Objects.equals(module.exportedTable(), name)) {
+            } else if (module.exportedTableNames().contains(name)) {
                 list.add(new ModuleExportDescriptor(name, table.name(), null));
             } else if (f != null) {
                 list.add(new ModuleExportDescriptor(name, function.name(), functionTypeToString(f)));
@@ -119,6 +90,7 @@ public class Module extends Dictionary {
                 String valueType = ValueType.fromByteValue(module.globalValueType(globalIndex)).toString();
                 list.add(new ModuleExportDescriptor(name, global.name(), valueType));
             } else {
+                CompilerDirectives.transferToInterpreter();
                 throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Exported symbol list does not match the actual exports.");
             }
         }
@@ -138,6 +110,7 @@ public class Module extends Dictionary {
                     if (Objects.equals(module.importedTable(), descriptor)) {
                         list.add(new ModuleImportDescriptor(descriptor.moduleName, descriptor.memberName, table.name(), null));
                     } else {
+                        CompilerDirectives.transferToInterpreter();
                         throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Table import inconsistent.");
                     }
                     break;
@@ -145,6 +118,7 @@ public class Module extends Dictionary {
                     if (Objects.equals(module.importedMemory(), descriptor)) {
                         list.add(new ModuleImportDescriptor(descriptor.moduleName, descriptor.memberName, memory.name(), null));
                     } else {
+                        CompilerDirectives.transferToInterpreter();
                         throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Memory import inconsistent.");
                     }
                     break;
@@ -154,6 +128,7 @@ public class Module extends Dictionary {
                     list.add(new ModuleImportDescriptor(descriptor.moduleName, descriptor.memberName, global.name(), valueType));
                     break;
                 default:
+                    CompilerDirectives.transferToInterpreter();
                     throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Unknown import descriptor type: " + descriptor.identifier);
             }
         }

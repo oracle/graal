@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -198,6 +198,16 @@ public final class Introspection {
                 throw new IllegalArgumentException("Invalid specialization index");
             }
             return cachedData.get(instanceIndex);
+        }
+
+        /**
+         * {@inheritDoc}
+         * 
+         * @since 21.1
+         */
+        @Override
+        public String toString() {
+            return "SpecializationInfo[name=" + methodName + ", active=" + isActive() + ", excluded" + isExcluded() + ", instances=" + getInstances() + "]";
         }
 
     }

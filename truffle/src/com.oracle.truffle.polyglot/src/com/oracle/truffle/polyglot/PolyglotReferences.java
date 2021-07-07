@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ import java.lang.ref.WeakReference;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
@@ -97,6 +98,7 @@ final class PolyglotReferences {
         return new MultiLanguageSupplier(language);
     }
 
+    @TruffleBoundary
     static AssertionError invalidSharingError(PolyglotEngineImpl usedEngine) throws AssertionError {
         Exception e = new Exception();
         StringBuilder stack = new StringBuilder();
@@ -157,8 +159,8 @@ final class PolyglotReferences {
     private static boolean assertDirectContextAccess(PolyglotLanguageContext languageContext, Object languageContextImpl) throws AssertionError {
         if (languageContext == null) {
             /*
-             * This case may happen if the assertions were disabled during boot image generation but
-             * were later enabled at runtime. See GR-14463.
+             * This case may happen if the assertions were disabled during image generation but were
+             * later enabled at runtime. See GR-14463.
              */
             return true;
         }
@@ -248,8 +250,8 @@ final class PolyglotReferences {
         private static boolean assertDirectContextAccess(Object seenContext, WeakReference<PolyglotLanguageContext> contextRef) {
             if (contextRef == null) {
                 /*
-                 * This case may happen if the assertions were disabled during boot image generation
-                 * but were later enabled at runtime. See GR-14463.
+                 * This case may happen if the assertions were disabled during image generation but
+                 * were later enabled at runtime. See GR-14463.
                  */
                 return true;
             }

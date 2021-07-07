@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -37,24 +37,37 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.oracle.truffle.llvm.tests.BaseSuiteHarness;
+import com.oracle.truffle.llvm.tests.Platform;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
+import com.oracle.truffle.llvm.tests.CommonTestUtils;
 import com.oracle.truffle.llvm.tests.options.TestOptions;
 
 public class EagerParsingLazyFailingTest {
 
-    private static final Path TEST_DIR = new File(TestOptions.TEST_SUITE_PATH, "other").toPath();
-    private static final String FILENAME = "O0_MEM2REG.bc";
+    @Before
+    public void bundledLLVMOnly() {
+        TestOptions.assumeBundledLLVM();
+    }
+
+    @Before
+    public void checkLinuxAMD64() {
+        Assume.assumeTrue("Skipping linux/amd64 only test", Platform.isLinux() && Platform.isAMD64());
+    }
+
+    private static final Path TEST_DIR = new File(TestOptions.getTestDistribution("SULONG_EMBEDDED_TEST_SUITES"), "other").toPath();
+    private static final String FILENAME = "bitcode-O0.bc";
 
     private static final class Runner implements AutoCloseable {
         private final String testName;
@@ -80,7 +93,7 @@ public class EagerParsingLazyFailingTest {
         Value load() {
             if (library == null) {
                 try {
-                    File file = TEST_DIR.resolve(testName + BaseSuiteHarness.TEST_DIR_EXT).resolve(FILENAME).toFile();
+                    File file = TEST_DIR.resolve(testName + CommonTestUtils.TEST_DIR_EXT).resolve(FILENAME).toFile();
                     Source source = Source.newBuilder(LLVMLanguage.ID, file).build();
                     library = context.eval(source);
                 } catch (RuntimeException e) {
@@ -103,14 +116,14 @@ public class EagerParsingLazyFailingTest {
 
     @Test
     public void unsupportedInlineAsmNotExecuted() {
-        try (Runner runner = new Runner("unsupported_inline_asm.c")) {
+        try (Runner runner = new Runner("unsupported_inline_asm.ll")) {
             Assert.assertEquals(2, runner.load().invokeMember("run", 0).asInt());
         }
     }
 
     @Test
     public void unsupportedInlineAsmExecuted() {
-        try (Runner runner = new Runner("unsupported_inline_asm.c")) {
+        try (Runner runner = new Runner("unsupported_inline_asm.ll")) {
             exception.expect(PolyglotException.class);
             exception.expectMessage(containsString("Unsupported operation"));
             Assert.assertEquals(1, runner.load().invokeMember("run", 4).asInt());
@@ -119,14 +132,14 @@ public class EagerParsingLazyFailingTest {
 
     @Test
     public void unsupportedInlineAsmEagerParsingNotExecuted() {
-        try (Runner runner = new Runner("unsupported_inline_asm.c", eagerParsingOptions())) {
+        try (Runner runner = new Runner("unsupported_inline_asm.ll", eagerParsingOptions())) {
             Assert.assertEquals(2, runner.load().invokeMember("run", 0).asInt());
         }
     }
 
     @Test
     public void unsupportedInlineAsmEagerParsingExecuted() {
-        try (Runner runner = new Runner("unsupported_inline_asm.c", eagerParsingOptions())) {
+        try (Runner runner = new Runner("unsupported_inline_asm.ll", eagerParsingOptions())) {
             exception.expect(PolyglotException.class);
             exception.expectMessage(containsString("Unsupported operation"));
             Assert.assertEquals(1, runner.load().invokeMember("run", 4).asInt());

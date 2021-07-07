@@ -41,10 +41,8 @@
 
 package org.graalvm.wasm;
 
-public class WasmUtil {
-    public static long unsignedInt32ToLong(int n) {
-        // See https://stackoverflow.com/a/22938125.
-        return n & 0xFFFFFFFFL;
+public final class WasmUtil {
+    private WasmUtil() {
     }
 
     public static String[] prepend(String[] xs, String x) {

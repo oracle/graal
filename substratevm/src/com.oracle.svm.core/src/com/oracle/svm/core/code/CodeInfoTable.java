@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ package com.oracle.svm.core.code;
 import java.util.Arrays;
 import java.util.List;
 
+import com.oracle.svm.core.heap.ReferenceMapIndex;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -138,12 +139,12 @@ public class CodeInfoTable {
          */
 
         NonmovableArray<Byte> referenceMapEncoding = NonmovableArrays.nullArray();
-        long referenceMapIndex = CodeInfoQueryResult.NO_REFERENCE_MAP;
+        long referenceMapIndex = ReferenceMapIndex.NO_REFERENCE_MAP;
         if (info.isNonNull()) {
             referenceMapEncoding = CodeInfoAccess.getStackReferenceMapEncoding(info);
             referenceMapIndex = CodeInfoAccess.lookupStackReferenceMapIndex(info, CodeInfoAccess.relativeIP(info, ip));
         }
-        if (referenceMapIndex == CodeInfoQueryResult.NO_REFERENCE_MAP) {
+        if (referenceMapIndex == ReferenceMapIndex.NO_REFERENCE_MAP) {
             throw reportNoReferenceMap(sp, ip, info);
         }
         return CodeReferenceMapDecoder.walkOffsetsFromPointer(sp, referenceMapEncoding, referenceMapIndex, visitor);

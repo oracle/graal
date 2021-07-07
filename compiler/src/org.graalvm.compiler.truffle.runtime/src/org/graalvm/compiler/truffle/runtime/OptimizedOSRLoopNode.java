@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.ReplaceObserver;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
@@ -129,8 +130,8 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
             } finally {
                 baseLoopCount = 0;
             }
-        } else if (GraalCompilerDirectives.inFirstTier()) {
-            int iterationsCompleted = 0;
+        } else if (GraalCompilerDirectives.hasNextTier()) {
+            long iterationsCompleted = 0;
             Object status;
             try {
                 while (repeatableNode.shouldContinue((status = repeatableNode.executeRepeatingWithValue(frame)))) {
@@ -139,10 +140,11 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
                         // compiled method got invalidated. We might need OSR again.
                         return execute(frame);
                     }
+                    TruffleSafepoint.poll(this);
                 }
             } finally {
                 if (firstTierBackedgeCounts && iterationsCompleted > 1) {
-                    reportParentLoopCount(iterationsCompleted);
+                    reportParentLoopCount(toIntOrMaxInt(iterationsCompleted));
                 }
             }
             return status;
@@ -153,13 +155,18 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
                     // compiled method got invalidated. We might need OSR again.
                     return execute(frame);
                 }
+                TruffleSafepoint.poll(this);
             }
             return status;
         }
     }
 
+    static int toIntOrMaxInt(long i) {
+        return i > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) i;
+    }
+
     private Object profilingLoop(VirtualFrame frame) {
-        int iterations = 0;
+        long iterations = 0;
         try {
             Object status;
             while (repeatableNode.shouldContinue(status = repeatableNode.executeRepeatingWithValue(frame))) {
@@ -169,12 +176,13 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
                     // The status returned here is CONTINUE_LOOP_STATUS.
                     return status;
                 }
+                TruffleSafepoint.poll(this);
             }
             // The status returned here is different than CONTINUE_LOOP_STATUS.
             return status;
         } finally {
-            baseLoopCount += iterations;
-            reportParentLoopCount(iterations);
+            baseLoopCount = toIntOrMaxInt(baseLoopCount + iterations);
+            reportParentLoopCount(toIntOrMaxInt(iterations));
         }
     }
 
@@ -187,6 +195,9 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
 
     final void reportChildLoopCount(int iterations) {
         baseLoopCount += iterations;
+        if (baseLoopCount < 0) {
+            baseLoopCount = Integer.MAX_VALUE;
+        }
     }
 
     /**
@@ -204,7 +215,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
     }
 
     private Object compilingLoop(VirtualFrame frame) {
-        int iterations = 0;
+        long iterations = 0;
         try {
             Object status;
             do {
@@ -220,12 +231,12 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
                     return repeatableNode.initialLoopStatus();
                 }
                 iterations++;
-
+                TruffleSafepoint.poll(this);
             } while (repeatableNode.shouldContinue(status = repeatableNode.executeRepeatingWithValue(frame)));
             return status;
         } finally {
-            baseLoopCount += iterations;
-            reportParentLoopCount(iterations);
+            baseLoopCount = toIntOrMaxInt(baseLoopCount + iterations);
+            reportParentLoopCount(toIntOrMaxInt(iterations));
         }
     }
 
@@ -470,6 +481,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
                 if (CompilerDirectives.inInterpreter()) {
                     return loopNode.repeatableNode.initialLoopStatus();
                 }
+                TruffleSafepoint.poll(this);
             }
             return status;
         }
@@ -551,6 +563,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
                     if (CompilerDirectives.inInterpreter()) {
                         return loopNode.repeatableNode.initialLoopStatus();
                     }
+                    TruffleSafepoint.poll(this);
                 }
                 return status;
             } finally {

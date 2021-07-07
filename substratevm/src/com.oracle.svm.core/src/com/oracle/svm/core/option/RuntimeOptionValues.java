@@ -25,7 +25,6 @@
 package com.oracle.svm.core.option;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
@@ -40,9 +39,9 @@ import org.graalvm.compiler.options.NestedBooleanOptionKey;
 import org.graalvm.compiler.options.OptionDescriptor;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.RuntimeOptions.OptionClass;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.RuntimeOptionsSupport;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionType;
@@ -81,7 +80,7 @@ class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
 
     @Override
     public void set(String optionName, Object value) {
-        if (setXOption(optionName)) {
+        if (XOptions.setOption(optionName)) {
             return;
         }
         if (!RuntimeOptionValues.singleton().getAllOptionNames().contains(optionName)) {
@@ -114,8 +113,8 @@ class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
 
     @Override
     public OptionDescriptors getOptions(EnumSet<OptionClass> classes) {
-        Collection<OptionDescriptor> descriptors = RuntimeOptionParser.singleton().getDescriptors();
-        List<org.graalvm.options.OptionDescriptor> graalvmDescriptors = new ArrayList<>(descriptors.size());
+        Iterable<OptionDescriptor> descriptors = RuntimeOptionParser.singleton().getDescriptors();
+        List<org.graalvm.options.OptionDescriptor> graalvmDescriptors = new ArrayList<>();
         for (OptionDescriptor descriptor : descriptors) {
             if (classes.contains(getOptionClass(descriptor))) {
                 org.graalvm.options.OptionDescriptor.Builder builder = org.graalvm.options.OptionDescriptor.newBuilder(asGraalVMOptionKey(descriptor), descriptor.getName());
@@ -155,7 +154,7 @@ class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
         }
         OptionKey<T> optionKey = (OptionKey<T>) descriptor.getOptionKey();
         while (optionKey instanceof NestedBooleanOptionKey) {
-            optionKey = (OptionKey<T>) ((NestedBooleanOptionKey) optionKey).getMasterOption();
+            optionKey = (OptionKey<T>) ((NestedBooleanOptionKey) optionKey).getParentOption();
         }
         T defaultValue = optionKey.getDefaultValue();
         return new org.graalvm.options.OptionKey<>(defaultValue, type);
@@ -183,27 +182,6 @@ class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
         }
 
         return Long.parseLong(valueString) * scale;
-    }
-
-    /*
-     * Parse from an `-X` option, from a name and a value (e.g., from "mx2g"). Returns true if
-     * successful, false otherwise. Throws an exception if the option was recognized, but the value
-     * was not a number.
-     */
-    private static boolean setXOption(String keyAndValue) {
-        /* A hack to parse `-X` options from a String value. */
-        for (XOptions.XFlag xFlag : XOptions.singleton().getXFlags()) {
-            if (keyAndValue.startsWith(xFlag.getName())) {
-                final String valueString = keyAndValue.substring(xFlag.getName().length());
-                try {
-                    XOptions.singleton().parseFromValueString(xFlag, valueString);
-                    return true;
-                } catch (NumberFormatException nfe) {
-                    throw new RuntimeException("Invalid option '" + xFlag.getPrefixAndName() + valueString + "' does not specify a valid number.");
-                }
-            }
-        }
-        return false;
     }
 }
 

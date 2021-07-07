@@ -36,6 +36,7 @@ import com.oracle.svm.hosted.SVMHost;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MemoryAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 @Platforms(Platform.HOSTED_ONLY.class)
@@ -71,5 +72,10 @@ public class HostedConstantReflectionProvider extends SharedConstantReflectionPr
     @Override
     public JavaConstant asJavaClass(ResolvedJavaType type) {
         return SubstrateObjectConstant.forObject(hostVM.dynamicHub(((HostedType) type).wrapped));
+    }
+
+    @Override
+    public JavaConstant readFieldValue(ResolvedJavaField field, JavaConstant receiver) {
+        return ((HostedField) field).readValue(receiver);
     }
 }

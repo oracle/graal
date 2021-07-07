@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.replacements;
 
+import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.ClassSubstitution;
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
@@ -52,21 +53,19 @@ public class JDK9StringSubstitutions {
             return false;
         }
         String thatString = (String) obj;
-        if (thisString.length() != thatString.length()) {
-            return false;
-        }
-
-        if (thisString.length() == 0) {
-            return true;
-        }
         if (getCoder(thisString) != getCoder(thatString)) {
             return false;
         }
-
         final byte[] array1 = getValue(thisString);
         final byte[] array2 = getValue(thatString);
+        if (array1.length != array2.length) {
+            return false;
+        }
+        if (array1.length == 0) {
+            return true;
+        }
 
-        return ArrayEqualsNode.equals(array1, array2, array1.length);
+        return ArrayEqualsNode.equals(array1, array2, GraalDirectives.isCompilationConstant(thatString) ? array2.length : array1.length);
     }
 
     /**

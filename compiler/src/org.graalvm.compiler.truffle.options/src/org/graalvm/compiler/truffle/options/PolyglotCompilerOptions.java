@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -71,6 +71,7 @@ public final class PolyglotCompilerOptions {
         VIRTUAL_RUNTIME_CALL("call", "Enables virtual call warnings"),
         VIRTUAL_INSTANCEOF("instanceof", "Enables virtual instanceof warnings"),
         VIRTUAL_STORE("store", "Enables virtual store warnings"),
+        FRAME_CLEAR_PHI("clear", "Enables frame clears introducing phi nodes warnings"),
         TRIVIAL_FAIL("trivial", "Enables trivial fail warnings");
 
         private static final EconomicMap<String, PerformanceWarningKind> kindByName;
@@ -239,6 +240,9 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Compile immediately to test Truffle compilation", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> CompileImmediately = new OptionKey<>(false);
 
+    @Option(help = "Compiles created call targets immediately with last tier. Disables background compilation if enabled.", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Boolean> CompileAOTOnCreate = new OptionKey<>(false);
+
     @Option(help = "Enable asynchronous truffle compilation in background threads", category = OptionCategory.EXPERT)
     public static final OptionKey<Boolean> BackgroundCompilation = new OptionKey<>(true);
 
@@ -250,11 +254,12 @@ public final class PolyglotCompilerOptions {
             "Select '0' to never terminate the Truffle compiler thread. " +
             "The option is not supported by all Truffle runtimes. On the runtime which doesn't support it the option has no effect.",
             category = OptionCategory.EXPERT)
-    public static final OptionKey<Long> CompilerIdleDelay = new OptionKey<>(1000L);
+    // TODO: GR-29949
+    public static final OptionKey<Long> CompilerIdleDelay = new OptionKey<>(10000L);
 
-    @Option(help = "Minimum number of invocations or loop iterations needed to compile a guest language root.",
+    @Option(help = "Minimum number of invocations or loop iterations needed to compile a guest language root when not using multi tier.",
                     category = OptionCategory.EXPERT)
-    public static final OptionKey<Integer> CompilationThreshold = new OptionKey<>(1000);
+    public static final OptionKey<Integer> SingleTierCompilationThreshold = new OptionKey<>(1000);
 
     @Option(help = "Minimum number of calls before a call target is compiled", category = OptionCategory.EXPERT)
     public static final OptionKey<Integer> MinInvokeThreshold = new OptionKey<>(3);
@@ -277,14 +282,18 @@ public final class PolyglotCompilerOptions {
     // MultiTier
 
     @Option(help = "Whether to use multiple Truffle compilation tiers by default.", category = OptionCategory.EXPERT)
-    public static final OptionKey<Boolean> MultiTier = new OptionKey<>(false);
+    public static final OptionKey<Boolean> MultiTier = new OptionKey<>(true);
 
     @Option(help = "Explicitly pick a first tier inlining policy by name (None, TrivialOnly). If empty (default) the lowest priority policy (TrivialOnly) is chosen.", category = OptionCategory.INTERNAL)
     public static final OptionKey<String> FirstTierInliningPolicy = new OptionKey<>("");
 
-    @Option(help = "Minimum number of invocations or loop iterations needed to compile a guest language root in low tier mode.",
+    @Option(help = "Minimum number of invocations or loop iterations needed to compile a guest language root in first tier.",
             category = OptionCategory.EXPERT)
-    public static final OptionKey<Integer> FirstTierCompilationThreshold = new OptionKey<>(100);
+    public static final OptionKey<Integer> FirstTierCompilationThreshold = new OptionKey<>(400);
+
+    @Option(help = "Minimum number of invocations or loop iterations needed to compile a guest language root in last tier.",
+            category = OptionCategory.EXPERT)
+    public static final OptionKey<Integer> LastTierCompilationThreshold = new OptionKey<>(10000);
 
     @Option(help = "Minimum number of calls before a call target is compiled in the first tier.", category = OptionCategory.EXPERT)
     public static final OptionKey<Integer> FirstTierMinInvokeThreshold = new OptionKey<>(1);
@@ -482,10 +491,35 @@ public final class PolyglotCompilerOptions {
             "On runtimes which doesn't support it the option has no effect.",
             category = OptionCategory.EXPERT)
     public static final OptionKey<Integer> EncodedGraphCachePurgeDelay = new OptionKey<>(10_000);
+    
+    @Option(help = "Forces the frame clearing mechanism to be executed, even if Frame.clear() is not used.",
+            category = OptionCategory.EXPERT)
+    public static final OptionKey<Boolean> ForceFrameLivenessAnalysis = new OptionKey<>(false);
 
     // Compilation queue
     @Option(help = "Use the priority of compilation jobs in the compilation queue.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> PriorityQueue = new OptionKey<>(true);
+
+    @Option(help = "Use a traversing compilation queue.", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Boolean> TraversingCompilationQueue = new OptionKey<>(true);
+
+    @Option(help = "Traversing queue uses rate as priority for both tier.", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Boolean> TraversingQueueWeightingBothTiers = new OptionKey<>(true);
+
+    @Option(help = "Traversing queue gives first tier compilations priority.", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Boolean> TraversingQueueFirstTierPriority = new OptionKey<>(true);
+
+    @Option(help = "Reduce or increase the compilation threshold depending on the size of the compilation queue.", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Boolean> DynamicCompilationThresholds = new OptionKey<>(true);
+
+    @Option(help = "The minimal scale the compilation thresholds can be reduced to.", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Double> DynamicCompilationThresholdsMinScale = new OptionKey<>(0.1);
+
+    @Option(help = "The desired minimum compilation queue load. When the load falls bellow this value, the compilation thresholds are decreased. The load is scaled by the number of compiler threads.", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Integer> DynamicCompilationThresholdsMinNormalLoad = new OptionKey<>(10);
+
+    @Option(help = "The desired maximum compilation queue load. When the load rises above this value, the compilation thresholds are increased. The load is scaled by the number of compiler threads.", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Integer> DynamicCompilationThresholdsMaxNormalLoad = new OptionKey<>(90);
 
     // Language agnostic inlining
 
@@ -496,10 +530,10 @@ public final class PolyglotCompilerOptions {
     public static final OptionKey<String> InliningPolicy = new OptionKey<>("");
 
     @Option(help = "The base expansion budget for language-agnostic inlining.", category = OptionCategory.EXPERT)
-    public static final OptionKey<Integer> InliningExpansionBudget = new OptionKey<>(30_000);
+    public static final OptionKey<Integer> InliningExpansionBudget = new OptionKey<>(12_000);
 
     @Option(help = "The base inlining budget for language-agnostic inlining", category = OptionCategory.EXPERT)
-    public static final OptionKey<Integer> InliningInliningBudget = new OptionKey<>(30_000);
+    public static final OptionKey<Integer> InliningInliningBudget = new OptionKey<>(12_000);
 
     // @formatter:on
 

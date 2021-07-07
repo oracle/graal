@@ -26,6 +26,7 @@ package com.oracle.svm.core.posix.headers;
 
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunction;
+import org.graalvm.nativeimage.c.function.CFunction.Transition;
 import org.graalvm.nativeimage.c.struct.AllowNarrowingCast;
 import org.graalvm.nativeimage.c.struct.AllowWideningCast;
 import org.graalvm.nativeimage.c.struct.CField;
@@ -62,9 +63,6 @@ public class Time {
     public interface timezone extends PointerBase {
     }
 
-    @CFunction(transition = CFunction.Transition.NO_TRANSITION)
-    public static native int gettimeofday(timeval tv, timezone tz);
-
     @CStruct(addStructKeyword = true)
     public interface timespec extends PointerBase {
         @CField
@@ -78,5 +76,13 @@ public class Time {
 
         @CField
         void set_tv_nsec(long value);
+    }
+
+    public static class NoTransitions {
+        @CFunction(transition = CFunction.Transition.NO_TRANSITION)
+        public static native int gettimeofday(timeval tv, timezone tz);
+
+        @CFunction(transition = Transition.NO_TRANSITION)
+        public static native int nanosleep(timespec requestedtime, timespec remaining);
     }
 }

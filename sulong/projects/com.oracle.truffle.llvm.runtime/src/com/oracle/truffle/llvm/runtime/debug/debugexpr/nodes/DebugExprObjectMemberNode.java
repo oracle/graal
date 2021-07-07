@@ -30,8 +30,6 @@
 package com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes;
 
 import com.oracle.truffle.api.dsl.Specialization;
-import org.graalvm.collections.Pair;
-
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
@@ -41,6 +39,7 @@ import com.oracle.truffle.llvm.runtime.debug.LLVMDebuggerValue;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprException;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import org.graalvm.collections.Pair;
 
 @NodeInfo(shortName = ".")
 public abstract class DebugExprObjectMemberNode extends LLVMExpressionNode implements MemberAccessible {
@@ -54,18 +53,18 @@ public abstract class DebugExprObjectMemberNode extends LLVMExpressionNode imple
     }
 
     @Override
-    public DebugExprType getType() {
+    public DebugExprType getType(VirtualFrame frame) {
         if (baseNode instanceof MemberAccessible) {
-            Object baseMember = ((MemberAccessible) baseNode).getMember();
+            Object baseMember = ((MemberAccessible) baseNode).getMember(frame);
             return findMemberAndType(baseMember).getRight();
         }
         throw DebugExprException.create(this, "member access not possible for %s.%s", baseNode, fieldName);
     }
 
     @Override
-    public Object getMember() {
+    public Object getMember(VirtualFrame frame) {
         if (baseNode instanceof MemberAccessible) {
-            Object baseMember = ((MemberAccessible) baseNode).getMember();
+            Object baseMember = ((MemberAccessible) baseNode).getMember(frame);
             return findMemberAndType(baseMember).getLeft();
         }
         throw DebugExprException.create(this, "member access not possible for %s.%s", baseNode, fieldName);

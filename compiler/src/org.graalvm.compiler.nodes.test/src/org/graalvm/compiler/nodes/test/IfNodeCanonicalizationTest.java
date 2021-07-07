@@ -34,6 +34,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.calc.SubNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
+import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.IterativeConditionalEliminationPhase;
 import org.junit.Assert;
@@ -41,8 +42,7 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 /**
- * A few tests of expected simplifications by
- * {@link IfNode#simplify(org.graalvm.compiler.graph.spi.SimplifierTool)}.
+ * A few tests of expected simplifications by {@link IfNode#simplify(SimplifierTool)}.
  */
 public class IfNodeCanonicalizationTest extends GraalCompilerTest {
 

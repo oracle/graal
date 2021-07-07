@@ -42,8 +42,9 @@ import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
 import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
 import com.oracle.svm.hosted.meta.HostedMethod;
-import com.oracle.svm.hosted.nodes.SubstrateMethodCallTargetNode;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -92,7 +93,11 @@ public class DevirtualizeCallsPhase extends Phase {
         }
     }
 
-    private static void unreachableInvoke(StructuredGraph graph, Invoke invoke, SubstrateMethodCallTargetNode callTarget) {
+    private final boolean parseOnce = SubstrateOptions.parseOnce();
+
+    private void unreachableInvoke(StructuredGraph graph, Invoke invoke, SubstrateMethodCallTargetNode callTarget) {
+        assert !parseOnce : "Must be done by StrengthenGraphs";
+
         /*
          * The invoke has no callee, i.e., it is unreachable. We just insert a always-failing guard
          * before the invoke and let dead code elimination remove the invoke and everything after
@@ -101,13 +106,17 @@ public class DevirtualizeCallsPhase extends Phase {
         if (!callTarget.isStatic()) {
             InliningUtil.nonNullReceiver(invoke);
         }
-        AnalysisSpeculation speculation = new AnalysisSpeculation(new AnalysisSpeculationReason("The call to " + callTarget.targetMethod().format("%H.%n(%P)") + " is not reachable."));
+        HostedMethod targetMethod = (HostedMethod) callTarget.targetMethod();
+        String message = String.format("The call to %s is not reachable when called from %s.%n", targetMethod.format("%H.%n(%P)"), graph.method().format("%H.%n(%P)"));
+        AnalysisSpeculation speculation = new AnalysisSpeculation(new AnalysisSpeculationReason(message));
         FixedGuardNode node = new FixedGuardNode(LogicConstantNode.forBoolean(true, graph), DeoptimizationReason.UnreachedCode, DeoptimizationAction.None, speculation, true);
         graph.addBeforeFixed(invoke.asNode(), graph.add(node));
         graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After dead invoke %s", invoke);
     }
 
-    private static void singleCallee(HostedMethod singleCallee, StructuredGraph graph, Invoke invoke, SubstrateMethodCallTargetNode callTarget) {
+    private void singleCallee(HostedMethod singleCallee, StructuredGraph graph, Invoke invoke, SubstrateMethodCallTargetNode callTarget) {
+        assert !parseOnce : "Must be done by StrengthenGraphs";
+
         /*
          * The invoke has only one callee, i.e., the call can be devirtualized to this callee. This
          * allows later inlining of the callee.

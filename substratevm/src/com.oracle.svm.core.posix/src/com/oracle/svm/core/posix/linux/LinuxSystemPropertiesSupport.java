@@ -26,12 +26,15 @@ package com.oracle.svm.core.posix.linux;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
+import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.posix.PosixSystemPropertiesSupport;
+import com.oracle.svm.core.posix.headers.Stdlib;
 import com.oracle.svm.core.posix.headers.Utsname;
 
 public class LinuxSystemPropertiesSupport extends PosixSystemPropertiesSupport {
@@ -44,6 +47,25 @@ public class LinuxSystemPropertiesSupport extends PosixSystemPropertiesSupport {
          * normally initialized to `/tmp` via `P_tmpdir`, this should be fine for now.
          */
         return "/tmp";
+    }
+
+    private static final String DEFAULT_LIBPATH = "/usr/lib64:/lib64:/lib:/usr/lib";
+
+    @Override
+    protected String javaLibraryPathValue() {
+        /*
+         * Adapted from `os::init_system_properties_values` in `src/hotspot/os/linux/os_linux.cpp`,
+         * but omits HotSpot specifics.
+         */
+        CCharPointer ldLibraryPath;
+        try (CCharPointerHolder name = CTypeConversion.toCString("LD_LIBRARY_PATH")) {
+            ldLibraryPath = Stdlib.getenv(name.get());
+        }
+
+        if (ldLibraryPath.isNull()) {
+            return DEFAULT_LIBPATH;
+        }
+        return CTypeConversion.toJavaString(ldLibraryPath) + ":" + DEFAULT_LIBPATH;
     }
 
     @Override
@@ -68,7 +90,7 @@ public class LinuxSystemPropertiesSupport extends PosixSystemPropertiesSupport {
 @AutomaticFeature
 class LinuxSystemPropertiesFeature implements Feature {
     @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
+    public void duringSetup(DuringSetupAccess access) {
         ImageSingletons.add(SystemPropertiesSupport.class, new LinuxSystemPropertiesSupport());
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,6 +31,11 @@ package com.oracle.truffle.llvm.runtime;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
@@ -81,17 +86,32 @@ public abstract class NativeContextExtension implements ContextExtension {
 
     public abstract NativePointerIntoLibrary getNativeHandle(String name);
 
-    public abstract Object createNativeWrapper(LLVMFunction function, LLVMFunctionCode code);
+    public abstract CallTarget createNativeWrapperFactory(LLVMFunctionCode code);
 
     public abstract void addLibraryHandles(Object library);
 
-    public abstract CallTarget parseNativeLibrary(TruffleFile file, LLVMContext context) throws UnsatisfiedLinkError;
+    public abstract CallTarget parseNativeLibrary(String path, LLVMContext context) throws UnsatisfiedLinkError;
 
     public abstract NativeLookupResult getNativeFunctionOrNull(String name);
 
+    public abstract static class WellKnownNativeFunctionNode extends LLVMNode {
+
+        public final Object execute(Object... args) throws ArityException, UnsupportedMessageException, UnsupportedTypeException {
+            return executeImpl(args);
+        }
+
+        protected abstract Object executeImpl(Object[] args) throws ArityException, UnsupportedMessageException, UnsupportedTypeException;
+    }
+
+    public abstract WellKnownNativeFunctionNode getWellKnownNativeFunction(String name, String signature);
+
     public abstract Object getNativeFunction(String name, String signature);
 
-    public abstract String getNativeSignature(FunctionType type, int skipArguments) throws UnsupportedNativeTypeException;
+    public abstract Source getNativeSignatureSourceSkipStackArg(FunctionType type) throws UnsupportedNativeTypeException;
+
+    public abstract Object bindSignature(LLVMFunctionCode function, Source signatureSource);
+
+    public abstract Object bindSignature(long fnPtr, Source signatureSource);
 
     /**
      * Allow subclasses to locate internal libraries.
@@ -100,9 +120,27 @@ public abstract class NativeContextExtension implements ContextExtension {
         return LLVMContext.InternalLibraryLocator.INSTANCE.locateLibrary(context, lib, reason);
     }
 
+    public static String getNativeLibrary(String libname) {
+        return getNativeLibraryPrefix() + libname + '.' + getNativeLibrarySuffix();
+    }
+
+    public static String getNativeLibraryVersioned(String libname, int version) {
+        return getNativeLibraryPrefix() + libname + '.' + getNativeLibrarySuffixVersioned(version);
+    }
+
+    public static String getNativeLibraryPrefix() {
+        if (System.getProperty("os.name").toLowerCase().contains("windows")) {
+            return "";
+        } else {
+            return "lib";
+        }
+    }
+
     public static String getNativeLibrarySuffix() {
         if (System.getProperty("os.name").toLowerCase().contains("mac")) {
             return "dylib";
+        } else if (System.getProperty("os.name").toLowerCase().contains("windows")) {
+            return "dll";
         } else {
             return "so";
         }
@@ -111,6 +149,9 @@ public abstract class NativeContextExtension implements ContextExtension {
     public static String getNativeLibrarySuffixVersioned(int version) {
         if (System.getProperty("os.name").toLowerCase().contains("mac")) {
             return version + ".dylib";
+        } else if (System.getProperty("os.name").toLowerCase().contains("windows")) {
+            // no version ATM
+            return "dll";
         } else {
             return "so." + version;
         }

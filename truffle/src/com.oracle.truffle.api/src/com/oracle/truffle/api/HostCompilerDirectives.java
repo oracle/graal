@@ -65,7 +65,7 @@ public final class HostCompilerDirectives {
     /**
      * Marks a method that is an implementation of a Truffle interpreter, and which should receive
      * additional optimization budget.
-     *
+     * <p>
      * This annotation is used to annotate the root method of a bytecode interpreter, and it hints
      * the compiler to invest extra effort into optimizing such methods. Language implementers are
      * advised to inspect the IR of the interpreter when using this.
@@ -82,7 +82,7 @@ public final class HostCompilerDirectives {
     /**
      * Marks a method that is called from a Truffle interpreter, but is not called frequently and is
      * not important for interpreter performance.
-     *
+     * <p>
      * This annotation is used to annotate methods that are called from a bytecode interpreter, but
      * should generally not be inlined into the body of the bytecode interpreter. Language
      * implementers are advised to inspect the IR of the interpreter when using this.

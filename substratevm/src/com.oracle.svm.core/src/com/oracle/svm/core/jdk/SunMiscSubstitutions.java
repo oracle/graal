@@ -29,20 +29,18 @@ package com.oracle.svm.core.jdk;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.nio.ByteBuffer;
 import java.security.ProtectionDomain;
 import java.util.function.Function;
 
 import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.MemoryUtil;
+import com.oracle.svm.core.JavaMemoryUtil;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -51,6 +49,7 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.util.VMError;
@@ -68,9 +67,6 @@ final class Target_Unsafe_Core {
             throw new IllegalArgumentException();
         }
         Pointer result = UnmanagedMemory.malloc(WordFactory.unsigned(bytes));
-        if (result.equal(0)) {
-            throw new OutOfMemoryError();
-        }
         return result.rawValue();
     }
 
@@ -93,9 +89,6 @@ final class Target_Unsafe_Core {
             result = UnmanagedMemory.realloc(WordFactory.unsigned(address), WordFactory.unsigned(bytes));
         } else {
             result = UnmanagedMemory.malloc(WordFactory.unsigned(bytes));
-        }
-        if (result.equal(0)) {
-            throw new OutOfMemoryError();
         }
         return result.rawValue();
     }
@@ -122,50 +115,32 @@ final class Target_Unsafe_Core {
 
     @TargetElement(onlyWith = JDK8OrEarlier.class)
     @Substitute
-    @Uninterruptible(reason = "Converts Object to Pointer.")
     private void copyMemory(Object srcBase, long srcOffset, Object destBase, long destOffset, long bytes) {
-        MemoryUtil.copyConjointMemoryAtomic(
-                        Word.objectToUntrackedPointer(srcBase).add(WordFactory.unsigned(srcOffset)),
-                        Word.objectToUntrackedPointer(destBase).add(WordFactory.unsigned(destOffset)),
-                        WordFactory.unsigned(bytes));
+        JavaMemoryUtil.unsafeCopyMemory(srcBase, srcOffset, destBase, destOffset, bytes);
     }
 
     @TargetElement(onlyWith = JDK11OrLater.class)
     @Substitute
-    @Uninterruptible(reason = "Converts Object to Pointer.")
     private void copyMemory0(Object srcBase, long srcOffset, Object destBase, long destOffset, long bytes) {
-        MemoryUtil.copyConjointMemoryAtomic(
-                        Word.objectToUntrackedPointer(srcBase).add(WordFactory.unsigned(srcOffset)),
-                        Word.objectToUntrackedPointer(destBase).add(WordFactory.unsigned(destOffset)),
-                        WordFactory.unsigned(bytes));
+        JavaMemoryUtil.unsafeCopyMemory(srcBase, srcOffset, destBase, destOffset, bytes);
     }
 
     @TargetElement(onlyWith = JDK11OrLater.class)
     @Substitute
-    @Uninterruptible(reason = "Converts Object to Pointer.")
     private void copySwapMemory0(Object srcBase, long srcOffset, Object destBase, long destOffset, long bytes, long elemSize) {
-        MemoryUtil.copyConjointSwap(
-                        Word.objectToUntrackedPointer(srcBase).add(WordFactory.unsigned(srcOffset)),
-                        Word.objectToUntrackedPointer(destBase).add(WordFactory.unsigned(destOffset)),
-                        WordFactory.unsigned(bytes), WordFactory.unsigned(elemSize));
+        JavaMemoryUtil.unsafeCopySwapMemory(srcBase, srcOffset, destBase, destOffset, bytes, elemSize);
     }
 
     @TargetElement(onlyWith = JDK8OrEarlier.class)
     @Substitute
-    @Uninterruptible(reason = "Converts Object to Pointer.")
     private void setMemory(Object destBase, long destOffset, long bytes, byte bvalue) {
-        MemoryUtil.fillToMemoryAtomic(
-                        Word.objectToUntrackedPointer(destBase).add(WordFactory.unsigned(destOffset)),
-                        WordFactory.unsigned(bytes), bvalue);
+        JavaMemoryUtil.unsafeSetMemory(destBase, destOffset, bytes, bvalue);
     }
 
     @TargetElement(onlyWith = JDK11OrLater.class)
     @Substitute
-    @Uninterruptible(reason = "Converts Object to Pointer.")
     private void setMemory0(Object destBase, long destOffset, long bytes, byte bvalue) {
-        MemoryUtil.fillToMemoryAtomic(
-                        Word.objectToUntrackedPointer(destBase).add(WordFactory.unsigned(destOffset)),
-                        WordFactory.unsigned(bytes), bvalue);
+        JavaMemoryUtil.unsafeSetMemory(destBase, destOffset, bytes, bvalue);
     }
 
     @Substitute
@@ -206,7 +181,7 @@ final class Target_Unsafe_Core {
 
     @Substitute
     public void storeFence() {
-        final int fence = MemoryBarriers.STORE_LOAD | MemoryBarriers.STORE_STORE;
+        final int fence = MemoryBarriers.STORE_STORE | MemoryBarriers.LOAD_STORE;
         MembarNode.memoryBarrier(fence);
     }
 
@@ -227,23 +202,13 @@ final class Target_Unsafe_Core {
     }
 
     @Substitute
-    private long staticFieldOffset(Field f) {
-        throw VMError.unsupportedFeature("Unsupported method of Unsafe");
-    }
-
-    @Substitute
-    private Object staticFieldBase(Field f) {
-        throw VMError.unsupportedFeature("Unsupported method of Unsafe");
-    }
-
-    @Substitute
     private Class<?> defineClass(String name, byte[] b, int off, int len, ClassLoader loader, ProtectionDomain protectionDomain) {
-        throw VMError.unsupportedFeature("Defining new classes at run time is not supported. All classes need to be known at image build time.");
+        return PredefinedClassesSupport.loadClass(loader, name, b, off, len, protectionDomain);
     }
 
     @Substitute
     private Class<?> defineAnonymousClass(Class<?> hostClass, byte[] data, Object[] cpPatches) {
-        throw VMError.unsupportedFeature("Defining new classes at run time is not supported. All classes need to be known at image build time.");
+        throw VMError.unsupportedFeature("Defining anonymous classes at runtime is not supported.");
     }
 
     @Substitute
@@ -314,9 +279,12 @@ final class Target_Unsafe_Core {
     @TargetElement(onlyWith = {JDK11OrLater.class, JDK11OrEarlier.class})
     private native int addressSize0();
 
-    @Delete
+    @Substitute
+    @SuppressWarnings("unused")
     @TargetElement(onlyWith = JDK11OrLater.class)
-    private native Class<?> defineClass0(String name, byte[] b, int off, int len, ClassLoader loader, ProtectionDomain protectionDomain);
+    private Class<?> defineClass0(String name, byte[] b, int off, int len, ClassLoader loader, ProtectionDomain protectionDomain) {
+        throw VMError.unsupportedFeature("Target_Unsafe_Core.defineClass0(String, byte[], int, int, ClassLoader, ProtectionDomain)");
+    }
 
     @Delete
     @TargetElement(onlyWith = JDK11OrLater.class)
@@ -353,67 +321,6 @@ final class Target_sun_misc_MessageUtils {
     private static void toStdout(String msg) {
         Log.log().string(msg);
     }
-}
-
-@Platforms(Platform.HOSTED_ONLY.class)
-class Package_jdk_internal_perf implements Function<TargetClass, String> {
-    @Override
-    public String apply(TargetClass annotation) {
-        if (JavaVersionUtil.JAVA_SPEC <= 8) {
-            return "sun.misc." + annotation.className();
-        } else {
-            return "jdk.internal.perf." + annotation.className();
-        }
-    }
-}
-
-/** PerfCounter methods that access the lb field fail with SIGSEV. */
-@TargetClass(classNameProvider = Package_jdk_internal_perf.class, className = "PerfCounter")
-final class Target_jdk_internal_perf_PerfCounter {
-
-    @Substitute
-    @SuppressWarnings("static-method")
-    public long get() {
-        return 0;
-    }
-
-    @Substitute
-    public void set(@SuppressWarnings("unused") long var1) {
-    }
-
-    @Substitute
-    public void add(@SuppressWarnings("unused") long var1) {
-    }
-}
-
-@TargetClass(classNameProvider = Package_jdk_internal_perf.class, className = "Perf")
-final class Target_jdk_internal_perf_Perf {
-
-    /*
-     * The Perf class is not supported. We are defensive and also handle native methods by marking
-     * them as deleted. We do not want to fail with a linking error.
-     */
-
-    @Delete
-    private native ByteBuffer attach(String user, int lvmid, int mode);
-
-    @Delete
-    private native void detach(ByteBuffer bb);
-
-    @Delete
-    private native ByteBuffer createLong(String name, int variability, int units, long value);
-
-    @Delete
-    private native ByteBuffer createByteArray(String name, int variability, int units, byte[] value, int maxLength);
-
-    @Delete
-    private native long highResCounter();
-
-    @Delete
-    private native long highResFrequency();
-
-    @Delete
-    private static native void registerNatives();
 }
 
 @TargetClass(classNameProvider = Package_jdk_internal_access.class, className = "SharedSecrets")

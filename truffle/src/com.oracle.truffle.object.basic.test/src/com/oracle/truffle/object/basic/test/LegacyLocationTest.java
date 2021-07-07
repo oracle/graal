@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,6 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.Layout;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.LocationFactory;
 import com.oracle.truffle.api.object.ObjectLocation;
@@ -56,7 +55,7 @@ import com.oracle.truffle.api.object.Shape.Allocator;
 @SuppressWarnings("deprecation")
 public class LegacyLocationTest {
 
-    final Layout layout = Layout.newLayout().build();
+    final com.oracle.truffle.api.object.Layout layout = com.oracle.truffle.api.object.Layout.newLayout().build();
     final Shape rootShape = layout.createShape(new ObjectType());
 
     static Class<?> getLocationType(Location location) {

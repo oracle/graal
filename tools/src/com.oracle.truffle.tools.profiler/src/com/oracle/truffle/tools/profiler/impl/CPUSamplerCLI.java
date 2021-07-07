@@ -364,7 +364,7 @@ class CPUSamplerCLI extends ProfilerCLI {
             // hide methods without any cost
             return false;
         }
-        assert totalSamples < samples;
+        assert totalSamples <= samples;
         ProfilerNode<CPUSampler.Payload> firstNode = nodes.get(0);
         SourceSection sourceSection = firstNode.getSourceSection();
         String rootName = firstNode.getRootName();

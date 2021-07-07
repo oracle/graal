@@ -25,9 +25,16 @@
 package org.graalvm.compiler.jtt.jdk;
 
 import org.graalvm.compiler.jtt.JTTTest;
+import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.junit.Test;
 
 public class Unsafe_compareAndSwapNullCheck extends JTTTest {
+
+    @Override
+    protected OptimisticOptimizations getOptimisticOptimizations() {
+        // Disable profile based optimizations
+        return OptimisticOptimizations.NONE;
+    }
 
     static final long valueOffset;
     static {
@@ -49,6 +56,6 @@ public class Unsafe_compareAndSwapNullCheck extends JTTTest {
 
     @Test
     public void run0() throws Throwable {
-        runTest(getInitialOptions(), EMPTY, false, true, "test", null, 1L, 2L);
+        runTest(EMPTY, "test", null, 1L, 2L);
     }
 }

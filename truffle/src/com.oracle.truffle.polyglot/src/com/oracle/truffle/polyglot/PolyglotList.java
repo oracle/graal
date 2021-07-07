@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.polyglot;
 import java.lang.reflect.Type;
 import java.util.AbstractList;
 import java.util.List;
+import java.util.Objects;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -56,12 +57,11 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToGuestValueNode;
-import com.oracle.truffle.polyglot.PolyglotListFactory.CacheFactory.GetNodeGen;
 import com.oracle.truffle.polyglot.PolyglotListFactory.CacheFactory.RemoveNodeGen;
 import com.oracle.truffle.polyglot.PolyglotListFactory.CacheFactory.SetNodeGen;
 import com.oracle.truffle.polyglot.PolyglotListFactory.CacheFactory.SizeNodeGen;
 
-class PolyglotList<T> extends AbstractList<T> implements HostWrapper {
+class PolyglotList<T> extends AbstractList<T> implements PolyglotWrapper {
 
     final Object guestObject;
     final PolyglotLanguageContext languageContext;
@@ -125,18 +125,18 @@ class PolyglotList<T> extends AbstractList<T> implements HostWrapper {
 
     @Override
     public String toString() {
-        return HostWrapper.toString(this);
+        return PolyglotWrapper.toString(this);
     }
 
     @Override
     public int hashCode() {
-        return HostWrapper.hashCode(languageContext, guestObject);
+        return PolyglotWrapper.hashCode(languageContext, guestObject);
     }
 
     @Override
     public boolean equals(Object o) {
         if (o instanceof PolyglotList) {
-            return HostWrapper.equals(languageContext, guestObject, ((PolyglotList<?>) o).guestObject);
+            return PolyglotWrapper.equals(languageContext, guestObject, ((PolyglotList<?>) o).guestObject);
         } else {
             return false;
         }
@@ -158,7 +158,7 @@ class PolyglotList<T> extends AbstractList<T> implements HostWrapper {
             this.receiverClass = receiverClass;
             this.valueClass = valueClass;
             this.valueType = valueType;
-            this.get = initializeCall(GetNodeGen.create(this));
+            this.get = initializeCall(PolyglotListFactory.CacheFactory.GetNodeGen.create(this));
             this.size = initializeCall(SizeNodeGen.create(this));
             this.set = initializeCall(SetNodeGen.create(this));
             this.remove = initializeCall(RemoveNodeGen.create(this));
@@ -188,15 +188,17 @@ class PolyglotList<T> extends AbstractList<T> implements HostWrapper {
             final Type valueType;
 
             Key(Class<?> receiverClass, Class<?> valueClass, Type valueType) {
-                assert receiverClass != null;
-                this.receiverClass = receiverClass;
-                this.valueClass = valueClass;
+                this.receiverClass = Objects.requireNonNull(receiverClass);
+                this.valueClass = Objects.requireNonNull(valueClass);
                 this.valueType = valueType;
             }
 
             @Override
             public int hashCode() {
-                return 31 * (31 * (valueType == null ? 0 : valueType.hashCode()) + receiverClass.hashCode()) + valueClass.hashCode();
+                int res = receiverClass.hashCode();
+                res = res * 31 + valueClass.hashCode();
+                res = res * 31 + (valueType == null ? 0 : valueType.hashCode());
+                return res;
             }
 
             @Override
@@ -207,7 +209,7 @@ class PolyglotList<T> extends AbstractList<T> implements HostWrapper {
                     return false;
                 }
                 Key other = (Key) obj;
-                return valueType == other.valueType && valueClass == other.valueClass && receiverClass == other.receiverClass;
+                return receiverClass == other.receiverClass && valueClass == other.valueClass && Objects.equals(valueType, other.valueType);
             }
         }
 
@@ -270,20 +272,20 @@ class PolyglotList<T> extends AbstractList<T> implements HostWrapper {
             @SuppressWarnings("unused")
             Object doCached(PolyglotLanguageContext languageContext, Object receiver, Object[] args,
                             @CachedLibrary("receiver") InteropLibrary interop,
-                            @Cached ToHostNode toHost,
+                            @Cached PolyglotToHostNode toHost,
                             @Cached BranchProfile error) {
                 Object key = args[ARGUMENT_OFFSET];
                 Object result = null;
                 assert key instanceof Integer;
                 int index = (int) key;
                 try {
-                    return toHost.execute(interop.readArrayElement(receiver, index), cache.valueClass, cache.valueType, languageContext, true);
+                    return toHost.execute(languageContext, interop.readArrayElement(receiver, index), cache.valueClass, cache.valueType);
                 } catch (InvalidArrayIndexException e) {
                     error.enter();
-                    throw HostInteropErrors.invalidListIndex(languageContext, receiver, cache.valueType, index);
+                    throw PolyglotInteropErrors.invalidListIndex(languageContext, receiver, cache.valueType, index);
                 } catch (UnsupportedMessageException e) {
                     error.enter();
-                    throw HostInteropErrors.listUnsupported(languageContext, receiver, cache.valueType, "get()");
+                    throw PolyglotInteropErrors.listUnsupported(languageContext, receiver, cache.valueType, "get()");
                 }
             }
 
@@ -319,13 +321,13 @@ class PolyglotList<T> extends AbstractList<T> implements HostWrapper {
                     interop.writeArrayElement(receiver, index, value);
                 } catch (InvalidArrayIndexException e) {
                     error.enter();
-                    throw HostInteropErrors.invalidListIndex(languageContext, receiver, cache.valueType, index);
+                    throw PolyglotInteropErrors.invalidListIndex(languageContext, receiver, cache.valueType, index);
                 } catch (UnsupportedMessageException e) {
                     error.enter();
-                    throw HostInteropErrors.listUnsupported(languageContext, receiver, cache.valueType, "set");
+                    throw PolyglotInteropErrors.listUnsupported(languageContext, receiver, cache.valueType, "set");
                 } catch (UnsupportedTypeException e) {
                     error.enter();
-                    throw HostInteropErrors.invalidListValue(languageContext, receiver, cache.valueType, (int) key, value);
+                    throw PolyglotInteropErrors.invalidListValue(languageContext, receiver, cache.valueType, (int) key, value);
                 }
                 return null;
             }
@@ -355,10 +357,10 @@ class PolyglotList<T> extends AbstractList<T> implements HostWrapper {
                     interop.removeArrayElement(receiver, index);
                 } catch (InvalidArrayIndexException e) {
                     error.enter();
-                    throw HostInteropErrors.invalidListIndex(languageContext, receiver, cache.valueType, index);
+                    throw PolyglotInteropErrors.invalidListIndex(languageContext, receiver, cache.valueType, index);
                 } catch (UnsupportedMessageException e) {
                     error.enter();
-                    throw HostInteropErrors.listUnsupported(languageContext, receiver, cache.valueType, "remove");
+                    throw PolyglotInteropErrors.listUnsupported(languageContext, receiver, cache.valueType, "remove");
                 }
                 return null;
             }
@@ -379,7 +381,7 @@ class PolyglotList<T> extends AbstractList<T> implements HostWrapper {
 
             @Override
             protected Object executeImpl(PolyglotLanguageContext languageContext, Object receiver, Object[] args) {
-                return apply.execute(languageContext, receiver, args[ARGUMENT_OFFSET], Object.class, Object.class);
+                return apply.execute(languageContext, receiver, args[ARGUMENT_OFFSET]);
             }
         }
     }

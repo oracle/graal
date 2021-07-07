@@ -147,7 +147,7 @@ class CFGPrinter extends CompilationPrinter {
         }
         out.println();
 
-        out.print("loop_depth ").println(Long.bitCount(block.getLoops()));
+        out.print("loop_depth ").println(block.getLoops().cardinality());
     }
 
     private NodeMap<Block> latestScheduling;

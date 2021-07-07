@@ -53,7 +53,7 @@ public final class TraceASTCompilationListener extends AbstractGraalTruffleRunti
     }
 
     @Override
-    public void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graphInfo, CompilationResultInfo compilationResultInfo) {
+    public void onCompilationSuccess(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graphInfo, CompilationResultInfo compilationResultInfo, int tier) {
         if (target.getOptionValue(PolyglotCompilerOptions.TraceCompilationAST)) {
             StringWriter logMessage = new StringWriter();
             try (PrintWriter out = new PrintWriter(logMessage)) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,18 +33,21 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Compi
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationFailureAction;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationStatisticDetails;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationStatistics;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationThreshold;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompileAOTOnCreate;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompileImmediately;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompileOnly;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.FirstTierCompilationThreshold;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.FirstTierMinInvokeThreshold;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Inlining;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.LastTierCompilationThreshold;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.MinInvokeThreshold;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Mode;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.MultiTier;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.PerformanceWarningsAreFatal;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.PriorityQueue;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Profiling;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ReturnTypeSpeculation;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SingleTierCompilationThreshold;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Splitting;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SplittingAllowForcedSplits;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SplittingDumpDecisions;
@@ -57,6 +60,8 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Trace
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceSplitting;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceSplittingSummary;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraceTransferToInterpreter;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraversingQueueWeightingBothTiers;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TraversingQueueFirstTierPriority;
 import static org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime.getRuntime;
 
 import java.util.ArrayList;
@@ -129,6 +134,13 @@ public final class EngineData {
     @CompilationFinal public boolean callTargetStatisticDetails;
     @CompilationFinal public boolean profilingEnabled;
     @CompilationFinal public boolean traceTransferToInterpreter;
+    @CompilationFinal public boolean compileAOTOnCreate;
+    @CompilationFinal public boolean firstTierOnly;
+
+    // compilation queue options
+    @CompilationFinal public boolean priorityQueue;
+    @CompilationFinal public boolean weightingBothTiers;
+    @CompilationFinal public boolean traversingFirstTierPriority;
 
     // computed fields.
     @CompilationFinal public int callThresholdInInterpreter;
@@ -249,12 +261,19 @@ public final class EngineData {
         this.compileOnly = options.get(CompileOnly);
         this.compileImmediately = options.get(CompileImmediately);
         this.multiTier = !compileImmediately && options.get(MultiTier);
+        this.compileAOTOnCreate = options.get(CompileAOTOnCreate);
+        this.firstTierOnly = options.get(Mode) == EngineModeEnum.LATENCY;
+
+        // compilation queue options
+        priorityQueue = options.get(PriorityQueue);
+        weightingBothTiers = options.get(TraversingQueueWeightingBothTiers);
+        traversingFirstTierPriority = options.get(TraversingQueueFirstTierPriority);
 
         this.returnTypeSpeculation = options.get(ReturnTypeSpeculation);
         this.argumentTypeSpeculation = options.get(ArgumentTypeSpeculation);
         this.traceCompilation = options.get(TraceCompilation);
         this.traceCompilationDetails = options.get(TraceCompilationDetails);
-        this.backgroundCompilation = options.get(BackgroundCompilation);
+        this.backgroundCompilation = options.get(BackgroundCompilation) && !compileAOTOnCreate;
         this.callThresholdInInterpreter = computeCallThresholdInInterpreter(options);
         this.callAndLoopThresholdInInterpreter = computeCallAndLoopThresholdInInterpreter(options);
         this.callThresholdInFirstTier = computeCallThresholdInFirstTier(options);
@@ -375,7 +394,7 @@ public final class EngineData {
         if (multiTier) {
             return Math.min(options.get(FirstTierMinInvokeThreshold), options.get(FirstTierCompilationThreshold));
         } else {
-            return Math.min(options.get(MinInvokeThreshold), options.get(CompilationThreshold));
+            return Math.min(options.get(MinInvokeThreshold), options.get(SingleTierCompilationThreshold));
         }
     }
 
@@ -386,7 +405,7 @@ public final class EngineData {
         if (multiTier) {
             return options.get(FirstTierCompilationThreshold);
         } else {
-            return options.get(CompilationThreshold);
+            return options.get(SingleTierCompilationThreshold);
         }
     }
 
@@ -394,14 +413,14 @@ public final class EngineData {
         if (compileImmediately) {
             return 0;
         }
-        return Math.min(options.get(MinInvokeThreshold), options.get(CompilationThreshold));
+        return Math.min(options.get(MinInvokeThreshold), options.get(LastTierCompilationThreshold));
     }
 
     private int computeCallAndLoopThresholdInFirstTier(OptionValues options) {
         if (compileImmediately) {
             return 0;
         }
-        return options.get(CompilationThreshold);
+        return options.get(LastTierCompilationThreshold);
     }
 
     public TruffleLogger getEngineLogger() {

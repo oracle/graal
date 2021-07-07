@@ -86,7 +86,7 @@ public class TypeInitializerGraph {
         universe.getTypes().forEach(this::addInitializerDependencies);
         /* initialize all methods with original safety data */
         methods = universe.getMethods();
-        methods.forEach(m -> methodSafety.put(m, initialMethodSafety(m)));
+        methods.stream().filter(AnalysisMethod::isImplementationInvoked).forEach(m -> methodSafety.put(m, initialMethodSafety(m)));
     }
 
     /**

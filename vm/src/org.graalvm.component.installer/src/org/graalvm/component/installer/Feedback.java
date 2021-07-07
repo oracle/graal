@@ -137,6 +137,8 @@ public interface Feedback {
 
     boolean backspace(int chars, boolean beVerbose);
 
+    boolean isNonInteractive();
+
     /**
      * Waits for user input confirmed by ENTER.
      * 

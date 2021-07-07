@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,20 +41,22 @@
 package com.oracle.truffle.object;
 
 import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.object.Layout;
 
+@SuppressWarnings("deprecation")
 public final class ShapeBasic extends ShapeImpl {
-    ShapeBasic(Layout layout, Object sharedData, Object objectType, int flags, Assumption singleContextAssumption) {
+    ShapeBasic(com.oracle.truffle.api.object.Layout layout, Object sharedData, Object objectType, int flags, Assumption singleContextAssumption) {
         super(layout, objectType, sharedData, flags, singleContextAssumption);
     }
 
-    ShapeBasic(Layout layout, Object sharedData, ShapeImpl parent, Object objectType, PropertyMap propertyMap, Transition transition, Allocator allocator, int flags) {
+    ShapeBasic(com.oracle.truffle.api.object.Layout layout, Object sharedData, ShapeImpl parent, Object objectType, PropertyMap propertyMap,
+                    Transition transition, Allocator allocator, int flags) {
         super(layout, parent, objectType, sharedData, propertyMap, transition, allocator, flags);
     }
 
     @SuppressWarnings("hiding")
     @Override
-    protected ShapeImpl createShape(Layout layout, Object sharedData, ShapeImpl parent, Object objectType, PropertyMap propertyMap, Transition transition, Allocator allocator, int flags) {
+    protected ShapeImpl createShape(com.oracle.truffle.api.object.Layout layout, Object sharedData, ShapeImpl parent, Object objectType, PropertyMap propertyMap,
+                    Transition transition, Allocator allocator, int flags) {
         return new ShapeBasic(layout, sharedData, parent, objectType, propertyMap, transition, allocator, flags);
     }
 }

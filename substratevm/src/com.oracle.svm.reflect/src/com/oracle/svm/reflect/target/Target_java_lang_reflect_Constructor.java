@@ -39,7 +39,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.reflect.hosted.AccessorComputer;
+import com.oracle.svm.reflect.hosted.ExecutableAccessorComputer;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -51,7 +51,7 @@ public final class Target_java_lang_reflect_Constructor {
     @Alias ConstructorRepository genericInfo;
 
     @Alias //
-    @RecomputeFieldValue(kind = Kind.Custom, declClass = AccessorComputer.class) //
+    @RecomputeFieldValue(kind = Kind.Custom, declClass = ExecutableAccessorComputer.class) //
     Target_jdk_internal_reflect_ConstructorAccessor constructorAccessor;
 
     @Inject @RecomputeFieldValue(kind = Kind.Custom, declClass = ConstructorAnnotatedReceiverTypeComputer.class) //

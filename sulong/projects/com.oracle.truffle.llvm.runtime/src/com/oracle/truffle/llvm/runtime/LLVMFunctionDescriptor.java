@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -45,6 +45,8 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
+import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.llvm.runtime.IDGenerater.BitcodeID;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHandleMemoryBase;
 
@@ -52,7 +54,6 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMHandleMemoryBase;
  * Our implementation assumes that there is a 1:1:1 relationship between callable functions (
  * {@link LLVMFunctionCode}), function symbols ({@link LLVMFunction}), and
  * {@link LLVMFunctionDescriptor}s.
- *
  */
 @ExportLibrary(InteropLibrary.class)
 @SuppressWarnings("static-method")
@@ -100,9 +101,11 @@ public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject impl
     @Override
     public int compareTo(LLVMFunctionDescriptor o) {
         int otherIndex = o.llvmFunction.getSymbolIndex(true);
-        int otherID = o.llvmFunction.getBitcodeID(true);
+        BitcodeID otherBitcode = o.llvmFunction.getBitcodeID(true);
+        int otherID = otherBitcode.getId();
         int index = llvmFunction.getSymbolIndex(true);
-        int id = llvmFunction.getBitcodeID(true);
+        BitcodeID bitcodeID = llvmFunction.getBitcodeID(true);
+        int id = bitcodeID.getId();
 
         if (id == otherID) {
             return Long.compare(index, otherIndex);
@@ -248,4 +251,32 @@ public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject impl
         }
         return call.call(functionCode.getForeignConstructorCallTarget(this), newArgs);
     }
+
+    @ExportMessage
+    public boolean hasExecutableName() {
+        return llvmFunction.getSourceLocation() != null && llvmFunction.getSourceLocation().getName() != null;
+    }
+
+    @ExportMessage
+    public Object getExecutableName() throws UnsupportedMessageException {
+        if (hasExecutableName()) {
+            return llvmFunction.getSourceLocation().getName();
+        }
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    public boolean hasSourceLocation() {
+        return llvmFunction.getSourceLocation() != null;
+    }
+
+    @ExportMessage
+    @CompilerDirectives.TruffleBoundary
+    public SourceSection getSourceLocation() throws UnsupportedMessageException {
+        if (hasSourceLocation()) {
+            return llvmFunction.getSourceLocation().getSourceSection();
+        }
+        throw UnsupportedMessageException.create();
+    }
+
 }

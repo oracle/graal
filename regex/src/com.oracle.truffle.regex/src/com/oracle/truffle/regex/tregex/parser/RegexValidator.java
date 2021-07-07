@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,10 +46,10 @@ import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.RegexFlags;
-import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.UnsupportedRegexException;
+import com.oracle.truffle.regex.errors.ErrorMessages;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 
 public class RegexValidator {
@@ -59,15 +59,15 @@ public class RegexValidator {
     private final RegexLexer lexer;
     private RegexFeatures features;
 
-    public RegexValidator(RegexSource source, RegexOptions options) {
+    public RegexValidator(RegexSource source) {
         this.source = source;
-        this.flags = RegexFlags.parseFlags(source.getFlags());
-        this.lexer = new RegexLexer(source, flags, options);
+        this.flags = RegexFlags.parseFlags(source);
+        this.lexer = new RegexLexer(source, flags);
     }
 
     @TruffleBoundary
     public static void validate(RegexSource source) throws RegexSyntaxException {
-        new RegexValidator(source, RegexOptions.DEFAULT).validate();
+        new RegexValidator(source).validate();
     }
 
     @TruffleBoundary
@@ -246,6 +246,6 @@ public class RegexValidator {
     }
 
     private RegexSyntaxException syntaxError(String msg) {
-        return new RegexSyntaxException(source, msg);
+        return RegexSyntaxException.createPattern(source, msg, lexer.getLastTokenPosition());
     }
 }

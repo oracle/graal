@@ -123,7 +123,7 @@ public class ListInstalledCommand extends QueryCommandBase {
 
     protected List<ComponentInfo> filterDisplayedVersions(@SuppressWarnings("unused") String id, Collection<ComponentInfo> infos) {
         List<ComponentInfo> ordered = new ArrayList<>(infos);
-        Collections.sort(ordered, ComponentInfo.versionComparator());
+        Collections.sort(ordered, ComponentInfo.reverseVersionComparator(input.getLocalRegistry().getManagementStorage()));
         return ordered;
     }
 
@@ -132,13 +132,15 @@ public class ListInstalledCommand extends QueryCommandBase {
         List<String> ids = findComponentIds();
         List<MetadataException> exceptions = new ArrayList<>();
         if (ids.isEmpty()) {
-            feedback.message("LIST_NoComponentsFound");
+            if (!simpleFormat) {
+                feedback.message("LIST_NoComponentsFound");
+            }
             return false;
         }
         Version.Match versionFilter = getVersionFilter();
         for (String id : ids) {
             try {
-                Collection<ComponentInfo> infos = catalog.loadComponents(id, versionFilter, listFiles);
+                List<ComponentInfo> infos = new ArrayList<>(catalog.loadComponents(id, versionFilter, listFiles));
                 if (infos != null) {
                     for (ComponentInfo ci : filterDisplayedVersions(id, infos)) {
                         addComponent(null, ci);
@@ -149,10 +151,12 @@ public class ListInstalledCommand extends QueryCommandBase {
             }
         }
         if (components.isEmpty()) {
-            feedback.message("LIST_NoComponentsFound");
+            if (!simpleFormat) {
+                feedback.message("LIST_NoComponentsFound");
+            }
             return false;
         }
-        if (!exceptions.isEmpty()) {
+        if (!simpleFormat && !exceptions.isEmpty()) {
             feedback.error("LIST_ErrorInComponentMetadata", null);
             for (Exception e : exceptions) {
                 feedback.error("LIST_ErrorInComponentMetadataItem", e, e.getLocalizedMessage());

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,6 +43,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.oracle.svm.driver.NativeImage.BuildConfiguration;
+import com.oracle.svm.driver.metainf.NativeImageMetaInfWalker;
 
 final class MacroOption {
     enum MacroOptionKind {
@@ -227,7 +228,7 @@ final class MacroOption {
                 Map<String, MacroOption> collectedOptions = Collections.emptyMap();
                 if (Files.isDirectory(optionsDir)) {
                     collectedOptions = Files.list(optionsDir).filter(Files::isDirectory)
-                                    .filter(optionDir -> Files.isReadable(optionDir.resolve(NativeImage.nativeImagePropertiesFilename)))
+                                    .filter(optionDir -> Files.isReadable(optionDir.resolve(NativeImageMetaInfWalker.nativeImagePropertiesFilename)))
                                     .map(MacroOption::create).filter(Objects::nonNull)
                                     .collect(Collectors.toMap(MacroOption::getOptionName, Function.identity()));
                 }
@@ -361,7 +362,15 @@ final class MacroOption {
                 return;
             }
             addedCheck.add(option);
+
             EnabledOption enabledOption = new EnabledOption(option, optionArg, context == null);
+            if (optionArg == null) {
+                String defaultArg = enabledOption.getProperty(config, "DefaultArg");
+                if (defaultArg != null) {
+                    enabledOption = new EnabledOption(option, defaultArg, context == null);
+                }
+            }
+
             String requires = enabledOption.getProperty(config, "Requires", "");
             if (!requires.isEmpty()) {
                 for (String specString : requires.split(" ")) {
@@ -417,7 +426,7 @@ final class MacroOption {
         this.kind = MacroOptionKind.fromSubdir(optionDirectory.getParent().getFileName().toString());
         this.optionName = optionDirectory.getFileName().toString();
         this.optionDirectory = optionDirectory;
-        this.properties = NativeImage.loadProperties(optionDirectory.resolve(NativeImage.nativeImagePropertiesFilename));
+        this.properties = NativeImage.loadProperties(optionDirectory.resolve(NativeImageMetaInfWalker.nativeImagePropertiesFilename));
     }
 
     @Override

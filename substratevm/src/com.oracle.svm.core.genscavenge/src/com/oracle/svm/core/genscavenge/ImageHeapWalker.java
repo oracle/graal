@@ -39,7 +39,6 @@ import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.UnsignedUtils;
 
 public final class ImageHeapWalker {
@@ -115,7 +114,7 @@ public final class ImageHeapWalker {
                 }
             }
             while (current.belowOrEqual(limit)) {
-                Object currentObject = KnownIntrinsics.convertUnknownValue(current.toObject(), Object.class);
+                Object currentObject = current.toObject();
                 if (inlineObjectVisit) {
                     if (!visitor.visitObjectInline(currentObject)) {
                         return false;

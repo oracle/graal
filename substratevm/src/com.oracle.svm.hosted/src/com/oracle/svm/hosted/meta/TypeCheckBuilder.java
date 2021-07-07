@@ -40,6 +40,7 @@ import java.util.stream.Collectors;
 import org.graalvm.compiler.core.common.calc.UnsignedMath;
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.util.VMError;
 
@@ -196,10 +197,13 @@ public class TypeCheckBuilder {
      */
     private static void generateHeightOrderHelper(int depth, HostedType type, Map<HostedType, List<HostedType>> subtypeMap, Map<HostedType, Integer> heightMap, Set<HostedType> allTypes) {
         assert allTypes.contains(type);
-        heightMap.compute(type, (k, currentHeight) -> Integer.max(depth, currentHeight));
 
-        for (HostedType subtype : subtypeMap.get(type)) {
-            generateHeightOrderHelper(depth + 1, subtype, subtypeMap, heightMap, allTypes);
+        Integer currentHeight = heightMap.get(type);
+        if (depth > currentHeight) {
+            heightMap.put(type, depth);
+            for (HostedType subtype : subtypeMap.get(type)) {
+                generateHeightOrderHelper(depth + 1, subtype, subtypeMap, heightMap, allTypes);
+            }
         }
     }
 
@@ -1723,22 +1727,24 @@ public class TypeCheckBuilder {
     private static final class TypeCheckValidator {
 
         static boolean compareTypeIDResults(List<HostedType> types) {
-            int numTypes = types.size();
-            for (int i = 0; i < numTypes; i++) {
-                HostedType superType = types.get(i);
-                for (int j = 0; j < numTypes; j++) {
-                    HostedType checkedType = types.get(j);
-                    boolean hostedCheck = superType.isAssignableFrom(checkedType);
-                    boolean runtimeCheck = runtimeIsAssignableFrom(superType, checkedType);
-                    boolean checksMatch = hostedCheck == runtimeCheck;
-                    if (!checksMatch) {
-                        StringBuilder message = new StringBuilder();
-                        message.append("\n********Type checks do not match:********\n");
-                        message.append(String.format("super type: %s\n", superType.toString()));
-                        message.append(String.format("checked type: %s\n", checkedType.toString()));
-                        message.append(String.format("hosted check: %b\n", hostedCheck));
-                        message.append(String.format("runtime check: %b\n", runtimeCheck));
-                        VMError.shouldNotReachHere(message.toString());
+            if (!SubstrateOptions.DisableTypeIdResultVerification.getValue()) {
+                int numTypes = types.size();
+                for (int i = 0; i < numTypes; i++) {
+                    HostedType superType = types.get(i);
+                    for (int j = 0; j < numTypes; j++) {
+                        HostedType checkedType = types.get(j);
+                        boolean hostedCheck = superType.isAssignableFrom(checkedType);
+                        boolean runtimeCheck = runtimeIsAssignableFrom(superType, checkedType);
+                        boolean checksMatch = hostedCheck == runtimeCheck;
+                        if (!checksMatch) {
+                            StringBuilder message = new StringBuilder();
+                            message.append("\n********Type checks do not match:********\n");
+                            message.append(String.format("super type: %s\n", superType.toString()));
+                            message.append(String.format("checked type: %s\n", checkedType.toString()));
+                            message.append(String.format("hosted check: %b\n", hostedCheck));
+                            message.append(String.format("runtime check: %b\n", runtimeCheck));
+                            VMError.shouldNotReachHere(message.toString());
+                        }
                     }
                 }
             }

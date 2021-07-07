@@ -158,7 +158,7 @@ public class Environment implements Feedback, CommandInput, Config {
     @Override
     public ComponentCatalog getRegistry() {
         if (componentCatalog == null) {
-            componentCatalog = catalogFactory.createComponentCatalog(this, getLocalRegistry());
+            componentCatalog = catalogFactory.createComponentCatalog(this);
         }
         return componentCatalog;
     }
@@ -376,6 +376,11 @@ public class Environment implements Feedback, CommandInput, Config {
             public Path getLocalCache(URL location) {
                 return Environment.this.getLocalCache(location);
             }
+
+            @Override
+            public boolean isNonInteractive() {
+                return Environment.this.isNonInteractive();
+            }
         };
     }
 
@@ -499,6 +504,9 @@ public class Environment implements Feedback, CommandInput, Config {
             } else {
                 sb.append(c);
             }
+        }
+        if (sb.length() > 0 && sb.charAt(sb.length() - 1) == '\r') {
+            sb.delete(sb.length() - 1, sb.length());
         }
         return sb.toString();
     }

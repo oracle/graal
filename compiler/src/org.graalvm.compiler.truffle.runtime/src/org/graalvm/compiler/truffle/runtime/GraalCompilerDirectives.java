@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,15 +31,16 @@ import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
  */
 public class GraalCompilerDirectives {
     /**
-     * Returns a boolean value indicating whether the method is executed in the first tier Truffle
-     * compilation.
+     * Returns a boolean value indicating whether the method is executed in a compiled tier wich can
+     * be replaced with a higher tier (e.g. a first tier compilation can be replaced with a second
+     * tier compilation).
      *
      * {@link PolyglotCompilerOptions#MultiTier}
      *
      * @return {@code true} when executed in the first tier Truffle compilation, {@code false}
      *         otherwise.
      */
-    public static boolean inFirstTier() {
+    public static boolean hasNextTier() {
         return false;
     }
 }

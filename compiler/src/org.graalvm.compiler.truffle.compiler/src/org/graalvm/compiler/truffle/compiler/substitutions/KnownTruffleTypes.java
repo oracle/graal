@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,6 +40,10 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
     public final ResolvedJavaType classExactMath = lookupType("com.oracle.truffle.api.ExactMath");
     public final ResolvedJavaType classArrayUtils = lookupType("com.oracle.truffle.api.ArrayUtils");
     public final ResolvedJavaType classMethodHandle = lookupType(MethodHandle.class);
+
+    public final ResolvedJavaField fieldTags = findField(classFrameClass, "tags");
+    public final ResolvedJavaField fieldLocals = findField(classFrameClass, "locals");
+    public final ResolvedJavaField fieldPrimitiveLocals = findField(classFrameClass, "primitiveLocals");
 
     public final ResolvedJavaField fieldFrameDescriptorDefaultValue = findField(classFrameDescriptor, "defaultValue");
     public final ResolvedJavaField fieldFrameDescriptorVersion = findField(classFrameDescriptor, "version");

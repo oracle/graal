@@ -77,7 +77,23 @@ public abstract class ElementInfo {
     }
 
     /**
-     * Returns a unique identifier string for this element.
+     * Returns a unique identifier string for this element <i>iif</i> this element is a leaf node.
+     * <p>
+     * </p>
+     * Note: This identifier is not unique for intermediate nodes. For example the following enum
+     * infos:
+     * <ul>
+     * <li>{@code NativeCodeInfo:PosixDirectives:EnumInfo:int:EnumConstantInfo:SIGPOLL}</li>
+     * <li>{@code NativeCodeInfo:PosixDirectives:EnumInfo:int:EnumConstantInfo:SIGABRT}</li>
+     * </ul>
+     * 
+     * each have an ancestor with the "unique" ID {@code NativeCodeInfo:PosixDirectives:EnumInfo}
+     * which actually refers to a different {@link EnumInfo} object, originating from different
+     * annotated classes:
+     * <ul>
+     * <li>{@code com.oracle.svm.core.posix.headers.Signal.LinuxSignalEnum}</li>
+     * <li>{@code com.oracle.svm.core.posix.headers.Signal.SignalEnum}</li>
+     * </ul>
      */
     public final String getUniqueID() {
         StringBuilder result = new StringBuilder();

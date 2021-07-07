@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -436,5 +436,24 @@ public abstract class IntegerLowerThanNode extends CompareNode {
                 return forInteger(bits, min, max(max - aLower, max - aUpper, bits));
             }
         }
+    }
+
+    @Override
+    public TriState implies(boolean thisNegated, LogicNode other) {
+        if (other instanceof IntegerLowerThanNode) {
+            IntegerLowerThanNode otherLowerThan = (IntegerLowerThanNode) other;
+            if (getOp() == otherLowerThan.getOp() && getX() == otherLowerThan.getX()) {
+                // x < A => x < B?
+                LogicNode compareYs = getOp().create(getY(), otherLowerThan.getY(), NodeView.DEFAULT);
+                if (!thisNegated && compareYs.isTautology()) {
+                    // A < B, therefore x < A => x < B
+                    return TriState.TRUE;
+                } else if (thisNegated && compareYs.isContradiction()) {
+                    // !(A < B) [== A >= B], therefore !(x < A) [== x >= A] => !(x < B) [== x >= B]
+                    return TriState.FALSE;
+                }
+            }
+        }
+        return super.implies(thisNegated, other);
     }
 }

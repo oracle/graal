@@ -26,8 +26,10 @@
 package org.graalvm.compiler.core.aarch64.test;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
+import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.aarch64.AArch64ArithmeticOp.ExtendedAddSubShiftOp;
+import org.graalvm.compiler.options.OptionValues;
 import org.junit.Test;
 
 import java.util.ArrayDeque;
@@ -164,8 +166,9 @@ public class AArch64ArrayAddressTest extends AArch64MatchRuleTest {
     @Test
     public void testUseArrayInLoop() {
         int[] arr = {1, 2, 3, 4, 5, 6, 7, 8};
-        test("useArrayInLoop", arr);
-        checkLIRforAll("useArrayInLoop", predicate, 1);
+        OptionValues withoutPartialUnrolling = new OptionValues(getInitialOptions(), GraalOptions.PartialUnroll, false);
+        test(withoutPartialUnrolling, "useArrayInLoop", arr);
+        checkLIRforAll(withoutPartialUnrolling, "useArrayInLoop", predicate, 1);
     }
 
     public static int useArrayDeque(ArrayDeque<Integer> ad) {

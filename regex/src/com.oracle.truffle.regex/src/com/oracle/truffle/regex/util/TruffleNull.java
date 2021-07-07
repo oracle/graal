@@ -59,4 +59,8 @@ public final class TruffleNull extends AbstractRegexObject {
         return true;
     }
 
+    @Override
+    public String toString() {
+        return "TRegexNullValue";
+    }
 }

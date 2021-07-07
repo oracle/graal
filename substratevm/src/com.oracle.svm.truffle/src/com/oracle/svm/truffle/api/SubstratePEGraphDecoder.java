@@ -57,7 +57,7 @@ public class SubstratePEGraphDecoder extends PEGraphDecoder {
                     SourceLanguagePositionProvider sourceLanguagePosition, ConcurrentHashMap<SpecialCallTargetCacheKey, Object> specialCallTargetCache,
                     ConcurrentHashMap<ResolvedJavaMethod, Object> invocationPluginsCache) {
         super(architecture, graph, providers, loopExplosionPlugin, invocationPlugins, inlineInvokePlugins, parameterPlugin, nodePlugins,
-                        peRootForInlining, sourceLanguagePosition, specialCallTargetCache, invocationPluginsCache);
+                        peRootForInlining, sourceLanguagePosition, specialCallTargetCache, invocationPluginsCache, false);
     }
 
     @Override

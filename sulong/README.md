@@ -1,5 +1,3 @@
-![Sulong Logo](https://raw.githubusercontent.com/mrigger/sulong-logos/master/sulong_black_with_text_transparent_300x185.png)
-
 Sulong is a high-performance LLVM bitcode runtime built on the
 [GraalVM](https://www.graalvm.org) by [Oracle Labs](https://labs.oracle.com).
 
@@ -16,9 +14,7 @@ Sulong is part of [GraalVM](https://www.graalvm.org). If you are a user of Graal
 to run C/C++/... programs on GraalVM, we recommend downloading a pre-built binary of
 [GraalVM](https://www.graalvm.org/downloads).
 
-See [GraalVM LLVM Runtime](docs/user/README.md) and [graalvm.org](https://www.graalvm.org) for
-documentation about using the GraalVM LLVM runtime.
-
+See [GraalVM LLVM Runtime](../docs/reference-manual/llvm/README.md) and [graalvm.org](https://www.graalvm.org/reference-manual/llvm/) for documentation about using the GraalVM LLVM runtime.
 
 # Contributor Documentation
 
@@ -35,9 +31,6 @@ resources:
 
 
 # Further Information
-
-The logo was designed by
-[Valentina Caruso](https://www.behance.net/volantina-).
 
 Sulong is developed in a research collaboration with
 [Johannes Kepler University, Linz](http://www.ssw.jku.at).

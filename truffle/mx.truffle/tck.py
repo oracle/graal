@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -86,6 +86,8 @@ class Mode:
         if not Mode._compile:
             Mode._compile = Mode('compile', [
                 '-Dpolyglot.engine.AllowExperimentalOptions=true',
+                '-Dpolyglot.engine.Mode=latency',
+                # '-Dpolyglot.engine.CompilationFailureAction=Throw', GR-29208
                 '-Dpolyglot.engine.CompileImmediately=true',
                 '-Dpolyglot.engine.BackgroundCompilation=false',
                 '-Dtck.inlineVerifierInstrument=false'])
@@ -145,8 +147,7 @@ class _MvnClassPathEntry(_ClassPathEntry):
         if ret_code != 0:
             if self.required:
                 raise Abort('Cannot download artifact {0} '.format(self))
-            else:
-                return False
+            return False
         else:
             return True
 

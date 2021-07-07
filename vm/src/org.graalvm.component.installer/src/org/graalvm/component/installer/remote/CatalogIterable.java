@@ -36,6 +36,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import org.graalvm.component.installer.BundleConstants;
@@ -85,9 +86,13 @@ public class CatalogIterable implements ComponentIterable {
         return new It();
     }
 
+    void setRemoteRegistry(ComponentCatalog remote) {
+        this.remoteRegistry = remote;
+    }
+
     ComponentCatalog getRegistry() {
         if (remoteRegistry == null) {
-            remoteRegistry = input.getCatalogFactory().createComponentCatalog(input, input.getLocalRegistry());
+            remoteRegistry = input.getCatalogFactory().createComponentCatalog(input);
         }
         return remoteRegistry;
     }
@@ -108,7 +113,7 @@ public class CatalogIterable implements ComponentIterable {
 
     private ComponentParam latest(String s, Collection<ComponentInfo> infos) {
         List<ComponentInfo> ordered = new ArrayList<>(infos);
-        Collections.sort(ordered, ComponentInfo.versionComparator().reversed());
+        Collections.sort(ordered, ComponentInfo.reverseVersionComparator(input.getLocalRegistry().getManagementStorage()));
         boolean progress = input.optValue(Commands.OPTION_NO_DOWNLOAD_PROGRESS) == null;
         return createComponentParam(s, ordered.get(0), progress);
     }
@@ -129,7 +134,9 @@ public class CatalogIterable implements ComponentIterable {
         }
 
         private List<String> expandId(String pattern, Version.Match vm) {
-            PathMatcher pm = FileSystems.getDefault().getPathMatcher("glob:" + pattern); // NOI18N
+            // need to lowercase before passing to glob pattern: on UNIX, glob is case-sensitive, on
+            // Windows it is not. Lowercase will unify.
+            PathMatcher pm = FileSystems.getDefault().getPathMatcher("glob:" + pattern.toLowerCase(Locale.ENGLISH)); // NOI18N
             Set<String> ids = new HashSet<>(getRegistry().getComponentIDs());
             Map<ComponentInfo, String> abbreviatedIds = new HashMap<>();
             for (String id : ids) {
@@ -146,7 +153,7 @@ public class CatalogIterable implements ComponentIterable {
                 return Collections.singletonList(pattern);
             }
             for (Iterator<String> it = ids.iterator(); it.hasNext();) {
-                String s = it.next();
+                String s = it.next().toLowerCase(Locale.ENGLISH);
                 if (!pm.matches(SystemUtils.fromUserString(s))) {
                     it.remove();
                 }
@@ -156,6 +163,9 @@ public class CatalogIterable implements ComponentIterable {
             ids.forEach(s -> infos.add(getRegistry().findComponent(s, vm)));
             List<String> sorted = new ArrayList<>();
             for (ComponentInfo ci : infos) {
+                if (ci == null) {
+                    continue;
+                }
                 String ab = abbreviatedIds.get(ci);
                 if (pm.matches(SystemUtils.fromUserString(ab))) {
                     sorted.add(ab);
@@ -273,6 +283,15 @@ public class CatalogIterable implements ComponentIterable {
         public CatalogItemParam(ComponentCatalog.DownloadInterceptor conf, ComponentInfo catalogInfo, String dispName, String spec, Feedback feedback, boolean progress) {
             super(catalogInfo, dispName, spec, feedback, progress);
             this.configurer = conf;
+        }
+
+        @Override
+        public MetadataLoader createMetaLoader() throws IOException {
+            if (configurer == null) {
+                return super.createMetaLoader();
+            } else {
+                return configurer.interceptMetadataLoader(getCatalogInfo(), super.createMetaLoader());
+            }
         }
 
         @Override

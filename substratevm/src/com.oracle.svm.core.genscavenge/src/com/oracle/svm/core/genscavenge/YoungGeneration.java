@@ -26,7 +26,6 @@ package com.oracle.svm.core.genscavenge;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
@@ -37,7 +36,7 @@ import com.oracle.svm.core.genscavenge.GCImpl.ChunkReleaser;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.log.Log;
 
-final class YoungGeneration extends Generation {
+public final class YoungGeneration extends Generation {
     private final Space eden;
     private final Space[] survivorFromSpaces;
     private final Space[] survivorToSpaces;
@@ -57,6 +56,10 @@ final class YoungGeneration extends Generation {
             this.survivorToSpaces[i] = new Space("Survivor-" + (i + 1) + " To", false, (i + 1));
             this.survivorGreyObjectsWalkers[i] = new GreyObjectsWalker();
         }
+    }
+
+    public int getMaxSurvivorSpaces() {
+        return maxSurvivorSpaces;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -128,14 +131,14 @@ final class YoungGeneration extends Generation {
     @AlwaysInline("GC performance")
     @Override
     protected Object promoteObject(Object original, UnsignedWord header) {
-        if (ObjectHeaderImpl.isAlignedHeader(original, header)) {
+        if (ObjectHeaderImpl.isAlignedHeader(header)) {
             AlignedHeapChunk.AlignedHeader originalChunk = AlignedHeapChunk.getEnclosingChunk(original);
             Space originalSpace = HeapChunk.getSpace(originalChunk);
             if (originalSpace.isFromSpace()) {
                 return promoteAlignedObject(original, originalSpace);
             }
         } else {
-            assert ObjectHeaderImpl.isUnalignedHeader(original, header);
+            assert ObjectHeaderImpl.isUnalignedHeader(header);
             UnalignedHeapChunk.UnalignedHeader chunk = UnalignedHeapChunk.getEnclosingChunk(original);
             Space originalSpace = HeapChunk.getSpace(chunk);
             if (originalSpace.isFromSpace()) {
@@ -170,62 +173,6 @@ final class YoungGeneration extends Generation {
             assert getSurvivorFromSpaceAt(i).getChunkBytes().equal(0) : "Chunk bytes must be 0";
             getSurvivorFromSpaceAt(i).absorb(getSurvivorToSpaceAt(i));
         }
-    }
-
-    @Override
-    protected boolean verify(HeapVerifier.Occasion occasion) {
-        boolean result = true;
-        HeapImpl heap = HeapImpl.getHeapImpl();
-        HeapVerifier heapVerifier = heap.getHeapVerifier();
-        SpaceVerifier spaceVerifier = heapVerifier.getSpaceVerifier();
-
-        spaceVerifier.initialize(getEden());
-        if (occasion.equals(HeapVerifier.Occasion.AFTER_COLLECTION)) {
-            if (spaceVerifier.containsChunks()) {
-                result = false;
-                heapVerifier.getWitnessLog().string("[YoungGeneration.verify:").string("  eden space contains chunks after collection").string("]").newline();
-            }
-        } else if (!spaceVerifier.verify()) {
-            result = false;
-            heapVerifier.getWitnessLog().string("[YoungGeneration.verify:").string("  eden space fails to verify").string("]").newline();
-        }
-
-        for (int i = 0; i < maxSurvivorSpaces; i++) {
-            spaceVerifier.initialize(survivorFromSpaces[i]);
-            if (!spaceVerifier.verify()) {
-                result = false;
-                heapVerifier.getWitnessLog().string("[YoungGeneration.verify:").string("  survivor to space fails to verify").string("]").newline();
-            }
-
-            spaceVerifier.initialize(survivorToSpaces[i]);
-            if (!spaceVerifier.verify()) {
-                result = false;
-                heapVerifier.getWitnessLog().string("[YoungGeneration.verify:").string("  survivor to space fails to verify").string("]").newline();
-            }
-            if (!occasion.equals(HeapVerifier.Occasion.DURING_COLLECTION)) {
-                if (spaceVerifier.containsChunks()) {
-                    result = false;
-                    heapVerifier.getWitnessLog().string("[YoungGeneration.verify:").string("  survivor to space contains chunks").string("]").newline();
-                }
-            }
-        }
-
-        return result;
-    }
-
-    boolean slowlyFindPointer(Pointer p) {
-        if (HeapVerifier.slowlyFindPointerInSpace(getEden(), p)) {
-            return true;
-        }
-        for (int i = 0; i < maxSurvivorSpaces; i++) {
-            if (HeapVerifier.slowlyFindPointerInSpace(getSurvivorFromSpaceAt(i), p)) {
-                return true;
-            }
-            if (HeapVerifier.slowlyFindPointerInSpace(getSurvivorToSpaceAt(i), p)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     boolean walkHeapChunks(MemoryWalker.Visitor visitor) {
@@ -298,7 +245,7 @@ final class YoungGeneration extends Generation {
     }
 
     @SuppressWarnings("static-method")
-    boolean contains(Object object) {
+    public boolean contains(Object object) {
         return HeapChunk.getSpace(HeapChunk.getEnclosingHeapChunk(object)).isYoungSpace();
     }
 

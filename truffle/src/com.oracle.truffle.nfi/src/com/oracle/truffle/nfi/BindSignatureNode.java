@@ -110,7 +110,7 @@ abstract class BindSignatureNode extends Node {
                     @CachedContext(NFILanguage.class) NFIContext ctx,
                     @Cached IndirectCallNode call) {
         CallTarget parsedSignature = ctx.env.parseInternal(signatureSource);
-        return NFISymbol.createBound(symbol.backend, symbol.nativeSymbol, (NFISignature) call.call(parsedSignature));
+        return NFISymbol.createBound(symbol.backend, symbol.nativeSymbol, call.call(parsedSignature));
     }
 
     @Specialization(replaces = {"doCachedSignature", "doCachedSignatureString"})

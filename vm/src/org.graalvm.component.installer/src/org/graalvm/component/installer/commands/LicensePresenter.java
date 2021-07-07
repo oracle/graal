@@ -25,6 +25,7 @@
 package org.graalvm.component.installer.commands;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -40,6 +41,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.graalvm.component.installer.Archive;
 import org.graalvm.component.installer.Feedback;
+import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.UserAbortException;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.ComponentRegistry;
@@ -114,7 +116,12 @@ public class LicensePresenter {
             Collection<MetadataLoader> loaders = licensesToAccept.get(licId);
             for (MetadataLoader ldr : new ArrayList<>(loaders)) {
                 ComponentInfo ci = ldr.getComponentInfo();
-                Date accepted = localRegistry.isLicenseAccepted(ci, licId);
+                // query the metadata loader (possibly delegates to original software channel
+                // provider).
+                Date accepted = ldr.isLicenseAccepted(ci, licId);
+                if (accepted == null) {
+                    accepted = localRegistry.isLicenseAccepted(ci, licId);
+                }
                 if (accepted != null) {
                     feedback.verboseOutput("INSTALL_LicenseAcceptedAt", ldr.getLicenseType(), accepted, ci.getId(), ci.getName());
                     loaders.remove(ldr);
@@ -173,15 +180,8 @@ public class LicensePresenter {
     }
 
     void acceptAllLicenses() {
-        for (String s : licensesToAccept.keySet()) {
-            for (MetadataLoader ldr : licensesToAccept.get(s)) {
-                ComponentInfo ci = ldr.getComponentInfo();
-                try {
-                    localRegistry.acceptLicense(ci, s, loadLicenseText(s));
-                } catch (IOException ex) {
-                    throw feedback.failure("INSTALL_ErrorHandlingLicenses", ex, ex.getLocalizedMessage());
-                }
-            }
+        for (String s : new ArrayList<>(licensesToAccept.keySet())) {
+            acceptLicense(s);
         }
         licensesToAccept.clear();
     }
@@ -223,7 +223,7 @@ public class LicensePresenter {
         return n;
     }
 
-    void acceptLicense(String licenseId) {
+    protected void acceptLicense(String licenseId) {
         String licText;
         try {
             licText = loadLicenseText(licenseId);
@@ -231,7 +231,16 @@ public class LicensePresenter {
             throw feedback.failure("INSTALL_ErrorHandlingLicenses", ex, ex.getLocalizedMessage());
         }
         for (MetadataLoader ldr : licensesToAccept.get(licenseId)) {
-            localRegistry.acceptLicense(ldr.getComponentInfo(), licenseId, licText);
+            Boolean result = null;
+            try {
+                // first ask the metadata loader delegate.
+                result = ldr.recordLicenseAccepted(ldr.getComponentInfo(), licenseId, licText, null);
+            } catch (IOException ex) {
+                feedback.error("WARN_LicenseNotRecorded", ex, licenseId, ex.getLocalizedMessage());
+            }
+            if (result == null) {
+                localRegistry.acceptLicense(ldr.getComponentInfo(), licenseId, licText);
+            }
         }
         licensesToAccept.remove(licenseId);
     }
@@ -275,7 +284,7 @@ public class LicensePresenter {
     boolean isLicenseRemote(String licenseId) {
         MetadataLoader ldr = licensesToAccept.get(licenseId).get(0);
         String licPath = ldr.getLicensePath();
-        return licPath.contains("://"); // NOI18N
+        return SystemUtils.isRemotePath(licPath); // NOI18N
     }
 
     /**
@@ -309,15 +318,20 @@ public class LicensePresenter {
         } else {
             label = feedback.l10n("INSTALL_DownloadLicenseFile");
         }
+        c = String.join("\n", Files.readAllLines(
+                        downloadLicenseText(label, ldr.getLicensePath()).toPath())); // NOI18N
+        remoteLicenseContents.put(id, c);
+        return c;
+    }
+
+    File downloadLicenseText(String label, String url) throws IOException {
         FileDownloader dn = new FileDownloader(
                         label,
-                        new URL(ldr.getLicensePath()),
+                        new URL(url),
                         feedback);
 
         dn.download();
-        c = String.join("\n", Files.readAllLines(dn.getLocalFile().toPath())); // NOI18N
-        remoteLicenseContents.put(id, c);
-        return c;
+        return dn.getLocalFile();
     }
 
     String loadFileLicenseText(MetadataLoader ldr) throws IOException {

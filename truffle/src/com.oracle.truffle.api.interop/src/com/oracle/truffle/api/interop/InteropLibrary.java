@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,31 +40,12 @@
  */
 package com.oracle.truffle.api.interop;
 
-import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
-import static com.oracle.truffle.api.interop.AssertUtils.assertString;
-import static com.oracle.truffle.api.interop.AssertUtils.preCondition;
-import static com.oracle.truffle.api.interop.AssertUtils.validArgument;
-import static com.oracle.truffle.api.interop.AssertUtils.validArguments;
-import static com.oracle.truffle.api.interop.AssertUtils.validNonInteropArgument;
-import static com.oracle.truffle.api.interop.AssertUtils.validReturn;
-import static com.oracle.truffle.api.interop.AssertUtils.validScope;
-import static com.oracle.truffle.api.interop.AssertUtils.violationInvariant;
-import static com.oracle.truffle.api.interop.AssertUtils.violationPost;
-
-import java.time.Duration;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.time.zone.ZoneRules;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
+import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
@@ -82,6 +63,26 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.utilities.TriState;
+
+import java.nio.ByteOrder;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.zone.ZoneRules;
+
+import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
+import static com.oracle.truffle.api.interop.AssertUtils.assertString;
+import static com.oracle.truffle.api.interop.AssertUtils.preCondition;
+import static com.oracle.truffle.api.interop.AssertUtils.validArgument;
+import static com.oracle.truffle.api.interop.AssertUtils.validArguments;
+import static com.oracle.truffle.api.interop.AssertUtils.validNonInteropArgument;
+import static com.oracle.truffle.api.interop.AssertUtils.validReturn;
+import static com.oracle.truffle.api.interop.AssertUtils.validScope;
+import static com.oracle.truffle.api.interop.AssertUtils.violationInvariant;
+import static com.oracle.truffle.api.interop.AssertUtils.violationPost;
 
 /**
  * Represents the library that specifies the interoperability message protocol between Truffle
@@ -125,6 +126,7 @@ import com.oracle.truffle.api.utilities.TriState;
  * <li>{@link #isDuration(Object) Duration}
  * <li>{@link #isException(Object) Exception}
  * <li>{@link #isMetaObject(Object) Meta-Object}
+ * <li>{@link #isIterator(Object) Iterator}
  * </ul>
  * All receiver values may have none, one or multiple of the following traits:
  * <ul>
@@ -132,7 +134,9 @@ import com.oracle.truffle.api.utilities.TriState;
  * <li>{@link #isInstantiable(Object) instantiable}
  * <li>{@link #isPointer(Object) pointer}
  * <li>{@link #hasMembers(Object) members}
+ * <li>{@link #hasHashEntries(Object) hash entries}
  * <li>{@link #hasArrayElements(Object) array elements}
+ * <li>{@link #hasBufferElements(Object) buffer elements}
  * <li>{@link #hasLanguage(Object) language}
  * <li>{@link #hasMetaObject(Object) associated metaobject}
  * <li>{@link #hasDeclaringMetaObject(Object) declaring meta object}
@@ -143,8 +147,8 @@ import com.oracle.truffle.api.utilities.TriState;
  * <li>{@link #hasExceptionMessage(Object) exception message}
  * <li>{@link #hasExceptionCause(Object) exception cause}
  * <li>{@link #hasExceptionStackTrace(Object) exception stack trace}
- * <ul>
- * <p>
+ * <li>{@link #hasIterator(Object) iterator}
+ * </ul>
  * <h3>Naive and aware dates and times</h3>
  * <p>
  * If a date or time value has a {@link #isTimeZone(Object) timezone} then it is called <i>aware</i>
@@ -623,8 +627,8 @@ public abstract class InteropLibrary extends Library {
     }
 
     /**
-     * Short-cut for {@link #getMembers(Object) getMembers(receiver, false)}. Invoking this message
-     * does not cause any observable side-effects.
+     * Short-cut for {@link #getMembers(Object, boolean) getMembers(receiver, false)}. Invoking this
+     * message does not cause any observable side-effects.
      *
      * @throws UnsupportedMessageException if and only if the receiver has no
      *             {@link #hasMembers(Object) members}.
@@ -707,7 +711,7 @@ public abstract class InteropLibrary extends Library {
      * {@link #isMemberModifiable(Object, String) modifiable}, or not existing and
      * {@link #isMemberInsertable(Object, String) insertable}.
      *
-     * This method must have not observable side-effects other than the changed member unless
+     * This method must have no observable side-effects other than the changed member unless
      * {@link #hasMemberWriteSideEffects(Object, String) side-effects} are allowed.
      *
      * @throws UnsupportedMessageException when the receiver does not support writing at all, e.g.
@@ -856,6 +860,247 @@ public abstract class InteropLibrary extends Library {
      */
     public boolean hasMemberWriteSideEffects(Object receiver, String member) {
         return false;
+    }
+
+    // Hashes
+    /**
+     * Returns {@code true} if the receiver may have hash entries. Therefore, at least one of
+     * {@link #readHashValue(Object, Object)}, {@link #writeHashEntry(Object, Object, Object)},
+     * {@link #removeHashEntry(Object, Object)} must not throw {@link UnsupportedMessageException}.
+     * For example, the contents of a map data structure could be interpreted as hash elements.
+     * Invoking this message does not cause any observable side-effects. Returns {@code false} by
+     * default.
+     *
+     * @see #getHashEntriesIterator(Object)
+     * @see #getHashSize(Object)
+     * @see #isHashEntryReadable(Object, Object)
+     * @see #isHashEntryWritable(Object, Object)
+     * @see #isHashEntryInsertable(Object, Object)
+     * @see #isHashEntryRemovable(Object, Object)
+     * @see #readHashValue(Object, Object)
+     * @see #readHashValueOrDefault(Object, Object, Object)
+     * @see #writeHashEntry(Object, Object, Object)
+     * @see #removeHashEntry(Object, Object)
+     * @since 21.1
+     */
+    @Abstract(ifExported = {"getHashSize", "isHashEntryReadable", "readHashValue", "readHashValueOrDefault",
+                    "isHashEntryModifiable", "isHashEntryInsertable", "writeHashEntry", "isHashEntryRemovable",
+                    "removeHashEntry", "getHashEntriesIterator", "getHashKeysIterator", "getHashValuesIterator"})
+    public boolean hasHashEntries(Object receiver) {
+        return false;
+    }
+
+    /**
+     * Returns the number of receiver entries.
+     *
+     * @throws UnsupportedMessageException if and only if {@link #hasHashEntries(Object)} returns
+     *             {@code false}.
+     * @since 21.1
+     */
+    @Abstract(ifExported = "hasHashEntries")
+    public long getHashSize(Object receiver) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Returns {@code true} if mapping for the specified key exists and is
+     * {@link #readHashValue(Object, Object) readable}. This method may only return {@code true} if
+     * {@link #hasHashEntries(Object)} returns {@code true} as well and
+     * {@link #isHashEntryInsertable(Object, Object)} returns {@code false}. Invoking this message
+     * does not cause any observable side-effects. Returns {@code false} by default.
+     *
+     * @see #readHashValue(Object, Object)
+     * @since 21.1
+     */
+    @Abstract(ifExported = "readHashValue")
+    public boolean isHashEntryReadable(Object receiver, Object key) {
+        return false;
+    }
+
+    /**
+     * Reads the value for the specified key.
+     * 
+     * @throws UnsupportedMessageException if the receiver does not support reading at all. An empty
+     *             receiver with no readable hash entries supports the read operation (even though
+     *             there is nothing to read), therefore it throws {@link UnknownKeyException} for
+     *             all arguments instead.
+     * @throws UnknownKeyException if mapping for the specified key is not
+     *             {@link #isHashEntryReadable(Object, Object) readable}, e.g. when the hash does
+     *             not contain specified key.
+     * @see #isHashEntryReadable(Object, Object)
+     * @see #readHashValueOrDefault(Object, Object, Object)
+     * @since 21.1
+     */
+    @Abstract(ifExported = "isHashEntryReadable")
+    public Object readHashValue(Object receiver, Object key) throws UnsupportedMessageException, UnknownKeyException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Reads the value for the specified key or returns the {@code defaultValue} when the mapping
+     * for the specified key does not exist or is not readable.
+     * 
+     * @throws UnsupportedMessageException if the receiver does not support reading at all. An empty
+     *             receiver with no readable hash entries supports the read operation (even though
+     *             there is nothing to read), therefore it returns the {@code defaultValue} for all
+     *             arguments instead.
+     * @see #isHashEntryReadable(Object, Object)
+     * @see #readHashValue(Object, Object)
+     * @since 21.1
+     */
+    public Object readHashValueOrDefault(Object receiver, Object key, Object defaultValue) throws UnsupportedMessageException {
+        try {
+            return readHashValue(receiver, key);
+        } catch (UnknownKeyException e) {
+            return defaultValue;
+        }
+    }
+
+    /**
+     * Returns {@code true} if mapping for the specified key exists and is
+     * {@link #writeHashEntry(Object, Object, Object) writable}. This method may only return
+     * {@code true} if {@link #hasHashEntries(Object)} returns {@code true} as well and
+     * {@link #isHashEntryInsertable(Object, Object)} returns {@code false}. Invoking this message
+     * does not cause any observable side-effects. Returns {@code false} by default.
+     *
+     * @see #writeHashEntry(Object, Object, Object)
+     * @since 21.1
+     */
+    @Abstract(ifExported = {"writeHashEntry"})
+    public boolean isHashEntryModifiable(Object receiver, Object key) {
+        return false;
+    }
+
+    /**
+     * Returns {@code true} if mapping for the specified key does not exist and is
+     * {@link #writeHashEntry(Object, Object, Object) writable}. This method may only return
+     * {@code true} if {@link #hasHashEntries(Object)} returns {@code true} as well and
+     * {@link #isHashEntryExisting(Object, Object)} returns {@code false}. Invoking this message
+     * does not cause any observable side-effects. Returns {@code false} by default.
+     *
+     * @see #writeHashEntry(Object, Object, Object)
+     * @since 21.1
+     */
+    @Abstract(ifExported = "writeHashEntry")
+    public boolean isHashEntryInsertable(Object receiver, Object key) {
+        return false;
+    }
+
+    /**
+     * Returns {@code true} if mapping for the specified key is
+     * {@link #isHashEntryModifiable(Object, Object) modifiable} or
+     * {@link #isHashEntryInsertable(Object, Object) insertable}.
+     *
+     * @since 21.1
+     */
+    public boolean isHashEntryWritable(Object receiver, Object key) {
+        return isHashEntryModifiable(receiver, key) || isHashEntryInsertable(receiver, key);
+    }
+
+    /**
+     * Associates the specified value with the specified key in the receiver. Writing the entry is
+     * allowed if is existing and {@link #isHashEntryModifiable(Object, Object) modifiable}, or not
+     * existing and {@link #isHashEntryInsertable(Object, Object) insertable}.
+     *
+     * @throws UnsupportedMessageException when the receiver does not support writing at all, e.g.
+     *             when it is immutable.
+     * @throws UnknownKeyException if mapping for the specified key is not
+     *             {@link #isHashEntryModifiable(Object, Object) modifiable} nor
+     *             {@link #isHashEntryInsertable(Object, Object) insertable}.
+     * @throws UnsupportedTypeException if the provided key type or value type is not allowed to be
+     *             written.
+     * @since 21.1
+     */
+    @Abstract(ifExported = {"isHashEntryModifiable", "isHashEntryInsertable"})
+    public void writeHashEntry(Object receiver, Object key, Object value) throws UnsupportedMessageException, UnknownKeyException, UnsupportedTypeException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Returns {@code true} if mapping for the specified key exists and is removable. This method
+     * may only return {@code true} if {@link #hasHashEntries(Object)} returns {@code true} as well
+     * and {@link #isHashEntryInsertable(Object, Object)} returns {@code false}. Invoking this
+     * message does not cause any observable side-effects. Returns {@code false} by default.
+     *
+     * @see #removeHashEntry(Object, Object)
+     * @since 21.1
+     */
+    @Abstract(ifExported = "removeHashEntry")
+    public boolean isHashEntryRemovable(Object receiver, Object key) {
+        return false;
+    }
+
+    /**
+     * Removes the mapping for a given key from the receiver. Mapping removing is allowed if it is
+     * {@link #isHashEntryRemovable(Object, Object) removable}.
+     *
+     * @throws UnsupportedMessageException when the receiver does not support removing at all, e.g.
+     *             when it is immutable.
+     * @throws UnknownKeyException if the given mapping is not
+     *             {@link #isHashEntryRemovable(Object, Object) removable}, e.g. the receiver does
+     *             not have a mapping for given key.
+     * @see #isHashEntryRemovable(Object, Object)
+     * @since 21.1
+     */
+    @Abstract(ifExported = "isHashEntryRemovable")
+    public void removeHashEntry(Object receiver, Object key) throws UnsupportedMessageException, UnknownKeyException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Returns {@code true} if mapping for a given key is existing. The mapping is existing if it is
+     * {@link #isHashEntryModifiable(Object, Object) modifiable},
+     * {@link #isHashEntryReadable(Object, Object) readable} or
+     * {@link #isHashEntryRemovable(Object, Object) removable}.
+     *
+     * @since 21.1
+     */
+    public boolean isHashEntryExisting(Object receiver, Object key) {
+        return isHashEntryReadable(receiver, key) || isHashEntryModifiable(receiver, key) || isHashEntryRemovable(receiver, key);
+    }
+
+    /**
+     * Returns the hash entries iterator for the receiver. The return value is always an
+     * {@link #isIterator(Object) iterator} of {@link #hasArrayElements(Object) array} elements. The
+     * first array element is a key, the second array element is an associated value. Array returned
+     * by the iterator may be modifiable but detached from the hash, updating the array elements may
+     * not update the hash. So even if array elements are
+     * {@link #isArrayElementModifiable(Object, long) modifiable} always use
+     * {@link #writeHashEntry(Object, Object, Object)} to update the hash mapping.
+     *
+     * @throws UnsupportedMessageException if and only if {@link #hasHashEntries(Object)} returns
+     *             {@code false} for the same receiver.
+     * @since 21.1
+     */
+    @Abstract(ifExported = "hasHashEntries")
+    public Object getHashEntriesIterator(Object receiver) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Returns the hash keys iterator for the receiver. The return value is always an
+     * {@link #isIterator(Object) iterator}.
+     *
+     * @throws UnsupportedMessageException if and only if {@link #hasHashEntries(Object)} returns
+     *             {@code false} for the same receiver.
+     * @since 21.1
+     */
+    public Object getHashKeysIterator(Object receiver) throws UnsupportedMessageException {
+        Object entriesIterator = getHashEntriesIterator(receiver);
+        return HashIterator.keys(entriesIterator);
+    }
+
+    /**
+     * Returns the hash values iterator for the receiver. The return value is always an
+     * {@link #isIterator(Object) iterator}.
+     *
+     * @throws UnsupportedMessageException if and only if {@link #hasHashEntries(Object)} returns
+     *             {@code false} for the same receiver.
+     * @since 21.1
+     */
+    public Object getHashValuesIterator(Object receiver) throws UnsupportedMessageException {
+        Object entriesIterator = getHashEntriesIterator(receiver);
+        return HashIterator.values(entriesIterator);
     }
 
     // Array Messages
@@ -1033,6 +1278,331 @@ public abstract class InteropLibrary extends Library {
     public final boolean isArrayElementExisting(Object receiver, long index) {
         return isArrayElementModifiable(receiver, index) || isArrayElementReadable(receiver, index) || isArrayElementRemovable(receiver, index);
     }
+
+    // region Buffer Messages
+
+    /**
+     * Returns {@code true} if the receiver may have buffer elements.
+     * <p>
+     * If this message returns {@code true}, then {@link #getBufferSize(Object)},
+     * {@link #readBufferByte(Object, long)}, {@link #readBufferShort(Object, ByteOrder, long)},
+     * {@link #readBufferInt(Object, ByteOrder, long)},
+     * {@link #readBufferLong(Object, ByteOrder, long)},
+     * {@link #readBufferFloat(Object, ByteOrder, long)} and
+     * {@link #readBufferDouble(Object, ByteOrder, long)} must not throw
+     * {@link UnsupportedMessageException}.
+     * <p>
+     * Invoking this message does not cause any observable side-effects.
+     * <p>
+     * By default, it returns {@code false}.
+     *
+     * @since 21.1
+     */
+    @Abstract(ifExported = {"getBufferSize", "isBufferWritable", "readBufferByte", "readBufferShort", "readBufferInt", "readBufferLong", "readBufferFloat", "readBufferDouble", "writeBufferByte",
+                    "writeBufferShort", "writeBufferInt", "writeBufferLong", "writeBufferFloat", "writeBufferDouble"})
+    public boolean hasBufferElements(Object receiver) {
+        return false;
+    }
+
+    /**
+     * Returns {@code true} if the receiver is a modifiable buffer.
+     * <p>
+     * If this message returns {@code true}, then {@link #getBufferSize(Object)},
+     * {@link #writeBufferByte(Object, long, byte)},
+     * {@link #writeBufferShort(Object, ByteOrder, long, short)},
+     * {@link #writeBufferInt(Object, ByteOrder, long, int)},
+     * {@link #writeBufferLong(Object, ByteOrder, long, long)},
+     * {@link #writeBufferFloat(Object, ByteOrder, long, float)} and
+     * {@link #writeBufferDouble(Object, ByteOrder, long, double)} must not throw
+     * {@link UnsupportedMessageException}.
+     * <p>
+     * Invoking this message does not cause any observable side-effects.
+     * <p>
+     * By default, it returns {@code false} if {@link #hasBufferElements(Object)} return
+     * {@code true}, and throws {@link UnsupportedMessageException} otherwise.
+     *
+     * @throws UnsupportedMessageException if and only if {@link #hasBufferElements(Object)} returns
+     *             {@code false}
+     * @since 21.1
+     */
+    @Abstract(ifExported = {"writeBufferByte", "writeBufferShort", "writeBufferInt", "writeBufferLong", "writeBufferFloat", "writeBufferDouble"})
+    public boolean isBufferWritable(Object receiver) throws UnsupportedMessageException {
+        if (hasBufferElements(receiver)) {
+            return false;
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    /**
+     * Returns the buffer size of the receiver, in bytes.
+     * <p>
+     * Invoking this message does not cause any observable side-effects.
+     *
+     * @throws UnsupportedMessageException if and only if {@link #hasBufferElements(Object)} returns
+     *             {@code false}
+     * @since 21.1
+     */
+    @Abstract(ifExported = {"hasBufferElements"})
+    public long getBufferSize(Object receiver) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Reads the byte from the receiver object at the given byte offset from the start of the
+     * buffer.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this message is <em>not</em>
+     * thread-safe.
+     * <p>
+     * Invoking this message does not cause any observable side-effects.
+     *
+     * @return the byte at the given index
+     * @throws InvalidBufferOffsetException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= </code>{@link #getBufferSize(Object)}
+     * @throws UnsupportedMessageException if and only if either {@link #hasBufferElements(Object)}
+     *             returns {@code false} returns {@code false}
+     * @since 21.1
+     */
+    @Abstract(ifExported = {"hasBufferElements"})
+    public byte readBufferByte(Object receiver, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Writes the given byte from the receiver object at the given byte offset from the start of the
+     * buffer.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this message is <em>not</em>
+     * thread-safe.
+     *
+     * @throws InvalidBufferOffsetException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= </code>{@link #getBufferSize(Object)}
+     * @throws UnsupportedMessageException if and only if either {@link #hasBufferElements(Object)}
+     *             or {@link #isBufferWritable} returns {@code false}
+     * @since 21.1
+     */
+    @Abstract(ifExported = {"isBufferWritable"})
+    public void writeBufferByte(Object receiver, long byteOffset, byte value) throws UnsupportedMessageException, InvalidBufferOffsetException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Reads the short from the receiver object in the given byte order at the given byte offset
+     * from the start of the buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this message is <em>not</em>
+     * thread-safe.
+     * <p>
+     * Invoking this message does not cause any observable side-effects.
+     *
+     * @return the short at the given byte offset from the start of the buffer
+     * @throws InvalidBufferOffsetException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize(Object)} - 1</code>
+     * @throws UnsupportedMessageException if and only if {@link #hasBufferElements(Object)} returns
+     *             {@code false}
+     * @since 21.1
+     */
+    @Abstract(ifExported = {"hasBufferElements"})
+    public short readBufferShort(Object receiver, ByteOrder order, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Writes the given short from the receiver object in the given byte order at the given byte
+     * offset from the start of the buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this message is <em>not</em>
+     * thread-safe.
+     *
+     * @throws InvalidBufferOffsetException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize(Object)} - 1</code>
+     * @throws UnsupportedMessageException if and only if either {@link #hasBufferElements(Object)}
+     *             or {@link #isBufferWritable} returns {@code false}
+     * @since 21.1
+     */
+    @Abstract(ifExported = {"isBufferWritable"})
+    public void writeBufferShort(Object receiver, ByteOrder order, long byteOffset, short value) throws UnsupportedMessageException, InvalidBufferOffsetException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Reads the int from the receiver object in the given byte order at the given byte offset from
+     * the start of the buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this message is <em>not</em>
+     * thread-safe.
+     * <p>
+     * Invoking this message does not cause any observable side-effects.
+     *
+     * @return the int at the given byte offset from the start of the buffer
+     * @throws InvalidBufferOffsetException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize(Object)} - 3</code>
+     * @throws UnsupportedMessageException if and only if {@link #hasBufferElements(Object)} returns
+     *             {@code false}
+     * @since 21.1
+     */
+    @Abstract(ifExported = {"hasBufferElements"})
+    public int readBufferInt(Object receiver, ByteOrder order, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Writes the given int from the receiver object in the given byte order at the given byte
+     * offset from the start of the buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this message is <em>not</em>
+     * thread-safe.
+     *
+     * @throws InvalidBufferOffsetException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize(Object)} - 3</code>
+     * @throws UnsupportedMessageException if and only if either {@link #hasBufferElements(Object)}
+     *             or {@link #isBufferWritable} returns {@code false}
+     * @since 21.1
+     */
+    @Abstract(ifExported = {"isBufferWritable"})
+    public void writeBufferInt(Object receiver, ByteOrder order, long byteOffset, int value) throws UnsupportedMessageException, InvalidBufferOffsetException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Reads the long from the receiver object in the given byte order at the given byte offset from
+     * the start of the buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this message is <em>not</em>
+     * thread-safe.
+     * <p>
+     * Invoking this message does not cause any observable side-effects.
+     *
+     * @return the int at the given byte offset from the start of the buffer
+     * @throws InvalidBufferOffsetException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize(Object)} - 7</code>
+     * @throws UnsupportedMessageException if and only if {@link #hasBufferElements(Object)} returns
+     *             {@code false}
+     * @since 21.1
+     */
+    @Abstract(ifExported = {"hasBufferElements"})
+    public long readBufferLong(Object receiver, ByteOrder order, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Writes the given long from the receiver object in the given byte order at the given byte
+     * offset from the start of the buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this message is <em>not</em>
+     * thread-safe.
+     *
+     * @throws InvalidBufferOffsetException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize(Object)} - 7</code>
+     * @throws UnsupportedMessageException if and only if either {@link #hasBufferElements(Object)}
+     *             or {@link #isBufferWritable} returns {@code false}
+     * @since 21.1
+     */
+    @Abstract(ifExported = {"isBufferWritable"})
+    public void writeBufferLong(Object receiver, ByteOrder order, long byteOffset, long value) throws UnsupportedMessageException, InvalidBufferOffsetException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Reads the float from the receiver object in the given byte order at the given byte offset
+     * from the start of the buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this message is <em>not</em>
+     * thread-safe.
+     * <p>
+     * Invoking this message does not cause any observable side-effects.
+     *
+     * @return the float at the given byte offset from the start of the buffer
+     * @throws InvalidBufferOffsetException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize(Object)} - 3</code>
+     * @throws UnsupportedMessageException if and only if {@link #hasBufferElements(Object)} returns
+     *             {@code false}
+     * @since 21.1
+     */
+    @Abstract(ifExported = {"hasBufferElements"})
+    public float readBufferFloat(Object receiver, ByteOrder order, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Writes the given float from the receiver object in the given byte order at the given byte
+     * offset from the start of the buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this message is <em>not</em>
+     * thread-safe.
+     *
+     * @throws InvalidBufferOffsetException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize(Object)} - 3</code>
+     * @throws UnsupportedMessageException if and only if either {@link #hasBufferElements(Object)}
+     *             or {@link #isBufferWritable} returns {@code false}
+     * @since 21.1
+     */
+    @Abstract(ifExported = {"isBufferWritable"})
+    public void writeBufferFloat(Object receiver, ByteOrder order, long byteOffset, float value) throws UnsupportedMessageException, InvalidBufferOffsetException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Reads the double from the receiver object in the given byte order at the given byte offset
+     * from the start of the buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this message is <em>not</em>
+     * thread-safe.
+     * <p>
+     * Invoking this message does not cause any observable side-effects.
+     *
+     * @return the double at the given byte offset from the start of the buffer
+     * @throws InvalidBufferOffsetException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize(Object)} - 7</code>
+     * @throws UnsupportedMessageException if and only if {@link #hasBufferElements(Object)} returns
+     *             {@code false}
+     * @since 21.1
+     */
+    @Abstract(ifExported = {"hasBufferElements"})
+    public double readBufferDouble(Object receiver, ByteOrder order, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Writes the given double from the receiver object in the given byte order at the given byte
+     * offset from the start of the buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this message is <em>not</em>
+     * thread-safe.
+     *
+     * @throws InvalidBufferOffsetException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize(Object)} - 7</code>
+     * @throws UnsupportedMessageException if and only if either {@link #hasBufferElements(Object)}
+     *             or {@link #isBufferWritable} returns {@code false}
+     * @since 21.1
+     */
+    @Abstract(ifExported = {"isBufferWritable"})
+    public void writeBufferDouble(Object receiver, ByteOrder order, long byteOffset, double value) throws UnsupportedMessageException, InvalidBufferOffsetException {
+        throw UnsupportedMessageException.create();
+    }
+
+    // endregion
 
     /**
      * Returns <code>true</code> if the receiver value represents a native pointer. Native pointers
@@ -1520,6 +2090,144 @@ public abstract class InteropLibrary extends Library {
     }
 
     /**
+     * Returns {@code true} if the receiver provides an iterator. For example, an array or a list
+     * provide an iterator over their content. Invoking this message does not cause any observable
+     * side-effects. By default returns {@code true} for receivers that have
+     * {@link #hasArrayElements(Object) array elements}.
+     *
+     * @see #getIterator(Object)
+     * @since 21.1
+     */
+    @Abstract(ifExported = {"getIterator"})
+    public boolean hasIterator(Object receiver) {
+        return hasArrayElements(receiver);
+    }
+
+    /**
+     * Returns the iterator for the receiver. The return value is always an
+     * {@link #isIterator(Object) iterator}. Invoking this message does not cause any observable
+     * side-effects.
+     *
+     * @throws UnsupportedMessageException if and only if {@link #hasIterator(Object)} returns
+     *             {@code false} for the same receiver.
+     * @since 21.1
+     */
+    @Abstract(ifExported = {"hasIterator"})
+    public Object getIterator(Object receiver) throws UnsupportedMessageException {
+        if (!hasIterator(receiver)) {
+            throw UnsupportedMessageException.create();
+        }
+        return new ArrayIterator(receiver);
+    }
+
+    /**
+     * Returns {@code true} if the receiver represents an iterator. Invoking this message does not
+     * cause any observable side-effects. Returns {@code false} by default.
+     *
+     * @see #hasIterator(Object)
+     * @see #getIterator(Object)
+     * @since 21.1
+     */
+    @Abstract(ifExported = {"hasIteratorNextElement", "getIteratorNextElement"})
+    public boolean isIterator(Object receiver) {
+        return false;
+    }
+
+    /**
+     * Returns {@code true} if the receiver is an iterator which has more elements, else
+     * {@code false}. Multiple calls to the {@link #hasIteratorNextElement(Object)} might lead to
+     * different results if the underlying data structure is modified.
+     * <p>
+     * The following example shows how the {@link #hasIteratorNextElement(Object)
+     * hasIteratorNextElement} message can be emulated in languages where iterators only have a next
+     * method and throw an exception if there are no further elements.
+     * 
+     * <pre>
+     * &#64;ExportLibrary(InteropLibrary.class)
+     * abstract class InteropIterator implements TruffleObject {
+     *
+     *     &#64;SuppressWarnings("serial")
+     *     public static final class Stop extends AbstractTruffleException {
+     *     }
+     *
+     *     private static final Object STOP = new Object();
+     *     private Object next;
+     *
+     *     protected InteropIterator() {
+     *     }
+     *
+     *     protected abstract Object next() throws Stop;
+     *
+     *     &#64;ExportMessage
+     *     &#64;SuppressWarnings("static-method")
+     *     boolean isIterator() {
+     *         return true;
+     *     }
+     *
+     *     &#64;ExportMessage
+     *     boolean hasIteratorNextElement() {
+     *         fetchNext();
+     *         return next != STOP;
+     *     }
+     *
+     *     &#64;ExportMessage
+     *     Object getIteratorNextElement() throws StopIterationException {
+     *         fetchNext();
+     *         Object res = next;
+     *         if (res == STOP) {
+     *             throw StopIterationException.create();
+     *         } else {
+     *             next = null;
+     *         }
+     *         return res;
+     *     }
+     *
+     *     private void fetchNext() {
+     *         if (next == null) {
+     *             try {
+     *                 next = next();
+     *             } catch (Stop stop) {
+     *                 next = STOP;
+     *             }
+     *         }
+     *     }
+     * }
+     * </pre>
+     *
+     * @throws UnsupportedMessageException if and only if {@link #isIterator(Object)} returns
+     *             {@code false} for the same receiver.
+     * @see #isIterator(Object)
+     * @see #getIteratorNextElement(Object)
+     * @since 21.1
+     */
+    @Abstract(ifExported = {"isIterator", "getIteratorNextElement"})
+    public boolean hasIteratorNextElement(Object receiver) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Returns the next element in the iteration. When the underlying data structure is modified the
+     * {@link #getIteratorNextElement(Object)} may throw the {@link StopIterationException} despite
+     * the {@link #hasIteratorNextElement(Object)} returned {@code true}.
+     *
+     * @throws UnsupportedMessageException if {@link #isIterator(Object)} returns {@code false} for
+     *             the same receiver or when the underlying iterator element exists but is not
+     *             readable.
+     * @throws StopIterationException if the iteration has no more elements. Even if the
+     *             {@link StopIterationException} was thrown it might not be thrown again by a next
+     *             {@link #getIteratorNextElement(Object)} invocation on the same receiver due to a
+     *             modification of an underlying iterable.
+     *
+     * @see #isIterator(Object)
+     * @see #hasIteratorNextElement(Object)
+     * @since 21.1
+     */
+    @Abstract(ifExported = {"isIterator", "hasIteratorNextElement"})
+    public Object getIteratorNextElement(Object receiver) throws UnsupportedMessageException, StopIterationException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
      * Returns <code>true</code> if the receiver value has a declared source location attached, else
      * <code>false</code>. Returning a source location for a value is optional and typically impacts
      * the capabilities of tools like debuggers to jump to the declaration of a value.
@@ -1749,7 +2457,8 @@ public abstract class InteropLibrary extends Library {
 
     /**
      * Converts the receiver to a human readable {@link #isString(Object) string} of the language.
-     * Short-cut for <code>{@link #toDisplayString(Object) toDisplayString}(true)</code>.
+     * Short-cut for
+     * <code>{@link #toDisplayString(Object, boolean) toDisplayString(Object, true)}</code>.
      *
      * @see #toDisplayString(Object, boolean)
      * @since 20.1
@@ -2178,7 +2887,8 @@ public abstract class InteropLibrary extends Library {
             STRING,
             NUMBER,
             POINTER,
-            META_OBJECT;
+            META_OBJECT,
+            ITERATOR;
         }
 
         Asserts(InteropLibrary delegate) {
@@ -2219,6 +2929,7 @@ public abstract class InteropLibrary extends Library {
             assert type == Type.DATE_TIME_ZONE || (!delegate.isDate(receiver) && !delegate.isTime(receiver) && !delegate.isTimeZone(receiver)) : violationInvariant(receiver);
             assert type == Type.DURATION || !delegate.isDuration(receiver) : violationInvariant(receiver);
             assert type == Type.META_OBJECT || !delegate.isMetaObject(receiver) : violationInvariant(receiver);
+            assert type == Type.ITERATOR || !delegate.isIterator(receiver) : violationInvariant(receiver);
             return true;
         }
 
@@ -2851,6 +3562,216 @@ public abstract class InteropLibrary extends Library {
         }
 
         @Override
+        public boolean hasHashEntries(Object receiver) {
+            assert preCondition(receiver);
+            return delegate.hasHashEntries(receiver);
+        }
+
+        @Override
+        public long getHashSize(Object receiver) throws UnsupportedMessageException {
+            assert preCondition(receiver);
+            try {
+                long result = delegate.getHashSize(receiver);
+                assert delegate.hasHashEntries(receiver) : violationInvariant(receiver);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationPost(receiver, e);
+                assert !delegate.hasHashEntries(receiver) : violationInvariant(receiver);
+                throw e;
+            }
+        }
+
+        @Override
+        public boolean isHashEntryReadable(Object receiver, Object key) {
+            assert preCondition(receiver);
+            assert validArgument(receiver, key);
+            boolean result = delegate.isHashEntryReadable(receiver, key);
+            assert !result || delegate.hasHashEntries(receiver) && !delegate.isHashEntryInsertable(receiver, key) : violationInvariant(receiver, key);
+            return result;
+        }
+
+        @Override
+        public Object readHashValue(Object receiver, Object key) throws UnsupportedMessageException, UnknownKeyException {
+            if (CompilerDirectives.inCompiledCode()) {
+                return delegate.readHashValue(receiver, key);
+            }
+            assert preCondition(receiver);
+            assert validArgument(receiver, key);
+            boolean wasReadable = delegate.isHashEntryReadable(receiver, key);
+            try {
+                Object result = delegate.readHashValue(receiver, key);
+                assert delegate.hasHashEntries(receiver) : violationInvariant(receiver, key);
+                assert wasReadable || isMultiThreaded(receiver) : violationInvariant(receiver, key);
+                assert validReturn(receiver, result);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException || e instanceof UnknownKeyException : violationPost(receiver, e);
+                assert !(e instanceof UnsupportedMessageException) || !wasReadable : violationInvariant(receiver, key);
+                throw e;
+            }
+        }
+
+        @Override
+        public Object readHashValueOrDefault(Object receiver, Object key, Object defaultValue) throws UnsupportedMessageException {
+            if (CompilerDirectives.inCompiledCode()) {
+                return delegate.readHashValueOrDefault(receiver, key, defaultValue);
+            }
+            assert preCondition(receiver);
+            assert validArgument(receiver, key);
+            assert validArgument(receiver, defaultValue);
+            try {
+                Object result = delegate.readHashValueOrDefault(receiver, key, defaultValue);
+                assert delegate.hasHashEntries(receiver) : violationInvariant(receiver, key);
+                assert validReturn(receiver, result);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationPost(receiver, e);
+                throw e;
+            }
+        }
+
+        @Override
+        public boolean isHashEntryModifiable(Object receiver, Object key) {
+            assert preCondition(receiver);
+            assert validArgument(receiver, key);
+            boolean result = delegate.isHashEntryModifiable(receiver, key);
+            assert !result || delegate.hasHashEntries(receiver) && !delegate.isHashEntryInsertable(receiver, key) : violationInvariant(receiver, key);
+            return result;
+        }
+
+        @Override
+        public boolean isHashEntryInsertable(Object receiver, Object key) {
+            assert preCondition(receiver);
+            assert validArgument(receiver, key);
+            boolean result = delegate.isHashEntryInsertable(receiver, key);
+            assert !result || delegate.hasHashEntries(receiver) && !delegate.isHashEntryExisting(receiver, key) : violationInvariant(receiver, key);
+            return result;
+        }
+
+        @Override
+        public boolean isHashEntryWritable(Object receiver, Object key) {
+            assert preCondition(receiver);
+            assert validArgument(receiver, key);
+            boolean result = delegate.isHashEntryWritable(receiver, key);
+            assert result == (delegate.isHashEntryModifiable(receiver, key) || delegate.isHashEntryInsertable(receiver, key)) : violationInvariant(receiver, key);
+            return result;
+        }
+
+        @Override
+        public void writeHashEntry(Object receiver, Object key, Object value) throws UnsupportedMessageException, UnknownKeyException, UnsupportedTypeException {
+            if (CompilerDirectives.inCompiledCode()) {
+                delegate.writeHashEntry(receiver, key, value);
+                return;
+            }
+            assert preCondition(receiver);
+            assert validArgument(receiver, key);
+            assert validArgument(receiver, value);
+            boolean wasWritable = delegate.isHashEntryModifiable(receiver, key) || delegate.isHashEntryInsertable(receiver, key);
+            try {
+                delegate.writeHashEntry(receiver, key, value);
+                assert delegate.hasHashEntries(receiver) : violationInvariant(receiver, key);
+                assert wasWritable || isMultiThreaded(receiver) : violationInvariant(receiver, key);
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException || e instanceof UnknownKeyException || e instanceof UnsupportedTypeException : violationPost(receiver, e);
+                assert !(e instanceof UnsupportedMessageException) || !wasWritable : violationInvariant(receiver, key);
+                throw e;
+            }
+        }
+
+        @Override
+        public boolean isHashEntryRemovable(Object receiver, Object key) {
+            assert preCondition(receiver);
+            assert validArgument(receiver, key);
+            boolean result = delegate.isHashEntryRemovable(receiver, key);
+            assert !result || delegate.hasHashEntries(receiver) && !delegate.isHashEntryInsertable(receiver, key) : violationInvariant(receiver, key);
+            return result;
+        }
+
+        @Override
+        public void removeHashEntry(Object receiver, Object key) throws UnsupportedMessageException, UnknownKeyException {
+            if (CompilerDirectives.inCompiledCode()) {
+                delegate.removeHashEntry(receiver, key);
+                return;
+            }
+            assert preCondition(receiver);
+            assert validArgument(receiver, key);
+            boolean wasRemovable = delegate.isHashEntryRemovable(receiver, key);
+            try {
+                delegate.removeHashEntry(receiver, key);
+                assert delegate.hasHashEntries(receiver) : violationInvariant(receiver, key);
+                assert wasRemovable || isMultiThreaded(receiver) : violationInvariant(receiver, key);
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException || e instanceof UnknownKeyException : violationPost(receiver, e);
+                assert !(e instanceof UnsupportedMessageException) || !wasRemovable : violationInvariant(receiver, key);
+                throw e;
+            }
+        }
+
+        @Override
+        public boolean isHashEntryExisting(Object receiver, Object key) {
+            assert preCondition(receiver);
+            assert validArgument(receiver, key);
+            boolean result = delegate.isHashEntryExisting(receiver, key);
+            assert result == (delegate.isHashEntryReadable(receiver, key) || delegate.isHashEntryModifiable(receiver, key) || delegate.isHashEntryRemovable(receiver, key)) : violationInvariant(
+                            receiver, key);
+            return result;
+        }
+
+        @Override
+        public Object getHashEntriesIterator(Object receiver) throws UnsupportedMessageException {
+            if (CompilerDirectives.inCompiledCode()) {
+                return delegate.getHashEntriesIterator(receiver);
+            }
+            assert preCondition(receiver);
+            try {
+                Object result = delegate.getHashEntriesIterator(receiver);
+                assert delegate.hasHashEntries(receiver) : violationInvariant(receiver);
+                assert assertIterator(receiver, result);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationPost(receiver, e);
+                assert !delegate.hasHashEntries(receiver) : violationInvariant(receiver);
+                throw e;
+            }
+        }
+
+        @Override
+        public Object getHashKeysIterator(Object receiver) throws UnsupportedMessageException {
+            if (CompilerDirectives.inCompiledCode()) {
+                return delegate.getHashKeysIterator(receiver);
+            }
+            assert preCondition(receiver);
+            try {
+                Object result = delegate.getHashKeysIterator(receiver);
+                assert delegate.hasHashEntries(receiver) : violationInvariant(receiver);
+                assert assertIterator(receiver, result);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationPost(receiver, e);
+                assert !delegate.hasHashEntries(receiver) : violationInvariant(receiver);
+                throw e;
+            }
+        }
+
+        @Override
+        public Object getHashValuesIterator(Object receiver) throws UnsupportedMessageException {
+            if (CompilerDirectives.inCompiledCode()) {
+                return delegate.getHashValuesIterator(receiver);
+            }
+            assert preCondition(receiver);
+            try {
+                Object result = delegate.getHashValuesIterator(receiver);
+                assert delegate.hasHashEntries(receiver) : violationInvariant(receiver);
+                assert assertIterator(receiver, result);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationPost(receiver, e);
+                assert !delegate.hasHashEntries(receiver) : violationInvariant(receiver);
+                throw e;
+            }
+        }
+
+        @Override
         public boolean hasArrayElements(Object receiver) {
             assert preCondition(receiver);
             return delegate.hasArrayElements(receiver);
@@ -2956,6 +3877,234 @@ public abstract class InteropLibrary extends Library {
             assert !result || delegate.hasArrayElements(receiver) && !delegate.isArrayElementInsertable(receiver, identifier) : violationInvariant(receiver, identifier);
             return result;
         }
+
+        // region Buffer Messages
+
+        @Override
+        public boolean hasBufferElements(Object receiver) {
+            assert preCondition(receiver);
+            return delegate.hasBufferElements(receiver);
+        }
+
+        @Override
+        public boolean isBufferWritable(Object receiver) throws UnsupportedMessageException {
+            assert preCondition(receiver);
+            try {
+                final boolean result = delegate.isBufferWritable(receiver);
+                assert delegate.hasBufferElements(receiver) : violationInvariant(receiver);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationPost(receiver, e);
+                throw e;
+            }
+        }
+
+        @Override
+        public long getBufferSize(Object receiver) throws UnsupportedMessageException {
+            assert preCondition(receiver);
+            try {
+                final long result = delegate.getBufferSize(receiver);
+                assert delegate.hasBufferElements(receiver) : violationInvariant(receiver);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationPost(receiver, e);
+                throw e;
+            }
+        }
+
+        @Override
+        public byte readBufferByte(Object receiver, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException {
+            assert preCondition(receiver);
+            try {
+                final byte result = delegate.readBufferByte(receiver, byteOffset);
+                assert delegate.hasBufferElements(receiver) : violationInvariant(receiver, byteOffset);
+                return result;
+            } catch (UnsupportedMessageException e) {
+                assert !delegate.hasBufferElements(receiver) : violationPost(receiver, e);
+                throw e;
+            } catch (InteropException e) {
+                assert e instanceof InvalidBufferOffsetException : violationPost(receiver, e);
+                throw e;
+            }
+        }
+
+        @Override
+        public void writeBufferByte(Object receiver, long byteOffset, byte value) throws UnsupportedMessageException, InvalidBufferOffsetException {
+            assert preCondition(receiver);
+            try {
+                delegate.writeBufferByte(receiver, byteOffset, value);
+                assert delegate.hasBufferElements(receiver) : violationInvariant(receiver, byteOffset);
+                assert delegate.isBufferWritable(receiver) : violationInvariant(receiver, byteOffset);
+            } catch (UnsupportedMessageException e) {
+                assert !delegate.isBufferWritable(receiver) : violationPost(receiver, e);
+                throw e;
+            } catch (InteropException e) {
+                assert e instanceof InvalidBufferOffsetException : violationPost(receiver, e);
+                throw e;
+            }
+        }
+
+        @Override
+        public short readBufferShort(Object receiver, ByteOrder order, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException {
+            assert preCondition(receiver);
+            try {
+                final short result = delegate.readBufferShort(receiver, order, byteOffset);
+                assert delegate.hasBufferElements(receiver) : violationInvariant(receiver, byteOffset);
+                return result;
+            } catch (UnsupportedMessageException e) {
+                assert !delegate.hasBufferElements(receiver) : violationPost(receiver, e);
+                throw e;
+            } catch (InteropException e) {
+                assert e instanceof InvalidBufferOffsetException : violationPost(receiver, e);
+                throw e;
+            }
+        }
+
+        @Override
+        public void writeBufferShort(Object receiver, ByteOrder order, long byteOffset, short value) throws UnsupportedMessageException, InvalidBufferOffsetException {
+            assert preCondition(receiver);
+            try {
+                delegate.writeBufferShort(receiver, order, byteOffset, value);
+                assert delegate.hasBufferElements(receiver) : violationInvariant(receiver, byteOffset);
+                assert delegate.isBufferWritable(receiver) : violationInvariant(receiver, byteOffset);
+            } catch (UnsupportedMessageException e) {
+                assert !delegate.isBufferWritable(receiver) : violationPost(receiver, e);
+                throw e;
+            } catch (InteropException e) {
+                assert e instanceof InvalidBufferOffsetException : violationPost(receiver, e);
+                throw e;
+            }
+        }
+
+        @Override
+        public int readBufferInt(Object receiver, ByteOrder order, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException {
+            assert preCondition(receiver);
+            try {
+                final int result = delegate.readBufferInt(receiver, order, byteOffset);
+                assert delegate.hasBufferElements(receiver) : violationInvariant(receiver, byteOffset);
+                return result;
+            } catch (UnsupportedMessageException e) {
+                assert !delegate.hasBufferElements(receiver) : violationPost(receiver, e);
+                throw e;
+            } catch (InteropException e) {
+                assert e instanceof InvalidBufferOffsetException : violationPost(receiver, e);
+                throw e;
+            }
+        }
+
+        @Override
+        public void writeBufferInt(Object receiver, ByteOrder order, long byteOffset, int value) throws UnsupportedMessageException, InvalidBufferOffsetException {
+            assert preCondition(receiver);
+            try {
+                delegate.writeBufferInt(receiver, order, byteOffset, value);
+                assert delegate.hasBufferElements(receiver) : violationInvariant(receiver, byteOffset);
+                assert delegate.isBufferWritable(receiver) : violationInvariant(receiver, byteOffset);
+            } catch (UnsupportedMessageException e) {
+                assert !delegate.isBufferWritable(receiver) : violationPost(receiver, e);
+                throw e;
+            } catch (InteropException e) {
+                assert e instanceof InvalidBufferOffsetException : violationPost(receiver, e);
+                throw e;
+            }
+        }
+
+        @Override
+        public long readBufferLong(Object receiver, ByteOrder order, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException {
+            assert preCondition(receiver);
+            try {
+                final long result = delegate.readBufferLong(receiver, order, byteOffset);
+                assert delegate.hasBufferElements(receiver) : violationInvariant(receiver, byteOffset);
+                return result;
+            } catch (UnsupportedMessageException e) {
+                assert !delegate.hasBufferElements(receiver) : violationPost(receiver, e);
+                throw e;
+            } catch (InteropException e) {
+                assert e instanceof InvalidBufferOffsetException : violationPost(receiver, e);
+                throw e;
+            }
+        }
+
+        @Override
+        public void writeBufferLong(Object receiver, ByteOrder order, long byteOffset, long value) throws UnsupportedMessageException, InvalidBufferOffsetException {
+            assert preCondition(receiver);
+            try {
+                delegate.writeBufferLong(receiver, order, byteOffset, value);
+                assert delegate.hasBufferElements(receiver) : violationInvariant(receiver, byteOffset);
+                assert delegate.isBufferWritable(receiver) : violationInvariant(receiver, byteOffset);
+            } catch (UnsupportedMessageException e) {
+                assert !delegate.isBufferWritable(receiver) : violationPost(receiver, e);
+                throw e;
+            } catch (InteropException e) {
+                assert e instanceof InvalidBufferOffsetException : violationPost(receiver, e);
+                throw e;
+            }
+        }
+
+        @Override
+        public float readBufferFloat(Object receiver, ByteOrder order, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException {
+            assert preCondition(receiver);
+            try {
+                final float result = delegate.readBufferFloat(receiver, order, byteOffset);
+                assert delegate.hasBufferElements(receiver) : violationInvariant(receiver, byteOffset);
+                return result;
+            } catch (UnsupportedMessageException e) {
+                assert !delegate.hasBufferElements(receiver) : violationPost(receiver, e);
+                throw e;
+            } catch (InteropException e) {
+                assert e instanceof InvalidBufferOffsetException : violationPost(receiver, e);
+                throw e;
+            }
+        }
+
+        @Override
+        public void writeBufferFloat(Object receiver, ByteOrder order, long byteOffset, float value) throws UnsupportedMessageException, InvalidBufferOffsetException {
+            assert preCondition(receiver);
+            try {
+                delegate.writeBufferFloat(receiver, order, byteOffset, value);
+                assert delegate.hasBufferElements(receiver) : violationInvariant(receiver, byteOffset);
+                assert delegate.isBufferWritable(receiver) : violationInvariant(receiver, byteOffset);
+            } catch (UnsupportedMessageException e) {
+                assert !delegate.isBufferWritable(receiver) : violationPost(receiver, e);
+                throw e;
+            } catch (InteropException e) {
+                assert e instanceof InvalidBufferOffsetException : violationPost(receiver, e);
+                throw e;
+            }
+        }
+
+        @Override
+        public double readBufferDouble(Object receiver, ByteOrder order, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException {
+            assert preCondition(receiver);
+            try {
+                final double result = delegate.readBufferDouble(receiver, order, byteOffset);
+                assert delegate.hasBufferElements(receiver) : violationInvariant(receiver, byteOffset);
+                return result;
+            } catch (UnsupportedMessageException e) {
+                assert !delegate.hasBufferElements(receiver) : violationPost(receiver, e);
+                throw e;
+            } catch (InteropException e) {
+                assert e instanceof InvalidBufferOffsetException : violationPost(receiver, e);
+                throw e;
+            }
+        }
+
+        @Override
+        public void writeBufferDouble(Object receiver, ByteOrder order, long byteOffset, double value) throws UnsupportedMessageException, InvalidBufferOffsetException {
+            assert preCondition(receiver);
+            try {
+                delegate.writeBufferDouble(receiver, order, byteOffset, value);
+                assert delegate.hasBufferElements(receiver) : violationInvariant(receiver, byteOffset);
+                assert delegate.isBufferWritable(receiver) : violationInvariant(receiver, byteOffset);
+            } catch (UnsupportedMessageException e) {
+                assert !delegate.isBufferWritable(receiver) : violationPost(receiver, e);
+                throw e;
+            } catch (InteropException e) {
+                assert e instanceof InvalidBufferOffsetException : violationPost(receiver, e);
+                throw e;
+            }
+        }
+
+        // endregion
 
         @Override
         public boolean isPointer(Object receiver) {
@@ -3392,6 +4541,83 @@ public abstract class InteropLibrary extends Library {
         }
 
         @Override
+        public boolean hasIterator(Object receiver) {
+            assert preCondition(receiver);
+            boolean result = delegate.hasIterator(receiver);
+            return result;
+        }
+
+        @Override
+        public Object getIterator(Object receiver) throws UnsupportedMessageException {
+            if (CompilerDirectives.inCompiledCode()) {
+                return delegate.getIterator(receiver);
+            }
+            assert preCondition(receiver);
+            boolean wasHasIterator = delegate.hasIterator(receiver);
+            try {
+                Object result = delegate.getIterator(receiver);
+                assert wasHasIterator : violationInvariant(receiver);
+                assert assertIterator(receiver, result);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
+                assert !wasHasIterator : violationInvariant(receiver);
+                throw e;
+            }
+        }
+
+        private static boolean assertIterator(Object receiver, Object iterator) {
+            assert iterator != null : violationPost(receiver, iterator);
+            InteropLibrary uncached = InteropLibrary.getUncached(iterator);
+            assert uncached.isIterator(iterator) : violationPost(receiver, iterator);
+            return true;
+        }
+
+        @Override
+        public boolean isIterator(Object receiver) {
+            assert preCondition(receiver);
+            boolean result = delegate.isIterator(receiver);
+            assert !result || notOtherType(receiver, Type.ITERATOR);
+            return result;
+        }
+
+        @Override
+        public boolean hasIteratorNextElement(Object receiver) throws UnsupportedMessageException {
+            if (CompilerDirectives.inCompiledCode()) {
+                return delegate.hasIteratorNextElement(receiver);
+            }
+            assert preCondition(receiver);
+            boolean wasIterator = delegate.isIterator(receiver);
+            try {
+                boolean result = delegate.hasIteratorNextElement(receiver);
+                assert wasIterator : violationInvariant(receiver);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
+                assert !wasIterator : violationInvariant(receiver);
+                throw e;
+            }
+        }
+
+        @Override
+        public Object getIteratorNextElement(Object receiver) throws UnsupportedMessageException, StopIterationException {
+            if (CompilerDirectives.inCompiledCode()) {
+                return delegate.getIteratorNextElement(receiver);
+            }
+            assert preCondition(receiver);
+            boolean wasIterator = delegate.isIterator(receiver);
+            try {
+                Object result = delegate.getIteratorNextElement(receiver);
+                assert wasIterator : violationInvariant(receiver);
+                assert validReturn(receiver, result);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException || e instanceof StopIterationException : violationPost(receiver, e);
+                throw e;
+            }
+        }
+
+        @Override
         public boolean hasSourceLocation(Object receiver) {
             if (CompilerDirectives.inCompiledCode()) {
                 return delegate.hasSourceLocation(receiver);
@@ -3511,7 +4737,6 @@ public abstract class InteropLibrary extends Library {
             assert meta != null : violationPost(receiver, meta);
             InteropLibrary metaLib = InteropLibrary.getFactory().getUncached(meta);
             assert metaLib.isMetaObject(meta) : violationPost(receiver, meta);
-            assert metaLib.isMetaInstance(meta, receiver) : violationPost(receiver, meta);
             assert metaLib.getMetaSimpleName(meta) != null : violationPost(receiver, meta);
             assert metaLib.getMetaQualifiedName(meta) != null : violationPost(receiver, meta);
             return true;

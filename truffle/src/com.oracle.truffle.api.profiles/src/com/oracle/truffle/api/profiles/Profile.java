@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -126,6 +126,31 @@ public abstract class Profile extends NodeCloneable {
 
     String toStringDisabled(Class<?> profileClass) {
         return String.format("%s(DISABLED)", profileClass.getSimpleName());
+    }
+
+    /**
+     * Disables this profile by setting it to its generic state. After disabling it is guaranteed to
+     * never {@link CompilerDirectives#transferToInterpreterAndInvalidate() deoptimize} on any
+     * invocation of a profile method.
+     * <p>
+     * This method must not be called on compiled code paths. Note that disabling the profile will
+     * not invalidate existing compiled code that uses this profile.
+     *
+     * @since 21.1
+     */
+    public void disable() {
+    }
+
+    /**
+     * Resets this profile to its uninitialized state. Has no effect if this profile is already in
+     * its uninitialized state or a disabled version of this profile is used.
+     * <p>
+     * This method must not be called on compiled code paths. Note that disabling the profile will
+     * not invalidate existing compiled code that uses this profile.
+     *
+     * @since 21.1
+     */
+    public void reset() {
     }
 
     String toString(Class<?> profileClass, boolean uninitialized, boolean generic, String specialization) {

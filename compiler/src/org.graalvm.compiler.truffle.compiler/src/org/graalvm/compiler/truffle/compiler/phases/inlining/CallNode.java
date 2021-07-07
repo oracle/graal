@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -45,7 +45,7 @@ import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
-import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
+import org.graalvm.compiler.truffle.common.TruffleInliningData;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.PerformanceInformationHandler;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
@@ -249,9 +249,14 @@ public final class CallNode extends Node implements Comparable<CallNode> {
             public void accept(UnmodifiableEconomicMap<Node, Node> duplicates) {
                 final EconomicMap<Invoke, TruffleCallNode> replacements = EconomicMap.create();
                 for (Invoke original : entry.invokeToTruffleCallNode.getKeys()) {
+                    if (!original.isAlive()) {
+                        continue;
+                    }
                     final TruffleCallNode truffleCallNode = entry.invokeToTruffleCallNode.get(original);
                     Invoke replacement = (Invoke) duplicates.get((Node) original);
-                    replacements.put(replacement, truffleCallNode);
+                    if (replacement != null && replacement.isAlive()) {
+                        replacements.put(replacement, truffleCallNode);
+                    }
                 }
                 addChildren(CallNode.this, replacements);
             }
@@ -391,7 +396,7 @@ public final class CallNode extends Node implements Comparable<CallNode> {
         }
     }
 
-    void collectTargetsToDequeue(TruffleMetaAccessProvider provider) {
+    void collectTargetsToDequeue(TruffleInliningData provider) {
         if (state == State.Inlined) {
             if (truffleAST != getCallTree().getRoot().truffleAST && truffleAST.getKnownCallSiteCount() == 1) {
                 provider.addTargetToDequeue(truffleAST);
@@ -402,7 +407,7 @@ public final class CallNode extends Node implements Comparable<CallNode> {
         }
     }
 
-    public void collectInlinedTargets(TruffleMetaAccessProvider inliningPlan) {
+    public void collectInlinedTargets(TruffleInliningData inliningPlan) {
         if (state == State.Inlined) {
             inliningPlan.addInlinedTarget(truffleAST);
             for (CallNode child : children) {

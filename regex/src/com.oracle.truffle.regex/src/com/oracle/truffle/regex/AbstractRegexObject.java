@@ -62,11 +62,10 @@ public abstract class AbstractRegexObject implements TruffleObject {
         return RegexLanguage.class;
     }
 
-    @ExportMessage
     @SuppressWarnings("static-method")
+    @ExportMessage
     @TruffleBoundary
-    public final Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+    public Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
         return toString();
     }
-
 }

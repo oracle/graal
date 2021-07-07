@@ -1,7 +1,6 @@
 # The Substrate VM Project
 
-Substrate VM is an internal project
-name for the technology behind [GraalVM Native Image](README.md).
+Substrate VM is an internal project name for the technology behind [GraalVM Native Image](../docs/reference-manual/native-image/README.md).
 This guide shows how to set up a development environment for the project.
 
 To get started, install [mx](https://github.com/graalvm/mx).
@@ -18,16 +17,9 @@ For compilation, `native-image` depends on the local toolchain. Install
 `gcc`, using a package manager available on your OS. Some Linux distributions
 may additionally require `libstdc++-static`.
 
-Unlike Linux or macOS platforms, building native images on Windows requires meeting certain prerequisites.
-The required Microsoft Visual C++ (MSVC) version depends on the JDK version that
-GraalVM is based on. For GraalVM distribution based on JDK 8, you will need MSVC
-2010 SP1 version. The recommended installation method is using Microsoft Windows
-SDK 7.1:
-1. Download the SDK file `GRMSDKX_EN_DVD.iso` from [Microsoft](https://www.microsoft.com/en-gb/download).
-2. Mount the image by opening `F:\Setup\SDKSetup.exe` directly.
-For GraalVM distribution based on JDK 11, you will need MSVC 2017 15.5.5 or later version.
-
-The last prerequisite, common for both GraalVM distribution based on JDK 11 and JDK 8, is the proper [Developer Command Prompt](https://docs.microsoft.com/en-us/cpp/build/building-on-the-command-line?view=vs-2019#developer_command_prompt_shortcuts) for your version of [Visual Studio](https://visualstudio.microsoft.com/vs/). On Windows, the `native-image` tool only works when it is executed from the x64 Native Tools Command Prompt.
+Building native images on Windows requires a Microsoft Visual C++ (MSVC) that comes with Visual Studio 2017 15.5.5 or later.
+In addition, a proper [Developer Command Prompt](https://docs.microsoft.com/en-us/cpp/build/building-on-the-command-line?view=vs-2019#developer_command_prompt_shortcuts) for your version of [Visual Studio](https://visualstudio.microsoft.com/vs/).
+On Windows, the `native-image` tool only works when it is executed from the x64 Native Tools Command Prompt.
 
 ```shell
 cd substratevm
@@ -74,7 +66,7 @@ mx native-image HelloWorld -H:Dump= -H:MethodFilter=HelloWorld.*
 
 ## Options
 
-More information about options and the important distinction between hosted and runtime options is available [here](Options.md).
+More information about options and the important distinction between hosted and runtime options is available [here](../docs/reference-manual/native-image/Options.md).
 
 ## Project Structure
 
@@ -83,7 +75,7 @@ Instead, a new project is created by adding it in `suite.py` and running `mx ide
 
 ## Code Formatting
 
-Style rules and procedures for checking adherence are described in the [style guide](CodeStyle.md).
+Style rules and procedures for checking adherence are described in the [style guide](../docs/reference-manual/native-image/CodeStyle.md).
 
 ## Troubleshooting Eclipse
 
@@ -99,6 +91,10 @@ following should reset everything:
 * `mx build`
 * `mx ideinit`
 * Import all projects into Eclipse again
+
+## Usage Documentation
+
+The documentation on how to use Native Image is available [here](../docs/reference-manual/native-image/README.md) or [on the website](https://www.graalvm.org/reference-manual/native-image/).
 
 ## License
 

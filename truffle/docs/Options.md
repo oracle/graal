@@ -1,23 +1,29 @@
+---
+layout: docs
+toc_group: truffle
+link_title: Options
+permalink: /graalvm-as-a-platform/language-implementation-framework/Options/
+---
 # Truffle Options
 
 You can list options from the command line with any language launcher:
 
 ```shell
-my-language --help:expert
+language-launcher --help:expert
 ```
 
-or for options only relevant for Truffle language implementers:
+Or, for options only relevant for Truffle language implementers:
 
 ```shell
-my-language --help:internal
+language-launcher --help:internal
 ```
 
-In addition the GraalVM compiler options can be listed with:
+In addition, the GraalVM compiler options can be listed with:
 
 ```shell
-my-language --jvm --vm.XX:+JVMCIPrintProperties
+language-launcher --jvm --vm.XX:+JVMCIPrintProperties
 ```
-See [graalvm_ce_jdk8_options](https://chriswhocodes.com/graalvm_ce_jdk8_options.html) for a list of the GraalVM compiler options.
+See [graalvm_ce_jdk8_options](https://chriswhocodes.com/graalvm_ce_jdk8_options.html) for a list of GraalVM compiler options.
 
 ## Default Language Launcher Options
 
@@ -40,13 +46,13 @@ See [graalvm_ce_jdk8_options](https://chriswhocodes.com/graalvm_ce_jdk8_options.
 
 ## Expert Engine Options
 
-Advanced engine options for controlling the engine. Useful for users and language and tool implementers.
+These are advanced options for controlling the engine.
+They are useful to users and language and tool implementers.
 
-```
+```shell
 Expert engine options:
   --engine.BackgroundCompilation=<Boolean>     Enable asynchronous truffle compilation in background threads
   --engine.Compilation=<Boolean>               Enable or disable Truffle compilation.
-  --engine.CompilationThreshold=<Integer>      Minimum number of invocations or loop iterations needed to compile a guest language root.
   --engine.CompilerIdleDelay=<Long>            Set the time in milliseconds an idle Truffle compiler thread will wait for new tasks before terminating. New compiler
                                                threads will be started once new compilation tasks are submitted. Select '0' to never terminate the Truffle compiler
                                                thread. The option is not supported by all Truffle runtimes. On the runtime which does not support it the option has no
@@ -58,12 +64,17 @@ Expert engine options:
                                                only supported on the HotSpot (non-libgraal) Truffle runtime.On runtimes which does not support it the option has no
                                                effect.
   --engine.FirstTierCompilationThreshold=<Integer>
-                                               Minimum number of invocations or loop iterations needed to compile a guest language root in low tier mode.
+                                               Minimum number of invocations or loop iterations needed to compile a guest language root in first tier.
   --engine.FirstTierMinInvokeThreshold=<Integer>
-                                               Minimum number of calls before a call target is compiled in the first tier.
+                                               Minimum number of invocations or loop iterations needed to compile a guest language root in last tier.
+  --engine.LastTierCompilationThreshold=<Integer>
+                                               Minimum number of invocations or loop iterations needed to compile a guest language root when not using multi tier.
+  --engine.SingleTierCompilationThreshold=<Integer>
+                                               Minimum number of invocations or loop iterations needed to compile a guest language root when not using multi tier.
   --engine.Inlining=<Boolean>                  Enable automatic inlining of guest language call targets.
   --engine.InliningExpansionBudget=<Integer>   The base expansion budget for language-agnostic inlining.
   --engine.InliningInliningBudget=<Integer>    The base inlining budget for language-agnostic inlining
+  --engine.InliningNodeBudget=<Integer>        Maximum number of inlined non-trivial AST nodes per compilation unit.
   --engine.InliningPolicy=<String>             Explicitly pick a inlining policy by name. Highest priority chosen by default.
   --engine.InliningRecursionDepth=<Integer>    Maximum depth for recursive inlining.
   --engine.MinInvokeThreshold=<Integer>        Minimum number of calls before a call target is compiled
@@ -80,9 +91,9 @@ Expert engine options:
 
 ## Internal Engine Options
 
-Internal options for debugging language implementations and tools.
+These are internal options for debugging language implementations and tools.
 
-```
+```shell
   --engine.ArgumentTypeSpeculation=<Boolean>   Speculate on arguments types at call sites
   --engine.CompilationFailureAction=<ExceptionAction>
                                                Specifies the action to take when Truffle compilation fails.%nThe accepted values are:%n    Silent - Print nothing to

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package org.graalvm.polyglot;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.nio.ByteOrder;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -50,14 +51,17 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.zone.ZoneRules;
+import java.util.ConcurrentModificationException;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 
 import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueImpl;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueDispatch;
 import org.graalvm.polyglot.proxy.Proxy;
 
 /**
@@ -93,6 +97,8 @@ import org.graalvm.polyglot.proxy.Proxy;
  * <li>{@link #isMetaObject() Meta-Object}: This value represents a metaobject. Access metaobject
  * operations using {@link #getMetaSimpleName()}, {@link #getMetaQualifiedName()} and
  * {@link #isMetaInstance(Object)}.
+ * <li>{@link #isIterator() Iterator}: This value represents an iterator. The iterator can be
+ * iterated using {@link #hasIteratorNextElement()} and {@link #getIteratorNextElement()}.
  * </ul>
  * In addition any value may have one or more of the following traits:
  * <ul>
@@ -106,6 +112,12 @@ import org.graalvm.polyglot.proxy.Proxy;
  * for executable elements are functions, methods, closures or promises.
  * <li>{@link #canInstantiate() Instantiable}: This value can be {@link #newInstance(Object...)
  * instantiated}. For example, Java classes are instantiable.
+ * <li>{@link #hasBufferElements() Buffer Elements}: This value may contain buffer elements. The
+ * buffer indices always start with <code>0</code>, also if the language uses a different style.
+ * <li>{@link #hasIterator() Iterable}: This value {@link #getIterator() provides} an
+ * {@link #isIterator() iterator} which can be used to {@link #getIteratorNextElement() iterate}
+ * value elements. For example, Guest language arrays are iterable.
+ * <li>{@link #hasHashEntries()} Hash Entries}: This value represents a map.
  * </ul>
  * <p>
  * In addition to the language agnostic types, the language specific type can be accessed using
@@ -139,14 +151,10 @@ import org.graalvm.polyglot.proxy.Proxy;
  * @see PolyglotException
  * @since 19.0
  */
-public final class Value {
+public final class Value extends AbstractValue {
 
-    final Object receiver;
-    final AbstractValueImpl impl;
-
-    Value(AbstractValueImpl impl, Object value) {
-        this.impl = impl;
-        this.receiver = value;
+    Value(AbstractValueDispatch dispatch, Object context, Object receiver) {
+        super(dispatch, context, receiver);
     }
 
     /**
@@ -167,7 +175,7 @@ public final class Value {
      * @since 19.0 revised in 20.1
      */
     public Value getMetaObject() {
-        return impl.getMetaObject(receiver);
+        return dispatch.getMetaObject(this.context, receiver);
     }
 
     /**
@@ -194,7 +202,7 @@ public final class Value {
      * @since 20.1
      */
     public boolean isMetaObject() {
-        return impl.isMetaObject(receiver);
+        return dispatch.isMetaObject(this.context, receiver);
     }
 
     /**
@@ -210,7 +218,7 @@ public final class Value {
      * @since 20.1
      */
     public String getMetaQualifiedName() {
-        return impl.getMetaQualifiedName(receiver);
+        return dispatch.getMetaQualifiedName(this.context, receiver);
     }
 
     /**
@@ -224,7 +232,7 @@ public final class Value {
      * @since 20.1
      */
     public String getMetaSimpleName() {
-        return impl.getMetaSimpleName(receiver);
+        return dispatch.getMetaSimpleName(this.context, receiver);
     }
 
     /**
@@ -243,7 +251,7 @@ public final class Value {
      * @since 20.1
      */
     public boolean isMetaInstance(Object instance) {
-        return impl.isMetaInstance(receiver, instance);
+        return dispatch.isMetaInstance(this.context, receiver, instance);
     }
 
     /**
@@ -257,7 +265,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean hasArrayElements() {
-        return impl.hasArrayElements(receiver);
+        return dispatch.hasArrayElements(this.context, receiver);
     }
 
     /**
@@ -273,7 +281,7 @@ public final class Value {
      * @since 19.0
      */
     public Value getArrayElement(long index) {
-        return impl.getArrayElement(receiver, index);
+        return dispatch.getArrayElement(this.context, receiver, index);
     }
 
     /**
@@ -282,6 +290,7 @@ public final class Value {
      * described in {@link Context#asValue(Object)}.
      *
      * @throws ArrayIndexOutOfBoundsException if the array index does not exist.
+     * @throws ClassCastException if the provided value type is not allowed to be written.
      * @throws UnsupportedOperationException if the value does not have any
      *             {@link #hasArrayElements() array elements} or if the index exists but is not
      *             modifiable.
@@ -290,7 +299,7 @@ public final class Value {
      * @since 19.0
      */
     public void setArrayElement(long index, Object value) {
-        impl.setArrayElement(receiver, index, value);
+        dispatch.setArrayElement(this.context, receiver, index, value);
     }
 
     /**
@@ -306,7 +315,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean removeArrayElement(long index) {
-        return impl.removeArrayElement(receiver, index);
+        return dispatch.removeArrayElement(this.context, receiver, index);
     }
 
     /**
@@ -319,8 +328,371 @@ public final class Value {
      * @since 19.0
      */
     public long getArraySize() {
-        return impl.getArraySize(receiver);
+        return dispatch.getArraySize(this.context, receiver);
     }
+
+    // region Buffer Methods
+
+    /**
+     * Returns {@code true} if the receiver may have buffer elements. In this case, the buffer size
+     * can be queried using {@link #getBufferSize()} and elements can be read using
+     * {@link #readBufferByte(long)}, {@link #readBufferShort(ByteOrder, long)},
+     * {@link #readBufferInt(ByteOrder, long)}, {@link #readBufferLong(ByteOrder, long)},
+     * {@link #readBufferFloat(ByteOrder, long)} and {@link #readBufferDouble(ByteOrder, long)}. If
+     * {@link #isBufferWritable()} returns {@code true}, then buffer elements can also be written
+     * using {@link #writeBufferByte(long, byte)},
+     * {@link #writeBufferShort(ByteOrder, long, short)},
+     * {@link #writeBufferInt(ByteOrder, long, int)},
+     * {@link #writeBufferLong(ByteOrder, long, long)},
+     * {@link #writeBufferFloat(ByteOrder, long, float)} and
+     * {@link #writeBufferDouble(ByteOrder, long, double)}.
+     * <p>
+     * Invoking this method does not cause any observable side-effects.
+     *
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @see #hasBufferElements()
+     * @since 21.1
+     */
+    public boolean hasBufferElements() {
+        return dispatch.hasBufferElements(this.context, receiver);
+    }
+
+    /**
+     * Returns true if the receiver object is a modifiable buffer. In this case, elements can be
+     * written using {@link #writeBufferByte(long, byte)},
+     * {@link #writeBufferShort(ByteOrder, long, short)},
+     * {@link #writeBufferInt(ByteOrder, long, int)},
+     * {@link #writeBufferLong(ByteOrder, long, long)},
+     * {@link #writeBufferFloat(ByteOrder, long, float)} and
+     * {@link #writeBufferDouble(ByteOrder, long, double)}.
+     * <p>
+     * Invoking this method does not cause any observable side-effects.
+     *
+     * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
+     *             buffer elements}.
+     * @since 21.1
+     */
+    public boolean isBufferWritable() throws UnsupportedOperationException {
+        return dispatch.isBufferWritable(this.context, receiver);
+    }
+
+    /**
+     * Returns the buffer size in bytes for values with buffer elements.
+     * <p>
+     * Invoking this method does not cause any observable side-effects.
+     *
+     * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
+     *             buffer elements}.
+     * @since 21.1
+     */
+    public long getBufferSize() throws UnsupportedOperationException {
+        return dispatch.getBufferSize(this.context, receiver);
+    }
+
+    /**
+     * Reads the byte at the given byte offset from the start of the buffer.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this method is <em>not</em>
+     * thread-safe.
+     * <p>
+     * Invoking this method does not cause any observable side-effects.
+     *
+     * @param byteOffset the offset, in bytes, from the start of the buffer at which the byte will
+     *            be read.
+     * @return the byte at the given byte offset from the start of the buffer.
+     * @throws IndexOutOfBoundsException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= </code>{@link #getBufferSize()}.
+     * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
+     *             buffer elements}.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 21.1
+     */
+    public byte readBufferByte(long byteOffset) throws UnsupportedOperationException, IndexOutOfBoundsException {
+        return dispatch.readBufferByte(this.context, receiver, byteOffset);
+    }
+
+    /**
+     * Writes the given byte at the given byte offset from the start of the buffer.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this method is <em>not</em>
+     * thread-safe.
+     *
+     * @param byteOffset the offset, in bytes, from the start of the buffer at which the byte will
+     *            be written.
+     * @param value the byte value to be written.
+     * @throws IndexOutOfBoundsException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= </code>{@link #getBufferSize()}.
+     * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
+     *             buffer elements} or is not {@link #isBufferWritable() modifiable}.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 21.1
+     */
+    public void writeBufferByte(long byteOffset, byte value) throws UnsupportedOperationException, IndexOutOfBoundsException {
+        dispatch.writeBufferByte(this.context, receiver, byteOffset, value);
+    }
+
+    /**
+     * Reads the short at the given byte offset from the start of the buffer in the given byte
+     * order.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this method is <em>not</em>
+     * thread-safe.
+     * <p>
+     * Invoking this method does not cause any observable side-effects.
+     *
+     * @param order the order in which to read the individual bytes of the short.
+     * @param byteOffset the offset, in bytes, from the start of the buffer from which the short
+     *            will be read.
+     * @return the short at the given byte offset from the start of the buffer.
+     * @throws IndexOutOfBoundsException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize()} - 1</code>.
+     * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
+     *             buffer elements}.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 21.1
+     */
+    public short readBufferShort(ByteOrder order, long byteOffset) throws UnsupportedOperationException, IndexOutOfBoundsException {
+        return dispatch.readBufferShort(this.context, receiver, order, byteOffset);
+    }
+
+    /**
+     * Writes the given short in the given byte order at the given byte offset from the start of the
+     * buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this method is <em>not</em>
+     * thread-safe.
+     *
+     * @param order the order in which to write the individual bytes of the short.
+     * @param byteOffset the offset, in bytes, from the start of the buffer from which the short
+     *            will be written.
+     * @param value the short value to be written.
+     * @throws IndexOutOfBoundsException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize()} - 1</code>.
+     * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
+     *             buffer elements} or is not {@link #isBufferWritable() modifiable}.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 21.1
+     */
+    public void writeBufferShort(ByteOrder order, long byteOffset, short value) throws UnsupportedOperationException, IndexOutOfBoundsException {
+        dispatch.writeBufferShort(this.context, receiver, order, byteOffset, value);
+    }
+
+    /**
+     * Reads the int at the given byte offset from the start of the buffer in the given byte order.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this method is <em>not</em>
+     * thread-safe.
+     * <p>
+     * Invoking this method does not cause any observable side-effects.
+     *
+     * @param order the order in which to read the individual bytes of the int.
+     * @param byteOffset the offset, in bytes, from the start of the buffer from which the int will
+     *            be read.
+     * @return the int at the given byte offset from the start of the buffer.
+     * @throws IndexOutOfBoundsException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize()} - 3</code>.
+     * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
+     *             buffer elements}.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 21.1
+     */
+    public int readBufferInt(ByteOrder order, long byteOffset) throws UnsupportedOperationException, IndexOutOfBoundsException {
+        return dispatch.readBufferInt(this.context, receiver, order, byteOffset);
+    }
+
+    /**
+     * Writes the given int in the given byte order at the given byte offset from the start of the
+     * buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this method is <em>not</em>
+     * thread-safe.
+     *
+     * @param order the order in which to write the individual bytes of the int.
+     * @param byteOffset the offset, in bytes, from the start of the buffer from which the int will
+     *            be written.
+     * @param value the int value to be written.
+     * @throws IndexOutOfBoundsException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize()} - 3</code>.
+     * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
+     *             buffer elements} or is not {@link #isBufferWritable() modifiable}.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 21.1
+     */
+    public void writeBufferInt(ByteOrder order, long byteOffset, int value) throws UnsupportedOperationException, IndexOutOfBoundsException {
+        dispatch.writeBufferInt(this.context, receiver, order, byteOffset, value);
+    }
+
+    /**
+     * Reads the long at the given byte offset from the start of the buffer in the given byte order.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this method is <em>not</em>
+     * thread-safe.
+     * <p>
+     * Invoking this method does not cause any observable side-effects.
+     *
+     * @param order the order in which to read the individual bytes of the long.
+     * @param byteOffset the offset, in bytes, from the start of the buffer from which the int will
+     *            be read.
+     * @return the int at the given byte offset from the start of the buffer.
+     * @throws IndexOutOfBoundsException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize()} - 7</code>.
+     * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
+     *             buffer elements}.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 21.1
+     */
+    public long readBufferLong(ByteOrder order, long byteOffset) throws UnsupportedOperationException, IndexOutOfBoundsException {
+        return dispatch.readBufferLong(this.context, receiver, order, byteOffset);
+    }
+
+    /**
+     * Writes the given long in the given byte order at the given byte offset from the start of the
+     * buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this method is <em>not</em>
+     * thread-safe.
+     *
+     * @param order the order in which to write the individual bytes of the long.
+     * @param byteOffset the offset, in bytes, from the start of the buffer from which the int will
+     *            be written.
+     * @param value the int value to be written.
+     * @throws IndexOutOfBoundsException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize()} - 7</code>.
+     * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
+     *             buffer elements} or is not {@link #isBufferWritable() modifiable}.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 21.1
+     */
+    public void writeBufferLong(ByteOrder order, long byteOffset, long value) throws UnsupportedOperationException, IndexOutOfBoundsException {
+        dispatch.writeBufferLong(this.context, receiver, order, byteOffset, value);
+    }
+
+    /**
+     * Reads the float at the given byte offset from the start of the buffer in the given byte
+     * order.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this method is <em>not</em>
+     * thread-safe.
+     * <p>
+     * Invoking this method does not cause any observable side-effects.
+     *
+     * @param order the order in which to read the individual bytes of the float.
+     * @param byteOffset the offset, in bytes, from the start of the buffer from which the float
+     *            will be read.
+     * @return the float at the given byte offset from the start of the buffer.
+     * @throws IndexOutOfBoundsException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize()} - 3</code>.
+     * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
+     *             buffer elements}.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 21.1
+     */
+    public float readBufferFloat(ByteOrder order, long byteOffset) throws UnsupportedOperationException, IndexOutOfBoundsException {
+        return dispatch.readBufferFloat(this.context, receiver, order, byteOffset);
+    }
+
+    /**
+     * Writes the given float in the given byte order at the given byte offset from the start of the
+     * buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this method is <em>not</em>
+     * thread-safe.
+     *
+     * @param order the order in which to read the individual bytes of the float.
+     * @param byteOffset the offset, in bytes, from the start of the buffer from which the float
+     *            will be written.
+     * @param value the float value to be written.
+     * @throws IndexOutOfBoundsException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize()} - 3</code>.
+     * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
+     *             buffer elements} or is not {@link #isBufferWritable() modifiable}.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 21.1
+     */
+    public void writeBufferFloat(ByteOrder order, long byteOffset, float value) throws UnsupportedOperationException, IndexOutOfBoundsException {
+        dispatch.writeBufferFloat(this.context, receiver, order, byteOffset, value);
+    }
+
+    /**
+     * Reads the double at the given byte offset from the start of the buffer in the given byte
+     * order.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this method is <em>not</em>
+     * thread-safe.
+     * <p>
+     * Invoking this method does not cause any observable side-effects.
+     *
+     * @param order the order in which to write the individual bytes of the double.
+     * @param byteOffset the offset, in bytes, from the start of the buffer from which the double
+     *            will be read.
+     * @return the double at the given byte offset from the start of the buffer.
+     * @throws IndexOutOfBoundsException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize()} - 7</code>.
+     * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
+     *             buffer elements}.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 21.1
+     */
+    public double readBufferDouble(ByteOrder order, long byteOffset) throws UnsupportedOperationException, IndexOutOfBoundsException {
+        return dispatch.readBufferDouble(this.context, receiver, order, byteOffset);
+    }
+
+    /**
+     * Writes the given double in the given byte order at the given byte offset from the start of
+     * the buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this method is <em>not</em>
+     * thread-safe.
+     *
+     * @param order the order in which to write the individual bytes of the double.
+     * @param byteOffset the offset, in bytes, from the start of the buffer from which the double
+     *            will be written.
+     * @param value the double value to be written.
+     * @throws IndexOutOfBoundsException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize()} - 7</code>.
+     * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
+     *             buffer elements} or is not {@link #isBufferWritable() modifiable}.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 21.1
+     */
+    public void writeBufferDouble(ByteOrder order, long byteOffset, double value) throws UnsupportedOperationException, IndexOutOfBoundsException {
+        dispatch.writeBufferDouble(this.context, receiver, order, byteOffset, value);
+    }
+
+    // endregion
 
     /**
      * Returns <code>true</code> if this value generally supports containing members. To check
@@ -339,7 +711,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean hasMembers() {
-        return impl.hasMembers(receiver);
+        return dispatch.hasMembers(this.context, receiver);
     }
 
     /**
@@ -353,7 +725,7 @@ public final class Value {
      */
     public boolean hasMember(String identifier) {
         Objects.requireNonNull(identifier, "identifier");
-        return impl.hasMember(receiver, identifier);
+        return dispatch.hasMember(this.context, receiver, identifier);
     }
 
     /**
@@ -368,7 +740,7 @@ public final class Value {
      */
     public Value getMember(String identifier) {
         Objects.requireNonNull(identifier, "identifier");
-        return impl.getMember(receiver, identifier);
+        return dispatch.getMember(this.context, receiver, identifier);
     }
 
     /**
@@ -385,7 +757,7 @@ public final class Value {
      * @since 19.0
      */
     public Set<String> getMemberKeys() {
-        return impl.getMemberKeys(receiver);
+        return dispatch.getMemberKeys(this.context, receiver);
     }
 
     /**
@@ -396,13 +768,14 @@ public final class Value {
      * @throws UnsupportedOperationException if the value does not have any {@link #hasMembers()
      *             members}, the key does not exist and new members cannot be added, or the existing
      *             member is not modifiable.
+     * @throws IllegalArgumentException if the provided value type is not allowed to be written.
      * @throws PolyglotException if a guest language error occurred during execution.
      * @throws NullPointerException if the identifier is null.
      * @since 19.0
      */
     public void putMember(String identifier, Object value) {
         Objects.requireNonNull(identifier, "identifier");
-        impl.putMember(receiver, identifier, value);
+        dispatch.putMember(this.context, receiver, identifier, value);
     }
 
     /**
@@ -418,7 +791,7 @@ public final class Value {
      */
     public boolean removeMember(String identifier) {
         Objects.requireNonNull(identifier, "identifier");
-        return impl.removeMember(receiver, identifier);
+        return dispatch.removeMember(this.context, receiver, identifier);
     }
 
     // executable
@@ -431,7 +804,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean canExecute() {
-        return impl.canExecute(receiver);
+        return dispatch.canExecute(this.context, receiver);
     }
 
     /**
@@ -452,9 +825,9 @@ public final class Value {
     public Value execute(Object... arguments) {
         if (arguments.length == 0) {
             // specialized entry point for zero argument execute calls
-            return impl.execute(receiver);
+            return dispatch.execute(this.context, receiver);
         } else {
-            return impl.execute(receiver, arguments);
+            return dispatch.execute(this.context, receiver, arguments);
         }
     }
 
@@ -474,9 +847,9 @@ public final class Value {
     public void executeVoid(Object... arguments) {
         if (arguments.length == 0) {
             // specialized entry point for zero argument execute calls
-            impl.executeVoid(receiver);
+            dispatch.executeVoid(this.context, receiver);
         } else {
-            impl.executeVoid(receiver, arguments);
+            dispatch.executeVoid(this.context, receiver, arguments);
         }
     }
 
@@ -489,7 +862,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean canInstantiate() {
-        return impl.canInstantiate(receiver);
+        return dispatch.canInstantiate(this.context, receiver);
     }
 
     /**
@@ -506,7 +879,7 @@ public final class Value {
      */
     public Value newInstance(Object... arguments) {
         Objects.requireNonNull(arguments, "arguments");
-        return impl.newInstance(receiver, arguments);
+        return dispatch.newInstance(this.context, receiver, arguments);
     }
 
     /**
@@ -523,7 +896,7 @@ public final class Value {
      */
     public boolean canInvokeMember(String identifier) {
         Objects.requireNonNull(identifier, "identifier");
-        return impl.canInvoke(identifier, receiver);
+        return dispatch.canInvoke(this.context, identifier, receiver);
     }
 
     /**
@@ -545,9 +918,9 @@ public final class Value {
         Objects.requireNonNull(identifier, "identifier");
         if (arguments.length == 0) {
             // specialized entry point for zero argument invoke calls
-            return impl.invoke(receiver, identifier);
+            return dispatch.invoke(this.context, receiver, identifier);
         } else {
-            return impl.invoke(receiver, identifier, arguments);
+            return dispatch.invoke(this.context, receiver, identifier, arguments);
         }
     }
 
@@ -559,7 +932,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean isString() {
-        return impl.isString(receiver);
+        return dispatch.isString(this.context, receiver);
     }
 
     /**
@@ -572,7 +945,7 @@ public final class Value {
      * @since 19.0
      */
     public String asString() {
-        return impl.asString(receiver);
+        return dispatch.asString(this.context, receiver);
     }
 
     /**
@@ -585,7 +958,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean fitsInInt() {
-        return impl.fitsInInt(receiver);
+        return dispatch.fitsInInt(this.context, receiver);
     }
 
     /**
@@ -599,7 +972,7 @@ public final class Value {
      * @since 19.0
      */
     public int asInt() {
-        return impl.asInt(receiver);
+        return dispatch.asInt(this.context, receiver);
     }
 
     /**
@@ -611,7 +984,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean isBoolean() {
-        return impl.isBoolean(receiver);
+        return dispatch.isBoolean(this.context, receiver);
     }
 
     /**
@@ -625,7 +998,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean asBoolean() {
-        return impl.asBoolean(receiver);
+        return dispatch.asBoolean(this.context, receiver);
     }
 
     /**
@@ -639,7 +1012,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean isNumber() {
-        return impl.isNumber(receiver);
+        return dispatch.isNumber(this.context, receiver);
     }
 
     /**
@@ -652,7 +1025,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean fitsInLong() {
-        return impl.fitsInLong(receiver);
+        return dispatch.fitsInLong(this.context, receiver);
     }
 
     /**
@@ -666,7 +1039,7 @@ public final class Value {
      * @since 19.0
      */
     public long asLong() {
-        return impl.asLong(receiver);
+        return dispatch.asLong(this.context, receiver);
     }
 
     /**
@@ -679,7 +1052,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean fitsInDouble() {
-        return impl.fitsInDouble(receiver);
+        return dispatch.fitsInDouble(this.context, receiver);
     }
 
     /**
@@ -693,7 +1066,7 @@ public final class Value {
      * @since 19.0
      */
     public double asDouble() {
-        return impl.asDouble(receiver);
+        return dispatch.asDouble(this.context, receiver);
     }
 
     /**
@@ -706,7 +1079,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean fitsInFloat() {
-        return impl.fitsInFloat(receiver);
+        return dispatch.fitsInFloat(this.context, receiver);
     }
 
     /**
@@ -720,7 +1093,7 @@ public final class Value {
      * @since 19.0
      */
     public float asFloat() {
-        return impl.asFloat(receiver);
+        return dispatch.asFloat(this.context, receiver);
     }
 
     /**
@@ -733,7 +1106,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean fitsInByte() {
-        return impl.fitsInByte(receiver);
+        return dispatch.fitsInByte(this.context, receiver);
     }
 
     /**
@@ -747,7 +1120,7 @@ public final class Value {
      * @since 19.0
      */
     public byte asByte() {
-        return impl.asByte(receiver);
+        return dispatch.asByte(this.context, receiver);
     }
 
     /**
@@ -760,7 +1133,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean fitsInShort() {
-        return impl.fitsInShort(receiver);
+        return dispatch.fitsInShort(this.context, receiver);
     }
 
     /**
@@ -774,7 +1147,7 @@ public final class Value {
      * @since 19.0
      */
     public short asShort() {
-        return impl.asShort(receiver);
+        return dispatch.asShort(this.context, receiver);
     }
 
     /**
@@ -785,7 +1158,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean isNull() {
-        return impl.isNull(receiver);
+        return dispatch.isNull(this.context, receiver);
     }
 
     /**
@@ -797,7 +1170,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean isNativePointer() {
-        return impl.isNativePointer(receiver);
+        return dispatch.isNativePointer(this.context, receiver);
     }
 
     /**
@@ -809,7 +1182,7 @@ public final class Value {
      * @since 19.0
      */
     public long asNativePointer() {
-        return impl.asNativePointer(receiver);
+        return dispatch.asNativePointer(this.context, receiver);
     }
 
     /**
@@ -821,7 +1194,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean isHostObject() {
-        return impl.isHostObject(receiver);
+        return dispatch.isHostObject(this.context, receiver);
     }
 
     /**
@@ -834,7 +1207,7 @@ public final class Value {
      */
     @SuppressWarnings("unchecked")
     public <T> T asHostObject() {
-        return (T) impl.asHostObject(receiver);
+        return (T) dispatch.asHostObject(this.context, receiver);
     }
 
     /**
@@ -846,7 +1219,7 @@ public final class Value {
      * @since 19.0
      */
     public boolean isProxyObject() {
-        return impl.isProxyObject(receiver);
+        return dispatch.isProxyObject(this.context, receiver);
     }
 
     /**
@@ -860,7 +1233,7 @@ public final class Value {
      */
     @SuppressWarnings("unchecked")
     public <T extends Proxy> T asProxyObject() {
-        return (T) impl.asProxyObject(receiver);
+        return (T) dispatch.asProxyObject(this.context, receiver);
     }
 
     /**
@@ -914,12 +1287,14 @@ public final class Value {
      * target type mappings} specified in the {@link HostAccess} configuration with precedence
      * {@link TargetMappingPrecedence#LOW}.
      * <li><code>{@link Object}.class</code> is always supported. See section Object mapping rules.
-     * <li><code>{@link Map}.class</code> is supported if the value has {@link #hasMembers()
-     * members} or {@link #hasArrayElements() array elements}. The returned map can be safely cast
-     * to Map<Object, Object>. The key type in such a case is either {@link String} or {@link Long}.
-     * It is recommended to use {@link #as(TypeLiteral) type literals} to specify the expected
-     * collection component types. With type literals the value type can be restricted, for example
-     * to <code>Map<String, String></code>. If the raw <code>{@link Map}.class</code> or an Object
+     * <li><code>{@link Map}.class</code> is supported if the value has {@link #hasHashEntries()}
+     * hash entries}, {@link #hasMembers() members} or {@link #hasArrayElements() array elements}.
+     * The returned map can be safely cast to Map<Object, Object>. For value with
+     * {@link #hasMembers() members} the key type is {@link String}. For value with
+     * {@link #hasArrayElements() array elements} the key type is {@link Long}. It is recommended to
+     * use {@link #as(TypeLiteral) type literals} to specify the expected collection component
+     * types. With type literals the value type can be restricted, for example to
+     * <code>Map<String, String></code>. If the raw <code>{@link Map}.class</code> or an Object
      * component type is used, then the return types of the the list are subject to Object target
      * type mapping rules recursively.
      * <li><code>{@link List}.class</code> is supported if the value has {@link #hasArrayElements()
@@ -935,6 +1310,21 @@ public final class Value {
      * returned array will not be reflected in the original value. Since conversion to a Java array
      * might be an expensive operation it is recommended to use the `List` or `Collection` target
      * type if possible.
+     * <li><code>{@link Iterable}.class</code> is supported if the value has an
+     * {@link #hasIterator() iterator}. The returned iterable can be safely cast to
+     * <code>Iterable&lt;Object&gt;</code>. It is recommended to use {@link #as(TypeLiteral) type
+     * literals} to specify the expected component type. With type literals the value type can be
+     * restricted to any supported target type, for example to <code>Iterable&lt;Integer&gt;</code>.
+     * <li><code>{@link Iterator}.class</code> is supported if the value is an {@link #isIterator()
+     * iterator} The returned iterator can be safely cast to <code>Iterator&lt;Object&gt;</code>. It
+     * is recommended to use {@link #as(TypeLiteral) type literals} to specify the expected
+     * component type. With type literals the value type can be restricted to any supported target
+     * type, for example to <code>Iterator&lt;Integer&gt;</code>. If the raw
+     * <code>{@link Iterator}.class</code> or an Object component type is used, then the return
+     * types of the the iterator are recursively subject to Object target type mapping rules. The
+     * returned iterator's {@link Iterator#next() next} method may throw a
+     * {@link ConcurrentModificationException} when an underlying iterable has changed or
+     * {@link UnsupportedOperationException} when the iterator's current element is not readable.
      * <li>Any {@link FunctionalInterface functional} interface if the value can be
      * {@link #canExecute() executed} or {@link #canInstantiate() instantiated} and the interface
      * type is {@link HostAccess implementable}. Note that {@link FunctionalInterface} are
@@ -975,18 +1365,27 @@ public final class Value {
      * assert context.eval("js", "42").as(Integer.class) == 42;
      * assert context.eval("js", "({foo:'bar'})").as(Map.class).get("foo").equals("bar");
      * assert context.eval("js", "[42]").as(List.class).get(0).equals(42);
-     * assert ((Map&lt;String, Object>)context.eval("js", "[{foo:'bar'}]").as(List.class).get(0)).get("foo").equals("bar");
+     * assert ((Map&lt;String, Object>) context.eval("js", "[{foo:'bar'}]").as(List.class).get(0)).get("foo").equals("bar");
      *
-     * &#64;FunctionalInterface interface IntFunction { int foo(int value); }
+     * &#64;FunctionalInterface
+     * interface IntFunction {
+     *     int foo(int value);
+     * }
      * assert context.eval("js", "(function(a){return a})").as(IntFunction.class).foo(42).asInt() == 42;
      *
-     * &#64;FunctionalInterface interface StringListFunction { int foo(List&lt;String&gt; value); }
-     * assert context.eval("js", "(function(a){return a.length})")
-     *               .as(StringListFunction.class).foo(new String[]{"42"}).asInt() == 1;
+     * &#64;FunctionalInterface
+     * interface StringListFunction {
+     *     int foo(List&lt;String&gt; value);
+     * }
+     * assert context.eval("js", "(function(a){return a.length})").as(StringListFunction.class).foo(new String[]{"42"}).asInt() == 1;
      *
-     * public abstract class AbstractClass { public AbstractClass() {} int foo(int value); }
-     * assert context.eval("js", "({foo: function(a){return a}})")
-     *               .as(AbstractClass.class).foo(42).asInt() == 42;
+     * public abstract class AbstractClass {
+     *     public AbstractClass() {
+     *     }
+     *
+     *     int foo(int value);
+     * }
+     * assert context.eval("js", "({foo: function(a){return a}})").as(AbstractClass.class).foo(42).asInt() == 42;
      * </pre>
      *
      * <h3>Object target type mapping</h3>
@@ -1008,6 +1407,11 @@ public final class Value {
      * any Number subclass including {@link BigInteger} or {@link BigDecimal}. It is recommended to
      * cast to {@link Number} and then convert to a Java primitive like with
      * {@link Number#longValue()}.
+     * <li>If the value has {@link #hasHashEntries() hash entries} then the result value will
+     * implement {@link Map}. The {@link Map#size() size} of the returned {@link Map} is equal to
+     * the {@link #getHashSize() hash entries count}. The returned value may also implement
+     * {@link Function} if the value can be {@link #canExecute() executed} or
+     * {@link #canInstantiate() instantiated}.
      * <li>If the value {@link #hasMembers() has members} then the result value will implement
      * {@link Map}. If this value {@link #hasMembers() has members} then all members are accessible
      * using {@link String} keys. The {@link Map#size() size} of the returned {@link Map} is equal
@@ -1019,6 +1423,12 @@ public final class Value {
      * element of the value maps to one list element. The size of the returned list maps to the
      * array size of the value. The returned value may also implement {@link Function} if the value
      * can be {@link #canExecute() executed} or {@link #canInstantiate() instantiated}.
+     * <li>If the value has an {@link #hasIterator()} iterator} then the result value will implement
+     * {@link Iterable}. The returned value may also implement {@link Function} if the value can be
+     * {@link #canExecute() executed} or {@link #canInstantiate() instantiated}.
+     * <li>If the value is an {@link #isIterator()} iterator} then the result value will implement
+     * {@link Iterator}. The returned value may also implement {@link Function} if the value can be
+     * {@link #canExecute() executed} or {@link #canInstantiate() instantiated}.
      * <li>If the value can be {@link #canExecute() executed} or {@link #canInstantiate()
      * instantiated} then the result value implements {@link Function Function}. By default the
      * argument of the function will be used as single argument to the function when executed. If a
@@ -1081,7 +1491,7 @@ public final class Value {
         if (targetType == Value.class) {
             return (T) this;
         }
-        return impl.as(receiver, targetType);
+        return dispatch.as(this.context, receiver, targetType);
     }
 
     /**
@@ -1107,7 +1517,7 @@ public final class Value {
      */
     public <T> T as(TypeLiteral<T> targetType) {
         Objects.requireNonNull(targetType, "targetType");
-        return impl.as(receiver, targetType);
+        return dispatch.as(this.context, receiver, targetType);
     }
 
     /**
@@ -1121,7 +1531,7 @@ public final class Value {
      */
     @Override
     public String toString() {
-        return impl.toString(receiver);
+        return super.toString();
     }
 
     /**
@@ -1131,7 +1541,7 @@ public final class Value {
      * @since 19.0
      */
     public SourceSection getSourceLocation() {
-        return impl.getSourceLocation(receiver);
+        return dispatch.getSourceLocation(this.context, receiver);
     }
 
     /**
@@ -1146,7 +1556,7 @@ public final class Value {
      * @since 19.2.0
      */
     public boolean isDate() {
-        return impl.isDate(receiver);
+        return dispatch.isDate(this.context, receiver);
     }
 
     /**
@@ -1161,7 +1571,7 @@ public final class Value {
      * @since 19.2.0
      */
     public LocalDate asDate() {
-        return impl.asDate(receiver);
+        return dispatch.asDate(this.context, receiver);
     }
 
     /**
@@ -1173,7 +1583,7 @@ public final class Value {
      * @since 19.2.0
      */
     public boolean isTime() {
-        return impl.isTime(receiver);
+        return dispatch.isTime(this.context, receiver);
     }
 
     /**
@@ -1188,7 +1598,7 @@ public final class Value {
      * @since 19.2.0
      */
     public LocalTime asTime() {
-        return impl.asTime(receiver);
+        return dispatch.asTime(this.context, receiver);
     }
 
     /**
@@ -1238,7 +1648,7 @@ public final class Value {
      * @since 19.2.0
      */
     public Instant asInstant() {
-        return impl.asInstant(receiver);
+        return dispatch.asInstant(this.context, receiver);
     }
 
     /**
@@ -1263,7 +1673,7 @@ public final class Value {
      * @since 19.2.0
      */
     public boolean isTimeZone() {
-        return impl.isTimeZone(receiver);
+        return dispatch.isTimeZone(this.context, receiver);
     }
 
     /**
@@ -1277,7 +1687,7 @@ public final class Value {
      * @since 19.2.0
      */
     public ZoneId asTimeZone() {
-        return impl.asTimeZone(receiver);
+        return dispatch.asTimeZone(this.context, receiver);
     }
 
     /**
@@ -1289,7 +1699,7 @@ public final class Value {
      * @since 19.2.0
      */
     public boolean isDuration() {
-        return impl.isDuration(receiver);
+        return dispatch.isDuration(this.context, receiver);
     }
 
     /**
@@ -1303,7 +1713,7 @@ public final class Value {
      * @since 19.2.0
      */
     public Duration asDuration() {
-        return impl.asDuration(receiver);
+        return dispatch.asDuration(this.context, receiver);
     }
 
     /**
@@ -1314,7 +1724,7 @@ public final class Value {
      * @since 19.3
      */
     public boolean isException() {
-        return impl.isException(receiver);
+        return dispatch.isException(this.context, receiver);
     }
 
     /**
@@ -1326,7 +1736,7 @@ public final class Value {
      * @since 19.3
      */
     public RuntimeException throwException() {
-        return impl.throwException(receiver);
+        return dispatch.throwException(this.context, receiver);
     }
 
     /**
@@ -1344,7 +1754,12 @@ public final class Value {
      * @since 19.3.0
      */
     public Context getContext() {
-        return impl.getContext();
+        Context c = dispatch.getContext(this.context);
+        if (c != null && c.currentAPI != null) {
+            return c.currentAPI;
+        } else {
+            return c;
+        }
     }
 
     /**
@@ -1357,10 +1772,7 @@ public final class Value {
      */
     @Override
     public boolean equals(Object obj) {
-        if (!(obj instanceof Value)) {
-            return false;
-        }
-        return impl.equalsImpl(receiver, ((Value) obj).receiver);
+        return super.equals(obj);
     }
 
     /**
@@ -1373,7 +1785,244 @@ public final class Value {
      */
     @Override
     public int hashCode() {
-        return impl.hashCodeImpl(receiver);
+        return super.hashCode();
+    }
+
+    /**
+     * Returns <code>true</code> if this polyglot value provides an iterator. In this case the
+     * iterator can be obtained using {@link #getIterator()}.
+     *
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     *
+     * @see #getIterator()
+     * @since 21.1
+     */
+    public boolean hasIterator() {
+        return dispatch.hasIterator(this.context, receiver);
+    }
+
+    /**
+     * Creates a new iterator that allows read each element of a sequence.
+     *
+     * @throws UnsupportedOperationException if the value does not provide {@link #hasIterator()
+     *             iterator}.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     *
+     * @see #hasIterator()
+     * @since 21.1
+     */
+    public Value getIterator() {
+        return dispatch.getIterator(this.context, receiver);
+    }
+
+    /**
+     * Returns <code>true</code> if the value represents an iterator object. In this case the
+     * iterator elements can be accessed using {@link #getIteratorNextElement()}.
+     *
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     *
+     * @see #hasIteratorNextElement()
+     * @see #getIteratorNextElement()
+     * @since 21.1
+     */
+    public boolean isIterator() {
+        return dispatch.isIterator(this.context, receiver);
+    }
+
+    /**
+     * Returns <code>true</code> if the value represents an iterator which has more elements, else
+     * {@code false}. Multiple calls to the {@link #hasIteratorNextElement()} might lead to
+     * different results if the underlying data structure is modified.
+     *
+     * @throws UnsupportedOperationException if the value is not an {@link #isIterator() iterator}.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     *
+     * @see #isIterator()
+     * @see #getIteratorNextElement()
+     * @since 21.1
+     */
+    public boolean hasIteratorNextElement() {
+        return dispatch.hasIteratorNextElement(this.context, receiver);
+    }
+
+    /**
+     * Returns the next element in the iteration. When the underlying data structure is modified the
+     * {@link #getIteratorNextElement()} may throw the {@link NoSuchElementException} despite the
+     * {@link #hasIteratorNextElement()} returned {@code true}, or it may throw a language error.
+     *
+     * @throws UnsupportedOperationException if the value is not an {@link #isIterator() iterator}
+     *             or when the underlying iterable element exists but is not readable.
+     * @throws NoSuchElementException if the iteration has no more elements. Even if the
+     *             {@link NoSuchElementException} was thrown it might not be thrown again by a next
+     *             call of the {@link #getIteratorNextElement()} due to a modification of an
+     *             underlying iterable.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     *
+     * @see #isIterator()
+     * @see #hasIteratorNextElement()
+     * @since 21.1
+     */
+    public Value getIteratorNextElement() {
+        return dispatch.getIteratorNextElement(this.context, receiver);
+    }
+
+    /**
+     * Returns <code>true</code> if this polyglot value represents a map. In this case map entries
+     * can be accessed using {@link #getHashValue(Object)},
+     * {@link #getHashValueOrDefault(Object, Object)}, {@link #putHashEntry(Object, Object)},
+     * {@link #removeHashEntry(Object)}, {@link #getHashEntriesIterator()} and the map size can be
+     * queried using {@link #getHashSize()}.
+     *
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 21.1
+     */
+    public boolean hasHashEntries() {
+        return dispatch.hasHashEntries(this.context, receiver);
+    }
+
+    /**
+     * Returns the number of map entries for values with hash entries.
+     *
+     * @throws UnsupportedOperationException if the value does not have any
+     *             {@link #hasHashEntries()} hash entries}.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 21.1
+     */
+    public long getHashSize() throws UnsupportedOperationException {
+        return dispatch.getHashSize(this.context, receiver);
+    }
+
+    /**
+     * Returns {@code true} if mapping for the specified key exists. If the value has no
+     * {@link #hasHashEntries() hash entries} then {@link #hasHashEntry(Object)} returns
+     * {@code false}. The key is subject to polyglot value mapping rules as described in
+     * {@link Context#asValue(Object)}.
+     *
+     * @throws IllegalStateException if the context is already {@link Context#close() closed}.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 21.1
+     */
+    public boolean hasHashEntry(Object key) {
+        return dispatch.hasHashEntry(this.context, receiver, key);
+    }
+
+    /**
+     * Returns the value for the specified key or {@code null} if the mapping for the specified key
+     * does not exist. The key is subject to polyglot value mapping rules as described in
+     * {@link Context#asValue(Object)}.
+     *
+     * @throws UnsupportedOperationException if the value has no {@link #hasHashEntries() hash
+     *             entries} or the mapping for given key exists but is not readable.
+     * @throws IllegalStateException if the context is already {@link Context#close() closed}.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 21.1
+     */
+    public Value getHashValue(Object key) throws UnsupportedOperationException {
+        return dispatch.getHashValue(this.context, receiver, key);
+    }
+
+    /**
+     * Returns the value for the specified key or the default value if the mapping for the specified
+     * key does not exist or is not readable. The key and the default value are subject to polyglot
+     * value mapping rules as described in {@link Context#asValue(Object)}.
+     *
+     * @throws UnsupportedOperationException if the value has no {@link #hasHashEntries() hash
+     *             entries} at all.
+     * @throws IllegalStateException if the context is already {@link Context#close() closed}.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 21.1
+     */
+    public Value getHashValueOrDefault(Object key, Object defaultValue) throws UnsupportedOperationException {
+        return dispatch.getHashValueOrDefault(this.context, receiver, key, defaultValue);
+    }
+
+    /**
+     * Associates the specified value with the specified key. Both key and value are subject to
+     * polyglot value mapping rules as described in {@link Context#asValue(Object)}.
+     *
+     * @throws UnsupportedOperationException if the value does not have any {@link #hasHashEntries()
+     *             hash entries}, the mapping for specified key does not exist and new members
+     *             cannot be added, or the existing mapping for specified key is not modifiable.
+     * @throws IllegalArgumentException if the provided key type or value type is not allowed to be
+     *             written.
+     * @throws IllegalStateException if the context is already {@link Context#close() closed}.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 21.1
+     */
+    public void putHashEntry(Object key, Object value) throws IllegalArgumentException, UnsupportedOperationException {
+        dispatch.putHashEntry(this.context, receiver, key, value);
+    }
+
+    /**
+     * Removes the mapping for a given key. Returns {@code true} if the mapping was successfully
+     * removed, {@code false} if mapping for a given key does not exist. The key is subject to
+     * polyglot value mapping rules as described in {@link Context#asValue(Object)}.
+     *
+     * @throws UnsupportedOperationException if the value does not have any {@link #hasHashEntries()
+     *             hash entries} or if mapping for specified key {@link #hasHashEntry(Object)
+     *             exists} but cannot be removed.
+     * @throws IllegalStateException if the context is already {@link Context#close() closed}.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 21.1
+     */
+    public boolean removeHashEntry(Object key) throws UnsupportedOperationException {
+        return dispatch.removeHashEntry(this.context, receiver, key);
+    }
+
+    /**
+     * Creates a new hash entries iterator that allows read each map entry. The return value is
+     * always an {@link #isIterator() iterator} of {@link #hasArrayElements() array elements}. The
+     * first array element is a key, the second array element is an associated value. Even if the
+     * value array element is {@link #setArrayElement(long, Object) modifiable} writing to array may
+     * not update the mapping, always use {@link #putHashEntry(Object, Object)} to update the
+     * mapping.
+     *
+     * @throws UnsupportedOperationException if the value does not have any {@link #hasHashEntries()
+     *             hash entries}.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     *
+     * @since 21.1
+     */
+    public Value getHashEntriesIterator() throws UnsupportedOperationException {
+        return dispatch.getHashEntriesIterator(this.context, receiver);
+    }
+
+    /**
+     * Creates a new hash keys iterator that allows read each map key. The return value is always an
+     * {@link #isIterator() iterator}.
+     *
+     * @throws UnsupportedOperationException if the value does not have any {@link #hasHashEntries()
+     *             hash entries}.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     *
+     * @since 21.1
+     */
+    public Value getHashKeysIterator() throws UnsupportedOperationException {
+        return dispatch.getHashKeysIterator(this.context, receiver);
+    }
+
+    /**
+     * Creates a new hash values iterator that allows read each map value. The return value is
+     * always an {@link #isIterator() iterator}.
+     *
+     * @throws UnsupportedOperationException if the value does not have any {@link #hasHashEntries()
+     *             hash entries}.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     *
+     * @since 21.1
+     */
+    public Value getHashValuesIterator() throws UnsupportedOperationException {
+        return dispatch.getHashValuesIterator(this.context, receiver);
     }
 
     /**
@@ -1395,4 +2044,35 @@ public final class Value {
         return Engine.getImpl().asValue(o);
     }
 
+}
+
+abstract class AbstractValue {
+
+    final Object receiver;
+    final Object context;
+    final AbstractValueDispatch dispatch;
+
+    AbstractValue(AbstractValueDispatch dispatch, Object context, Object receiver) {
+        this.context = context;
+        this.dispatch = dispatch;
+        this.receiver = receiver;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (!(obj instanceof AbstractValue)) {
+            return false;
+        }
+        return dispatch.equalsImpl(this.context, receiver, ((AbstractValue) obj).receiver);
+    }
+
+    @Override
+    public int hashCode() {
+        return dispatch.hashCodeImpl(this.context, receiver);
+    }
+
+    @Override
+    public String toString() {
+        return dispatch.toString(this.context, receiver);
+    }
 }

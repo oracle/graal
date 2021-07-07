@@ -214,8 +214,22 @@
     "methods" : [
         { "name" : "createURL" ,
           "parameterTypes" : [
+            "java.lang.String"
+        ]},
+        { "name" : "createURL" ,
+          "parameterTypes" : [
             "java.lang.String",
-            "byte[]"
+            "int"
+        ]}
+    ]
+  },
+    {
+    "name" : "com.oracle.svm.core.jdk.ResourcesHelper",
+    "methods" : [
+        { "name" : "urlToResource" ,
+          "parameterTypes" : [
+            "java.lang.String",
+            "java.net.URL"
         ]}
     ]
   },
@@ -232,6 +246,26 @@
           "parameterTypes" : [
             "com.oracle.svm.core.thread.NativeVMOperationData"
         ]}
+    ]
+  },
+  {
+    "name": "sun.util.logging.PlatformLogger",
+    "methods" : [
+       {
+         "name" : "getLogger",
+         "parameterTypes" : [
+           "java.lang.String"
+         ]
+       }
+    ]
+  },
+  {
+    "name": "java.util.logging.LogManager",
+    "methods" : [
+      {
+        "name" : "checkPermission",
+        "parameterTypes" : []
+      }
     ]
   }
 ]

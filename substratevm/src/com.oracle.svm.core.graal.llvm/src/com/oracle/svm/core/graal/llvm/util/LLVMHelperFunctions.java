@@ -46,12 +46,14 @@ class LLVMHelperFunctions {
     private LLVMValueRef intToObjectFunction;
     private LLVMValueRef loadObjectFromUntrackedPointerFunction;
     private LLVMValueRef atomicObjectXchgFunction;
-    private LLVMValueRef objectsCmpxchgFunction;
+    private LLVMValueRef objectsValueCmpxchgFunction;
+    private LLVMValueRef objectsLogicCmpxchgFunction;
 
     private LLVMValueRef intToCompressedObjectFunction;
     private LLVMValueRef loadCompressedObjectFromUntrackedPointerFunction;
     private LLVMValueRef atomicCompressedObjectXchgFunction;
-    private LLVMValueRef compressedObjectsCmpxchgFunction;
+    private LLVMValueRef compressedObjectsValueCmpxchgFunction;
+    private LLVMValueRef compressedObjectsLogicCmpxchgFunction;
 
     private LLVMValueRef[] compressFunctions;
     private LLVMValueRef[] nonNullCompressFunctions;
@@ -89,13 +91,18 @@ class LLVMHelperFunctions {
         return compressed ? atomicCompressedObjectXchgFunction : atomicObjectXchgFunction;
     }
 
-    LLVMValueRef getCmpxchgFunction(boolean compressed) {
-        if (!compressed && objectsCmpxchgFunction == null) {
-            objectsCmpxchgFunction = buildObjectsCmpxchgFunction(false);
-        } else if (compressed && compressedObjectsCmpxchgFunction == null) {
-            compressedObjectsCmpxchgFunction = buildObjectsCmpxchgFunction(true);
+    LLVMValueRef getCmpxchgFunction(boolean compressed, boolean returnsValue) {
+        if (!compressed && returnsValue && objectsValueCmpxchgFunction == null) {
+            objectsValueCmpxchgFunction = buildObjectsCmpxchgFunction(false, true);
+        } else if (compressed && returnsValue && compressedObjectsValueCmpxchgFunction == null) {
+            compressedObjectsValueCmpxchgFunction = buildObjectsCmpxchgFunction(true, true);
+        } else if (!compressed && !returnsValue && objectsLogicCmpxchgFunction == null) {
+            objectsLogicCmpxchgFunction = buildObjectsCmpxchgFunction(false, false);
+        } else if (compressed && !returnsValue && compressedObjectsLogicCmpxchgFunction == null) {
+            compressedObjectsLogicCmpxchgFunction = buildObjectsCmpxchgFunction(true, false);
         }
-        return compressed ? compressedObjectsCmpxchgFunction : objectsCmpxchgFunction;
+        return compressed ? returnsValue ? compressedObjectsValueCmpxchgFunction : compressedObjectsLogicCmpxchgFunction
+                        : returnsValue ? objectsValueCmpxchgFunction : objectsLogicCmpxchgFunction;
     }
 
     private static final int MAX_COMPRESS_SHIFT = 3;
@@ -199,13 +206,17 @@ class LLVMHelperFunctions {
         return func;
     }
 
-    private static final String OBJECTS_CMPXCHG_FUNCTION_NAME = "__llvm_objects_cmpxchg";
-    private static final String COMPRESSED_OBJECTS_CMPXCHG_FUNCTION_NAME = "__llvm_compressed_objects_cmpxchg";
+    private static final String OBJECTS_VALUE_CMPXCHG_FUNCTION_NAME = "__llvm_objects_value_cmpxchg";
+    private static final String OBJECTS_LOGIC_CMPXCHG_FUNCTION_NAME = "__llvm_objects_logic_cmpxchg";
+    private static final String COMPRESSED_OBJECTS_VALUE_CMPXCHG_FUNCTION_NAME = "__llvm_compressed_objects_value_cmpxchg";
+    private static final String COMPRESSED_OBJECTS_LOGIC_CMPXCHG_FUNCTION_NAME = "__llvm_compressed_objects_logic_cmpxchg";
 
-    private LLVMValueRef buildObjectsCmpxchgFunction(boolean compressed) {
-        String funcName = compressed ? COMPRESSED_OBJECTS_CMPXCHG_FUNCTION_NAME : OBJECTS_CMPXCHG_FUNCTION_NAME;
+    private LLVMValueRef buildObjectsCmpxchgFunction(boolean compressed, boolean returnsValue) {
+        String funcName = compressed ? returnsValue ? COMPRESSED_OBJECTS_VALUE_CMPXCHG_FUNCTION_NAME : COMPRESSED_OBJECTS_LOGIC_CMPXCHG_FUNCTION_NAME
+                        : returnsValue ? OBJECTS_VALUE_CMPXCHG_FUNCTION_NAME : OBJECTS_LOGIC_CMPXCHG_FUNCTION_NAME;
         LLVMTypeRef exchangeType = builder.objectType(compressed);
-        LLVMValueRef func = builder.addFunction(funcName, builder.functionType(exchangeType, builder.pointerType(exchangeType, true, compressed), exchangeType, exchangeType));
+        LLVMValueRef func = builder.addFunction(funcName,
+                        builder.functionType(returnsValue ? exchangeType : builder.booleanType(), builder.pointerType(exchangeType, true, false), exchangeType, exchangeType));
         LLVMIRBuilder.setLinkage(func, LinkageType.LinkOnce);
         builder.setFunctionAttribute(func, Attribute.AlwaysInline);
         builder.setFunctionAttribute(func, Attribute.GCLeafFunction);
@@ -215,7 +226,7 @@ class LLVMHelperFunctions {
         LLVMValueRef addr = LLVMIRBuilder.getParam(func, 0);
         LLVMValueRef expected = LLVMIRBuilder.getParam(func, 1);
         LLVMValueRef newVal = LLVMIRBuilder.getParam(func, 2);
-        LLVMValueRef result = builder.buildAtomicCmpXchg(addr, expected, newVal, true);
+        LLVMValueRef result = builder.buildAtomicCmpXchg(addr, expected, newVal, returnsValue);
         builder.buildRet(result);
 
         return func;

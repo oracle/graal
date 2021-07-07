@@ -181,11 +181,6 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
                 return;
             }
             TypeState receiverState = getReceiver().getState();
-
-            if (receiverState.isUnknown()) {
-                bb.reportIllegalUnknownUse(graphRef.getMethod(), source, "Illegal: Invoke on UnknownTypeState objects. Invoke: " + this);
-                return;
-            }
             if (!isContextInsensitive()) {
                 /*
                  * The context insensitive invoke receiver doesn't need any filtering, the invoke is

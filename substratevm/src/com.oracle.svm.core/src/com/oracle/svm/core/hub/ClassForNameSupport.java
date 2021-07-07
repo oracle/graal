@@ -24,47 +24,63 @@
  */
 package com.oracle.svm.core.hub;
 
-import java.util.HashMap;
-import java.util.Map;
-
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.util.ImageHeapMap;
 
 public final class ClassForNameSupport {
 
-    private final Map<String, Class<?>> knownClasses = new HashMap<>();
+    static ClassForNameSupport singleton() {
+        return ImageSingletons.lookup(ClassForNameSupport.class);
+    }
+
+    /** The map used to collect registered classes. */
+    private final EconomicMap<String, Class<?>> knownClasses = ImageHeapMap.create();
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void registerClass(Class<?> clazz) {
-        ImageSingletons.lookup(ClassForNameSupport.class).knownClasses.put(clazz.getName(), clazz);
+        if (PredefinedClassesSupport.isPredefined(clazz)) {
+            return; // must be defined at runtime before it can be looked up
+        }
+        singleton().knownClasses.put(clazz.getName(), clazz);
     }
 
-    public static Class<?> forNameOrNull(String className, boolean initialize) {
-        Class<?> result = ImageSingletons.lookup(ClassForNameSupport.class).knownClasses.get(className);
+    public static Class<?> forNameOrNull(String className, boolean initialize, ClassLoader classLoader) {
+        Class<?> result = singleton().knownClasses.get(className);
         if (result == null) {
-            return null;
+            result = PredefinedClassesSupport.getLoadedForNameOrNull(className, classLoader);
+            if (result == null) {
+                return null;
+            }
         }
+        // Note: for non-predefined classes, we (currently) don't need to check the provided loader
         if (initialize) {
             DynamicHub.fromClass(result).ensureInitialized();
         }
         return result;
     }
 
-    public static Class<?> forName(String className, boolean initialize) throws ClassNotFoundException {
-        Class<?> result = forNameOrNull(className, initialize);
+    public static Class<?> forName(String className, boolean initialize, ClassLoader classLoader) throws ClassNotFoundException {
+        Class<?> result = forNameOrNull(className, initialize, classLoader);
         if (result == null) {
             throw new ClassNotFoundException(className);
         }
         return result;
     }
+
+    /** Whether a call to {@link Class#forName} for the given class can be folded to a constant. */
+    public static boolean canBeFolded(Class<?> clazz) {
+        return !PredefinedClassesSupport.isPredefined(clazz);
+    }
 }
 
 @AutomaticFeature
-class ClassForNameFeature implements Feature {
+final class ClassForNameFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(ClassForNameSupport.class, new ClassForNameSupport());

@@ -27,7 +27,6 @@ package com.oracle.svm.truffle.api;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -38,10 +37,8 @@ import com.oracle.svm.core.code.UntetheredCodeInfo;
 import com.oracle.svm.core.code.UntetheredCodeInfoAccess;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.deopt.SubstrateSpeculationLog;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.truffle.api.Truffle;
 
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -61,20 +58,21 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
     }
 
     @Override
-    public void invalidate() {
+    public final void invalidate() {
         CodeInfoTable.invalidateInstalledCode(this); // calls clearAddress
+        callTarget.onInvalidate(null, null, true);
     }
 
     @Override
     public void onAssumptionInvalidated(Object source, CharSequence reason) {
+        boolean wasActive = false;
         if (isAlive()) {
-            invalidate();
-
-            GraalTruffleRuntime runtime = (GraalTruffleRuntime) Truffle.getRuntime();
-            runtime.getListener().onCompilationInvalidated(callTarget, source, reason);
+            CodeInfoTable.invalidateInstalledCode(this); // calls clearAddress
+            wasActive = true;
         } else {
             assert !isValid() : "Cannot be valid but not alive";
         }
+        callTarget.onInvalidate(source, reason, wasActive);
     }
 
     /**
@@ -113,7 +111,7 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
         assert VMOperation.isInProgressAtSafepoint();
         this.entryPoint = address;
         this.address = address;
-        callTarget.setInstalledCode(this);
+        callTarget.onCodeInstalled(this);
     }
 
     @Override
@@ -121,6 +119,7 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
         assert VMOperation.isInProgressAtSafepoint();
         this.entryPoint = 0;
         this.address = 0;
+        callTarget.onCodeCleared(this);
     }
 
     @Override
@@ -147,16 +146,8 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
         }
     }
 
-    /**
-     * Prevents reads from floating across a safepoint when the caller is inlined in another method.
-     * Intrinsified in {@link SubstrateTruffleGraphBuilderPlugins}.
-     */
-    protected static void safepointBarrier() {
-        // Intrinsified, but empty so it can be called during hosted Truffle calls
-    }
-
     static Object doInvoke(SubstrateOptimizedCallTarget callTarget, Object[] args) {
-        safepointBarrier();
+        SubstrateOptimizedCallTarget.safepointBarrier();
         /*
          * We have to be very careful that the calling code is uninterruptible, i.e., has no
          * safepoint between the read of the entry point address and the indirect call to this
@@ -167,7 +158,7 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
         if (start != 0) {
             SubstrateOptimizedCallTarget.CallBoundaryFunctionPointer target = WordFactory.pointer(start);
             Object result = target.invoke(callTarget, args);
-            return KnownIntrinsics.convertUnknownValue(result, Object.class);
+            return result;
         } else {
             return callTarget.invokeCallBoundary(args);
         }

@@ -49,6 +49,8 @@ import org.graalvm.wasm.nodes.WasmBlockNode;
 
 import java.util.ArrayList;
 
+import static java.lang.Integer.compareUnsigned;
+
 public class ExecutionState {
     private int profileCount;
     private final IntArrayList intConstants;
@@ -97,6 +99,9 @@ public class ExecutionState {
     }
 
     public void setReachable(boolean reachable) {
+        if (!reachable) {
+            unwindStack(getStackSize(0));
+        }
         this.reachable = reachable;
     }
 
@@ -110,32 +115,22 @@ public class ExecutionState {
         if (!isReachable() && blockStackSize == 0) {
             return -1;
         }
-        Assert.assertIntGreater(blockStackSize, 0, "Cannot pop from the stack", Failure.EMPTY_STACK);
+        Assert.assertIntGreater(blockStackSize, 0, "Cannot pop from the stack", Failure.TYPE_MISMATCH);
         return stack.popBack();
     }
 
     public void popChecked(byte expectedType) {
-        if (isReachable()) {
-            assertTypesEqual(expectedType, pop());
-        }
-    }
-
-    private void topChecked(byte expectedType) {
-        if (isReachable()) {
-            final int blockStackSize = stack.size() - getStackSize(0);
-            Assert.assertIntGreater(blockStackSize, 0, "Cannot pop from the stack", Failure.EMPTY_STACK);
-            assertTypesEqual(expectedType, stack.top());
-        }
+        assertTypesEqual(expectedType, pop());
     }
 
     private static void assertTypesEqual(byte expectedType, byte actualType) {
-        if (expectedType != actualType) {
-            throw WasmException.format(Failure.UNEXPECTED_TYPE, "Expected type %s but got %s.", WasmType.toString(expectedType), WasmType.toString(actualType));
+        if (expectedType != -1 && actualType != -1 && expectedType != actualType) {
+            throw WasmException.format(Failure.TYPE_MISMATCH, "Expected type %s but got %s.", WasmType.toString(expectedType), WasmType.toString(actualType));
         }
     }
 
     public void unwindStack(int size) {
-        Assert.assertIntLessOrEqual(size, stackSize(), Failure.INVALID_STACK_SHRINK_SIZE);
+        assert compareUnsigned(size, stackSize()) <= 0 : "invalid stack shrink size";
         while (stackSize() > size) {
             stack.popBack();
         }
@@ -150,10 +145,12 @@ public class ExecutionState {
     }
 
     public int getStackSize(int offset) {
-        if (depth() < offset + 1) {
-            Assert.fail("Branch to offset " + offset + " larger than the nesting " + ancestorsStackSizes.size(), Failure.UNSPECIFIED_MALFORMED);
-        }
+        Assert.assertUnsignedIntLess(offset, depth(), Failure.UNKNOWN_LABEL);
         return ancestorsStackSizes.get(depth() - 1 - offset);
+    }
+
+    public int getCurrentBlockStackSize() {
+        return stackSize() - getStackSize(0);
     }
 
     public void startBlock(WasmBlockNode block, boolean isLoopBody) {
@@ -163,6 +160,15 @@ public class ExecutionState {
     }
 
     public void endBlock() {
+        final WasmBlockNode currentBlock = ancestors.get(ancestors.size() - 1);
+        if (currentBlock.returnLength() == 1) {
+            popChecked(currentBlock.returnTypeId());
+        }
+        Assert.assertIntEqual(getCurrentBlockStackSize(), 0, Failure.TYPE_MISMATCH);
+        if (currentBlock.returnLength() == 1) {
+            push(currentBlock.returnTypeId());
+        }
+
         ancestorsStackSizes.popBack();
         ancestorsIsLoop.popBack();
         ancestors.remove(ancestors.size() - 1);
@@ -187,13 +193,9 @@ public class ExecutionState {
         final int index = depth() - 1 - unwindLevel;
         final boolean isLoop = ancestorsIsLoop.get(index);
         final WasmBlockNode block = ancestors.get(index);
-        if (isLoop) {
-            Assert.assertIntEqual(block.inputLength(), 0, "A loop should not have parameters", Failure.LOOP_INPUT);
-        } else {
-            Assert.assertIntLessOrEqual(block.returnLength(), 1, "A block cannot return more than one value", Failure.MULTIPLE_RETURN_VALUES);
-            if (block.returnLength() == 1) {
-                topChecked(block.returnTypeId());
-            }
+        if (!isLoop && block.returnLength() == 1) {
+            popChecked(block.returnTypeId());
+            push(block.returnTypeId());
         }
     }
 
@@ -219,6 +221,10 @@ public class ExecutionState {
 
     public void saveBranchTable(int[] branchTable) {
         branchTables.add(branchTable);
+    }
+
+    public int[] branchTable(int index) {
+        return branchTables.get(index);
     }
 
     public int branchTableOffset() {

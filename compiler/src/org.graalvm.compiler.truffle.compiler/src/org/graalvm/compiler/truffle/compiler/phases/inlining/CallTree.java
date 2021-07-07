@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,7 @@ package org.graalvm.compiler.truffle.compiler.phases.inlining;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
-import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
+import org.graalvm.compiler.truffle.common.TruffleInliningData;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
@@ -113,19 +113,30 @@ public final class CallTree extends Graph {
         root.finalizeGraph();
     }
 
-    void collectTargetsToDequeue(TruffleMetaAccessProvider provider) {
+    void collectTargetsToDequeue(TruffleInliningData provider) {
         root.collectTargetsToDequeue(provider);
     }
 
-    public void updateTracingInfo(TruffleMetaAccessProvider inliningPlan) {
-        if (request.options.get(PolyglotCompilerOptions.TraceCompilation) || request.options.get(PolyglotCompilerOptions.CompilationStatistics) ||
-                        request.options.get(PolyglotCompilerOptions.CompilationStatisticDetails)) {
-            final int inlinedWithoutRoot = inlined - 1;
+    public void updateTracingInfo(TruffleInliningData inliningPlan) {
+        final int inlinedWithoutRoot = inlined - 1;
+        if (tracingCallCounts()) {
             inliningPlan.setCallCount(inlinedWithoutRoot + frontierSize);
             inliningPlan.setInlinedCallCount(inlinedWithoutRoot);
         }
-        if (request.options.get(PolyglotCompilerOptions.CompilationStatistics) || request.options.get(PolyglotCompilerOptions.CompilationStatisticDetails)) {
+        if (loggingInlinedTargets()) {
             root.collectInlinedTargets(inliningPlan);
         }
+    }
+
+    private boolean loggingInlinedTargets() {
+        return request.debug.isDumpEnabled(DebugContext.BASIC_LEVEL) || request.options.get(PolyglotCompilerOptions.CompilationStatistics) ||
+                        request.options.get(PolyglotCompilerOptions.CompilationStatisticDetails);
+    }
+
+    private boolean tracingCallCounts() {
+        return request.options.get(PolyglotCompilerOptions.TraceCompilation) ||
+                        request.options.get(PolyglotCompilerOptions.TraceCompilationDetails) ||
+                        request.options.get(PolyglotCompilerOptions.CompilationStatistics) ||
+                        request.options.get(PolyglotCompilerOptions.CompilationStatisticDetails);
     }
 }

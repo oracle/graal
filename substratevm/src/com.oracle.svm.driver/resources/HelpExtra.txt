@@ -13,10 +13,8 @@ Non-standard options help:
                           option-configuration directories.
     --debug-attach[=<port or host:port (* can be used as host meaning bind to all interfaces)>]
                           attach to debugger during image building (default port is 8000)
+    --diagnostics-mode    Enables logging of image-build information to a diagnostics folder.
     --dry-run             output the command line that would be used for building
 
     -V<key>=<value>       provide values for placeholders in native-image.properties files
-
-    --help-experimental-build-server
-                          displays help for experimental image-build server use
 

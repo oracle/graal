@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -70,7 +70,7 @@ public class BitOpNodesTest extends GraalCompilerTest {
         } else {
             // Even though there are AArch64 intrinsics for bitCount, they do
             // not use BitCountNode.
-            return isSPARC(arch);
+            return false;
         }
     }
 
@@ -83,7 +83,7 @@ public class BitOpNodesTest extends GraalCompilerTest {
             AMD64 amd64 = (AMD64) arch;
             return amd64.getFeatures().contains(AMD64.CPUFeature.LZCNT) && amd64.getFlags().contains(AMD64.Flag.UseCountLeadingZerosInstruction);
         } else {
-            return isSPARC(arch) || arch instanceof AArch64;
+            return arch instanceof AArch64;
         }
     }
 
@@ -96,7 +96,7 @@ public class BitOpNodesTest extends GraalCompilerTest {
             AMD64 amd64 = (AMD64) arch;
             return amd64.getFeatures().contains(AMD64.CPUFeature.BMI1) && amd64.getFlags().contains(AMD64.Flag.UseCountTrailingZerosInstruction);
         } else {
-            return isSPARC(arch) || arch instanceof AArch64;
+            return arch instanceof AArch64;
         }
     }
 

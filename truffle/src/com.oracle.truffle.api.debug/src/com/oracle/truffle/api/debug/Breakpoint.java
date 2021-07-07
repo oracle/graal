@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,7 +50,6 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.BinaryOperator;
 import java.util.function.Predicate;
 
 import com.oracle.truffle.api.Assumption;
@@ -168,8 +167,6 @@ public class Breakpoint {
     }
 
     private static final Breakpoint BUILDER_INSTANCE = new Breakpoint();
-    private static final BinaryOperator<Source> RESOLVED_LOCATION_ACCUMULATOR = new ResolvedLocationOperator();
-    private static final Source NO_SOURCE = Source.newBuilder("N/A", "", "").build();
 
     private final SuspendAnchor suspendAnchor;
     private final BreakpointLocation locationKey;
@@ -183,7 +180,6 @@ public class Breakpoint {
     private volatile Assumption sessionsUnchanged;
 
     private volatile boolean enabled;
-    private volatile boolean resolved;
     private volatile int ignoreCount;
     private volatile boolean disposed;
     private volatile String condition;
@@ -199,8 +195,10 @@ public class Breakpoint {
     private final AtomicBoolean breakpointBindingAttaching = new AtomicBoolean(false);
     private volatile boolean breakpointBindingReady;
     private volatile Predicate<Source> sourcePredicate;
-    private final AtomicReference<EventBinding<?>> sourceBinding = new AtomicReference<>();
-    private AtomicReference<Source> resolvedSourceInAttach = new AtomicReference<>();
+    // sourceBinding contains null when no binding is installed, or an active EventBinding,
+    // or SOURCE_BINDING_RESOLVED constant when the target Source was loaded.
+    private final AtomicReference<Object> sourceBinding = new AtomicReference<>();
+    private static final Object SOURCE_BINDING_RESOLVED = new Object();
 
     Breakpoint(BreakpointLocation key, SuspendAnchor suspendAnchor) {
         this(key, suspendAnchor, false, null, null, null);
@@ -296,7 +294,7 @@ public class Breakpoint {
      * @since 0.17
      */
     public boolean isResolved() {
-        return resolved;
+        return sourceBinding.get() == SOURCE_BINDING_RESOLVED;
     }
 
     /**
@@ -368,10 +366,7 @@ public class Breakpoint {
         synchronized (this) {
             if (!disposed) {
                 setEnabled(false);
-                final EventBinding<?> binding = sourceBinding.getAndSet(null);
-                if (binding != null) {
-                    binding.dispose();
-                }
+                getAndSetSourceBinding(null);
                 breakpointSessions = sessions.toArray(new DebuggerSession[sessions.size()]);
                 breakpointDebugger = debugger;
                 debugger = null;
@@ -386,6 +381,14 @@ public class Breakpoint {
         if (breakpointDebugger != null) {
             breakpointDebugger.disposeBreakpoint(this);
         }
+    }
+
+    private Object getAndSetSourceBinding(Object newValue) {
+        Object oldBinding = sourceBinding.getAndSet(newValue);
+        if (oldBinding instanceof EventBinding) {
+            ((EventBinding<?>) oldBinding).dispose();
+        }
+        return oldBinding;
     }
 
     /**
@@ -541,42 +544,25 @@ public class Breakpoint {
         return true;
     }
 
-    private static class ResolvedLocationOperator implements BinaryOperator<Source> {
-
-        @Override
-        public Source apply(Source oldValue, Source newValue) {
-            if (oldValue == null) {
-                // The reference was reset, keep it cleared, the binding was attached.
-                return null;
-            }
-            return newValue;
-        }
-    }
-
     private void install() {
         SourceFilter filter;
-        EventBinding<?> binding = sourceBinding.get();
-        if (binding == null && (filter = locationKey.createSourceFilter()) != null) {
-            resolvedSourceInAttach.set(NO_SOURCE);
-            try {
-                sourcePredicate = locationKey.createSourcePredicate();
-                if (!sourceBinding.compareAndSet(null, binding = debugger.getInstrumenter().attachExecuteSourceListener(filter, new ExecuteSourceListener() {
-                    @Override
-                    public void onExecute(ExecuteSourceEvent event) {
-                        Source source = event.getSource();
-                        if (null == resolvedSourceInAttach.getAndAccumulate(source, RESOLVED_LOCATION_ACCUMULATOR)) {
-                            // Only after the binding was attached,
-                            // resolve the breakpoint in the callback.
-                            resolveBreakpointAssignBinding(source);
-                        }
-                    }
-                }, true))) {
-                    binding.dispose();
-                }
-            } finally {
-                Source source = resolvedSourceInAttach.getAndSet(null);
-                if (source != NO_SOURCE) {
+        Object obj = sourceBinding.get();
+        EventBinding<?> binding = (SOURCE_BINDING_RESOLVED == obj) ? null : (EventBinding<?>) obj;
+        if (obj == null && (filter = locationKey.createSourceFilter()) != null) {
+            sourcePredicate = locationKey.createSourcePredicate();
+            binding = debugger.getInstrumenter().createExecuteSourceBinding(filter, new ExecuteSourceListener() {
+                @Override
+                public void onExecute(ExecuteSourceEvent event) {
+                    Source source = event.getSource();
                     resolveBreakpointAssignBinding(source);
+                }
+            }, true);
+            if (sourceBinding.compareAndSet(null, binding)) {
+                try {
+                    binding.attach();
+                } catch (IllegalStateException ex) {
+                    // resolveBreakpointAssignBinding() can dispose the binding concurrently
+                    assert binding.isDisposed();
                 }
             }
         } else if (breakpointBinding == null && (binding == null || binding.isDisposed())) {
@@ -590,22 +576,18 @@ public class Breakpoint {
     }
 
     void doResolve(Source source) {
-        if (!resolved && sourcePredicate != null && sourcePredicate.test(source)) {
-            if (null == resolvedSourceInAttach.getAndAccumulate(source, RESOLVED_LOCATION_ACCUMULATOR)) {
-                // Only after the binding was attached, resolve the breakpoint in the callback.
-                resolveBreakpointAssignBinding(source);
-            }
+        if (!isResolved() && sourcePredicate != null && sourcePredicate.test(source)) {
+            resolveBreakpointAssignBinding(source);
         }
     }
 
     private void resolveBreakpointAssignBinding(Source source) {
         SourceSection location = locationKey.adjustLocation(source, debugger.getEnv(), suspendAnchor);
         if (location != null || !source.hasCharacters()) {
-            EventBinding<?> eb = sourceBinding.get();
-            if (eb != null) {
-                eb.dispose();
+            Object eb = getAndSetSourceBinding(SOURCE_BINDING_RESOLVED);
+            if (location != null && eb != SOURCE_BINDING_RESOLVED) {
+                resolveBreakpoint(location, true);
             }
-            resolveBreakpoint(location);
             assignBinding(locationKey.createLocationFilter(source, suspendAnchor));
         }
     }
@@ -620,7 +602,7 @@ public class Breakpoint {
                 breakpointBindingAttaching.set(false);
                 synchronized (this) {
                     if (newBinding != null) {
-                        resolved = true;
+                        getAndSetSourceBinding(SOURCE_BINDING_RESOLVED);
                         for (DebuggerSession s : sessions) {
                             s.allBindings.add(newBinding);
                         }
@@ -665,22 +647,28 @@ public class Breakpoint {
     }
 
     private void resolveBreakpoint(SourceSection resolvedLocation) {
-        boolean notifyResolved = false;
+        resolveBreakpoint(resolvedLocation, false);
+    }
+
+    private void resolveBreakpoint(SourceSection resolvedLocation, boolean notifyResolved) {
+        boolean doNotifyResolved = notifyResolved;
         synchronized (this) {
             if (disposed) {
                 // cannot resolve disposed breakpoint
                 return;
             }
             if (!isResolved()) {
-                notifyResolved = true;
-                resolved = true;
-                for (DebuggerSession s : sessions) {
-                    s.breakpointResolved(this);
-                }
+                doNotifyResolved = true;
+                getAndSetSourceBinding(SOURCE_BINDING_RESOLVED);
             }
         }
-        if (notifyResolved && resolveListener != null) {
-            resolveListener.breakpointResolved(Breakpoint.this, resolvedLocation);
+        if (doNotifyResolved) {
+            for (DebuggerSession s : sessions) {
+                s.breakpointResolved(this);
+            }
+            if (resolveListener != null) {
+                resolveListener.breakpointResolved(Breakpoint.this, resolvedLocation);
+            }
         }
     }
 
@@ -695,7 +683,7 @@ public class Breakpoint {
         if (binding != null) {
             binding.dispose();
         }
-        resolved = false;
+        getAndSetSourceBinding(null);
     }
 
     /**

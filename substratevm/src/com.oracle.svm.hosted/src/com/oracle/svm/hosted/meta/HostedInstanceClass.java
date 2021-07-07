@@ -36,6 +36,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 public class HostedInstanceClass extends HostedClass {
 
     protected HostedField[] instanceFields;
+    protected int afterFieldsOffset;
     protected int instanceSize;
     protected boolean monitorFieldNeeded = false;
     protected int monitorFieldOffset = 0;
@@ -96,6 +97,10 @@ public class HostedInstanceClass extends HostedClass {
             return getSuperclass().findInstanceFieldWithOffset(offset, expectedKind);
         }
         return null;
+    }
+
+    public int getAfterFieldsOffset() {
+        return afterFieldsOffset;
     }
 
     public int getInstanceSize() {

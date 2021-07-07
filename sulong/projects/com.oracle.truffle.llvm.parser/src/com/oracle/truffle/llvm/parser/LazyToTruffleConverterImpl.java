@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.parser;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
@@ -64,6 +63,7 @@ import com.oracle.truffle.llvm.parser.util.LLVMControlFlowGraph.CFGLoop;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.LazyToTruffleConverter;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
@@ -81,7 +81,6 @@ import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
-import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.symbols.SSAValue;
@@ -110,7 +109,9 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
     private final DebugInfoFunctionProcessor diProcessor;
     private final DataLayout dataLayout;
 
+    private boolean parsed;
     private RootCallTarget resolved;
+    private LLVMFunction rootFunction;
 
     LazyToTruffleConverterImpl(LLVMParserRuntime runtime, FunctionDefinition method, Source source, LazyFunctionParser parser,
                     DebugInfoFunctionProcessor diProcessor, DataLayout dataLayout) {
@@ -135,6 +136,18 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         }
     }
 
+    public void setRootFunction(LLVMFunction rootFunction) {
+        this.rootFunction = rootFunction;
+    }
+
+    private synchronized void doParse() {
+        if (!parsed) {
+            // parse the function block
+            parser.parse(diProcessor, source, runtime, LLVMLanguage.getContext());
+            parsed = true;
+        }
+    }
+
     private RootCallTarget generateCallTarget() {
         LLVMContext context = LLVMLanguage.getContext();
         NodeFactory nodeFactory = runtime.getNodeFactory();
@@ -153,8 +166,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
             }
         }
 
-        // parse the function block
-        parser.parse(diProcessor, source, runtime, LLVMLanguage.getContext());
+        doParse();
 
         // prepare the phis
         final Map<InstructionBlock, List<Phi>> phis = LLVMPhiManager.getPhis(method);
@@ -222,9 +234,10 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         }
 
         LLVMSourceLocation location = method.getLexicalScope();
+        rootFunction.setSourceLocation(LLVMSourceLocation.orDefault(location));
         LLVMStatementNode[] copyArgumentsToFrameArray = copyArgumentsToFrame(frame, symbols).toArray(LLVMStatementNode.NO_STATEMENTS);
         RootNode rootNode = nodeFactory.createFunction(frame.findFrameSlot(LLVMUserException.FRAME_SLOT_ID), blockNodes, uniquesRegion, copyArgumentsToFrameArray, frame, loopSuccessorSlot, info,
-                        method.getName(), method.getSourceName(), method.getParameters().size(), source, location);
+                        method.getName(), method.getSourceName(), method.getParameters().size(), source, location, rootFunction);
         method.onAfterParse();
 
         if (printAST) {
@@ -232,7 +245,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
             System.out.println();
         }
 
-        return Truffle.getRuntime().createCallTarget(rootNode);
+        return LLVMLanguage.createCallTarget(rootNode);
     }
 
     private HashSet<Integer> getDebugValues() {
@@ -344,7 +357,9 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
 
     @Override
     public LLVMSourceFunctionType getSourceType() {
-        convert();
+        CompilerAsserts.neverPartOfCompilation();
+        doParse();
+
         return method.getSourceFunction().getSourceType();
     }
 
@@ -382,43 +397,13 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
     }
 
     /**
-     * Create an expression node that, when executed, will provide an address where the respective
-     * argument should either be copied from or copied into. This is important when passing struct
-     * arguments by value, this node uses getelementptr to infer the location from the source types
-     * into the destination frame slot.
-     *
      * @param baseAddress Base address from which to calculate the offsets.
      * @param sourceType Type to index into.
      * @param indices List of indices to reach a member or element from the base address.
+     * @see CommonNodeFactory#getTargetAddress
      */
     private LLVMExpressionNode getTargetAddress(LLVMExpressionNode baseAddress, Type sourceType, ArrayDeque<Long> indices) {
-        NodeFactory nf = runtime.getNodeFactory();
-
-        int indicesSize = indices.size();
-        Long[] indicesArr = new Long[indicesSize];
-        LLVMExpressionNode[] indexNodes = new LLVMExpressionNode[indicesSize];
-
-        int i = indicesSize - 1;
-        for (Long idx : indices) {
-            indicesArr[i] = idx;
-            indexNodes[i] = CommonNodeFactory.createLiteral(idx.longValue(), PrimitiveType.I64);
-            i--;
-        }
-        assert i == -1;
-
-        PrimitiveType[] indexTypes = new PrimitiveType[indicesSize];
-        Arrays.fill(indexTypes, PrimitiveType.I64);
-
-        LLVMExpressionNode nestedGEPs = CommonNodeFactory.createNestedElementPointerNode(
-                        nf,
-                        dataLayout,
-                        indexNodes,
-                        indicesArr,
-                        indexTypes,
-                        baseAddress,
-                        sourceType);
-
-        return nestedGEPs;
+        return CommonNodeFactory.getTargetAddress(baseAddress, sourceType, indices, runtime.getNodeFactory(), dataLayout);
     }
 
     /**

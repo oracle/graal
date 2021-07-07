@@ -30,7 +30,7 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import com.oracle.svm.core.annotate.InvokeJavaFunctionPointer;
 import com.oracle.svm.core.deopt.SubstrateSpeculationLog;
 import com.oracle.svm.core.thread.VMOperation;
-import com.oracle.svm.truffle.TruffleFeature;
+import com.oracle.svm.truffle.TruffleSupport;
 import com.oracle.truffle.api.nodes.RootNode;
 
 import jdk.vm.ci.code.InstalledCode;
@@ -91,6 +91,14 @@ public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements
         return installedCode.getAddress();
     }
 
+    /**
+     * Prevents reads from floating across a safepoint when the caller is inlined in another method.
+     * Intrinsified in {@link SubstrateTruffleGraphBuilderPlugins}.
+     */
+    public static void safepointBarrier() {
+        // Intrinsified, but empty so it can be called during hosted Truffle calls
+    }
+
     @Override
     public Object doInvoke(Object[] args) {
         return SubstrateOptimizedCallTargetInstalledCode.doInvoke(this, args);
@@ -115,11 +123,15 @@ public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements
 
     @Override
     public SubstrateOptimizedCallTargetInstalledCode createSubstrateInstalledCode() {
-        assert TruffleFeature.Support.isIsolatedCompilation() : "Must be called only with isolated compilation";
+        assert TruffleSupport.isIsolatedCompilation() : "Must be called only with isolated compilation";
         return createInstalledCode();
     }
 
-    void setInstalledCode(SubstrateOptimizedCallTargetInstalledCode code) {
+    /**
+     * Called from {@link SubstrateOptimizedCallTargetInstalledCode#setAddress} for code
+     * representing this call target.
+     */
+    protected void onCodeInstalled(SubstrateOptimizedCallTargetInstalledCode code) {
         VMOperation.guaranteeInProgressAtSafepoint("Must be at a safepoint");
         assert code != null : "Must never become null";
         if (code == installedCode) {
@@ -127,6 +139,15 @@ public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements
         }
         installedCode.invalidateWithoutDeoptimization();
         installedCode = code;
+    }
+
+    /**
+     * Called from {@link SubstrateOptimizedCallTargetInstalledCode#clearAddress} for code
+     * representing this call target. The caller can, however, be older code and not the current
+     * entry point, so that {@code code != installedCode}.
+     */
+    protected void onCodeCleared(@SuppressWarnings("unused") SubstrateOptimizedCallTargetInstalledCode code) {
+        VMOperation.guaranteeInProgressAtSafepoint("Must be at a safepoint");
     }
 
     /** Creates the instance for initializing {@link #installedCode} so it is never {@code null}. */

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,7 +31,6 @@ import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.type.StampTool;
 
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -216,13 +215,11 @@ public interface InvocationPlugin extends GraphBuilderPlugin {
         throw new GraalError("Invocation plugin for %s does not handle invocations with %d arguments", targetMethod.format("%H.%n(%p)"), args.length);
     }
 
-    default StackTraceElement getApplySourceLocation(MetaAccessProvider metaAccess) {
+    default String getSourceLocation() {
         Class<?> c = getClass();
         for (Method m : c.getDeclaredMethods()) {
-            if (m.getName().equals("apply")) {
-                return metaAccess.lookupJavaMethod(m).asStackTraceElement(0);
-            } else if (m.getName().equals("defaultHandler")) {
-                return metaAccess.lookupJavaMethod(m).asStackTraceElement(0);
+            if (m.getName().equals("apply") || m.getName().equals("defaultHandler")) {
+                return String.format("%s.%s()", m.getClass().getName(), m.getName());
             }
         }
         throw new GraalError("could not find method named \"apply\" or \"defaultHandler\" in " + c.getName());

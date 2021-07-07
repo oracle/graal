@@ -49,7 +49,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.svm.core.deopt.DeoptimizationRuntime;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.Deoptimizer;
-import com.oracle.svm.core.graal.nodes.UnreachableNode;
+import org.graalvm.compiler.nodes.UnreachableNode;
 import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.snippets.SnippetRuntime;
@@ -179,6 +179,14 @@ public final class DeoptHostedSnippets extends SubstrateTemplates implements Sni
                 case ClassCastException:
                 case ArrayStoreException:
                 case ArithmeticException:
+                    /*
+                     * GR-30089: proper checks with bytecode exceptions should already be emitted
+                     * early in BytecodeParser or in intrinsics. In some cases, they are not emitted
+                     * because stamps indicate that they are unnecessary, but later cycles with loop
+                     * phis are introduced (through inlining, for example) which make the stamps
+                     * lose precision and cause guards to be inserted later. These guards and their
+                     * deopts typically never trigger and should disappear once the issue is fixed.
+                     */
                     message = null;
                     break;
                 case UnreachedCode:

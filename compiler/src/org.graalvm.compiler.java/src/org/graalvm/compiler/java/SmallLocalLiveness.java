@@ -26,6 +26,8 @@ package org.graalvm.compiler.java;
 
 import org.graalvm.compiler.java.BciBlockMapping.BciBlock;
 
+import java.util.BitSet;
+
 public final class SmallLocalLiveness extends LocalLiveness {
     /*
      * local n is represented by the bit accessible as (1 << n)
@@ -35,17 +37,19 @@ public final class SmallLocalLiveness extends LocalLiveness {
     private final long[] localsLiveOut;
     private final long[] localsLiveGen;
     private final long[] localsLiveKill;
+    private final long[] localsLiveAsync;
     private final long[] localsChangedInLoop;
     private final int maxLocals;
 
-    public SmallLocalLiveness(BciBlock[] blocks, int maxLocals, int loopCount) {
-        super(blocks);
+    public SmallLocalLiveness(BciBlockMapping mapping, int maxLocals, int loopCount, boolean asyncLiveness) {
+        super(mapping, asyncLiveness);
         this.maxLocals = maxLocals;
         int blockSize = blocks.length;
         localsLiveIn = new long[blockSize];
         localsLiveOut = new long[blockSize];
         localsLiveGen = new long[blockSize];
         localsLiveKill = new long[blockSize];
+        localsLiveAsync = new long[blockSize];
         localsChangedInLoop = new long[loopCount];
     }
 
@@ -90,13 +94,23 @@ public final class SmallLocalLiveness extends LocalLiveness {
     }
 
     @Override
+    protected int liveAsyncCardinality(int blockID) {
+        return Long.bitCount(localsLiveAsync[blockID]);
+    }
+
+    @Override
     protected void propagateLiveness(int blockID, int successorID) {
         localsLiveOut[blockID] |= localsLiveIn[successorID];
     }
 
     @Override
+    protected void propagateAsyncLiveness(int blockID, int successorID) {
+        localsLiveAsync[blockID] |= localsLiveIn[successorID];
+    }
+
+    @Override
     protected void updateLiveness(int blockID) {
-        localsLiveIn[blockID] = (localsLiveOut[blockID] & ~localsLiveKill[blockID]) | localsLiveGen[blockID];
+        localsLiveIn[blockID] = (localsLiveOut[blockID] & ~localsLiveKill[blockID]) | localsLiveGen[blockID] | localsLiveAsync[blockID];
     }
 
     @Override
@@ -115,14 +129,9 @@ public final class SmallLocalLiveness extends LocalLiveness {
         }
 
         BciBlock block = blocks[blockID];
-        long tmp = block.loops;
-        int pos = 0;
-        while (tmp != 0) {
-            if ((tmp & 1L) == 1L) {
-                this.localsChangedInLoop[pos] |= bit;
-            }
-            tmp >>>= 1;
-            ++pos;
+        BitSet loops = block.loops;
+        for (int pos = -1; (pos = loops.nextSetBit(pos + 1)) >= 0;) {
+            this.localsChangedInLoop[pos] |= bit;
         }
     }
 

@@ -68,6 +68,7 @@ public class Installer extends AbstractInstaller {
     private final List<Path> filesToDelete = new ArrayList<>();
     private final List<Path> dirsToDelete = new ArrayList<>();
 
+    private boolean allowFilesInComponentDir;
     private boolean rebuildPolyglot;
     /**
      * Paths tracked by the component system.
@@ -76,6 +77,14 @@ public class Installer extends AbstractInstaller {
 
     public Installer(Feedback feedback, FileOperations fileOps, ComponentInfo componentInfo, ComponentRegistry registry, ComponentCollection collection, Archive a) {
         super(feedback, fileOps, componentInfo, registry, collection, a);
+    }
+
+    public boolean isAllowFilesInComponentDir() {
+        return allowFilesInComponentDir;
+    }
+
+    public void setAllowFilesInComponentDir(boolean allowFilesInComponentDir) {
+        this.allowFilesInComponentDir = allowFilesInComponentDir;
     }
 
     @Override
@@ -232,7 +241,7 @@ public class Installer extends AbstractInstaller {
         final String storagePrefix = CommonConstants.PATH_COMPONENT_STORAGE + "/"; // NOI18N
         for (Archive.FileEntry entry : archive) {
             String path = entry.getName();
-            if (path.startsWith(storagePrefix) && path.length() > storagePrefix.length()) {
+            if (!allowFilesInComponentDir && path.startsWith(storagePrefix) && path.length() > storagePrefix.length()) {
                 // disallow to unpack files in the component database (but permit subdirs). Some
                 // tools may write there, but
                 // GU will manage the storage itself.

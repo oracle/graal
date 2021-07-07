@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE module PUBLIC "-//Puppy Crawl//DTD Check Configuration 1.3//EN" "http://www.puppycrawl.com/dtds/configuration_1_3.dtd">
+<!DOCTYPE module PUBLIC "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN" "https://checkstyle.org/dtds/configuration_1_3.dtd">
 
 <!--
     This configuration file was written by the eclipse-cs plugin configuration editor
@@ -31,6 +31,21 @@
       <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Disable annotation access checks"/>
     </module>
 
+    <module name="RegexpSinglelineJava">
+      <property name="id" value="threadIsInterruptedCall"/>
+      <metadata name="net.sf.eclipsecs.core.comment" value="Disallow calls to Thread.isInterrupted."/>
+      <property name="severity" value="error"/>
+      <property name="format" value="(?&lt;!JavaThreads)\.isInterrupted\b"/>
+      <property name="message" value="Calls to Thread.isInterrupted are restricted because the method can be overridden with code that does locking or performs other actions that are unsafe in a specific context. In VM-internal contexts, use JavaThreads.isInterrupted. (Use &quot;// Checkstyle: allow Thread.isInterrupted ... // Checkstyle: disallow Thread.isInterrupted&quot; to disable this check.)"/>
+      <property name="ignoreComments" value="true"/>
+    </module>
+    <module name="SuppressionCommentFilter">
+      <property name="offCommentFormat" value="Checkstyle: allow Thread.isInterrupted"/>
+      <property name="onCommentFormat" value="Checkstyle: disallow Thread.isInterrupted"/>
+      <property name="idFormat" value="threadIsInterruptedCall"/>
+      <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Disable Thread.isInterrupted calls"/>
+    </module>
+
     <module name="AvoidStarImport">
       <property name="allowClassImports" value="false"/>
       <property name="allowStaticMemberImports" value="false"/>
@@ -52,9 +67,6 @@
     </module>
     <module name="RedundantImport"/>
     <module name="UnusedImports"/>
-    <module name="LineLength">
-      <property name="max" value="250"/>
-    </module>
     <module name="MethodParamPad"/>
     <module name="NoWhitespaceAfter">
       <property name="tokens" value="ARRAY_INIT,BNOT,DEC,DOT,INC,LNOT,UNARY_MINUS,UNARY_PLUS"/>
@@ -264,6 +276,9 @@
       <property name="onCommentFormat" value="Checkstyle: disallow synchronization"/>
       <property name="checkFormat" value="IllegalToken"/>
     </module>
+  </module>
+  <module name="LineLength">
+    <property name="max" value="250"/>
   </module>
   <module name="RegexpHeader">
     <property name="header" value="/\*\n \* Copyright \(c\) 20[0-9][0-9], 20[0-9][0-9], Oracle and/or its affiliates\. All rights reserved\.\n \* Copyright \(c\) 20[0-9][0-9], 20[0-9][0-9], .*\. All rights reserved\.\n \* DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER\.\n \*\n \* This code is free software; you can redistribute it and/or modify it\n \* under the terms of the GNU General Public License version 2 only, as\n \* published by the Free Software Foundation\.  Oracle designates this\n \* particular file as subject to the &quot;Classpath&quot; exception as provided\n \* by Oracle in the LICENSE file that accompanied this code.\n \*\n \* This code is distributed in the hope that it will be useful, but WITHOUT\n \* ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or\n \* FITNESS FOR A PARTICULAR PURPOSE\.  See the GNU General Public License\n \* version 2 for more details \(a copy is included in the LICENSE file that\n \* accompanied this code\)\.\n \*\n \* You should have received a copy of the GNU General Public License version\n \* 2 along with this work; if not, write to the Free Software Foundation,\n \* Inc\., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA\.\n \*\n \* Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA\n \* or visit www\.oracle\.com if you need additional information or have any\n \* questions\.\n \*/\n"/>

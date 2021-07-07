@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,23 +47,14 @@ import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
-import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
+import org.graalvm.wasm.predefined.wasi.types.Clockid;
+import org.graalvm.wasm.predefined.wasi.types.Errno;
 
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 
-public class WasiClockTimeGetNode extends WasmBuiltinRootNode {
-    // https://github.com/WebAssembly/WASI/blob/master/phases/snapshot/docs.md#-clockid-enumu32
-    public enum ClockId {
-        Realtime,
-        Monotonic,
-        ProcessCpuTime,
-        ThreadCpuTime
-    }
-
-    static final ClockId[] clockIdValues = ClockId.values();
+public final class WasiClockTimeGetNode extends WasmBuiltinRootNode {
 
     public WasiClockTimeGetNode(WasmLanguage language, WasmInstance module) {
         super(language, module);
@@ -71,25 +62,26 @@ public class WasiClockTimeGetNode extends WasmBuiltinRootNode {
 
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        final WasmMemory memory = instance.memory();
-        final int id = (int) frame.getArguments()[0];
-        // Ignored for now
-        // final long precision = (long) frame.getArguments()[1];
-        final int resultAddress = (int) frame.getArguments()[2];
+        final Object[] args = frame.getArguments();
+        assert args.length == 3;
 
-        final ClockId clockId = clockIdValues[id];
+        // TODO(mbovel): handle args[1] "precision"
+        return clockTimeGet((int) args[0], (int) args[2]);
+    }
+
+    @TruffleBoundary
+    private Object clockTimeGet(int clockIdValue, int resultAddress) {
+        final Clockid clockId = Clockid.values()[clockIdValue];
         switch (clockId) {
             case Realtime:
-                long result = realtimeNow();
-                memory.store_i64(this, resultAddress, result);
+                memory().store_i64(this, resultAddress, realtimeNow());
                 break;
             case Monotonic:
-            case ProcessCpuTime:
-            case ThreadCpuTime:
+            case ProcessCputimeId:
+            case ThreadCputimeId:
                 throw unimplementedClock(clockId);
         }
-
-        return 0;
+        return Errno.Success.ordinal();
     }
 
     @TruffleBoundary
@@ -98,19 +90,13 @@ public class WasiClockTimeGetNode extends WasmBuiltinRootNode {
     }
 
     @TruffleBoundary
-    private static WasmException unimplementedClock(final ClockId clockId) {
+    private static WasmException unimplementedClock(final Clockid clockId) {
         throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Unimplemented ClockID: " + clockId.name());
-    }
-
-    @TruffleBoundary
-    private static void checkEncodable(String argument) {
-        if (!StandardCharsets.US_ASCII.newEncoder().canEncode(argument)) {
-            throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Argument '" + argument + "' contains non-ASCII characters.");
-        }
     }
 
     @Override
     public String builtinNodeName() {
-        return "__wasi_args_get";
+        return "__wasi_clock_time_get";
     }
+
 }

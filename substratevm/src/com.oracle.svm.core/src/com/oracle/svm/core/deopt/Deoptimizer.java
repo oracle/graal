@@ -238,7 +238,7 @@ public final class Deoptimizer {
             /* A frame is deoptimized when the return address was patched to the deoptStub. */
             if (returnAddress.equal(DeoptimizationSupport.getDeoptStubPointer())) {
                 /* The DeoptimizedFrame instance is stored above the return address. */
-                DeoptimizedFrame result = KnownIntrinsics.convertUnknownValue(sourceSp.readObject(0), DeoptimizedFrame.class);
+                DeoptimizedFrame result = (DeoptimizedFrame) sourceSp.readObject(0);
                 assert result != null;
                 return result;
             }
@@ -792,11 +792,13 @@ public final class Deoptimizer {
         int newEndOfParams = endOfParams;
         for (int idx = 0; idx < numValues; idx++) {
             ValueInfo targetValue = targetFrame.getValueInfos()[idx];
-            if (targetValue.getKind() == JavaKind.Illegal) {
+            if (targetValue.getKind() == JavaKind.Illegal || targetValue.getType() == FrameInfoQueryResult.ValueType.ReservedRegister) {
                 /*
-                 * The target value is optimized out, e.g. at a position after the lifetime of a
-                 * local variable. Actually we don't care what's the source value in this case, but
-                 * most likely it's also "illegal".
+                 * The target value is either optimized out, e.g. at a position after the lifetime
+                 * of a local variable, or is a reserved register. In either situation, we don't
+                 * care what the source value is. Optimized out values will not be restored, and for
+                 * reserved registers the value will be automatically correct when execution resumes
+                 * in the target frame.
                  */
             } else {
                 ValueInfo sourceValue = sourceFrame.getValueInfos()[idx];
@@ -862,13 +864,6 @@ public final class Deoptimizer {
                         DeoptimizationCounters.counters().constantValueCount.inc();
                         break;
 
-                    case ReservedRegister:
-                        /*
-                         * Nothing to do, the register will automatically be correct when execution
-                         * resumes in the target frame.
-                         */
-                        break;
-
                     default:
                         /*
                          * There must not be any other target value types because deoptimization
@@ -887,7 +882,7 @@ public final class Deoptimizer {
     }
 
     private void relockObject(JavaConstant valueConstant) {
-        Object lockedObject = KnownIntrinsics.convertUnknownValue(SubstrateObjectConstant.asObject(valueConstant), Object.class);
+        Object lockedObject = SubstrateObjectConstant.asObject(valueConstant);
         Object lockData = MonitorSupport.singleton().prepareRelockObject(lockedObject);
 
         if (relockedObjects == null) {
@@ -957,10 +952,8 @@ public final class Deoptimizer {
         DeoptimizationCounters.counters().virtualObjectsCount.inc();
 
         ValueInfo[] encodings = sourceFrame.getVirtualObjects()[virtualObjectId];
-        DynamicHub hub = KnownIntrinsics.convertUnknownValue(SubstrateObjectConstant.asObject(readValue(encodings[0], sourceFrame)), DynamicHub.class);
+        DynamicHub hub = (DynamicHub) SubstrateObjectConstant.asObject(readValue(encodings[0], sourceFrame));
         ObjectLayout objectLayout = ConfigurationValues.getObjectLayout();
-
-        boolean materializingByteArray = false;
 
         int curIdx;
         UnsignedWord curOffset;
@@ -968,7 +961,6 @@ public final class Deoptimizer {
             /* For arrays, the second encoded value is the array length. */
             int length = readValue(encodings[1], sourceFrame).asInt();
             obj = Array.newInstance(DynamicHub.toClass(hub.getComponentHub()), length);
-            materializingByteArray = obj.getClass() == byte[].class;
             curOffset = LayoutEncoding.getArrayBaseOffset(hub.getLayoutEncoding());
             curIdx = 2;
         } else {
@@ -990,66 +982,12 @@ public final class Deoptimizer {
             ValueInfo value = encodings[curIdx];
             JavaKind kind = value.getKind();
             JavaConstant con = readValue(value, sourceFrame);
-            if (materializingByteArray && kind.isPrimitive()) {
-                /* Escape analysis of byte arrays needs special care. */
-                int byteCount = restoreEscapedByteArrayWriteByteCount(encodings, curIdx);
-                con = restoreByteArrayWriteValue(con, byteCount);
-                /* Realign. curIdx gets reincremented, so we compensate. */
-                curIdx = curIdx + byteCount - 1;
-            }
             writeValueInMaterializedObj(obj, curOffset, con);
             curOffset = curOffset.add(objectLayout.sizeInBytes(kind));
             curIdx++;
         }
 
         return obj;
-    }
-
-    /**
-     * Virtualized byte arrays might look like:
-     * <p>
-     * [b1, b2, INT, ILLEGAL, ILLEGAL, ILLEGAL, b7, b8]
-     * <p>
-     * This indicates that an int was written over 4 slots of a byte array, and this write was
-     * escape analysed.
-     *
-     * The written int should write over the 3 illegals, and we can then simply ignore them
-     * afterwards.
-     */
-    private static int restoreEscapedByteArrayWriteByteCount(ValueInfo[] encodings, int curIdx) {
-        int index = curIdx + 1;
-        while (index < encodings.length &&
-                        encodings[index].getKind() == JavaKind.Illegal) {
-            index++;
-        }
-        return index - curIdx;
-    }
-
-    /**
-     * Given a written value to an escaped byte array and a bytecount, returns a correctly-sized
-     * value to write at once in the array.
-     */
-    private static JavaConstant restoreByteArrayWriteValue(JavaConstant con, int byteCount) {
-        switch (byteCount) {
-            case 1:
-                return JavaConstant.forByte((byte) con.asInt());
-            case 2:
-                return JavaConstant.forChar((char) con.asInt());
-            case 4:
-                if (con.getJavaKind().isNumericFloat()) {
-                    return JavaConstant.forFloat(con.asFloat());
-                } else {
-                    return JavaConstant.forInt(con.asInt());
-                }
-            case 8:
-                if (con.getJavaKind().isNumericFloat()) {
-                    return JavaConstant.forDouble(con.asDouble());
-                } else {
-                    return JavaConstant.forLong(con.asLong());
-                }
-            default:
-                throw VMError.shouldNotReachHere();
-        }
     }
 
     /**

@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.impl;
 
+import java.lang.invoke.VarHandle;
 import java.util.Collections;
 import java.util.List;
 import java.util.ServiceLoader;
@@ -77,6 +78,12 @@ final class TruffleJDKServices {
                 }
             }
         }
+    }
+
+    static void addReads(Class<?> client) {
+        Module truffleModule = TruffleJDKServices.class.getModule();
+        Module clientModule = client.getModule();
+        truffleModule.addReads(clientModule);
     }
 
     static <Service> List<Iterable<Service>> getTruffleRuntimeLoaders(Class<Service> serviceClass) {
@@ -135,5 +142,43 @@ final class TruffleJDKServices {
         ClassLoader truffleClassLoader = TruffleJDKServices.class.getModule().getClassLoader();
         ClassLoader classLoader = clazz.getClassLoader();
         return truffleClassLoader != classLoader;
+    }
+
+    /**
+     * Ensures that loads and stores before the fence will not be reordered with loads and stores
+     * after the fence.
+     */
+    static void fullFence() {
+        VarHandle.fullFence();
+    }
+
+    /**
+     * Ensures that loads before the fence will not be reordered with loads and stores after the
+     * fence.
+     */
+    static void acquireFence() {
+        VarHandle.acquireFence();
+    }
+
+    /**
+     * Ensures that loads and stores before the fence will not be reordered with stores after the
+     * fence.
+     */
+    static void releaseFence() {
+        VarHandle.releaseFence();
+    }
+
+    /**
+     * Ensures that loads before the fence will not be reordered with loads after the fence.
+     */
+    static void loadLoadFence() {
+        VarHandle.loadLoadFence();
+    }
+
+    /**
+     * Ensures that stores before the fence will not be reordered with stores after the fence.
+     */
+    static void storeStoreFence() {
+        VarHandle.storeStoreFence();
     }
 }

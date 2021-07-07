@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,8 +31,9 @@ public enum HubType {
     // instance hubs
     Instance(0),
     InstanceReference(1),
+    StoredContinuation(2),
     // other hubs
-    Other(2),
+    Other(3),
     // array hubs
     TypeArray(4),
     ObjectArray(5);
@@ -48,11 +49,15 @@ public enum HubType {
     }
 
     public static boolean isInstance(int hubType) {
-        return hubType <= InstanceReference.getValue();
+        return hubType <= StoredContinuation.getValue();
     }
 
     public static boolean isReferenceInstance(int hubType) {
         return hubType == InstanceReference.getValue();
+    }
+
+    public static boolean isStoredContinuation(int hubType) {
+        return hubType == StoredContinuation.getValue();
     }
 
     public static boolean isArray(int hubType) {
