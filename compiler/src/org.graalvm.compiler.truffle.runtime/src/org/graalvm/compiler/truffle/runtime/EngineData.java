@@ -33,7 +33,6 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Compi
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationFailureAction;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationStatisticDetails;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationStatistics;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationThreshold;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompileAOTOnCreate;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompileImmediately;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompileOnly;
@@ -136,6 +135,7 @@ public final class EngineData {
     @CompilationFinal public boolean profilingEnabled;
     @CompilationFinal public boolean traceTransferToInterpreter;
     @CompilationFinal public boolean compileAOTOnCreate;
+    @CompilationFinal public boolean firstTierOnly;
 
     // compilation queue options
     @CompilationFinal public boolean priorityQueue;
@@ -262,6 +262,7 @@ public final class EngineData {
         this.compileImmediately = options.get(CompileImmediately);
         this.multiTier = !compileImmediately && options.get(MultiTier);
         this.compileAOTOnCreate = options.get(CompileAOTOnCreate);
+        this.firstTierOnly = options.get(Mode) == EngineModeEnum.LATENCY;
 
         // compilation queue options
         priorityQueue = options.get(PriorityQueue);
@@ -404,10 +405,6 @@ public final class EngineData {
         if (multiTier) {
             return options.get(FirstTierCompilationThreshold);
         } else {
-            // TODO: GR-29467 - Legacy behaviour, should be removed
-            if (options.hasBeenSet(CompilationThreshold)) {
-                return options.get(CompilationThreshold);
-            }
             return options.get(SingleTierCompilationThreshold);
         }
     }
@@ -422,10 +419,6 @@ public final class EngineData {
     private int computeCallAndLoopThresholdInFirstTier(OptionValues options) {
         if (compileImmediately) {
             return 0;
-        }
-        // TODO: GR-29467 - Legacy behaviour, should be removed
-        if (options.hasBeenSet(CompilationThreshold)) {
-            return options.get(CompilationThreshold);
         }
         return options.get(LastTierCompilationThreshold);
     }

@@ -55,7 +55,7 @@ public final class OptimizedLoopNode extends LoopNode {
         long loopCount = 0;
         try {
             while (repeatingNode.shouldContinue(status = repeatingNode.executeRepeatingWithValue(frame))) {
-                if (CompilerDirectives.inInterpreter() || GraalCompilerDirectives.inFirstTier()) {
+                if (CompilerDirectives.inInterpreter() || GraalCompilerDirectives.hasNextTier()) {
                     loopCount++;
                 }
                 TruffleSafepoint.poll(this);
