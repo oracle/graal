@@ -1,23 +1,36 @@
-This page covers how to use JDK Flight Recorder (JFR) with Java native images
+This page covers how to use JDK Flight Recorder (JFR) with Java Native Images
 
 ## What is JFR
 
-JFR is a production time profiling system built into OpenJDK. It is now supported in SubstrateVM so Java native images can continue to make use of the existing public Java API (jdk.jfr.*) and JFR itself, with a similar experience to using JFR in virtual machine mode.
+JFR is a production time profiling system that is now supported for Java Native Images. Users can continue to make use of the existing public Java API (jdk.jfr.*) and JFR itself, with a similar experience to using JFR in the Java HotSpot VM.
+
+## Current limitations
+
+* JFR is only available for native images built on JDK 11
+* Only a subset of JFR features are currently available
+  * Custom and system events
+  * Disk-based recordings
+
 
 ## Compiling with JFR
 
-JFR must first be included at compile time. To do so, compile the native image with the flag `-H:+AllowVMInspection`.
+JFR must first be included at image build time. To do so, build an image with the flag `-H:+AllowVMInspection`.
 
 For example:
 ```
-mx native-image -H:+AllowVMInspection MyJavaApp
+native-image -H:+AllowVMInspection MyJavaApp
 ```
 
 ## Enabling JFR
 
-For native images with JFR included, flags will be available at run time to enable the system and start a recording
+For native images with JFR included, the following flags will be available at run time to enable the system, start a recording, and configure logging:
 
-Use `-XX:+FlightRecorder` to enable JFR and `-XX:StartFlightRecording` to start a recording.
+
+* `-XX:+FlightRecorder` : Used to enable JFR
+* `-XX:StartFlightRecording` : Used to start a recording on application start up
+* `-XX:FlightRecorderLogging` : Used to configure log output for the JFR system
+
+Use `-XX:+FlightRecorder` and `-XX:StartFlightRecording` together to enable JFR and start a recording.
 
 For example:
 ```
@@ -41,16 +54,14 @@ The following key-value pairs are supported:
 |settings|none|Settings file (profile.jfc, default.jfc, etc.), e.g. "settings=myprofile.jfc"|
 |delay|none|Delay recording start with (s)econds, (m)inutes), (h)ours), or (d)ays, e.g. "delay=5h"|
 |duration|infinite (0)|Duration of recording in (s)econds, (m)inutes, (h)ours, or (d)ays, e.g. "duration=300s"|
-|disk|false|Whether recording should be persisted to disk, e.g. "disk=false"|
 |filename|none|Resulting recording filename, e.g. "filename=recording1.jfr"|
 |maxage|no limit (0)|Maximum time to keep recorded data (on disk) in (s)econds, (m)inutes, (h)ours, or (d)ays, e.g. 60m, or 0 for no limit, e.g. "maxage=1d"|
 |maxsize|no limit (0)|Maximum amount of bytes to keep (on disk) in (k)B, (M)B or (G)B, e.g. 500M, or 0 for no limit, e.g. "maxsize=1G"|
 |dumponexit|false|Whether to dump running recording when JVM shuts down, e.g. "dumponexit=true"|
-|path-to-gc-roots|false|Whether to collect path to GC roots, e.g. "path-to-gc-roots=true"|
 
-## JFR Logging
+## Options for -XX:FlightRecorderLogging
 
-The JFR system also has a separate flag `-XX:FlightRecorderLogging` that is used to configure logging for the JFR system. This is mostly useful when developing JFR.
+The JFR system also has a separate flag `-XX:FlightRecorderLogging` that is used to configure logging for the JFR system.
 
 Usage: `-XX:FlightRecorderLogging=[tag1[+tag2...][*][=level][,...]]`
 
