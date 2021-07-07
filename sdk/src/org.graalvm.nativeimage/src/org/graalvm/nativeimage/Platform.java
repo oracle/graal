@@ -339,14 +339,14 @@ public interface Platform {
     /**
      * Supported leaf platform: iOS on x86 64-bit.
      *
-     * @since 21.1
+     * @since 21.3
      */
     final class IOS_AMD64 implements IOS, AMD64 {
 
         /**
          * Instantiates a marker instance of this platform.
          *
-         * @since 21.1
+         * @since 21.3
          */
         public IOS_AMD64() {
         }
