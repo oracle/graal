@@ -219,22 +219,24 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
         assert (a.getPlatformKind() == AArch64Kind.SINGLE || a.getPlatformKind() == AArch64Kind.DOUBLE) &&
                         a.getPlatformKind() == b.getPlatformKind();
 
-        // AArch64 does not support direct XOR of FP numbers. We need to cast them to the correct
-        // type for the XOR operation.
-        LIRKind calculationKind = LIRKind.combine(a, b);
-        LIRKind resultKind = calculationKind;
+        /*
+         * Use the ASIMD XOR instruction to perform this operation. This requires casting the
+         * operands to SIMD kinds of the equivalent size.
+         */
+        LIRKind simdKind;
         if (a.getPlatformKind() == AArch64Kind.SINGLE) {
-            calculationKind = LIRKind.value(AArch64Kind.V32_BYTE);
-        } else if (a.getPlatformKind() == AArch64Kind.DOUBLE) {
-            calculationKind = LIRKind.value(AArch64Kind.V64_BYTE);
+            simdKind = LIRKind.value(AArch64Kind.V32_BYTE);
+        } else {
+            simdKind = LIRKind.value(AArch64Kind.V64_BYTE);
         }
-        Variable result = getLIRGen().newVariable(calculationKind);
+        Variable result = getLIRGen().newVariable(simdKind);
 
-        CastValue castA = new CastValue(calculationKind, asAllocatable(a));
-        CastValue castB = new CastValue(calculationKind, asAllocatable(b));
+        CastValue castA = new CastValue(simdKind, asAllocatable(a));
+        CastValue castB = new CastValue(simdKind, asAllocatable(b));
         getLIRGen().append(AArch64ArithmeticOp.generateASIMDBinaryInstruction(AArch64ArithmeticOp.XOR, result, castA, castB));
 
-        return new CastValue(resultKind, result);
+        // Must cast SIMD result back to appropriate FP type
+        return new CastValue(LIRKind.combine(a, b), result);
     }
 
     @Override
