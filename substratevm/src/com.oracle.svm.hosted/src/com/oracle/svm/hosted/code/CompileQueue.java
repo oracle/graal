@@ -109,7 +109,7 @@ import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.GraphOrder;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.SnippetTemplate;
-import org.graalvm.compiler.replacements.nodes.MacroNode;
+import org.graalvm.compiler.replacements.nodes.MacroInvokable;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 import org.graalvm.compiler.virtual.phases.ea.ReadEliminationPhase;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -949,13 +949,13 @@ public class CompileQueue {
                     ensureParsed(method, reason, targetNode, (HostedMethod) targetNode.targetMethod(), targetNode.invokeKind().isIndirect() || targetNode instanceof IndirectCallTargetNode);
                 }
                 for (Node n : graph.getNodes()) {
-                    if (n instanceof MacroNode) {
+                    if (n instanceof MacroInvokable) {
                         /*
-                         * A MacroNode might be lowered back to a regular invoke. At this point we
-                         * do not know if that happens, but we need to prepared and have the graph
-                         * of the potential callee parsed as if the MacroNode was an Invoke.
+                         * A MacroInvokable might be lowered back to a regular invoke. At this point
+                         * we do not know if that happens, but we need to prepared and have the
+                         * graph of the potential callee parsed as if the MacroNode was an Invoke.
                          */
-                        MacroNode macroNode = (MacroNode) n;
+                        MacroInvokable macroNode = (MacroInvokable) n;
                         ensureParsed(method, reason, null, (HostedMethod) macroNode.getTargetMethod(), macroNode.getInvokeKind().isIndirect());
                     }
                 }
@@ -1177,7 +1177,7 @@ public class CompileQueue {
             SubstrateBackend backend = config.lookupBackend(method);
 
             StructuredGraph graph = method.compilationInfo.graph;
-            assert graph != null : method;
+            VMError.guarantee(graph != null, "The following method is reachable during compilation, but was not seen during Bytecode parsing: " + method);
             /* Operate on a copy, to keep the original graph intact for later inlining. */
             graph = graph.copyWithIdentifier(compilationIdentifier, debug);
 

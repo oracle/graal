@@ -227,7 +227,6 @@ import com.oracle.svm.hosted.ameta.AnalysisConstantFieldProvider;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.analysis.SVMAnalysisMetaAccess;
-import com.oracle.svm.hosted.analysis.flow.SVMMethodTypeFlowBuilder;
 import com.oracle.svm.hosted.annotation.AnnotationSupport;
 import com.oracle.svm.hosted.c.CAnnotationProcessorCache;
 import com.oracle.svm.hosted.c.CConstantValueSupportImpl;
@@ -1027,7 +1026,7 @@ public class NativeImageGenerator {
             registerReplacements(debug, featureHandler, null, aProviders, aProviders.getSnippetReflection(), true, initForeignCalls);
 
             for (StructuredGraph graph : aReplacements.getSnippetGraphs(GraalOptions.TrackNodeSourcePosition.getValue(options), options)) {
-                new SVMMethodTypeFlowBuilder(bigbang, graph).registerUsedElements(false);
+                HostedConfiguration.instance().createMethodTypeFlowBuilder(bigbang, graph).registerUsedElements(false);
             }
         }
     }

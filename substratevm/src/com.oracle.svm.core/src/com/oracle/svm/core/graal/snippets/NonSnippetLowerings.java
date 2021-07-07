@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 
+import com.oracle.svm.core.util.VMError;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
@@ -172,7 +173,8 @@ public abstract class NonSnippetLowerings {
             }
             outArguments.addAll(exceptionArguments);
         }
-        assert descriptor != null && descriptor.getArgumentTypes().length == outArguments.size();
+        VMError.guarantee(descriptor != null, "No ForeignCallDescriptor for ByteCodeExceptionKind " + exceptionKind);
+        assert descriptor.getArgumentTypes().length == outArguments.size();
         return descriptor;
     }
 

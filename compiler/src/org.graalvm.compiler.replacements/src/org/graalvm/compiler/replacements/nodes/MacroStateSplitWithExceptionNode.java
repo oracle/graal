@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,23 +33,31 @@ import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeInputList;
+import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.FixedNode;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.Invoke;
-import org.graalvm.compiler.nodes.InvokeNode;
+import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
+import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
+import org.graalvm.compiler.replacements.nodes.MacroNode.MacroParams;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
+ * This duplicates a {@link MacroStateSplitNode} using {@link WithExceptionNode} as a base class.
+ *
+ * See the documentation of {@link MacroInvokable} for more information.
+ *
  * @see MacroInvokable
+ * @see MacroStateSplitNode
  */
 //@formatter:off
 @NodeInfo(cycles = CYCLES_UNKNOWN,
@@ -57,10 +65,11 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
           size = SIZE_UNKNOWN,
           sizeRationale = "If this node is not optimized away it will be lowered to a call, which we cannot estimate")
 //@formatter:on
-public abstract class MacroNode extends FixedWithNextNode implements MacroInvokable {
+public abstract class MacroStateSplitWithExceptionNode extends WithExceptionNode implements MacroInvokable, StateSplit, SingleMemoryKill {
 
-    public static final NodeClass<MacroNode> TYPE = NodeClass.create(MacroNode.class);
+    public static final NodeClass<MacroStateSplitWithExceptionNode> TYPE = NodeClass.create(MacroStateSplitWithExceptionNode.class);
     @Input protected NodeInputList<ValueNode> arguments;
+    @OptionalInput(InputType.State) protected FrameState stateAfter;
 
     protected final int bci;
     protected final ResolvedJavaMethod callerMethod;
@@ -68,52 +77,7 @@ public abstract class MacroNode extends FixedWithNextNode implements MacroInvoka
     protected final InvokeKind invokeKind;
     protected final StampPair returnStamp;
 
-    /**
-     * Encapsulates the parameters for constructing a {@link MacroNode} that are the same for all
-     * leaf constructor call sites. Collecting the parameters in an object simplifies passing the
-     * parameters through the many chained constructor calls.
-     */
-    public static class MacroParams {
-        public final InvokeKind invokeKind;
-        public final ResolvedJavaMethod callerMethod;
-        public final ResolvedJavaMethod targetMethod;
-        public final int bci;
-        public final StampPair returnStamp;
-        public final ValueNode[] arguments;
-
-        public MacroParams(InvokeKind invokeKind,
-                        ResolvedJavaMethod callerMethod,
-                        ResolvedJavaMethod targetMethod,
-                        int bci,
-                        StampPair returnStamp,
-                        ValueNode... arguments) {
-            this.invokeKind = invokeKind;
-            this.callerMethod = callerMethod;
-            this.targetMethod = targetMethod;
-            this.bci = bci;
-            this.returnStamp = returnStamp;
-            this.arguments = arguments;
-        }
-
-        public static MacroParams of(GraphBuilderContext b, ResolvedJavaMethod targetMethod, ValueNode... arguments) {
-            return new MacroParams(b.getInvokeKind(), b.getMethod(), targetMethod, b.bci(), b.getInvokeReturnStamp(b.getAssumptions()), arguments);
-        }
-
-        public static MacroParams of(GraphBuilderContext b, InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode... arguments) {
-            return new MacroParams(invokeKind, b.getMethod(), targetMethod, b.bci(), b.getInvokeReturnStamp(b.getAssumptions()), arguments);
-        }
-
-        public static MacroParams of(InvokeKind invokeKind,
-                        ResolvedJavaMethod callerMethod,
-                        ResolvedJavaMethod targetMethod,
-                        int bci,
-                        StampPair returnStamp,
-                        ValueNode... arguments) {
-            return new MacroParams(invokeKind, callerMethod, targetMethod, bci, returnStamp, arguments);
-        }
-    }
-
-    protected MacroNode(NodeClass<? extends MacroNode> c, MacroParams p) {
+    protected MacroStateSplitWithExceptionNode(NodeClass<? extends MacroStateSplitWithExceptionNode> c, MacroParams p) {
         super(c, p.returnStamp != null ? p.returnStamp.getTrustedStamp() : null);
         this.arguments = new NodeInputList<>(this, p.arguments);
         this.bci = p.bci;
@@ -135,10 +99,6 @@ public abstract class MacroNode extends FixedWithNextNode implements MacroInvoka
         return arguments;
     }
 
-    public ValueNode[] toArgumentArray() {
-        return arguments.toArray(new ValueNode[0]);
-    }
-
     @Override
     public int bci() {
         return bci;
@@ -152,10 +112,6 @@ public abstract class MacroNode extends FixedWithNextNode implements MacroInvoka
     @Override
     public InvokeKind getInvokeKind() {
         return invokeKind;
-    }
-
-    protected FrameState stateAfter() {
-        return null;
     }
 
     @Override
@@ -172,8 +128,8 @@ public abstract class MacroNode extends FixedWithNextNode implements MacroInvoka
     @SuppressWarnings("try")
     public Invoke replaceWithInvoke() {
         try (DebugCloseable context = withNodeSourcePosition()) {
-            InvokeNode invoke = createInvoke();
-            graph().replaceFixedWithFixed(this, invoke);
+            InvokeWithExceptionNode invoke = createInvoke();
+            graph().replaceWithExceptionSplit(this, invoke);
             return invoke;
         }
     }
@@ -182,15 +138,50 @@ public abstract class MacroNode extends FixedWithNextNode implements MacroInvoka
         return LocationIdentity.any();
     }
 
-    protected InvokeNode createInvoke() {
-        MethodCallTargetNode callTarget = graph().add(new MethodCallTargetNode(invokeKind, targetMethod, getArguments().toArray(new ValueNode[0]), returnStamp, null));
-        InvokeNode invoke = graph().add(new InvokeNode(callTarget, bci, getLocationIdentity()));
+    protected InvokeWithExceptionNode createInvoke() {
+        return createInvoke(this);
+    }
+
+    /**
+     * Creates an invoke for the {@link #getTargetMethod()} associated with this node. The exception
+     * edge of the result is not set by this function. This node is not modified.
+     *
+     * @param oldResult represents the result of this node in the {@link #stateAfter()}. Usually, it
+     *            is {@code this}, but if this node has already been replaced it might be a
+     *            different one.
+     */
+    public InvokeWithExceptionNode createInvoke(Node oldResult) {
+        MethodCallTargetNode callTarget = graph().add(new MethodCallTargetNode(invokeKind, targetMethod, getArguments().toArray(new ValueNode[arguments.size()]), returnStamp, null));
+        InvokeWithExceptionNode invoke = graph().add(new InvokeWithExceptionNode(callTarget, null, bci));
         if (stateAfter() != null) {
             invoke.setStateAfter(stateAfter().duplicate());
             if (getStackKind() != JavaKind.Void) {
-                invoke.stateAfter().replaceFirstInput(this, invoke);
+                invoke.stateAfter().replaceFirstInput(oldResult, invoke);
             }
         }
         return invoke;
     }
+
+    @Override
+    public FrameState stateAfter() {
+        return stateAfter;
+    }
+
+    @Override
+    public void setStateAfter(FrameState x) {
+        assert x == null || x.isAlive() : "frame state must be in a graph";
+        updateUsages(stateAfter, x);
+        stateAfter = x;
+    }
+
+    @Override
+    public boolean hasSideEffect() {
+        return true;
+    }
+
+    @Override
+    public LocationIdentity getKilledLocationIdentity() {
+        return LocationIdentity.any();
+    }
+
 }

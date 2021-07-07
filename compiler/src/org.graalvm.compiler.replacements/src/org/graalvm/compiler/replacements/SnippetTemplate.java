@@ -101,6 +101,7 @@ import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.InliningLog;
+import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
@@ -169,7 +170,9 @@ import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.nodes.CStringConstant;
 import org.graalvm.compiler.replacements.nodes.ExplodeLoopNode;
+import org.graalvm.compiler.replacements.nodes.FallbackInvokeWithExceptionNode;
 import org.graalvm.compiler.replacements.nodes.LoadSnippetVarargParameterNode;
+import org.graalvm.compiler.replacements.nodes.MacroStateSplitWithExceptionNode;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 import org.graalvm.util.CollectionsUtil;
 import org.graalvm.word.LocationIdentity;
@@ -867,6 +870,15 @@ public class SnippetTemplate {
                 unwindPath.setNext(snippetCopy.add(new UnreachableControlSinkNode()));
             }
 
+            List<FallbackInvokeWithExceptionNode> fallbackInvokes = snippetCopy.getNodes().filter(FallbackInvokeWithExceptionNode.class).snapshot();
+            if (fallbackInvokes.size() == 0) {
+                fallbackInvoke = null;
+            } else if (fallbackInvokes.size() > 1) {
+                throw GraalError.shouldNotReachHere("Graph has more than one " + FallbackInvokeWithExceptionNode.class.getSimpleName());
+            } else {
+                fallbackInvoke = fallbackInvokes.get(0);
+            }
+
             CanonicalizerPhase canonicalizer;
             if (GraalOptions.ImmutableCode.getValue(snippetCopy.getOptions())) {
                 canonicalizer = CanonicalizerPhase.createWithoutReadCanonicalization();
@@ -1233,6 +1245,11 @@ public class SnippetTemplate {
      * the snippet does not have an exception handler path.
      */
     private final FixedWithNextNode unwindPath;
+
+    /**
+     * The fallback invoke (if any) of the snippet.
+     */
+    private final FallbackInvokeWithExceptionNode fallbackInvoke;
 
     /**
      * The memory anchor (if any) of the snippet.
@@ -1684,6 +1701,17 @@ public class SnippetTemplate {
                     oldExceptionNode.setExceptionEdge(null);
                     newExceptionNode.setExceptionEdge(exceptionEdge);
                 }
+            }
+
+            if (fallbackInvoke != null) {
+                GraalError.guarantee(replacee instanceof MacroStateSplitWithExceptionNode, "%s can only be used in snippets replacing %s", FallbackInvokeWithExceptionNode.class.getSimpleName(),
+                                MacroStateSplitWithExceptionNode.class.getSimpleName());
+                WithExceptionNode fallbackInvokeNode = (WithExceptionNode) duplicates.get(fallbackInvoke);
+                MacroStateSplitWithExceptionNode macroNode = (MacroStateSplitWithExceptionNode) replacee;
+                // create fallback invoke
+                InvokeWithExceptionNode invoke = macroNode.createInvoke(returnValue);
+                // replace placeholder
+                replaceeGraph.replaceWithExceptionSplit(fallbackInvokeNode, invoke);
             }
 
             if (killReplacee) {

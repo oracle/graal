@@ -47,6 +47,7 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.hosted.HostedConfiguration;
 import org.graalvm.compiler.core.common.SuppressSVMWarnings;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.options.OptionValues;
@@ -78,7 +79,6 @@ import com.oracle.svm.core.hub.GenericInfo;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.SVMHost;
-import com.oracle.svm.hosted.analysis.flow.SVMMethodTypeFlowBuilder;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 
@@ -115,7 +115,7 @@ public class Inflation extends BigBang {
 
     @Override
     public MethodTypeFlowBuilder createMethodTypeFlowBuilder(BigBang bb, MethodTypeFlow methodFlow) {
-        return new SVMMethodTypeFlowBuilder(bb, methodFlow);
+        return HostedConfiguration.instance().createMethodTypeFlowBuilder(bb, methodFlow);
     }
 
     @Override
