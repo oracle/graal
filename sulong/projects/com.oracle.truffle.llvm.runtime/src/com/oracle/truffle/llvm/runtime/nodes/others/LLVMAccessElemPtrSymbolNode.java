@@ -41,12 +41,6 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMGetElementPtrNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-/**
- * Returns the value of a given symbol for the current context. This node behaves differently for
- * single context and multi context mode: In single context mode, the cached context will resolve to
- * a constant, which is very efficient, but in multi context mode, it's more efficient to get the
- * context from the {@link LLVMStack} stored in the frame.
- */
 public abstract class LLVMAccessElemPtrSymbolNode extends LLVMExpressionNode {
 
     protected final LLVMElemPtrSymbol elemPtrSymbol;
