@@ -65,12 +65,14 @@ public class VMFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         if (SubstrateOptions.DumpTargetInfo.getValue()) {
-            System.out.println("# Building image for target platform: " + ImageSingletons.lookup(Platform.class).getClass().getName());
-            if (ImageSingletons.contains(CCompilerInvoker.class)) {
-                System.out.println("# Using native toolchain:");
-                ImageSingletons.lookup(CCompilerInvoker.class).compilerInfo.dump(x -> System.out.println("#   " + x));
-            }
-            System.out.println("# Using CLibrary: " + ImageSingletons.lookup(LibCBase.class).getClass().getName());
+            ReportUtils.report("compilation-target information", SubstrateOptions.reportsPath(), "target_info", "txt", out -> {
+                out.println("Building image for target platform: " + ImageSingletons.lookup(Platform.class).getClass().getName());
+                if (ImageSingletons.contains(CCompilerInvoker.class)) {
+                    out.println("Using native toolchain:");
+                    ImageSingletons.lookup(CCompilerInvoker.class).compilerInfo.dump(x -> out.println("   " + x));
+                }
+                out.println("Using CLibrary: " + ImageSingletons.lookup(LibCBase.class).getClass().getName());
+            });
         }
 
         FeatureImpl.BeforeAnalysisAccessImpl access = (FeatureImpl.BeforeAnalysisAccessImpl) a;
@@ -94,9 +96,11 @@ public class VMFeature implements Feature {
         }
 
         if (SubstrateOptions.DumpTargetInfo.getValue()) {
-            System.out.println("# Static libraries:");
-            nativeLibraries.getStaticLibraries().stream().map(ReportUtils::getCWDRelativePath).map(Path::toString).forEach(x -> System.out.println("#   " + x));
-            System.out.println("# Other libraries: " + String.join(",", nativeLibraries.getLibraries()));
+            ReportUtils.report("native-library information", SubstrateOptions.reportsPath(), "native_library_info", "txt", out -> {
+                out.println("Static libraries:");
+                nativeLibraries.getStaticLibraries().stream().map(ReportUtils::getCWDRelativePath).map(Path::toString).forEach(x -> out.println("   " + x));
+                out.println("Other libraries: " + String.join(",", nativeLibraries.getLibraries()));
+            });
         }
 
         CGlobalData<PointerBase> isStaticBinaryMarker = CGlobalDataFactory.createWord(WordFactory.unsigned(SubstrateOptions.StaticExecutable.getValue() ? 1 : 0), STATIC_BINARY_MARKER_SYMBOL_NAME);

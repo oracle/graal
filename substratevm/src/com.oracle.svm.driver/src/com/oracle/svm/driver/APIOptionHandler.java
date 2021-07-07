@@ -258,6 +258,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     @Override
     boolean consume(ArgumentQueue args) {
         String headArg = args.peek();
+
         String translatedOption = translateOption(headArg);
         if (translatedOption != null) {
             args.poll();

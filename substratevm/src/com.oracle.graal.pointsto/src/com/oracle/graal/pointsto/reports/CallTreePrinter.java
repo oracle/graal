@@ -31,7 +31,6 @@ import static com.oracle.graal.pointsto.reports.ReportUtils.LAST_CHILD;
 import static com.oracle.graal.pointsto.reports.ReportUtils.invokeComparator;
 import static com.oracle.graal.pointsto.reports.ReportUtils.methodComparator;
 
-import java.io.File;
 import java.io.PrintWriter;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -54,17 +53,17 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public final class CallTreePrinter {
 
-    public static void print(BigBang bigbang, String path, String reportName) {
+    public static void print(BigBang bigbang, String reportsPath, String reportName) {
         CallTreePrinter printer = new CallTreePrinter(bigbang);
         printer.buildCallTree();
 
-        ReportUtils.report("call tree", path + File.separatorChar + "reports", "call_tree_" + reportName, "txt",
-                        writer -> printer.printMethods(writer));
-        ReportUtils.report("list of used methods", path + File.separatorChar + "reports", "used_methods_" + reportName, "txt",
-                        writer -> printer.printUsedMethods(writer));
-        ReportUtils.report("list of used classes", path + File.separatorChar + "reports", "used_classes_" + reportName, "txt",
+        ReportUtils.report("call tree", reportsPath, "call_tree_" + reportName, "txt",
+                        printer::printMethods);
+        ReportUtils.report("list of used methods", reportsPath, "used_methods_" + reportName, "txt",
+                        printer::printUsedMethods);
+        ReportUtils.report("list of used classes", reportsPath, "used_classes_" + reportName, "txt",
                         writer -> printer.printClasses(writer, false));
-        ReportUtils.report("list of used packages", path + File.separatorChar + "reports", "used_packages_" + reportName, "txt",
+        ReportUtils.report("list of used packages", reportsPath, "used_packages_" + reportName, "txt",
                         writer -> printer.printClasses(writer, true));
     }
 

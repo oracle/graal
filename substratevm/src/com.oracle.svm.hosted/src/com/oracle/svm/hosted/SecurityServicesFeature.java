@@ -813,7 +813,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
         private int indent = 0;
 
         SecurityServicesPrinter() {
-            File reportFile = reportFile();
+            File reportFile = reportFile(SubstrateOptions.reportsPath());
             // Checkstyle: stop
             System.out.println("# Printing security services automatic registration to: " + reportFile);
             // Checkstyle: resume
@@ -852,8 +852,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
             }
         }
 
-        private static File reportFile() {
-            String reportsPath = SubstrateOptions.Path.getValue() + File.separatorChar + "reports";
+        private static File reportFile(String reportsPath) {
             return ReportUtils.reportFile(reportsPath, "security_services", "txt");
         }
     }
