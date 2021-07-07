@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,7 +59,7 @@ import com.oracle.truffle.api.nodes.Node;
 
 import sun.misc.Unsafe;
 
-public class UnsafeWasmMemory extends WasmMemory implements AutoCloseable {
+public final class UnsafeWasmMemory extends WasmMemory implements AutoCloseable {
     /**
      * @see #declaredMinSize()
      */
