@@ -40,6 +40,16 @@
  */
 package org.graalvm.wasm.api;
 
+import static org.graalvm.wasm.api.ImportExportKind.function;
+import static org.graalvm.wasm.api.ImportExportKind.global;
+import static org.graalvm.wasm.api.ImportExportKind.memory;
+import static org.graalvm.wasm.api.ImportExportKind.table;
+
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Objects;
+
 import org.graalvm.wasm.ImportDescriptor;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmCustomSection;
@@ -50,15 +60,7 @@ import org.graalvm.wasm.constants.ImportIdentifier;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Objects;
-
-import static org.graalvm.wasm.api.ImportExportKind.function;
-import static org.graalvm.wasm.api.ImportExportKind.global;
-import static org.graalvm.wasm.api.ImportExportKind.memory;
-import static org.graalvm.wasm.api.ImportExportKind.table;
+import com.oracle.truffle.api.CompilerDirectives;
 
 public class Module extends Dictionary {
     private final WasmModule module;
@@ -88,6 +90,7 @@ public class Module extends Dictionary {
                 String valueType = ValueType.fromByteValue(module.globalValueType(globalIndex)).toString();
                 list.add(new ModuleExportDescriptor(name, global.name(), valueType));
             } else {
+                CompilerDirectives.transferToInterpreter();
                 throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Exported symbol list does not match the actual exports.");
             }
         }
@@ -107,6 +110,7 @@ public class Module extends Dictionary {
                     if (Objects.equals(module.importedTable(), descriptor)) {
                         list.add(new ModuleImportDescriptor(descriptor.moduleName, descriptor.memberName, table.name(), null));
                     } else {
+                        CompilerDirectives.transferToInterpreter();
                         throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Table import inconsistent.");
                     }
                     break;
@@ -114,6 +118,7 @@ public class Module extends Dictionary {
                     if (Objects.equals(module.importedMemory(), descriptor)) {
                         list.add(new ModuleImportDescriptor(descriptor.moduleName, descriptor.memberName, memory.name(), null));
                     } else {
+                        CompilerDirectives.transferToInterpreter();
                         throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Memory import inconsistent.");
                     }
                     break;
@@ -123,6 +128,7 @@ public class Module extends Dictionary {
                     list.add(new ModuleImportDescriptor(descriptor.moduleName, descriptor.memberName, global.name(), valueType));
                     break;
                 default:
+                    CompilerDirectives.transferToInterpreter();
                     throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Unknown import descriptor type: " + descriptor.identifier);
             }
         }

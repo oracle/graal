@@ -43,6 +43,8 @@ package org.graalvm.wasm;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 
+import com.oracle.truffle.api.CompilerDirectives;
+
 public class ReferenceTypes {
     public static final byte FUNCREF = 0x70;
 
@@ -51,6 +53,7 @@ public class ReferenceTypes {
             case FUNCREF:
                 return "funcref";
             default:
+                CompilerDirectives.transferToInterpreter();
                 throw WasmException.create(Failure.UNSPECIFIED_INVALID, "Unknown value type: 0x" + Integer.toHexString(valueType));
         }
     }

@@ -40,21 +40,24 @@
  */
 package org.graalvm.wasm.memory;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.nodes.Node;
-import org.graalvm.wasm.constants.Sizes;
-import org.graalvm.wasm.exception.Failure;
-import org.graalvm.wasm.exception.WasmException;
-import sun.misc.Unsafe;
-
-import java.lang.reflect.Field;
-
 import static java.lang.Integer.compareUnsigned;
 import static java.lang.StrictMath.addExact;
 import static java.lang.StrictMath.multiplyExact;
 import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_DECLARATION_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_INSTANCE_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MEMORY_PAGE_SIZE;
+
+import java.lang.reflect.Field;
+
+import org.graalvm.wasm.constants.Sizes;
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
+
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.nodes.Node;
+
+import sun.misc.Unsafe;
 
 public class UnsafeWasmMemory extends WasmMemory implements AutoCloseable {
     /**
@@ -105,6 +108,7 @@ public class UnsafeWasmMemory extends WasmMemory implements AutoCloseable {
         try {
             this.startAddress = unsafe.allocateMemory(byteSize);
         } catch (OutOfMemoryError error) {
+            CompilerDirectives.transferToInterpreter();
             throw WasmException.create(Failure.MEMORY_ALLOCATION_FAILED);
         }
         unsafe.setMemory(startAddress, byteSize, (byte) 0);
@@ -116,6 +120,7 @@ public class UnsafeWasmMemory extends WasmMemory implements AutoCloseable {
 
     public void validateAddress(Node node, int address, int offset) {
         if (address < 0 || address + offset > this.byteSize()) {
+            CompilerDirectives.transferToInterpreter();
             throw trapOutOfBounds(node, address, offset);
         }
     }
