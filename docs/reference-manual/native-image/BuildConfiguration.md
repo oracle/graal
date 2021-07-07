@@ -10,6 +10,9 @@ permalink: /reference-manual/native-image/BuildConfiguration/
 * [Configuration File Format](#configuration-file-format)
 * [Memory Configuration for Native Image Build](#memory-configuration-for-native-image-build)
 * [Runtime vs Build-Time Initialization](#runtime-vs-build-time-initialization)
+* [Assisted Configuration of Native Image Builds](Agent.md#assisted-configuration-of-native-image-builds)
+* [Building Native Image with Java Reflection Example](Agent.md#building-native-image-with-java-reflection-example)
+* [Agent Advanced Usage](Agent.md#agent-advanced-usage)
 
 Native Image supports a wide range of options to configure a native image build process.
 
