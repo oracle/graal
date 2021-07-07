@@ -48,6 +48,7 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.impl.ParserKlass;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -310,112 +311,114 @@ public final class Target_sun_misc_Unsafe {
 
     // region compareAndExchange*
 
-    /*
-     * Java 8 does not have these instrctions in Unsafe. Implement them by ourselves.
-     */
-
-    private static StaticObject doStaticObjectCompareExchange(StaticObject holder, Field f, StaticObject before, StaticObject after) {
-        StaticObject result;
-        do {
-            result = f.getObject(holder, true);
-            if (result != before) {
-                return result;
-            }
-        } while (!f.compareAndSwapObject(holder, before, after));
-        return before;
-    }
-
-    private static StaticObject doCompareExchange(Meta meta, Object holder, long offset, StaticObject before, StaticObject after) {
-        Unsafe unsafe = UnsafeAccess.getIfAllowed(meta);
-        Object result;
-        do {
-            result = unsafe.getObjectVolatile(holder, offset);
-            if (result != before) {
-                return (StaticObject) result;
-            }
-        } while (!unsafe.compareAndSwapObject(holder, offset, before, after));
-        return before;
-    }
-
-    @Substitution(hasReceiver = true, nameProvider = UnsafeObjectToReference.class)
+    @Substitution(hasReceiver = true, nameProvider = SharedUnsafeObjectAccessToReference.class)
     public static @Host(Object.class) StaticObject compareAndExchangeObject(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset,
-                    @Host(Object.class) StaticObject before, @Host(Object.class) StaticObject after, @InjectMeta Meta meta) {
+                    @Host(Object.class) StaticObject before,
+                    @Host(Object.class) StaticObject after,
+                    @InjectMeta Meta meta) {
         if (isNullOrArray(holder)) {
-            return doCompareExchange(meta, unwrapNullOrArray(holder), offset, before, after);
+            UnsafeAccess.checkAllowed(meta);
+            return (StaticObject) UnsafeSupport.compareAndExchangeObject(unwrapNullOrArray(holder), offset, before, after);
         }
         // TODO(peterssen): Current workaround assumes it's a field access, offset <-> field index.
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        return doStaticObjectCompareExchange(holder, f, before, after);
-    }
-
-    private static int doStaticObjectCompareExchangeInt(StaticObject holder, Field f, int before, int after) {
-        int result;
-        do {
-            result = f.getInt(holder, true);
-            if (result != before) {
-                return result;
-            }
-        } while (!f.compareAndSwapInt(holder, before, after));
-        return before;
-    }
-
-    private static int doCompareExchangeInt(Meta meta, Object holder, long offset, int before, int after) {
-        Unsafe unsafe = UnsafeAccess.getIfAllowed(meta);
-        int result;
-        do {
-            result = unsafe.getIntVolatile(holder, offset);
-            if (result != before) {
-                return result;
-            }
-        } while (!unsafe.compareAndSwapInt(holder, offset, before, after));
-        return before;
+        if (f.getKind() != JavaKind.Object) {
+            throw EspressoError.shouldNotReachHere();
+        }
+        return f.compareAndExchangeObject(holder, before, after);
     }
 
     @Substitution(hasReceiver = true, nameProvider = Unsafe11.class)
     public static int compareAndExchangeInt(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, int before,
                     int after, @InjectMeta Meta meta) {
         if (isNullOrArray(holder)) {
-            return doCompareExchangeInt(meta, unwrapNullOrArray(holder), offset, before, after);
+            UnsafeAccess.checkAllowed(meta);
+            return UnsafeSupport.compareAndExchangeInt(unwrapNullOrArray(holder), offset, before, after);
         }
         // TODO(peterssen): Current workaround assumes it's a field access, offset <-> field index.
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        return doStaticObjectCompareExchangeInt(holder, f, before, after);
+        switch (f.getKind()) {
+            case Int:
+                return f.compareAndExchangeInt(holder, before, after);
+            case Float:
+                return Float.floatToRawIntBits(f.compareAndExchangeFloat(holder, Float.intBitsToFloat(before), Float.intBitsToFloat(after)));
+            default:
+                throw EspressoError.shouldNotReachHere();
+        }
     }
 
-    private static long doStaticObjectCompareExchangeLong(StaticObject holder, Field f, long before, long after) {
-        long result;
-        do {
-            result = f.getLong(holder, true);
-            if (result != before) {
-                return result;
-            }
-        } while (!f.compareAndSwapLong(holder, before, after));
-        return before;
+    /*
+     * The following three methods are there to enable atomic operations on sub-word fields, which
+     * would be impossible due to the safety checks in the static object model.
+     * 
+     * All sub-word CAE operations route to `compareAndExchangeInt` in Java code, which, if left
+     * as-is would access, for example, byte fields as ints, which is forbidden by the object model.
+     * 
+     * As a workaround, create a substitution for sub-words CAE operations (to which CAS are routed
+     * in Java code), and check the field kind to call the corresponding static property method.
+     */
+
+    @Substitution(hasReceiver = true)
+    public static byte compareAndExchangeByte(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset,
+                    byte before,
+                    byte after,
+                    @InjectMeta Meta meta) {
+        if (isNullOrArray(holder)) {
+            UnsafeAccess.checkAllowed(meta);
+            return UnsafeSupport.compareAndExchangeByte(unwrapNullOrArray(holder), offset, before, after);
+        }
+        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        assert f != null;
+        switch (f.getKind()) {
+            case Boolean:
+                return f.compareAndExchangeBoolean(holder, before != 0, after != 0) ? (byte) 1 : (byte) 0;
+            case Byte:
+                return f.compareAndExchangeByte(holder, before, after);
+            default:
+                throw EspressoError.shouldNotReachHere();
+        }
     }
 
-    private static long doCompareExchangeLong(Meta meta, Object holder, long offset, long before, long after) {
-        Unsafe unsafe = UnsafeAccess.getIfAllowed(meta);
-        long result;
-        do {
-            result = unsafe.getLongVolatile(holder, offset);
-            if (result != before) {
-                return result;
-            }
-        } while (!unsafe.compareAndSwapLong(holder, offset, before, after));
-        return before;
+    @Substitution(hasReceiver = true)
+    public static short compareAndExchangeShort(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset,
+                    short before,
+                    short after,
+                    @InjectMeta Meta meta) {
+        if (isNullOrArray(holder)) {
+            UnsafeAccess.checkAllowed(meta);
+            return UnsafeSupport.compareAndExchangeShort(unwrapNullOrArray(holder), offset, before, after);
+        }
+        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        assert f != null;
+        switch (f.getKind()) {
+            case Short:
+                return f.compareAndExchangeShort(holder, before, after);
+            case Char:
+                return (short) f.compareAndExchangeChar(holder, (char) before, (char) after);
+            default:
+                throw EspressoError.shouldNotReachHere();
+        }
     }
 
     @Substitution(hasReceiver = true, nameProvider = Unsafe11.class)
     public static long compareAndExchangeLong(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, long before,
                     long after, @InjectMeta Meta meta) {
         if (isNullOrArray(holder)) {
-            return doCompareExchangeLong(meta, unwrapNullOrArray(holder), offset, before, after);
+            UnsafeAccess.checkAllowed(meta);
+            return UnsafeSupport.compareAndExchangeLong(unwrapNullOrArray(holder), offset, before, after);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        return doStaticObjectCompareExchangeLong(holder, f, before, after);
+        switch (f.getKind()) {
+            case Long:
+                return f.compareAndExchangeLong(holder, before, after);
+            case Double:
+                return Double.doubleToRawLongBits(f.compareAndExchangeDouble(holder, Double.longBitsToDouble(before), Double.longBitsToDouble(after)));
+            default:
+                throw EspressoError.shouldNotReachHere();
+        }
     }
 
     // endregion compareAndExchange*
@@ -1526,19 +1529,6 @@ public final class Target_sun_misc_Unsafe {
         @Override
         public String[] substitutionClassNames() {
             return NAMES;
-        }
-    }
-
-    public static class UnsafeObjectToReference extends Unsafe11 {
-        public static SubstitutionNamesProvider INSTANCE = new UnsafeObjectToReference();
-
-        @Override
-        public String[] getMethodNames(String name) {
-            String[] res = super.getMethodNames(name);
-            for (int i = 0; i < res.length; i++) {
-                res[i] = res[i].replace("Object", "Reference");
-            }
-            return res;
         }
     }
 }
