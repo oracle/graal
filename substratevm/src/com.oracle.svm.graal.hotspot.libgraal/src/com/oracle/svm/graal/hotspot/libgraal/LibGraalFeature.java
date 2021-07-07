@@ -713,9 +713,17 @@ final class Target_org_graalvm_compiler_hotspot_management_libgraal_MBeanProxy {
 
 @TargetClass(className = "org.graalvm.compiler.hotspot.HotSpotGraalOptionValues", onlyWith = LibGraalFeature.IsEnabled.class)
 final class Target_org_graalvm_compiler_hotspot_HotSpotGraalOptionValues {
-
     @Substitute
     private static OptionValues initializeOptions() {
+        return HotSpotGraalOptionValuesUtil.initializeOptions();
+    }
+}
+
+final class HotSpotGraalOptionValuesUtil {
+    private static final String LIBGRAAL_PREFIX = "libgraal.";
+    private static final String LIBGRAAL_XOPTION_PREFIX = "libgraal.X";
+
+    static OptionValues initializeOptions() {
         // Parse "graal." options.
         RuntimeOptionValues options = RuntimeOptionValues.singleton();
         options.update(HotSpotGraalOptionValues.parseOptions());
@@ -733,16 +741,16 @@ final class Target_org_graalvm_compiler_hotspot_HotSpotGraalOptionValues {
         EconomicMap<String, String> optionSettings = EconomicMap.create();
         for (Map.Entry<String, String> e : savedProps.entrySet()) {
             String name = e.getKey();
-            if (name.startsWith("libgraal.")) {
-                if (name.startsWith("libgraal.X")) {
-                    String xarg = name.substring("libgraal.X.".length()) + e.getValue();
+            if (name.startsWith(LIBGRAAL_PREFIX)) {
+                if (name.startsWith(LIBGRAAL_XOPTION_PREFIX)) {
+                    String xarg = removePrefix(name, LIBGRAAL_XOPTION_PREFIX) + e.getValue();
                     if (XOptions.setOption(xarg)) {
                         continue;
                     }
                 }
 
                 String value = e.getValue();
-                optionSettings.put(name.substring("libgraal.".length()), value);
+                optionSettings.put(removePrefix(name, LIBGRAAL_PREFIX), value);
             }
         }
         if (!optionSettings.isEmpty()) {
@@ -752,6 +760,11 @@ final class Target_org_graalvm_compiler_hotspot_HotSpotGraalOptionValues {
             options.update(values);
         }
         return options;
+    }
+
+    private static String removePrefix(String value, String prefix) {
+        assert value.startsWith(prefix);
+        return value.substring(prefix.length());
     }
 }
 
