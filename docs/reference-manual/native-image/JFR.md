@@ -41,10 +41,6 @@ For example:
 
 ## Configure the Recording
 
-Options for -XX:StartFlightRecording
-
-The `StartFlightRecording` flag can optionally be passed a comma separated list of key-value pairs to further configure the recording.
-
 You can pass a comma-separated list of key-value pairs to the `-XX:StartFlightRecording` option to further configure the recording.
 For example:
 ```shell
