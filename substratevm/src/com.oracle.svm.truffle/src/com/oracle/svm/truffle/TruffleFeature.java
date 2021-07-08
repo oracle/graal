@@ -1011,13 +1011,18 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
     }
 
     private static final class StaticObjectSupport {
-        private static final Map<Class<?>, ClassLoader> CLASS_LOADERS = new ConcurrentHashMap<>();
-        private static final Constructor<?> GENERATOR_CLASS_LOADER_CONSTRUCTOR = ReflectionUtil.lookupConstructor(loadClass("com.oracle.truffle.api.staticobject.GeneratorClassLoader"), Class.class);
+        private static final Class<?> GENERATOR_CLASS_LOADER_CLASS = loadClass("com.oracle.truffle.api.staticobject.GeneratorClassLoader");
+        private static final Constructor<?> GENERATOR_CLASS_LOADER_CONSTRUCTOR = ReflectionUtil.lookupConstructor(GENERATOR_CLASS_LOADER_CLASS, Class.class);
+
         private static final Class<?> SHAPE_GENERATOR_CLASS = loadClass("com.oracle.truffle.api.staticobject.ArrayBasedShapeGenerator");
+        private static final Method SHAPE_GENERATOR_METHOD = ReflectionUtil.lookupMethod(SHAPE_GENERATOR_CLASS, "getShapeGenerator", GENERATOR_CLASS_LOADER_CLASS, Class.class, Class.class, boolean.class);
         private static final Field SHAPE_GENERATOR_BAO_FIELD = ReflectionUtil.lookupField(SHAPE_GENERATOR_CLASS, "byteArrayOffset");
         private static final Field SHAPE_GENERATOR_OAO_FIELD = ReflectionUtil.lookupField(SHAPE_GENERATOR_CLASS, "objectArrayOffset");
         private static final Field SHAPE_GENERATOR_SO_FIELD = ReflectionUtil.lookupField(SHAPE_GENERATOR_CLASS, "shapeOffset");
+
         private static final Method VALIDATE_CLASSES_METHOD = ReflectionUtil.lookupMethod(StaticShape.Builder.class, "validateClasses", Class.class, Class.class);
+
+        private static final Map<Class<?>, ClassLoader> CLASS_LOADERS = new ConcurrentHashMap<>();
         private static BeforeAnalysisAccess access;
 
         static void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, Plugins plugins, ParsingReason reason) {
@@ -1080,10 +1085,9 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
             }
 
             ClassLoader generatorCL = getGeneratorClassLoader(factoryInterface);
-            Method generatorMethod = ReflectionUtil.lookupMethod(SHAPE_GENERATOR_CLASS, "getShapeGenerator", generatorCL.getClass(), Class.class, Class.class, boolean.class);
             Object generator;
             try {
-                generator = generatorMethod.invoke(null, generatorCL, storageSuperClass, factoryInterface, true);
+                generator = SHAPE_GENERATOR_METHOD.invoke(null, generatorCL, storageSuperClass, factoryInterface, true);
             } catch (ReflectiveOperationException e) {
                 throw VMError.shouldNotReachHere(e);
             }
