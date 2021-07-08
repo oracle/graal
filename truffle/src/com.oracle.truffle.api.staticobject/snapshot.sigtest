@@ -13,30 +13,45 @@ hfds id
 CLSS public abstract com.oracle.truffle.api.staticobject.StaticProperty
 cons protected init(com.oracle.truffle.api.staticobject.StaticPropertyKind,boolean)
 meth protected abstract java.lang.String getId()
+meth public final boolean compareAndExchangeBoolean(java.lang.Object,boolean,boolean)
+meth public final boolean compareAndSwapBoolean(java.lang.Object,boolean,boolean)
+meth public final boolean compareAndSwapByte(java.lang.Object,byte,byte)
+meth public final boolean compareAndSwapChar(java.lang.Object,char,char)
+meth public final boolean compareAndSwapDouble(java.lang.Object,double,double)
+meth public final boolean compareAndSwapFloat(java.lang.Object,float,float)
 meth public final boolean compareAndSwapInt(java.lang.Object,int,int)
 meth public final boolean compareAndSwapLong(java.lang.Object,long,long)
 meth public final boolean compareAndSwapObject(java.lang.Object,java.lang.Object,java.lang.Object)
+meth public final boolean compareAndSwapShort(java.lang.Object,short,short)
 meth public final boolean getBoolean(java.lang.Object)
 meth public final boolean getBooleanVolatile(java.lang.Object)
+meth public final byte compareAndExchangeByte(java.lang.Object,byte,byte)
 meth public final byte getByte(java.lang.Object)
 meth public final byte getByteVolatile(java.lang.Object)
+meth public final char compareAndExchangeChar(java.lang.Object,char,char)
 meth public final char getChar(java.lang.Object)
 meth public final char getCharVolatile(java.lang.Object)
+meth public final double compareAndExchangeDouble(java.lang.Object,double,double)
 meth public final double getDouble(java.lang.Object)
 meth public final double getDoubleVolatile(java.lang.Object)
+meth public final float compareAndExchangeFloat(java.lang.Object,float,float)
 meth public final float getFloat(java.lang.Object)
 meth public final float getFloatVolatile(java.lang.Object)
+meth public final int compareAndExchangeInt(java.lang.Object,int,int)
 meth public final int getAndAddInt(java.lang.Object,int)
 meth public final int getAndSetInt(java.lang.Object,int)
 meth public final int getInt(java.lang.Object)
 meth public final int getIntVolatile(java.lang.Object)
+meth public final java.lang.Object compareAndExchangeObject(java.lang.Object,java.lang.Object,java.lang.Object)
 meth public final java.lang.Object getAndSetObject(java.lang.Object,java.lang.Object)
 meth public final java.lang.Object getObject(java.lang.Object)
 meth public final java.lang.Object getObjectVolatile(java.lang.Object)
+meth public final long compareAndExchangeLong(java.lang.Object,long,long)
 meth public final long getAndAddLong(java.lang.Object,long)
 meth public final long getAndSetLong(java.lang.Object,long)
 meth public final long getLong(java.lang.Object)
 meth public final long getLongVolatile(java.lang.Object)
+meth public final short compareAndExchangeShort(java.lang.Object,short,short)
 meth public final short getShort(java.lang.Object)
 meth public final short getShortVolatile(java.lang.Object)
 meth public final void setBoolean(java.lang.Object,boolean)
@@ -59,6 +74,7 @@ meth public final void setShort(java.lang.Object,short)
 meth public final void setShortVolatile(java.lang.Object,short)
 supr java.lang.Object
 hfds STORE_AS_FINAL,UNSAFE,flags,offset,shape
+hcls CASSupport
 
 CLSS public final !enum com.oracle.truffle.api.staticobject.StaticPropertyKind
 fld public final static com.oracle.truffle.api.staticobject.StaticPropertyKind Boolean
@@ -81,7 +97,7 @@ meth public final {com.oracle.truffle.api.staticobject.StaticShape%0} getFactory
 meth public static com.oracle.truffle.api.staticobject.StaticShape$Builder newBuilder(com.oracle.truffle.api.TruffleLanguage<?>)
 supr java.lang.Object
 hfds UNSAFE,factory,safetyChecks,storageClass
-hcls PrivilegedToken,StorageStrategy
+hcls StorageStrategy
 
 CLSS public final static com.oracle.truffle.api.staticobject.StaticShape$Builder
  outer com.oracle.truffle.api.staticobject.StaticShape
