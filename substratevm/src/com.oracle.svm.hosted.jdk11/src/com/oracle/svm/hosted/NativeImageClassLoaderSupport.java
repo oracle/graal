@@ -248,6 +248,41 @@ public class NativeImageClassLoaderSupport extends AbstractNativeImageClassLoade
         return classLoader;
     }
 
+    private static ModuleFinder upgradeAndSystemModuleFinder;
+
+    /**
+     * Creates a finder from a module path specified by the {@code prop} system property.
+     */
+    private static ModuleFinder finderFor(String prop) {
+        String s = System.getProperty(prop);
+        if (s == null || s.isEmpty()) {
+            return null;
+        } else {
+            String[] dirs = s.split(File.pathSeparator);
+            Path[] paths = new Path[dirs.length];
+            int i = 0;
+            for (String dir : dirs) {
+                paths[i++] = Path.of(dir);
+            }
+            return ModuleFinder.of(paths);
+        }
+    }
+
+    /**
+     * Gets a finder that locates the upgrade modules and the system modules, in that order.
+     */
+    private static ModuleFinder getUpgradeAndSystemModuleFinder() {
+        if (upgradeAndSystemModuleFinder == null) {
+            ModuleFinder finder = ModuleFinder.ofSystem();
+            ModuleFinder upgradeModulePath = finderFor("jdk.module.upgrade.path");
+            if (upgradeModulePath != null) {
+                finder = ModuleFinder.compose(upgradeModulePath, finder);
+            }
+            upgradeAndSystemModuleFinder = finder;
+        }
+        return upgradeAndSystemModuleFinder;
+    }
+
     private class ClassInitWithModules extends ClassInit {
 
         ClassInitWithModules(ForkJoinPool executor, ImageClassLoader imageClassLoader) {
@@ -260,7 +295,7 @@ public class NativeImageClassLoaderSupport extends AbstractNativeImageClassLoade
                             "jdk.internal.vm.ci", "jdk.internal.vm.compiler", "com.oracle.graal.graal_enterprise",
                             "org.graalvm.sdk", "org.graalvm.truffle");
 
-            for (ModuleReference moduleReference : ModuleFinder.ofSystem().findAll()) {
+            for (ModuleReference moduleReference : getUpgradeAndSystemModuleFinder().findAll()) {
                 if (requiresInit.contains(moduleReference.descriptor().name())) {
                     initModule(moduleReference);
                 }
