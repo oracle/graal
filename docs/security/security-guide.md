@@ -109,6 +109,15 @@ This can either result in sensitive data ending up in the snapshot or fixing ini
 
 Developers can request static initializers that process sensitive information to be instead executed at runtime by either specifying the `--initialize-at-run-time` CLI parameter when building a native image, or making use of the `RuntimeClassInitialization` API.
 
+Native-image provides multiple ways to specify the certificate file used to
+define the default TrustStore. While the default behavior for native-image is
+to capture and use the default TrustStore from the buildtime host environment,
+this can be changed at runtime by setting the "javax.net.ssl.trustStore\*"
+system properties. Please see the
+[documentation](/reference-manual/native-image/CertificateManagement/) for more
+details.
+
+
 In addition, developers can run the native image builder in a dedicated environment, such as a container, that does not contain any sensitive information in the first place.
 
 ### Serialization in Native Image
