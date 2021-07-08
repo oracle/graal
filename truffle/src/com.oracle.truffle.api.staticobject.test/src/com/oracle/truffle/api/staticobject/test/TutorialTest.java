@@ -88,7 +88,7 @@ public class TutorialTest extends StaticObjectModelTest {
         }
     }
 
-    public interface MyStaticObjectInterface {
+    public interface MyStaticObjectFactory {
         MyStaticObject create(String arg1);
 
         MyStaticObject create(String arg1, Object arg2);
@@ -135,7 +135,7 @@ public class TutorialTest extends StaticObjectModelTest {
     @Theory
     public void extendingCustomBaseClasses(TestEnvironment te) {
         StaticProperty property = new DefaultStaticProperty("arg1", StaticPropertyKind.Object, false);
-        StaticShape<MyStaticObjectInterface> shape = StaticShape.newBuilder(te.testLanguage).property(property).build(MyStaticObject.class, MyStaticObjectInterface.class);
+        StaticShape<MyStaticObjectFactory> shape = StaticShape.newBuilder(te.testLanguage).property(property).build(MyStaticObject.class, MyStaticObjectFactory.class);
         MyStaticObject staticObject = shape.getFactory().create("arg1");
         property.setObject(staticObject, "42");
         assert staticObject.arg1.equals("arg1"); // fields of the custom super class are directly

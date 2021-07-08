@@ -130,7 +130,7 @@ public abstract class MyStaticObject {
 
 We need to declare the following factory interface:
 ```java
-public interface MyStaticObjectInterface {
+public interface MyStaticObjectFactory {
     MyStaticObject create(String arg1);
     MyStaticObject create(String arg1, Object arg2);
 }
@@ -140,7 +140,7 @@ Finally, this is how to allocate the custom static objects:
 ```java
 public void customStaticObject(TruffleLanguage<?> language) {
     StaticProperty property = new DefaultStaticProperty("arg1", StaticPropertyKind.Object, false);
-    StaticShape<MyStaticObjectInterface> shape = StaticShape.newBuilder(language).property(property).build(MyStaticObject.class, MyStaticObjectInterface.class);
+    StaticShape<MyStaticObjectFactory> shape = StaticShape.newBuilder(language).property(property).build(MyStaticObject.class, MyStaticObjectFactory.class);
     MyStaticObject staticObject = shape.getFactory().create("arg1");
     property.setObject(staticObject, "42");
     assert staticObject.arg1.equals("arg1"); // fields of the custom super class are directly accessible
