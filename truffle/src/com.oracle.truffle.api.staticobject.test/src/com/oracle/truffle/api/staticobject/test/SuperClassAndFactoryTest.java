@@ -90,7 +90,7 @@ public class SuperClassAndFactoryTest extends StaticObjectModelTest {
     public void wrongAbstractSuperClass(TestEnvironment te) {
         StaticShape.Builder b = StaticShape.newBuilder(te.testLanguage);
         try {
-            StaticShape<WrongAbstractFactoryInterface> shape = b.build(WrongAbstractStaticObject.class, WrongAbstractFactoryInterface.class);
+            b.build(WrongAbstractStaticObject.class, WrongAbstractFactoryInterface.class);
             Assert.fail();
         } catch (IllegalArgumentException e) {
             Assert.assertEquals("'com.oracle.truffle.api.staticobject.test.SuperClassAndFactoryTest$WrongAbstractStaticObject' has abstract methods", e.getMessage());
@@ -144,7 +144,7 @@ public class SuperClassAndFactoryTest extends StaticObjectModelTest {
         }
     }
 
-    public static abstract class WrongAbstractStaticObject {
+    public abstract static class WrongAbstractStaticObject {
         abstract void notImplemented();
     }
 

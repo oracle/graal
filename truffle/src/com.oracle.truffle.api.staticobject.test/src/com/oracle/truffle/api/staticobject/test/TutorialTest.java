@@ -74,7 +74,7 @@ public class TutorialTest extends StaticObjectModelTest {
         }
     }
 
-    public static abstract class MyStaticObject {
+    public abstract static class MyStaticObject {
         final String arg1;
         final Object arg2;
 

@@ -154,12 +154,12 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
     }
 
     // Invoked from TruffleFeature.StaticObjectSupport
-    void patchOffsets(int byteArrayOffset, int objectArrayOffset, int shapeOffset) {
+    void patchOffsets(int nativeByteArrayOffset, int nativeObjectArrayOffset, int nativeShapeOffset) {
         assert TruffleOptions.AOT;
         CompilerAsserts.neverPartOfCompilation();
-        this.byteArrayOffset = byteArrayOffset;
-        this.objectArrayOffset = objectArrayOffset;
-        this.shapeOffset = shapeOffset;
+        byteArrayOffset = nativeByteArrayOffset;
+        objectArrayOffset = nativeObjectArrayOffset;
+        shapeOffset = nativeShapeOffset;
     }
 
     private static String getStorageConstructorDescriptor(Constructor<?> superConstructor) {
