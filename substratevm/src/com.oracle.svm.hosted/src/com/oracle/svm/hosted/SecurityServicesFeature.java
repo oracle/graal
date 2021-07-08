@@ -57,6 +57,7 @@ import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
@@ -309,6 +310,17 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
             /* Resolve calls to com_sun_security_auth_module_UnixSystem* as builtIn. */
             PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("com_sun_security_auth_module_UnixSystem");
         }
+
+        if (isWindows()) {
+            access.registerReachabilityHandler(SecurityServicesFeature::registerSunMSCAPIConfig, clazz(access, "sun.security.mscapi.SunMSCAPI"));
+            // statically linking sunmscapi conflicts with sunEC
+            // after the removal of sunEC in jdk 16, we can statically link sunmscapi
+            if (JavaVersionUtil.JAVA_SPEC >= 16) {
+                access.registerReachabilityHandler(SecurityServicesFeature::linkSunMSCAPI, clazz(access, "sun.security.mscapi.SunMSCAPI"));
+                /* Resolve calls to sun_security_mscapi* as builtIn. */
+                PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_security_mscapi");
+            }
+        }
     }
 
     private void addManuallyConfiguredUsedProviders(DuringSetupAccess access) {
@@ -382,6 +394,52 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
             /* Library sunec depends on stdc++ */
             nativeLibraries.addDynamicNonJniLibrary("stdc++");
         }
+    }
+
+    private static void linkSunMSCAPI(DuringAnalysisAccess a) {
+        NativeLibraries nativeLibraries = ((FeatureImpl.DuringAnalysisAccessImpl) a).getNativeLibraries();
+        /* We statically link sunmscapi thus we classify it as builtIn library */
+        NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("sunmscapi");
+
+        nativeLibraries.addStaticJniLibrary("sunmscapi");
+        /* Library sunmscapi depends on ncrypt and crypt32 */
+        nativeLibraries.addDynamicNonJniLibrary("ncrypt");
+        nativeLibraries.addDynamicNonJniLibrary("crypt32");
+    }
+
+    private static void registerSunMSCAPIConfig(BeforeAnalysisAccess a) {
+        registerForThrowNew(a, "java.security.cert.CertificateParsingException", "java.security.InvalidKeyException",
+                        "java.security.KeyException", "java.security.KeyStoreException", "java.security.ProviderException",
+                        "java.security.SignatureException", "java.lang.OutOfMemoryError");
+
+        a.registerReachabilityHandler(SecurityServicesFeature::registerLoadKeysOrCertificateChains,
+                        method(a, "sun.security.mscapi.CKeyStore", "loadKeysOrCertificateChains", String.class));
+        a.registerReachabilityHandler(SecurityServicesFeature::registerGenerateCKeyPair,
+                        method(a, "sun.security.mscapi.CKeyPairGenerator$RSA", "generateCKeyPair", String.class, int.class, String.class));
+        a.registerReachabilityHandler(SecurityServicesFeature::registerCPrivateKeyOf,
+                        method(a, "sun.security.mscapi.CKeyStore", "storePrivateKey", String.class, byte[].class, String.class, int.class));
+        a.registerReachabilityHandler(SecurityServicesFeature::registerCPublicKeyOf,
+                        method(a, "sun.security.mscapi.CSignature", "importECPublicKey", String.class, byte[].class, int.class),
+                        method(a, "sun.security.mscapi.CSignature", "importPublicKey", String.class, byte[].class, int.class));
+    }
+
+    private static void registerLoadKeysOrCertificateChains(DuringAnalysisAccess a) {
+        JNIRuntimeAccess.register(constructor(a, "java.util.ArrayList"));
+        JNIRuntimeAccess.register(method(a, "sun.security.mscapi.CKeyStore", "generateCertificate", byte[].class, Collection.class));
+        JNIRuntimeAccess.register(method(a, "sun.security.mscapi.CKeyStore", "generateCertificateChain", String.class, Collection.class));
+        JNIRuntimeAccess.register(method(a, "sun.security.mscapi.CKeyStore", "generateKeyAndCertificateChain", boolean.class, String.class, long.class, long.class, int.class, Collection.class));
+    }
+
+    private static void registerGenerateCKeyPair(DuringAnalysisAccess a) {
+        JNIRuntimeAccess.register(constructor(a, "sun.security.mscapi.CKeyPair", String.class, long.class, long.class, int.class));
+    }
+
+    private static void registerCPrivateKeyOf(DuringAnalysisAccess a) {
+        JNIRuntimeAccess.register(method(a, "sun.security.mscapi.CPrivateKey", "of", String.class, long.class, long.class, int.class));
+    }
+
+    private static void registerCPublicKeyOf(DuringAnalysisAccess a) {
+        JNIRuntimeAccess.register(method(a, "sun.security.mscapi.CPublicKey", "of", String.class, long.class, long.class, int.class));
     }
 
     private static void linkJaas(DuringAnalysisAccess a) {
