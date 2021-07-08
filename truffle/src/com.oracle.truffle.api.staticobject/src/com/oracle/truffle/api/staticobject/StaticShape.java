@@ -305,9 +305,10 @@ public abstract class StaticShape<T> {
          *             constructor in superClass, if the return type of a method in factoryInterface
          *             is not assignable from superClass, if superClass has abstract methods or if
          *             superClass is {@link Cloneable} and overrides {@link Object#clone()} with a
-         *             final method.
+         *             final method
          * @throws RuntimeException if a static property was added to more than one builder or
-         *             multiple times to the same builder
+         *             multiple times to the same builder, or if this method is invoked at
+         *             Native Image build time
          * @since 21.3.0
          */
         public <T> StaticShape<T> build(Class<?> superClass, Class<T> factoryInterface) {

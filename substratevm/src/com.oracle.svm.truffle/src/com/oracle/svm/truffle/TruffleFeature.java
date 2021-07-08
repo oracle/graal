@@ -1080,10 +1080,10 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
             }
 
             ClassLoader generatorCL = getGeneratorClassLoader(factoryInterface);
-            Method generatorMethod = ReflectionUtil.lookupMethod(SHAPE_GENERATOR_CLASS, "getShapeGenerator", generatorCL.getClass(), Class.class, Class.class);
+            Method generatorMethod = ReflectionUtil.lookupMethod(SHAPE_GENERATOR_CLASS, "getShapeGenerator", generatorCL.getClass(), Class.class, Class.class, boolean.class);
             Object generator;
             try {
-                generator = generatorMethod.invoke(null, generatorCL, storageSuperClass, factoryInterface);
+                generator = generatorMethod.invoke(null, generatorCL, storageSuperClass, factoryInterface, true);
             } catch (ReflectiveOperationException e) {
                 throw VMError.shouldNotReachHere(e);
             }
