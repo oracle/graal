@@ -1015,10 +1015,8 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         private static final Constructor<?> GENERATOR_CLASS_LOADER_CONSTRUCTOR = ReflectionUtil.lookupConstructor(GENERATOR_CLASS_LOADER_CLASS, Class.class);
 
         private static final Class<?> SHAPE_GENERATOR_CLASS = loadClass("com.oracle.truffle.api.staticobject.ArrayBasedShapeGenerator");
-        private static final Method SHAPE_GENERATOR_METHOD = ReflectionUtil.lookupMethod(SHAPE_GENERATOR_CLASS, "getShapeGenerator", GENERATOR_CLASS_LOADER_CLASS, Class.class, Class.class, boolean.class);
-        private static final Field SHAPE_GENERATOR_BAO_FIELD = ReflectionUtil.lookupField(SHAPE_GENERATOR_CLASS, "byteArrayOffset");
-        private static final Field SHAPE_GENERATOR_OAO_FIELD = ReflectionUtil.lookupField(SHAPE_GENERATOR_CLASS, "objectArrayOffset");
-        private static final Field SHAPE_GENERATOR_SO_FIELD = ReflectionUtil.lookupField(SHAPE_GENERATOR_CLASS, "shapeOffset");
+        private static final Method GET_SHAPE_GENERATOR_METHOD = ReflectionUtil.lookupMethod(SHAPE_GENERATOR_CLASS, "getShapeGenerator", GENERATOR_CLASS_LOADER_CLASS, Class.class, Class.class, boolean.class);
+        private static final Method PATCH_OFFSETS_METHOD = ReflectionUtil.lookupMethod(SHAPE_GENERATOR_CLASS, "patchOffsets", int.class, int.class, int.class);
 
         private static final Method VALIDATE_CLASSES_METHOD = ReflectionUtil.lookupMethod(StaticShape.Builder.class, "validateClasses", Class.class, Class.class);
 
@@ -1057,10 +1055,11 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
             for (Map.Entry<?, ?> entry : generatorCache.entrySet()) {
                 Object shapeGenerator = entry.getValue();
                 Class<?> generatedStorageClass = ReflectionUtil.readField(SHAPE_GENERATOR_CLASS, "generatedStorageClass", shapeGenerator);
+                int byteArrayOffset = getNativeImageFieldOffset(config, generatedStorageClass, "primitive");
+                int objectArrayOffset = getNativeImageFieldOffset(config, generatedStorageClass, "object");
+                int shapeOffset = getNativeImageFieldOffset(config, generatedStorageClass, "shape");
                 try {
-                    SHAPE_GENERATOR_BAO_FIELD.set(shapeGenerator, getNativeImageFieldOffset(config, generatedStorageClass, "primitive"));
-                    SHAPE_GENERATOR_OAO_FIELD.set(shapeGenerator, getNativeImageFieldOffset(config, generatedStorageClass, "object"));
-                    SHAPE_GENERATOR_SO_FIELD.set(shapeGenerator, getNativeImageFieldOffset(config, generatedStorageClass, "shape"));
+                    PATCH_OFFSETS_METHOD.invoke(shapeGenerator, byteArrayOffset, objectArrayOffset, shapeOffset);
                 } catch (ReflectiveOperationException e) {
                     throw VMError.shouldNotReachHere(e);
                 }
@@ -1087,7 +1086,7 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
             ClassLoader generatorCL = getGeneratorClassLoader(factoryInterface);
             Object generator;
             try {
-                generator = SHAPE_GENERATOR_METHOD.invoke(null, generatorCL, storageSuperClass, factoryInterface, true);
+                generator = GET_SHAPE_GENERATOR_METHOD.invoke(null, generatorCL, storageSuperClass, factoryInterface, true);
             } catch (ReflectiveOperationException e) {
                 throw VMError.shouldNotReachHere(e);
             }

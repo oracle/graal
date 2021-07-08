@@ -46,6 +46,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.impl.asm.ClassVisitor;
@@ -150,6 +151,15 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
     StaticShape<T> generateShape(StaticShape<T> parentShape, Collection<StaticProperty> staticProperties, boolean safetyChecks) {
         return ArrayBasedStaticShape.create(generatedStorageClass, generatedFactoryClass, (ArrayBasedStaticShape<T>) parentShape, staticProperties, byteArrayOffset, objectArrayOffset, shapeOffset,
                         safetyChecks);
+    }
+
+    // Invoked from TruffleFeature.StaticObjectSupport
+    void patchOffsets(int byteArrayOffset, int objectArrayOffset, int shapeOffset) {
+        assert TruffleOptions.AOT;
+        CompilerAsserts.neverPartOfCompilation();
+        this.byteArrayOffset = byteArrayOffset;
+        this.objectArrayOffset = objectArrayOffset;
+        this.shapeOffset = shapeOffset;
     }
 
     private static String getStorageConstructorDescriptor(Constructor<?> superConstructor) {
