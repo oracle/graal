@@ -83,7 +83,7 @@ final class StackMapFrameParser {
         }
         if (frameType < SAME_LOCALS_1_STACK_ITEM_EXTENDED) {
             // [128, 246] is reserved and still unused
-            throw failFormat("Encountered reserved StackMapFrame tag: " + frameType);
+            throw new MethodVerifier.VerifierError("Encountered reserved StackMapFrame tag: " + frameType, MethodVerifier.VerifierError.Kind.ClassFormat, false);
         }
         if (frameType == SAME_LOCALS_1_STACK_ITEM_EXTENDED) {
             int offsetDelta = stream.readU2();

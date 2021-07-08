@@ -315,6 +315,7 @@ public final class MethodVerifier implements ContextAccess {
     private final int[] bciStates;
     private final StackFrame[] stackFrames;
     private final byte[] handlerStatus;
+    private boolean stackMapInitialized = false;
 
     // <init> method validation
     private boolean calledConstructor = false;
@@ -569,6 +570,8 @@ public final class MethodVerifier implements ContextAccess {
     }
 
     public static class VerifierError extends Error {
+        private static final long serialVersionUID = 7039576945173150725L;
+
         public enum Kind {
             Verify,
             ClassFormat,
@@ -576,10 +579,16 @@ public final class MethodVerifier implements ContextAccess {
         }
 
         private final Kind kind;
+        private final boolean allowFallback;
 
         VerifierError(String message, Kind kind) {
+            this(message, kind, true);
+        }
+
+        VerifierError(String message, Kind kind, boolean allowFallback) {
             super(message);
             this.kind = kind;
+            this.allowFallback = allowFallback;
         }
 
         public Kind kind() {
@@ -630,8 +639,31 @@ public final class MethodVerifier implements ContextAccess {
             throw failFormat("Concrete method has no code attribute: " + m);
         }
         try (DebugCloseable t = VERIFIER_TIMER.scope(m.getContext().getTimers())) {
-            new MethodVerifier(codeAttribute, m).verify();
+            MethodVerifier verifier = new MethodVerifier(codeAttribute, m);
+            try {
+                verifier.verify();
+            } catch (VerifierError e) {
+                if (verifier.shouldFallBack(e)) {
+                    verifier = new MethodVerifier(codeAttribute, m, false);
+                    verifier.verify();
+                } else {
+                    throw e;
+                }
+            }
         }
+    }
+
+    private boolean shouldFallBack(VerifierError e) {
+        if (!e.allowFallback) {
+            return false;
+        }
+        if (majorVersion == ClassfileParser.JAVA_6_VERSION) {
+            if (stackMapInitialized) {
+                return e.kind != VerifierError.Kind.ClassFormat;
+            }
+            return true;
+        }
+        return false;
     }
 
     private void initVerifier() {
@@ -942,14 +974,15 @@ public final class MethodVerifier implements ContextAccess {
         // Marks BCIs in-between opcodes, and marks jump targets.
         initVerifier();
 
+        // Check that BCIs in exception handlers are legal.
+        validateExceptionHandlers();
+
         // Extract the initial stack frame, and extract stack maps if available.
         initStackFrames();
+        stackMapInitialized = true;
 
         // Check that unconditional jumps have stack maps following them.
         validateUnconditionalJumps();
-
-        // Check that BCIs in exception handlers are legal.
-        validateExceptionHandlers();
 
         // Perform verification following control-flow.
         verifyReachableCode();
@@ -974,6 +1007,7 @@ public final class MethodVerifier implements ContextAccess {
     }
 
     private void validateExceptionHandlers() {
+        failFormatIf(exceptionHandlers.length > 0 && maxStack < 1, "Method with exception handlers has a zero max stack value.");
         for (ExceptionHandler handler : exceptionHandlers) {
             int startBCI = handler.getHandlerBCI();
             validateFormatBCI(startBCI);
