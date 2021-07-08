@@ -35,8 +35,8 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 
 public final class JVMTI {
     private final EspressoContext context;
-    private final @Pointer TruffleObject initializeJvmtiContext;
-    private final @Pointer TruffleObject disposeJvmtiContext;
+    private @Pointer TruffleObject initializeJvmtiContext;
+    private @Pointer TruffleObject disposeJvmtiContext;
 
     private final ArrayList<JVMTIEnv> activeEnvironments = new ArrayList<>();
 
@@ -76,6 +76,8 @@ public final class JVMTI {
             jvmtiEnv.dispose(disposeJvmtiContext);
         }
         activeEnvironments.clear();
+        this.initializeJvmtiContext = null;
+        this.disposeJvmtiContext = null;
     }
 
     @TruffleBoundary

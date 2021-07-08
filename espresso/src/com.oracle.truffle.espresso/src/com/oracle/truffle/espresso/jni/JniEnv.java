@@ -114,22 +114,22 @@ public final class JniEnv extends NativeEnv {
     private @Pointer TruffleObject jniEnvPtr;
 
     // Native library nespresso.dll (Windows) or libnespresso.so (Unixes) at runtime.
-    private final TruffleObject nespressoLibrary;
+    @CompilerDirectives.CompilationFinal private TruffleObject nespressoLibrary;
 
     // Native methods in libenespresso.
-    private final @Pointer TruffleObject initializeNativeContext;
-    private final @Pointer TruffleObject disposeNativeContext;
-    private final @Pointer TruffleObject popBoolean;
-    private final @Pointer TruffleObject popByte;
-    private final @Pointer TruffleObject popChar;
-    private final @Pointer TruffleObject popShort;
-    private final @Pointer TruffleObject popInt;
-    private final @Pointer TruffleObject popFloat;
-    private final @Pointer TruffleObject popDouble;
-    private final @Pointer TruffleObject popLong;
-    private final @Pointer TruffleObject popObject;
+    @CompilerDirectives.CompilationFinal private @Pointer TruffleObject initializeNativeContext;
+    @CompilerDirectives.CompilationFinal private @Pointer TruffleObject disposeNativeContext;
+    @CompilerDirectives.CompilationFinal private @Pointer TruffleObject popBoolean;
+    @CompilerDirectives.CompilationFinal private @Pointer TruffleObject popByte;
+    @CompilerDirectives.CompilationFinal private @Pointer TruffleObject popChar;
+    @CompilerDirectives.CompilationFinal private @Pointer TruffleObject popShort;
+    @CompilerDirectives.CompilationFinal private @Pointer TruffleObject popInt;
+    @CompilerDirectives.CompilationFinal private @Pointer TruffleObject popFloat;
+    @CompilerDirectives.CompilationFinal private @Pointer TruffleObject popDouble;
+    @CompilerDirectives.CompilationFinal private @Pointer TruffleObject popLong;
+    @CompilerDirectives.CompilationFinal private @Pointer TruffleObject popObject;
 
-    private final @Pointer TruffleObject getSizeMax;
+    @CompilerDirectives.CompilationFinal private @Pointer TruffleObject getSizeMax;
 
     private static final List<CallableFromNative.Factory> JNI_IMPL_FACTORIES = JniImplCollector.getInstances(CallableFromNative.Factory.class);
 
@@ -375,9 +375,24 @@ public final class JniEnv extends NativeEnv {
 
     public void dispose() {
         assert jniEnvPtr != null : "JNIEnv already disposed";
+        super.dispose();
         try {
             getUncached().execute(disposeNativeContext, jniEnvPtr, RawPointer.nullInstance());
             this.jniEnvPtr = null;
+            this.nespressoLibrary = null;
+            this.initializeNativeContext = null;
+            this.disposeNativeContext = null;
+            this.popBoolean = null;
+            this.popByte = null;
+            this.popChar = null;
+            this.popShort = null;
+            this.popInt = null;
+            this.popFloat = null;
+            this.popDouble = null;
+            this.popLong = null;
+            this.popObject = null;
+            this.getSizeMax = null;
+            threadLocalPendingException.dispose();
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere("Cannot initialize Espresso native interface");
         }

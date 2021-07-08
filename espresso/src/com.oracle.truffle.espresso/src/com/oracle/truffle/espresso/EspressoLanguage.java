@@ -22,11 +22,8 @@
  */
 package com.oracle.truffle.espresso;
 
-import java.io.File;
-import java.nio.file.Path;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
-import java.util.stream.Collectors;
 
 import org.graalvm.home.Version;
 import org.graalvm.options.OptionDescriptors;
@@ -45,22 +42,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.staticobject.DefaultStaticProperty;
 import com.oracle.truffle.api.staticobject.StaticProperty;
 import com.oracle.truffle.api.staticobject.StaticShape;
-import com.oracle.truffle.espresso.meta.JavaKind;
-import com.oracle.truffle.espresso.impl.EspressoLanguageCache;
-import com.oracle.truffle.espresso.nodes.interop.GetBindingsNode;
-import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.StaticObject.StaticObjectFactory;
-import com.oracle.truffle.espresso.staticobject.ClassLoaderCache;
-import com.oracle.truffle.espresso.staticobject.DefaultStaticProperty;
-import com.oracle.truffle.espresso.staticobject.StaticProperty;
-import com.oracle.truffle.espresso.staticobject.StaticPropertyKind;
-import com.oracle.truffle.espresso.staticobject.StaticShape;
-import com.oracle.truffle.espresso.impl.EspressoLanguageCache;
-import com.oracle.truffle.espresso.nodes.interop.GetBindingsNode;
-import com.oracle.truffle.espresso.runtime.Classpath;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.EspressoExitException;
-import com.oracle.truffle.espresso.runtime.EspressoProperties;
 import com.oracle.truffle.espresso.descriptors.Names;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.StaticSymbols;
@@ -70,6 +51,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Symbols;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.descriptors.Utf8ConstantTable;
+import com.oracle.truffle.espresso.impl.EspressoLanguageCache;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.nodes.interop.DestroyVMNode;
 import com.oracle.truffle.espresso.nodes.interop.ExitCodeNode;
@@ -77,6 +59,10 @@ import com.oracle.truffle.espresso.nodes.interop.GetBindingsNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.runtime.EspressoThreadLocalState;
+import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.StaticObject.StaticObjectFactory;
+import com.oracle.truffle.espresso.substitutions.Substitutions;
+import com.oracle.truffle.espresso.runtime.EspressoProperties;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObject.StaticObjectFactory;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
@@ -103,7 +89,6 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     public static final String FILE_EXTENSION = ".class";
 
-    private final TruffleLogger logger = TruffleLogger.getLogger(ID);
     private final Utf8ConstantTable utf8Constants;
     private final Names names;
     private final Types types;
@@ -168,7 +153,8 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     @Override
     protected void initializeContext(final EspressoContext context) throws Exception {
-        context.initializeContext(context.getEnv().isPreInitialization());
+        boolean isPreinitialization = context.getEnv().isPreInitialization();
+        context.initializeContext(isPreinitialization);
     }
 
     @Override

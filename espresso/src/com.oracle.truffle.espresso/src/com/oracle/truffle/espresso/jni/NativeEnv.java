@@ -137,6 +137,13 @@ public abstract class NativeEnv implements ContextAccess {
         return res;
     }
 
+    public void dispose() {
+        this.nativeClosures.clear();
+        if (methods != null) {
+            this.methods.clear();
+        }
+    }
+
     private Map<String, CallableFromNative.Factory> buildMethodsMap() {
         Map<String, CallableFromNative.Factory> map = new HashMap<>();
         for (CallableFromNative.Factory method : getCollector()) {
@@ -213,7 +220,11 @@ public abstract class NativeEnv implements ContextAccess {
                 }
             }), NativeSignature.create(NativeType.VOID));
             nativeClosures.add(errorClosure);
-            return errorClosure;
+            try {
+                return RawPointer.create(getUncached().asPointer(errorClosure));
+            } catch (UnsupportedMessageException e) {
+                throw EspressoError.shouldNotReachHere();
+            }
         }
 
         NativeSignature signature = factory.jniNativeSignature();
@@ -221,7 +232,11 @@ public abstract class NativeEnv implements ContextAccess {
         @Pointer
         TruffleObject nativeClosure = getNativeAccess().createNativeClosure(target, signature);
         nativeClosures.add(nativeClosure);
-        return nativeClosure;
+        try {
+            return RawPointer.create(getUncached().asPointer(nativeClosure));
+        } catch (UnsupportedMessageException e) {
+            throw EspressoError.shouldNotReachHere();
+        }
 
     }
 

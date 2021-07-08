@@ -344,6 +344,11 @@ public final class Classpath {
             return new ClasspathFile(classBytes, this, fsPath);
         }
 
+        @Override
+        public void close() {
+            helper.close();
+            helper = null;
+        }
     }
 
     /**

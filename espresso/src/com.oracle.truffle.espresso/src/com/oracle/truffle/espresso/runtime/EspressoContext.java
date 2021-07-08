@@ -46,7 +46,6 @@ import java.util.stream.Collectors;
 
 import org.graalvm.options.OptionMap;
 import org.graalvm.polyglot.Engine;
-
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -79,14 +78,18 @@ import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.ffi.NativeAccess;
 import com.oracle.truffle.espresso.ffi.NativeAccessCollector;
 import com.oracle.truffle.espresso.impl.ClassRegistries;
+import com.oracle.truffle.espresso.impl.ClassRegistry;
+import com.oracle.truffle.espresso.impl.EspressoLanguageCache;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
+<<<<<<< HEAD
 import com.oracle.truffle.espresso.jdwp.api.Ids;
+=======
+import com.oracle.truffle.espresso.impl.ParserKlassCacheListSupport;
+>>>>>>> Experimental Java 11 support
 import com.oracle.truffle.espresso.jdwp.api.VMEventListenerImpl;
-import com.oracle.truffle.espresso.jdwp.api.VMListener;
-import com.oracle.truffle.espresso.jdwp.impl.EmptyListener;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -102,7 +105,8 @@ import com.oracle.truffle.espresso.threads.ThreadsAccess;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.UnsafeAccess;
 import com.oracle.truffle.espresso.vm.VM;
-
+import org.graalvm.options.OptionMap;
+import org.graalvm.polyglot.Engine;
 import sun.misc.SignalHandler;
 
 public final class EspressoContext {
@@ -213,6 +217,7 @@ public final class EspressoContext {
     @CompilationFinal private InterpreterToVM interpreterToVM;
     @CompilationFinal private JImageLibrary jimageLibrary;
     @CompilationFinal private EspressoProperties vmProperties;
+    @CompilationFinal private JavaVersion javaVersion;
     @CompilationFinal private AgentLibraries agents;
     @CompilationFinal private NativeAccess nativeAccess;
     // endregion VM
@@ -453,13 +458,14 @@ public final class EspressoContext {
                                         "Allow native access on context creation e.g. contextBuilder.allowNativeAccess(true)");
         assert !this.initialized;
 
-        if (!ImageInfo.inImageRuntimeCode()) {
-            // Setup finalization support in the host VM.
-            FinalizationFeature.ensureInitialized();
-        }
+        startupClockNanos = System.nanoTime();
+        FinalizationSupport.ensureInitialized();
 
+        this.bootClasspath = null;
         if (isPreinitialization) {
             preInitialize();
+            // spawnVM();
+            afterPreinitialization();
         } else {
             spawnVM();
             this.initialized = true;
@@ -505,6 +511,14 @@ public final class EspressoContext {
             registries.getBootClassRegistry().initUnnamedModule(StaticObject.NULL);
         }
 
+        // Spawn JNI first, then the VM.
+        try (DebugCloseable vmInit = VM_INIT.scope(timers)) {
+            this.nativeAccess = spawnNativeAccess();
+            this.vm = VM.create(getJNI()); // Mokapot is loaded
+            vm.attachThread(Thread.currentThread());
+            this.javaVersion = vm.getJavaVersion();
+        }
+
         try (DebugCloseable metaInit = META_INIT.scope(timers)) {
             this.meta = new Meta(this);
         }
@@ -518,7 +532,8 @@ public final class EspressoContext {
                     getLogger().log(Level.FINE, "ParserKlassCacheList: Attempting to read class: {0}", type.toString());
                     ClasspathFile cpFile = getBootClasspath().readClassFile(type);
                     if (cpFile != null) {
-                        getCache().getOrCreateParserKlass(registries.getBootClassRegistry().getClassLoader(), type.toString(), cpFile.contents, this);
+                        ClassRegistry.ClassDefinitionInfo info = ClassRegistry.ClassDefinitionInfo.EMPTY;
+                        getCache().getOrCreateParserKlass(registries.getBootClassRegistry().getClassLoader(), type.toString(), cpFile.contents, this, info);
                     } else {
                         getLogger().log(Level.WARNING, "Pre-initialization failed to read class: {0}", type.toString());
                     }
@@ -526,13 +541,36 @@ public final class EspressoContext {
             }
         }
 
-        getCache().seal();
-
         initDoneTimeNanos = System.nanoTime();
         long elapsedNanos = initDoneTimeNanos - initStartTimeNanos;
         getLogger().log(Level.FINE, "Context pre-initialized in {0} ms", TimeUnit.NANOSECONDS.toMillis(elapsedNanos));
+    }
 
+    private void afterPreinitialization() {
+        getCache().seal();
         this.bootClasspath.closeEntries();
+
+        getJNI().dispose();
+        this.vm.dispose();
+        this.nativeAccess = null;
+        this.jniEnv = null;
+        this.jimageLibrary = null;
+        this.vm = null;
+
+//        this.threadManager = null;
+//        this.outOfMemory = null;
+//        this.stackOverflow = null;
+//        this.shutdownManager = null;
+
+        // FIXME (ivan-ristovic) Alternative to make sure that GC collects WeakRefs
+        for (int i = 0; i < 10; i++) {
+            System.gc();
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     @SuppressWarnings("try")
@@ -759,7 +797,7 @@ public final class EspressoContext {
     }
 
     public JavaVersion getJavaVersion() {
-        return vm.getJavaVersion();
+        return vm != null ? vm.getJavaVersion() : javaVersion;
     }
 
     public boolean advancedRedefinitionEnabled() {
