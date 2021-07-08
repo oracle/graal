@@ -52,14 +52,13 @@ import sun.misc.Unsafe;
 import static com.oracle.truffle.api.staticobject.StaticPropertyKind.N_PRIMITIVES;
 
 final class ArrayBasedStaticShape<T> extends StaticShape<T> {
-    private static final PrivilegedToken TOKEN = new ArrayBasedPrivilegedToken();
     @CompilationFinal(dimensions = 1) //
     private final StaticShape<T>[] superShapes;
     private final ArrayBasedPropertyLayout propertyLayout;
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     private ArrayBasedStaticShape(ArrayBasedStaticShape<T> parentShape, Class<?> storageClass, ArrayBasedPropertyLayout propertyLayout, boolean safetyChecks) {
-        super(TOKEN, storageClass, safetyChecks);
+        super(storageClass, safetyChecks);
         if (parentShape == null) {
             superShapes = new StaticShape[]{this};
         } else {
@@ -108,9 +107,6 @@ final class ArrayBasedStaticShape<T> extends StaticShape<T> {
 
     private ArrayBasedPropertyLayout getPropertyLayout() {
         return propertyLayout;
-    }
-
-    private static final class ArrayBasedPrivilegedToken extends PrivilegedToken {
     }
 
     /**
