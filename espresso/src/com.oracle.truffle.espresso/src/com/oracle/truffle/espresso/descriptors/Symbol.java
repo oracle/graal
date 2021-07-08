@@ -593,6 +593,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> jdk_internal_loader_ClassLoaders = StaticSymbols.putType("Ljdk/internal/loader/ClassLoaders;");
         public static final Symbol<Type> jdk_internal_loader_ClassLoaders$PlatformClassLoader = StaticSymbols.putType("Ljdk/internal/loader/ClassLoaders$PlatformClassLoader;");
         public static final Symbol<Type> jdk_internal_module_ModuleLoaderMap = StaticSymbols.putType("Ljdk/internal/module/ModuleLoaderMap;");
+        public static final Symbol<Type> jdk_internal_module_ModuleLoaderMap_Modules = StaticSymbols.putType("Ljdk/internal/module/ModuleLoaderMap$Modules;");
         public static final Symbol<Type> jdk_internal_module_SystemModuleFinders = StaticSymbols.putType("Ljdk/internal/module/SystemModuleFinders;");
         public static final Symbol<Type> jdk_internal_module_SystemModules = StaticSymbols.putType("Ljdk/internal/module/SystemModules;");
         public static final Symbol<Type> java_lang_module_ModuleFinder = StaticSymbols.putType("Ljava/lang/module/ModuleFinder;");
@@ -931,10 +932,12 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> Double_double = StaticSymbols.putSignature(Type.java_lang_Double, Type._double);
         public static final Symbol<Signature> Long_long = StaticSymbols.putSignature(Type.java_lang_Long, Type._long);
 
+        public static final Symbol<Signature> Object_array_Object_array = StaticSymbols.putSignature(Type.java_lang_Object_array, Type.java_lang_Object_array);
         public static final Symbol<Signature> Object_Object_array = StaticSymbols.putSignature(Type.java_lang_Object, Type.java_lang_Object_array);
 
         public static final Symbol<Signature> java_util_Iterator = StaticSymbols.putSignature(Type.java_util_Iterator);
         public static final Symbol<Signature> java_util_Set = StaticSymbols.putSignature(Type.java_util_Set);
+        public static final Symbol<Signature> java_util_Set_Object_array = StaticSymbols.putSignature(Type.java_util_Set, Type.java_lang_Object_array);
 
         public static final Symbol<Signature> java_lang_reflect_Method_init_signature = StaticSymbols.putSignature(Type._void,
                         /* declaringClass */ Type.java_lang_Class,

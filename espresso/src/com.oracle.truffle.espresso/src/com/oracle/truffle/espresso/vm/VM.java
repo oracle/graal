@@ -417,7 +417,7 @@ public final class VM extends NativeEnv implements ContextAccess {
      * Registers this known VM method's function pointer. Later native method bindings can perform a
      * lookup when trying to bind to a function pointer, and if a match happens, this is a known VM
      * method, and we can link directly to it thus bypassing native calls.
-     * 
+     *
      * @param name The name of the VM method, previously extracted from {@code args[0]}.
      * @param factory The node factory of the requested VM method.
      * @param args A length {@linkplain #lookupCallBackArgsCount() 2} arguments array: At position 0

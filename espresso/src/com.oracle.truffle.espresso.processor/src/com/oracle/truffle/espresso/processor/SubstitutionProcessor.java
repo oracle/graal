@@ -581,7 +581,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         str.append(TAB_2).append("}\n");
 
         if (h.nameProvider != null) {
-            str.append(generateNameProviders(targetMethodName, h));
+            str.append(generateNameProviders(h.guestMethodName, h));
         }
 
         if (h.versionFilter != null) {
