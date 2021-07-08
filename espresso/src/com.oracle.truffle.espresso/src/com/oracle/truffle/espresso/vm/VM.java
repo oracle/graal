@@ -2724,7 +2724,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         ModuleEntry module = k.module();
 
         // Fill in class name
-        getMeta().java_lang_StackTraceElement_declaringClass.setObject(ste, classGetName.invokeDirect(null, guestClass));
+        getMeta().java_lang_StackTraceElement_declaringClass.setObject(ste, classGetName.invokeDirect(guestClass));
         getMeta().java_lang_StackTraceElement_declaringClassObject.setObject(ste, guestClass);
 
         // Fill in loader name
