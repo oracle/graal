@@ -112,8 +112,8 @@ class StaticObjectModelTest {
     static TestEnvironment[] getTestEnvironments() {
         ArrayList<TestEnvironment> tests = new ArrayList<>();
         // AOT mode does not yet support field-based storage
-        boolean[] arrayBased = TruffleOptions.AOT ? new boolean[] {true} : new boolean[] {true, false};
-        boolean[] relaxChecks = new boolean[] {true, false};
+        boolean[] arrayBased = TruffleOptions.AOT ? new boolean[]{true} : new boolean[]{true, false};
+        boolean[] relaxChecks = new boolean[]{true, false};
         for (boolean ab : arrayBased) {
             for (boolean rc : relaxChecks) {
                 tests.add(new TestEnvironment(ab, rc));

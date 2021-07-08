@@ -90,6 +90,7 @@ public class TutorialTest extends StaticObjectModelTest {
 
     public interface MyStaticObjectInterface {
         MyStaticObject create(String arg1);
+
         MyStaticObject create(String arg1, Object arg2);
     }
 
@@ -137,8 +138,10 @@ public class TutorialTest extends StaticObjectModelTest {
         StaticShape<MyStaticObjectInterface> shape = StaticShape.newBuilder(te.testLanguage).property(property).build(MyStaticObject.class, MyStaticObjectInterface.class);
         MyStaticObject staticObject = shape.getFactory().create("arg1");
         property.setObject(staticObject, "42");
-        assert staticObject.arg1.equals("arg1"); // fields of the custom super class are directly accessible
-        assert property.getObject(staticObject).equals("42"); // static properties are accessible as usual
+        assert staticObject.arg1.equals("arg1"); // fields of the custom super class are directly
+                                                 // accessible
+        assert property.getObject(staticObject).equals("42"); // static properties are accessible as
+                                                              // usual
     }
 
     @Test

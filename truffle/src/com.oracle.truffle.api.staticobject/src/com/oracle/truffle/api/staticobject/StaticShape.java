@@ -306,8 +306,8 @@ public abstract class StaticShape<T> {
          *             superClass is {@link Cloneable} and overrides {@link Object#clone()} with a
          *             final method
          * @throws RuntimeException if a static property was added to more than one builder or
-         *             multiple times to the same builder, or if this method is invoked at
-         *             Native Image build time
+         *             multiple times to the same builder, or if this method is invoked at Native
+         *             Image build time
          * @since 21.3.0
          */
         public <T> StaticShape<T> build(Class<?> superClass, Class<T> factoryInterface) {
@@ -355,8 +355,10 @@ public abstract class StaticShape<T> {
         }
 
         private static void validateClasses(Class<?> storageSuperClass, Class<?> storageFactoryInterface) {
-            // Reflective accesses must be registered by TruffleFeature.StaticObjectSupport, or these checks might be performed at image build time but not at run time.
-            // This would probably lead to class generation at run time, which is not supported by Native Image.
+            // Reflective accesses must be registered by TruffleFeature.StaticObjectSupport, or
+            // these checks might be performed at image build time but not at run time.
+            // This would probably lead to class generation at run time, which is not supported by
+            // Native Image.
             CompilerAsserts.neverPartOfCompilation();
             if (!storageFactoryInterface.isInterface()) {
                 throw new IllegalArgumentException(storageFactoryInterface.getName() + " must be an interface.");

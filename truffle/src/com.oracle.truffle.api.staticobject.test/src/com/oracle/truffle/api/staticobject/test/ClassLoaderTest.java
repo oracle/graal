@@ -76,8 +76,9 @@ public class ClassLoaderTest extends StaticObjectModelTest {
     }
 
     /**
-     * The implementation of the Static Object Model caches the class loader used to load static object classes.
-     * This test makes sure that the cache takes into account the class loader that loaded the factory interface.
+     * The implementation of the Static Object Model caches the class loader used to load static
+     * object classes. This test makes sure that the cache takes into account the class loader that
+     * loaded the factory interface.
      */
     @Theory
     public void testA(TestEnvironment te) {
