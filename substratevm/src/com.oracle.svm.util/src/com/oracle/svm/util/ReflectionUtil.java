@@ -30,6 +30,8 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
+import org.graalvm.nativeimage.ImageInfo;
+
 /**
  * This class contains utility methods for commonly used reflection functionality.
  */
@@ -50,7 +52,9 @@ public final class ReflectionUtil {
      * declaring class.
      */
     private static void openModule(Class<?> declaringClass) {
-        ModuleSupport.openModuleByClass(declaringClass, ReflectionUtil.class);
+        if (!ImageInfo.inImageRuntimeCode()) {
+            ModuleSupport.openModuleByClass(declaringClass, ReflectionUtil.class);
+        }
     }
 
     public static Method lookupMethod(Class<?> declaringClass, String methodName, Class<?>... parameterTypes) {
