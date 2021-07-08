@@ -255,4 +255,3 @@ Here is a set of resources that we recommend for further reading about MLE:
 - [JavaScript as a Server-Side Language in Oracle APEX 20.2](https://medium.com/graalvm/javascript-as-a-server-side-language-in-oracle-apex-20-2-457e073ca4ca) shows more in-depth JavaScript-in-APEX examples, including how to use the GraalVM Polyglot interface to load popular JavaScript modules (like [validator](https://www.npmjs.com/package/validator)) from database tables and use them in an APEX app.
 - [APEX + Server-side JavaScript = Awesome!](https://www.youtube.com/watch?v=voolgTBoPyE) is a talk about the MLE and how it's best used in APEX, including a life demo with many awesome examples of running JavaScript modules in the database.
 - https://github.com/stefandobre/apex-mle-demo contains the sample APEX app that was used in aforementioned life demo and articles, ready to be deployed and run on a free Oracle Cloud account.
-
