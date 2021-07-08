@@ -263,6 +263,7 @@ public abstract class StaticProperty {
      * @throws IllegalArgumentException if the static property kind is not
      *             {@link StaticPropertyKind#Object} or obj does not have a {@link StaticShape}
      *             compatible with this static property
+     * @since 21.3.0
      */
     public final Object compareAndExchangeObject(Object obj, Object expect, Object update) {
         checkKind(StaticPropertyKind.Object);
@@ -351,6 +352,7 @@ public abstract class StaticProperty {
      * @throws IllegalArgumentException if the static property kind is not
      *             {@link StaticPropertyKind#Boolean} or obj does not have a {@link StaticShape}
      *             compatible with this static property
+     * @since 21.3.0
      */
     public final boolean compareAndSwapBoolean(Object obj, boolean expect, boolean update) {
         checkKind(StaticPropertyKind.Boolean);
@@ -369,6 +371,7 @@ public abstract class StaticProperty {
      * @throws IllegalArgumentException if the static property kind is not
      *             {@link StaticPropertyKind#Boolean} or obj does not have a {@link StaticShape}
      *             compatible with this static property
+     * @since 21.3.0
      */
     public final boolean compareAndExchangeBoolean(Object obj, boolean expect, boolean update) {
         checkKind(StaticPropertyKind.Boolean);
@@ -456,6 +459,7 @@ public abstract class StaticProperty {
      * @throws IllegalArgumentException if the static property kind is not
      *             {@link StaticPropertyKind#Byte} or obj does not have a {@link StaticShape}
      *             compatible with this static property
+     * @since 21.3.0
      */
     public final boolean compareAndSwapByte(Object obj, byte expect, byte update) {
         checkKind(StaticPropertyKind.Byte);
@@ -474,6 +478,7 @@ public abstract class StaticProperty {
      * @throws IllegalArgumentException if the static property kind is not
      *             {@link StaticPropertyKind#Byte} or obj does not have a {@link StaticShape}
      *             compatible with this static property
+     * @since 21.3.0
      */
     public final byte compareAndExchangeByte(Object obj, byte expect, byte update) {
         checkKind(StaticPropertyKind.Byte);
@@ -561,6 +566,7 @@ public abstract class StaticProperty {
      * @throws IllegalArgumentException if the static property kind is not
      *             {@link StaticPropertyKind#Char} or obj does not have a {@link StaticShape}
      *             compatible with this static property
+     * @since 21.3.0
      */
     public final boolean compareAndSwapChar(Object obj, char expect, char update) {
         checkKind(StaticPropertyKind.Char);
@@ -579,6 +585,7 @@ public abstract class StaticProperty {
      * @throws IllegalArgumentException if the static property kind is not
      *             {@link StaticPropertyKind#Char} or obj does not have a {@link StaticShape}
      *             compatible with this static property
+     * @since 21.3.0
      */
     public final char compareAndExchangeChar(Object obj, char expect, char update) {
         checkKind(StaticPropertyKind.Char);
@@ -667,6 +674,7 @@ public abstract class StaticProperty {
      * @throws IllegalArgumentException if the static property kind is not
      *             {@link StaticPropertyKind#Double} or obj does not have a {@link StaticShape}
      *             compatible with this static property
+     * @since 21.3.0
      */
     public final boolean compareAndSwapDouble(Object obj, double expect, double update) {
         checkKind(StaticPropertyKind.Double);
@@ -685,6 +693,7 @@ public abstract class StaticProperty {
      * @throws IllegalArgumentException if the static property kind is not
      *             {@link StaticPropertyKind#Double} or obj does not have a {@link StaticShape}
      *             compatible with this static property
+     * @since 21.3.0
      */
     public final double compareAndExchangeDouble(Object obj, double expect, double update) {
         checkKind(StaticPropertyKind.Double);
@@ -773,6 +782,7 @@ public abstract class StaticProperty {
      * @throws IllegalArgumentException if the static property kind is not
      *             {@link StaticPropertyKind#Float} or obj does not have a {@link StaticShape}
      *             compatible with this static property
+     * @since 21.3.0
      */
     public final boolean compareAndSwapFloat(Object obj, float expect, float update) {
         checkKind(StaticPropertyKind.Float);
@@ -791,6 +801,7 @@ public abstract class StaticProperty {
      * @throws IllegalArgumentException if the static property kind is not
      *             {@link StaticPropertyKind#Float} or obj does not have a {@link StaticShape}
      *             compatible with this static property
+     * @since 21.3.0
      */
     public final float compareAndExchangeFloat(Object obj, float expect, float update) {
         checkKind(StaticPropertyKind.Float);
@@ -894,6 +905,7 @@ public abstract class StaticProperty {
      * @param expect the expected value
      * @param update the new value
      * @return the witness value, which will be the same as the expected value if successful
+     * @since 21.3.0
      */
     public final int compareAndExchangeInt(Object obj, int expect, int update) {
         checkKind(StaticPropertyKind.Int);
@@ -1034,6 +1046,7 @@ public abstract class StaticProperty {
      * @throws IllegalArgumentException if the static property kind is not
      *             {@link StaticPropertyKind#Long} or obj does not have a {@link StaticShape}
      *             compatible with this static property
+     * @since 21.3.0
      */
     public final long compareAndExchangeLong(Object obj, long expect, long update) {
         checkKind(StaticPropertyKind.Long);
@@ -1156,6 +1169,7 @@ public abstract class StaticProperty {
      * @throws IllegalArgumentException if the static property kind is not
      *             {@link StaticPropertyKind#Short} or obj does not have a {@link StaticShape}
      *             compatible with this static property
+     * @since 21.3.0
      */
     public final boolean compareAndSwapShort(Object obj, short expect, short update) {
         checkKind(StaticPropertyKind.Short);
@@ -1174,6 +1188,7 @@ public abstract class StaticProperty {
      * @throws IllegalArgumentException if the static property kind is not
      *             {@link StaticPropertyKind#Short} or obj does not have a {@link StaticShape}
      *             compatible with this static property
+     * @since 21.3.0
      */
     public final short compareAndExchangeShort(Object obj, short expect, short update) {
         checkKind(StaticPropertyKind.Short);
