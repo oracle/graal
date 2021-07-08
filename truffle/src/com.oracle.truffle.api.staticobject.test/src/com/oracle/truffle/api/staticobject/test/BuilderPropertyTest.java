@@ -56,6 +56,7 @@ import org.junit.runner.RunWith;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.util.Arrays;
 
 @RunWith(Theories.class)
 public class BuilderPropertyTest extends StaticObjectModelTest {
@@ -135,6 +136,34 @@ public class BuilderPropertyTest extends StaticObjectModelTest {
     }
 
     @Theory
+    public void propertyNameWithForbiddenChars(TestEnvironment te) {
+        StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
+        StaticProperty p1 = new DefaultStaticProperty("forbidden.char", StaticPropertyKind.Int, false);
+        StaticProperty p2 = new DefaultStaticProperty("forbidden;char", StaticPropertyKind.Int, false);
+        StaticProperty p3 = new DefaultStaticProperty("forbidden[char", StaticPropertyKind.Int, false);
+        StaticProperty p4 = new DefaultStaticProperty("forbidden/char", StaticPropertyKind.Int, false);
+        builder.property(p1).property(p2).property(p3).property(p4).build();
+    }
+
+    @Theory
+    public void propertyNameTooLong(TestEnvironment te) {
+        char[] longId = new char[65529];
+        char[] tooLongId = new char[65530];
+        Arrays.fill(longId, 'x');
+        Arrays.fill(tooLongId, 'x');
+
+        StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
+        builder.property(new DefaultStaticProperty(new String(longId), StaticPropertyKind.Int, false));
+        try {
+            builder.property(new DefaultStaticProperty(new String(tooLongId), StaticPropertyKind.Int, false));
+            Assert.fail();
+        } catch (IllegalArgumentException e) {
+            Assert.assertEquals("The property id cannot be longer than 65529 characters", e.getMessage());
+        }
+        builder.build();
+    }
+
+    @Theory
     public void propertyFinal(TestEnvironment te) throws NoSuchFieldException {
         if (!te.arrayBased) {
             StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
@@ -200,6 +229,21 @@ public class BuilderPropertyTest extends StaticObjectModelTest {
                 Assert.assertEquals(expectedType, object.getClass().getField(guessGeneratedFieldName(properties[i])).getType());
             }
         }
+    }
+
+    @Theory
+    public void maxProperties(TestEnvironment te) {
+        StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
+        for (int i = 0; i <= 65535; i++) {
+            try {
+                builder.property(new DefaultStaticProperty("property" + i, StaticPropertyKind.Int, false));
+            } catch (IllegalArgumentException e) {
+                Assert.assertEquals("This builder already contains the maximum number of properties: 65535", e.getMessage());
+                Assert.assertEquals(65535, i);
+                return;
+            }
+        }
+        Assert.fail();
     }
 
     @Test

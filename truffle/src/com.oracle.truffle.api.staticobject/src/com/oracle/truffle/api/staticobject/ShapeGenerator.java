@@ -46,7 +46,8 @@ import com.oracle.truffle.api.impl.asm.Type;
 import com.oracle.truffle.api.staticobject.StaticShape.StorageStrategy;
 
 import java.lang.reflect.Field;
-import java.util.Collection;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicInteger;
 import sun.misc.Unsafe;
 
@@ -58,7 +59,7 @@ abstract class ShapeGenerator<T> {
     private static final String DELIMITER = "$$";
     private static final AtomicInteger counter = new AtomicInteger();
 
-    abstract StaticShape<T> generateShape(StaticShape<T> parentShape, Collection<StaticProperty> staticProperties, boolean safetyChecks);
+    abstract StaticShape<T> generateShape(StaticShape<T> parentShape, Map<String, StaticProperty> staticProperties, boolean safetyChecks);
 
     static <T> ShapeGenerator<T> getShapeGenerator(GeneratorClassLoader gcl, StaticShape<T> parentShape, StorageStrategy strategy) {
         Class<?> parentStorageClass = parentShape.getStorageClass();
@@ -82,13 +83,9 @@ abstract class ShapeGenerator<T> {
         return Type.getInternalName(generatedStorageClass) + DELIMITER + "Factory";
     }
 
-    static String generateFieldName(StaticProperty property) {
-        return property.getId();
-    }
-
-    static void addStorageFields(ClassVisitor cv, Collection<StaticProperty> staticProperties) {
-        for (StaticProperty staticProperty : staticProperties) {
-            addStorageField(cv, generateFieldName(staticProperty), staticProperty.getInternalKind(), staticProperty.storeAsFinal());
+    static void addStorageFields(ClassVisitor cv, Map<String, StaticProperty> staticProperties) {
+        for (Entry<String, StaticProperty> entry : staticProperties.entrySet()) {
+            addStorageField(cv, entry.getKey(), entry.getValue().getInternalKind(), entry.getValue().storeAsFinal());
         }
     }
 

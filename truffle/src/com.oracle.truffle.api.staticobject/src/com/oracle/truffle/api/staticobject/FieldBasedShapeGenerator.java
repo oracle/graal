@@ -47,7 +47,8 @@ import com.oracle.truffle.api.impl.asm.Type;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
-import java.util.Collection;
+import java.util.Map;
+import java.util.Map.Entry;
 
 import static com.oracle.truffle.api.impl.asm.Opcodes.ACC_FINAL;
 import static com.oracle.truffle.api.impl.asm.Opcodes.ACC_PUBLIC;
@@ -79,12 +80,12 @@ final class FieldBasedShapeGenerator<T> extends ShapeGenerator<T> {
     }
 
     @Override
-    StaticShape<T> generateShape(StaticShape<T> parentShape, Collection<StaticProperty> staticProperties, boolean safetyChecks) {
+    StaticShape<T> generateShape(StaticShape<T> parentShape, Map<String, StaticProperty> staticProperties, boolean safetyChecks) {
         Class<?> generatedStorageClass = generateStorage(gcl, storageSuperClass, staticProperties);
         Class<? extends T> generatedFactoryClass = generateFactory(gcl, generatedStorageClass, storageFactoryInterface);
-        for (StaticProperty staticProperty : staticProperties) {
-            int offset = getObjectFieldOffset(generatedStorageClass, generateFieldName(staticProperty));
-            staticProperty.initOffset(offset);
+        for (Entry<String, StaticProperty> entry : staticProperties.entrySet()) {
+            int offset = getObjectFieldOffset(generatedStorageClass, entry.getKey());
+            entry.getValue().initOffset(offset);
         }
         return FieldBasedStaticShape.create(generatedStorageClass, generatedFactoryClass, safetyChecks);
     }
@@ -155,7 +156,7 @@ final class FieldBasedShapeGenerator<T> extends ShapeGenerator<T> {
         }
     }
 
-    private static Class<?> generateStorage(GeneratorClassLoader gcl, Class<?> storageSuperClass, Collection<StaticProperty> staticProperties) {
+    private static Class<?> generateStorage(GeneratorClassLoader gcl, Class<?> storageSuperClass, Map<String, StaticProperty> staticProperties) {
         String storageSuperName = Type.getInternalName(storageSuperClass);
         String storageName = generateStorageName();
         ClassWriter storageWriter = new ClassWriter(0);
