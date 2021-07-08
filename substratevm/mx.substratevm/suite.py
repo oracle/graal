@@ -399,7 +399,6 @@ suite = {
                 "com.oracle.svm.hosted",
             ],
             "javaCompliance": "8",
-            "overlayTarget" : "com.oracle.svm.hosted",
             "checkstyle" : "com.oracle.svm.hosted",
             "checkPackagePrefix" : "false",
             "annotationProcessors": [
@@ -1051,6 +1050,7 @@ suite = {
                 "com.oracle.svm.graal",
                 "com.oracle.svm.truffle",
                 "com.oracle.svm.hosted",
+                "com.oracle.svm.hosted.jdk8",
                 "com.oracle.svm.hosted.jdk11",
                 "com.oracle.svm.hosted.jdk14",
                 "com.oracle.svm.core",

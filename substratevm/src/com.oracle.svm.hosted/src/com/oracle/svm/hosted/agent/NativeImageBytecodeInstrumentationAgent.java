@@ -27,7 +27,9 @@ package com.oracle.svm.hosted.agent;
 import static jdk.internal.org.objectweb.asm.ClassWriter.COMPUTE_FRAMES;
 
 import java.lang.instrument.Instrumentation;
+import java.lang.reflect.Method;
 
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.AgentSupport;
 
 import jdk.internal.org.objectweb.asm.ClassReader;
@@ -45,7 +47,15 @@ public class NativeImageBytecodeInstrumentationAgent {
             advisor = new TracingAdvisor(agentArgs);
             inst.addTransformer(AgentSupport.createClassInstrumentationTransformer(NativeImageBytecodeInstrumentationAgent::applyInitializationTrackingTransformation));
         }
-        NativeImageBytecodeInstrumentationAgentExtensions.premain(agentArgs, inst);
+        if (System.getProperty("java.specification.version").equals("1.8")) {
+            try {
+                Class<?> agentExtensionClass = Class.forName("com.oracle.svm.hosted.agent.jdk8.NativeImageBytecodeInstrumentationAgentJDK8");
+                Method addClassInstrumentationTransformerMethod = agentExtensionClass.getDeclaredMethod("addClassInstrumentationTransformer", Instrumentation.class);
+                addClassInstrumentationTransformerMethod.invoke(null, inst);
+            } catch (ReflectiveOperationException e) {
+                VMError.shouldNotReachHere("Could not add ClassInstrumentationTransformer required for NativeImageBytecodeInstrumentationAgent on Java 8", e);
+            }
+        }
     }
 
     private static byte[] applyInitializationTrackingTransformation(@SuppressWarnings("unused") String moduleName, @SuppressWarnings("unused") ClassLoader loader, String className,
