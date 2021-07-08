@@ -2188,6 +2188,7 @@ suite = {
           "org.graalvm.compiler.core.match.MatchStatementSet",
           "org.graalvm.compiler.debug.DebugHandlersFactory",
           "org.graalvm.compiler.debug.TTYStreamProvider",
+          "org.graalvm.compiler.debug.PathUtilitiesProvider",
           "org.graalvm.compiler.hotspot.HotSpotGraalManagementRegistration",
           "org.graalvm.compiler.hotspot.HotSpotCodeCacheListener",
           "org.graalvm.compiler.hotspot.HotSpotBackendFactory",

@@ -24,27 +24,29 @@
  */
 package org.graalvm.compiler.debug.test;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.nio.file.FileVisitResult;
-import java.nio.file.FileVisitor;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.util.HashMap;
-import java.util.Map;
-import org.graalvm.compiler.debug.Versions;
-import org.junit.After;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.junit.Assume.assumeTrue;
+
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.HashMap;
+import java.util.Map;
+
+import org.graalvm.compiler.debug.Versions;
+import org.junit.After;
 import org.junit.Test;
 
 public class VersionsTest {
@@ -53,20 +55,9 @@ public class VersionsTest {
     @After
     public void cleanUp() throws IOException {
         if (temporaryDirectory != null) {
-            Files.walkFileTree(temporaryDirectory.toPath(), new FileVisitor<Path>() {
-                @Override
-                public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
-                    return FileVisitResult.CONTINUE;
-                }
-
+            Files.walkFileTree(temporaryDirectory.toPath(), new SimpleFileVisitor<Path>() {
                 @Override
                 public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                    Files.delete(file);
-                    return FileVisitResult.CONTINUE;
-                }
-
-                @Override
-                public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
                     Files.delete(file);
                     return FileVisitResult.CONTINUE;
                 }
@@ -84,14 +75,14 @@ public class VersionsTest {
     @Test
     public void emptyProperties() throws URISyntaxException {
         Path root = Paths.get(new URI("file:/"));
-        Versions v = new Versions(root);
+        Versions v = new Versions(root.toString());
         assertEmpty(v.withVersions(null));
     }
 
     @Test
     public void emptyWithNullProperties() throws URISyntaxException {
         Path root = Paths.get(new URI("file:/"));
-        Versions v = new Versions(root);
+        Versions v = new Versions(root.toString());
         assertEmpty(v.withVersions(null));
     }
 
@@ -99,7 +90,7 @@ public class VersionsTest {
     public void readFromSameDirNullProps() throws IOException {
         File dir = prepareReleaseFile();
 
-        Versions v = new Versions(dir.toPath());
+        Versions v = new Versions(dir.getPath());
         Map<Object, Object> map = v.withVersions(null);
         assertNonModifiable(map);
 
@@ -111,7 +102,7 @@ public class VersionsTest {
     public void readFromSameDir() throws IOException {
         File dir = prepareReleaseFile();
 
-        Versions v = new Versions(dir.toPath());
+        Versions v = new Versions(dir.getPath());
 
         Map<Object, Object> prepared = new HashMap<>();
         prepared.put("test", "best");
@@ -128,7 +119,7 @@ public class VersionsTest {
     public void readFromSubDirNullProps() throws IOException {
         File dir = prepareSubReleaseFile();
 
-        Versions v = new Versions(dir.toPath());
+        Versions v = new Versions(dir.getPath());
         Map<Object, Object> map = v.withVersions(null);
         assertNonModifiable(map);
 
@@ -140,7 +131,7 @@ public class VersionsTest {
     public void readFromSubDir() throws IOException {
         File dir = prepareSubReleaseFile();
 
-        Versions v = new Versions(dir.toPath());
+        Versions v = new Versions(dir.getPath());
 
         Map<Object, Object> prepared = new HashMap<>();
         prepared.put("test", "best");

@@ -26,17 +26,16 @@ package org.graalvm.compiler.debug;
 
 import static org.graalvm.compiler.debug.DebugOptions.PrintGraphHost;
 import static org.graalvm.compiler.debug.DebugOptions.PrintGraphPort;
+import static org.graalvm.compiler.debug.PathUtilities.getParent;
+import static org.graalvm.compiler.debug.PathUtilities.isDirectory;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.ClosedByInterruptException;
-import java.nio.channels.FileChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.channels.WritableByteChannel;
-import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.function.Supplier;
 
@@ -46,12 +45,12 @@ import org.graalvm.compiler.options.OptionValues;
 import jdk.vm.ci.common.NativeImageReinitialize;
 
 final class IgvDumpChannel implements WritableByteChannel {
-    private final Supplier<Path> pathProvider;
+    private final Supplier<String> pathProvider;
     private final OptionValues options;
     private WritableByteChannel sharedChannel;
     private boolean closed;
 
-    IgvDumpChannel(Supplier<Path> pathProvider, OptionValues options) {
+    IgvDumpChannel(Supplier<String> pathProvider, OptionValues options) {
         this.pathProvider = pathProvider;
         this.options = options;
     }
@@ -96,7 +95,7 @@ final class IgvDumpChannel implements WritableByteChannel {
         return sharedChannel;
     }
 
-    private static WritableByteChannel createNetworkChannel(Supplier<Path> pathProvider, OptionValues options) throws IOException {
+    private static WritableByteChannel createNetworkChannel(Supplier<String> pathProvider, OptionValues options) throws IOException {
         String host = PrintGraphHost.getValue(options);
         int port = PrintGraphPort.getValue(options);
         try {
@@ -131,14 +130,11 @@ final class IgvDumpChannel implements WritableByteChannel {
         }
     }
 
-    private static WritableByteChannel createFileChannel(Supplier<Path> pathProvider, String networkFailure) throws IOException {
-        Path path = pathProvider.get();
+    private static WritableByteChannel createFileChannel(Supplier<String> pathProvider, String networkFailure) throws IOException {
+        String path = pathProvider.get();
         try {
-            FileChannel channel = FileChannel.open(path, StandardOpenOption.WRITE, StandardOpenOption.CREATE);
-            File dir = path.toFile();
-            if (!dir.isDirectory()) {
-                dir = dir.getParentFile();
-            }
+            WritableByteChannel channel = PathUtilities.openFileChannel(path, StandardOpenOption.WRITE, StandardOpenOption.CREATE);
+            String dir = isDirectory(path, false) ? path : getParent(path);
             if (networkFailure == null) {
                 maybeAnnounceTarget("Dumping IGV graphs in " + dir);
             } else {
