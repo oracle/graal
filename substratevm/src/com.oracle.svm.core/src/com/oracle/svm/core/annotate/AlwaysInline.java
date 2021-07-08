@@ -31,8 +31,6 @@ import java.lang.annotation.Target;
 
 /**
  * Every thus annotated method is always inlined by the compiler.
- *
- * This annotation exists primarily for testing purposes.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.METHOD, ElementType.CONSTRUCTOR})

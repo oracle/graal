@@ -102,10 +102,11 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
 
     private static void setPublicModifier(ResolvedJavaMethod m) {
         try {
-            Class<?> method = m.getClass();
-            Method metaspaceMethodM = method.getDeclaredMethod("getMetaspaceMethod");
+            Class<?> hotspotMethodClass = m.getClass();
+            Method metaspaceMethodM = getMethodToFetchMetaspaceMethod(hotspotMethodClass);
             metaspaceMethodM.setAccessible(true);
             long metaspaceMethod = (Long) metaspaceMethodM.invoke(m);
+            VMError.guarantee(metaspaceMethod != 0);
             // Checkstyle: stop
             Class<?> hotSpotVMConfigC = Class.forName("jdk.vm.ci.hotspot.HotSpotVMConfig");
             // Checkstyle: resume
@@ -121,6 +122,15 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
             unsafe.putInt(metaspaceMethod + methodAccessFlagsOffset, newModifiers);
         } catch (Exception ex) {
             throw VMError.shouldNotReachHere(ex);
+        }
+    }
+
+    private static Method getMethodToFetchMetaspaceMethod(Class<?> method) throws NoSuchMethodException {
+        // The exact method depends on the JVMCI version.
+        try {
+            return method.getDeclaredMethod("getMetaspaceMethod");
+        } catch (NoSuchMethodException e) {
+            return method.getDeclaredMethod("getMetaspacePointer");
         }
     }
 }

@@ -42,6 +42,7 @@ import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.results.StaticAnalysisResults;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.StubCallingConvention;
 import com.oracle.svm.core.deopt.Deoptimizer;
@@ -92,6 +93,8 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
     public final CompilationInfo compilationInfo;
     private final LocalVariableTable localVariableTable;
 
+    private final String uniqueShortName;
+
     public HostedMethod(HostedUniverse universe, AnalysisMethod wrapped, HostedType holder, Signature signature, ConstantPool constantPool, ExceptionHandler[] handlers) {
         this.wrapped = wrapped;
         this.holder = holder;
@@ -99,6 +102,7 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
         this.constantPool = constantPool;
         this.handlers = handlers;
         this.compilationInfo = new CompilationInfo(this);
+        this.uniqueShortName = SubstrateUtil.uniqueShortName(this);
 
         LocalVariableTable newLocalVariableTable = null;
         if (wrapped.getLocalVariableTable() != null) {
@@ -158,6 +162,10 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
 
     public boolean isCompiled() {
         return compiled;
+    }
+
+    public String getUniqueShortName() {
+        return uniqueShortName;
     }
 
     /*

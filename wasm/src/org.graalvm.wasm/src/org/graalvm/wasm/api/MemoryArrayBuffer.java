@@ -40,6 +40,14 @@
  */
 package org.graalvm.wasm.api;
 
+import static java.lang.Math.toIntExact;
+
+import java.nio.ByteOrder;
+
+import org.graalvm.wasm.memory.WasmMemory;
+
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
@@ -48,12 +56,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import org.graalvm.wasm.memory.WasmMemory;
-
-import java.nio.ByteOrder;
-
-import static com.oracle.truffle.api.CompilerDirectives.transferToInterpreter;
-import static java.lang.Math.toIntExact;
+import com.oracle.truffle.api.profiles.BranchProfile;
 
 @ExportLibrary(InteropLibrary.class)
 public class MemoryArrayBuffer implements TruffleObject {
@@ -74,21 +77,24 @@ public class MemoryArrayBuffer implements TruffleObject {
         return memory.byteSize();
     }
 
-    private void checkOffset(long byteOffset, int opLength) throws InvalidBufferOffsetException {
+    private void checkOffset(long byteOffset, int opLength, BranchProfile errorBranch) throws InvalidBufferOffsetException {
         if (byteOffset < 0 || getBufferSize() - opLength < byteOffset) {
+            errorBranch.enter();
             throw InvalidBufferOffsetException.create(byteOffset, opLength);
         }
     }
 
     @ExportMessage
-    final byte readBufferByte(long byteOffset) throws InvalidBufferOffsetException {
-        checkOffset(byteOffset, Byte.BYTES);
+    final byte readBufferByte(long byteOffset,
+                    @Shared("error") @Cached("create()") BranchProfile errorBranch) throws InvalidBufferOffsetException {
+        checkOffset(byteOffset, Byte.BYTES, errorBranch);
         return (byte) memory.load_i32_8s(null, (int) byteOffset);
     }
 
     @ExportMessage
-    final short readBufferShort(ByteOrder order, long byteOffset) throws InvalidBufferOffsetException {
-        checkOffset(byteOffset, Short.BYTES);
+    final short readBufferShort(ByteOrder order, long byteOffset,
+                    @Shared("error") @Cached("create()") BranchProfile errorBranch) throws InvalidBufferOffsetException {
+        checkOffset(byteOffset, Short.BYTES, errorBranch);
         short result = (short) memory.load_i32_16s(null, (int) byteOffset);
         if (order == ByteOrder.BIG_ENDIAN) {
             result = Short.reverseBytes(result);
@@ -97,8 +103,9 @@ public class MemoryArrayBuffer implements TruffleObject {
     }
 
     @ExportMessage
-    final int readBufferInt(ByteOrder order, long byteOffset) throws InvalidBufferOffsetException {
-        checkOffset(byteOffset, Integer.BYTES);
+    final int readBufferInt(ByteOrder order, long byteOffset,
+                    @Shared("error") @Cached("create()") BranchProfile errorBranch) throws InvalidBufferOffsetException {
+        checkOffset(byteOffset, Integer.BYTES, errorBranch);
         int result = memory.load_i32(null, (int) byteOffset);
         if (order == ByteOrder.BIG_ENDIAN) {
             result = Integer.reverseBytes(result);
@@ -107,8 +114,9 @@ public class MemoryArrayBuffer implements TruffleObject {
     }
 
     @ExportMessage
-    final long readBufferLong(ByteOrder order, long byteOffset) throws InvalidBufferOffsetException {
-        checkOffset(byteOffset, Long.BYTES);
+    final long readBufferLong(ByteOrder order, long byteOffset,
+                    @Shared("error") @Cached("create()") BranchProfile errorBranch) throws InvalidBufferOffsetException {
+        checkOffset(byteOffset, Long.BYTES, errorBranch);
         long result = memory.load_i64(null, (int) byteOffset);
         if (order == ByteOrder.BIG_ENDIAN) {
             result = Long.reverseBytes(result);
@@ -117,8 +125,9 @@ public class MemoryArrayBuffer implements TruffleObject {
     }
 
     @ExportMessage
-    final float readBufferFloat(ByteOrder order, long byteOffset) throws InvalidBufferOffsetException {
-        checkOffset(byteOffset, Float.BYTES);
+    final float readBufferFloat(ByteOrder order, long byteOffset,
+                    @Shared("error") @Cached("create()") BranchProfile errorBranch) throws InvalidBufferOffsetException {
+        checkOffset(byteOffset, Float.BYTES, errorBranch);
         float result = memory.load_f32(null, (int) byteOffset);
         if (order == ByteOrder.BIG_ENDIAN) {
             result = Float.intBitsToFloat(Integer.reverseBytes(Float.floatToRawIntBits(result)));
@@ -127,8 +136,9 @@ public class MemoryArrayBuffer implements TruffleObject {
     }
 
     @ExportMessage
-    final double readBufferDouble(ByteOrder order, long byteOffset) throws InvalidBufferOffsetException {
-        checkOffset(byteOffset, Double.BYTES);
+    final double readBufferDouble(ByteOrder order, long byteOffset,
+                    @Shared("error") @Cached("create()") BranchProfile errorBranch) throws InvalidBufferOffsetException {
+        checkOffset(byteOffset, Double.BYTES, errorBranch);
         double result = memory.load_f64(null, (int) byteOffset);
         if (order == ByteOrder.BIG_ENDIAN) {
             result = Double.longBitsToDouble(Long.reverseBytes(Double.doubleToRawLongBits(result)));
@@ -143,42 +153,48 @@ public class MemoryArrayBuffer implements TruffleObject {
     }
 
     @ExportMessage
-    final void writeBufferByte(long byteOffset, byte value) throws InvalidBufferOffsetException {
-        checkOffset(byteOffset, Byte.BYTES);
+    final void writeBufferByte(long byteOffset, byte value,
+                    @Shared("error") @Cached("create()") BranchProfile errorBranch) throws InvalidBufferOffsetException {
+        checkOffset(byteOffset, Byte.BYTES, errorBranch);
         memory.store_i32_8(null, (int) byteOffset, value);
     }
 
     @ExportMessage
-    final void writeBufferShort(ByteOrder order, long byteOffset, short value) throws InvalidBufferOffsetException {
-        checkOffset(byteOffset, Short.BYTES);
+    final void writeBufferShort(ByteOrder order, long byteOffset, short value,
+                    @Shared("error") @Cached("create()") BranchProfile errorBranch) throws InvalidBufferOffsetException {
+        checkOffset(byteOffset, Short.BYTES, errorBranch);
         short actualValue = (order == ByteOrder.LITTLE_ENDIAN) ? value : Short.reverseBytes(value);
         memory.store_i32_16(null, (int) byteOffset, actualValue);
     }
 
     @ExportMessage
-    final void writeBufferInt(ByteOrder order, long byteOffset, int value) throws InvalidBufferOffsetException {
-        checkOffset(byteOffset, Integer.BYTES);
+    final void writeBufferInt(ByteOrder order, long byteOffset, int value,
+                    @Shared("error") @Cached("create()") BranchProfile errorBranch) throws InvalidBufferOffsetException {
+        checkOffset(byteOffset, Integer.BYTES, errorBranch);
         int actualValue = (order == ByteOrder.LITTLE_ENDIAN) ? value : Integer.reverseBytes(value);
         memory.store_i32(null, (int) byteOffset, actualValue);
     }
 
     @ExportMessage
-    final void writeBufferLong(ByteOrder order, long byteOffset, long value) throws InvalidBufferOffsetException {
-        checkOffset(byteOffset, Long.BYTES);
+    final void writeBufferLong(ByteOrder order, long byteOffset, long value,
+                    @Shared("error") @Cached("create()") BranchProfile errorBranch) throws InvalidBufferOffsetException {
+        checkOffset(byteOffset, Long.BYTES, errorBranch);
         long actualValue = (order == ByteOrder.LITTLE_ENDIAN) ? value : Long.reverseBytes(value);
         memory.store_i64(null, (int) byteOffset, actualValue);
     }
 
     @ExportMessage
-    final void writeBufferFloat(ByteOrder order, long byteOffset, float value) throws InvalidBufferOffsetException {
-        checkOffset(byteOffset, Float.BYTES);
+    final void writeBufferFloat(ByteOrder order, long byteOffset, float value,
+                    @Shared("error") @Cached("create()") BranchProfile errorBranch) throws InvalidBufferOffsetException {
+        checkOffset(byteOffset, Float.BYTES, errorBranch);
         float actualValue = (order == ByteOrder.LITTLE_ENDIAN) ? value : Float.intBitsToFloat(Integer.reverseBytes(Float.floatToRawIntBits(value)));
         memory.store_f32(null, (int) byteOffset, actualValue);
     }
 
     @ExportMessage
-    final void writeBufferDouble(ByteOrder order, long byteOffset, double value) throws InvalidBufferOffsetException {
-        checkOffset(byteOffset, Double.BYTES);
+    final void writeBufferDouble(ByteOrder order, long byteOffset, double value,
+                    @Shared("error") @Cached("create()") BranchProfile errorBranch) throws InvalidBufferOffsetException {
+        checkOffset(byteOffset, Double.BYTES, errorBranch);
         double actualValue = (order == ByteOrder.LITTLE_ENDIAN) ? value : Double.longBitsToDouble(Long.reverseBytes(Double.doubleToRawLongBits(value)));
         memory.store_f64(null, (int) byteOffset, actualValue);
     }
@@ -215,9 +231,10 @@ public class MemoryArrayBuffer implements TruffleObject {
 
     @SuppressWarnings({"unused"})
     @ExportMessage
-    public Object readArrayElement(long index) throws InvalidArrayIndexException {
+    public Object readArrayElement(long index,
+                    @Shared("error") @Cached("create()") BranchProfile errorBranch) throws InvalidArrayIndexException {
         if (!isArrayElementReadable(index)) {
-            transferToInterpreter();
+            errorBranch.enter();
             throw InvalidArrayIndexException.create(index);
         }
         return memory.load_i32_8u(null, toIntExact(index));
@@ -225,14 +242,16 @@ public class MemoryArrayBuffer implements TruffleObject {
 
     @SuppressWarnings({"unused", "static-method"})
     @ExportMessage
-    final void writeArrayElement(long index, Object value) throws InvalidArrayIndexException, UnsupportedTypeException {
+    final void writeArrayElement(long index, Object value,
+                    @Shared("error") @Cached("create()") BranchProfile errorBranch) throws InvalidArrayIndexException, UnsupportedTypeException {
         if (!isArrayElementModifiable(index)) {
-            transferToInterpreter();
+            errorBranch.enter();
             throw InvalidArrayIndexException.create(index);
         }
         try {
             memory.store_i32_8(null, toIntExact(index), InteropLibrary.getFactory().getUncached().asByte(value));
         } catch (UnsupportedMessageException e) {
+            errorBranch.enter();
             throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
         }
     }

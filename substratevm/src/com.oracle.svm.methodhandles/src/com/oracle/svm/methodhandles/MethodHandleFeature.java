@@ -26,15 +26,16 @@ package com.oracle.svm.methodhandles;
 
 import java.lang.invoke.CallSite;
 import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 // Checkstyle: stop
 import java.lang.reflect.Array;
-import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
-import java.lang.reflect.Member;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 // Checkstyle: resume
 import java.util.Iterator;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
@@ -80,8 +81,22 @@ import sun.invoke.util.Wrapper;
 public class MethodHandleFeature implements Feature {
 
     private boolean analysisFinished = false;
+    private Set<MethodHandle> seenMethodHandles;
     private Class<?> directMethodHandleClass;
     private Class<?> boundMethodHandleClass;
+    private Class<?> delegatingMethodHandleClass;
+    private Method getDelegatingMethodHandleTarget;
+    private Method methodHandleInternalMemberName;
+    private Method memberNameGetDeclaringClass;
+    private Method memberNameGetName;
+    private Method memberNameIsInvocable;
+    private Method memberNameIsField;
+    private Method memberNameGetParameterTypes;
+    private Field methodHandleInternalForm;
+    private Field lambdaFormNames;
+    private Field lambdaFormArity;
+    private Field nameFunction;
+    private Field namedFunctionMemberName;
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
@@ -90,8 +105,29 @@ public class MethodHandleFeature implements Feature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
+        seenMethodHandles = ConcurrentHashMap.newKeySet();
         directMethodHandleClass = access.findClassByName("java.lang.invoke.DirectMethodHandle");
         boundMethodHandleClass = access.findClassByName("java.lang.invoke.BoundMethodHandle");
+        delegatingMethodHandleClass = access.findClassByName("java.lang.invoke.DelegatingMethodHandle");
+        getDelegatingMethodHandleTarget = ReflectionUtil.lookupMethod(delegatingMethodHandleClass, "getTarget");
+        methodHandleInternalMemberName = ReflectionUtil.lookupMethod(MethodHandle.class, "internalMemberName");
+        methodHandleInternalForm = ReflectionUtil.lookupField(MethodHandle.class, "form");
+
+        Class<?> memberNameClass = access.findClassByName("java.lang.invoke.MemberName");
+        memberNameGetDeclaringClass = ReflectionUtil.lookupMethod(memberNameClass, "getDeclaringClass");
+        memberNameGetName = ReflectionUtil.lookupMethod(memberNameClass, "getName");
+        memberNameIsInvocable = ReflectionUtil.lookupMethod(memberNameClass, "isInvocable");
+        memberNameIsField = ReflectionUtil.lookupMethod(memberNameClass, "isField");
+        memberNameGetParameterTypes = ReflectionUtil.lookupMethod(memberNameClass, "getParameterTypes");
+
+        Class<?> lambdaFormClass = access.findClassByName("java.lang.invoke.LambdaForm");
+        lambdaFormNames = ReflectionUtil.lookupField(lambdaFormClass, "names");
+        lambdaFormArity = ReflectionUtil.lookupField(lambdaFormClass, "arity");
+        Class<?> nameClass = access.findClassByName("java.lang.invoke.LambdaForm$Name");
+        nameFunction = ReflectionUtil.lookupField(nameClass, "function");
+        Class<?> namedFunctionClass = access.findClassByName("java.lang.invoke.LambdaForm$NamedFunction");
+        namedFunctionMemberName = ReflectionUtil.lookupField(namedFunctionClass, "member");
+
         access.registerObjectReplacer(this::registerMethodHandle);
     }
 
@@ -242,29 +278,80 @@ public class MethodHandleFeature implements Feature {
     }
 
     private Object registerMethodHandle(Object obj) {
-        if (analysisFinished) {
-            return obj;
-        }
-
-        if (directMethodHandleClass.isAssignableFrom(obj.getClass())) {
-            MethodHandle handle = (MethodHandle) obj;
-            try {
-                Member member = MethodHandles.reflectAs(Member.class, handle);
-                if (member instanceof Executable) {
-                    RuntimeReflection.register((Executable) member);
-                } else if (member instanceof Field) {
-                    RuntimeReflection.register((Field) member);
-                } else {
-                    throw VMError.shouldNotReachHere("Unexpected reflected type " + member.getClass());
-                }
-            } catch (IllegalArgumentException e) {
-                /* This happens for polymorphic signature methods, no need to register those. */
-            }
-        } else if (boundMethodHandleClass.isAssignableFrom(obj.getClass())) {
-            /* Allow access to species class args at runtime */
-            MethodHandle handle = (MethodHandle) obj;
-            RuntimeReflection.register(obj.getClass().getDeclaredFields());
+        if (!analysisFinished) {
+            registerMethodHandleRecurse(obj);
         }
         return obj;
+    }
+
+    private void registerMethodHandleRecurse(Object obj) {
+        if (!(obj instanceof MethodHandle) || seenMethodHandles.contains(obj)) {
+            return;
+        }
+        MethodHandle handle = (MethodHandle) obj;
+        seenMethodHandles.add(handle);
+
+        if (directMethodHandleClass.isAssignableFrom(handle.getClass())) {
+            try {
+                registerMemberName(methodHandleInternalMemberName.invoke(handle));
+            } catch (IllegalAccessException | InvocationTargetException e) {
+                throw VMError.shouldNotReachHere(e);
+            }
+        } else if (boundMethodHandleClass.isAssignableFrom(handle.getClass())) {
+            /* Allow access to species class args at runtime */
+            for (Field field : handle.getClass().getDeclaredFields()) {
+                if (field.getName().startsWith("arg")) {
+                    RuntimeReflection.register(field);
+                    if (!field.getType().isPrimitive()) {
+                        try {
+                            field.setAccessible(true);
+                            registerMethodHandleRecurse(field.get(handle));
+                        } catch (IllegalAccessException e) {
+                            throw VMError.shouldNotReachHere(e);
+                        }
+                    }
+                }
+            }
+            /* Recursively register all methods called by the handle */
+            try {
+                Object form = methodHandleInternalForm.get(handle);
+                Object[] names = (Object[]) lambdaFormNames.get(form);
+                int arity = (int) lambdaFormArity.get(form);
+                for (int i = arity; i < names.length; ++i) {
+                    Object function = nameFunction.get(names[i]);
+                    if (function != null) {
+                        registerMemberName(namedFunctionMemberName.get(function));
+                    }
+                }
+            } catch (IllegalAccessException e) {
+                VMError.shouldNotReachHere(e);
+            }
+        } else if (delegatingMethodHandleClass.isAssignableFrom(handle.getClass())) {
+            try {
+                MethodHandle wrappedHandle = (MethodHandle) getDelegatingMethodHandleTarget.invoke(handle);
+                registerMethodHandleRecurse(wrappedHandle);
+            } catch (IllegalAccessException | InvocationTargetException e) {
+                throw VMError.shouldNotReachHere(e);
+            }
+        }
+    }
+
+    private void registerMemberName(Object memberName) {
+        try {
+            Class<?> declaringClass = (Class<?>) memberNameGetDeclaringClass.invoke(memberName);
+            String name = (String) memberNameGetName.invoke(memberName);
+            boolean isInvocable = (boolean) memberNameIsInvocable.invoke(memberName);
+            boolean isField = (boolean) memberNameIsField.invoke(memberName);
+            if (isInvocable) {
+                Class<?>[] paramTypes = (Class<?>[]) memberNameGetParameterTypes.invoke(memberName);
+                RuntimeReflection.register(declaringClass.getDeclaredMethod(name, paramTypes));
+            } else if (isField) {
+                RuntimeReflection.register(declaringClass.getDeclaredField(name));
+            }
+        } catch (NoSuchMethodException | NoSuchFieldException e) {
+            /* Internal, malformed or illegal member name, we do not need to register it */
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            throw VMError.shouldNotReachHere(e);
+        }
     }
 }

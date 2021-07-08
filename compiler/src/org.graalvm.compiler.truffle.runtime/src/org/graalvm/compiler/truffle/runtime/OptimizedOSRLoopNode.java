@@ -130,7 +130,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
             } finally {
                 baseLoopCount = 0;
             }
-        } else if (GraalCompilerDirectives.inFirstTier()) {
+        } else if (GraalCompilerDirectives.hasNextTier()) {
             long iterationsCompleted = 0;
             Object status;
             try {

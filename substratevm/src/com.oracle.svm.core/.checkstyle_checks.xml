@@ -31,6 +31,21 @@
       <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Disable annotation access checks"/>
     </module>
 
+    <module name="RegexpSinglelineJava">
+      <property name="id" value="threadIsInterruptedCall"/>
+      <metadata name="net.sf.eclipsecs.core.comment" value="Disallow calls to Thread.isInterrupted."/>
+      <property name="severity" value="error"/>
+      <property name="format" value="(?&lt;!JavaThreads)\.isInterrupted\b"/>
+      <property name="message" value="Calls to Thread.isInterrupted are restricted because the method can be overridden with code that does locking or performs other actions that are unsafe in a specific context. In VM-internal contexts, use JavaThreads.isInterrupted. (Use &quot;// Checkstyle: allow Thread.isInterrupted ... // Checkstyle: disallow Thread.isInterrupted&quot; to disable this check.)"/>
+      <property name="ignoreComments" value="true"/>
+    </module>
+    <module name="SuppressionCommentFilter">
+      <property name="offCommentFormat" value="Checkstyle: allow Thread.isInterrupted"/>
+      <property name="onCommentFormat" value="Checkstyle: disallow Thread.isInterrupted"/>
+      <property name="idFormat" value="threadIsInterruptedCall"/>
+      <metadata name="com.atlassw.tools.eclipse.checkstyle.comment" value="Disable Thread.isInterrupted calls"/>
+    </module>
+
     <module name="AvoidStarImport">
       <property name="allowClassImports" value="false"/>
       <property name="allowStaticMemberImports" value="false"/>

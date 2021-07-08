@@ -156,7 +156,7 @@ final class GraalRuntimeSupport extends RuntimeSupport {
 
     @Override
     public boolean inFirstTier() {
-        return GraalCompilerDirectives.inFirstTier();
+        return GraalCompilerDirectives.hasNextTier();
     }
 
     @Override

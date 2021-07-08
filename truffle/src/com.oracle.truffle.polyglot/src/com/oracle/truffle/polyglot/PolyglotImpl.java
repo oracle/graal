@@ -489,10 +489,10 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         PolyglotExceptionImpl exceptionImpl;
         PolyglotContextImpl.State localContextState = context.state;
         if (localContextState.isInvalidOrClosed()) {
-            exceptionImpl = new PolyglotExceptionImpl(context.engine, localContextState, e);
+            exceptionImpl = new PolyglotExceptionImpl(context.engine, localContextState, context.invalidResourceLimit, e);
         } else {
             try {
-                exceptionImpl = new PolyglotExceptionImpl(languageContext.getImpl(), languageContext.context.engine, localContextState,
+                exceptionImpl = new PolyglotExceptionImpl(languageContext.getImpl(), languageContext.context.engine, localContextState, false,
                                 languageContext, e, true, entered);
             } catch (Throwable t) {
                 /*
@@ -500,7 +500,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                  * Report the exception as an internal error.
                  */
                 e.addSuppressed(t);
-                exceptionImpl = new PolyglotExceptionImpl(context.engine, localContextState, e);
+                exceptionImpl = new PolyglotExceptionImpl(context.engine, localContextState, false, e);
             }
         }
         APIAccess access = getInstance().getAPIAccess();
@@ -512,7 +512,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         PolyglotEngineException.rethrow(e);
 
         APIAccess access = engine.getAPIAccess();
-        PolyglotExceptionImpl exceptionImpl = new PolyglotExceptionImpl(engine, null, e);
+        PolyglotExceptionImpl exceptionImpl = new PolyglotExceptionImpl(engine, null, false, e);
         return access.newLanguageException(exceptionImpl.getMessage(), getInstance().exceptionDispatch, exceptionImpl);
     }
 

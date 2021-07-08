@@ -25,8 +25,6 @@
 package org.graalvm.compiler.lir.gen;
 
 import org.graalvm.compiler.lir.LIRInstruction;
-import org.graalvm.compiler.lir.StandardOp.SaveRegistersOp;
-import org.graalvm.compiler.lir.StandardOp.ZapRegistersOp;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
@@ -40,34 +38,32 @@ public interface DiagnosticLIRGeneratorTool {
     LIRInstruction createMultiBenchmarkCounter(String[] names, String[] groups, Value[] increments);
 
     /**
-     * Creates a {@link SaveRegistersOp} that fills a given set of registers with known garbage
-     * value.
+     * Creates an instruction that fills a given set of registers with a known garbage value.
      *
      * @param zappedRegisters registers to be zapped
      * @param zapValues values used for zapping
      *
      * @see DiagnosticLIRGeneratorTool#createZapRegisters()
      */
-    ZapRegistersOp createZapRegisters(Register[] zappedRegisters, JavaConstant[] zapValues);
+    LIRInstruction createZapRegisters(Register[] zappedRegisters, JavaConstant[] zapValues);
 
     /**
-     * Creates a {@link SaveRegistersOp} that fills a given set of registers with a
+     * Creates an instruction that fills a given set of registers with a
      * {@link LIRGenerator#zapValueForKind known garbage value}.
      *
      * @param zappedRegisters registers to be zapped
      *
      * @see DiagnosticLIRGeneratorTool#createZapRegisters()
      */
-    ZapRegistersOp createZapRegisters(Register[] zappedRegisters);
+    LIRInstruction createZapRegisters(Register[] zappedRegisters);
 
     /**
-     * Creates a {@link ZapRegistersOp} that fills all
-     * {@link RegisterConfig#getAllocatableRegisters() allocatable registers} with a
-     * {@link LIRGenerator#zapValueForKind known garbage value}.
+     * Creates an instruction that fills all {@link RegisterConfig#getAllocatableRegisters()
+     * allocatable registers} with a {@link LIRGenerator#zapValueForKind known garbage value}.
      *
      * @see DiagnosticLIRGeneratorTool#createZapRegisters(Register[], JavaConstant[])
      */
-    ZapRegistersOp createZapRegisters();
+    LIRInstruction createZapRegisters();
 
     /**
      * Marker interface for {@link LIRInstruction instructions} that should be succeeded with a

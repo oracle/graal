@@ -170,7 +170,7 @@ public class ContextInterruptStandaloneTest extends AbstractPolyglotTest {
                     ctx.eval(source);
                     Assert.fail();
                 } catch (PolyglotException pe) {
-                    if (!pe.isCancelled()) {
+                    if (!pe.isCancelled() || pe.isInterrupted()) {
                         throw pe;
                     }
                 }

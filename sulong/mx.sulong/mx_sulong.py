@@ -235,19 +235,12 @@ def runLLVM(args=None, out=None, err=None, timeout=None, nonZeroIsFatal=True, ge
     return mx.run_java(getCommonOptions(False) + vmArgs + get_classpath_options(dists) + ["com.oracle.truffle.llvm.launcher.LLVMLauncher"] + sulongArgs, timeout=timeout, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err)
 
 
-def _java_to_graalvm_arg(arg):
-    prefix = '-X'
-    if arg.startswith(prefix):
-        return '--vm.' + arg[1:]
-    return arg
-
-
 @mx.command(_suite.name, "lli")
 def lli(args=None, out=None):
     """run lli via the current GraalVM"""
     debug_args = mx.java_debug_args()
     if debug_args and not mx.is_debug_disabled():
-        args = [_java_to_graalvm_arg(d) for d in debug_args] + args
+        args = ['--vm.' + arg.lstrip('-') for arg in debug_args] + args
     # on Windows <GRAALVM_HOME>/bin/lli is always a .cmd file because it is a "fake symlink"
     mx.run([os.path.join(mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True), 'bin', mx_subst.path_substitutions.substitute('<cmd:lli>'))] + args, out=out)
 

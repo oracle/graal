@@ -305,20 +305,22 @@ public class NativeImageGeneratorRunner {
                                 SubstrateOptionsParser.commandArgument(SubstrateOptions.Class, "<fully-qualified-class-name>"));
             }
 
+            classLoader.processAddExportsAndAddOpens(parsedHostedOptions);
+
             if (!className.isEmpty() || !moduleName.isEmpty()) {
-                classLoader.processAddExportsAndAddOpens(parsedHostedOptions);
                 Method mainEntryPoint;
                 Class<?> mainClass;
                 try {
-                    Object jpmsModule = null;
+                    Object mainModule = null;
                     if (!moduleName.isEmpty()) {
-                        jpmsModule = classLoader.findModule(moduleName)
-                                        .orElseThrow(() -> {
-                                            String errorMsg = "Module " + moduleName + " for mainclass not found.";
-                                            return UserError.abort(errorMsg);
-                                        });
+                        mainModule = classLoader.findModule(moduleName)
+                                        .orElseThrow(() -> UserError.abort("Module " + moduleName + " for mainclass not found."));
                     }
-                    mainClass = classLoader.loadClassFromModule(jpmsModule, className);
+                    if (className.isEmpty()) {
+                        className = classLoader.getMainClassFromModule(mainModule)
+                                        .orElseThrow(() -> UserError.abort("module %s does not have a ModuleMainClass attribute, use -m <module>/<main-class>", moduleName));
+                    }
+                    mainClass = classLoader.forName(className, mainModule);
                 } catch (ClassNotFoundException ex) {
                     throw UserError.abort("Main entry point class '%s' not found.", className);
                 }

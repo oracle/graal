@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,28 +22,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot.amd64;
+package com.oracle.svm.core;
 
-import org.graalvm.compiler.core.amd64.AMD64SuitesCreator;
-import org.graalvm.compiler.debug.Assertions;
-import org.graalvm.compiler.hotspot.lir.HotSpotZapRegistersPhase;
-import org.graalvm.compiler.lir.phases.LIRSuites;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
+import java.util.List;
+import java.util.Locale;
+import java.util.ResourceBundle;
 
-public class AMD64HotSpotSuitesCreator extends AMD64SuitesCreator {
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-    public AMD64HotSpotSuitesCreator(CompilerConfiguration compilerConfiguration, Plugins plugins) {
-        super(compilerConfiguration, plugins);
-    }
+@Platforms(Platform.HOSTED_ONLY.class)
+public abstract class ClassLoaderSupport {
 
-    @Override
-    public LIRSuites createLIRSuites(OptionValues options) {
-        LIRSuites lirSuites = super.createLIRSuites(options);
-        if (Assertions.detailedAssertionsEnabled(options)) {
-            lirSuites.getPostAllocationOptimizationStage().appendPhase(new HotSpotZapRegistersPhase());
+    public boolean isNativeImageClassLoader(ClassLoader classLoader) {
+        ClassLoader loader = classLoader;
+        while (loader != null) {
+            if (isNativeImageClassLoaderImpl(loader)) {
+                return true;
+            }
+            loader = loader.getParent();
         }
-        return lirSuites;
+        return false;
     }
+
+    protected abstract boolean isNativeImageClassLoaderImpl(ClassLoader classLoader);
+
+    public abstract List<ResourceBundle> getResourceBundle(String bundleName, Locale locale);
 }

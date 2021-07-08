@@ -43,7 +43,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * A type used as a substitution for an original type.
- * 
+ *
  * @param <F> The type of fields in the substitution type
  * @param <M> The type of methods in the substitution type
  */
@@ -304,6 +304,7 @@ public abstract class CustomSubstitutionType<F extends CustomSubstitutionField, 
         throw JVMCIError.unimplemented();
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public ResolvedJavaType getHostClass() {
         throw JVMCIError.unimplemented();

@@ -413,7 +413,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
         getLIRGen().append(new AArch64ArithmeticOp.BinaryConstOp(op, result, x, b));
     }
 
-    private static boolean isValidBinaryConstant(AArch64ArithmeticOp op, Value val) {
+    public static boolean isValidBinaryConstant(AArch64ArithmeticOp op, Value val) {
         if (!isJavaConstant(val)) {
             return false;
         }

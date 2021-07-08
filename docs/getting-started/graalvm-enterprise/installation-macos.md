@@ -23,21 +23,23 @@ Follow these steps to install Oracle GraalVM Enterprise Edition on the macOS ope
   ```shell
   tar -xzf graalvm-ee-java<version>-darvin-amd64-<version>.tar.gz
   ```
-Alternatively, open the file in Finder.
+  Alternatively, open the file in Finder.
+  > Note: If you are using macOS Catalina and later you may need to remove the quarantine attribute. See [Installation Notes](#installation-notes) below.
+
 5.  Move the downloaded package to its proper location, the `/Library/Java/JavaVirtualMachines` directory. Since this is a system directory, `sudo` is required:
-```shell
-sudo mv graalvm-ee-java<version>-<version> /Library/Java/JavaVirtualMachines
-```
+  ```shell
+  sudo mv graalvm-ee-java<version>-<version> /Library/Java/JavaVirtualMachines
+  ```
 To verify if the move is successful and to get a list of all installed JDKs, run `/usr/libexec/java_home -V`.
 6. There can be multiple JDKs installed on the machine. The next step is to configure the runtime environment:
   - Point the `PATH` environment variable to the GraalVM Enterprise `bin` directory:
-  ```shell
-  export PATH=/Library/Java/JavaVirtualMachines/<graalvm>/Contents/Home/bin:$PATH
-  ```
+    ```shell
+    export PATH=/Library/Java/JavaVirtualMachines/<graalvm>/Contents/Home/bin:$PATH
+    ```
   - Set the `JAVA_HOME` environment variable to resolve to the GraalVM Enterprise installation directory:
-  ```shell
-  export JAVA_HOME=/Library/Java/JavaVirtualMachines/<graalvm>/Contents/Home
-  ```
+    ```shell
+    export JAVA_HOME=/Library/Java/JavaVirtualMachines/<graalvm>/Contents/Home
+    ```
 7. To check whether the installation was successful, run the `java -version` command.
 Optionally, you can specify GraalVM Enterprise as the default JRE or JDK installation in your Java IDE.
 
@@ -51,16 +53,10 @@ sudo xattr -r -d com.apple.quarantine /path/to/GRAALVM_HOME
 ```
 
 #### On JAVA_HOME Command
-The information property file, _Info.plist_, is in the top level _Contents_
-folder. This means that GraalVM Enterprise participates in the macOS-specific
-`/usr/libexec/java_home` mechanism. Depending on other JDK 8 installation(s)
-available, it is now possible that `/usr/libexec/java_home -v1.8` returns
-`/Library/Java/JavaVirtualMachines/<graalvm>/Contents/Home`.
-You can run `/usr/libexec/java_home -v1.8 -V` to see the complete list of 1.8
-JVMs available to the `java_home` command. This command sorts the JVMs
-in decreasing version order and chooses the top one as the default for the
-specified version. Within a specific version, the sort order appears to be
-stable but is unspecified.
+The information property file, _Info.plist_, is in the top level _Contents_ folder.
+This means that GraalVM Enterprise participates in the macOS-specific `/usr/libexec/java_home` mechanism. Depending on other JDK 8 installation(s) available, it is now possible that `/usr/libexec/java_home -v1.8` returns `/Library/Java/JavaVirtualMachines/<graalvm>/Contents/Home`.
+You can run `/usr/libexec/java_home -v1.8 -V` to see the complete list of 1.8 JVMs available to the `java_home` command. This command sorts the JVMs in decreasing version order and chooses the top one as the default for the specified version.
+Within a specific version, the sort order appears to be stable but is unspecified.
 
 ## Supported Functionalities
 
@@ -70,7 +66,7 @@ The base installation can be extended with:
 Tools/Utilities:
 * [Native Image](/reference-manual/native-image/) -- a technology to compile an application ahead-of-time into a native executable
 * [LLVM toolchain](/reference-manual/llvm/) -- a set of tools and APIs for compiling native programs to bitcode that can be executed on GraalVM Enterprise
-​* [Java on Truffle](/reference-manual/java-on-truffle/) -- a Java Virtual Machine implementation based on a Truffle interpreter for GraalVM Enterprise
+* [Java on Truffle](/reference-manual/java-on-truffle/) -- a Java Virtual Machine implementation based on a Truffle interpreter for GraalVM Enterprise
 
 Runtimes:
 * [Node.js](/reference-manual/js/) -- Node.js 14.16.1 compatible

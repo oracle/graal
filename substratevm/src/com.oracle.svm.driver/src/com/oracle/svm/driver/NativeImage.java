@@ -67,15 +67,13 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.oracle.svm.driver.metainf.MetaInfFileType;
-import com.oracle.svm.driver.metainf.NativeImageMetaInfResourceProcessor;
-import com.oracle.svm.driver.metainf.NativeImageMetaInfWalker;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
+import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.FallbackExecutor;
 import com.oracle.svm.core.FallbackExecutor.Options;
 import com.oracle.svm.core.OS;
@@ -88,7 +86,9 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.driver.MacroOption.EnabledOption;
 import com.oracle.svm.driver.MacroOption.MacroOptionKind;
 import com.oracle.svm.driver.MacroOption.Registry;
-import com.oracle.svm.hosted.AbstractNativeImageClassLoaderSupport;
+import com.oracle.svm.driver.metainf.MetaInfFileType;
+import com.oracle.svm.driver.metainf.NativeImageMetaInfResourceProcessor;
+import com.oracle.svm.driver.metainf.NativeImageMetaInfWalker;
 import com.oracle.svm.hosted.NativeImageGeneratorRunner;
 import com.oracle.svm.hosted.NativeImageSystemClassLoader;
 import com.oracle.svm.util.ModuleSupport;
@@ -236,7 +236,6 @@ public class NativeImage {
     private final ArrayList<String> imageBuilderArgs = new ArrayList<>();
     private final LinkedHashSet<Path> imageBuilderClasspath = new LinkedHashSet<>();
     private final LinkedHashSet<Path> imageBuilderBootClasspath = new LinkedHashSet<>();
-    private final LinkedHashSet<String> imageIncludeBuiltinModules = new LinkedHashSet<>();
     private final ArrayList<String> imageBuilderJavaArgs = new ArrayList<>();
     private final LinkedHashSet<Path> imageClasspath = new LinkedHashSet<>();
     private final LinkedHashSet<Path> imageProvidedClasspath = new LinkedHashSet<>();
@@ -252,6 +251,8 @@ public class NativeImage {
     private final Map<String, String> propertyFileSubstitutionValues = new HashMap<>();
 
     private boolean verbose = Boolean.valueOf(System.getenv("VERBOSE_GRAALVM_LAUNCHERS"));
+    private boolean diagnostics = false;
+    String diagnosticsDir;
     private boolean jarOptionMode = false;
     private boolean dryRun = false;
     private String printFlagsOptionQuery = null;
@@ -1120,9 +1121,6 @@ public class NativeImage {
         // The following two are for backwards compatibility reasons. They should be removed.
         imageBuilderJavaArgs.add("-Djdk.internal.lambda.eagerlyInitialize=false");
         imageBuilderJavaArgs.add("-Djava.lang.invoke.InnerClassLambdaMetafactory.initializeLambdas=false");
-        if (!imageIncludeBuiltinModules.isEmpty()) {
-            imageBuilderJavaArgs.add("-D" + AbstractNativeImageClassLoaderSupport.PROPERTY_IMAGEINCLUDEBUILTINMODULES + "=" + String.join(",", imageIncludeBuiltinModules));
-        }
 
         /* After JavaArgs consolidation add the user provided JavaArgs */
         boolean afterOption = false;
@@ -1424,10 +1422,15 @@ public class NativeImage {
         List<String> finalImageBuilderArgs = createImageBuilderArgs(imageArgs, imagecp, imagemp);
         List<String> completeCommandList = Stream.concat(command.stream(), finalImageBuilderArgs.stream()).collect(Collectors.toList());
         command.add(createImageBuilderArgumentFile(finalImageBuilderArgs));
-
-        showVerboseMessage(isVerbose() || dryRun, "Executing [");
-        showVerboseMessage(isVerbose() || dryRun, SubstrateUtil.getShellCommandString(completeCommandList, true));
-        showVerboseMessage(isVerbose() || dryRun, "]");
+        final String commandLine = SubstrateUtil.getShellCommandString(completeCommandList, true);
+        if (isDiagnostics()) {
+            // write to the diagnostics dir
+            ReportUtils.report("command line arguments", diagnosticsDir, "command-line", "txt", printWriter -> printWriter.write(commandLine));
+        } else {
+            showVerboseMessage(isVerbose() || dryRun, "Executing [");
+            showVerboseMessage(isVerbose() || dryRun, commandLine);
+            showVerboseMessage(isVerbose() || dryRun, "]");
+        }
 
         if (dryRun) {
             return 0;
@@ -1547,10 +1550,6 @@ public class NativeImage {
 
     void addImageBuilderBootClasspath(Path classpath) {
         imageBuilderBootClasspath.add(canonicalize(classpath));
-    }
-
-    public void addImageIncludeBuiltinModules(String moduleName) {
-        imageIncludeBuiltinModules.add(moduleName);
     }
 
     void addImageBuilderJavaArgs(String... javaArgs) {
@@ -1757,12 +1756,24 @@ public class NativeImage {
         verbose = val;
     }
 
+    void setDiagnostics(boolean val) {
+        diagnostics = val;
+        diagnosticsDir = Paths.get("reports", ReportUtils.timeStampedFileName("diagnostics", "")).toString();
+        if (val) {
+            verbose = true;
+        }
+    }
+
     void setJarOptionMode(boolean val) {
         jarOptionMode = val;
     }
 
     boolean isVerbose() {
         return verbose;
+    }
+
+    boolean isDiagnostics() {
+        return diagnostics;
     }
 
     boolean useDebugAttach() {

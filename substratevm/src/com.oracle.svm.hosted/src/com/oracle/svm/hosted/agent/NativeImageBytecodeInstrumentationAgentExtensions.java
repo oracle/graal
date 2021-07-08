@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,13 +22,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core;
+package com.oracle.svm.hosted.agent;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+import java.lang.instrument.Instrumentation;
 
-@Platforms(Platform.HOSTED_ONLY.class)
-public interface ClassLoaderQuery {
+/**
+ * Extensions to {@link NativeImageBytecodeInstrumentationAgent}.
+ *
+ * This is the default, empty set of extensions.
+ *
+ * Overlays of this class are provided for JDK versions that need extensions.
+ */
+public class NativeImageBytecodeInstrumentationAgentExtensions {
 
-    boolean isNativeImageClassLoader(ClassLoader c);
+    @SuppressWarnings("unused")
+    public static void premain(String agentArgs, Instrumentation inst) {
+    }
 }

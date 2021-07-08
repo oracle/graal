@@ -36,7 +36,7 @@ vm_bench_polybench_linux_common: ${svm-common-linux-amd64} ${truffleruby_linux} 
 }
 
 vm_bench_polybench_linux_interpreter: ${vm_bench_polybench_linux_common} ${vm_java_8} {
-  bench_cmd: ${vm_bench_polybench_linux_common.base_cmd} [benchmark, "polybench:~compiler/dispatch.js", --results-file, ${vm_bench_polybench_linux_interpreter.result_file}, --, "--polybench-vm=graalvm-${VM_ENV}"]
+  bench_cmd: ${vm_bench_polybench_linux_common.base_cmd} [benchmark, "polybench:~[compiler/dispatch.js, warmup/specjbb2005.js]", --results-file, ${vm_bench_polybench_linux_interpreter.result_file}, --, "--polybench-vm=graalvm-${VM_ENV}"]
   run: [
     ${vm_bench_polybench_linux_interpreter.bench_cmd} ["--polybench-vm-config=jvm-interpreter"]
     ${vm_bench_common.upload}
@@ -59,6 +59,14 @@ vm_bench_polybench_linux_compiler: ${vm_bench_polybench_linux_common} ${vm_java_
   ]
 }
 
+vm_bench_polybench_linux_warmup: ${vm_bench_polybench_linux_common} ${vm_java_8} {
+  bench_cmd: ${vm_bench_polybench_linux_common.base_cmd} [benchmark, "--fork-count-file", "ci_common/benchmark-forks.json",  "polybench:*[warmup/specjbb2005.js]", --results-file, ${vm_bench_polybench_linux_warmup.result_file}, --, "--polybench-vm=graalvm-${VM_ENV}-java8"]
+  run: [
+    ${vm_bench_polybench_linux_warmup.bench_cmd} ["--polybench-vm-config=native-standard", "--metric=one-shot"]
+    ${vm_bench_common.upload}
+  ]
+}
+
 builds += [
   # We need to expand `${common_vm_linux}` here to work around some limitations in the version of pyhocon that we use in the CI
   ${common_vm_linux} ${vm_bench_js_linux} { environment: { BENCH_SUITE: octane },    name: bench-vm-${vm_setup.short_name}-js-octane-linux},
@@ -71,6 +79,7 @@ builds += [
 
   ${common_vm_linux} ${vm_bench_polybench_linux_interpreter} {name: bench-vm-${vm_setup.short_name}-polybench-linux}
   ${common_vm_linux} ${vm_bench_polybench_linux_compiler} {name: bench-vm-${vm_setup.short_name}-polybench-compiler-linux}
+  ${common_vm_linux} ${vm_bench_polybench_linux_warmup} {name: bench-vm-${vm_setup.short_name}-polybench-warmup-linux}
 
   ${bench_daily_vm_linux} ${vm_bench_js_linux} {
     run: [

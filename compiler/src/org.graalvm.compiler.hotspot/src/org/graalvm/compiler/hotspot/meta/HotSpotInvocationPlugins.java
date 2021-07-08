@@ -45,7 +45,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
-import org.graalvm.compiler.replacements.nodes.MacroNode;
+import org.graalvm.compiler.replacements.nodes.MacroInvokable;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -82,11 +82,11 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
     @Override
     public void checkNewNodes(GraphBuilderContext b, InvocationPlugin plugin, NodeIterable<Node> newNodes) {
         for (Node node : newNodes) {
-            if (node instanceof MacroNode) {
+            if (node instanceof MacroInvokable) {
                 // MacroNode based plugins can only be used for inlining since they
                 // require a valid bci should they need to replace themselves with
                 // an InvokeNode during lowering.
-                assert plugin.inlineOnly() : String.format("plugin that creates a %s (%s) must return true for inlineOnly(): %s", MacroNode.class.getSimpleName(), node, plugin);
+                assert plugin.inlineOnly() : String.format("plugin that creates a %s (%s) must return true for inlineOnly(): %s", MacroInvokable.class.getSimpleName(), node, plugin);
             }
         }
         if (GraalOptions.ImmutableCode.getValue(b.getOptions())) {
