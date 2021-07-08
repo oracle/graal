@@ -14,20 +14,20 @@ However, to record JFR events at run time, JFR support and JFR recording must be
 
 ### Current limitations
 
-At the moment, the JFR support is still limited, i.e., some VM-internal events and advanced features such as stack traces or memory leak detection are still missing.
+At the moment, the JFR support is still limited, i.e., most VM-internal events and advanced features such as stack traces or memory leak detection are still missing.
 A subset of JFR features are currently available: custom and system events and disk-based recordings.
 Currently JFR is only supported with native images built on GraalVM JDK 11.
 
-## Compile with JFR
+## Build and Run Native Images with JFR
 
-JFR must first be included at image build time. To do so, build an image with the flag `-H:+AllowVMInspection`:
+To build a native image with the JFR events support, you first need to include JFR at image build time.
+To do so, build an image with the `-H:+AllowVMInspection` flag:
 ```shell
 native-image -H:+AllowVMInspection JavaApplication
 ```
 
-## Enable JFR
-
-For native images with JFR included, the following flags will be available at run time to enable the system, start a recording, and configure logging:
+For the native image with JFR included, next step is to enable the system, start a recording, and configure logging at run time.
+For that the following flags are available:
 
 * `-XX:+FlightRecorder`: use to enable JFR
 * `-XX:StartFlightRecording`: use to start a recording on application's startup
