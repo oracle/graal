@@ -317,6 +317,8 @@ _src_jdk_version = mx_sdk_vm.base_jdk_version()
 #     _src_jdk_base = .
 _src_jdk_dir, _src_jdk_base = _get_jdk_base(_src_jdk)
 
+""":type: dict[str, (str, str)]"""
+_parent_info_cache = {}
 
 def _graalvm_maven_attributes(tag='graalvm'):
     """
@@ -796,9 +798,11 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
         _commit_info = {}
         for _s in suites:
             if _s.vc:
-                _info = _s.vc.parent_info(_s.vc_dir)
+                if _s.vc_dir not in _parent_info_cache:
+                    _parent_info_cache.setdefault(_s.vc_dir, (_s.vc.parent_info(_s.vc_dir), _s.vc.parent(_s.vc_dir)))
+                _info, _parent_rev = _parent_info_cache[_s.vc_dir]
                 _commit_info[_s.name] = {
-                    "commit.rev": _s.vc.parent(_s.vc_dir),
+                    "commit.rev": _parent_rev,
                     "commit.committer": _info['committer'] if _s.vc.kind != 'binary' else 'unknown',
                     "commit.committer-ts": _info['committer-ts'],
                 }
