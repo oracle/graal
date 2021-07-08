@@ -47,11 +47,14 @@ public final class UnsafeAccess {
         return UNSAFE;
     }
 
-    public static Unsafe getIfAllowed(Meta meta) {
-        if (meta.getContext().NativeAccessAllowed) {
-            return UNSAFE;
-        } else {
+    public static void checkAllowed(Meta meta) {
+        if (!meta.getContext().NativeAccessAllowed) {
             throw meta.throwExceptionWithMessage(meta.java_lang_UnsupportedOperationException, "Cannot perform unsafe operations unless the Context allows native access");
         }
+    }
+
+    public static Unsafe getIfAllowed(Meta meta) {
+        checkAllowed(meta);
+        return UNSAFE;
     }
 }
