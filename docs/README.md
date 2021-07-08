@@ -1,0 +1,36 @@
+# How to Contribute to GraalVM Documentation
+
+GraalVM documentation is open source and anyone can contribute to make it perfect and comprehensive.
+Contributing to the documentation is fairly easy, and the only requirement is having a GitHub account!
+
+The GraalVM documentation is presented in the form of:
+* reference documentaiton which includes getting started guides, user guides, reference manuals, security guidelines, example applications
+* Javadoc APIS documentaiton for application developers, or those who write Java compatibility tests or seek to re-implement the GraalVM platform
+
+Here you will find most of GraalVM documentation, in the same hierarchy as displayed on the [GraalVM website](https://www.graalvm.org/docs/introduction/).
+The Truffle framework documentation can be found in [graal/truffle/docs](https://github.com/oracle/graal/tree/master/truffle/docs) folder.
+GraalVM languages implementation are being developed and tested in separate from the GraalVM core repositories, so their user documentation can be found in:
+
+* [GraalJS](https://github.com/oracle/graaljs/tree/master/docs/user) - JavaScript and Node.js
+* [FastR](https://github.com/oracle/fastr/tree/master/documentation/user) - R
+* [GraalPython](https://github.com/oracle/graalpython/tree/master/docs/user) - Python
+* [TruffleRuby](https://github.com/oracle/truffleruby/tree/master/doc/user) - Ruby
+
+To update the reference documentation:
+
+1. Create a GitHub account or sign in to your existing account
+2. Navigate to the source file
+3. Click the "edit" button at the top of the section
+4. Create a Pull Request (PR)
+5. Sign the [Oracle Contributor Agreement](https://oca.opensource.oracle.com/)
+6. Watch your PR for pipeline results
+
+A member from the GraalVM project team will review your PR and merge as appropriate.
+There is the CI pipeline that will pick up your change once merged to the master branch and publish on the website.
+
+Do not hesitate to push fixes to broken links or typos, update an outdated section, propose information if you find it missing, or propose a new feature documentaiton.
+
+The GraalVM core and its projects are hosted in the Oracle organization on GitHub, so we except a contributor to abide by the [Contributor Covenant Code of Conduct](https://www.graalvm.org/community/conduct/).
+For more specific guidelines see [Contribute to GraalVM](https://www.graalvm.org/community/contributors/).
+
+Help us make GraalVM better by improving the existing and contributing new documentation!
