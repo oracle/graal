@@ -38,7 +38,7 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.substitutions.Host;
+import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 /**
@@ -61,7 +61,7 @@ public final class EspressoBindings implements TruffleObject {
     final StaticObject loader;
     boolean withNativeJavaVM;
 
-    public EspressoBindings(@Host(ClassLoader.class) StaticObject loader, boolean withNativeJavaVM) {
+    public EspressoBindings(@JavaType(ClassLoader.class) StaticObject loader, boolean withNativeJavaVM) {
         this.withNativeJavaVM = withNativeJavaVM;
         assert StaticObject.notNull(loader) : "boot classloader (null) not supported";
         this.loader = loader;

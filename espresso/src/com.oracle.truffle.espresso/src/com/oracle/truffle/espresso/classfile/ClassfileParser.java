@@ -94,7 +94,7 @@ import com.oracle.truffle.espresso.runtime.ClasspathFile;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.substitutions.Host;
+import com.oracle.truffle.espresso.substitutions.JavaType;
 
 @SuppressWarnings("try")
 public final class ClassfileParser {
@@ -220,7 +220,7 @@ public final class ClassfileParser {
         return parse(stream, loader, requestedClassName, context, null);
     }
 
-    public static ParserKlass parse(ClassfileStream stream, StaticObject loader, String requestedClassName, EspressoContext context, @Host(Object[].class) StaticObject[] constantPoolPatches) {
+    public static ParserKlass parse(ClassfileStream stream, StaticObject loader, String requestedClassName, EspressoContext context, @JavaType(Object[].class) StaticObject[] constantPoolPatches) {
         return new ClassfileParser(stream, loader, requestedClassName, context, constantPoolPatches).parseClass();
     }
 

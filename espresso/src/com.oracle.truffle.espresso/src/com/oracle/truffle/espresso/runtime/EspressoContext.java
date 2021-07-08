@@ -36,7 +36,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.TimeUnit;
@@ -44,6 +43,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
+
 import org.graalvm.options.OptionMap;
 import org.graalvm.polyglot.Engine;
 
@@ -72,6 +72,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.ffi.NativeAccess;
+import com.oracle.truffle.espresso.ffi.NativeAccessCollector;
 import com.oracle.truffle.espresso.impl.ClassRegistries;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -580,9 +581,7 @@ public final class EspressoContext {
         }
 
         List<String> available = new ArrayList<>();
-        // TODO(peterssen): Investigate which class loader is needed here and why.
-        ServiceLoader<NativeAccess.Provider> loader = ServiceLoader.load(NativeAccess.Provider.class, getClass().getClassLoader());
-        for (NativeAccess.Provider provider : loader) {
+        for (NativeAccess.Provider provider : NativeAccessCollector.getInstances(NativeAccess.Provider.class)) {
             available.add(provider.id());
             if (nativeBackend.equals(provider.id())) {
                 getLogger().fine("Native backend: " + nativeBackend);

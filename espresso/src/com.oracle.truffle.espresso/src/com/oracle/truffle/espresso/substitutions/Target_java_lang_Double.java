@@ -27,7 +27,7 @@ package com.oracle.truffle.espresso.substitutions;
  * avoiding expensive guest native calls.
  */
 @EspressoSubstitutions
-public class Target_java_lang_Double {
+public final class Target_java_lang_Double {
     @Substitution
     public static double longBitsToDouble(long bits) {
         return Double.longBitsToDouble(bits);

@@ -31,7 +31,7 @@ import com.oracle.truffle.espresso.nodes.helper.TypeCheckNode;
 import com.oracle.truffle.espresso.nodes.helper.TypeCheckNodeGen;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public class CheckCastNode extends QuickNode {
+public final class CheckCastNode extends QuickNode {
 
     final Klass typeToCheck;
     @Child TypeCheckNode typeCheckNode;
@@ -44,7 +44,7 @@ public class CheckCastNode extends QuickNode {
     }
 
     @Override
-    public final int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
+    public int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
         BytecodeNode root = getBytecodeNode();
         StaticObject receiver = BytecodeNode.peekObject(refs, top - 1);
         if (StaticObject.isNull(receiver) || typeCheckNode.executeTypeCheck(typeToCheck, receiver.getKlass())) {

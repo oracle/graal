@@ -40,14 +40,14 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 @EspressoSubstitutions
-public class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
+public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
     @Substitution
-    public static boolean isForeignObject(@Host(Object.class) StaticObject object) {
+    public static boolean isForeignObject(@JavaType(Object.class) StaticObject object) {
         return object.isForeignObject();
     }
 
     @Substitution
-    public static @Host(Object.class) StaticObject cast(@Host(Class.class) StaticObject targetClass, @Host(Object.class) StaticObject value, @InjectMeta Meta meta) {
+    public static @JavaType(Object.class) StaticObject cast(@JavaType(Class.class) StaticObject targetClass, @JavaType(Object.class) StaticObject value, @InjectMeta Meta meta) {
         if (StaticObject.isNull(value)) {
             return value;
         }
@@ -182,7 +182,7 @@ public class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
     // TODO(peterssen): Fix deprecation, GR-26729
     @SuppressWarnings("deprecation")
     @Substitution
-    public static @Host(Object.class) StaticObject eval(@Host(String.class) StaticObject language, @Host(String.class) StaticObject code, @InjectMeta Meta meta) {
+    public static @JavaType(Object.class) StaticObject eval(@JavaType(String.class) StaticObject language, @JavaType(String.class) StaticObject code, @InjectMeta Meta meta) {
         String languageId = meta.toHostString(language);
         validateLanguage(languageId, meta);
 
@@ -211,7 +211,7 @@ public class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
     }
 
     @Substitution
-    public static @Host(Object.class) StaticObject importObject(@Host(String.class) StaticObject name, @InjectMeta Meta meta) {
+    public static @JavaType(Object.class) StaticObject importObject(@JavaType(String.class) StaticObject name, @InjectMeta Meta meta) {
         if (!meta.getContext().getEnv().isPolyglotBindingsAccessAllowed()) {
             throw meta.throwExceptionWithMessage(meta.java_lang_SecurityException,
                             "Polyglot bindings are not accessible for this language. Use --polyglot or allowPolyglotAccess when building the context.");
@@ -227,7 +227,7 @@ public class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
     }
 
     @Substitution
-    public static void exportObject(@Host(String.class) StaticObject name, @Host(Object.class) StaticObject value, @InjectMeta Meta meta) {
+    public static void exportObject(@JavaType(String.class) StaticObject name, @JavaType(Object.class) StaticObject value, @InjectMeta Meta meta) {
         if (!meta.getContext().getEnv().isPolyglotBindingsAccessAllowed()) {
             throw meta.throwExceptionWithMessage(meta.java_lang_SecurityException,
                             "Polyglot bindings are not accessible for this language. Use --polyglot or allowPolyglotAccess when building the context.");

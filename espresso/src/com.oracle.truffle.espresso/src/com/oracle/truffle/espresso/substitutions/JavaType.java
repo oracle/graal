@@ -21,7 +21,7 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.impl;
+package com.oracle.truffle.espresso.substitutions;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -29,9 +29,29 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * This annotation functions as an alias for the java.lang.invoke.Stable annotation.
+ * Hints the expected host type for guest parameters and return types.
+ *
+ * <br>
+ * Used to derive correct signatures for substitutions and the JNI and VM implementations. Can be
+ * used as a hint (better readability) for guest parameter/return types.
+ *
+ * <pre>
+ * {@code @JavaType(byte[].class) StaticObject data}
+ * {@code @JavaType(Class.class) StaticObject clazz}
+ * {@code @JavaType(internalName = "Ljava/lang/invoke/MemberName;") StaticObject memberName}
+ * {@code @JavaType(internalName = "Ljava/lang/Thread$State;") StaticObject threadState}
+ * </pre>
  */
-@Target(ElementType.FIELD)
-@Retention(RetentionPolicy.RUNTIME)
-public @interface Stable {
+@Retention(RetentionPolicy.CLASS)
+@Target(ElementType.TYPE_USE)
+public @interface JavaType {
+    /**
+     * Host class for the expected type.
+     */
+    Class<?> value() default JavaType.class;
+
+    /**
+     * Class in internal form. Used when the host class is not accessible.
+     */
+    String internalName() default "";
 }

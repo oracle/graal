@@ -24,7 +24,7 @@
 package com.oracle.truffle.espresso.substitutions;
 
 @EspressoSubstitutions
-public class Target_jdk_internal_misc_ScopedMemoryAccess {
+public final class Target_jdk_internal_misc_ScopedMemoryAccess {
     @Substitution
     public static void registerNatives() {
         /* nop */

@@ -31,7 +31,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.ModulesHelperVM;
 
 @EspressoSubstitutions
-public class Target_java_lang_Module {
+public final class Target_java_lang_Module {
 
     /*
      * As of JDK 15+, The native signature for these VM methods changed. These substitutions
@@ -40,9 +40,9 @@ public class Target_java_lang_Module {
 
     @Substitution
     @TruffleBoundary
-    public static void addExports0(@Host(typeName = "Ljava/lang/Module;") StaticObject from,
-                    @Host(String.class) StaticObject pn,
-                    @Host(typeName = "Ljava/lang/Module;") StaticObject to,
+    public static void addExports0(@JavaType(internalName = "Ljava/lang/Module;") StaticObject from,
+                    @JavaType(String.class) StaticObject pn,
+                    @JavaType(internalName = "Ljava/lang/Module;") StaticObject to,
                     @InjectMeta Meta meta,
                     @InjectProfile SubstitutionProfiler profiler) {
         if (StaticObject.isNull(pn)) {
@@ -53,8 +53,8 @@ public class Target_java_lang_Module {
 
     @Substitution
     @TruffleBoundary
-    public static void addExportsToAll0(@Host(typeName = "Ljava/lang/Module;") StaticObject from,
-                    @Host(String.class) StaticObject pn,
+    public static void addExportsToAll0(@JavaType(internalName = "Ljava/lang/Module;") StaticObject from,
+                    @JavaType(String.class) StaticObject pn,
                     @InjectMeta Meta meta,
                     @InjectProfile SubstitutionProfiler profiler) {
         if (StaticObject.isNull(pn)) {
@@ -65,8 +65,8 @@ public class Target_java_lang_Module {
 
     @Substitution
     @TruffleBoundary
-    public static void addExportsToAllUnnamed0(@Host(typeName = "Ljava/lang/Module;") StaticObject from,
-                    @Host(String.class) StaticObject pn,
+    public static void addExportsToAllUnnamed0(@JavaType(internalName = "Ljava/lang/Module;") StaticObject from,
+                    @JavaType(String.class) StaticObject pn,
                     @InjectMeta Meta meta,
                     @InjectProfile SubstitutionProfiler profiler) {
         if (StaticObject.isNull(pn)) {
@@ -77,11 +77,11 @@ public class Target_java_lang_Module {
 
     @Substitution
     @TruffleBoundary
-    public static void defineModule0(@Host(typeName = "Ljava/lang/Module;") StaticObject module,
+    public static void defineModule0(@JavaType(internalName = "Ljava/lang/Module;") StaticObject module,
                     boolean isOpen,
-                    @SuppressWarnings("unused") @Host(String.class) StaticObject version,
-                    @SuppressWarnings("unused") @Host(String.class) StaticObject location,
-                    @Host(Object[].class) StaticObject pns,
+                    @SuppressWarnings("unused") @JavaType(String.class) StaticObject version,
+                    @SuppressWarnings("unused") @JavaType(String.class) StaticObject location,
+                    @JavaType(Object[].class) StaticObject pns,
                     @InjectMeta Meta meta,
                     @InjectProfile SubstitutionProfiler profiler) {
         if (StaticObject.isNull(module)) {

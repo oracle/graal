@@ -81,7 +81,7 @@ import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.dispatch.BaseInterop;
 import com.oracle.truffle.espresso.runtime.dispatch.EspressoInterop;
-import com.oracle.truffle.espresso.substitutions.Host;
+import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
 
@@ -600,7 +600,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     }
 
     @Override
-    public abstract @Host(ClassLoader.class) StaticObject getDefiningClassLoader();
+    public abstract @JavaType(ClassLoader.class) StaticObject getDefiningClassLoader();
 
     public abstract ConstantPool getConstantPool();
 
