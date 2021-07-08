@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,13 +24,10 @@
  */
 package com.oracle.svm.hosted.agent;
 
-import static jdk.internal.org.objectweb.asm.ClassReader.EXPAND_FRAMES;
 import static jdk.internal.org.objectweb.asm.ClassWriter.COMPUTE_FRAMES;
-import static jdk.internal.org.objectweb.asm.ClassWriter.COMPUTE_MAXS;
 
 import java.lang.instrument.Instrumentation;
 
-import com.oracle.svm.hosted.agent.jdk8.lambda.LambdaMetaFactoryRewriteVisitor;
 import com.oracle.svm.util.AgentSupport;
 
 import jdk.internal.org.objectweb.asm.ClassReader;
@@ -39,21 +36,16 @@ import jdk.internal.org.objectweb.asm.ClassWriter;
 /*
  * Note: no java.lang.invoke.LambdaMetafactory (e.g., Java lambdas) in this file.
  */
-@SuppressWarnings({"Anonymous2MethodRef", "Convert2Lambda"})
 public class NativeImageBytecodeInstrumentationAgent {
 
     private static TracingAdvisor advisor;
 
-    @SuppressWarnings({"unused", "Convert2Lambda"})
     public static void premain(String agentArgs, Instrumentation inst) {
-        /* In 11+ we modify the JDK */
-        if (getJavaVersion() == 8) {
-            inst.addTransformer(AgentSupport.createClassInstrumentationTransformer(NativeImageBytecodeInstrumentationAgent::applyRewriteLambdasTransformation));
-        }
         if (agentArgs != null && !agentArgs.isEmpty()) {
             advisor = new TracingAdvisor(agentArgs);
             inst.addTransformer(AgentSupport.createClassInstrumentationTransformer(NativeImageBytecodeInstrumentationAgent::applyInitializationTrackingTransformation));
         }
+        NativeImageBytecodeInstrumentationAgentExtensions.premain(agentArgs, inst);
     }
 
     private static byte[] applyInitializationTrackingTransformation(@SuppressWarnings("unused") String moduleName, @SuppressWarnings("unused") ClassLoader loader, String className,
@@ -67,31 +59,5 @@ public class NativeImageBytecodeInstrumentationAgent {
         } else {
             return classfileBuffer;
         }
-    }
-
-    @SuppressWarnings("unused")
-    private static byte[] applyRewriteLambdasTransformation(String moduleName, ClassLoader loader, String className, byte[] classfileBuffer) {
-        ClassReader reader = new ClassReader(classfileBuffer);
-        ClassWriter writer = new ClassWriter(reader, COMPUTE_MAXS);
-        LambdaMetaFactoryRewriteVisitor visitor = new LambdaMetaFactoryRewriteVisitor(loader, className, writer);
-        reader.accept(visitor, EXPAND_FRAMES);
-        return writer.toByteArray();
-    }
-
-    public static int getJavaVersion() {
-        String version = System.getProperty("java.version");
-        if (version.startsWith("1.")) {
-            version = version.substring(2, 3);
-        } else {
-            int dot = version.indexOf(".");
-            if (dot != -1) {
-                version = version.substring(0, dot);
-            }
-            int dash = version.indexOf("-");
-            if (dash != -1) {
-                version = version.substring(0, dash);
-            }
-        }
-        return Integer.parseInt(version);
     }
 }

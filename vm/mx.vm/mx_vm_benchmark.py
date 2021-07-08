@@ -147,7 +147,7 @@ class NativeImageVM(GraalVm):
             self.analysis_report_path = os.path.join(self.output_dir, self.executable_name + '-analysis.json')
             self.base_image_build_args = [os.path.join(mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True), 'bin', 'native-image')]
             self.base_image_build_args += ['--no-fallback', '-g', '--allow-incomplete-classpath']
-            self.base_image_build_args += ['-H:+VerifyGraalGraphs', '-H:+VerifyPhases'] if vm.is_gate else []
+            self.base_image_build_args += ['-H:+VerifyGraalGraphs', '-H:+VerifyPhases', '--diagnostics-mode'] if vm.is_gate else []
             self.base_image_build_args += ['-J-ea', '-J-esa'] if vm.is_gate and not bm_suite.skip_build_assertions(self.benchmark_name) else []
 
             self.base_image_build_args += self.system_properties
@@ -808,7 +808,7 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
     def benchmarkList(self, bmSuiteArgs):
         if not hasattr(self, "_benchmarks"):
             self._benchmarks = []
-            for group in ["interpreter", "compiler"]:
+            for group in ["interpreter", "compiler", "warmup"]:
                 dir_path = os.path.join(self._get_benchmark_root(), group)
                 for f in os.listdir(dir_path):
                     f_path = os.path.join(dir_path, f)
@@ -851,6 +851,8 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
             return "compile-time"
         elif metric == "partial-evaluation-time":
             return "pe-time"
+        elif metric == "one-shot":
+            return "one-shot"
         else:
             return "time"
 

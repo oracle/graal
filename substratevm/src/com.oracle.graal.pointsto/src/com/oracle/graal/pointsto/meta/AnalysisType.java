@@ -925,6 +925,16 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
 
     @Override
     public AnalysisMethod resolveMethod(ResolvedJavaMethod method, ResolvedJavaType callerType) {
+        /*
+         * Not needed on Substrate VM for now. We also do not have the necessary information
+         * available to implement it for JIT compilation at image run time. So we want to make sure
+         * that Graal is not using this method, and only resolveConcreteMethod instead.
+         */
+        throw GraalError.unimplemented();
+    }
+
+    @Override
+    public AnalysisMethod resolveConcreteMethod(ResolvedJavaMethod method, ResolvedJavaType callerType) {
         Object resolvedMethod = resolvedMethods.get(method);
         if (resolvedMethod == null) {
             ResolvedJavaMethod substMethod = universe.substitutions.resolve(((AnalysisMethod) method).wrapped);
@@ -934,7 +944,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
              */
             ResolvedJavaType substCallerType = substMethod.getDeclaringClass();
 
-            Object newResolvedMethod = universe.lookup(wrapped.resolveMethod(substMethod, substCallerType));
+            Object newResolvedMethod = universe.lookup(wrapped.resolveConcreteMethod(substMethod, substCallerType));
             if (newResolvedMethod == null) {
                 newResolvedMethod = NULL_METHOD;
             }
@@ -945,18 +955,12 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     }
 
     /**
-     * Wrapper for resolveConcreteMethod() that ignores the callerType parameter. The method that
-     * does the resolution, resolveMethod() above, ignores the callerType parameter and uses
-     * substMethod.getDeclaringClass() instead since we don't want any access checks in the
-     * analysis.
+     * Wrapper for resolveConcreteMethod() without the callerType parameter. We ignore the
+     * callerType parameter and use substMethod.getDeclaringClass() instead since we don't want any
+     * access checks in the analysis.
      */
     public AnalysisMethod resolveConcreteMethod(ResolvedJavaMethod method) {
-        return (AnalysisMethod) WrappedJavaType.super.resolveConcreteMethod(method, null);
-    }
-
-    @Override
-    public AnalysisMethod resolveConcreteMethod(ResolvedJavaMethod method, ResolvedJavaType callerType) {
-        return (AnalysisMethod) WrappedJavaType.super.resolveConcreteMethod(method, callerType);
+        return resolveConcreteMethod(method, null);
     }
 
     @Override
@@ -1168,6 +1172,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
         throw JVMCIError.unimplemented();
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public ResolvedJavaType getHostClass() {
         return universe.lookup(wrapped.getHostClass());

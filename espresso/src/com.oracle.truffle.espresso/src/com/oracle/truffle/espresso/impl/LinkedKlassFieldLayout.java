@@ -22,11 +22,13 @@
  */
 package com.oracle.truffle.espresso.impl;
 
+import java.util.HashSet;
+import java.util.Set;
+
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
-
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObject.StaticObjectFactory;
 import com.oracle.truffle.espresso.staticobject.ClassLoaderCache;
@@ -57,20 +59,22 @@ final class LinkedKlassFieldLayout {
         instanceFields = new LinkedField[fieldCounter.instanceFields];
         staticFields = new LinkedField[fieldCounter.staticFields];
 
+        LinkedField.IdMode idMode = getIdMode(parserKlass);
+
         for (ParserField parserField : parserKlass.getFields()) {
             if (parserField.isStatic()) {
-                LinkedField field = new LinkedField(parserField, nextStaticFieldSlot++, storeAsFinal(parserKlass, parserField));
+                LinkedField field = new LinkedField(parserField, nextStaticFieldSlot++, storeAsFinal(parserKlass, parserField), idMode);
                 staticBuilder.property(field);
                 staticFields[nextStaticFieldIndex++] = field;
             } else {
-                LinkedField field = new LinkedField(parserField, nextInstanceFieldSlot++, storeAsFinal(parserKlass, parserField));
+                LinkedField field = new LinkedField(parserField, nextInstanceFieldSlot++, storeAsFinal(parserKlass, parserField), idMode);
                 instanceBuilder.property(field);
                 instanceFields[nextInstanceFieldIndex++] = field;
             }
         }
         for (Symbol<Name> hiddenFieldName : fieldCounter.hiddenFieldNames) {
             ParserField hiddenParserField = new ParserField(ParserField.HIDDEN, hiddenFieldName, Type.java_lang_Object, null);
-            LinkedField field = new LinkedField(hiddenParserField, nextInstanceFieldSlot++, storeAsFinal(parserKlass, hiddenParserField));
+            LinkedField field = new LinkedField(hiddenParserField, nextInstanceFieldSlot++, storeAsFinal(parserKlass, hiddenParserField), idMode);
             instanceBuilder.property(field);
             instanceFields[nextInstanceFieldIndex++] = field;
         }
@@ -81,6 +85,37 @@ final class LinkedKlassFieldLayout {
         }
         staticShape = staticBuilder.build(StaticObject.class, StaticObjectFactory.class);
         fieldTableLength = nextInstanceFieldSlot;
+    }
+
+    /**
+     * Makes sure that the field IDs passed to the shape builder are all unique.
+     */
+    private static LinkedField.IdMode getIdMode(ParserKlass parserKlass) {
+        ParserField[] parserFields = parserKlass.getFields();
+
+        boolean noDup = true;
+        Set<String> present = new HashSet<>(parserFields.length);
+        for (ParserField parserField : parserFields) {
+            if (!present.add(parserField.getName().toString())) {
+                noDup = false;
+                break;
+            }
+        }
+        if (noDup) {
+            // All fields have unique names, we can use said names as ID.
+            return LinkedField.IdMode.REGULAR;
+        }
+        present.clear();
+        for (ParserField parserField : parserFields) {
+            String id = LinkedField.idFromNameAndType(parserField.getName(), parserField.getType());
+            if (!present.add(id)) {
+                // Concatenating name and type does not result in no duplicates. Give up giving
+                // meaningful information as an ID, and fall back to field{n}
+                return LinkedField.IdMode.OBFUSCATED;
+            }
+        }
+        // All fields have unique {name, type} pairs, use the concatenation of both for the ID.
+        return LinkedField.IdMode.WITH_TYPE;
     }
 
     private static boolean storeAsFinal(ParserKlass klass, ParserField field) {

@@ -103,6 +103,7 @@ public @interface TruffleFromLibGraal {
         IsCancelled(boolean.class, Object.class),
         IsInliningForced(boolean.class, Object.class),
         IsLastTier(boolean.class, Object.class),
+        HasNextTier(boolean.class, Object.class),
         IsSameOrSplit(boolean.class, Object.class, Object.class),
         IsSpecializationMethod(boolean.class, Object.class, long.class),
         IsSuppressedFailure(boolean.class, Object.class, Object.class, Supplier.class),

@@ -389,24 +389,24 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
                 threading.Thread(target=BaseMicroserviceBenchmarkSuite.testStartupPerformanceInBackground, args=[self]).start()
                 returnCode = mx.run(server_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
                 if not self.validateReturnCode(returnCode):
-                    mx.abort("The server application unexpectedly ended with return code " + returnCode)
+                    mx.abort("The server application unexpectedly ended with return code " + str(returnCode))
 
                 serverCommandAfterHooks = self.apply_command_mapper_hooks(server_command, vm)
                 threading.Thread(target=BaseMicroserviceBenchmarkSuite.testPeakPerformanceInBackground, args=[self]).start()
                 returnCode = mx.run(serverCommandAfterHooks, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
                 if not self.validateReturnCode(returnCode):
-                    mx.abort("The server application unexpectedly ended with return code " + returnCode)
+                    mx.abort("The server application unexpectedly ended with return code " + str(returnCode))
 
                 if self.measureLatency:
                     threading.Thread(target=BaseMicroserviceBenchmarkSuite.calibrateLatencyTestInBackground, args=[self]).start()
                     returnCode = mx.run(server_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
                     if not self.validateReturnCode(returnCode):
-                        mx.abort("The server application unexpectedly ended with return code " + returnCode)
+                        mx.abort("The server application unexpectedly ended with return code " + str(returnCode))
 
                     threading.Thread(target=BaseMicroserviceBenchmarkSuite.testLatencyInBackground, args=[self]).start()
                     returnCode = mx.run(server_command, out=out, err=err, cwd=cwd, nonZeroIsFatal=nonZeroIsFatal)
                     if not self.validateReturnCode(returnCode):
-                        mx.abort("The server application unexpectedly ended with return code " + returnCode)
+                        mx.abort("The server application unexpectedly ended with return code " + str(returnCode))
 
                 return returnCode
             elif stage == 'agent' or 'instrument-run' in stage:

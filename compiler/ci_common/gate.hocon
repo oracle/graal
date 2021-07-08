@@ -56,11 +56,14 @@ gateTestAVX1 : ${gateTest} {
   }
 }
 
-gateTestCompileImmediately : ${gateTest} {
+gateTestCompileImmediately : {
   environment : {
     EXTRA_VM_ARGS : "-Dpolyglot.engine.AllowExperimentalOptions=true -Dpolyglot.engine.CompileImmediately=true -Dpolyglot.engine.BackgroundCompilation=false -Dtck.inlineVerifierInstrument=false"
     EXTRA_UNITTEST_ARGS : "truffle"
   }
+  run : [
+    ${gateCmd} ["build,unittest"]
+  ]
 }
 
 gateTestCTW : {

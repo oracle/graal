@@ -101,17 +101,19 @@ final class PolyglotExceptionImpl {
     private final Value guestObject;
     private final String message;
 
-    PolyglotExceptionImpl(PolyglotEngineImpl engine, PolyglotContextImpl.State polyglotContextState, Throwable original) {
-        this(engine.impl, engine, polyglotContextState, null, original, false, false);
+    PolyglotExceptionImpl(PolyglotEngineImpl engine, PolyglotContextImpl.State polyglotContextState, boolean polyglotContextResourceExhausted, Throwable original) {
+        this(engine.impl, engine, polyglotContextState, polyglotContextResourceExhausted, null, original, false, false);
     }
 
     // Exception coming from an instrument
     PolyglotExceptionImpl(PolyglotImpl polyglot, Throwable original) {
-        this(polyglot, null, null, null, original, true, false);
+        this(polyglot, null, null, false, null, original, true, false);
     }
 
     @SuppressWarnings("deprecation")
-    PolyglotExceptionImpl(PolyglotImpl polyglot, PolyglotEngineImpl engine, PolyglotContextImpl.State polyglotContextState, PolyglotLanguageContext languageContext, Throwable original,
+    PolyglotExceptionImpl(PolyglotImpl polyglot, PolyglotEngineImpl engine, PolyglotContextImpl.State polyglotContextState, boolean polyglotContextResourceExhausted,
+                    PolyglotLanguageContext languageContext,
+                    Throwable original,
                     boolean allowInterop,
                     boolean entered) {
         this.polyglot = polyglot;
@@ -121,19 +123,21 @@ final class PolyglotExceptionImpl {
         this.guestFrames = TruffleStackTrace.getStackTrace(original);
         this.showInternalStackFrames = engine == null ? false : engine.engineOptionValues.get(PolyglotEngineOptions.ShowInternalStackFrames);
         Error resourceLimitError = getResourceLimitError(engine, exception);
-        this.resourceExhausted = resourceLimitError != null;
         InteropLibrary interop;
         if (allowInterop && (interop = InteropLibrary.getUncached()).isException(exception)) {
             try {
                 ExceptionType exceptionType = interop.getExceptionType(exception);
                 this.internal = false;
-                this.cancelled = (polyglotContextState != null && (polyglotContextState.isCancelling() || polyglotContextState == PolyglotContextImpl.State.CLOSED_CANCELLED)) ||
-                                isLegacyTruffleExceptionCancelled(exception);
+                boolean truffleException = exception instanceof com.oracle.truffle.api.TruffleException;
+                boolean cancelInducedTruffleException = (polyglotContextState != null && (polyglotContextState.isCancelling() || polyglotContextState == PolyglotContextImpl.State.CLOSED_CANCELLED) &&
+                                truffleException);
+                this.cancelled = cancelInducedTruffleException || isLegacyTruffleExceptionCancelled(exception);
+                this.resourceExhausted = resourceLimitError != null || (cancelInducedTruffleException && polyglotContextResourceExhausted);
                 this.syntaxError = exceptionType == ExceptionType.PARSE_ERROR;
                 this.exit = exceptionType == ExceptionType.EXIT;
                 this.exitStatus = this.exit ? interop.getExceptionExitStatus(exception) : 0;
                 this.incompleteSource = this.syntaxError ? interop.isExceptionIncompleteSource(exception) : false;
-                this.interrupted = exceptionType == ExceptionType.INTERRUPT;
+                this.interrupted = (exceptionType == ExceptionType.INTERRUPT) && !this.cancelled;
 
                 if (interop.hasSourceLocation(exception)) {
                     this.sourceLocation = newSourceSection(interop.getSourceLocation(exception));
@@ -159,15 +163,25 @@ final class PolyglotExceptionImpl {
                 throw CompilerDirectives.shouldNotReachHere(ume);
             }
         } else {
-            this.cancelled = (polyglotContextState != null && (polyglotContextState.isCancelling() || polyglotContextState == PolyglotContextImpl.State.CLOSED_CANCELLED)) ||
-                            (exception instanceof CancelExecution) ||
-                            isLegacyTruffleExceptionCancelled(exception);
             /*
              * When polyglot context is invalid, we cannot obtain the exception type from
              * InterruptExecution exception via interop. Please note that in this case the
              * InterruptExecution was thrown before the context was made invalid.
              */
-            this.interrupted = (exception instanceof PolyglotEngineImpl.InterruptExecution) || (exception != null && exception.getCause() instanceof InterruptedException);
+            boolean interruptException = (exception instanceof PolyglotEngineImpl.InterruptExecution) || (exception != null && exception.getCause() instanceof InterruptedException) ||
+                            (isHostException(engine, exception) && asHostException() instanceof InterruptedException);
+            boolean truffleException = exception instanceof com.oracle.truffle.api.TruffleException;
+            boolean cancelInducedTruffleOrInterruptException = (polyglotContextState != null &&
+                            (polyglotContextState.isCancelling() || polyglotContextState == PolyglotContextImpl.State.CLOSED_CANCELLED) &&
+                            (interruptException || truffleException));
+            /*
+             * In case the exception is not a cancel exception, but the context is in cancelling or
+             * cancelled state, set the cancelled flag, but only if the original exception is a
+             * truffle exception or interrupt exception.
+             */
+            this.cancelled = cancelInducedTruffleOrInterruptException || (exception instanceof CancelExecution) || isLegacyTruffleExceptionCancelled(exception);
+            this.resourceExhausted = resourceLimitError != null || (cancelInducedTruffleOrInterruptException && polyglotContextResourceExhausted);
+            this.interrupted = interruptException && !this.cancelled;
             this.internal = !interrupted && !cancelled && !resourceExhausted;
             this.syntaxError = false;
             this.incompleteSource = false;
@@ -489,13 +503,19 @@ final class PolyglotExceptionImpl {
      * printStackTrace.
      */
     private abstract static class PrintStreamOrWriter {
-        /** Returns the object to be locked when using this StreamOrWriter. */
+        /**
+         * Returns the object to be locked when using this StreamOrWriter.
+         */
         abstract Object lock();
 
-        /** Prints the specified string. */
+        /**
+         * Prints the specified string.
+         */
         abstract void print(Object o);
 
-        /** Prints the specified string as a line on this StreamOrWriter. */
+        /**
+         * Prints the specified string as a line on this StreamOrWriter.
+         */
         abstract void println(Object o);
 
         abstract void printStackTrace(Throwable t);

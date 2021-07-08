@@ -22,11 +22,13 @@
  */
 package com.oracle.truffle.espresso.staticobject;
 
+import java.lang.reflect.Field;
+import java.nio.ByteOrder;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import sun.misc.Unsafe;
 
-import java.lang.reflect.Field;
+import sun.misc.Unsafe;
 
 /**
  * StaticProperty objects represent the mapping between {@linkplain StaticProperty#getId() property
@@ -222,6 +224,24 @@ public abstract class StaticProperty {
         return UNSAFE.getAndSetObject(shape.getStorage(obj, false), offset, value);
     }
 
+    /**
+     * Atomically sets the {@link Object} value represented by this StaticProperty and stored in the
+     * specified static object to {@code newValue} if the current value, referred to as the <em>
+     * witness value </em>, {@code ==} the expected value.
+     *
+     * @param obj the static object that stores the static property value
+     * @param expect the expected value
+     * @param update the new value
+     * @return the witness value, which will be the same as the expected value if successful
+     * @throws IllegalArgumentException if the static property kind is not
+     *             {@link StaticPropertyKind#Object} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
+     */
+    public final Object compareAndExchangeObject(Object obj, Object expect, Object update) {
+        checkKind(StaticPropertyKind.Object);
+        return CASSupport.compareAndExchangeObject(shape.getStorage(obj, false), offset, expect, update);
+    }
+
     // boolean field access
     /**
      * Returns the boolean value represented by this StaticProperty and stored in the specified
@@ -285,6 +305,43 @@ public abstract class StaticProperty {
     public final void setBooleanVolatile(Object obj, boolean value) {
         checkKind(StaticPropertyKind.Boolean);
         UNSAFE.putBooleanVolatile(shape.getStorage(obj, true), offset, value);
+    }
+
+    /**
+     * Atomically sets the boolean value represented by this StaticProperty and stored in the
+     * specified static object to the given updated value if the current value {@code ==} the
+     * expected value.
+     *
+     * @param obj the static object that stores the static property value
+     * @param expect the expected value
+     * @param update the new value
+     * @return {@code true} if successful. False return indicates that the actual value was not
+     *         equal to the expected value.
+     * @throws IllegalArgumentException if the static property kind is not
+     *             {@link StaticPropertyKind#Boolean} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
+     */
+    public final boolean compareAndSwapBoolean(Object obj, boolean expect, boolean update) {
+        checkKind(StaticPropertyKind.Boolean);
+        return CASSupport.compareAndSetBoolean(shape.getStorage(obj, true), offset, expect, update);
+    }
+
+    /**
+     * Atomically sets the boolean value represented by this StaticProperty and stored in the
+     * specified static object to {@code newValue} if the current value, referred to as the
+     * <em>witness value</em>, {@code ==} the expected value.
+     *
+     * @param obj the static object that stores the static property value
+     * @param expect the expected value
+     * @param update the new value
+     * @return the witness value, which will be the same as the expected value if successful
+     * @throws IllegalArgumentException if the static property kind is not
+     *             {@link StaticPropertyKind#Boolean} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
+     */
+    public final boolean compareAndExchangeBoolean(Object obj, boolean expect, boolean update) {
+        checkKind(StaticPropertyKind.Boolean);
+        return CASSupport.compareAndExchangeBoolean(shape.getStorage(obj, true), offset, expect, update);
     }
 
     // byte field access
@@ -352,6 +409,42 @@ public abstract class StaticProperty {
         UNSAFE.putByteVolatile(shape.getStorage(obj, true), offset, value);
     }
 
+    /**
+     * Atomically sets the byte value represented by this StaticProperty and stored in the specified
+     * static object to the given updated value if the current value {@code ==} the expected value.
+     *
+     * @param obj the static object that stores the static property value
+     * @param expect the expected value
+     * @param update the new value
+     * @return {@code true} if successful. False return indicates that the actual value was not
+     *         equal to the expected value.
+     * @throws IllegalArgumentException if the static property kind is not
+     *             {@link StaticPropertyKind#Byte} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
+     */
+    public final boolean compareAndSwapByte(Object obj, byte expect, byte update) {
+        checkKind(StaticPropertyKind.Byte);
+        return CASSupport.compareAndSetByte(shape.getStorage(obj, true), offset, expect, update);
+    }
+
+    /**
+     * Atomically sets the byte value represented by this StaticProperty and stored in the specified
+     * static object to {@code newValue} if the current value, referred to as the <em>witness
+     * value</em>, {@code ==} the expected value.
+     *
+     * @param obj the static object that stores the static property value
+     * @param expect the expected value
+     * @param update the new value
+     * @return the witness value, which will be the same as the expected value if successful
+     * @throws IllegalArgumentException if the static property kind is not
+     *             {@link StaticPropertyKind#Byte} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
+     */
+    public final byte compareAndExchangeByte(Object obj, byte expect, byte update) {
+        checkKind(StaticPropertyKind.Byte);
+        return CASSupport.compareAndExchangeByte(shape.getStorage(obj, true), offset, expect, update);
+    }
+
     // char field access
     /**
      * Returns the char value represented by this StaticProperty and stored in the specified static
@@ -415,6 +508,42 @@ public abstract class StaticProperty {
     public final void setCharVolatile(Object obj, char value) {
         checkKind(StaticPropertyKind.Char);
         UNSAFE.putCharVolatile(shape.getStorage(obj, true), offset, value);
+    }
+
+    /**
+     * Atomically sets the char value represented by this StaticProperty and stored in the specified
+     * static object to the given updated value if the current value {@code ==} the expected value.
+     *
+     * @param obj the static object that stores the static property value
+     * @param expect the expected value
+     * @param update the new value
+     * @return {@code true} if successful. False return indicates that the actual value was not
+     *         equal to the expected value.
+     * @throws IllegalArgumentException if the static property kind is not
+     *             {@link StaticPropertyKind#Char} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
+     */
+    public final boolean compareAndSwapChar(Object obj, char expect, char update) {
+        checkKind(StaticPropertyKind.Char);
+        return CASSupport.compareAndSetChar(shape.getStorage(obj, true), offset, expect, update);
+    }
+
+    /**
+     * Atomically sets the char value represented by this StaticProperty and stored in the specified
+     * static object to {@code newValue} if the current value, referred to as the <em> witness value
+     * </em>, {@code ==} the expected value.
+     *
+     * @param obj the static object that stores the static property value
+     * @param expect the expected value
+     * @param update the new value
+     * @return the witness value, which will be the same as the expected value if successful
+     * @throws IllegalArgumentException if the static property kind is not
+     *             {@link StaticPropertyKind#Char} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
+     */
+    public final char compareAndExchangeChar(Object obj, char expect, char update) {
+        checkKind(StaticPropertyKind.Char);
+        return CASSupport.compareAndExchangeChar(shape.getStorage(obj, true), offset, expect, update);
     }
 
     // double field access
@@ -482,6 +611,43 @@ public abstract class StaticProperty {
         UNSAFE.putDoubleVolatile(shape.getStorage(obj, true), offset, value);
     }
 
+    /**
+     * Atomically sets the double value represented by this StaticProperty and stored in the
+     * specified static object to the given updated value if the current value {@code ==} the
+     * expected value.
+     *
+     * @param obj the static object that stores the static property value
+     * @param expect the expected value
+     * @param update the new value
+     * @return {@code true} if successful. False return indicates that the actual value was not
+     *         equal to the expected value.
+     * @throws IllegalArgumentException if the static property kind is not
+     *             {@link StaticPropertyKind#Double} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
+     */
+    public final boolean compareAndSwapDouble(Object obj, double expect, double update) {
+        checkKind(StaticPropertyKind.Double);
+        return CASSupport.compareAndSetDouble(shape.getStorage(obj, true), offset, expect, update);
+    }
+
+    /**
+     * Atomically sets the double value represented by this StaticProperty and stored in the
+     * specified static object to {@code newValue} if the current value, referred to as the
+     * <em>witness value</em>, {@code ==} the expected value.
+     *
+     * @param obj the static object that stores the static property value
+     * @param expect the expected value
+     * @param update the new value
+     * @return the witness value, which will be the same as the expected value if successful
+     * @throws IllegalArgumentException if the static property kind is not
+     *             {@link StaticPropertyKind#Double} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
+     */
+    public final double compareAndExchangeDouble(Object obj, double expect, double update) {
+        checkKind(StaticPropertyKind.Double);
+        return CASSupport.compareAndExchangeDouble(shape.getStorage(obj, true), offset, expect, update);
+    }
+
     // float field access
     /**
      * Returns the float value represented by this StaticProperty and stored in the specified static
@@ -545,6 +711,43 @@ public abstract class StaticProperty {
     public final void setFloatVolatile(Object obj, float value) {
         checkKind(StaticPropertyKind.Float);
         UNSAFE.putFloatVolatile(shape.getStorage(obj, true), offset, value);
+    }
+
+    /**
+     * Atomically sets the float value represented by this StaticProperty and stored in the
+     * specified static object to the given updated value if the current value {@code ==} the
+     * expected value.
+     *
+     * @param obj the static object that stores the static property value
+     * @param expect the expected value
+     * @param update the new value
+     * @return {@code true} if successful. False return indicates that the actual value was not
+     *         equal to the expected value.
+     * @throws IllegalArgumentException if the static property kind is not
+     *             {@link StaticPropertyKind#Float} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
+     */
+    public final boolean compareAndSwapFloat(Object obj, float expect, float update) {
+        checkKind(StaticPropertyKind.Float);
+        return CASSupport.compareAndSetFloat(shape.getStorage(obj, true), offset, expect, update);
+    }
+
+    /**
+     * Atomically sets the float value represented by this StaticProperty and stored in the
+     * specified static object to {@code newValue} if the current value, referred to as the
+     * <em>witness value</em>, {@code ==} the expected value.
+     *
+     * @param obj the static object that stores the static property value
+     * @param expect the expected value
+     * @param update the new value
+     * @return the witness value, which will be the same as the expected value if successful
+     * @throws IllegalArgumentException if the static property kind is not
+     *             {@link StaticPropertyKind#Float} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
+     */
+    public final float compareAndExchangeFloat(Object obj, float expect, float update) {
+        checkKind(StaticPropertyKind.Float);
+        return CASSupport.compareAndExchangeFloat(shape.getStorage(obj, true), offset, expect, update);
     }
 
     // int field access
@@ -628,6 +831,21 @@ public abstract class StaticProperty {
     public final boolean compareAndSwapInt(Object obj, int expect, int update) {
         checkKind(StaticPropertyKind.Int);
         return UNSAFE.compareAndSwapInt(shape.getStorage(obj, true), offset, expect, update);
+    }
+
+    /**
+     * Atomically sets the int value represented by this StaticProperty and stored in the specified
+     * static object to {@code newValue} if the current value, referred to as the <em>witness
+     * value</em>, {@code ==} the expected value.
+     *
+     * @param obj the static object that stores the static property value
+     * @param expect the expected value
+     * @param update the new value
+     * @return the witness value, which will be the same as the expected value if successful
+     */
+    public final int compareAndExchangeInt(Object obj, int expect, int update) {
+        checkKind(StaticPropertyKind.Int);
+        return CASSupport.compareAndExchangeInt(shape.getStorage(obj, true), offset, expect, update);
     }
 
     /**
@@ -746,6 +964,24 @@ public abstract class StaticProperty {
     }
 
     /**
+     * Atomically sets the long value represented by this StaticProperty and stored in the specified
+     * static object to {@code newValue} if the current value, referred to as the <em>witness
+     * value</em>, {@code ==} the expected value.
+     *
+     * @param obj the static object that stores the static property value
+     * @param expect the expected value
+     * @param update the new value
+     * @return the witness value, which will be the same as the expected value if successful
+     * @throws IllegalArgumentException if the static property kind is not
+     *             {@link StaticPropertyKind#Long} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
+     */
+    public final long compareAndExchangeLong(Object obj, long expect, long update) {
+        checkKind(StaticPropertyKind.Long);
+        return CASSupport.compareAndExchangeLong(shape.getStorage(obj, true), offset, expect, update);
+    }
+
+    /**
      * Atomically adds the given value to the current long value represented by this StaticProperty
      * and stored in the specified static object.
      *
@@ -842,6 +1078,43 @@ public abstract class StaticProperty {
         UNSAFE.putShortVolatile(shape.getStorage(obj, true), offset, value);
     }
 
+    /**
+     * Atomically sets the short value represented by this StaticProperty and stored in the
+     * specified static object to the given updated value if the current value {@code ==} the
+     * expected value.
+     *
+     * @param obj the static object that stores the static property value
+     * @param expect the expected value
+     * @param update the new value
+     * @return {@code true} if successful. False return indicates that the actual value was not
+     *         equal to the expected value.
+     * @throws IllegalArgumentException if the static property kind is not
+     *             {@link StaticPropertyKind#Short} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
+     */
+    public final boolean compareAndSwapShort(Object obj, short expect, short update) {
+        checkKind(StaticPropertyKind.Short);
+        return CASSupport.compareAndSetShort(shape.getStorage(obj, true), offset, expect, update);
+    }
+
+    /**
+     * Atomically sets the short value represented by this StaticProperty and stored in the
+     * specified static object to {@code newValue} if the current value, referred to as the
+     * <em>witness value</em>, {@code ==} the expected value.
+     *
+     * @param obj the static object that stores the static property value
+     * @param expect the expected value
+     * @param update the new value
+     * @return the witness value, which will be the same as the expected value if successful
+     * @throws IllegalArgumentException if the static property kind is not
+     *             {@link StaticPropertyKind#Short} or obj does not have a {@link StaticShape}
+     *             compatible with this static property
+     */
+    public final short compareAndExchangeShort(Object obj, short expect, short update) {
+        checkKind(StaticPropertyKind.Short);
+        return CASSupport.compareAndExchangeShort(shape.getStorage(obj, true), offset, expect, update);
+    }
+
     private static Unsafe getUnsafe() {
         try {
             return Unsafe.getUnsafe();
@@ -853,6 +1126,182 @@ public abstract class StaticProperty {
             return (Unsafe) theUnsafeInstance.get(Unsafe.class);
         } catch (Exception e) {
             throw new RuntimeException("exception while trying to get Unsafe.theUnsafe via reflection:", e);
+        }
+    }
+
+    /**
+     * Temporary class to enable support for compare and swap/exchange for sub-word fields.
+     * <p>
+     * This class will be moved, in favor of overlay classes: one for version &lt=8 and &gt= 9. This
+     * class corresponds to the &lt=8 version.
+     * <p>
+     * The version for &gt=9 will be able to call directly into host Unsafe methods to get better
+     * performance.
+     */
+    private static final class CASSupport {
+        private CASSupport() {
+        }
+
+        private static boolean isBigEndian() {
+            return ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN;
+        }
+
+        private static boolean compareAndSetByte(Object o, long offset,
+                        byte expected,
+                        byte x) {
+            return compareAndExchangeByte(o, offset, expected, x) == expected;
+        }
+
+        private static boolean compareAndSetBoolean(Object o, long offset,
+                        boolean expected,
+                        boolean x) {
+            byte byteExpected = expected ? (byte) 1 : (byte) 0;
+            byte byteX = x ? (byte) 1 : (byte) 0;
+            return compareAndSetByte(o, offset, byteExpected, byteX);
+        }
+
+        private static boolean compareAndSetShort(Object o, long offset,
+                        short expected,
+                        short x) {
+            return compareAndExchangeShort(o, offset, expected, x) == expected;
+        }
+
+        private static boolean compareAndSetChar(Object o, long offset,
+                        char expected,
+                        char x) {
+            return compareAndSetShort(o, offset, (short) expected, (short) x);
+        }
+
+        private static boolean compareAndSetFloat(Object o, long offset,
+                        float expected,
+                        float x) {
+            return UNSAFE.compareAndSwapInt(o, offset,
+                            Float.floatToRawIntBits(expected),
+                            Float.floatToRawIntBits(x));
+        }
+
+        private static boolean compareAndSetDouble(Object o, long offset,
+                        double expected,
+                        double x) {
+            return UNSAFE.compareAndSwapLong(o, offset,
+                            Double.doubleToRawLongBits(expected),
+                            Double.doubleToRawLongBits(x));
+        }
+
+        private static byte compareAndExchangeByte(Object o, long offset,
+                        byte expected,
+                        byte x) {
+            long wordOffset = offset & ~3;
+            int shift = (int) (offset & 3) << 3;
+            if (isBigEndian()) {
+                shift = 24 - shift;
+            }
+            int mask = 0xFF << shift;
+            int maskedExpected = (expected & 0xFF) << shift;
+            int maskedX = (x & 0xFF) << shift;
+            int fullWord;
+            do {
+                fullWord = UNSAFE.getIntVolatile(o, wordOffset);
+                if ((fullWord & mask) != maskedExpected) {
+                    return (byte) ((fullWord & mask) >> shift);
+                }
+            } while (!UNSAFE.compareAndSwapInt(o, wordOffset,
+                            fullWord, (fullWord & ~mask) | maskedX));
+            return expected;
+        }
+
+        private static boolean compareAndExchangeBoolean(Object o, long offset,
+                        boolean expected,
+                        boolean x) {
+            byte byteExpected = expected ? (byte) 1 : (byte) 0;
+            byte byteX = x ? (byte) 1 : (byte) 0;
+            return compareAndExchangeByte(o, offset, byteExpected, byteX) != 0;
+        }
+
+        private static short compareAndExchangeShort(Object o, long offset,
+                        short expected,
+                        short x) {
+            if ((offset & 3) == 3) {
+                throw new IllegalArgumentException("Update spans the word, not supported");
+            }
+            long wordOffset = offset & ~3;
+            int shift = (int) (offset & 3) << 3;
+            if (isBigEndian()) {
+                shift = 16 - shift;
+            }
+            int mask = 0xFFFF << shift;
+            int maskedExpected = (expected & 0xFFFF) << shift;
+            int maskedX = (x & 0xFFFF) << shift;
+            int fullWord;
+            do {
+                fullWord = UNSAFE.getIntVolatile(o, wordOffset);
+                if ((fullWord & mask) != maskedExpected) {
+                    return (short) ((fullWord & mask) >> shift);
+                }
+            } while (!UNSAFE.compareAndSwapInt(o, wordOffset,
+                            fullWord, (fullWord & ~mask) | maskedX));
+            return expected;
+        }
+
+        private static char compareAndExchangeChar(Object o, long offset,
+                        char expected,
+                        char x) {
+            return (char) compareAndExchangeShort(o, offset, (short) expected, (short) x);
+        }
+
+        private static int compareAndExchangeInt(Object o, long offset,
+                        int expected,
+                        int x) {
+            int result;
+            do {
+                result = UNSAFE.getIntVolatile(o, offset);
+                if (result != expected) {
+                    return result;
+                }
+            } while (!UNSAFE.compareAndSwapInt(o, offset, expected, x));
+            return expected;
+        }
+
+        private static Object compareAndExchangeObject(Object o, long offset,
+                        Object expected,
+                        Object x) {
+            Object result;
+            do {
+                result = UNSAFE.getObjectVolatile(o, offset);
+                if (result != expected) {
+                    return result;
+                }
+            } while (!UNSAFE.compareAndSwapObject(o, offset, expected, x));
+            return expected;
+        }
+
+        private static float compareAndExchangeFloat(Object o, long offset,
+                        float expected,
+                        float x) {
+            return Float.intBitsToFloat(compareAndExchangeInt(o, offset,
+                            Float.floatToRawIntBits(expected),
+                            Float.floatToRawIntBits(x)));
+        }
+
+        private static long compareAndExchangeLong(Object o, long offset,
+                        long expected,
+                        long x) {
+            long result;
+            do {
+                result = UNSAFE.getLongVolatile(o, offset);
+                if (result != expected) {
+                    return result;
+                }
+            } while (!UNSAFE.compareAndSwapLong(o, offset, expected, x));
+            return expected;
+        }
+
+        private static double compareAndExchangeDouble(Object o, long offset,
+                        double expected,
+                        double x) {
+            return Double.longBitsToDouble(compareAndExchangeLong(o, offset,
+                            Double.doubleToRawLongBits(expected),
+                            Double.doubleToRawLongBits(x)));
         }
     }
 }

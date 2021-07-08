@@ -480,13 +480,13 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         if (defaultDataLayout == null) {
             this.defaultDataLayout = datalayout;
         } else {
-            throw new NullPointerException("The default datalayout cannot be overwritten");
+            throw new IllegalStateException("The default datalayout cannot be overwritten");
         }
         // Libsulong targettriple can only be set once.
         if (defaultTargetTriple == null) {
             this.defaultTargetTriple = targetTriple;
         } else {
-            throw new NullPointerException("The default targetTriple cannot be overwritten");
+            throw new IllegalStateException("The default targetTriple cannot be overwritten");
         }
     }
 

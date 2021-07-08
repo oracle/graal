@@ -79,7 +79,8 @@ public class ReportUtils {
     public static String timeStampedFileName(String name, String extension) {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss");
         String timeStamp = LocalDateTime.now().format(formatter);
-        return name + "_" + timeStamp + "." + extension;
+        String fileName = name + "_" + timeStamp;
+        return extension.isEmpty() ? fileName : fileName + "." + extension;
     }
 
     public static File reportFile(String path, String name, String extension) {

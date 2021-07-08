@@ -108,8 +108,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.VMRuntime;
-import org.graalvm.nativeimage.c.type.CTypeConversion;
-import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.word.Pointer;
@@ -718,11 +716,6 @@ final class Target_org_graalvm_compiler_hotspot_HotSpotGraalOptionValues {
 
     @Substitute
     private static OptionValues initializeOptions() {
-        // Sanity check
-        if (!XOptions.getXmn().getPrefix().equals("-X")) {
-            throw new InternalError("Expected " + XOptions.getXmn().getPrefixAndName() + " to start with -X");
-        }
-
         // Parse "graal." options.
         RuntimeOptionValues options = RuntimeOptionValues.singleton();
         options.update(HotSpotGraalOptionValues.parseOptions());
@@ -742,15 +735,14 @@ final class Target_org_graalvm_compiler_hotspot_HotSpotGraalOptionValues {
             String name = e.getKey();
             if (name.startsWith("libgraal.")) {
                 if (name.startsWith("libgraal.X")) {
-                    String[] xarg = {"-" + name.substring("libgraal.".length()) + e.getValue()};
-                    String[] unknown = XOptions.singleton().parse(xarg, false);
-                    if (unknown.length == 0) {
+                    String xarg = name.substring("libgraal.X.".length()) + e.getValue();
+                    if (XOptions.setOption(xarg)) {
                         continue;
                     }
-                } else {
-                    String value = e.getValue();
-                    optionSettings.put(name.substring("libgraal.".length()), value);
                 }
+
+                String value = e.getValue();
+                optionSettings.put(name.substring("libgraal.".length()), value);
             }
         }
         if (!optionSettings.isEmpty()) {
@@ -800,13 +792,7 @@ final class Target_org_graalvm_compiler_core_GraalCompiler {
         if (LibGraalOptions.CrashAtIsFatal.getValue()) {
             LogHandler handler = ImageSingletons.lookup(LogHandler.class);
             if (handler instanceof FunctionPointerLogHandler) {
-                FunctionPointerLogHandler fpHandler = (FunctionPointerLogHandler) handler;
-                if (fpHandler.getFatalErrorFunctionPointer().isNonNull()) {
-                    try (CCharPointerHolder holder = CTypeConversion.toCString(crashMessage)) {
-                        handler.log(holder.get(), WordFactory.unsigned(crashMessage.getBytes().length));
-                    }
-                    handler.fatalError();
-                }
+                VMError.shouldNotReachHere(crashMessage);
             }
             // If changing this message, update the test for it in mx_vm_gate.py
             System.out.println("CrashAtIsFatal: no fatalError function pointer installed");

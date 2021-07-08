@@ -136,13 +136,13 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * <p>
      * This methods chooses the appropriate way to generate this address, by first trying to use an
      * immediate addressing mode, and then resorting to using the scratch register and a register
-     * offset addressing mode.
+     * offset addressing mode. If it is unable to create an address then it will return null.
      *
      * @param transferSize bit size of memory operation this address will be used in.
      * @param scratchReg scratch register to use if immediate addressing mode cannot be used. Should
      *            be set to zero-register if scratch register is not available.
      */
-    public AArch64Address makeAddress(int transferSize, Register base, long displacement, Register scratchReg) {
+    private AArch64Address tryMakeAddress(int transferSize, Register base, long displacement, Register scratchReg) {
         assert transferSize == 8 || transferSize == 16 || transferSize == 32 || transferSize == 64 || transferSize == 128;
         if (displacement == 0) {
             return AArch64Address.createBaseRegisterOnlyAddress(base);
@@ -154,12 +154,45 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             AArch64Address.AddressingMode mode = canScale ? IMMEDIATE_UNSIGNED_SCALED : IMMEDIATE_SIGNED_UNSCALED;
             if (NumUtil.is32bit(displacement) && AArch64Address.isValidImmediateAddress(transferSize, mode, NumUtil.safeToInt(displacement))) {
                 return AArch64Address.createImmediateAddress(transferSize, mode, base, NumUtil.safeToInt(displacement));
+            } else if (scratchReg.equals(zr)) {
+                /* Address generation requires scratch register, but one was not provided. */
+                return null;
             } else {
-                GraalError.guarantee(!scratchReg.equals(zr), "Address generation requires scratch register.");
                 mov(scratchReg, displacement);
                 return AArch64Address.createRegisterOffsetAddress(base, scratchReg, false);
             }
         }
+    }
+
+    /**
+     * Generates an address of the form {@code base + displacement}.
+     *
+     * Will return null if displacement cannot be represented directly as an immediate address.
+     *
+     * @param transferSize bit size of memory operation this address will be used in.
+     * @param base general purpose register. May not be null or the zero register.
+     * @param displacement arbitrary displacement added to base.
+     * @return AArch64Address referencing memory at {@code base + displacement}.
+     */
+    public AArch64Address tryMakeAddress(int transferSize, Register base, long displacement) {
+        return tryMakeAddress(transferSize, base, displacement, zr);
+    }
+
+    /**
+     *
+     * Returns an AArch64Address pointing to {@code base + displacement}.
+     *
+     * Will fail if displacement cannot be represented directly as an immediate address and a
+     * scratch register is not provided.
+     *
+     * @param transferSize bit size of memory operation this address will be used in.
+     * @param scratchReg scratch register to use if immediate addressing mode cannot be used. Should
+     *            be set to zero-register if scratch register is not available.
+     */
+    public AArch64Address makeAddress(int transferSize, Register base, long displacement, Register scratchReg) {
+        AArch64Address address = tryMakeAddress(transferSize, base, displacement, scratchReg);
+        GraalError.guarantee(address != null, "Address generation requires scratch register.");
+        return address;
     }
 
     /**
@@ -1921,6 +1954,13 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     @Override
     public void ensureUniquePC() {
         nop();
+    }
+
+    /**
+     * Create an invalid instruction to signify an error.
+     */
+    public void illegal() {
+        emitInt(0xFFFFFFFF);
     }
 
     /**

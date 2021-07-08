@@ -231,7 +231,8 @@ public final class HeapImpl extends Heap {
         return result;
     }
 
-    HeapPolicy getHeapPolicy() {
+    @Fold
+    public HeapPolicy getHeapPolicy() {
         return heapPolicy;
     }
 

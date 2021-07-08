@@ -166,18 +166,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
 
     public static class IntrinsificationRegistry extends IntrinsificationPluginRegistry {
-
-        private static IntrinsificationRegistry singleton() {
-            return ImageSingletons.lookup(IntrinsificationRegistry.class);
-        }
-
-        public static AutoCloseable startThreadLocalnRegistry() {
-            return IntrinsificationPluginRegistry.startThreadLocalRegistry(singleton());
-        }
-
-        public static AutoCloseable pauseThreadLocalRegistry() {
-            return IntrinsificationPluginRegistry.pauseThreadLocalRegistry(singleton());
-        }
     }
 
     private final ParsingReason reason;
@@ -521,7 +509,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
          * intrinsified during analysis. Otherwise new code that was not seen as reachable by the
          * static analysis would be compiled.
          */
-        if (reason != ParsingReason.PointsToAnalysis && intrinsificationRegistry.get(b.getCallingContext()) != Boolean.TRUE) {
+        if (reason != ParsingReason.PointsToAnalysis && intrinsificationRegistry.get(b.getMethod(), b.bci()) != Boolean.TRUE) {
             return reportUnsupportedFeature(b, methodHandleMethod);
         }
         Plugins graphBuilderPlugins = new Plugins(parsingProviders.getReplacements().getGraphBuilderPlugins());
@@ -571,7 +559,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                      * Successfully intrinsified during analysis, remember that we can intrinsify
                      * when parsing for compilation.
                      */
-                    intrinsificationRegistry.add(b.getCallingContext(), Boolean.TRUE);
+                    intrinsificationRegistry.add(b.getMethod(), b.bci(), Boolean.TRUE);
                 }
                 return true;
             } catch (AbortTransplantException ex) {

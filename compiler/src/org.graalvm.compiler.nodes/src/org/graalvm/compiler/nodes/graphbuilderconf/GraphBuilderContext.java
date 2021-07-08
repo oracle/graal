@@ -27,10 +27,6 @@ package org.graalvm.compiler.nodes.graphbuilderconf;
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 import static org.graalvm.compiler.core.common.type.StampFactory.objectNonNull;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import org.graalvm.collections.Pair;
 import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
@@ -261,19 +257,6 @@ public interface GraphBuilderContext extends GraphBuilderTool {
             parent = parent.getParent();
         }
         return result;
-    }
-
-    default List<Pair<ResolvedJavaMethod, Integer>> getCallingContext() {
-        List<Pair<ResolvedJavaMethod, Integer>> callingContext = new ArrayList<>();
-        /*
-         * We always add a method which bytecode is parsed, so size of this list is minimum one.
-         */
-        GraphBuilderContext cur = this;
-        while (cur != null) {
-            callingContext.add(Pair.create(cur.getMethod(), cur.bci()));
-            cur = cur.getParent();
-        }
-        return callingContext;
     }
 
     /**

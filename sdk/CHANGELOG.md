@@ -5,6 +5,17 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 ## Version 21.2.0
 * `AllowVMInspection` is enabled in the native launchers, `SIGQUIT` can be used to generate thread dumps. Performance counters are disabled by default, they can be enabled in the graalvm enterprise by the `--vm.XX:+UsePerfData` option.
 * Changed behavior of `Value.as(TypeLiteral<Function<Object, Object>>).apply()`: When the function is called with an `Object[]` argument, it is passed through as a single argument rather than an array of arguments.
+* Updated the required JVMCI version for Polyglot Embeddings in this release. All GraalVM JDK versions (8, 11, 16) already contain the updated JVMCI version and there is no further action required. If you are using a different JDK than GraalVM and you have configured the Graal compiler on the upgrade module path you will need one of the following JDK versions that include [JDK-8264016](https://bugs.openjdk.java.net/browse/JDK-8264016) for full compatibility:
+
+  * Other JDK 11: Oracle JDK 11.0.13 (2021-10-19), OpenJDK is still to be determined.
+  * Other JDK 16: No current plans to update JVMCI.
+  * Other JDK 17: The new JVMCI version is already integrated into early access builds.
+
+  If your JVMCI version is outdated you will be able to use GraalVM embeddings, but forced context cancellation (`Context.close(true)`) and interrupt (`Context.interrupt(Duration)`) will throw an error. We recommend the following workarounds:
+
+  * Do not use forced context cancellation or interrupt. All other features are still supported.
+  * Switch to the fallback runtime by removing graal.jar from the upgrade-module-path. Note that this will significantly worsen performance and should only be a last resort.
+  * Wait with upgrading to 21.2 until the JDK version has support for the new JVMCI version.
 
 ## Version 21.1.0
 * Added new methods  in `Value` for interacting with buffer-like objects:

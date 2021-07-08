@@ -47,6 +47,7 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.hosted.HostedConfiguration;
 import org.graalvm.compiler.core.common.SuppressSVMWarnings;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.options.OptionValues;
@@ -78,7 +79,6 @@ import com.oracle.svm.core.hub.GenericInfo;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.SVMHost;
-import com.oracle.svm.hosted.analysis.flow.SVMMethodTypeFlowBuilder;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 
@@ -115,7 +115,7 @@ public class Inflation extends BigBang {
 
     @Override
     public MethodTypeFlowBuilder createMethodTypeFlowBuilder(BigBang bb, MethodTypeFlow methodFlow) {
-        return new SVMMethodTypeFlowBuilder(bb, methodFlow);
+        return HostedConfiguration.instance().createMethodTypeFlowBuilder(bb, methodFlow);
     }
 
     @Override
@@ -477,6 +477,14 @@ public class Inflation extends BigBang {
         if (handledUnknownValueFields.contains(field)) {
             return;
         }
+        if (!field.isAccessed()) {
+            /*
+             * Field is not reachable yet, so do no process it. In particular, we must not register
+             * types listed in the @UnknownObjectField annotation as allocated when the field is not
+             * yet reachable
+             */
+            return;
+        }
 
         UnknownObjectField unknownObjectField = field.getAnnotation(UnknownObjectField.class);
         UnknownPrimitiveField unknownPrimitiveField = field.getAnnotation(UnknownPrimitiveField.class);
@@ -488,14 +496,8 @@ public class Inflation extends BigBang {
 
             List<AnalysisType> aAnnotationTypes = extractAnnotationTypes(field, unknownObjectField);
 
-            /*
-             * Only if an UnknownValue field is really accessed, we register all the field's
-             * sub-types as allocated.
-             */
-            if (field.isAccessed()) {
-                for (AnalysisType type : aAnnotationTypes) {
-                    type.registerAsAllocated(null);
-                }
+            for (AnalysisType type : aAnnotationTypes) {
+                type.registerAsAllocated(null);
             }
 
             /*

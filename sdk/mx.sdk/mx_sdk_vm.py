@@ -615,6 +615,7 @@ def _patch_default_security_policy(build_dir, jmods_dir, dst_jdk_dir):
     graalvm_policy_utf8 = graalvm_policy.encode('utf-8')
     policy_entry = 'lib/security/default.policy'
     patched_java_base = join(build_dir, 'java.base.jmod')
+    patched_java_base_source = join(build_dir, 'java.base.jmod.source')
     dst_patched_java_base = join(dst_jdk_dir, 'jmods', 'java.base.jmod')
 
     def open_jmods(to_read, to_write=None):
@@ -629,6 +630,13 @@ def _patch_default_security_policy(build_dir, jmods_dir, dst_jdk_dir):
         return in_fp
 
     def needs_patching(java_base_jmod):
+        # Return True if a different JDK was used for the current patched java.base
+        if not exists(patched_java_base_source):
+            return True
+        with open(patched_java_base_source) as fp:
+            source = fp.read()
+            if source != jmods_dir:
+                return True
         if exists(java_base_jmod):
             with open_jmods(java_base_jmod) as fp:
                 with ZipFile(fp, 'r') as zf:
@@ -639,6 +647,10 @@ def _patch_default_security_policy(build_dir, jmods_dir, dst_jdk_dir):
     if not needs_patching(dst_patched_java_base):
         shutil.copy(dst_patched_java_base, patched_java_base)
         return patched_java_base
+
+    # Record the jmods directory of the original java.base module
+    with mx.open(patched_java_base_source, 'w') as fp:
+        fp.write(jmods_dir)
 
     fps = open_jmods(join(jmods_dir, 'java.base.jmod'), patched_java_base)
     with fps[0] as src_f, fps[1] as dst_f:

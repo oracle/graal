@@ -54,6 +54,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 import org.graalvm.polyglot.Context;
@@ -505,6 +511,80 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
             frame = iterator.next();
             assertTrue(frame.isHostFrame());
         });
+    }
+
+    @Test
+    public void testCancelDoesNotMaskInternalError() throws InterruptedException, ExecutionException {
+        enterContext = false;
+        CountDownLatch waitingStarted = new CountDownLatch(1);
+        setupEnv(Context.create(), new ProxyLanguage() {
+            @Override
+            protected CallTarget parse(ParsingRequest request) throws Exception {
+                return Truffle.getRuntime().createCallTarget(new RootNode(getCurrentLanguage()) {
+
+                    @Override
+                    public Object execute(VirtualFrame frame) {
+                        waitForever();
+                        return 42;
+                    }
+
+                    @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
+                    @TruffleBoundary
+                    private void waitForever() {
+                        final Object waitObject = new Object();
+                        waitingStarted.countDown();
+                        synchronized (waitObject) {
+                            try {
+                                waitObject.wait();
+                            } catch (InterruptedException ie) {
+                                /*
+                                 * This is the internal error.
+                                 */
+                                Assert.fail();
+                            }
+                        }
+                    }
+
+                    @Override
+                    public String getName() {
+                        return "testRootName";
+                    }
+
+                });
+            }
+        });
+
+        ExecutorService executorService = Executors.newSingleThreadExecutor();
+        Future<?> future = executorService.submit(() -> {
+            assertFails(() -> context.eval(ProxyLanguage.ID, "test"), PolyglotException.class, (e) -> {
+                assertTrue(e.isInternalError());
+                assertTrue(e.isGuestException());
+                assertFalse(e.isHostException());
+                assertFalse(e.isCancelled());
+                Iterator<StackFrame> iterator = e.getPolyglotStackTrace().iterator();
+                boolean foundGuestFrame = false;
+                boolean foundHostFrame = false;
+                while (iterator.hasNext()) {
+                    StackFrame frame = iterator.next();
+                    if (frame.isGuestFrame()) {
+                        foundGuestFrame = true;
+                        assertTrue(frame.isGuestFrame());
+                        assertEquals("testRootName", frame.getRootName());
+                    } else {
+                        if ("waitForever".equals(frame.toHostFrame().getMethodName())) {
+                            foundHostFrame = true;
+                        }
+                    }
+                }
+                assertTrue(foundGuestFrame);
+                assertTrue(foundHostFrame);
+            });
+        });
+        waitingStarted.await();
+        context.close(true);
+        future.get();
+        executorService.shutdownNow();
+        executorService.awaitTermination(100, TimeUnit.SECONDS);
     }
 
     abstract static class BaseNode extends Node {

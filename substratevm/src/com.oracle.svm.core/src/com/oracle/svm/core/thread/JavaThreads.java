@@ -38,6 +38,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
@@ -165,6 +166,20 @@ public abstract class JavaThreads {
 
     public static void setThreadStatus(Thread thread, int threadStatus) {
         JavaContinuations.LoomCompatibilityUtil.setThreadStatus(toTarget(thread), threadStatus);
+    }
+
+    /**
+     * Safe method to check whether a thread has been interrupted.
+     *
+     * Use instead of {@link Thread#isInterrupted()}, which is not {@code final} and can be
+     * overridden with code that does locking or performs other actions that are unsafe especially
+     * in VM-internal contexts.
+     */
+    public static boolean isInterrupted(Thread thread) {
+        if (JavaVersionUtil.JAVA_SPEC >= 14) {
+            return toTarget(thread).interruptedJDK14OrLater;
+        }
+        return toTarget(thread).interrupted;
     }
 
     protected static AtomicReference<ParkEvent> getUnsafeParkEvent(Thread thread) {
@@ -703,7 +718,7 @@ public abstract class JavaThreads {
     static void park() {
         VMOperationControl.guaranteeOkayToBlock("[JavaThreads.park(): Should not park when it is not okay to block.]");
         final Thread thread = Thread.currentThread();
-        if (thread.isInterrupted()) { // avoid state changes and synchronization
+        if (isInterrupted(thread)) { // avoid state changes and synchronization
             return;
         }
         /*
@@ -726,7 +741,7 @@ public abstract class JavaThreads {
     static void park(long delayNanos) {
         VMOperationControl.guaranteeOkayToBlock("[JavaThreads.park(long): Should not park when it is not okay to block.]");
         final Thread thread = Thread.currentThread();
-        if (thread.isInterrupted()) { // avoid state changes and synchronization
+        if (isInterrupted(thread)) { // avoid state changes and synchronization
             return;
         }
         /*
@@ -783,7 +798,7 @@ public abstract class JavaThreads {
          * the interrupted check because if not, the interrupt code will not assign one and the
          * wakeup will be lost, too.
          */
-        if (thread.isInterrupted()) {
+        if (isInterrupted(thread)) {
             return; // likely leaves a stale unpark which will be reset before the next sleep()
         }
         final int oldStatus = JavaThreads.getThreadStatus(thread);
@@ -878,7 +893,7 @@ public abstract class JavaThreads {
                             if (thread != null) {
                                 final String name = thread.getName();
                                 final Thread.State status = thread.getState();
-                                final boolean interruptedStatus = thread.isInterrupted();
+                                final boolean interruptedStatus = isInterrupted(thread);
                                 trace.string("  thread.getName(): ").string(name)
                                                 .string("  interruptedStatus: ").bool(interruptedStatus)
                                                 .string("  getState(): ").string(status.name());

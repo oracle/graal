@@ -41,15 +41,15 @@ import com.oracle.graal.pointsto.typestate.TypeState;
 
 public final class StatisticsPrinter {
 
-    public static void print(BigBang bigbang, String path, String reportName) {
+    public static void print(BigBang bigbang, String reportsPath, String reportName) {
         StatisticsPrinter printer = new StatisticsPrinter(bigbang);
-        Consumer<PrintWriter> consumer = writer -> printer.printStats(writer);
+        Consumer<PrintWriter> consumer = printer::printStats;
         String description = "analysis results stats";
         if (AnalysisReportsOptions.AnalysisStatisticsFile.hasBeenSet(bigbang.getOptions())) {
             final File file = new File(AnalysisReportsOptions.AnalysisStatisticsFile.getValue(bigbang.getOptions())).getAbsoluteFile();
             ReportUtils.report(description, file.toPath(), consumer);
         } else {
-            ReportUtils.report(description, path + File.separatorChar + "reports", "analysis_stats_" + reportName, "json", consumer);
+            ReportUtils.report(description, reportsPath, "analysis_stats_" + reportName, "json", consumer);
         }
     }
 

@@ -146,6 +146,7 @@ public class LambdaSubstitutionType implements ResolvedJavaType, OriginalClassPr
         return original.isAssignableFrom(other);
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public ResolvedJavaType getHostClass() {
         return original.getHostClass();

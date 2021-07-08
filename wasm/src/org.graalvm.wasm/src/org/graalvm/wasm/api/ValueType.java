@@ -73,6 +73,7 @@ public enum ValueType {
             case WasmType.F64_TYPE:
                 return f64;
             default:
+                CompilerDirectives.transferToInterpreter();
                 throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, null, "Unknown value type: 0x" + Integer.toHexString(value));
         }
     }

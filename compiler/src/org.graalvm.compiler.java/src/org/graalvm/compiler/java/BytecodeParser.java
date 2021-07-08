@@ -1981,9 +1981,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
      */
     protected void emitCheckForInvokeSuperSpecial(ValueNode[] args) {
         ResolvedJavaType callingClass = method.getDeclaringClass();
-        if (callingClass.getHostClass() != null) {
-            callingClass = callingClass.getHostClass();
-        }
+        callingClass = getHostClass(callingClass);
         if (callingClass.isInterface()) {
             ValueNode receiver = args[0];
             TypeReference checkedType = TypeReference.createTrusted(graph.getAssumptions(), callingClass);
@@ -1991,6 +1989,12 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
             FixedGuardNode fixedGuard = append(new FixedGuardNode(condition, ClassCastException, None, false));
             args[0] = append(PiNode.create(receiver, StampFactory.object(checkedType, true), fixedGuard));
         }
+    }
+
+    @SuppressWarnings("deprecation")
+    private static ResolvedJavaType getHostClass(ResolvedJavaType type) {
+        ResolvedJavaType hostClass = type.getHostClass();
+        return hostClass != null ? hostClass : type;
     }
 
     protected JavaTypeProfile getProfileForInvoke(InvokeKind invokeKind) {

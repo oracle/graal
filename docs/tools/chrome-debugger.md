@@ -3,20 +3,14 @@ layout: docs
 toc_group: tools
 link_title: Chrome Debugger
 permalink: /tools/chrome-debugger/
+redirect_from: /docs/tools/chrome-debugger/
 ---
 
 # Chrome Debugger
 
-GraalVM supports debugging of guest language applications and provides a
-built-in implementation of
-the [Chrome DevTools Protocol](https://chromedevtools.github.io/devtools-protocol/).
-This allows you to attach compatible debuggers such as
-[Chrome Developer Tools](https://developers.google.com/web/tools/chrome-devtools/)
-to GraalVM.
+GraalVM supports debugging of guest language applications and provides a built-in implementation of the [Chrome DevTools Protocol](https://chromedevtools.github.io/devtools-protocol/). This allows you to attach compatible debuggers such as [Chrome Developer Tools](https://developers.google.com/web/tools/chrome-devtools/) to GraalVM.
 
-To debug guest language applications, pass the `--inspect` option to the
-command line launcher, as in the following
-example with a Node.js _HelloWorld_ program:
+To debug guest language applications, pass the `--inspect` option to the command line launcher, as in the following example with a Node.js _HelloWorld_ program:
 ```javascript
 var http = require('http');
 
@@ -35,44 +29,36 @@ console.log("Server running at http://localhost:8000/");
 node --inspect --jvm HelloWorld.js
 Debugger listening on port 9229.
 To start debugging, open the following URL in Chrome:
-    chrome-devtools://devtools/bundled/js_app.html?ws=127.0.1.1:9229/76fcb6dd-35267eb09c3
+    devtools://devtools/bundled/js_app.html?ws=127.0.1.1:9229/76fcb6dd-35267eb09c3
 Server running at http://localhost:8000/
 ```
 
 2. Navigate to `http://localhost:8000/` in your browser to launch the node application.
 
-3. Open the `chrome-devtools:...` link in a separate Chrome browser tab.
+3. Open the `devtools:...` link in a separate Chrome browser tab.
 
 4. Navigate to the `HelloWorld.js` file and submit a breakpoint at line 4.
 
 5. Refresh the node.js app and you can see the breakpoint hit.
 
-Now you can inspect the stack, variables, evaluate variables, and selected expressions
-in a tooltip, and so on. By hovering your cursor over the `response` variable, for
-instance, you can inspect its properties, as seen in the screenshot below:
+Now you can inspect the stack, variables, evaluate variables, and selected expressions in a tooltip, and so on. By hovering your cursor over the `response` variable, for instance, you can inspect its properties, as seen in the screenshot below:
 
 ![](img/ChromeInspector.png)
 
-Consult the
-[JavaScript Debugging Reference](https://developers.google.com/web/tools/chrome-devtools/javascript/reference)
-for details on Chrome DevTools debugging features.
+Consult the [JavaScript Debugging Reference](https://developers.google.com/web/tools/chrome-devtools/javascript/reference) for details on Chrome DevTools debugging features.
 
 This debugging process applies to all guest languages that GraalVM supports.
-Other languages such as R and Ruby can be debugged as easily as JavaScript,
-including stepping through language boundaries during guest language
-[interoperability](../reference-manual/polyglot-programming.md).
+Other languages such as R and Ruby can be debugged as easily as JavaScript, including stepping through language boundaries during guest language [interoperability](../reference-manual/polyglot-programming.md).
 
 ## Inspect Options
 
 ### Node Launcher
-The Node.js runtime of GraalVM accepts the same options as
-[node.js built on the V8 JavaScript engine](https://nodejs.org/), such as:
+The Node.js runtime of GraalVM accepts the same options as [node.js built on the V8 JavaScript engine](https://nodejs.org/), such as:
 ```shell
 --inspect[=[host:]<port number>]
 ```
 
-This enables the inspector agent and listens on port 9229 by default. To listen on a
-different port, specify the optional port number:
+This enables the inspector agent and listens on port 9229 by default. To listen on a different port, specify the optional port number:
 ```shell
 --inspect-brk[=[host:]<port number>]
 ```
@@ -80,9 +66,7 @@ different port, specify the optional port number:
 This applies to the `node` launcher only.
 
 ### Other Language Launchers
-Other guest language launchers such as `js`, `python`, `Rscript`, `ruby`, `lli`, and `polyglot`
-accept the `--inspect[=[host:]<port number>]` option, but suspend on the first line of
-the application code by default.
+Other guest language launchers such as `js`, `python`, `Rscript`, `ruby`, `lli`, and `polyglot` accept the `--inspect[=[host:]<port number>]` option, but suspend on the first line of the application code by default.
 ```shell
 --inspect.Suspend=(true|false)
 ```
@@ -111,14 +95,12 @@ inspector client. It is `false` by default.
 ### Advanced Debug Options
 The following options are for language experts and language developers:
 
-* `--inspect.Initialization=(true|false)` when true, this option inspects the language initialization phase. When initial suspension is active, this suspends at the beginning of language initialization, not necessarily
-at the beginning of the application code. It is `false` by default.
+* `--inspect.Initialization=(true|false)` when true, this option inspects the language initialization phase. When initial suspension is active, this suspends at the beginning of language initialization, not necessarily at the beginning of the application code. It is `false` by default.
 * `--inspect.Internal=(true|false)`  when true, internal sources are inspected as well. Internal sources may provide language implementation details. It is `false` by default.
 
 ### Programmatic Launch of Inspector Backend
-Embedders can provide the appropriate inspector options to the `Engine/Context`
-to launch the inspector backend. The following code snippet provides an example of
-a possible launch:
+Embedders can provide the appropriate inspector options to the `Engine/Context` to launch the inspector backend.
+The following code snippet provides an example of a possible launch:
 
 ```java
 import org.graalvm.polyglot.*;

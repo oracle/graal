@@ -107,7 +107,7 @@ public class LanguageFinalizationFailureTest extends AbstractPolyglotTest {
     public void testFinalizationFailureCancelException() {
         AtomicBoolean disposeCalled = new AtomicBoolean();
         ByteArrayOutputStream outStream = new ByteArrayOutputStream();
-        setupEnv(Context.newBuilder().logHandler(outStream), new ProxyLanguage() {
+        setupEnv(Context.newBuilder().option("log.engine.level", "FINE").logHandler(outStream), new ProxyLanguage() {
             @Override
             protected void finalizeContext(LanguageContext languageContext) {
                 TruffleSafepoint.pollHere(DUMMY_NODE);
