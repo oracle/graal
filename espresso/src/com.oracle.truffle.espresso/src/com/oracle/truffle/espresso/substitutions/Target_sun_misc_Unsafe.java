@@ -311,35 +311,9 @@ public final class Target_sun_misc_Unsafe {
 
     // region compareAndExchange*
 
-    /*
-     * Java 8 does not have these instructions in Unsafe. Implement them by ourselves.
-     */
-
-    private static StaticObject doStaticObjectCompareExchange(StaticObject holder, Field f, StaticObject before, StaticObject after) {
-        StaticObject result;
-        do {
-            result = f.getObject(holder, true);
-            if (result != before) {
-                return result;
-            }
-        } while (!f.compareAndSwapObject(holder, before, after));
-        return before;
-    }
-
-    private static StaticObject doCompareExchange(Meta meta, Object holder, long offset, StaticObject before, StaticObject after) {
-        Unsafe unsafe = UnsafeAccess.getIfAllowed(meta);
-        Object result;
-        do {
-            result = unsafe.getObjectVolatile(holder, offset);
-            if (result != before) {
-                return (StaticObject) result;
-            }
-        } while (!unsafe.compareAndSwapObject(holder, offset, before, after));
-        return before;
-    }
-
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeObjectAccessToReference.class)
-    public static @JavaType(Object.class) StaticObject compareAndExchangeObject(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder, long offset,
+    public static @JavaType(Object.class) StaticObject compareAndExchangeObject(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject holder,
+                    long offset,
                     @JavaType(Object.class) StaticObject before,
                     @JavaType(Object.class) StaticObject after,
                     @InjectMeta Meta meta) {
