@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.regex.tregex.test;
 
+import com.oracle.truffle.regex.tregex.string.Encodings;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -48,6 +49,14 @@ public class RubyTests extends RegexTestBase {
     @Override
     String getEngineOptions() {
         return "Flavor=Ruby";
+    }
+
+    void testUTF8(String pattern, String flags, String input, int fromIndex, boolean isMatch, int... captureGroupBounds) {
+        testBytes(pattern, flags, Encodings.UTF_8, input, fromIndex, isMatch, captureGroupBounds);
+    }
+
+    void testLatin1(String pattern, String flags, String input, int fromIndex, boolean isMatch, int... captureGroupBounds) {
+        testBytes(pattern, flags, Encodings.LATIN_1, input, fromIndex, isMatch, captureGroupBounds);
     }
 
     @Test
@@ -70,5 +79,246 @@ public class RubyTests extends RegexTestBase {
                                         "      \\3 # matching closing quote\n" +
                                         "      $\n" +
                                         "    ", "x").getMember("groupCount").asInt());
+    }
+
+    @Test
+    public void caseInsensitiveLigatures() {
+        // https://bugs.ruby-lang.org/issues/17989
+
+        // LATIN SMALL LIGATURE FF
+        test("\ufb00", "i", "FF", 0, true, 0, 2);
+        // LATIN SMALL LIGATURE FI
+        test("\ufb01", "i", "FI", 0, true, 0, 2);
+        // LATIN SMALL LIGATURE FL
+        test("\ufb02", "i", "FL", 0, true, 0, 2);
+        // LATIN SMALL LIGATURE FFI
+        test("\ufb03", "i", "FFI", 0, true, 0, 3);
+        // LATIN SMALL LIGATURE FFL
+        test("\ufb04", "i", "FFL", 0, true, 0, 3);
+
+        // (ff)i = (ffi)
+        test("\ufb00I", "i", "\ufb03", 0, true, 0, 1);
+        // (ffi) = (ff)i
+        test("\ufb03", "i", "\ufb00I", 0, true, 0, 2);
+        // f(fi) = (ffi)
+        test("F\ufb01", "i", "\ufb03", 0, true, 0, 1);
+        // (ffi) = f(fi)
+        test("\ufb03", "i", "F\ufb01", 0, true, 0, 2);
+
+        // (ff)l = (ffl)
+        test("\ufb00L", "i", "\ufb04", 0, true, 0, 1);
+        // (ffl) = (ff)l
+        test("\ufb04", "i", "\ufb00L", 0, true, 0, 2);
+        // f(fl) = (ffl)
+        test("F\ufb02", "i", "\ufb04", 0, true, 0, 1);
+        // (ffl) = f(fl)
+        test("\ufb04", "i", "F\ufb02", 0, true, 0, 2);
+    }
+
+    @Test
+    public void caseInsensitiveFFIExhaustive() {
+        String[] variants = new String[]{"ffi", "ffI", "fFi", "fFI", "Ffi", "FfI", "FFi", "FFI", "\ufb00i", "\ufb00I", "f\ufb01", "F\ufb01", "\ufb03"};
+        for (String pattern : variants) {
+            for (String input : variants) {
+                test(pattern, "i", input, 0, true, 0, input.length());
+            }
+        }
+    }
+
+    @Test
+    public void greekCaseIgnore() {
+        // https://bugs.ruby-lang.org/issues/17989
+
+        // GREEK SMALL LETTER UPSILON WITH PSILI
+        test("\u1f50", "i", "\u03c5\u0313", 0, true, 0, 2);
+        // GREEK SMALL LETTER UPSILON WITH PSILI AND VARIA
+        test("\u1f52", "i", "\u03c5\u0313\u0300", 0, true, 0, 3);
+        // GREEK SMALL LETTER UPSILON WITH PSILI AND OXIA
+        test("\u1f54", "i", "\u03c5\u0313\u0301", 0, true, 0, 3);
+        // GREEK SMALL LETTER UPSILON WITH PSILI AND PERISPOMENI
+        test("\u1f56", "i", "\u03c5\u0313\u0342", 0, true, 0, 3);
+
+        // (upsilon psili) varia = (upsilon psili varia)
+        test("\u1f50\u0300", "i", "\u1f52", 0, true, 0, 1);
+        // (upsilon psili varia) = (upsilon psili) varia
+        test("\u1f52", "i", "\u1f50\u0300", 0, true, 0, 2);
+
+        // (upsilon psili) oxia = (upsilon psili oxia)
+        test("\u1f50\u0301", "i", "\u1f54", 0, true, 0, 1);
+        // (upsilon psili oxia) = (upsilon psili) oxia
+        test("\u1f54", "i", "\u1f50\u0301", 0, true, 0, 2);
+
+        // (upsilon psili) perispomeni = (upsilon psili perispomeni)
+        test("\u1f50\u0342", "i", "\u1f56", 0, true, 0, 1);
+        // (upsilon psili perispomeni) = (upsilon psili) perispomeni
+        test("\u1f56", "i", "\u1f50\u0342", 0, true, 0, 2);
+
+        // GREEK SMALL LETTER ALPHA WITH PERISPOMENI
+        test("\u1fb6", "i", "\u03b1\u0342", 0, true, 0, 2);
+        // GREEK SMALL LETTER ALPHA WITH PERISPOMENI AND YPOGEGRAMMENI
+        test("\u1fb7", "i", "\u03b1\u0342\u03b9", 0, true, 0, 3);
+
+        // (alpha perispomeni) ypogegrammeni == (alpha perispomeni ypogegrammeni)
+        test("\u1fb6\u03b9", "i", "\u1fb7", 0, true, 0, 1);
+        // (alpha perispomeni ypogegrammeni) == (alpha perispomeni) ypogegrammeni
+        test("\u1fb7", "i", "\u1fb6\u03b9", 0, true, 0, 2);
+
+        // GREEK SMALL LETTER ETA WITH PERISPOMENI
+        test("\u1fc6", "i", "\u03b7\u0342", 0, true, 0, 2);
+        // GREEK SMALL LETTER ETA WITH PERISPOMENI AND YPOGEGRAMMENI
+        test("\u1fc7", "i", "\u03b7\u0342\u03b9", 0, true, 0, 3);
+
+        // (eta perispomeni) ypogegrammeni == (eta perispomeni ypogegrammeni)
+        test("\u1fc6\u03b9", "i", "\u1fc7", 0, true, 0, 1);
+        // (eta perispomeni ypogegrammeni) == (eta perispomeni) ypogegrammeni
+        test("\u1fc7", "i", "\u1fc6\u03b9", 0, true, 0, 2);
+
+        // GREEK SMALL LETTER OMEGA WITH PERISPOMENI
+        test("\u1ff6", "i", "\u03c9\u0342", 0, true, 0, 2);
+        // GREEK SMALL LETTER OMEGA WITH PERISPOMENI AND YPOGEGRAMMENI
+        test("\u1ff7", "i", "\u03c9\u0342\u03b9", 0, true, 0, 3);
+
+        // (omega perispomeni) ypogegrammeni == (omega perispomeni ypogegrammeni)
+        test("\u1ff6\u03b9", "i", "\u1ff7", 0, true, 0, 1);
+        // (omega perispomeni ypogegrammeni) == (omega perispomeni) ypogegrammeni
+        test("\u1ff7", "i", "\u1ff6\u03b9", 0, true, 0, 2);
+    }
+
+    @Test
+    public void caseInsensitiveQuantifiers() {
+        // https://bugs.ruby-lang.org/issues/17990
+
+        test("f*", "i", "ff", 0, true, 0, 2);
+        test("f*", "i", "\ufb00", 0, true, 0, 0);
+
+        test("f+", "i", "ff", 0, true, 0, 2);
+        test("f+", "i", "\ufb00", 0, false);
+
+        test("f{1,}", "i", "ff", 0, true, 0, 2);
+        test("f{1,}", "i", "\ufb00", 0, false);
+
+        test("f{1,2}", "i", "ff", 0, true, 0, 2);
+        test("f{1,2}", "i", "\ufb00", 0, false);
+
+        test("f{,2}", "i", "ff", 0, true, 0, 2);
+        test("f{,2}", "i", "\ufb00", 0, true, 0, 0);
+
+        test("ff?", "i", "ff", 0, true, 0, 2);
+        test("ff?", "i", "\ufb00", 0, false);
+
+        test("f{2}", "i", "ff", 0, true, 0, 2);
+        test("f{2}", "i", "\ufb00", 0, false);
+
+        test("f{2,2}", "i", "ff", 0, true, 0, 2);
+        test("f{2,2}", "i", "\ufb00", 0, false);
+
+        // Test that we bail out on strings with complex unfoldings.
+        Assert.assertTrue(compileRegex(new String(new char[100]).replace('\0', 'f'), "i").isNull());
+    }
+
+    @Test
+    public void ruby18009() {
+        // https://bugs.ruby-lang.org/issues/18009
+        for (int i = 0; i < 26; i++) {
+            String input = String.valueOf((char) ('a' + i));
+            testUTF8("\\W", "i", input, 0, false);
+            testUTF8("[^\\w]", "i", input, 0, false);
+            testUTF8("[[^\\w]]", "i", input, 0, false);
+            testUTF8("[^[^\\w]]", "i", input, 0, true, 0, 1);
+        }
+
+        testUTF8("[\\w]", "i", "\u212a", 0, false);
+        testUTF8("[kx]", "i", "\u212a", 0, true, 0, 3);
+        testUTF8("[\\w&&kx]", "i", "\u212a", 0, true, 0, 3);
+    }
+
+    @Test
+    public void ruby18010() {
+        // https://bugs.ruby-lang.org/issues/18010
+        test("ff", "i", "\ufb00", 0, true, 0, 1);
+        test("[f]f", "i", "\ufb00", 0, false);
+        test("f[f]", "i", "\ufb00", 0, false);
+        test("[f][f]", "i", "\ufb00", 0, false);
+        test("(?:f)f", "i", "\ufb00", 0, false);
+        test("f(?:f)", "i", "\ufb00", 0, false);
+        test("(?:f)(?:f)", "i", "\ufb00", 0, false);
+    }
+
+    @Test
+    public void ruby18012() {
+        // https://bugs.ruby-lang.org/issues/18012
+        test("\\A[\ufb00]\\z", "i", "\ufb00", 0, true, 0, 1);
+        test("\\A[\ufb00]\\z", "i", "ff", 0, true, 0, 2);
+
+        test("\\A[^\ufb00]\\z", "i", "\ufb00", 0, false);
+        test("\\A[^\ufb00]\\z", "i", "ff", 0, false);
+
+        test("\\A[^[^\ufb00]]\\z", "i", "\ufb00", 0, true, 0, 1);
+        test("\\A[^[^\ufb00]]\\z", "i", "ff", 0, true, 0, 2);
+
+        test("\\A[[^[^\ufb00]]]\\z", "i", "\ufb00", 0, true, 0, 1);
+        test("\\A[[^[^\ufb00]]]\\z", "i", "ff", 0, true, 0, 2);
+    }
+
+    @Test
+    public void ruby18013() {
+        // https://bugs.ruby-lang.org/issues/18013
+        test("[^a-c]", "i", "A", 0, false);
+        test("[[^a-c]]", "i", "A", 0, false);
+
+        test("[^a]", "i", "a", 0, false);
+        test("[[^a]]", "i", "a", 0, false);
+    }
+
+    @Test
+    public void multiCodePointCaseFoldAcrossAsciiBoundary() {
+        test("\\A[\\W]\\z", "i", "\ufb00", 0, true, 0, 1);
+        // When \ufb00 is not fully case-foldable (because it is contributed by \W), it shouldn't
+        // be able to match 'ff', because its first character crosses the ASCII boundary from
+        // \ufb00.
+        test("\\A[\\W]\\z", "i", "ff", 0, false);
+
+        test("\\A[\\p{L}]\\z", "i", "\ufb00", 0, true, 0, 1);
+        // When \ufb00 is contributed by some other means, e.g. \p{L}, then it is fully
+        // case-foldable and can cross the ASCII boundary.
+        test("\\A[\\p{L}]\\z", "i", "ff", 0, true, 0, 2);
+
+        test("\\A[\\W]\\z", "i", "\ufb03", 0, true, 0, 1);
+        // This violates the ASCII boundary restriction...
+        test("\\A[\\W]\\z", "i", "ffi", 0, false);
+        // but it doesn't mean that we drop all multi-code-point expansions. The following
+        // expansion, where the first character is not ASCII, is fine.
+        test("\\A[\\W]\\z", "i", "\ufb00i", 0, true, 0, 2);
+
+        // And when \ufb00 is fully case-foldable, all expansions are valid.
+        test("\\A[\\p{L}]\\z", "i", "\ufb03", 0, true, 0, 1);
+        test("\\A[\\p{L}]\\z", "i", "ffi", 0, true, 0, 3);
+        test("\\A[\\p{L}]\\z", "i", "\ufb00i", 0, true, 0, 2);
+    }
+
+    @Test
+    public void caseClosureDoesntEscapeEncodingRange() {
+        // This shouldn't throw an AssertionError because of encountering the 'st' ligature.
+        testLatin1("test", "i", "test", 0, true, 0, 4);
+    }
+
+    @Test
+    public void ruby13671() {
+        // https://bugs.ruby-lang.org/issues/13671
+        test("(?<!ass)", "i", "\u2728", 0, true, 0, 0);
+        test("(?<!bss)", "i", "\u2728", 0, true, 0, 0);
+        test("(?<!as)", "i", "\u2728", 0, true, 0, 0);
+        test("(?<!ss)", "i", "\u2728", 0, true, 0, 0);
+        test("(?<!ass)", "", "\u2728", 0, true, 0, 0);
+        test("(?<!ass)", "i", "x", 0, true, 0, 0);
+    }
+
+    @Test
+    public void ruby16145() {
+        // https://bugs.ruby-lang.org/issues/16145
+        test("[xo]", "i", "SHOP", 0, true, 2, 3);
+        test("[\u00e9]", "i", "CAF\u00c9", 0, true, 3, 4);
+        test("[x\u00e9]", "i", "CAF\u00c9", 0, true, 3, 4);
+        test("[x\u00c9]", "i", "CAF\u00c9", 0, true, 3, 4);
     }
 }

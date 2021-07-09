@@ -54,19 +54,9 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.NFATraversalRegexASTV
  * expressions with the exception of the following features:
  * </p>
  * <ul>
- * <li>case-insensitive matching: Ruby regular expression allow both case-sensitive matching and
- * case-insensitive matching within the same regular expression. Also, Ruby's notion of
- * case-insensitivity differs from the one in ECMAScript. For that reason, we would have to
- * translate all Ruby regular expressions to case-sensitive ECMAScript regular expressions and we
- * would support case-insensitivity by case-folding any character matchers in the Ruby regular
- * expression. However, Ruby has a more sophisticated notion of case-insensitivity than ECMAScript,
- * which can lead to, e.g., two characters such as "ss" matching a single character such as
- * "&#xDF;", meaning there is no longer a 1-to-1 correspondence between character matchers. In order
- * to support this, we would have to replicate the same case-folding behaviorin the Ruby flavor
- * implementation.</li>
- * <li>case-insensitive backreferences: As stated above, case-insensitive matching has to be
- * implemented by case-folding. However, there is no way we can case-fold a backreference, since we
- * don't know which string it will match.</li>
+ * <li>case-insensitive backreferences: In Ruby, case-insensitive matching has to be implemented by
+ * case-folding. However, there is no way we can case-fold a backreference, since we don't know
+ * which string it will match.</li>
  * <li>\G escape sequence: In Ruby regular expressions, \G can be used to assert that we are at some
  * special position that was marked by a previous execution of the regular expression on that input.
  * ECMAScript doesn't support assertions which check the current index against some reference
