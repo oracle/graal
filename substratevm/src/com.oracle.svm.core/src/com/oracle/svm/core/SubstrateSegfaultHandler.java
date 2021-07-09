@@ -147,8 +147,7 @@ public abstract class SubstrateSegfaultHandler {
     private static void dumpInterruptibly(PointerBase signalInfo, RegisterDumper.Context context) {
         PointerBase callerIP = RegisterDumper.singleton().getIP(context);
         LogHandler logHandler = ImageSingletons.lookup(LogHandler.class);
-        String msg = "[ [ SubstrateSegfaultHandler caught a segfault. ] ]";
-        Log log = Log.enterFatalContext(logHandler, (CodePointer) callerIP, msg, null);
+        Log log = Log.enterFatalContext(logHandler, (CodePointer) callerIP, "[ [ SubstrateSegfaultHandler caught a segfault. ] ]", null);
         if (log != null) {
             log.newline();
             log.string("[ [ SubstrateSegfaultHandler caught a segfault in thread ").zhex(CurrentIsolate.getCurrentThread()).string(" ] ]").newline();
@@ -156,7 +155,6 @@ public abstract class SubstrateSegfaultHandler {
 
             PointerBase sp = RegisterDumper.singleton().getSP(context);
             PointerBase ip = RegisterDumper.singleton().getIP(context);
-            SubstrateDiagnostics.print(log, (Pointer) sp, (CodePointer) ip, context);
             boolean printedDiagnostics = SubstrateDiagnostics.print(log, (Pointer) sp, (CodePointer) ip, context);
             if (printedDiagnostics) {
                 log.string("Segfault detected, aborting process. Use runtime option -R:-InstallSegfaultHandler if you don't want to use SubstrateSegfaultHandler.").newline();

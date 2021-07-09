@@ -583,7 +583,7 @@ public abstract class VMThreads {
             UnsignedWord stackBase = StackBase.get(thread);
             UnsignedWord stackEnd = StackEnd.get(thread);
             if (value.belowOrEqual(stackBase) && value.aboveOrEqual(stackEnd)) {
-                log.string("is pointing into the stack for thread ").zhex(thread);
+                log.string("points into the stack for thread ").zhex(thread);
                 return true;
             }
 
@@ -591,7 +591,7 @@ public abstract class VMThreads {
                 int sizeOfThreadLocals = ImageSingletons.lookup(VMThreadLocalMTSupport.class).vmThreadSize;
                 UnsignedWord endOfThreadLocals = ((UnsignedWord) thread).add(sizeOfThreadLocals);
                 if (value.aboveOrEqual((UnsignedWord) thread) && value.belowThan(endOfThreadLocals)) {
-                    log.string("is pointing into the thread locals for thread ").zhex(thread);
+                    log.string("points into the thread locals for thread ").zhex(thread);
                     return true;
                 }
             }

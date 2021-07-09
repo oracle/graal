@@ -28,6 +28,7 @@ import java.util.Arrays;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
+import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
@@ -96,14 +97,7 @@ public class SubstrateDiagnostics {
         return state.diagnosticThread.get() == CurrentIsolate.getCurrentThread();
     }
 
-    /**
-     * The segfault handler will invoke {@link #print} recursively if a fatal error happens while
-     * printing diagnostics. The value returned by this method can be used to limit the maximum
-     * recursion depth if necessary.
-     */
-    @Fold
     public static int maxInvocations() {
-        // TEMP (chaeubl): test that this works
         int result = 0;
         DiagnosticThunkRegister thunks = DiagnosticThunkRegister.getSingleton();
         for (int i = 0; i < thunks.size(); i++) {
@@ -161,7 +155,8 @@ public class SubstrateDiagnostics {
                 try {
                     thunk.printDiagnostics(log, state.invocationCount);
                     // TEMP (chaeubl): check the max retries
-                    throw new AssertionError();
+                    log.signed(GraalUnsafeAccess.getUnsafe().getInt(27L));
+                    continue;
                 } catch (Throwable e) {
                     dumpException(log, thunk, e);
                 }
@@ -171,7 +166,7 @@ public class SubstrateDiagnostics {
             state.invocationCount = 0;
         }
 
-        // Reset the state.
+        // Reset the state so that another thread can print diagnostics.
         state.clear();
     }
 
@@ -331,7 +326,7 @@ public class SubstrateDiagnostics {
         private static void hexDump(Log log, CodePointer ip, int bytesBefore, int bytesAfter) {
             log.string("Printing Instructions (ip=").zhex(ip).string("):").indent(true);
             log.hexdump(((Pointer) ip).subtract(bytesBefore), 1, bytesBefore + bytesAfter);
-            log.indent(false);
+            log.indent(false).newline();
         }
     }
 
@@ -363,7 +358,7 @@ public class SubstrateDiagnostics {
 
                 log.hexdump(sp, 8, bytesToPrint / 8);
             }
-            log.indent(false);
+            log.indent(false).newline();
         }
     }
 
@@ -496,6 +491,7 @@ public class SubstrateDiagnostics {
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
         public void printDiagnostics(Log log, int invocationCount) {
             VMOperationControl.printCurrentVMOperation(log, invocationCount == 1);
+            log.newline();
         }
     }
 
@@ -639,7 +635,7 @@ public class SubstrateDiagnostics {
         private static void printStacktrace(Log log, IsolateThread vmThread) {
             log.string("Full stacktrace:").indent(true);
             JavaStackWalker.walkThread(vmThread, StackFramePrintVisitor.SINGLETON, log);
-            log.indent(false);
+            log.redent(false);
         }
     }
 

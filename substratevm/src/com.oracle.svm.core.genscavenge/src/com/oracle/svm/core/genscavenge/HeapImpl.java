@@ -598,8 +598,8 @@ public final class HeapImpl extends Heap {
 
         Pointer ptr = (Pointer) value;
         if (printLocationInfo(log, ptr)) {
-            if (allowJavaHeapAccess && ObjectHeaderImpl.pointsToObjectHeader(ptr)) {
-                DynamicHub hub = ObjectHeaderImpl.getObjectHeaderImpl().readDynamicHubFromPointer(ptr);
+            if (allowJavaHeapAccess && objectHeaderImpl.pointsToObjectHeader(ptr)) {
+                DynamicHub hub = objectHeaderImpl.readDynamicHubFromPointer(ptr);
                 log.indent(true);
                 log.string("hub=").string(hub.getName());
                 log.redent(false);

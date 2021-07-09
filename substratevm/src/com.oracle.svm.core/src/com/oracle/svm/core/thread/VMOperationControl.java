@@ -207,7 +207,7 @@ public final class VMOperationControl {
             log.string("Safepoint: ").bool(op.getCausesSafepoint()).newline();
             log.string("QueuingThread: ").zhex(control.inProgress.queueingThread.rawValue()).newline();
             log.string("ExecutingThread: ").zhex(control.inProgress.executingThread.rawValue()).newline();
-            log.indent(false);
+            log.redent(false);
         } else {
             log.string("VMOperation in progress: ").zhex(Word.objectToUntrackedPointer(op)).newline();
         }

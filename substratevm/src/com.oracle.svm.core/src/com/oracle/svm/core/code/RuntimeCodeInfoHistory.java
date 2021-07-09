@@ -108,7 +108,7 @@ public class RuntimeCodeInfoHistory {
     }
 
     public void printRecentOperations(Log log, boolean allowJavaHeapAccess) {
-        log.string("Recent RuntimeCodeInfo operations (oldest first): ").indent(true);
+        log.string("The ").signed(recentOperations.size()).string(" most recent RuntimeCodeInfo operations (oldest first): ").indent(true);
         recentOperations.foreach(log, allowJavaHeapAccess ? PRINT_WITH_JAVA_HEAP_DATA : PRINT_WITHOUT_JAVA_HEAP_DATA);
         log.indent(false);
     }
