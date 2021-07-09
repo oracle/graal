@@ -1067,7 +1067,9 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
                 throw VMError.shouldNotReachHere(e);
             }
 
+            // Checkstyle: stop
             ClassLoader generatorCL = getGeneratorClassLoader(factoryInterface);
+            // Checkstyle: resume
             Object generator;
             try {
                 generator = GET_SHAPE_GENERATOR.invoke(null, generatorCL, storageSuperClass, factoryInterface, true);
@@ -1085,6 +1087,7 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
             return true;
         }
 
+        // Checkstyle: stop
         private static ClassLoader getGeneratorClassLoader(Class<?> factoryInterface) {
             ClassLoader cl = CLASS_LOADERS.get(factoryInterface);
             if (cl == null) {
@@ -1101,7 +1104,9 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
             }
             return cl;
         }
+        // Checkstyle: resume
 
+        // Checkstyle: stop
         private static Class<?> loadClass(String name) {
             try {
                 return Class.forName(name);
@@ -1109,6 +1114,7 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
                 throw VMError.shouldNotReachHere(e);
             }
         }
+        // Checkstyle: resume
 
         private static int getNativeImageFieldOffset(BeforeCompilationAccess config, Class<?> declaringClass, String fieldName) {
             return Math.toIntExact(config.objectFieldOffset(ReflectionUtil.lookupField(declaringClass, fieldName)));
