@@ -61,8 +61,8 @@ public final class NativeEnvProcessor extends EspressoProcessor {
 
     private static final String GENERATE_INTRISIFICATION = "com.oracle.truffle.espresso.substitutions.GenerateNativeEnv";
 
-    protected static final String IMPORT_NATIVE_SIGNATURE = "import " + NATIVE_SIGNATURE + ";\n";
-    protected static final String IMPORT_NATIVE_TYPE = "import " + NATIVE_TYPE + ";\n";
+    protected static final String IMPORT_NATIVE_SIGNATURE = NATIVE_SIGNATURE;
+    protected static final String IMPORT_NATIVE_TYPE = NATIVE_TYPE;
 
     // @Pointer
     private TypeElement pointerAnnotation;
@@ -147,7 +147,7 @@ public final class NativeEnvProcessor extends EspressoProcessor {
         this.envClassName = target.envClassName;
 
         this.envName = envClassName.toLowerCase();
-        this.imports = "import " + envPackage + "." + envClassName + ";\n";
+        this.imports = envPackage + "." + envClassName + ";\n";
     }
 
     private void findIntrisificationTarget(Element e) {
@@ -324,30 +324,29 @@ public final class NativeEnvProcessor extends EspressoProcessor {
     }
 
     @Override
-    String generateImports(String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
-        StringBuilder str = new StringBuilder();
+    List<String> expectedImports(String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
+        List<String> expectedImports = new ArrayList<>();
         IntrinsincsHelper h = (IntrinsincsHelper) helper;
-        str.append(imports);
-        str.append(IMPORT_NATIVE_SIGNATURE);
-        str.append(IMPORT_NATIVE_TYPE);
-        str.append("import " + substitutorPackage + "." + SUBSTITUTOR + ";\n");
+        expectedImports.add(imports);
+        expectedImports.add(IMPORT_NATIVE_SIGNATURE);
+        expectedImports.add(IMPORT_NATIVE_TYPE);
+        expectedImports.add(substitutorPackage + "." + SUBSTITUTOR);
         if (helper.isNodeTarget()) {
-            str.append("import ").append(helper.getNodeTarget().getQualifiedName()).append(";\n");
+            expectedImports.add(helper.getNodeTarget().getQualifiedName().toString());
         }
         if (helper.hasProfileInjection) {
-            str.append(IMPORT_PROFILE);
+            expectedImports.add(IMPORT_PROFILE);
         }
         if (parameterTypeName.contains("String")) {
-            str.append(IMPORT_INTEROP_LIBRARY);
+            expectedImports.add(IMPORT_INTEROP_LIBRARY);
         }
         if (parameterTypeName.contains("StaticObject") || h.jniNativeSignature[0].equals(NativeType.VOID)) {
-            str.append(IMPORT_STATIC_OBJECT);
+            expectedImports.add(IMPORT_STATIC_OBJECT);
         }
         if (parameterTypeName.contains("TruffleObject")) {
-            str.append(IMPORT_TRUFFLE_OBJECT);
+            expectedImports.add(IMPORT_TRUFFLE_OBJECT);
         }
-        str.append("\n");
-        return str.toString();
+        return expectedImports;
     }
 
     @Override

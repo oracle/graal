@@ -143,13 +143,15 @@ public final class ObjectKlass extends Klass {
     }
 
     public ObjectKlass(EspressoContext context, LinkedKlass linkedKlass, ObjectKlass superKlass, ObjectKlass[] superInterfaces, StaticObject classLoader) {
-        this(context, linkedKlass, superKlass, superInterfaces, classLoader, null);
+        this(context, linkedKlass, superKlass, superInterfaces, classLoader, ClassRegistry.ClassDefinitionInfo.EMPTY);
     }
 
-    public ObjectKlass(EspressoContext context, LinkedKlass linkedKlass, ObjectKlass superKlass, ObjectKlass[] superInterfaces, StaticObject classLoader, Klass hostKlass) {
+    public ObjectKlass(EspressoContext context, LinkedKlass linkedKlass, ObjectKlass superKlass, ObjectKlass[] superInterfaces, StaticObject classLoader, ClassRegistry.ClassDefinitionInfo info) {
         super(context, linkedKlass.getName(), linkedKlass.getType(), superKlass, superInterfaces, linkedKlass.getFlags());
 
-        this.hostKlass = hostKlass;
+        this.nest = info.dynamicNest;
+        this.hostKlass = info.hostKlass;
+
         // TODO(peterssen): Make writable copy.
         RuntimeConstantPool pool = new RuntimeConstantPool(getContext(), linkedKlass.getConstantPool(), classLoader);
         definingClassLoader = pool.getClassLoader();
@@ -210,6 +212,20 @@ public final class ObjectKlass extends Klass {
             superInterface.addSubType(this);
         }
         this.klassVersion = new KlassVersion(pool, linkedKlass, methods, mirandaMethods, vtable, itable, iKlassTable);
+
+        // Only forcefully initialization of the mirror if necessary
+        if (info.protectionDomain != null && !StaticObject.isNull(info.protectionDomain)) {
+            // Protection domain should not be host null, and will be initialized to guest null on
+            // mirror creation.
+            getMeta().HIDDEN_PROTECTION_DOMAIN.setHiddenObject(mirror(), info.protectionDomain);
+        }
+        if (info.classData != null) {
+            getMeta().java_lang_Class_classData.setHiddenObject(mirror(), info.classData);
+        }
+        if (!info.addedToRegistry()) {
+            initSelfReferenceInPool();
+        }
+
         this.initState = LINKED;
         assert verifyTables();
     }
@@ -606,12 +622,19 @@ public final class ObjectKlass extends Klass {
             return EMPTY_ARRAY;
         }
         RuntimeConstantPool pool = getConstantPool();
-        Klass[] result = new Klass[nestMembers.getClasses().length];
-        for (int i = 0; i < result.length; i++) {
+        ArrayList<Klass> klasses = new ArrayList<>();
+        for (int i = 0; i < nestMembers.getClasses().length; i++) {
             int index = nestMembers.getClasses()[i];
-            result[i] = pool.resolvedKlassAt(this, index);
+            try {
+                klasses.add(pool.resolvedKlassAt(this, index));
+            } catch (EspressoException e) {
+                /*
+                 * Don't allow badly constructed nest members to break execution here, only report
+                 * well-constructed entries.
+                 */
+            }
         }
-        return result;
+        return klasses.toArray(Klass.EMPTY_ARRAY);
     }
 
     Field lookupFieldTableImpl(int slot) {
@@ -1074,6 +1097,16 @@ public final class ObjectKlass extends Klass {
     private boolean hasDeclaredDefaultMethods() {
         assert !hasDeclaredDefaultMethods || isInterface();
         return hasDeclaredDefaultMethods;
+    }
+
+    public void initSelfReferenceInPool() {
+        getConstantPool().setKlassAt(getLinkedKlass().getParserKlass().getThisKlassIndex(), this);
+    }
+
+    @SuppressWarnings("static-method")
+    public boolean isRecord() {
+        // TODO:
+        return false;
     }
 
     @Override

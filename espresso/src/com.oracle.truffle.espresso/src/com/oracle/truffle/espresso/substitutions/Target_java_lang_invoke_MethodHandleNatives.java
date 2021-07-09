@@ -23,6 +23,8 @@
 package com.oracle.truffle.espresso.substitutions;
 
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_STATIC;
+import static com.oracle.truffle.espresso.classfile.Constants.REF_LIMIT;
+import static com.oracle.truffle.espresso.classfile.Constants.REF_NONE;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_getField;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_getStatic;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeInterface;
@@ -32,9 +34,21 @@ import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeVirtual;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_putField;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_putStatic;
 import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.None;
+import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.Constants.ALL_KINDS;
+import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.Constants.CONSTANTS;
+import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.Constants.CONSTANTS_BEFORE_16;
+import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.Constants.MN_IS_CONSTRUCTOR;
+import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.Constants.MN_IS_FIELD;
+import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.Constants.MN_IS_METHOD;
+import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.Constants.MN_REFERENCE_KIND_MASK;
+import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.Constants.MN_REFERENCE_KIND_SHIFT;
 
 import java.lang.invoke.CallSite;
 import java.lang.invoke.MethodHandle;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.graalvm.collections.Pair;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
@@ -172,7 +186,18 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
 
     @SuppressWarnings("unused")
     @Substitution
-    public static int getNamedCon(int which, @JavaType(Object[].class) StaticObject name) {
+    public static int getNamedCon(int which, @JavaType(Object[].class) StaticObject name,
+                    @InjectMeta Meta meta) {
+        if (name.getKlass() == meta.java_lang_Object_array && name.length() > 0) {
+            if (which < CONSTANTS.size()) {
+                if (which >= CONSTANTS_BEFORE_16 && !meta.getJavaVersion().java16OrLater()) {
+                    return 0;
+                }
+                Pair<String, Integer> pair = CONSTANTS.get(which);
+                meta.getInterpreterToVM().setArrayObject(meta.toGuestString(pair.getLeft()), 0, name);
+                return pair.getRight();
+            }
+        }
         return 0;
     }
 
@@ -292,7 +317,24 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
     }
 
     @Substitution(methodName = "resolve")
-    abstract static class ResolveOverload extends Node {
+    abstract static class ResolveOverload8 extends Node {
+
+        abstract @JavaType(internalName = "Ljava/lang/invoke/MemberName;") StaticObject execute(
+                        @JavaType(internalName = "Ljava/lang/invoke/MemberName;") StaticObject self,
+                        @JavaType(value = Class.class) StaticObject caller);
+
+        @Specialization
+        @JavaType(internalName = "Ljava/lang/invoke/MemberName;")
+        StaticObject doCached(
+                        @JavaType(internalName = "Ljava/lang/invoke/MemberName;") StaticObject self,
+                        @JavaType(value = Class.class) StaticObject caller,
+                        @Cached ResolveOverload11 resolve) {
+            return resolve.execute(self, caller, false);
+        }
+    }
+
+    @Substitution(methodName = "resolve")
+    abstract static class ResolveOverload11 extends Node {
 
         abstract @JavaType(internalName = "Ljava/lang/invoke/MemberName;") StaticObject execute(
                         @JavaType(internalName = "Ljava/lang/invoke/MemberName;") StaticObject self,
@@ -305,9 +347,9 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                         @JavaType(internalName = "Ljava/lang/invoke/MemberName;") StaticObject self,
                         @JavaType(value = Class.class) StaticObject caller,
                         boolean speculativeResolve,
-                        @Cached Resolve resolve) {
+                        @Cached ResolveNode resolve) {
             try {
-                return resolve.execute(self, caller);
+                return resolve.execute(self, caller, 0);
             } catch (EspressoException e) {
                 if (speculativeResolve) {
                     return StaticObject.NULL;
@@ -317,8 +359,46 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         }
     }
 
-    @Substitution
-    abstract static class Resolve extends Node {
+    @Substitution(methodName = "resolve")
+    abstract static class ResolveOverload17 extends Node {
+
+        abstract @JavaType(internalName = "Ljava/lang/invoke/MemberName;") StaticObject execute(
+                        @JavaType(internalName = "Ljava/lang/invoke/MemberName;") StaticObject self,
+                        @JavaType(value = Class.class) StaticObject caller,
+                        int lookupMode,
+                        boolean speculativeResolve);
+
+        @Specialization
+        @JavaType(internalName = "Ljava/lang/invoke/MemberName;")
+        StaticObject doCached(
+                        @JavaType(internalName = "Ljava/lang/invoke/MemberName;") StaticObject self,
+                        @JavaType(value = Class.class) StaticObject caller,
+                        int lookupMode,
+                        boolean speculativeResolve,
+                        @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @Cached ResolveNode resolve) {
+            StaticObject result = StaticObject.NULL;
+            EspressoException error = null;
+            try {
+                return resolve.execute(self, caller, lookupMode);
+            } catch (EspressoException e) {
+                error = e;
+            }
+            Meta meta = context.getMeta();
+            if (StaticObject.isNull(result)) {
+                int refKind = getRefKind(meta.java_lang_invoke_MemberName_flags.getInt(self));
+                if (!isValidRefKind(refKind)) {
+                    throw meta.throwExceptionWithMessage(meta.java_lang_InternalError, "obsolete MemberName format");
+                }
+                if (!speculativeResolve && error != null) {
+                    throw error;
+                }
+            }
+            return result;
+        }
+    }
+
+    abstract static class ResolveNode extends Node {
 
         /**
          * Complete resolution of a memberName, full with method lookup, flags overwriting and
@@ -330,13 +410,15 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
          */
         abstract @JavaType(internalName = "Ljava/lang/invoke/MemberName;") StaticObject execute(
                         @JavaType(internalName = "Ljava/lang/invoke/MemberName;") StaticObject memberName,
-                        @JavaType(value = Class.class) StaticObject caller);
+                        @JavaType(value = Class.class) StaticObject caller,
+                        int lookupMode);
 
         @Specialization
         @JavaType(internalName = "Ljava/lang/invoke/MemberName;")
         StaticObject doCached(
                         @JavaType(internalName = "Ljava/lang/invoke/MemberName;") StaticObject memberName,
                         @JavaType(value = Class.class) StaticObject caller,
+                        @SuppressWarnings("unused") int lookupMode,
                         @CachedContext(EspressoLanguage.class) EspressoContext context,
                         @Cached("create(context.getMeta().java_lang_invoke_MemberName_getSignature.getCallTarget())") DirectCallNode getSignature,
                         @Cached BranchProfile isMethodProfile,
@@ -519,26 +601,81 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
         return (flags >> MN_REFERENCE_KIND_SHIFT) & MN_REFERENCE_KIND_MASK;
     }
 
+    public static boolean isValidRefKind(int flags) {
+        return flags > REF_NONE && flags < REF_LIMIT;
+    }
+
     // endregion Helper methods
 
-    // MemberName
-    // The JVM uses values of -2 and above for vtable indexes.
-    // Field values are simple positive offsets.
-    // Ref: src/share/vm/oops/methodOop.hpp
-    // This value is negative enough to avoid such numbers,
-    // but not too negative.
-    static final int MN_IS_METHOD = 0x00010000; // method (not constructor)
-    static final int MN_IS_CONSTRUCTOR = 0x00020000; // constructor
-    static final int MN_IS_FIELD = 0x00040000; // field
-    static final int MN_IS_TYPE = 0x00080000; // nested type
-    static final int MN_CALLER_SENSITIVE = 0x00100000; // @CallerSensitive annotation detected
-    static final int MN_REFERENCE_KIND_SHIFT = 24; // refKind
-    static final int MN_REFERENCE_KIND_MASK = 0x0F000000 >> MN_REFERENCE_KIND_SHIFT;
-    // The SEARCH_* bits are not for MN.flags but for the matchFlags argument of
-    // MHN.getMembers:
-    static final int MN_SEARCH_SUPERCLASSES = 0x00100000;
-    static final int MN_SEARCH_INTERFACES = 0x00200000;
-    static final int ALL_KINDS = MN_IS_CONSTRUCTOR | MN_IS_FIELD | MN_IS_METHOD | MN_IS_TYPE;
+    /**
+     * Compile-time constants go here. This collection exists not only for reference from clients,
+     * but also for ensuring the VM and JDK agree on the values of these constants. JDK verifies
+     * that through {@code java.lang.invoke.MethodHandleNatives#verifyConstants()}
+     */
+    public static final class Constants {
+        private Constants() {
+        } // static only
+
+        public static final int MN_IS_METHOD = 0x00010000; // method (not constructor)
+        public static final int MN_IS_CONSTRUCTOR = 0x00020000; // constructor
+        public static final int MN_IS_FIELD = 0x00040000; // field
+        public static final int MN_IS_TYPE = 0x00080000; // nested type
+        // @CallerSensitive annotation detected
+        public static final int MN_CALLER_SENSITIVE = 0x00100000;
+        public static final int MN_TRUSTED_FINAL = 0x00200000; // trusted final field
+        public static final int MN_REFERENCE_KIND_SHIFT = 24; // refKind
+        public static final int MN_REFERENCE_KIND_MASK = 0x0F000000 >> MN_REFERENCE_KIND_SHIFT;
+        // The SEARCH_* bits are not for MN.flags but for the matchFlags argument of MHN.getMembers:
+        public static final int MN_SEARCH_SUPERCLASSES = 0x00100000;
+        public static final int MN_SEARCH_INTERFACES = 0x00200000;
+
+        /**
+         * Flags for Lookup.ClassOptions.
+         */
+        public static final int NESTMATE_CLASS = 0x00000001;
+        public static final int HIDDEN_CLASS = 0x00000002;
+        public static final int STRONG_LOADER_LINK = 0x00000004;
+        public static final int ACCESS_VM_ANNOTATIONS = 0x00000008;
+
+        /**
+         * Lookup modes.
+         */
+        public static final int LM_MODULE = 0x00000008 << 1;
+        public static final int LM_UNCONDITIONAL = 0x00000008 << 2;
+        public static final int LM_TRUSTED = -1;
+
+        /**
+         * Additional Constants.
+         */
+        public static final int ALL_KINDS = MN_IS_CONSTRUCTOR | MN_IS_FIELD | MN_IS_METHOD | MN_IS_TYPE;
+
+        static final List<Pair<String, Integer>> CONSTANTS;
+        static final int CONSTANTS_BEFORE_16;
+
+        static {
+            CONSTANTS = new ArrayList<>();
+            CONSTANTS.add(Pair.create("MN_IS_METHOD", MN_IS_METHOD));
+            CONSTANTS.add(Pair.create("MN_IS_CONSTRUCTOR", MN_IS_CONSTRUCTOR));
+            CONSTANTS.add(Pair.create("MN_IS_FIELD", MN_IS_FIELD));
+            CONSTANTS.add(Pair.create("MN_IS_TYPE", MN_IS_TYPE));
+            CONSTANTS.add(Pair.create("MN_CALLER_SENSITIVE", MN_CALLER_SENSITIVE));
+            CONSTANTS.add(Pair.create("MN_TRUSTED_FINAL", MN_TRUSTED_FINAL));
+            CONSTANTS.add(Pair.create("MN_SEARCH_SUPERCLASSES", MN_SEARCH_SUPERCLASSES));
+            CONSTANTS.add(Pair.create("MN_SEARCH_INTERFACES", MN_SEARCH_INTERFACES));
+            CONSTANTS.add(Pair.create("MN_REFERENCE_KIND_SHIFT", MN_REFERENCE_KIND_SHIFT));
+            CONSTANTS.add(Pair.create("MN_REFERENCE_KIND_MASK", MN_REFERENCE_KIND_MASK));
+
+            CONSTANTS_BEFORE_16 = CONSTANTS.size();
+
+            CONSTANTS.add(Pair.create("NESTMATE_CLASS", NESTMATE_CLASS));
+            CONSTANTS.add(Pair.create("HIDDEN_CLASS", HIDDEN_CLASS));
+            CONSTANTS.add(Pair.create("STRONG_LOADER_LINK", STRONG_LOADER_LINK));
+            CONSTANTS.add(Pair.create("ACCESS_VM_ANNOTATIONS", ACCESS_VM_ANNOTATIONS));
+            CONSTANTS.add(Pair.create("LM_MODULE", LM_MODULE));
+            CONSTANTS.add(Pair.create("LM_UNCONDITIONAL", LM_UNCONDITIONAL));
+            CONSTANTS.add(Pair.create("LM_TRUSTED", LM_TRUSTED));
+        }
+    }
 
     @Substitution
     @SuppressWarnings("unused")

@@ -108,6 +108,11 @@ public final class Field extends Member<Type> implements FieldRef {
         return linkedField.isHidden();
     }
 
+    public boolean isTrustedFinal() {
+        ObjectKlass k = getDeclaringKlass();
+        return isFinalFlagSet() && (isStatic() || k.isHidden() || k.isRecord());
+    }
+
     public JavaKind getKind() {
         return linkedField.getKind();
     }

@@ -484,10 +484,15 @@ public final class Meta implements ContextAccess {
 
         java_lang_Class_classRedefinedCount = java_lang_Class.requireDeclaredField(Name.classRedefinedCount, Type._int);
         java_lang_Class_name = java_lang_Class.requireDeclaredField(Name.name, Type.java_lang_String);
+        java_lang_Class_classLoader = java_lang_Class.requireDeclaredField(Name.classLoader, Type.java_lang_ClassLoader);
+        java_lang_Class_componentType = diff() //
+                        .field(VERSION_9_OR_HIGHER, Name.componentType, Type.java_lang_Class)//
+                        .notRequiredField(java_lang_Class);
+        java_lang_Class_classData = diff() //
+                        .field(higher(15), Name.classData, Type.java_lang_Object)//
+                        .notRequiredField(java_lang_Class);
 
         // Classes and Members that differ from Java 8 to 11
-
-        java_lang_Class_classLoader = java_lang_Class.requireDeclaredField(Name.classLoader, Type.java_lang_ClassLoader);
 
         if (getJavaVersion().java9OrLater()) {
             java_lang_System_initializeSystemClass = null;
@@ -852,6 +857,8 @@ public final class Meta implements ContextAccess {
     public final Method java_lang_Class_forName_String_boolean_ClassLoader;
     public final Field java_lang_Class_classRedefinedCount;
     public final Field java_lang_Class_name;
+    public final Field java_lang_Class_componentType;
+    public final Field java_lang_Class_classData;
 
     // Primitives.
     public final PrimitiveKlass _boolean;

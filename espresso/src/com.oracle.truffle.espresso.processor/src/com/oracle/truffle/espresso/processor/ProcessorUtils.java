@@ -24,6 +24,11 @@
 package com.oracle.truffle.espresso.processor;
 
 public final class ProcessorUtils {
+    /** Appends "import " and prepend ";\n" to the given string. */
+    public static String imports(String str) {
+        return "import " + str + ";\n";
+    }
+
     /** Appends and prepends a quotation mark around the given string. */
     public static String stringify(String str) {
         return '\"' + str + '\"';

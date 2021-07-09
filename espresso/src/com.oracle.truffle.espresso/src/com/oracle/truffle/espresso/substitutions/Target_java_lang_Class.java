@@ -60,9 +60,14 @@ import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
+import com.oracle.truffle.espresso.vm.VM;
 
 @EspressoSubstitutions
 public final class Target_java_lang_Class {
+    @Substitution
+    public static void registerNatives() {
+        /* nop */
+    }
 
     @Substitution(methodName = "getPrimitiveClass")
     abstract static class GetPrimitiveClass extends Node {
@@ -247,15 +252,27 @@ public final class Target_java_lang_Class {
         // TODO(peterssen): Cache guest j.l.reflect.Field constructor.
         // Calling the constructor is just for validation, manually setting the fields would be
         // faster.
-        Method fieldInit = meta.java_lang_reflect_Field.lookupDeclaredMethod(Name._init_, context.getSignatures().makeRaw(Type._void,
-                        /* declaringClass */ Type.java_lang_Class,
-                        /* name */ Type.java_lang_String,
-                        /* type */ Type.java_lang_Class,
-                        /* modifiers */ Type._int,
-                        /* slot */ Type._int,
-                        /* signature */ Type.java_lang_String,
-                        /* annotations */ Type._byte_array));
-
+        Method fieldInit;
+        if (meta.getJavaVersion().java15OrLater()) {
+            fieldInit = meta.java_lang_reflect_Field.lookupDeclaredMethod(Name._init_, context.getSignatures().makeRaw(Type._void,
+                            /* declaringClass */ Type.java_lang_Class,
+                            /* name */ Type.java_lang_String,
+                            /* type */ Type.java_lang_Class,
+                            /* modifiers */ Type._int,
+                            /* trustedFinal */ Type._boolean,
+                            /* slot */ Type._int,
+                            /* signature */ Type.java_lang_String,
+                            /* annotations */ Type._byte_array));
+        } else {
+            fieldInit = meta.java_lang_reflect_Field.lookupDeclaredMethod(Name._init_, context.getSignatures().makeRaw(Type._void,
+                            /* declaringClass */ Type.java_lang_Class,
+                            /* name */ Type.java_lang_String,
+                            /* type */ Type.java_lang_Class,
+                            /* modifiers */ Type._int,
+                            /* slot */ Type._int,
+                            /* signature */ Type.java_lang_String,
+                            /* annotations */ Type._byte_array));
+        }
         StaticObject fieldsArray = meta.java_lang_reflect_Field.allocateReferenceArray(fields.length, new IntFunction<StaticObject>() {
             @Override
             public StaticObject apply(int i) {
@@ -271,17 +288,30 @@ public final class Target_java_lang_Class {
                 StaticObject runtimeVisibleTypeAnnotations = rawRuntimeVisibleTypeAnnotations != null
                                 ? StaticObject.wrap(rawRuntimeVisibleTypeAnnotations.getData(), meta)
                                 : StaticObject.NULL;
-
-                fieldInit.invokeDirect(
-                                /* this */ instance,
-                                /* declaringKlass */ f.getDeclaringKlass().mirror(),
-                                /* name */ context.getStrings().intern(f.getName()),
-                                /* type */ f.resolveTypeKlass().mirror(),
-                                /* modifiers */ f.getModifiers(),
-                                /* slot */ f.getSlot(),
-                                /* signature */ meta.toGuestString(f.getGenericSignature()),
-                                // FIXME(peterssen): Fill annotations bytes.
-                                /* annotations */ runtimeVisibleAnnotations);
+                if (meta.getJavaVersion().java15OrLater()) {
+                    fieldInit.invokeDirect(
+                                    /* this */ instance,
+                                    /* declaringKlass */ f.getDeclaringKlass().mirror(),
+                                    /* name */ context.getStrings().intern(f.getName()),
+                                    /* type */ f.resolveTypeKlass().mirror(),
+                                    /* modifiers */ f.getModifiers(),
+                                    /* trustedFinal */ f.isTrustedFinal(),
+                                    /* slot */ f.getSlot(),
+                                    /* signature */ meta.toGuestString(f.getGenericSignature()),
+                                    // FIXME(peterssen): Fill annotations bytes.
+                                    /* annotations */ runtimeVisibleAnnotations);
+                } else {
+                    fieldInit.invokeDirect(
+                                    /* this */ instance,
+                                    /* declaringKlass */ f.getDeclaringKlass().mirror(),
+                                    /* name */ context.getStrings().intern(f.getName()),
+                                    /* type */ f.resolveTypeKlass().mirror(),
+                                    /* modifiers */ f.getModifiers(),
+                                    /* slot */ f.getSlot(),
+                                    /* signature */ meta.toGuestString(f.getGenericSignature()),
+                                    // FIXME(peterssen): Fill annotations bytes.
+                                    /* annotations */ runtimeVisibleAnnotations);
+                }
                 meta.HIDDEN_FIELD_KEY.setHiddenObject(instance, f);
                 meta.HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS.setHiddenObject(instance, runtimeVisibleTypeAnnotations);
                 return instance;
@@ -557,6 +587,24 @@ public final class Target_java_lang_Class {
     }
 
     @Substitution(hasReceiver = true)
+    public static boolean isHidden(@JavaType(Class.class) StaticObject self) {
+        Klass klass = self.getMirrorKlass();
+        if (klass instanceof ObjectKlass) {
+            return ((ObjectKlass) klass).isHidden();
+        }
+        return false;
+    }
+
+    @Substitution(hasReceiver = true)
+    public static boolean isRecord(@JavaType(Class.class) StaticObject self) {
+        Klass klass = self.getMirrorKlass();
+        if (klass instanceof ObjectKlass) {
+            return ((ObjectKlass) klass).isRecord();
+        }
+        return false;
+    }
+
+    @Substitution(hasReceiver = true, versionFilter = VersionFilter.Java8OrEarlier.class)
     public static @JavaType(Class.class) StaticObject getComponentType(@JavaType(Class.class) StaticObject self) {
         if (self.getMirrorKlass().isArray()) {
             Klass componentType = ((ArrayKlass) self.getMirrorKlass()).getComponentType();
@@ -682,17 +730,23 @@ public final class Target_java_lang_Class {
         return InterpreterToVM.instanceOf(obj, self.getMirrorKlass());
     }
 
-    @Substitution
-    public static void registerNatives() {
-        /* nop */
-    }
-
     @Substitution(hasReceiver = true)
     public static @JavaType(ProtectionDomain.class) StaticObject getProtectionDomain0(@JavaType(Class.class) StaticObject self,
                     @InjectMeta Meta meta) {
         StaticObject pd = (StaticObject) meta.HIDDEN_PROTECTION_DOMAIN.getHiddenObject(self);
         // The protection domain is not always set e.g. bootstrap (classloader) classes.
         return pd == null ? StaticObject.NULL : pd;
+    }
+
+    @Substitution(hasReceiver = true)
+    public static @JavaType(Class.class) StaticObject getNestHost0(@JavaType(Class.class) StaticObject self) {
+        return VM.JVM_GetNestHost(self);
+    }
+
+    @Substitution(hasReceiver = true)
+    public static @JavaType(Class[].class) StaticObject getNestMembers0(@JavaType(Class.class) StaticObject self,
+                    @InjectMeta Meta meta) {
+        return meta.getVM().JVM_GetNestMembers(self);
     }
 
     @Substitution(hasReceiver = true)

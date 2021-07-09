@@ -34,6 +34,10 @@ import static com.oracle.truffle.espresso.jni.JniEnv.JNI_OK;
 import static com.oracle.truffle.espresso.meta.EspressoError.cat;
 import static com.oracle.truffle.espresso.runtime.Classpath.JAVA_BASE;
 import static com.oracle.truffle.espresso.runtime.EspressoContext.DEFAULT_STACK_SIZE;
+import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.Constants.ACCESS_VM_ANNOTATIONS;
+import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.Constants.HIDDEN_CLASS;
+import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.Constants.NESTMATE_CLASS;
+import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.Constants.STRONG_LOADER_LINK;
 
 import java.io.File;
 import java.lang.ref.Reference;
@@ -66,6 +70,8 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -112,6 +118,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
+import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNodeGen;
@@ -138,6 +145,7 @@ import com.oracle.truffle.espresso.vm.structs.JavaVMAttachArgs;
 import com.oracle.truffle.espresso.vm.structs.JdkVersionInfo;
 import com.oracle.truffle.espresso.vm.structs.Structs;
 import com.oracle.truffle.espresso.vm.structs.StructsAccess;
+
 import sun.misc.Unsafe;
 
 /**
@@ -1030,19 +1038,8 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     // endregion ConstantPool
 
-    @VmImpl(isJni = true)
-    @TruffleBoundary
-    public @JavaType(Class.class) StaticObject JVM_DefineClass(@Pointer TruffleObject namePtr,
-                    @JavaType(ClassLoader.class) StaticObject loader,
-                    @Pointer TruffleObject bufPtr, int len,
-                    @JavaType(ProtectionDomain.class) StaticObject pd,
-                    @InjectMeta Meta meta,
-                    @InjectProfile SubstitutionProfiler profiler) {
+    private Symbol<Type> namePtrToInternal(TruffleObject namePtr) {
         String name = NativeUtils.interopPointerToString(namePtr);
-        ByteBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Byte);
-        final byte[] bytes = new byte[len];
-        buf.get(bytes);
-
         Symbol<Type> type = null;
         if (name != null) {
             String internalName = name;
@@ -1051,26 +1048,99 @@ public final class VM extends NativeEnv implements ContextAccess {
                 internalName = "L" + name + ";";
             }
             if (!Validation.validTypeDescriptor(ByteSequence.create(internalName), false)) {
-                profiler.profile(0);
-                throw meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, name);
+                throw getMeta().throwExceptionWithMessage(getMeta().java_lang_NoClassDefFoundError, name);
             }
             type = getTypes().fromClassGetName(internalName);
         }
+        return type;
+    }
 
-        StaticObject clazz = getContext().getRegistries().defineKlass(type, bytes, loader).mirror();
+    @VmImpl(isJni = true)
+    @TruffleBoundary
+    public @JavaType(Class.class) StaticObject JVM_LookupDefineClass(
+                    @JavaType(Class.class) StaticObject lookup,
+                    @Pointer TruffleObject namePtr,
+                    @Pointer TruffleObject bufPtr,
+                    int len,
+                    @JavaType(ProtectionDomain.class) StaticObject pd,
+                    boolean initialize,
+                    int flags,
+                    @JavaType(Object.class) StaticObject classData) {
+        if (StaticObject.isNull(lookup)) {
+            throw getMeta().throwExceptionWithMessage(getMeta().java_lang_InternalError, "Lookup class is null");
+        }
+        assert !getUncached().isNull(bufPtr);
+        assert lookup.getMirrorKlass() instanceof ObjectKlass;
+
+        boolean isNestMate = (flags & NESTMATE_CLASS) == NESTMATE_CLASS;
+        boolean isHidden = (flags & HIDDEN_CLASS) == HIDDEN_CLASS;
+        boolean isStrong = (flags & STRONG_LOADER_LINK) == STRONG_LOADER_LINK;
+        boolean vmAnnotations = (flags & ACCESS_VM_ANNOTATIONS) == ACCESS_VM_ANNOTATIONS;
+
+        ObjectKlass nest = null;
+        if (isNestMate) {
+            nest = (ObjectKlass) lookup.getMirrorKlass().nest();
+        }
+        if (!isHidden) {
+            if (StaticObject.isNull(classData)) {
+                throw getMeta().throwExceptionWithMessage(getMeta().java_lang_IllegalArgumentException, "classData is only applicable for hidden classes");
+            }
+            if (isNestMate) {
+                throw getMeta().throwExceptionWithMessage(getMeta().java_lang_IllegalArgumentException, "dynamic nestmate is only applicable for hidden classes");
+            }
+            if (!isStrong) {
+                throw getMeta().throwExceptionWithMessage(getMeta().java_lang_IllegalArgumentException, "an ordinary class must be strongly referenced by its defining loader");
+            }
+            if (vmAnnotations) {
+                throw getMeta().throwExceptionWithMessage(getMeta().java_lang_IllegalArgumentException, "vm annotations only allowed for hidden classes");
+            }
+            if (flags != STRONG_LOADER_LINK) {
+                throw getMeta().throwExceptionWithMessage(getMeta().java_lang_IllegalArgumentException, String.format("invalid flag 0x%x", flags));
+            }
+        }
+
+        ByteBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Byte);
+        final byte[] bytes = new byte[len];
+        buf.get(bytes);
+        Symbol<Type> type = namePtrToInternal(namePtr); // can be null
+        StaticObject loader = lookup.getMirrorKlass().getDefiningClassLoader();
+
+        ObjectKlass k;
+        if (isHidden) {
+            // Special handling
+            k = getRegistries().defineKlass(type, bytes, loader, new ClassRegistry.ClassDefinitionInfo(pd, nest, classData, isStrong));
+        } else {
+            k = getRegistries().defineKlass(type, bytes, loader);
+        }
+
+        if (initialize) {
+            k.safeInitialize();
+        }
+        return k.mirror();
+    }
+
+    @VmImpl(isJni = true)
+    @TruffleBoundary
+    public @JavaType(Class.class) StaticObject JVM_DefineClass(@Pointer TruffleObject namePtr,
+                    @JavaType(ClassLoader.class) StaticObject loader,
+                    @Pointer TruffleObject bufPtr, int len,
+                    @JavaType(ProtectionDomain.class) StaticObject pd) {
+        ByteBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Byte);
+        final byte[] bytes = new byte[len];
+        buf.get(bytes);
+
+        Symbol<Type> type = namePtrToInternal(namePtr); // can be null
+
+        StaticObject clazz = getContext().getRegistries().defineKlass(type, bytes, loader, new ClassRegistry.ClassDefinitionInfo(pd)).mirror();
         assert clazz != null;
-        assert pd != null;
-        meta.HIDDEN_PROTECTION_DOMAIN.setHiddenObject(clazz, pd);
         return clazz;
     }
 
     @VmImpl(isJni = true)
     public @JavaType(Class.class) StaticObject JVM_DefineClassWithSource(@Pointer TruffleObject namePtr, @JavaType(ClassLoader.class) StaticObject loader, @Pointer TruffleObject bufPtr, int len,
-                    @JavaType(ProtectionDomain.class) StaticObject pd, @SuppressWarnings("unused") @Pointer TruffleObject source,
-                    @InjectMeta Meta meta,
-                    @InjectProfile SubstitutionProfiler profiler) {
+                    @JavaType(ProtectionDomain.class) StaticObject pd, @SuppressWarnings("unused") @Pointer TruffleObject source) {
         // FIXME(peterssen): Source is ignored.
-        return JVM_DefineClass(namePtr, loader, bufPtr, len, pd, meta, profiler);
+        return JVM_DefineClass(namePtr, loader, bufPtr, len, pd);
     }
 
     @VmImpl(isJni = true)
@@ -1698,6 +1768,61 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl(isJni = true)
     @SuppressWarnings("unused")
     public @JavaType(Object.class) StaticObject JVM_GetStackAccessControlContext(@JavaType(Class.class) StaticObject cls) {
+        if (getJavaVersion().java11OrEarlier()) {
+            return getACCUntil11();
+        } else {
+            return getACCAfter12();
+        }
+    }
+
+    private StaticObject getACCAfter12() {
+        ArrayList<StaticObject> domains = new ArrayList<>();
+        final boolean[] isPrivileged = new boolean[]{false};
+
+        StaticObject context = Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<StaticObject>() {
+            StaticObject prevDomain = StaticObject.NULL;
+
+            @Override
+            public StaticObject visitFrame(FrameInstance frameInstance) {
+                Method m = getMethodFromFrame(frameInstance);
+                if (m != null) {
+                    StaticObject domain = null;
+                    StaticObject stackContext = null;
+                    StaticObject domainKlass = null;
+                    if (m.getDeclaringKlass() == getMeta().java_security_AccessController &&
+                                    m.getName() == Name.executePrivileged) {
+                        isPrivileged[0] = true;
+                        Frame frame = frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY);
+                        FrameSlot refs = frame.getFrameDescriptor().findFrameSlot("refs");
+                        Object[] refsArray = null;
+                        try {
+                            refsArray = (Object[]) frame.getObject(refs);
+                        } catch (FrameSlotTypeException e) {
+                            throw EspressoError.shouldNotReachHere();
+                        }
+                        // 2nd argument: `AccessControlContext context`
+                        stackContext = BytecodeNode.getLocalObject(refsArray, 1);
+                        // 3rd argument: Class<?> caller
+                        domainKlass = BytecodeNode.getLocalObject(refsArray, 2);
+                    } else {
+                        domainKlass = m.getDeclaringKlass().mirror();
+                    }
+                    domain = Target_java_lang_Class.getProtectionDomain0(domainKlass, getMeta());
+                    if (domain != prevDomain && domain != StaticObject.NULL) {
+                        domains.add(domain);
+                        prevDomain = domain;
+                    }
+                    if (isPrivileged[0]) {
+                        return stackContext;
+                    }
+                }
+                return null;
+            }
+        });
+        return getAccFromContext(domains, isPrivileged[0], context);
+    }
+
+    private StaticObject getACCUntil11() {
         ArrayList<StaticObject> domains = new ArrayList<>();
         final PrivilegedStack stack = getPrivilegedStack();
         final boolean[] isPrivileged = new boolean[]{false};
@@ -1725,15 +1850,19 @@ public final class VM extends NativeEnv implements ContextAccess {
             }
         });
 
+        return getAccFromContext(domains, isPrivileged[0], context);
+    }
+
+    private StaticObject getAccFromContext(ArrayList<StaticObject> domains, boolean isPrivileged, StaticObject context) {
         if (domains.isEmpty()) {
-            if (isPrivileged[0] && StaticObject.isNull(context)) {
+            if (isPrivileged && StaticObject.isNull(context)) {
                 return StaticObject.NULL;
             }
-            return createACC(StaticObject.NULL, isPrivileged[0], context == null ? StaticObject.NULL : context);
+            return createACC(StaticObject.NULL, isPrivileged, context == null ? StaticObject.NULL : context);
         }
 
         StaticObject guestContext = StaticObject.createArray(getMeta().java_security_ProtectionDomain.array(), domains.toArray(StaticObject.EMPTY_ARRAY));
-        return createACC(guestContext, isPrivileged[0], context == null ? StaticObject.NULL : context);
+        return createACC(guestContext, isPrivileged, context == null ? StaticObject.NULL : context);
     }
 
     @VmImpl(isJni = true)

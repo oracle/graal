@@ -2704,11 +2704,9 @@ public final class JniEnv extends NativeEnv {
     @JniImpl
     public @JavaType(Class.class) StaticObject DefineClass(@Pointer TruffleObject namePtr,
                     @JavaType(ClassLoader.class) StaticObject loader,
-                    @Pointer TruffleObject bufPtr, int bufLen,
-                    @InjectMeta Meta meta,
-                    @InjectProfile SubstitutionProfiler profiler) {
+                    @Pointer TruffleObject bufPtr, int bufLen) {
         // TODO(peterssen): Propagate errors and verifications, e.g. no class in the java package.
-        return getVM().JVM_DefineClass(namePtr, loader, bufPtr, bufLen, StaticObject.NULL, meta, profiler);
+        return getVM().JVM_DefineClass(namePtr, loader, bufPtr, bufLen, StaticObject.NULL);
     }
 
     // JavaVM **vm);

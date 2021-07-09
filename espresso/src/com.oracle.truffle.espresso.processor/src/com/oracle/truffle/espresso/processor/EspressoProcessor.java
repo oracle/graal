@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.processor;
 
+import static com.oracle.truffle.espresso.processor.ProcessorUtils.imports;
+
 import java.io.IOException;
 import java.io.Writer;
 import java.time.Year;
@@ -147,7 +149,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
     abstract void processImpl(RoundEnvironment roundEnvironment);
 
     /**
-     * Generates the string corresponding to the imports of the current substitutor.
+     * Returns a list of expected imports of the current substitutor.
      * <p>
      * Note that the required imports vary between classes, as some might not be used, triggering
      * style issues, which is why this is delegated.
@@ -156,7 +158,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
      * @see EspressoProcessor#IMPORT_STATIC_OBJECT
      * @see EspressoProcessor#IMPORT_TRUFFLE_OBJECT
      */
-    abstract String generateImports(String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper);
+    abstract List<String> expectedImports(String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper);
 
     /**
      * Generates the string corresponding to the Constructor for the current substitutor. In
@@ -239,12 +241,12 @@ public abstract class EspressoProcessor extends BaseProcessor {
 
     static final String STATIC_OBJECT_NULL = "StaticObject.NULL";
 
-    static final String IMPORT_INTEROP_LIBRARY = "import com.oracle.truffle.api.interop.InteropLibrary;\n";
-    static final String IMPORT_STATIC_OBJECT = "import com.oracle.truffle.espresso.runtime.StaticObject;\n";
-    static final String IMPORT_TRUFFLE_OBJECT = "import com.oracle.truffle.api.interop.TruffleObject;\n";
-    static final String IMPORT_META = "import com.oracle.truffle.espresso.meta.Meta;\n";
-    static final String IMPORT_PROFILE = "import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;\n";
-    static final String IMPORT_COLLECT = "import com.oracle.truffle.espresso.substitutions.Collect;\n";
+    static final String IMPORT_INTEROP_LIBRARY = "com.oracle.truffle.api.interop.InteropLibrary";
+    static final String IMPORT_STATIC_OBJECT = "com.oracle.truffle.espresso.runtime.StaticObject";
+    static final String IMPORT_TRUFFLE_OBJECT = "com.oracle.truffle.api.interop.TruffleObject";
+    static final String IMPORT_META = "com.oracle.truffle.espresso.meta.Meta";
+    static final String IMPORT_PROFILE = "com.oracle.truffle.espresso.substitutions.SubstitutionProfiler";
+    static final String IMPORT_COLLECT = "com.oracle.truffle.espresso.substitutions.Collect";
 
     static final String META_CLASS = "Meta ";
     static final String META_VAR = "meta";
@@ -628,9 +630,18 @@ public abstract class EspressoProcessor extends BaseProcessor {
         // Header
         classFile.append(COPYRIGHT);
         classFile.append("package " + targetPackage + ";\n\n");
-        classFile.append(IMPORT_META);
-        classFile.append(IMPORT_COLLECT).append("\n");
-        classFile.append(generateImports(substitutorName, targetMethodName, parameterTypeName, helper));
+
+        // Prepare imports
+        List<String> expectedImports = expectedImports(substitutorName, targetMethodName, parameterTypeName, helper);
+        expectedImports.add(IMPORT_META);
+        expectedImports.add(IMPORT_COLLECT);
+        // Add imports (filter useless import)
+        for (String toImport : expectedImports) {
+            String maybePackage = toImport.substring(0, toImport.lastIndexOf('.'));
+            if (!targetPackage.equals(maybePackage)) {
+                classFile.append(imports(toImport));
+            }
+        }
 
         // Class
         classFile.append(generateGeneratedBy(className, targetMethodName, parameterTypeName, helper)).append("\n");
