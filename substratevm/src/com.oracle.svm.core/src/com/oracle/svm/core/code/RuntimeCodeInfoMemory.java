@@ -27,7 +27,6 @@ package com.oracle.svm.core.code;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -43,7 +42,6 @@ import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.code.RuntimeCodeCache.CodeInfoVisitor;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
 
@@ -85,13 +83,6 @@ public class RuntimeCodeInfoMemory {
         lock.lock();
         try {
             add0(info);
-
-            // TEMP (chaeubl):
-            if (count > 5) {
-                JavaVMOperation.enqueueBlockingSafepoint("Temp", () -> {
-                    System.out.println(GraalUnsafeAccess.getUnsafe().getInt((long) (Math.random() * 100)));
-                });
-            }
         } finally {
             lock.unlock();
         }
@@ -284,7 +275,7 @@ public class RuntimeCodeInfoMemory {
 
     @Uninterruptible(reason = "CodeInfo no longer needs to be protected from the GC.", calleeMustBe = false)
     private static void printCodeInfo0(Log log, UntetheredCodeInfo codeInfo, int state, String name, CodePointer codeStart, CodePointer codeEnd) {
-        RuntimeCodeInfoHistory.printCodeInfo(log, codeInfo, state, name, codeStart, codeEnd);
+        CodeInfoAccess.printCodeInfo(log, codeInfo, state, name, codeStart, codeEnd);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

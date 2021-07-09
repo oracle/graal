@@ -374,4 +374,24 @@ public final class CodeInfoAccess {
         assert isValid(info);
         return (CodeInfoImpl) info;
     }
+
+    public static void printCodeInfo(Log log, CodeInfo info, boolean allowJavaHeapAccess) {
+        String name = allowJavaHeapAccess ? CodeInfoAccess.getName(info) : null;
+        printCodeInfo(log, info, CodeInfoAccess.getState(info), name, CodeInfoAccess.getCodeStart(info), CodeInfoAccess.getCodeEnd(info));
+    }
+
+    public static void printCodeInfo(Log log, UntetheredCodeInfo codeInfo, int state, String name, CodePointer codeStart, CodePointer codeEnd) {
+        log.string("CodeInfo (").zhex(codeInfo).string(" - ").zhex(((UnsignedWord) codeInfo).add(RuntimeCodeInfoAccess.getSizeOfCodeInfo()).subtract(1)).string("), ")
+                        .string(CodeInfoAccess.stateToString(state));
+        if (name != null) {
+            log.string(" - ").string(name);
+        }
+        log.string(", ip: (").zhex(codeStart).string(" - ").zhex(codeEnd).string(")");
+        log.newline();
+        /*
+         * Note that we are not trying to output the InstalledCode object. It is not a pinned
+         * object, so when log printing (for, e.g., a fatal error) occurs during a GC, then the VM
+         * could segfault.
+         */
+    }
 }

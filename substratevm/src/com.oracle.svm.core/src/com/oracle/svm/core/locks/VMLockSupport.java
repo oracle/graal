@@ -32,13 +32,9 @@ import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.log.Log;
 
 public abstract class VMLockSupport {
-    public VMMutex[] getMutexes() {
-        return null;
-    }
+    public abstract VMMutex[] getMutexes();
 
-    public VMCondition[] getConditions() {
-        return null;
-    }
+    public abstract VMCondition[] getConditions();
 
     public static class DumpVMMutexes extends DiagnosticThunk {
         @Override

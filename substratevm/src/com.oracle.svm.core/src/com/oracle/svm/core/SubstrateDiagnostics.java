@@ -28,7 +28,6 @@ import java.util.Arrays;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
@@ -142,8 +141,9 @@ public class SubstrateDiagnostics {
 
         Log log = state.log;
         if (state.diagnosticThunkIndex > 0) {
-            log.newline();
-            log.string("An error occurred while printing diagnostics. The remaining part of this section will be skipped.").resetIndentation().newline();
+            // An error must have happened earlier as the code for printing diagnostics was invoked
+            // recursively.
+            log.resetIndentation();
         }
 
         // Print the various sections of the diagnostics and skip all sections that were already
@@ -154,9 +154,7 @@ public class SubstrateDiagnostics {
             while (++state.invocationCount <= thunk.maxInvocations()) {
                 try {
                     thunk.printDiagnostics(log, state.invocationCount);
-                    // TEMP (chaeubl): check the max retries
-                    log.signed(GraalUnsafeAccess.getUnsafe().getInt(27L));
-                    continue;
+                    break;
                 } catch (Throwable e) {
                     dumpException(log, thunk, e);
                 }

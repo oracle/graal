@@ -29,7 +29,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
-import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.log.Log;
@@ -82,29 +81,8 @@ public class RuntimeCodeInfoHistory {
     private static void traceCodeCache(String kind, CodeInfo info, boolean allowJavaHeapAccess) {
         if (RuntimeCodeCache.Options.TraceCodeCache.getValue()) {
             Log.log().string(kind).string(" method: ");
-            printCodeInfo(Log.log(), info, allowJavaHeapAccess);
+            CodeInfoAccess.printCodeInfo(Log.log(), info, allowJavaHeapAccess);
         }
-    }
-
-    private static void printCodeInfo(Log log, CodeInfo info, boolean allowJavaHeapAccess) {
-        String name = allowJavaHeapAccess ? CodeInfoAccess.getName(info) : null;
-        printCodeInfo(log, info, CodeInfoAccess.getState(info), name, CodeInfoAccess.getCodeStart(info), CodeInfoAccess.getCodeEnd(info));
-    }
-
-    // TEMP (chaeubl): move this somewhere else...
-    static void printCodeInfo(Log log, UntetheredCodeInfo codeInfo, int state, String name, CodePointer codeStart, CodePointer codeEnd) {
-        log.string("CodeInfo (").zhex(codeInfo).string(" - ").zhex(((UnsignedWord) codeInfo).add(RuntimeCodeInfoAccess.getSizeOfCodeInfo()).subtract(1)).string("), ")
-                        .string(CodeInfoAccess.stateToString(state));
-        if (name != null) {
-            log.string(" - ").string(name);
-        }
-        log.string(", ip: (").zhex(codeStart).string(" - ").zhex(codeEnd).string(")");
-        log.newline();
-        /*
-         * Note that we are not trying to output the InstalledCode object. It is not a pinned
-         * object, so when log printing (for, e.g., a fatal error) occurs during a GC, then the VM
-         * could segfault.
-         */
     }
 
     public void printRecentOperations(Log log, boolean allowJavaHeapAccess) {
@@ -154,7 +132,7 @@ public class RuntimeCodeInfoHistory {
             if (kind != null) {
                 log.unsigned(timestamp).string(" - ").string(kind).spaces(1);
                 String name = allowJavaHeapAccess ? codeName : null;
-                printCodeInfo(log, codeInfo, codeInfoState, name, codeStart, codeEnd);
+                CodeInfoAccess.printCodeInfo(log, codeInfo, codeInfoState, name, codeStart, codeEnd);
             }
         }
     }

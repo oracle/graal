@@ -39,7 +39,15 @@ import com.oracle.svm.core.util.VMError;
  * locking is necessary.
  */
 final class SingleThreadedVMLockSupport extends VMLockSupport {
-    // Empty class to have the same name as the source file.
+    @Override
+    public VMMutex[] getMutexes() {
+        return null;
+    }
+
+    @Override
+    public VMCondition[] getConditions() {
+        return null;
+    }
 }
 
 @AutomaticFeature
