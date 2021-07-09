@@ -408,9 +408,9 @@ public abstract class StaticShape<T> {
 
         private static Map<String, StaticProperty> defaultPropertyIds(Map<String, StaticProperty> staticProperties) {
             Map<String, StaticProperty> newStaticProperties = new LinkedHashMap<>();
-            StaticProperty[] properties = staticProperties.values().toArray(new StaticProperty[staticProperties.size()]);
-            for (int i = 0; i < properties.length; i++) {
-                newStaticProperties.put("field" + i, properties[i]);
+            int idx = 0;
+            for (StaticProperty property : staticProperties.values()) {
+                newStaticProperties.put("field" + idx++, property);
             }
             return newStaticProperties;
         }
