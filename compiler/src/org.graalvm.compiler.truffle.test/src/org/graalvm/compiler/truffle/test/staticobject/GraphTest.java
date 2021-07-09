@@ -152,7 +152,7 @@ public class GraphTest extends PartialEvaluationTest {
         Assert.assertEquals(expected, graph.getNodes().filter(nodeClass).count());
     }
 
-    private static abstract class StaticObjectAbstractNode extends Node {
+    private abstract static class StaticObjectAbstractNode extends Node {
         final StaticShape<DefaultStaticObjectFactory> shape;
         final StaticProperty property;
 
@@ -257,7 +257,7 @@ public class GraphTest extends PartialEvaluationTest {
     private static class StaticObjectRootNode extends RootNode {
         @Child private StaticObjectAbstractNode node;
 
-        public StaticObjectRootNode(TruffleLanguage<?> language, FrameDescriptor descriptor, StaticObjectAbstractNode node) {
+        StaticObjectRootNode(TruffleLanguage<?> language, FrameDescriptor descriptor, StaticObjectAbstractNode node) {
             super(language, descriptor);
             this.node = node;
         }
