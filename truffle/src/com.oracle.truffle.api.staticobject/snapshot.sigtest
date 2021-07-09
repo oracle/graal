@@ -106,7 +106,7 @@ meth public <%0 extends java.lang.Object> com.oracle.truffle.api.staticobject.St
 meth public com.oracle.truffle.api.staticobject.StaticShape$Builder property(com.oracle.truffle.api.staticobject.StaticProperty)
 meth public com.oracle.truffle.api.staticobject.StaticShape<com.oracle.truffle.api.staticobject.DefaultStaticObjectFactory> build()
 supr java.lang.Object
-hfds FORBIDDEN_CHARS,language,staticProperties
+hfds MAX_NUMBER_OF_PROPERTIES,MAX_PROPERTY_ID_BYTE_LENGTH,hasLongPropertyId,isActive,language,staticProperties
 
 CLSS public abstract interface java.io.Serializable
 
