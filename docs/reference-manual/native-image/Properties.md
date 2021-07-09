@@ -4,7 +4,8 @@ toc_group: native-image
 link_title: Use System Properties in Native Images
 permalink: /reference-manual/native-image/Properties/
 ---
-# Use System Properties in Native Images
+
+# Using System Properties in Native Images
 
 Assume you have the following Java Program:
 ```java
@@ -24,9 +25,9 @@ In other words:
 * Passing `-D<key>=<value>` to `native-image` affects properties seen at image build time.
 * Passing `-D<key>=<value>` to an image execution affects properties seen at image run time.
 
-## Aaccess Environment Variables at Run Time
+## Access Environment Variables at Run Time
 
-Native image can also access the environment variables at runtime.
+Native image can also access environment variables at runtime.
 Consider the following example.
 
 1. Save this Java code into _EnvMap.java_ file:
@@ -38,7 +39,7 @@ Consider the following example.
           var filter = args.length > 0 ? args[0] : "";
           Map<String, String> env = System.getenv();
           for (String envName : env.keySet()) {
-              if(envName.indexOf(filter) == -1) continue;
+              if(!envName.contains(filter) == -1) continue;
               System.out.format("%s=%s%n",
                                 envName,
                                 env.get(envName));
