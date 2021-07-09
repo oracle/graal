@@ -39,6 +39,7 @@ import static com.oracle.truffle.espresso.processor.ProcessorUtils.assignment;
 import static com.oracle.truffle.espresso.processor.ProcessorUtils.call;
 import static com.oracle.truffle.espresso.processor.ProcessorUtils.decapitalize;
 import static com.oracle.truffle.espresso.processor.ProcessorUtils.fieldDeclaration;
+import static com.oracle.truffle.espresso.processor.ProcessorUtils.imports;
 import static com.oracle.truffle.espresso.processor.ProcessorUtils.methodDeclaration;
 import static com.oracle.truffle.espresso.processor.ProcessorUtils.removeUnderscores;
 import static com.oracle.truffle.espresso.processor.ProcessorUtils.stringify;
@@ -77,9 +78,9 @@ public class StructsProcessor extends AbstractProcessor {
     private static final String KNOWN_STRUCT = GENERATE_STRUCTS + ".KnownStruct";
 
     // Imports
-    private static final String IMPORT_BYTEBUFFER = "import java.nio.ByteBuffer;\n";
-    private static final String IMPORT_JNI_ENV = "import com.oracle.truffle.espresso.jni.JniEnv;\n";
-    private static final String IMPORT_RAW_POINTER = "import com.oracle.truffle.espresso.ffi.RawPointer;\n";
+    private static final String IMPORTED_BYTEBUFFER = imports("java.nio.ByteBuffer");
+    private static final String IMPORTED_JNI_ENV = imports("com.oracle.truffle.espresso.jni.JniEnv");
+    private static final String IMPORTED_RAW_POINTER = imports("com.oracle.truffle.espresso.ffi.RawPointer");
 
     // Classes
     private static final String TRUFFLE_OBJECT = "TruffleObject";
@@ -331,13 +332,13 @@ public class StructsProcessor extends AbstractProcessor {
         builder.append(COPYRIGHT);
         builder.append("package ").append(STRUCTS_PACKAGE).append(";\n\n");
         builder.append('\n');
-        builder.append(IMPORT_BYTEBUFFER);
+        builder.append(IMPORTED_BYTEBUFFER);
         builder.append('\n');
-        builder.append(IMPORT_TRUFFLE_OBJECT);
+        builder.append(imports(IMPORT_TRUFFLE_OBJECT));
         builder.append('\n');
-        builder.append(IMPORT_STATIC_OBJECT);
-        builder.append(IMPORT_JNI_ENV);
-        builder.append(IMPORT_RAW_POINTER);
+        builder.append(imports(IMPORT_STATIC_OBJECT));
+        builder.append(IMPORTED_JNI_ENV);
+        builder.append(IMPORTED_RAW_POINTER);
         builder.append('\n');
     }
 
@@ -379,10 +380,10 @@ public class StructsProcessor extends AbstractProcessor {
         builder.append(COPYRIGHT);
         builder.append("package ").append(STRUCTS_PACKAGE).append(";\n\n");
         builder.append('\n');
-        builder.append(IMPORT_INTEROP_LIBRARY);
-        builder.append(IMPORT_TRUFFLE_OBJECT);
+        builder.append(imports(IMPORT_INTEROP_LIBRARY));
+        builder.append(imports(IMPORT_TRUFFLE_OBJECT));
         builder.append('\n');
-        builder.append(IMPORT_JNI_ENV);
+        builder.append(IMPORTED_JNI_ENV);
         builder.append('\n');
         return builder.toString();
     }
