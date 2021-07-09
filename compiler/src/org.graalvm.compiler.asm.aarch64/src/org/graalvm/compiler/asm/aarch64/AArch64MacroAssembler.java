@@ -1633,6 +1633,24 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
+     * C6.2.334 Test bits (immediate).<br>
+     *
+     * Sets condition flags according to the result of x & bimm
+     */
+    public void tst(int size, Register x, long bimm) {
+        ands(size, zr, x, bimm);
+    }
+
+    /**
+     * C6.2.335 Test bits (register).<br>
+     *
+     * Sets condition flags according to the result of x & y
+     */
+    public void tst(int size, Register x, Register y) {
+        ands(size, zr, x, y);
+    }
+
+    /**
      * Sets overflow flag according to result of x * y.
      *
      * @param size register size. Has to be 32 or 64.
