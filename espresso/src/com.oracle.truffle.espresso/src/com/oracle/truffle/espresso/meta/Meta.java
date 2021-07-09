@@ -663,14 +663,6 @@ public final class Meta implements ContextAccess {
         // used for class redefinition
         java_lang_reflect_Proxy = knownKlass(Type.java_lang_reflect_Proxy);
 
-        // java.beans package only available if java.desktop module is present on JDK9+
-        java_beans_ThreadGroupContext = loadKlassWithBootClassLoader(Type.java_beans_ThreadGroupContext);
-        java_beans_Introspector = loadKlassWithBootClassLoader(Type.java_beans_Introspector);
-
-        java_beans_ThreadGroupContext_init = java_beans_ThreadGroupContext != null ? java_beans_ThreadGroupContext.requireDeclaredMethod(Name._init_, Signature._void) : null;
-        java_beans_ThreadGroupContext_removeBeanInfo = java_beans_ThreadGroupContext != null ? java_beans_ThreadGroupContext.requireDeclaredMethod(Name.removeBeanInfo, Signature._void_Class) : null;
-        java_beans_Introspector_flushFromCaches = java_beans_Introspector != null ? java_beans_Introspector.requireDeclaredMethod(Name.flushFromCaches, Signature._void_Class) : null;
-
         // sun.misc.Proxygenerator -> java.lang.reflect.Proxygenerator in JDK 9
         if (getJavaVersion().java8OrEarlier()) {
             sun_misc_ProxyGenerator = knownKlass(Type.sun_misc_ProxyGenerator);
@@ -710,6 +702,13 @@ public final class Meta implements ContextAccess {
     }
 
     /**
+     * This method registers known classes that are NOT in {@code java.base} module after VM
+     * 
+     * initialization (/ex: {@code java.management}, {@code java.desktop}, etc...), or classes whose
+     * 
+     * hierarchy loads classes to early in the boot process..
+     * 
+     * <p>
      * Espresso's Polyglot API (polyglot.jar) is injected on the boot CP, must be loaded after
      * modules initialization.
      *
@@ -738,6 +737,14 @@ public final class Meta implements ContextAccess {
             // GarbageCollectorMXBean createGarbageCollector(String var0, String var1)
             sun_management_ManagementFactory_createGarbageCollector = null;
         }
+
+        // java.beans package only available if java.desktop module is present on JDK9+
+        java_beans_ThreadGroupContext = loadKlassWithBootClassLoader(Type.java_beans_ThreadGroupContext);
+        java_beans_Introspector = loadKlassWithBootClassLoader(Type.java_beans_Introspector);
+
+        java_beans_ThreadGroupContext_init = java_beans_ThreadGroupContext != null ? java_beans_ThreadGroupContext.requireDeclaredMethod(Name._init_, Signature._void) : null;
+        java_beans_ThreadGroupContext_removeBeanInfo = java_beans_ThreadGroupContext != null ? java_beans_ThreadGroupContext.requireDeclaredMethod(Name.removeBeanInfo, Signature._void_Class) : null;
+        java_beans_Introspector_flushFromCaches = java_beans_Introspector != null ? java_beans_Introspector.requireDeclaredMethod(Name.flushFromCaches, Signature._void_Class) : null;
 
         // Load Espresso's Polyglot API.
         boolean polyglotSupport = getContext().getEnv().getOptions().get(EspressoOptions.Polyglot);
@@ -862,11 +869,6 @@ public final class Meta implements ContextAccess {
     public final Method sun_misc_ProxyGenerator_generateProxyClass;
     public final ObjectKlass java_lang_reflect_ProxyGenerator;
     public final Method java_lang_reflect_ProxyGenerator_generateProxyClass;
-    public final ObjectKlass java_beans_ThreadGroupContext;
-    public final Method java_beans_ThreadGroupContext_init;
-    public final Method java_beans_ThreadGroupContext_removeBeanInfo;
-    public final ObjectKlass java_beans_Introspector;
-    public final Method java_beans_Introspector_flushFromCaches;
 
     // Guest String.
     public final Field java_lang_String_value;
@@ -1270,6 +1272,12 @@ public final class Meta implements ContextAccess {
     @CompilationFinal public Method sun_management_ManagementFactory_createMemoryManager;
     @CompilationFinal public Method sun_management_ManagementFactory_createGarbageCollector;
     @CompilationFinal public ObjectKlass java_lang_management_ThreadInfo;
+    // Used by class redefinition
+    @CompilationFinal public ObjectKlass java_beans_ThreadGroupContext;
+    @CompilationFinal public Method java_beans_ThreadGroupContext_init;
+    @CompilationFinal public Method java_beans_ThreadGroupContext_removeBeanInfo;
+    @CompilationFinal public ObjectKlass java_beans_Introspector;
+    @CompilationFinal public Method java_beans_Introspector_flushFromCaches;
 
     public final class PolyglotSupport {
         public final ObjectKlass UnknownIdentifierException;
