@@ -209,6 +209,7 @@ public abstract class StaticShape<T> {
         private final HashMap<String, StaticProperty> staticProperties = new LinkedHashMap<>();
         private final TruffleLanguage<?> language;
         boolean hasLongPropertyId = false;
+        boolean isActive = true;
 
         Builder(TruffleLanguage<?> language) {
             this.language = language;
@@ -218,8 +219,8 @@ public abstract class StaticShape<T> {
          * Adds a {@link StaticProperty} to the static shape to be constructed. The
          * {@linkplain StaticProperty#getId() property id} cannot be null or an empty String. It is
          * not allowed to add two {@linkplain StaticProperty properties} with the same
-         * {@linkplain StaticProperty#getId() id} to the same Builder, or to add the same
-         * {@linkplain StaticProperty property} to more than one Builder. Static shapes that
+         * {@linkplain StaticProperty#getId() id} to the same builder, or to add the same
+         * {@linkplain StaticProperty property} to more than one builder. Static shapes that
          * {@linkplain StaticShape.Builder#build(StaticShape) extend a parent shape} can have
          * {@linkplain StaticProperty properties} with the same {@linkplain StaticProperty#getId()
          * id} of those in the parent shape.
@@ -230,12 +231,14 @@ public abstract class StaticShape<T> {
          * @throws IllegalArgumentException if more than 65535 properties are added, or if the
          *             {@linkplain StaticProperty#getId() property id} is an empty string or it is
          *             equal to the id of another static property already registered to this builder
+         * @throws IllegalStateException if this method is invoked after building a static shape
          * @throws NullPointerException if the {@linkplain StaticProperty#getId() property id} is
          *             null
          * @since 21.3.0
          */
         public Builder property(StaticProperty property) {
             CompilerAsserts.neverPartOfCompilation();
+            checkStatus();
             staticProperties.put(validateAndGetId(property), property);
             return this;
         }
@@ -249,6 +252,10 @@ public abstract class StaticShape<T> {
          * @see StaticShape.Builder#build(StaticShape)
          * @see StaticShape.Builder#build(Class, Class)
          * @return the new {@link StaticShape}
+         * @throws IllegalStateException if this method is invoked more than once
+         * @throws RuntimeException if a static property was added to more than one builder or
+         *             multiple times to the same builder, or if this method is invoked at Native
+         *             Image build time
          * @since 21.3.0
          */
         public StaticShape<DefaultStaticObjectFactory> build() {
@@ -268,6 +275,10 @@ public abstract class StaticShape<T> {
          * @param parentShape the parent {@linkplain StaticShape shape}
          * @param <T> the generic type of the parent {@linkplain StaticShape shape}
          * @return the new {@link StaticShape}
+         * @throws IllegalStateException if this method is invoked more than once
+         * @throws RuntimeException if a static property was added to more than one builder or
+         *             multiple times to the same builder, or if this method is invoked at Native
+         *             Image build time
          * @since 21.3.0
          */
         public <T> StaticShape<T> build(StaticShape<T> parentShape) {
@@ -308,6 +319,7 @@ public abstract class StaticShape<T> {
          *             is not assignable from superClass, if superClass has abstract methods or if
          *             superClass is {@link Cloneable} and overrides {@link Object#clone()} with a
          *             final method
+         * @throws IllegalStateException if this method is invoked more than once
          * @throws RuntimeException if a static property was added to more than one builder or
          *             multiple times to the same builder, or if this method is invoked at Native
          *             Image build time
@@ -322,13 +334,25 @@ public abstract class StaticShape<T> {
 
         private <T> StaticShape<T> build(ShapeGenerator<T> sg, StaticShape<T> parentShape) {
             CompilerAsserts.neverPartOfCompilation();
+            checkStatus();
             Map<String, StaticProperty> properties = hasLongPropertyId ? defaultPropertyIds(staticProperties) : staticProperties;
             boolean safetyChecks = !SomAccessor.ENGINE.areStaticObjectSafetyChecksRelaxed(SomAccessor.LANGUAGE.getPolyglotLanguageInstance(language));
             StaticShape<T> shape = sg.generateShape(parentShape, properties, safetyChecks);
             for (StaticProperty staticProperty : properties.values()) {
                 staticProperty.initShape(shape);
             }
+            setInactive();
             return shape;
+        }
+
+        private void checkStatus() {
+            if (!isActive) {
+                throw new IllegalStateException("This Builder instance has already built a StaticShape. It is not possible to add static properties or build other shapes");
+            }
+        }
+
+        private void setInactive() {
+            isActive = false;
         }
 
         private GeneratorClassLoader getOrCreateClassLoader(Class<?> referenceClass) {

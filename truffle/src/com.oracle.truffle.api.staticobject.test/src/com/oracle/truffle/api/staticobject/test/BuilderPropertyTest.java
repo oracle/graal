@@ -124,6 +124,32 @@ public class BuilderPropertyTest extends StaticObjectModelTest {
     }
 
     @Theory
+    public void buildTwice(TestEnvironment te) {
+        StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
+        builder.property(new DefaultStaticProperty("property", StaticPropertyKind.Int, false));
+        builder.build();
+        try {
+            builder.build();
+            Assert.fail();
+        } catch (IllegalStateException e) {
+            Assert.assertEquals("This Builder instance has already built a StaticShape. It is not possible to add static properties or build other shapes", e.getMessage());
+        }
+    }
+
+    @Theory
+    public void addPropertyAgain(TestEnvironment te) {
+        StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
+        builder.property(new DefaultStaticProperty("property1", StaticPropertyKind.Int, false));
+        builder.build();
+        try {
+            builder.property(new DefaultStaticProperty("property2", StaticPropertyKind.Int, false));
+            Assert.fail();
+        } catch (IllegalStateException e) {
+            Assert.assertEquals("This Builder instance has already built a StaticShape. It is not possible to add static properties or build other shapes", e.getMessage());
+        }
+    }
+
+    @Theory
     public void propertyId(TestEnvironment te) throws NoSuchFieldException {
         if (!te.arrayBased) {
             StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
