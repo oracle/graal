@@ -91,13 +91,13 @@ public class BuilderPropertyTest extends StaticObjectModelTest {
     }
 
     @Theory
-    public void sameBuilderSameName(TestEnvironment te) {
+    public void sameBuilderSameId(TestEnvironment te) {
         StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
         StaticProperty p1 = new DefaultStaticProperty("property", StaticPropertyKind.Int, false);
         StaticProperty p2 = new DefaultStaticProperty("property", StaticPropertyKind.Int, false);
         builder.property(p1);
         try {
-            // You cannot add two properties with the same name
+            // You cannot add two properties with the same id
             builder.property(p2);
             Assert.fail();
         } catch (IllegalArgumentException e) {
@@ -124,7 +124,7 @@ public class BuilderPropertyTest extends StaticObjectModelTest {
     }
 
     @Theory
-    public void propertyName(TestEnvironment te) throws NoSuchFieldException {
+    public void propertyId(TestEnvironment te) throws NoSuchFieldException {
         if (!te.arrayBased) {
             StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
             StaticProperty property = new DefaultStaticProperty("property", StaticPropertyKind.Int, false);
@@ -136,7 +136,7 @@ public class BuilderPropertyTest extends StaticObjectModelTest {
     }
 
     @Theory
-    public void propertyNameWithForbiddenChars(TestEnvironment te) {
+    public void propertyIdWithForbiddenChars(TestEnvironment te) {
         StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
         StaticProperty p1 = new DefaultStaticProperty("forbidden.char", StaticPropertyKind.Int, false);
         StaticProperty p2 = new DefaultStaticProperty("forbidden;char", StaticPropertyKind.Int, false);
@@ -146,7 +146,7 @@ public class BuilderPropertyTest extends StaticObjectModelTest {
     }
 
     @Theory
-    public void propertyNameTooLong(TestEnvironment te) throws NoSuchFieldException, IllegalAccessException {
+    public void propertyIdTooLong(TestEnvironment te) throws NoSuchFieldException, IllegalAccessException {
         byte[] longId = new byte[65536];
         Arrays.fill(longId, (byte) 120);
 
