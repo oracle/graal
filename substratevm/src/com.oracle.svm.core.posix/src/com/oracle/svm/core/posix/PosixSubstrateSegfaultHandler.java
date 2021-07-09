@@ -100,7 +100,7 @@ class PosixSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
         sigaction structSigAction = StackValue.get(structSigActionSize);
         LibC.memset(structSigAction, WordFactory.signed(0), WordFactory.unsigned(structSigActionSize));
         /* Register sa_sigaction signal handler */
-        structSigAction.sa_flags(Signal.SA_SIGINFO());
+        structSigAction.sa_flags(Signal.SA_SIGINFO() | Signal.SA_NODEFER());
         structSigAction.sa_sigaction(advancedSignalDispatcher.getFunctionPointer());
         Signal.sigaction(Signal.SignalEnum.SIGSEGV, structSigAction, WordFactory.nullPointer());
         Signal.sigaction(Signal.SignalEnum.SIGBUS, structSigAction, WordFactory.nullPointer());

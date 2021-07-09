@@ -291,6 +291,9 @@ public class Signal {
     @CConstant
     public static native int SA_SIGINFO();
 
+    @CConstant
+    public static native int SA_NODEFER();
+
     @CStruct(addStructKeyword = true)
     public interface sigaction extends PointerBase {
         @CField
