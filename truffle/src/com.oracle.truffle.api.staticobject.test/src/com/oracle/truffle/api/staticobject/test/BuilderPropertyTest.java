@@ -146,21 +146,23 @@ public class BuilderPropertyTest extends StaticObjectModelTest {
     }
 
     @Theory
-    public void propertyNameTooLong(TestEnvironment te) {
-        char[] longId = new char[65529];
-        char[] tooLongId = new char[65530];
-        Arrays.fill(longId, 'x');
-        Arrays.fill(tooLongId, 'x');
+    public void propertyNameTooLong(TestEnvironment te) throws NoSuchFieldException, IllegalAccessException {
+        byte[] longId = new byte[65536];
+        Arrays.fill(longId, (byte) 120);
 
         StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
-        builder.property(new DefaultStaticProperty(new String(longId), StaticPropertyKind.Int, false));
-        try {
-            builder.property(new DefaultStaticProperty(new String(tooLongId), StaticPropertyKind.Int, false));
-            Assert.fail();
-        } catch (IllegalArgumentException e) {
-            Assert.assertEquals("The property id cannot be longer than 65529 characters", e.getMessage());
+        StaticProperty p1 = new DefaultStaticProperty("property1", StaticPropertyKind.Int, false);
+        StaticProperty p2 = new DefaultStaticProperty(new String(longId), StaticPropertyKind.Int, false);
+        builder.property(p1).property(p2);
+        Object staticObject = builder.build().getFactory().create();
+        p1.setInt(staticObject, 1);
+        p2.setInt(staticObject, 2);
+
+        if (!te.arrayBased) {
+            Class<?> staticObjectClass = staticObject.getClass();
+            Assert.assertEquals(1, staticObjectClass.getField("field0").get(staticObject));
+            Assert.assertEquals(2, staticObjectClass.getField("field1").get(staticObject));
         }
-        builder.build();
     }
 
     @Theory
