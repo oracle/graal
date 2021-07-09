@@ -26,7 +26,9 @@ package com.oracle.svm.core.configure;
 
 import java.io.IOException;
 import java.io.Reader;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
@@ -52,9 +54,22 @@ public final class ProxyConfigurationParser extends ConfigurationParser {
         parseTopLevelArray(asList(json, "first level of document must be an array of interface lists"));
     }
 
-    private void parseTopLevelArray(List<Object> interfaceLists) {
-        for (Object interfaceList : interfaceLists) {
-            parseInterfaceList(asList(interfaceList, "second level of document must be a lists of objects"));
+    private void parseTopLevelArray(List<Object> proxyConfiguration) {
+        boolean foundInterfaceLists = false;
+        boolean foundProxyConfigurationObjects = false;
+        for (Object proxyConfigurationObject : proxyConfiguration) {
+            if (proxyConfigurationObject instanceof List) {
+                foundInterfaceLists = true;
+                parseInterfaceList(asList(proxyConfigurationObject, "<shouldn't reach here>"));
+            } else if (proxyConfigurationObject instanceof Map) {
+                foundProxyConfigurationObjects = true;
+                parseWithPredicatedConfig(asMap(proxyConfigurationObject, "<shouldn't reach here>"));
+            } else {
+                throw new JSONParserException("second level must be composed of either interface lists or proxy configuration objects");
+            }
+            if (foundInterfaceLists && foundProxyConfigurationObjects) {
+                throw new JSONParserException("second level can only be populated of either interface lists or proxy configuration objects, but these cannot be mixed");
+            }
         }
     }
 
@@ -70,6 +85,11 @@ public final class ProxyConfigurationParser extends ConfigurationParser {
         } catch (Exception e) {
             throw new JSONParserException(e.toString());
         }
+    }
+
+    private void parseWithPredicatedConfig(Map<String, Object> proxyConfigObject) {
+        checkAttributes(proxyConfigObject, "proxy descriptor object", Collections.singleton("interfaceList"), Collections.singleton("predicate"));
+        parseInterfaceList(asList(proxyConfigObject.get("interfaceList"), "interfaceList must be an array of fully qualified interface names"));
     }
 
 }

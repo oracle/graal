@@ -27,6 +27,8 @@ package com.oracle.svm.core.configure;
 
 import java.io.IOException;
 import java.io.Reader;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Map;
 
 import com.oracle.svm.core.util.json.JSONParser;
@@ -49,10 +51,11 @@ public class SerializationConfigurationParser extends ConfigurationParser {
         Object json = parser.parse();
         for (Object serializationKey : asList(json, "first level of document must be an array of serialization lists")) {
             Map<String, Object> data = asMap(serializationKey, "second level of document must be serialization descriptor objects ");
-            String className = asString(data.get(NAME_KEY));
+            checkAttributes(data, "serialization descriptor object", Collections.singleton(NAME_KEY), Arrays.asList(CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY, "predicate"));
+            String targetSerializationClass = asString(data.get(NAME_KEY));
             Object optionalCustomCtorValue = data.get(CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY);
             String customTargetConstructorClass = optionalCustomCtorValue != null ? asString(optionalCustomCtorValue) : null;
-            serializationSupport.registerWithTargetConstructorClass(className, customTargetConstructorClass);
+            serializationSupport.registerWithTargetConstructorClass(targetSerializationClass, customTargetConstructorClass);
         }
     }
 }

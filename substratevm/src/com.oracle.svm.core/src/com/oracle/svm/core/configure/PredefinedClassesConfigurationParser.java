@@ -83,7 +83,7 @@ public class PredefinedClassesConfigurationParser extends ConfigurationParser {
     }
 
     private void parseClass(Path basePath, Map<String, Object> data) {
-        checkAttributes(data, "class descriptor object", Collections.singleton("hash"), Collections.singleton("nameInfo"));
+        checkAttributes(data, "class descriptor object", Collections.singleton("hash"), Arrays.asList("nameInfo", "predicate"));
 
         String hash = asString(data.get("hash"), "hash");
         String nameInfo = asNullableString(data.get("nameInfo"), "nameInfo");

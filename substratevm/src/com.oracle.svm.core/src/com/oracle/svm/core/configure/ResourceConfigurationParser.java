@@ -106,6 +106,8 @@ public class ResourceConfigurationParser extends ConfigurationParser {
         for (Map.Entry<String, Object> pair : resource.entrySet()) {
             if (valueKey.equals(pair.getKey())) {
                 valueObject = pair.getValue();
+            } else if (pair.getKey().equals("predicate")) {
+                /* Ignored for compatibility with newer config */
             } else {
                 throw new JSONParserException("Unknown attribute '" + pair.getKey() + "' (supported attributes: '" + valueKey + "') in " + expectedType);
             }
