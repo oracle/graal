@@ -84,25 +84,25 @@ public class Meteor {
     static final int N_PIECE_TYPE = 10;
     static final int N_ORIENT = 12;
     static final int g_firstRegion[] = {
-            0x00, 0x01, 0x02, 0x03, 0x04, 0x01, 0x06, 0x07,
-            0x08, 0x01, 0x02, 0x03, 0x0c, 0x01, 0x0e, 0x0f,
+                    0x00, 0x01, 0x02, 0x03, 0x04, 0x01, 0x06, 0x07,
+                    0x08, 0x01, 0x02, 0x03, 0x0c, 0x01, 0x0e, 0x0f,
 
-            0x10, 0x01, 0x02, 0x03, 0x04, 0x01, 0x06, 0x07,
-            0x18, 0x01, 0x02, 0x03, 0x1c, 0x01, 0x1e, 0x1f
+                    0x10, 0x01, 0x02, 0x03, 0x04, 0x01, 0x06, 0x07,
+                    0x18, 0x01, 0x02, 0x03, 0x1c, 0x01, 0x1e, 0x1f
     };
     static final int g_flip[] = {
-            0x00, 0x10, 0x08, 0x18, 0x04, 0x14, 0x0c, 0x1c,
-            0x02, 0x12, 0x0a, 0x1a, 0x06, 0x16, 0x0e, 0x1e,
+                    0x00, 0x10, 0x08, 0x18, 0x04, 0x14, 0x0c, 0x1c,
+                    0x02, 0x12, 0x0a, 0x1a, 0x06, 0x16, 0x0e, 0x1e,
 
-            0x01, 0x11, 0x09, 0x19, 0x05, 0x15, 0x0d, 0x1d,
-            0x03, 0x13, 0x0b, 0x1b, 0x07, 0x17, 0x0f, 0x1f,
+                    0x01, 0x11, 0x09, 0x19, 0x05, 0x15, 0x0d, 0x1d,
+                    0x03, 0x13, 0x0b, 0x1b, 0x07, 0x17, 0x0f, 0x1f,
     };
     static final int[] s_firstOne = {
-            0, 0, 1, 0, 2, 0, 1, 0,
-            3, 0, 1, 0, 2, 0, 1, 0,
+                    0, 0, 1, 0, 2, 0, 1, 0,
+                    3, 0, 1, 0, 2, 0, 1, 0,
 
-            4, 0, 1, 0, 2, 0, 1, 0,
-            3, 0, 1, 0, 2, 0, 1, 0,
+                    4, 0, 1, 0, 2, 0, 1, 0,
+                    3, 0, 1, 0, 2, 0, 1, 0,
     };
     // -- Globals -------------------------
     static IslandInfo[] g_islandInfo = new IslandInfo[MAX_ISLAND_OFFSET];
@@ -374,19 +374,18 @@ public class Meteor {
 
     // -----------------------
     static class Board {
-        static final int L_EDGE_MASK =
-                ((1 << 0) | (1 << 5) | (1 << 10) | (1 << 15) |
+        static final int L_EDGE_MASK = ((1 << 0) | (1 << 5) | (1 << 10) | (1 << 15) |
                         (1 << 20) | (1 << 25) | (1 << 30));
         static final int R_EDGE_MASK = L_EDGE_MASK << 4;
         static final int TOP_ROW = (1 << N_COL) - 1;
-        static final int ROW_0_MASK =
-                TOP_ROW | (TOP_ROW << 10) | (TOP_ROW << 20) | (TOP_ROW << 30);
+        static final int ROW_0_MASK = TOP_ROW | (TOP_ROW << 10) | (TOP_ROW << 20) | (TOP_ROW << 30);
         static final int ROW_1_MASK = ROW_0_MASK << 5;
         static final int BOARD_MASK = (1 << 30) - 1;
         Soln m_curSoln;
         Soln m_minSoln;
         Soln m_maxSoln;
         int m_nSoln;
+
         Board() {
             m_curSoln = new Soln(Soln.NO_PIECE);
             m_minSoln = new Soln(N_PIECE_TYPE);
@@ -641,8 +640,8 @@ public class Meteor {
         static final int ALL_PIECE_MASK = (1 << N_PIECE_TYPE) - 1;
         static final int SKIP_PIECE = 5;
         static final int BaseVecs[] = {
-                0x10f, 0x0cb, 0x1087, 0x427, 0x465,
-                0x0c7, 0x8423, 0x0a7, 0x187, 0x08f
+                        0x10f, 0x0cb, 0x1087, 0x427, 0x465,
+                        0x0c7, 0x8423, 0x0a7, 0x187, 0x08f
         };
         static Piece[][] s_basePiece = new Piece[N_PIECE_TYPE][N_ORIENT];
 
