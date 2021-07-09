@@ -41,28 +41,28 @@ import sun.text.normalizer.UCharacterProperty;
 // Checkstyle: resume
 
 @TargetClass(className = "sun.text.normalizer.UCharacterProperty", onlyWith = JDK8OrEarlier.class)
-final class Target_sun_text_normalizer_UCharacterProperty_JDK8 {
+final class Target_sun_text_normalizer_UCharacterProperty {
 
     @Substitute
     private static UCharacterProperty getInstance() {
-        return Util_sun_text_normalizer_UCharacterProperty_JDK8.instance;
+        return Util_sun_text_normalizer_UCharacterProperty.instance;
     }
 }
 
-final class Util_sun_text_normalizer_UCharacterProperty_JDK8 {
+final class Util_sun_text_normalizer_UCharacterProperty {
     static final UCharacterProperty instance = UCharacterProperty.getInstance();
 }
 
 @TargetClass(className = "sun.text.normalizer.UBiDiProps", onlyWith = JDK8OrEarlier.class)
-final class Target_sun_text_normalizer_UBiDiProps_JDK8 {
+final class Target_sun_text_normalizer_UBiDiProps {
 
     @Substitute
     private static UBiDiProps getSingleton() {
-        return Util_sun_text_normalizer_UBiDiProps_JDK8.singleton;
+        return Util_sun_text_normalizer_UBiDiProps.singleton;
     }
 }
 
-final class Util_sun_text_normalizer_UBiDiProps_JDK8 {
+final class Util_sun_text_normalizer_UBiDiProps {
 
     static final UBiDiProps singleton;
 
@@ -78,5 +78,5 @@ final class Util_sun_text_normalizer_UBiDiProps_JDK8 {
 }
 
 /** Dummy class to have a class with the file's name. */
-public final class LocaleSubstitutionsJDK8 {
+public final class LocaleSubstitutions {
 }

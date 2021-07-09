@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
+package com.oracle.svm.core.jdk11;
 
 import java.util.HashMap;
 import java.util.zip.ZipFile;
@@ -30,6 +30,7 @@ import java.util.zip.ZipFile;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.JDK11OrLater;
 
 @TargetClass(value = ZipFile.class, innerClass = "Source", onlyWith = JDK11OrLater.class)
 final class Target_java_util_zip_ZipFile_Source {

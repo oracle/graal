@@ -23,7 +23,7 @@
  * questions.
  */
 
-package com.oracle.svm.core.jdk;
+package com.oracle.svm.core.jdk11;
 
 // Checkstyle: allow reflection
 
@@ -38,6 +38,7 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.jdk.JDK11OrLater;
 
 /**
  * Disable the module based iteration in favour of classpath based iteration. See
