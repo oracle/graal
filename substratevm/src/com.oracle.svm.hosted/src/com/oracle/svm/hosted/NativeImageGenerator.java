@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted;
 
-import static com.oracle.svm.hosted.NativeImageOptions.DiagnosticMode;
+import static com.oracle.svm.hosted.NativeImageOptions.DiagnosticsMode;
 import static com.oracle.svm.hosted.NativeImageOptions.DiagnosticsDir;
 import static org.graalvm.compiler.hotspot.JVMCIVersionCheck.JVMCI11_RELEASES_URL;
 import static org.graalvm.compiler.hotspot.JVMCIVersionCheck.JVMCI8_RELEASES_URL;
@@ -834,7 +834,7 @@ public class NativeImageGenerator {
                 ImageSingletons.add(SubstrateTargetDescription.class, target);
 
                 ImageSingletons.add(SubstrateOptions.ReportingSupport.class, new SubstrateOptions.ReportingSupport(
-                                DiagnosticMode.getValue() ? DiagnosticsDir.getValue() : Paths.get("reports").toString()));
+                                DiagnosticsMode.getValue() ? DiagnosticsDir.getValue() : Paths.get("reports").toString()));
 
                 if (javaMainSupport != null) {
                     ImageSingletons.add(JavaMainSupport.class, javaMainSupport);
