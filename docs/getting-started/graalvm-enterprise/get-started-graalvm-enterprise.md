@@ -285,6 +285,8 @@ public class HelloWorld {
 }
 ```
 
+> Note: For compilation `native-image` depends on the local toolchain. Make sure your system meets the [prerequisites](/reference-manual/native-image/#prerequisites).
+
 Compile _HelloWorld.java_ to bytecode and then build a native image:
 ```shell
 javac HelloWorld.java

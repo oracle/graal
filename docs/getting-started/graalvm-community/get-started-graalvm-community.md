@@ -270,9 +270,8 @@ For more information on running polyglot applications, see [Polyglot Programming
 
 ## Native Images
 
-With GraalVM you can compile Java bytecode into a platform-specific, self-contained, native executable - a native image - to achieve faster startup and a smaller footprint for your application.
-The [Native Image](/reference-manual/native-image/) functionality is not available by
-default, but can be easily installed with the [GraalVM Updater](/reference-manual/graalvm-updater/) tool:
+With GraalVM you can compile Java bytecode into a platform-specific, self-contained, native executable - a native image - to achieve faster startup and smaller footprint for your application.
+The [Native Image](/reference-manual/native-image/) functionality is not available by default, but can be easily installed with the [GraalVM Updater](/reference-manual/graalvm-updater/) tool:
 ```shell
 gu install native-image
 ```
@@ -286,6 +285,8 @@ public class HelloWorld {
   }
 }
 ```
+
+> Note: For compilation `native-image` depends on the local toolchain. Make sure your system meets the [prerequisites](/reference-manual/native-image/#prerequisites).
 
 Compile _HelloWorld.java_ to bytecode and then build a native image:
 ```shell
