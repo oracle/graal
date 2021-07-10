@@ -190,7 +190,7 @@ public class NativeImageOptions {
                     Paths.get("reports", ReportUtils.timeStampedFileName("diagnostics", "")).toString());
 
     @Option(help = "Enables the diagnostic mode.")//
-    public static final HostedOptionKey<Boolean> DiagnosticMode = new HostedOptionKey<Boolean>(false) {
+    public static final HostedOptionKey<Boolean> DiagnosticsMode = new HostedOptionKey<Boolean>(false) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
             if (newValue) {
