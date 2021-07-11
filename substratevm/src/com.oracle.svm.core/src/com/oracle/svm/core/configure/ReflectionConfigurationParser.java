@@ -89,50 +89,53 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
             String name = entry.getKey();
             Object value = entry.getValue();
             try {
-                if (name.equals("name")) {
-                    /* Already handled. */
-                } else if (name.equals("allDeclaredConstructors")) {
-                    if (asBoolean(value, "allDeclaredConstructors")) {
-                        delegate.registerDeclaredConstructors(clazz);
-                    }
-                } else if (name.equals("allPublicConstructors")) {
-                    if (asBoolean(value, "allPublicConstructors")) {
-                        delegate.registerPublicConstructors(clazz);
-                    }
-                } else if (name.equals("allDeclaredMethods")) {
-                    if (asBoolean(value, "allDeclaredMethods")) {
-                        delegate.registerDeclaredMethods(clazz);
-                    }
-                } else if (name.equals("allPublicMethods")) {
-                    if (asBoolean(value, "allPublicMethods")) {
-                        delegate.registerPublicMethods(clazz);
-                    }
-                } else if (name.equals("allDeclaredFields")) {
-                    if (asBoolean(value, "allDeclaredFields")) {
-                        delegate.registerDeclaredFields(clazz);
-                    }
-                } else if (name.equals("allPublicFields")) {
-                    if (asBoolean(value, "allPublicFields")) {
-                        delegate.registerPublicFields(clazz);
-                    }
-                } else if (name.equals("allDeclaredClasses")) {
-                    if (asBoolean(value, "allDeclaredClasses")) {
-                        delegate.registerDeclaredClasses(clazz);
-                    }
-                } else if (name.equals("allPublicClasses")) {
-                    if (asBoolean(value, "allPublicClasses")) {
-                        delegate.registerPublicClasses(clazz);
-                    }
-                } else if (name.equals("methods")) {
-                    parseMethods(asList(value, "Attribute 'methods' must be an array of method descriptors"), clazz);
-                } else if (name.equals("fields")) {
-                    parseFields(asList(value, "Attribute 'fields' must be an array of field descriptors"), clazz);
-                } else if (name.equals("predicate")) {
-                    /* Ignored for compatibility with newer config */
-                } else {
-                    throw new JSONParserException("Unknown attribute '" + name +
-                                    "' (supported attributes: allDeclaredConstructors, allPublicConstructors, allDeclaredMethods, allPublicMethods, allDeclaredFields, allPublicFields, methods, fields) in defintion of class " +
-                                    delegate.getTypeName(clazz));
+                switch (name) {
+                    case "allDeclaredConstructors":
+                        if (asBoolean(value, "allDeclaredConstructors")) {
+                            delegate.registerDeclaredConstructors(clazz);
+                        }
+                        break;
+                    case "allPublicConstructors":
+                        if (asBoolean(value, "allPublicConstructors")) {
+                            delegate.registerPublicConstructors(clazz);
+                        }
+                        break;
+                    case "allDeclaredMethods":
+                        if (asBoolean(value, "allDeclaredMethods")) {
+                            delegate.registerDeclaredMethods(clazz);
+                        }
+                        break;
+                    case "allPublicMethods":
+                        if (asBoolean(value, "allPublicMethods")) {
+                            delegate.registerPublicMethods(clazz);
+                        }
+                        break;
+                    case "allDeclaredFields":
+                        if (asBoolean(value, "allDeclaredFields")) {
+                            delegate.registerDeclaredFields(clazz);
+                        }
+                        break;
+                    case "allPublicFields":
+                        if (asBoolean(value, "allPublicFields")) {
+                            delegate.registerPublicFields(clazz);
+                        }
+                        break;
+                    case "allDeclaredClasses":
+                        if (asBoolean(value, "allDeclaredClasses")) {
+                            delegate.registerDeclaredClasses(clazz);
+                        }
+                        break;
+                    case "allPublicClasses":
+                        if (asBoolean(value, "allPublicClasses")) {
+                            delegate.registerPublicClasses(clazz);
+                        }
+                        break;
+                    case "methods":
+                        parseMethods(asList(value, "Attribute 'methods' must be an array of method descriptors"), clazz);
+                        break;
+                    case "fields":
+                        parseFields(asList(value, "Attribute 'fields' must be an array of field descriptors"), clazz);
+                        break;
                 }
             } catch (LinkageError e) {
                 handleError("Could not register " + delegate.getTypeName(clazz) + ": " + name + " for reflection.", e);
@@ -155,12 +158,6 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
                 fieldName = asString(entry.getValue(), "name");
             } else if (propertyName.equals("allowWrite")) {
                 allowWrite = asBoolean(entry.getValue(), "allowWrite");
-            } else if (propertyName.equals("allowUnsafeAccess")) {
-                /* ignored (no longer required) */
-            } else if (propertyName.equals("predicate")) {
-                /* Ignored for compatibility with newer config */
-            } else {
-                throw new JSONParserException("Unknown attribute '" + propertyName + "' (supported attributes: 'name') in definition of field for class '" + delegate.getTypeName(clazz) + "'");
             }
         }
 
@@ -192,15 +189,10 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
                 methodName = asString(entry.getValue(), "name");
             } else if (propertyName.equals("parameterTypes")) {
                 methodParameterTypes = parseMethodParameters(clazz, methodName, asList(entry.getValue(),
-                        "Attribute 'parameterTypes' must be a list of type names"));
+                                "Attribute 'parameterTypes' must be a list of type names"));
                 if (methodParameterTypes == null) {
                     return;
                 }
-            } else if (propertyName.equals("predicate")) {
-                /* Ignored for compatibility with newer config */
-            } else {
-                throw new JSONParserException(
-                                "Unknown attribute '" + propertyName + "' (supported attributes: 'name', 'parameterTypes') in definition of method for class '" + delegate.getTypeName(clazz) + "'");
             }
         }
 

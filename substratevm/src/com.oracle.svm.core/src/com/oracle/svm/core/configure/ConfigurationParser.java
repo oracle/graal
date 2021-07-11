@@ -30,7 +30,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -61,24 +60,12 @@ public abstract class ConfigurationParser {
         throw new JSONParserException(errorMessage);
     }
 
-    protected static void checkAttributes(Map<String, Object> map, String type, Collection<String> requiredAttrs, Collection<String> optionalAttrs) {
+    protected static void checkAttributes(Map<String, Object> map, String type, Collection<String> requiredAttrs) {
         List<String> unseenRequired = new ArrayList<>(requiredAttrs);
-        for (String key : map.keySet()) {
-            boolean required = unseenRequired.remove(key);
-            if (!required && !optionalAttrs.contains(key)) {
-                List<String> supported = new ArrayList<>(requiredAttrs);
-                supported.addAll(optionalAttrs);
-                throw new JSONParserException("Unknown attribute '" + key + "' (supported attributes: " + supported + ") in resource definition");
-
-            }
-        }
+        unseenRequired.removeAll(map.keySet());
         if (!unseenRequired.isEmpty()) {
-            throw new JSONParserException("Missing attribute '" + unseenRequired.get(0) + "' in " + type);
+            throw new JSONParserException("Missing attributes [" + String.join(", ", unseenRequired) + "] in " + type);
         }
-    }
-
-    protected static void checkAttributes(Map<String, Object> data, String type, List<String> requiredAttrs) {
-        checkAttributes(data, type, requiredAttrs, Collections.emptyList());
     }
 
     protected static String asString(Object value) {
