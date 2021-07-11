@@ -218,7 +218,7 @@ final class Target_java_lang_SecurityManager {
     @NeverInline("Starting a stack walk in the caller frame")
     protected Class<?>[] getClassContext() {
         final Pointer startSP = readCallerStackPointer();
-        return StackTraceUtils.getClassContext(1, startSP);
+        return StackTraceUtils.getClassContext(0, startSP);
     }
 }
 

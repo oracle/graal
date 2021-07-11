@@ -201,6 +201,7 @@ GraalTags = Tags([
     'helloworld_debug',
     'debuginfotest',
     'test',
+    'unittests',
     'maven',
     'js',
     'build',
@@ -345,6 +346,11 @@ def svm_gate_body(args, tasks):
         if t:
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
                 native_unittests_task()
+
+    with Task('Run unit tests on hotspot', tasks, tags=[GraalTags.unittests]) as t:
+        if t:
+            with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
+                mx_unittest.unittest(['StackTraceUtilTest'])
 
     with Task('Run Truffle unittests with SVM image', tasks, tags=["svmjunit"]) as t:
         if t:

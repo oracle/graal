@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,11 +30,47 @@ import static org.junit.Assert.assertSame;
 import org.junit.Test;
 
 /**
- *
+ * Tests of {@link com.oracle.svm.core.jdk.StackTraceUtils}.
  */
-public class StackTraceTests {
+public class StackTraceUtilTest {
 
-    static final class Subclass extends SecurityManager {
+    static class C {
+
+        static {
+            Class<?>[] classes = new SecurityManagerSubclass().getClassContext();
+            assertSame(SecurityManagerSubclass.class, classes[0]);
+            assertSame(C.class, classes[1]);
+            assertSame(B.class, classes[2]);
+            assertSame(A.class, classes[3]);
+            assertSame(StackTraceUtilTest.class, classes[4]);
+            assertTrue(classes.length > 5);
+        }
+
+        public static void c() {
+        }
+    }
+
+    static final class B {
+
+        static {
+            C.c();
+        }
+
+        public static void b() {
+        }
+    }
+
+    static final class A {
+
+        static {
+            B.b();
+        }
+
+        public static void a() {
+        }
+    }
+
+    static final class SecurityManagerSubclass extends SecurityManager {
         @Override
         protected Class<?>[] getClassContext() {
             return super.getClassContext();
@@ -43,9 +79,6 @@ public class StackTraceTests {
 
     @Test
     public void testGetClassContext() {
-        final Subclass sm = new Subclass();
-        final Class<?>[] classes = sm.getClassContext();
-        assertSame(StackTraceTests.class, classes[0]);
-        assertTrue(classes.length > 1);
+        A.a();
     }
 }
