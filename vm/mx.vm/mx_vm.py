@@ -264,7 +264,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                         defaultBuild=False,
                     ))
                     # add jars to the layout of the benchmark distribution
-                    _add_project_to_dist(join('.', 'interpreter', simple_name + '.jar'), dist_name,
+                    _add_project_to_dist('./interpreter/{}.jar'.format(simple_name), dist_name,
                         source='dependency:{name}/polybench-espresso-' + simple_name.lower() + '.jar')
 
 
