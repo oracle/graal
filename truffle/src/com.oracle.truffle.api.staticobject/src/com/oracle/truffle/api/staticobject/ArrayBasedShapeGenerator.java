@@ -115,6 +115,18 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
         this.shapeOffset = shapeOffset;
     }
 
+    int getByteArrayOffset() {
+        return byteArrayOffset;
+    }
+
+    int getObjectArrayOffset() {
+        return objectArrayOffset;
+    }
+
+    int getShapeOffset() {
+        return shapeOffset;
+    }
+
     @SuppressWarnings("unchecked")
     static <T> ArrayBasedShapeGenerator<T> getShapeGenerator(GeneratorClassLoader gcl, Class<?> storageSuperClass, Class<T> storageFactoryInterface, boolean allowAOTClassGeneration) {
         Pair<Class<?>, Class<?>> pair = Pair.create(storageSuperClass, storageFactoryInterface);
@@ -144,9 +156,7 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
 
     @Override
     StaticShape<T> generateShape(StaticShape<T> parentShape, Map<String, StaticProperty> staticProperties, boolean safetyChecks) {
-        return ArrayBasedStaticShape.create(generatedStorageClass, generatedFactoryClass, (ArrayBasedStaticShape<T>) parentShape, staticProperties.values(), byteArrayOffset, objectArrayOffset,
-                        shapeOffset,
-                        safetyChecks);
+        return ArrayBasedStaticShape.create(this, generatedStorageClass, generatedFactoryClass, (ArrayBasedStaticShape<T>) parentShape, staticProperties.values(), safetyChecks);
     }
 
     // Invoked from TruffleFeature.StaticObjectSupport

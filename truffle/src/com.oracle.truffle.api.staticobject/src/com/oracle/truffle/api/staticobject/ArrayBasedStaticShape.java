@@ -71,11 +71,11 @@ final class ArrayBasedStaticShape<T> extends StaticShape<T> {
         this.propertyLayout = propertyLayout;
     }
 
-    static <T> ArrayBasedStaticShape<T> create(Class<?> generatedStorageClass, Class<? extends T> generatedFactoryClass, ArrayBasedStaticShape<T> parentShape,
-                    Collection<StaticProperty> staticProperties, int byteArrayOffset, int objectArrayOffset, int shapeOffset, boolean checkShapes) {
+    static <T> ArrayBasedStaticShape<T> create(ArrayBasedShapeGenerator<?> generator, Class<?> generatedStorageClass, Class<? extends T> generatedFactoryClass, ArrayBasedStaticShape<T> parentShape,
+                    Collection<StaticProperty> staticProperties, boolean checkShapes) {
         try {
             ArrayBasedPropertyLayout parentPropertyLayout = parentShape == null ? null : parentShape.getPropertyLayout();
-            ArrayBasedPropertyLayout propertyLayout = new ArrayBasedPropertyLayout(parentPropertyLayout, staticProperties, byteArrayOffset, objectArrayOffset, shapeOffset);
+            ArrayBasedPropertyLayout propertyLayout = new ArrayBasedPropertyLayout(generator, parentPropertyLayout, staticProperties);
             ArrayBasedStaticShape<T> shape = new ArrayBasedStaticShape<>(parentShape, generatedStorageClass, propertyLayout, checkShapes);
             T factory = generatedFactoryClass.cast(
                             generatedFactoryClass.getConstructor(Object.class, int.class, int.class).newInstance(shape, propertyLayout.getPrimitiveArraySize(), propertyLayout.getObjectArraySize()));
@@ -94,11 +94,11 @@ final class ArrayBasedStaticShape<T> extends StaticShape<T> {
         } else {
             assert checkShape(receiverObject);
         }
-        return UNSAFE.getObject(receiverObject, (long) (primitive ? propertyLayout.byteArrayOffset : propertyLayout.objectArrayOffset));
+        return UNSAFE.getObject(receiverObject, (long) (primitive ? propertyLayout.generator.getByteArrayOffset() : propertyLayout.generator.getObjectArrayOffset()));
     }
 
     private boolean checkShape(Object receiverObject) {
-        ArrayBasedStaticShape<?> receiverShape = cast(UNSAFE.getObject(receiverObject, (long) propertyLayout.shapeOffset), ArrayBasedStaticShape.class);
+        ArrayBasedStaticShape<?> receiverShape = cast(UNSAFE.getObject(receiverObject, (long) propertyLayout.generator.getShapeOffset()), ArrayBasedStaticShape.class);
         if (this != receiverShape && (receiverShape.superShapes.length < superShapes.length || receiverShape.superShapes[superShapes.length - 1] != this)) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new IllegalArgumentException("Incompatible shape on property access. Expected '" + this + "' got '" + receiverShape + "'.");
@@ -187,14 +187,10 @@ final class ArrayBasedStaticShape<T> extends StaticShape<T> {
         private final int[][] leftoverHoles;
         private final int lastOffset;
 
-        private final int byteArrayOffset;
-        private final int objectArrayOffset;
-        private final int shapeOffset;
+        private final ArrayBasedShapeGenerator<?> generator;
 
-        ArrayBasedPropertyLayout(ArrayBasedPropertyLayout parentLayout, Collection<StaticProperty> staticProperties, int byteArrayOffset, int objectArrayOffset, int shapeOffset) {
-            this.byteArrayOffset = byteArrayOffset;
-            this.objectArrayOffset = objectArrayOffset;
-            this.shapeOffset = shapeOffset;
+        ArrayBasedPropertyLayout(ArrayBasedShapeGenerator<?> generator, ArrayBasedPropertyLayout parentLayout, Collection<StaticProperty> staticProperties) {
+            this.generator = generator;
 
             // Stats about primitive fields
             int superTotalByteCount;
