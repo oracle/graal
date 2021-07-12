@@ -208,12 +208,12 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
     private EvalResult evalSource(Context context, String path) {
         final File file = new File(path);
         if ("jar".equals(getExtension(path))) {
-            // Espresso cannot eval .jar files, instead we load the JAR's main class.            
+            // Espresso cannot eval .jar files, instead we load the JAR's main class.
             String className = config.className;
             Value mainKlass = null;
             if (className != null) {
                 mainKlass = context.getBindings("java").getMember(className);
-            } else {                
+            } else {
                 Value helper = context.getBindings("java").getMember("sun.launcher.LauncherHelper");
                 Value mainClass = helper.invokeMember("checkAndLoadMain", true, 2 /* LM_JAR */, path);
                 mainKlass = mainClass.getMember("static"); // Class -> Klass

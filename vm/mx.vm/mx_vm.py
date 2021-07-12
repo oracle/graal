@@ -227,8 +227,8 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                 if isdir(join(java_benchmarks, f)) and not f.startswith("."):
                     main_class = basename(f)
                     simple_name = main_class.split(".")[-1]
-                    
-                    project_name = 'benchmarks.interpreter.espresso.' + simple_name.lower()                    
+
+                    project_name = 'benchmarks.interpreter.espresso.' + simple_name.lower()
                     register_project(mx.JavaProject(
                         suite=_suite,
                         subDir=None,
