@@ -30,7 +30,8 @@ import java.lang.reflect.Method;
 /**
  * Operating System Metrics class
  *
- * implNote: Some of the APIs within this class return metrics for an
+ * Implementation note:
+ * Some of the APIs within this class return metrics for an
  * "Isolation Group" or "Container".  When the term "Isolation Group"
  * is used in the API description, this refers to either:
  *
@@ -71,7 +72,7 @@ public interface Metrics {
      * Returns the interface responsible for providing the
      * platform metrics.
      *
-     * implNote:
+     * Implementation note:
      * Metrics are currently only supported Linux.
      * The provider for Linux is cgroups (version 1 or 2).
      *
@@ -163,7 +164,7 @@ public interface Metrics {
      * Group used for prioritizing the scheduling of processes across
      * all Isolation Groups running on a host.
      *
-     * implNote:
+     * Implementation note:
      * Popular container orchestration systems have standardized shares
      * to be multiples of 1024, where 1024 is interpreted as 1 CPU share
      * of execution.  Users can distribute CPU resources to multiple
