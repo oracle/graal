@@ -1708,8 +1708,12 @@ public class NativeImage {
             Class<?> moduleAccess = Class.forName("com.oracle.svm.driver.jdk11.ModuleAccess");
             Method getModuleNames = moduleAccess.getMethod("getModuleNames", Path[].class);
             return (List<String>) getModuleNames.invoke(null, (Object) modulePathEntries);
-        } catch (ReflectiveOperationException e) {
+        } catch (ClassNotFoundException e) {
             throw showError("com.oracle.svm.driver.jdk11.ModuleAccess.getModuleNames only available on Java > 8");
+        } catch (ReflectiveOperationException e) {
+            String entries = Arrays.stream(modulePathEntries)
+                            .map(Path::toString).collect(Collectors.joining(", ", "[", "]"));
+            throw showError("Failed to get module-names for " + entries, e);
         }
     }
 
