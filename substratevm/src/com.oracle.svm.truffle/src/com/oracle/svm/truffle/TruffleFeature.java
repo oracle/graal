@@ -1038,11 +1038,13 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
             if (firstAnalysisRun) {
                 firstAnalysisRun = false;
                 boolean requiresIteration = false;
-                // We need to register as unsafe-accessed the primitive, object, and shape fields of generated storage classes.
-                // However, these classes do not share a common super type, and their fields are not annotated. Plus, the invocation
-                // plugin does not intercept calls to `StaticShape.Builder.build()` that happen during the analysis, for example because
-                // of context pre-initialization. Therefore, we inspect the generator cache in ArrayBasedShapeGenerator, which
-                // contains references to all generated storage classes.
+                // We need to register as unsafe-accessed the primitive, object, and shape fields of
+                // generated storage classes. However, these classes do not share a common super
+                // type, and their fields are not annotated. Plus, the invocation plugin does not
+                // intercept calls to `StaticShape.Builder.build()` that happen during the analysis,
+                // for example because of context pre-initialization. Therefore, we inspect the
+                // generator cache in ArrayBasedShapeGenerator, which contains references to all
+                // generated storage classes.
                 ConcurrentHashMap<?, ?> generatorCache = ReflectionUtil.readStaticField(SHAPE_GENERATOR, "generatorCache");
                 for (Map.Entry<?, ?> entry : generatorCache.entrySet()) {
                     Object shapeGenerator = entry.getValue();
