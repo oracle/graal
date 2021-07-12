@@ -88,7 +88,6 @@ import static com.oracle.truffle.api.impl.asm.Opcodes.T_BYTE;
 import static com.oracle.truffle.api.impl.asm.Opcodes.V1_8;
 
 final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
-    private static final int UNINITIALIZED_NATIVE_OFFSET = -1;
     private static final ConcurrentHashMap<Pair<Class<?>, Class<?>>, ArrayBasedShapeGenerator<?>> generatorCache = new ConcurrentHashMap<>();
     private static final String[] ARRAY_SIZE_FIELDS = new String[]{"primitiveArraySize", "objectArraySize"};
 
@@ -131,10 +130,6 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
             if (prevSg != null) {
                 sg = prevSg;
             }
-        } else if (TruffleOptions.AOT && sg.byteArrayOffset == UNINITIALIZED_NATIVE_OFFSET) {
-            sg.byteArrayOffset = getObjectFieldOffset(sg.generatedStorageClass, "primitive");
-            sg.objectArrayOffset = getObjectFieldOffset(sg.generatedStorageClass, "object");
-            sg.shapeOffset = getObjectFieldOffset(sg.generatedStorageClass, "shape");
         }
         return sg;
     }
