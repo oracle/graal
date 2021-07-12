@@ -1276,12 +1276,12 @@ public abstract class ObjectFile {
             } finally {
                 cleanBuffer(buffer); // unmap immediately
             }
-        } catch (IOException e) {
+        } catch (IOException | ReflectiveOperationException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private static void cleanBuffer(ByteBuffer buffer) {
+    private static void cleanBuffer(ByteBuffer buffer) throws ReflectiveOperationException {
         try {
             /*
              * Trying to use sun.misc.Unsafe.invokeCleaner as the first approach restores forward
@@ -1290,7 +1290,7 @@ public abstract class ObjectFile {
              */
             Method invokeCleanerMethod = Unsafe.class.getMethod("invokeCleaner", ByteBuffer.class);
             invokeCleanerMethod.invoke(UNSAFE, buffer);
-        } catch (ReflectiveOperationException e) {
+        } catch (NoSuchMethodException e) {
             /* On Java 8 we have to use the non-forward compatible approach. */
             ((DirectBuffer) buffer).cleaner().clean();
         }
