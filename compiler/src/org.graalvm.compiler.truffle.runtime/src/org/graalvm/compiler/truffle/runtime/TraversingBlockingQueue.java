@@ -106,7 +106,7 @@ class TraversingBlockingQueue implements BlockingQueue<Runnable> {
             // entries.remove can only return false if a sleeping thread takes the only element
             return entries.remove(max) ? max : null;
         } finally {
-            System.err.println(String.format("First tier AVG: %f, last tier AVG %f", firstTierWeights.getAverage(), lastTierWeights.getAverage()));
+            System.err.println(String.format("First tier AVG: %s, last tier AVG %s", firstTierWeights, lastTierWeights));
         }
     }
 
