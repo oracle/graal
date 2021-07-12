@@ -39,6 +39,7 @@ import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.SubstrateUtil;
@@ -202,7 +203,13 @@ public final class Target_java_lang_ClassLoader {
 
     @Substitute
     private Class<?> loadClass(String name) throws ClassNotFoundException {
-        if (!checkName(name)) {
+        boolean nameValid;
+        if (JavaVersionUtil.JAVA_SPEC < 17) {
+            nameValid = checkName(name);
+        } else {
+            nameValid = checkNameJDK17OrLater(name);
+        }
+        if (!nameValid) {
             /*
              * Names that contain `/` or start with '[' are invalid. Calling `ClassLoader.loadClass`
              * to create a `Class` object of an array class is invalid and a
