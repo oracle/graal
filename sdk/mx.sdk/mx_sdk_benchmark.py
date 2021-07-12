@@ -127,6 +127,49 @@ memUnitTable = {
 }
 
 
+def strip_args_with_number(strip_args, args):
+    """Removes arguments (specified in `strip_args`) from `args`.
+
+    The stripped arguments are expected to have a number value. For single character arguments (e.g. `-X`) the space
+    before the value might be omitted (e.g. `-X8`). In this case only one element is removed from `args`. Otherwise
+    (e.g. `-X 8`), two elements are removed from `args`.
+    """
+
+    if not isinstance(strip_args, list):
+        strip_args = [strip_args]
+
+    def _strip_arg_with_number_gen(_strip_arg, _args):
+        skip_next = False
+        for arg in _args:
+            if skip_next:
+                # skip value of argument
+                skip_next = False
+                continue
+            if arg.startswith(_strip_arg):
+                if arg == _strip_arg:
+                    # full match - value is the next argument `-i 10`
+                    skip_next = True
+                    continue
+                # partial match at begin - either a different option or value without space separator `-i10`
+                if len(_strip_arg) == 2 and _strip_arg.startswith('-'):
+                    # only look at single character options
+                    remainder_arg = arg[len(_strip_arg):]
+                    try:
+                        int(remainder_arg)
+                        # remainder is a number - skip the current arg
+                        continue
+                    except ValueError:
+                        # not a number - probably a different option
+                        pass
+            # add arg to result
+            yield arg
+
+    result = args
+    for strip_arg in strip_args:
+        result = _strip_arg_with_number_gen(strip_arg, result)
+    return list(result)
+
+
 class NativeImageBenchmarkMixin(object):
 
     def __init__(self):
@@ -150,17 +193,42 @@ class NativeImageBenchmarkMixin(object):
     def extra_image_build_argument(self, _, args):
         return parse_prefixed_args('-Dnative-image.benchmark.extra-image-build-argument=', args)
 
-    def extra_run_arg(self, _, args):
-        return parse_prefixed_args('-Dnative-image.benchmark.extra-run-arg=', args)
+    def extra_run_arg(self, benchmark, args, image_run_args):
+        """Returns all arguments passed to the final image.
 
-    def extra_agent_run_arg(self, _, args):
-        return parse_prefixed_args('-Dnative-image.benchmark.extra-agent-run-arg=', args)
+        This includes those passed globally on the `mx benchmark` command line after the last `--`.
+        These arguments are passed via the `image_run_args` parameter.
+        """
+        return image_run_args + parse_prefixed_args('-Dnative-image.benchmark.extra-run-arg=', args)
 
-    def extra_profile_run_arg(self, _, args):
-        return parse_prefixed_args('-Dnative-image.benchmark.extra-profile-run-arg=', args)
+    def extra_agent_run_arg(self, benchmark, args, image_run_args):
+        """Returns all arguments passed to the agent run.
 
-    def extra_agent_profile_run_arg(self, _, args):
-        return parse_prefixed_args('-Dnative-image.benchmark.extra-agent-profile-run-arg=', args)
+        This includes those passed globally on the `mx benchmark` command line after the last `--`.
+        These arguments are passed via the `image_run_args` parameter.
+        Conflicting global arguments might be filtered out. The function `strip_args_with_number()` can help with that.
+        """
+        return image_run_args + parse_prefixed_args('-Dnative-image.benchmark.extra-agent-run-arg=', args)
+
+    def extra_profile_run_arg(self, benchmark, args, image_run_args):
+        """Returns all arguments passed to the profiling run.
+
+        This includes those passed globally on the `mx benchmark` command line after the last `--`.
+        These arguments are passed via the `image_run_args` parameter.
+        Conflicting global arguments might be filtered out. The function `strip_args_with_number()` can help with that.
+        """
+        # either use extra profile run args if set or otherwise the extra run args
+        extra_profile_run_args = parse_prefixed_args('-Dnative-image.benchmark.extra-profile-run-arg=', args) or parse_prefixed_args('-Dnative-image.benchmark.extra-run-arg=', args)
+        return image_run_args + extra_profile_run_args
+
+    def extra_agent_profile_run_arg(self, benchmark, args, image_run_args):
+        """Returns all arguments passed to the agent profiling run.
+
+        This includes those passed globally on the `mx benchmark` command line after the last `--`.
+        These arguments are passed via the `image_run_args` parameter.
+        Conflicting global arguments might be filtered out. The function `strip_args_with_number()` can help with that.
+        """
+        return image_run_args + parse_prefixed_args('-Dnative-image.benchmark.extra-agent-profile-run-arg=', args)
 
     def benchmark_output_dir(self, _, args):
         parsed_args = parse_prefixed_args('-Dnative-image.benchmark.benchmark-output-dir=', args)
