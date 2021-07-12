@@ -1208,7 +1208,8 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
             image_config = self.subject.image_config
             build_args = [
                 '--no-fallback',
-                '--initialize-at-build-time',
+                '--initialize-at-build-time=org,com,net,jdk,javax,java,sun,apple',
+                '-H:+AssertInitializationSpecifiedForAllClasses',
                 '-H:+EnforceMaxRuntimeCompileMethods',
                 '-Dorg.graalvm.version={}'.format(_suite.release_version()),
             ]
