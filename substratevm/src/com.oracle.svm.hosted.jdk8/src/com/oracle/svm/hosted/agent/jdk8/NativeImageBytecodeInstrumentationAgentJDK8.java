@@ -31,6 +31,7 @@ import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.Instrumentation;
 
 import com.oracle.svm.hosted.agent.NativeImageBytecodeInstrumentationAgent;
+import com.oracle.svm.hosted.agent.NativeImageBytecodeInstrumentationAgentExtension;
 import com.oracle.svm.hosted.agent.jdk8.lambda.LambdaMetaFactoryRewriteVisitor;
 import com.oracle.svm.util.AgentSupport;
 import com.oracle.svm.util.TransformerInterface;
@@ -41,9 +42,9 @@ import jdk.internal.org.objectweb.asm.ClassWriter;
 /**
  * The set of {@link NativeImageBytecodeInstrumentationAgent} extensions for JDK 8.
  */
-public class NativeImageBytecodeInstrumentationAgentJDK8 {
+public class NativeImageBytecodeInstrumentationAgentJDK8 implements NativeImageBytecodeInstrumentationAgentExtension {
 
-    public static void addClassInstrumentationTransformer(Instrumentation inst) {
+    public void addClassInstrumentationTransformer(Instrumentation inst) {
         TransformerInterface transformation = NativeImageBytecodeInstrumentationAgentJDK8::applyRewriteLambdasTransformation;
         ClassFileTransformer transformer = AgentSupport.createClassInstrumentationTransformer(transformation);
         inst.addTransformer(transformer);
