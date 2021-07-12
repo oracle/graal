@@ -242,11 +242,6 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
             // tasks previously compiled with higher tier are better
             return compiledTier > otherCompileTier;
         }
-        if (engineData.traversingFirstTierBonus > 0) {
-            double thisWeight = lastWeight * (1 + (isFirstTier() ? engineData.traversingFirstTierBonus : 0));
-            double otherWeight = other.lastWeight * (1 + (other.isFirstTier() ? engineData.traversingFirstTierBonus : 0));
-            return thisWeight > otherWeight;
-        }
         if (engineData.weightingBothTiers || isFirstTier()) {
             return lastWeight > other.lastWeight;
         }
@@ -269,7 +264,7 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
         double weight = rate(count, elapsed) * count;
         lastTime = currentTime;
         lastCount = count;
-        lastWeight = weight;
+        lastWeight = weight * (isFirstTier() ? engineData.traversingFirstTierBonus : 1);
         assert weight >= 0.0 : "weight must be positive";
         return true;
     }
