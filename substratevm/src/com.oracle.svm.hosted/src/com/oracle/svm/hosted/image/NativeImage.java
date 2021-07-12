@@ -50,6 +50,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.core.meta.SubstrateVMConstant;
+import jdk.vm.ci.meta.VMConstant;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
 import org.graalvm.compiler.code.CompilationResult;
@@ -655,8 +657,14 @@ public abstract class NativeImage extends AbstractImage {
                 baseSectionImpl.markRelocationSite(offsetInSection, RelocationKind.getDirect(wordSize), data.symbolName, 0L);
             }
         } else if (target instanceof ConstantReference) {
+            VMConstant constant = ((ConstantReference) target).getConstant();
+            if (constant instanceof SubstrateVMConstant) {
+                // TODO
+                return;
+            }
             // Direct object reference in code that must be patched (not a linker relocation)
-            Object object = SubstrateObjectConstant.asObject(((ConstantReference) target).getConstant());
+
+            Object object = SubstrateObjectConstant.asObject(constant);
             long address = heap.getObjectInfo(object).getAddress();
             int encShift = ImageSingletons.lookup(CompressEncoding.class).getShift();
             long targetValue = address >>> encShift;

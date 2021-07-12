@@ -27,6 +27,9 @@ package com.oracle.svm.core.graal.meta;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.oracle.svm.core.meta.SharedMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
 import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
@@ -36,6 +39,7 @@ import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.hotspot.nodes.type.MethodPointerStamp;
 import org.graalvm.compiler.nodes.CompressionNode.CompressionOp;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.DeadEndNode;
@@ -48,8 +52,10 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AndNode;
 import org.graalvm.compiler.nodes.calc.UnsignedRightShiftNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
+import org.graalvm.compiler.nodes.extended.LoadMethodNode;
 import org.graalvm.compiler.nodes.memory.FloatingReadNode;
 import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
+import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
@@ -85,6 +91,8 @@ import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
+
+import static org.graalvm.word.LocationIdentity.any;
 
 public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLoweringProvider implements SubstrateLoweringProvider {
 
@@ -134,9 +142,27 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
             lowerAssertionNode((AssertionNode) n);
         } else if (n instanceof DeadEndNode) {
             lowerDeadEnd((DeadEndNode) n);
+        } else if (n instanceof LoadMethodNode) {
+            lowerLoadMethodNode((LoadMethodNode) n);
         } else {
             super.lower(n, tool);
         }
+    }
+
+    private void lowerLoadMethodNode(LoadMethodNode loadMethodNode) {
+        StructuredGraph graph = loadMethodNode.graph();
+        SharedMethod method = (SharedMethod) loadMethodNode.getMethod();
+        ReadNode metaspaceMethod = createReadVirtualMethod(graph, loadMethodNode.getHub(), method, loadMethodNode.getReceiverType());
+        graph.replaceFixed(loadMethodNode, metaspaceMethod);
+    }
+
+    private ReadNode createReadVirtualMethod(StructuredGraph graph, ValueNode hub, SharedMethod method, ResolvedJavaType receiverType) {
+        int vtableEntryOffset = runtimeConfig.getVTableOffset(method.getVTableIndex());
+        assert vtableEntryOffset > 0;
+        Stamp methodStamp = MethodPointerStamp.methodNonNull();
+        AddressNode address = createOffsetAddress(graph, hub, vtableEntryOffset);
+        ReadNode metaspaceMethod = graph.add(new ReadNode(address, any(), methodStamp, BarrierType.NONE));
+        return metaspaceMethod;
     }
 
     @Override

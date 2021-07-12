@@ -36,12 +36,18 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import com.oracle.svm.core.meta.SubstrateVMConstant;
+import jdk.vm.ci.code.site.ConstantReference;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.VMConstant;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.CompilationResult.CodeAnnotation;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.serviceprovider.BufferUtil;
+import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.graal.pointsto.BigBang;
@@ -174,6 +180,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
                     long newValue = originalValue + objectAddress;
                     VMError.guarantee(NumUtil.isInt(newValue), "Image heap size is limited to 2 GByte");
                     targetCode.putInt(patch.getPosition(), (int) newValue);
+                    // }
                 }
             }
             int patchesHandled = 0;
@@ -200,6 +207,14 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
             }
             for (DataPatch dataPatch : compilation.getDataPatches()) {
                 Reference ref = dataPatch.reference;
+
+                if (ref instanceof ConstantReference) {
+                    VMConstant constant = ((ConstantReference) ref).getConstant();
+                    if (constant instanceof SubstrateVMConstant) {
+                        addNonDataRelocation(dataPatch, relocs, ((SubstrateVMConstant) constant).pointer());
+                        continue;
+                    }
+                }
                 /*
                  * Constants are allocated offsets in a separate space, which can be emitted as
                  * read-only (.rodata) section.
@@ -215,6 +230,22 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
             } catch (Throwable e) {
                 throw VMError.shouldNotReachHere(e);
             }
+        }
+    }
+
+    private void addNonDataRelocation(DataPatch dataPatch, RelocatableBuffer buffer, RelocatedPointer pointer) {
+        assert pointer instanceof CFunctionPointer : "unknown relocated pointer " + pointer;
+        assert pointer instanceof MethodPointer : "cannot create relocation for unknown FunctionPointer " + pointer;
+
+        ResolvedJavaMethod method = ((MethodPointer) pointer).getMethod();
+        HostedMethod hMethod = method instanceof HostedMethod ? (HostedMethod) method : imageHeap.getUniverse().lookup(method);
+        if (hMethod.isCompiled()) {
+            // Only compiled methods inserted in vtables require relocation.
+            int pointerSize = ConfigurationValues.getTarget().wordSize;
+            ObjectFile.RelocationKind relocationKind = pointerSize == 8 ? ObjectFile.RelocationKind.DIRECT_8 : ObjectFile.RelocationKind.DIRECT_4;
+            buffer.addRelocationWithoutAddend(dataPatch.pcOffset, relocationKind, pointer);
+        } else {
+            System.out.println("Not compiled : " + hMethod.format("%H.%n"));
         }
     }
 

@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.graal.meta;
 
-import static com.oracle.svm.core.util.VMError.unimplemented;
-
 import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -51,6 +49,6 @@ public class SubstrateStampProvider implements StampProvider {
 
     @Override
     public AbstractPointerStamp createMethodStamp() {
-        throw unimplemented();
+        return (AbstractPointerStamp) StampFactory.pointer();
     }
 }

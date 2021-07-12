@@ -289,6 +289,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                     tracingResultWriter = writer;
                 }
             } catch (Throwable t) {
+                System.out.println(Arrays.toString(t.getStackTrace()));
                 return error(2, t.toString());
             }
         } else if (traceOutputFile != null) {
@@ -298,6 +299,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                 tracer = writer;
                 tracingResultWriter = writer;
             } catch (Throwable t) {
+                System.out.println(Arrays.toString(t.getStackTrace()));
                 return error(2, t.toString());
             }
         }

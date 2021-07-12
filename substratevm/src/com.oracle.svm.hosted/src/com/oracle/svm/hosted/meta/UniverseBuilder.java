@@ -753,6 +753,7 @@ public class UniverseBuilder {
      * Assign the vtable slot to the correct resolved method for all subtypes.
      */
     private void assignImplementations(HostedType type, HostedMethod method, int slot, Map<HostedType, ArrayList<HostedMethod>> vtablesMap) {
+        // pointer
         if (type.wrapped.isInstantiated()) {
             assert (type.isInstanceClass() && !type.isAbstract()) || type.isArray();
 

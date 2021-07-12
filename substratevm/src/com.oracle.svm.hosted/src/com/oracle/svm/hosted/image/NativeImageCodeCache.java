@@ -41,6 +41,7 @@ import java.util.TreeMap;
 import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.core.meta.SubstrateVMConstant;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.DataSection;
 import org.graalvm.compiler.debug.DebugContext;
@@ -196,8 +197,10 @@ public abstract class NativeImageCodeCache {
     }
 
     private void addConstantToHeap(Constant constant, Object reason) {
+        if (constant instanceof SubstrateVMConstant) {
+            return;
+        }
         Object obj = SubstrateObjectConstant.asObject(constant);
-
         if (!imageHeap.getMetaAccess().lookupJavaType(obj.getClass()).getWrapped().isInstantiated()) {
             throw shouldNotReachHere("Non-instantiated type referenced by a compiled method: " + obj.getClass().getName() + "." +
                             (reason != null ? " Method: " + reason : ""));

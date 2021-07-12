@@ -33,12 +33,14 @@ import static jdk.vm.ci.amd64.AMD64.rbp;
 import static jdk.vm.ci.amd64.AMD64.rsp;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.HINT;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static org.graalvm.compiler.lir.LIRValueUtil.asConstantValue;
 import static org.graalvm.compiler.lir.LIRValueUtil.differentRegisters;
 
 import java.util.Collection;
 
+import com.oracle.svm.core.meta.SubstrateVMConstant;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
@@ -920,6 +922,8 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
                 return super.createLoad(dst, getZeroConstant(dst));
             } else if (src instanceof SubstrateObjectConstant) {
                 return loadObjectConstant(dst, (SubstrateObjectConstant) src);
+            } else if (src instanceof SubstrateVMConstant) {
+                return new LoadVMConstantOp(dst, (SubstrateVMConstant) src);
             }
             return super.createLoad(dst, src);
         }
@@ -930,6 +934,8 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
                 return super.createStackLoad(dst, getZeroConstant(dst));
             } else if (src instanceof SubstrateObjectConstant) {
                 return loadObjectConstant(dst, (SubstrateObjectConstant) src);
+            } else if (src instanceof SubstrateVMConstant) {
+                return new LoadVMConstantOp(dst, (SubstrateVMConstant) src);
             }
             return super.createStackLoad(dst, src);
         }
@@ -940,6 +946,50 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
                 return new LoadCompressedObjectConstantOp(dst, constant, heapBase, getCompressEncoding(), lirKindTool);
             }
             return new MoveFromConstOp(dst, constant);
+        }
+
+        public static final class LoadVMConstantOp extends AMD64LIRInstruction implements LoadConstantOp {
+            public static final LIRInstructionClass<LoadVMConstantOp> TYPE = LIRInstructionClass.create(LoadVMConstantOp.class);
+            private final SubstrateVMConstant constant;
+            @Def({REG, HINT}) private final AllocatableValue result;
+
+            protected LoadVMConstantOp(AllocatableValue result, SubstrateVMConstant constant) {
+                super(TYPE);
+                this.constant = constant;
+                this.result = result;
+            }
+
+            @Override
+            public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+                int pointerSize = ConfigurationValues.getTarget().wordSize;
+
+                Register resultReg = asRegister(result);
+                if (masm.target.inlineObjects) {
+                    crb.recordInlineDataInCode(constant);
+                    if (pointerSize == 4) {
+                        masm.movl(resultReg, 0xDEADDEAD, true);
+                    } else {
+                        masm.movq(resultReg, 0xDEADDEADDEADDEADL, true);
+                    }
+                } else {
+                    AMD64Address address = (AMD64Address) crb.recordDataReferenceInCode(constant, pointerSize);
+                    if (pointerSize == 4) {
+                        masm.movl(resultReg, address);
+                    } else {
+                        masm.movq(resultReg, address);
+                    }
+                }
+            }
+
+            @Override
+            public AllocatableValue getResult() {
+                return result;
+            }
+
+            @Override
+            public SubstrateVMConstant getConstant() {
+                return constant;
+            }
         }
 
         /*
@@ -1002,6 +1052,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
                 }
             }
         }
+
     }
 
     private FrameMapBuilder newFrameMapBuilder(RegisterConfig registerConfig) {
