@@ -374,8 +374,10 @@ public class ConfigurationTool {
                             Method generateFromModulesMethod = ReflectionUtil.lookupMethod(moduleFilterToolsClass, "generateFromModules",
                                             String[].class, RuleNode.Inclusion.class, RuleNode.Inclusion.class, RuleNode.Inclusion.class, boolean.class);
                             rootNode = (RuleNode) generateFromModulesMethod.invoke(null, moduleNames, rootInclusion, exportedInclusion, unexportedInclusion, reduce);
-                        } catch (Exception e) {
+                        } catch (ClassNotFoundException e) {
                             throw new RuntimeException("Module-based filter generation is not available in JDK 8 and below.");
+                        } catch (ReflectiveOperationException e) {
+                            throw new RuntimeException(e);
                         }
                     } else {
                         throw new UsageException(current + " is currently not supported in the native-image build of this tool.");
