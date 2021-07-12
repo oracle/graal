@@ -39,7 +39,6 @@ import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.ffi.NativeSignature;
 import com.oracle.truffle.espresso.ffi.NativeType;
@@ -55,19 +54,15 @@ import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.substitutions.CallableFromNative;
 import com.oracle.truffle.espresso.substitutions.GenerateNativeEnv;
-import com.oracle.truffle.espresso.substitutions.GenerateNativeEnv.PrependEnv;
-import com.oracle.truffle.espresso.substitutions.GuestCall;
-import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.substitutions.InjectMeta;
 import com.oracle.truffle.espresso.substitutions.InjectProfile;
-import com.oracle.truffle.espresso.substitutions.IntrinsicSubstitutor;
-import com.oracle.truffle.espresso.substitutions.ManagementCollector;
+import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 
-@GenerateNativeEnv(target = ManagementImpl.class)
-@PrependEnv
+@GenerateNativeEnv(target = ManagementImpl.class, prependEnv = true)
 public final class Management extends NativeEnv {
     // Partial/incomplete implementation disclaimer!
     //
@@ -206,9 +201,11 @@ public final class Management extends NativeEnv {
         }
     }
 
+    private static final List<CallableFromNative.Factory> MANAGEMENT_IMPL_FACTORIES = ManagementImplCollector.getInstances(CallableFromNative.Factory.class);
+
     @Override
-    protected List<IntrinsicSubstitutor.Factory> getCollector() {
-        return ManagementCollector.getCollector();
+    protected List<CallableFromNative.Factory> getCollector() {
+        return MANAGEMENT_IMPL_FACTORIES;
     }
 
     @Override
@@ -237,7 +234,7 @@ public final class Management extends NativeEnv {
         return -1;
     }
 
-    private static void validateThreadIdArray(Meta meta, @Host(long[].class) StaticObject threadIds, SubstitutionProfiler profiler) {
+    private static void validateThreadIdArray(Meta meta, @JavaType(long[].class) StaticObject threadIds, SubstitutionProfiler profiler) {
         assert threadIds.isArray();
         int numThreads = threadIds.length();
         for (int i = 0; i < numThreads; ++i) {
@@ -249,7 +246,7 @@ public final class Management extends NativeEnv {
         }
     }
 
-    private static void validateThreadInfoArray(Meta meta, @Host(ThreadInfo[].class) StaticObject infoArray, SubstitutionProfiler profiler) {
+    private static void validateThreadInfoArray(Meta meta, @JavaType(ThreadInfo[].class) StaticObject infoArray, SubstitutionProfiler profiler) {
         // check if the element of infoArray is of type ThreadInfo class
         Klass infoArrayKlass = infoArray.getKlass();
         if (infoArray.isArray()) {
@@ -262,7 +259,7 @@ public final class Management extends NativeEnv {
     }
 
     @ManagementImpl
-    public int GetThreadInfo(@Host(long[].class) StaticObject ids, int maxDepth, @Host(Object[].class) StaticObject infoArray, @InjectProfile SubstitutionProfiler profiler) {
+    public int GetThreadInfo(@JavaType(long[].class) StaticObject ids, int maxDepth, @JavaType(Object[].class) StaticObject infoArray, @InjectProfile SubstitutionProfiler profiler) {
         Meta meta = getMeta();
         if (StaticObject.isNull(ids) || StaticObject.isNull(infoArray)) {
             profiler.profile(0);
@@ -365,24 +362,23 @@ public final class Management extends NativeEnv {
     }
 
     @ManagementImpl
-    public @Host(String[].class) StaticObject GetInputArgumentArray() {
+    public @JavaType(String[].class) StaticObject GetInputArgumentArray() {
         return getVM().JVM_GetVmArguments();
     }
 
     @ManagementImpl
-    public @Host(String[].class) StaticObject GetInputArguments() {
+    public @JavaType(String[].class) StaticObject GetInputArguments() {
         return getVM().JVM_GetVmArguments();
     }
 
     @ManagementImpl
-    public @Host(Object[].class) StaticObject GetMemoryPools(@SuppressWarnings("unused") @Host(Object.class) StaticObject unused,
-                    @GuestCall(target = "sun_management_ManagementFactory_createMemoryPool") DirectCallNode createMemoryPool) {
+    public @JavaType(Object[].class) StaticObject GetMemoryPools(@SuppressWarnings("unused") @JavaType(Object.class) StaticObject unused) {
         Klass memoryPoolMXBean = getMeta().resolveSymbolOrFail(Symbol.Type.java_lang_management_MemoryPoolMXBean, StaticObject.NULL, StaticObject.NULL);
         return memoryPoolMXBean.allocateReferenceArray(1, new IntFunction<StaticObject>() {
             @Override
             public StaticObject apply(int value) {
                 // (String name, boolean isHeap, long uThreshold, long gcThreshold)
-                return (StaticObject) createMemoryPool.call(
+                return (StaticObject) getMeta().sun_management_ManagementFactory_createMemoryPool.invokeDirect(null,
                                 /* String name */ getMeta().toGuestString("foo"),
                                 /* boolean isHeap */ true,
                                 /* long uThreshold */ -1L,
@@ -392,21 +388,20 @@ public final class Management extends NativeEnv {
     }
 
     @ManagementImpl
-    public @Host(Object[].class) StaticObject GetMemoryManagers(@SuppressWarnings("unused") @Host(Object.class) StaticObject pool,
-                    @GuestCall(target = "sun_management_ManagementFactory_createMemoryManager") DirectCallNode createMemoryManager) {
+    public @JavaType(Object[].class) StaticObject GetMemoryManagers(@SuppressWarnings("unused") @JavaType(Object.class) StaticObject pool) {
         Klass memoryManagerMXBean = getMeta().resolveSymbolOrFail(Symbol.Type.java_lang_management_MemoryManagerMXBean, StaticObject.NULL, StaticObject.NULL);
         return memoryManagerMXBean.allocateReferenceArray(1, new IntFunction<StaticObject>() {
             @Override
             public StaticObject apply(int value) {
                 // (String name, String type)
-                return (StaticObject) createMemoryManager.call(
+                return (StaticObject) getMeta().sun_management_ManagementFactory_createMemoryManager.invokeDirect(null,
                                 /* String name */ getMeta().toGuestString("foo"));
             }
         });
     }
 
     @ManagementImpl
-    public @Host(Object.class) StaticObject GetMemoryPoolUsage(@Host(Object.class) StaticObject pool) {
+    public @JavaType(Object.class) StaticObject GetMemoryPoolUsage(@JavaType(Object.class) StaticObject pool) {
         if (StaticObject.isNull(pool)) {
             return StaticObject.NULL;
         }
@@ -418,7 +413,7 @@ public final class Management extends NativeEnv {
     }
 
     @ManagementImpl
-    public @Host(Object.class) StaticObject GetPeakMemoryPoolUsage(@Host(Object.class) StaticObject pool) {
+    public @JavaType(Object.class) StaticObject GetPeakMemoryPoolUsage(@JavaType(Object.class) StaticObject pool) {
         if (StaticObject.isNull(pool)) {
             return StaticObject.NULL;
         }
@@ -430,7 +425,7 @@ public final class Management extends NativeEnv {
     }
 
     @ManagementImpl
-    public @Host(Object.class) StaticObject GetMemoryUsage(@SuppressWarnings("unused") boolean heap) {
+    public @JavaType(Object.class) StaticObject GetMemoryUsage(@SuppressWarnings("unused") boolean heap) {
         Method init = getMeta().java_lang_management_MemoryUsage.lookupDeclaredMethod(Symbol.Name._init_,
                         getSignatures().makeRaw(Symbol.Type._void, Symbol.Type._long, Symbol.Type._long, Symbol.Type._long, Symbol.Type._long));
         StaticObject instance = getMeta().java_lang_management_MemoryUsage.allocateInstance();
@@ -440,7 +435,7 @@ public final class Management extends NativeEnv {
 
     @ManagementImpl
     @TruffleBoundary // Lots of SVM + Windows blacklisted methods.
-    public long GetLongAttribute(@SuppressWarnings("unused") @Host(Object.class) StaticObject obj,
+    public long GetLongAttribute(@SuppressWarnings("unused") @JavaType(Object.class) StaticObject obj,
                     /* jmmLongAttribute */ int att) {
         switch (att) {
             case JMM_JVM_INIT_DONE_TIME_MS:
@@ -516,7 +511,7 @@ public final class Management extends NativeEnv {
     }
 
     @ManagementImpl
-    public int GetVMGlobals(@Host(Object[].class) StaticObject names, /* jmmVMGlobal* */ @Pointer TruffleObject globalsPtr, @SuppressWarnings("unused") int count,
+    public int GetVMGlobals(@JavaType(Object[].class) StaticObject names, /* jmmVMGlobal* */ @Pointer TruffleObject globalsPtr, @SuppressWarnings("unused") int count,
                     @InjectProfile SubstitutionProfiler profiler) {
         Meta meta = getMeta();
         if (getUncached().isNull(globalsPtr)) {
@@ -543,7 +538,7 @@ public final class Management extends NativeEnv {
 
     @ManagementImpl
     @SuppressWarnings("unused")
-    public @Host(ThreadInfo[].class) StaticObject DumpThreads(@Host(long[].class) StaticObject ids, boolean lockedMonitors, boolean lockedSynchronizers,
+    public @JavaType(ThreadInfo[].class) StaticObject DumpThreads(@JavaType(long[].class) StaticObject ids, boolean lockedMonitors, boolean lockedSynchronizers,
                     @InjectProfile SubstitutionProfiler profiler) {
         StaticObject threadIds = ids;
         if (StaticObject.isNull(threadIds)) {
@@ -583,8 +578,8 @@ public final class Management extends NativeEnv {
 
     @ManagementImpl
     public void GetThreadAllocatedMemory(
-                    @Host(long[].class) StaticObject ids,
-                    @Host(long[].class) StaticObject sizeArray,
+                    @JavaType(long[].class) StaticObject ids,
+                    @JavaType(long[].class) StaticObject sizeArray,
                     @InjectMeta Meta meta,
                     @InjectProfile SubstitutionProfiler profiler) {
         if (StaticObject.isNull(ids) || StaticObject.isNull(sizeArray)) {

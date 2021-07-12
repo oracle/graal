@@ -39,12 +39,12 @@ import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.impl.SuppressFBWarnings;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.dispatch.BaseInterop;
-import com.oracle.truffle.espresso.substitutions.Host;
-import com.oracle.truffle.espresso.substitutions.SuppressFBWarnings;
+import com.oracle.truffle.espresso.substitutions.JavaType;
 
 /**
  * Implementation of the Espresso object model.
@@ -118,12 +118,15 @@ public class StaticObject implements TruffleObject, Cloneable {
         ObjectKlass guestClass = klass.getMeta().java_lang_Class;
         StaticObject newObj = guestClass.getLinkedKlass().getShape(false).getFactory().create(guestClass);
         newObj.initInstanceFields(guestClass);
+        klass.getMeta().java_lang_Class_classLoader.setObject(newObj, klass.getDefiningClassLoader());
         if (klass.getContext().getJavaVersion().modulesEnabled()) {
-            klass.getMeta().java_lang_Class_classLoader.setObject(newObj, klass.getDefiningClassLoader());
             newObj.setModule(klass);
         }
+        if (klass.isArray() && klass.getMeta().java_lang_Class_componentType != null) {
+            klass.getMeta().java_lang_Class_componentType.setObject(newObj, ((ArrayKlass) klass).getComponentType().mirror());
+        }
         klass.getMeta().HIDDEN_MIRROR_KLASS.setHiddenObject(newObj, klass);
-        // Will be overriden by JVM_DefineKlass if necessary.
+        // Will be overriden if necessary, but should be initialized to non-host null.
         klass.getMeta().HIDDEN_PROTECTION_DOMAIN.setHiddenObject(newObj, StaticObject.NULL);
         return trackAllocation(klass, newObj);
     }
@@ -150,7 +153,8 @@ public class StaticObject implements TruffleObject, Cloneable {
      * Wraps a foreign {@link InteropLibrary#isException(Object) exception} as a guest
      * ForeignException.
      */
-    public static @Host(typeName = "Lcom/oracle/truffle/espresso/polyglot/ForeignException;") StaticObject createForeignException(Meta meta, Object foreignObject, InteropLibrary interopLibrary) {
+    public static @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/ForeignException;") StaticObject createForeignException(Meta meta, Object foreignObject,
+                    InteropLibrary interopLibrary) {
         assert meta.polyglot != null;
         assert meta.getContext().Polyglot;
         assert interopLibrary.isException(foreignObject);

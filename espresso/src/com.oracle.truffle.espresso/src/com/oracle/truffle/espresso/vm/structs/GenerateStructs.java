@@ -30,7 +30,7 @@ import java.lang.annotation.Target;
 
 import com.oracle.truffle.espresso.ffi.NativeType;
 
-@Retention(RetentionPolicy.RUNTIME)
+@Retention(RetentionPolicy.CLASS)
 @Target(ElementType.TYPE)
 public @interface GenerateStructs {
     KnownStruct[] value();

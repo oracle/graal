@@ -27,7 +27,6 @@ import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.espresso.impl.Stable;
 import com.oracle.truffle.espresso.jni.ModifiedUtf8;
 import com.oracle.truffle.espresso.meta.EspressoError;
 
@@ -41,7 +40,7 @@ public abstract class ByteSequence {
 
     protected final int hashCode;
 
-    @Stable @CompilationFinal(dimensions = 1) //
+    @CompilationFinal(dimensions = 1) //
     protected final byte[] value;
 
     public static final ByteSequence EMPTY = ByteSequence.create("");

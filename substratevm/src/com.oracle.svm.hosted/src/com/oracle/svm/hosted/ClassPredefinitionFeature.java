@@ -103,6 +103,10 @@ public class ClassPredefinitionFeature implements Feature {
     private class PredefinedClassesRegistryImpl implements PredefinedClassesRegistry {
         @Override
         public void add(String nameInfo, String providedHash, Path basePath) {
+            if (!PredefinedClassesSupport.supportsBytecodes()) {
+                throw UserError.abort("Cannot predefine class with hash %s from %s because class predefinition is disabled. Enable this feature using option %s.",
+                                providedHash, basePath, PredefinedClassesSupport.ENABLE_BYTECODES_OPTION);
+            }
             try {
                 Path path = basePath.resolve(providedHash + ConfigurationFile.PREDEFINED_CLASSES_AGENT_EXTRACTED_NAME_SUFFIX);
                 byte[] data = Files.readAllBytes(path);

@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.nodes.quick.invoke;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -41,6 +42,7 @@ import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
+@ReportPolymorphism
 public abstract class InvokeInterfaceNode extends QuickNode {
 
     final Method resolutionSeed;
@@ -67,6 +69,7 @@ public abstract class InvokeInterfaceNode extends QuickNode {
         return directCallNode.call(args);
     }
 
+    @ReportPolymorphism.Megamorphic
     @Specialization(replaces = "callVirtualDirect")
     Object callVirtualIndirect(StaticObject receiver, Object[] arguments,
                     @Cached("create()") IndirectCallNode indirectCallNode) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -108,20 +108,11 @@ public class CodePointSetAccumulator implements Iterable<Range> {
         return CodePointSet.create(acc);
     }
 
-    public void invert(CodePointSetAccumulator target, Encoding encoding) {
-        if (acc.isEmpty()) {
-            target.addRange(encoding.getMinValue(), encoding.getMaxValue());
-            return;
-        }
-        if (acc.getMin() > encoding.getMinValue()) {
-            target.addRange(encoding.getMinValue(), acc.getMin() - 1);
-        }
-        for (int i = 1; i < acc.size(); i++) {
-            target.addRange(acc.getHi(i - 1) + 1, acc.getLo(i) - 1);
-        }
-        if (acc.getMax() < encoding.getMaxValue()) {
-            target.addRange(acc.getMax() + 1, encoding.getMaxValue());
-        }
+    public void invert(Encoding encoding) {
+        IntRangesBuffer t = getTmp();
+        tmp = acc;
+        acc = t;
+        SortedListOfRanges.invert(tmp, encoding, acc);
     }
 
     public void intersectWith(SortedListOfRanges other) {

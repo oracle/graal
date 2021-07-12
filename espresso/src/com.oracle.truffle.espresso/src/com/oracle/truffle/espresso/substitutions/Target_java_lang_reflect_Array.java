@@ -63,7 +63,7 @@ public final class Target_java_lang_reflect_Array {
      * @exception NegativeArraySizeException if the specified {@code length} is negative
      */
     @Substitution
-    public static Object newArray(@Host(Class.class) StaticObject componentType, int length, @InjectMeta Meta meta) {
+    public static @JavaType(Object.class) StaticObject newArray(@JavaType(Class.class) StaticObject componentType, int length, @InjectMeta Meta meta) {
         if (CompilerDirectives.isPartialEvaluationConstant(componentType)) {
             // PE-through.
             return newArrayImpl(componentType, length, meta);
@@ -72,11 +72,11 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @TruffleBoundary(allowInlining = true)
-    static Object newArrayBoundary(@Host(Class.class) StaticObject componentType, int length, @InjectMeta Meta meta) {
+    static StaticObject newArrayBoundary(@JavaType(Class.class) StaticObject componentType, int length, @InjectMeta Meta meta) {
         return newArrayImpl(componentType, length, meta);
     }
 
-    static Object newArrayImpl(@Host(Class.class) StaticObject componentType, int length, @InjectMeta Meta meta) {
+    static StaticObject newArrayImpl(@JavaType(Class.class) StaticObject componentType, int length, @InjectMeta Meta meta) {
         if (StaticObject.isNull(componentType)) {
             throw meta.throwNullPointerException();
         }
@@ -116,7 +116,7 @@ public final class Target_java_lang_reflect_Array {
      */
     @TruffleBoundary
     @Substitution
-    public static @Host(Object.class) StaticObject multiNewArray(@Host(Class.class) StaticObject componentType, @Host(int[].class) StaticObject dimensionsArray, @InjectMeta Meta meta) {
+    public static @JavaType(Object.class) StaticObject multiNewArray(@JavaType(Class.class) StaticObject componentType, @JavaType(int[].class) StaticObject dimensionsArray, @InjectMeta Meta meta) {
         if (StaticObject.isNull(componentType) || StaticObject.isNull(dimensionsArray)) {
             throw meta.throwNullPointerException();
         }
@@ -145,7 +145,7 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static boolean getBoolean(@Host(Object.class) StaticObject array, int index, @InjectMeta Meta meta,
+    public static boolean getBoolean(@JavaType(Object.class) StaticObject array, int index, @InjectMeta Meta meta,
                     @InjectProfile SubstitutionProfiler profiler) {
         if (StaticObject.isNull(array)) {
             profiler.profile(0);
@@ -166,7 +166,7 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static byte getByte(@Host(Object.class) StaticObject array, int index, @InjectMeta Meta meta,
+    public static byte getByte(@JavaType(Object.class) StaticObject array, int index, @InjectMeta Meta meta,
                     @InjectProfile SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
         try {
@@ -178,7 +178,7 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static char getChar(@Host(Object.class) StaticObject array, int index, @InjectMeta Meta meta,
+    public static char getChar(@JavaType(Object.class) StaticObject array, int index, @InjectMeta Meta meta,
                     @InjectProfile SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
         try {
@@ -190,7 +190,7 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static short getShort(@Host(Object.class) StaticObject array, int index, @InjectMeta Meta meta,
+    public static short getShort(@JavaType(Object.class) StaticObject array, int index, @InjectMeta Meta meta,
                     @InjectProfile SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
         try {
@@ -202,7 +202,7 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static int getInt(@Host(Object.class) StaticObject array, int index, @InjectMeta Meta meta,
+    public static int getInt(@JavaType(Object.class) StaticObject array, int index, @InjectMeta Meta meta,
                     @InjectProfile SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
         try {
@@ -214,7 +214,7 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static float getFloat(@Host(Object.class) StaticObject array, int index, @InjectMeta Meta meta,
+    public static float getFloat(@JavaType(Object.class) StaticObject array, int index, @InjectMeta Meta meta,
                     @InjectProfile SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
         try {
@@ -226,7 +226,7 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static double getDouble(@Host(Object.class) StaticObject array, int index, @InjectMeta Meta meta,
+    public static double getDouble(@JavaType(Object.class) StaticObject array, int index, @InjectMeta Meta meta,
                     @InjectProfile SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
         try {
@@ -238,7 +238,7 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static long getLong(@Host(Object.class) StaticObject array, int index, @InjectMeta Meta meta,
+    public static long getLong(@JavaType(Object.class) StaticObject array, int index, @InjectMeta Meta meta,
                     @InjectProfile SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
         try {
@@ -284,7 +284,7 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static void setBoolean(@Host(Object.class) StaticObject array, int index, boolean value, @InjectMeta Meta meta,
+    public static void setBoolean(@JavaType(Object.class) StaticObject array, int index, boolean value, @InjectMeta Meta meta,
                     @InjectProfile SubstitutionProfiler profiler) {
         if (StaticObject.isNull(array)) {
             profiler.profile(0);
@@ -306,7 +306,7 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static void setByte(@Host(Object.class) StaticObject array, int index, byte value, @InjectMeta Meta meta,
+    public static void setByte(@JavaType(Object.class) StaticObject array, int index, byte value, @InjectMeta Meta meta,
                     @InjectProfile SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
         try {
@@ -318,7 +318,7 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static void setChar(@Host(Object.class) StaticObject array, int index, char value, @InjectMeta Meta meta,
+    public static void setChar(@JavaType(Object.class) StaticObject array, int index, char value, @InjectMeta Meta meta,
                     @InjectProfile SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
         try {
@@ -330,7 +330,7 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static void setShort(@Host(Object.class) StaticObject array, int index, short value, @InjectMeta Meta meta,
+    public static void setShort(@JavaType(Object.class) StaticObject array, int index, short value, @InjectMeta Meta meta,
                     @InjectProfile SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
         try {
@@ -342,7 +342,7 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static void setInt(@Host(Object.class) StaticObject array, int index, int value, @InjectMeta Meta meta,
+    public static void setInt(@JavaType(Object.class) StaticObject array, int index, int value, @InjectMeta Meta meta,
                     @InjectProfile SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
         try {
@@ -354,7 +354,7 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static void setFloat(@Host(Object.class) StaticObject array, int index, float value, @InjectMeta Meta meta,
+    public static void setFloat(@JavaType(Object.class) StaticObject array, int index, float value, @InjectMeta Meta meta,
                     @InjectProfile SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
         try {
@@ -366,7 +366,7 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static void setDouble(@Host(Object.class) StaticObject array, int index, double value, @InjectMeta Meta meta,
+    public static void setDouble(@JavaType(Object.class) StaticObject array, int index, double value, @InjectMeta Meta meta,
                     @InjectProfile SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
         try {
@@ -378,7 +378,7 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static void setLong(@Host(Object.class) StaticObject array, int index, long value, @InjectMeta Meta meta,
+    public static void setLong(@JavaType(Object.class) StaticObject array, int index, long value, @InjectMeta Meta meta,
                     @InjectProfile SubstitutionProfiler profiler) {
         checkNonNullArray(array, meta, profiler);
         try {
@@ -405,7 +405,7 @@ public final class Target_java_lang_reflect_Array {
      *                array
      */
     @Substitution
-    public static void set(@Host(Object.class) StaticObject array, int index, @Host(Object.class) StaticObject value, @InjectMeta Meta meta) {
+    public static void set(@JavaType(Object.class) StaticObject array, int index, @JavaType(Object.class) StaticObject value, @InjectMeta Meta meta) {
         InterpreterToVM vm = meta.getInterpreterToVM();
         if (StaticObject.isNull(array)) {
             throw meta.throwNullPointerException();
@@ -447,7 +447,7 @@ public final class Target_java_lang_reflect_Array {
      *                array
      */
     @Substitution
-    public static @Host(Object.class) StaticObject get(@Host(Object.class) StaticObject array, int index, @InjectMeta Meta meta) {
+    public static @JavaType(Object.class) StaticObject get(@JavaType(Object.class) StaticObject array, int index, @InjectMeta Meta meta) {
         InterpreterToVM vm = meta.getInterpreterToVM();
         if (StaticObject.isNull(array)) {
             throw meta.throwNullPointerException();

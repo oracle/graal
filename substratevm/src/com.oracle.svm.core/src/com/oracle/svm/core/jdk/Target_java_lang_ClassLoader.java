@@ -350,6 +350,9 @@ public final class Target_java_lang_ClassLoader {
     @Substitute
     @SuppressWarnings({"unused", "static-method"})
     private Class<?> defineClass(String name, java.nio.ByteBuffer b, ProtectionDomain protectionDomain) {
+        if (!PredefinedClassesSupport.supportsBytecodes()) {
+            throw PredefinedClassesSupport.throwBytecodeSupportDisabled();
+        }
         byte[] array;
         int off;
         int len = b.remaining();

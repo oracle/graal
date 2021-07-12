@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -614,6 +614,23 @@ public interface SortedListOfRanges extends CharacterSet {
                 assert a.intersects(ia, b, ib);
                 target.appendRange(Math.max(a.getLo(ia), b.getLo(ib)), Math.min(a.getHi(ia), b.getHi(ib)));
             }
+        }
+    }
+
+    static void invert(SortedListOfRanges a, Encoding encoding, RangesBuffer target) {
+        target.clear();
+        if (a.isEmpty()) {
+            target.appendRange(encoding.getMinValue(), encoding.getMaxValue());
+            return;
+        }
+        if (a.getMin() > encoding.getMinValue()) {
+            target.appendRange(encoding.getMinValue(), a.getMin() - 1);
+        }
+        for (int i = 1; i < a.size(); i++) {
+            target.appendRange(a.getHi(i - 1) + 1, a.getLo(i) - 1);
+        }
+        if (a.getMax() < encoding.getMaxValue()) {
+            target.appendRange(a.getMax() + 1, encoding.getMaxValue());
         }
     }
 

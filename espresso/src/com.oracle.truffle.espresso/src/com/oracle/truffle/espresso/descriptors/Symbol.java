@@ -208,8 +208,10 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> getTypeName = StaticSymbols.putName("getTypeName");
         public static final Symbol<Name> forName = StaticSymbols.putName("forName");
         public static final Symbol<Name> module = StaticSymbols.putName("module");
+        public static final Symbol<Name> classData = StaticSymbols.putName("classData");
         public static final Symbol<Name> classLoader = StaticSymbols.putName("classLoader");
         public static final Symbol<Name> classRedefinedCount = StaticSymbols.putName("classRedefinedCount");
+        public static final Symbol<Name> componentType = StaticSymbols.putName("componentType");
 
         // j.l.ClassLoader
         public static final Symbol<Name> addClass = StaticSymbols.putName("addClass");
@@ -380,6 +382,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> isPrivileged = StaticSymbols.putName("isPrivileged");
         public static final Symbol<Name> privilegedContext = StaticSymbols.putName("privilegedContext");
         public static final Symbol<Name> doPrivileged = StaticSymbols.putName("doPrivileged");
+        public static final Symbol<Name> executePrivileged = StaticSymbols.putName("executePrivileged");
 
         // jdk.internal.misc.UnsafeConstants
         public static final Symbol<Name> ADDRESS_SIZE0 = StaticSymbols.putName("ADDRESS_SIZE0");
@@ -493,6 +496,9 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> HIDDEN_INTERRUPTED = StaticSymbols.putName("0HIDDEN_INTERRUPTED");
         public static final Symbol<Name> HIDDEN_IS_ALIVE = StaticSymbols.putName("0HIDDEN_IS_ALIVE");
         public static final Symbol<Name> HIDDEN_SUSPEND_LOCK = StaticSymbols.putName("0HIDDEN_SUSPEND_LOCK");
+        public static final Symbol<Name> HIDDEN_THREAD_BLOCKED_OBJECT = StaticSymbols.putName("0HIDDEN_THREAD_BLOCKED_OBJECT");
+        public static final Symbol<Name> HIDDEN_THREAD_BLOCKED_COUNT = StaticSymbols.putName("0HIDDEN_THREAD_BLOCKED_COUNT");
+        public static final Symbol<Name> HIDDEN_THREAD_WAITED_COUNT = StaticSymbols.putName("0HIDDEN_THREAD_WAITED_COUNT");
 
         // Class
         public static final Symbol<Name> HIDDEN_MIRROR_KLASS = StaticSymbols.putName("0HIDDEN_MIRROR_KLASS");
@@ -504,9 +510,6 @@ public final class Symbol<T> extends ByteSequence {
 
         // Reference
         public static final Symbol<Name> HIDDEN_HOST_REFERENCE = StaticSymbols.putName("0HIDDEN_HOST_REFERENCE");
-        public static final Symbol<Name> HIDDEN_THREAD_BLOCKED_OBJECT = StaticSymbols.putName("0HIDDEN_THREAD_BLOCKED_OBJECT");
-        public static final Symbol<Name> HIDDEN_THREAD_BLOCKED_COUNT = StaticSymbols.putName("0HIDDEN_THREAD_BLOCKED_COUNT");
-        public static final Symbol<Name> HIDDEN_THREAD_WAITED_COUNT = StaticSymbols.putName("0HIDDEN_THREAD_WAITED_COUNT");
 
         // Polyglot ExceptionType
         public static final Symbol<Name> EXIT = StaticSymbols.putName("EXIT");
