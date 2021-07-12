@@ -25,6 +25,7 @@
 package org.graalvm.compiler.truffle.runtime;
 
 import java.util.Collection;
+import java.util.DoubleSummaryStatistics;
 import java.util.Iterator;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
@@ -76,26 +77,37 @@ class TraversingBlockingQueue implements BlockingQueue<Runnable> {
      * the best task.
      */
     private synchronized Runnable takeMax() {
+        DoubleSummaryStatistics firstTierWeights = new DoubleSummaryStatistics();
+        DoubleSummaryStatistics lastTierWeights = new DoubleSummaryStatistics();
         if (entries.isEmpty()) {
             return null;
         }
         long time = System.nanoTime();
-        Iterator<Runnable> it = entries.iterator();
-        Runnable max = null;
-        while (it.hasNext()) {
-            Runnable entry = it.next();
-            CompilationTask task = task(entry);
-            // updateWeight returns false only if the task's target does not exist
-            if (task.isCancelled() || !task.updateWeight(time)) {
-                it.remove();
-                continue;
+        try {
+            Iterator<Runnable> it = entries.iterator();
+            Runnable max = null;
+            while (it.hasNext()) {
+                Runnable entry = it.next();
+                CompilationTask task = task(entry);
+                // updateWeight returns false only if the task's target does not exist
+                if (task.isCancelled() || !task.updateWeight(time)) {
+                    it.remove();
+                    continue;
+                }
+                if (task.isFirstTier()) {
+                    firstTierWeights.accept(task.lastWeight);
+                } else {
+                    lastTierWeights.accept(task.lastWeight);
+                }
+                if (max == null || task.isHigherPriorityThan(task(max))) {
+                    max = entry;
+                }
             }
-            if (max == null || task.isHigherPriorityThan(task(max))) {
-                max = entry;
-            }
+            // entries.remove can only return false if a sleeping thread takes the only element
+            return entries.remove(max) ? max : null;
+        } finally {
+            System.err.println(String.format("First tier AVG: %f, last tier AVG %f", firstTierWeights.getAverage(), lastTierWeights.getAverage()));
         }
-        // entries.remove can only return false if a sleeping thread takes the only element
-        return entries.remove(max) ? max : null;
     }
 
     @Override
