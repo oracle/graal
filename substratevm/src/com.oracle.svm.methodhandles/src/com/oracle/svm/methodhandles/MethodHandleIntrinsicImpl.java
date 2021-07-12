@@ -32,10 +32,10 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 // Checkstyle: allow
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
@@ -110,7 +110,7 @@ final class MethodHandleIntrinsicImpl implements MethodHandleIntrinsic {
         }
     }
 
-    static Map<Variant, Map<String, Map<JavaKind, Map<Integer, MethodHandleIntrinsicImpl>>>> cache = new HashMap<>();
+    static Map<Variant, Map<String, Map<JavaKind, Map<Integer, MethodHandleIntrinsicImpl>>>> cache = new ConcurrentHashMap<>();
     static final String NO_SPECIES = "";
     static final Set<String> unsafeFieldAccessMethodNames = new HashSet<>();
 
@@ -137,9 +137,9 @@ final class MethodHandleIntrinsicImpl implements MethodHandleIntrinsic {
     }
 
     private static MethodHandleIntrinsicImpl intrinsic(Variant variant, String species, JavaKind kind, int index) {
-        return cache.computeIfAbsent(variant, (v) -> new HashMap<>())
-                        .computeIfAbsent(species, (s) -> new HashMap<>())
-                        .computeIfAbsent(kind, (t) -> new HashMap<>())
+        return cache.computeIfAbsent(variant, (v) -> new ConcurrentHashMap<>())
+                        .computeIfAbsent(species, (s) -> new ConcurrentHashMap<>())
+                        .computeIfAbsent(kind, (t) -> new ConcurrentHashMap<>())
                         .computeIfAbsent(index, (i) -> new MethodHandleIntrinsicImpl(variant, species, kind, index));
     }
 
