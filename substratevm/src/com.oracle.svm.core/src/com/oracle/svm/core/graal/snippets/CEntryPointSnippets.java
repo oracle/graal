@@ -310,7 +310,14 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         assert !isolateInitialized;
         isolateInitialized = true;
 
-        RuntimeSupport.executeInitializationHooks();
+        try {
+            RuntimeSupport.executeInitializationHooks();
+        } catch (Throwable t) {
+            System.err.println("Uncaught exception while running initialization hooks:");
+            t.printStackTrace();
+            return CEntryPointErrors.ISOLATE_INITIALIZATION_FAILED;
+        }
+
         return CEntryPointErrors.NO_ERROR;
     }
 
