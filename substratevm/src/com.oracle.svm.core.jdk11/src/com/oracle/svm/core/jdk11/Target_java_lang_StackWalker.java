@@ -23,7 +23,7 @@
  * questions.
  */
 
-package com.oracle.svm.core.jdk;
+package com.oracle.svm.core.jdk11;
 
 import java.lang.StackWalker.Option;
 import java.lang.StackWalker.StackFrame;
@@ -37,6 +37,9 @@ import java.util.stream.StreamSupport;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.StoredContinuationImpl;
+import com.oracle.svm.core.jdk.JDK11OrLater;
+import com.oracle.svm.core.jdk.LoomJDK;
+import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.thread.JavaContinuations;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.Target_java_lang_Continuation;

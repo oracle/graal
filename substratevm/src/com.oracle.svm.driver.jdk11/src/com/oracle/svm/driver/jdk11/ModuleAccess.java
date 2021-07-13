@@ -23,11 +23,23 @@
  * questions.
  */
 
-package com.oracle.objectfile;
+package com.oracle.svm.driver.jdk11;
 
+import java.lang.module.ModuleDescriptor;
+import java.lang.module.ModuleFinder;
+import java.lang.module.ModuleReference;
+import java.nio.file.Path;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+@SuppressWarnings("unused")
 public class ModuleAccess {
-    @SuppressWarnings("unused")
-    public static void openModuleByClass(Class<?> declaringClass, Class<?> accessingClass) {
-        /* For Java 8 this method does not have any effect */
+    public static List<String> getModuleNames(Path[] modulePathEntries) {
+        Set<ModuleReference> moduleReferences = ModuleFinder.of(modulePathEntries).findAll();
+        return moduleReferences.stream()
+                        .map(ModuleReference::descriptor)
+                        .map(ModuleDescriptor::name)
+                        .collect(Collectors.toList());
     }
 }

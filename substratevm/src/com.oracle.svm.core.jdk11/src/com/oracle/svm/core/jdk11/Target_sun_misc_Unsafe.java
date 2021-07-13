@@ -22,12 +22,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
+package com.oracle.svm.core.jdk11;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.JDK11OrLater;
 
 /**
  * These substitutions are necessary because in JDK 11 the static initializations of these fields
@@ -35,7 +36,7 @@ import com.oracle.svm.core.annotate.TargetClass;
  * copying a recomputed value during image building does not recompute the value. See GR-12640.
  */
 @TargetClass(value = sun.misc.Unsafe.class, onlyWith = JDK11OrLater.class)
-final class Target_sun_misc_Unsafe_JDK11OrLater {
+final class Target_sun_misc_Unsafe {
 
     /* { Checkstyle: stop */
 

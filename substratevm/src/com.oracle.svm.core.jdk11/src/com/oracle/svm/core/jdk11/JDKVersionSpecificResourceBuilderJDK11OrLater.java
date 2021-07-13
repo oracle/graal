@@ -23,49 +23,65 @@
  * questions.
  */
 
-package com.oracle.svm.hosted;
+package com.oracle.svm.core.jdk11;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Locale;
-import java.util.ResourceBundle;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
+import java.net.URLConnection;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.jdk.JDKVersionSpecificResourceBuilder;
 
-public final class ClassLoaderSupportImpl extends ClassLoaderSupport {
-
-    private final ClassLoader imageClassLoader;
-
-    ClassLoaderSupportImpl(NativeImageClassLoaderSupport classLoaderSupport) {
-        this.imageClassLoader = classLoaderSupport.getClassLoader();
-    }
+public class JDKVersionSpecificResourceBuilderJDK11OrLater implements JDKVersionSpecificResourceBuilder {
 
     @Override
-    protected boolean isNativeImageClassLoaderImpl(ClassLoader loader) {
-        return loader == imageClassLoader || loader instanceof NativeImageSystemClassLoader;
-    }
+    public Object buildResource(String name, URL url, URLConnection urlConnection) {
+        return new jdk.internal.loader.Resource() {
 
-    @Override
-    public List<ResourceBundle> getResourceBundle(String bundleName, Locale locale) {
-        return Collections.singletonList(ResourceBundle.getBundle(bundleName, locale, imageClassLoader));
+            @Override
+            public String getName() {
+                return name;
+            }
+
+            @Override
+            public URL getURL() {
+                return url;
+            }
+
+            @Override
+            public URL getCodeSourceURL() {
+                // We are deleting resource URL class path during native image build,
+                // so in runtime we don't have this information.
+                return null;
+            }
+
+            @Override
+            public InputStream getInputStream() throws IOException {
+                return urlConnection.getInputStream();
+            }
+
+            @Override
+            public int getContentLength() throws IOException {
+                return urlConnection.getContentLength();
+            }
+        };
     }
 }
 
 @AutomaticFeature
-class ClassLoaderSupportFeature implements Feature {
+final class JDKVersionSpecificResourceBuilderFeature implements Feature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return JavaVersionUtil.JAVA_SPEC == 8;
+        return JavaVersionUtil.JAVA_SPEC >= 11;
     }
 
     @Override
-    public void afterRegistration(AfterRegistrationAccess a) {
-        FeatureImpl.AfterRegistrationAccessImpl access = (FeatureImpl.AfterRegistrationAccessImpl) a;
-        ImageSingletons.add(ClassLoaderSupport.class, new ClassLoaderSupportImpl((NativeImageClassLoaderSupport) access.getImageClassLoader().classLoaderSupport));
+    public void afterRegistration(AfterRegistrationAccess access) {
+        ImageSingletons.add(JDKVersionSpecificResourceBuilder.class, new JDKVersionSpecificResourceBuilderJDK11OrLater());
     }
 }

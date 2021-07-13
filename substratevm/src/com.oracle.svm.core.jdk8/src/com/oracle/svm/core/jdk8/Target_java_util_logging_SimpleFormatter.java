@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,29 +22,35 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.svm.core.jdk8;
 
-package com.oracle.objectfile;
+//Checkstyle: allow reflection
 
-import jdk.internal.module.Modules;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.InjectAccessors;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.JDK8OrEarlier;
 
-public class ModuleAccess {
-    public static void openModuleByClass(Class<?> declaringClass, Class<?> accessingClass) {
-        Module declaringModule = declaringClass.getModule();
-        String packageName = declaringClass.getPackageName();
-        Module namedAccessingModule = null;
-        if (accessingClass != null) {
-            Module accessingModule = accessingClass.getModule();
-            if (accessingModule.isNamed()) {
-                namedAccessingModule = accessingModule;
-            }
+import sun.util.logging.LoggingSupport;
+
+class FormatAccessors {
+    private static String format = null;
+
+    public static String getFormat() {
+        if (format == null) {
+            /*
+             * If multiple threads are doing the initialization at the same time it is not a problem
+             * because they will all get to the same result in the end.
+             */
+            format = LoggingSupport.getSimpleFormat();
         }
-        if (namedAccessingModule != null ? declaringModule.isOpen(packageName, namedAccessingModule) : declaringModule.isOpen(packageName)) {
-            return;
-        }
-        if (namedAccessingModule != null) {
-            Modules.addOpens(declaringModule, packageName, namedAccessingModule);
-        } else {
-            Modules.addOpensToAllUnnamed(declaringModule, packageName);
-        }
+        return format;
     }
+}
+
+@TargetClass(value = java.util.logging.SimpleFormatter.class, onlyWith = JDK8OrEarlier.class)
+public final class Target_java_util_logging_SimpleFormatter {
+
+    @Alias @InjectAccessors(FormatAccessors.class)//
+    private static String format;
 }

@@ -23,17 +23,25 @@
  * questions.
  */
 
-package com.oracle.svm.core.jdk;
+package com.oracle.svm.core.jdk8;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.net.URLConnection;
 
-public class JDKVersionSpecificResourceBuilder {
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.Feature;
 
-    public static Object buildResource(String name, URL url, URLConnection urlConnection) {
-        return new jdk.internal.loader.Resource() {
+import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.jdk.JDKVersionSpecificResourceBuilder;
+
+public class JDKVersionSpecificResourceBuilderJDK8 implements JDKVersionSpecificResourceBuilder {
+
+    @Override
+    public Object buildResource(String name, URL url, URLConnection urlConnection) {
+        return new sun.misc.Resource() {
 
             @Override
             public String getName() {
@@ -47,8 +55,6 @@ public class JDKVersionSpecificResourceBuilder {
 
             @Override
             public URL getCodeSourceURL() {
-                // We are deleting resource URL class path during native image build,
-                // so in runtime we don't have this information.
                 return null;
             }
 
@@ -62,5 +68,18 @@ public class JDKVersionSpecificResourceBuilder {
                 return urlConnection.getContentLength();
             }
         };
+    }
+}
+
+@AutomaticFeature
+final class JDKVersionSpecificResourceBuilderFeature implements Feature {
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return JavaVersionUtil.JAVA_SPEC == 8;
+    }
+
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        ImageSingletons.add(JDKVersionSpecificResourceBuilder.class, new JDKVersionSpecificResourceBuilderJDK8());
     }
 }

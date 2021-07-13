@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted;
+package com.oracle.svm.hosted.jdk11;
 
 import java.io.File;
 import java.io.IOException;
@@ -50,10 +50,12 @@ import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.AbstractNativeImageClassLoaderSupport;
+import com.oracle.svm.hosted.ImageClassLoader;
 
 import jdk.internal.module.Modules;
 
-public class NativeImageClassLoaderSupport extends AbstractNativeImageClassLoaderSupport {
+public class NativeImageClassLoaderSupportJDK11OrLater extends AbstractNativeImageClassLoaderSupport {
 
     private final List<Path> imagemp;
     private final List<Path> buildmp;
@@ -61,7 +63,7 @@ public class NativeImageClassLoaderSupport extends AbstractNativeImageClassLoade
     private final ClassLoader classLoader;
     public final ModuleLayer moduleLayerForImageBuild;
 
-    NativeImageClassLoaderSupport(ClassLoader defaultSystemClassLoader, String[] classpath, String[] modulePath) {
+    public NativeImageClassLoaderSupportJDK11OrLater(ClassLoader defaultSystemClassLoader, String[] classpath, String[] modulePath) {
         super(defaultSystemClassLoader, classpath);
 
         imagemp = Arrays.stream(modulePath).map(Paths::get).collect(Collectors.toUnmodifiableList());
@@ -122,22 +124,22 @@ public class NativeImageClassLoaderSupport extends AbstractNativeImageClassLoade
     }
 
     @Override
-    public List<Path> modulepath() {
+    protected List<Path> modulepath() {
         return Stream.concat(buildmp.stream(), imagemp.stream()).collect(Collectors.toList());
     }
 
     @Override
-    List<Path> applicationModulePath() {
+    protected List<Path> applicationModulePath() {
         return imagemp;
     }
 
     @Override
-    public Optional<Module> findModule(String moduleName) {
+    protected Optional<Module> findModule(String moduleName) {
         return moduleLayerForImageBuild.findModule(moduleName);
     }
 
     @Override
-    void processAddExportsAndAddOpens(OptionValues parsedHostedOptions) {
+    protected void processAddExportsAndAddOpens(OptionValues parsedHostedOptions) {
         LocatableMultiOptionValue.Strings addExports = NativeImageClassLoaderOptions.AddExports.getValue(parsedHostedOptions);
         addExports.getValuesWithOrigins().map(this::asAddExportsAndOpensFormatValue).forEach(val -> {
             if (val.targetModules.isEmpty()) {
@@ -219,7 +221,7 @@ public class NativeImageClassLoaderSupport extends AbstractNativeImageClassLoade
     }
 
     @Override
-    Class<?> loadClassFromModule(Object module, String className) throws ClassNotFoundException {
+    protected Class<?> loadClassFromModule(Object module, String className) throws ClassNotFoundException {
         assert module instanceof Module : "Argument `module` is not an instance of java.lang.Module";
         Module m = (Module) module;
         assert isModuleClassLoader(classLoader, m.getClassLoader()) : "Argument `module` is java.lang.Module from unknown ClassLoader";
@@ -238,7 +240,7 @@ public class NativeImageClassLoaderSupport extends AbstractNativeImageClassLoade
     }
 
     @Override
-    Optional<String> getMainClassFromModule(Object module) {
+    protected Optional<String> getMainClassFromModule(Object module) {
         assert module instanceof Module : "Argument `module` is not an instance of java.lang.Module";
         return ((Module) module).getDescriptor().mainClass();
     }

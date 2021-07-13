@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.agent;
+package com.oracle.svm.hosted.agent.jdk8;
 
 import static jdk.internal.org.objectweb.asm.ClassReader.EXPAND_FRAMES;
 import static jdk.internal.org.objectweb.asm.ClassWriter.COMPUTE_MAXS;
@@ -30,6 +30,8 @@ import static jdk.internal.org.objectweb.asm.ClassWriter.COMPUTE_MAXS;
 import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.Instrumentation;
 
+import com.oracle.svm.hosted.agent.NativeImageBytecodeInstrumentationAgent;
+import com.oracle.svm.hosted.agent.NativeImageBytecodeInstrumentationAgentExtension;
 import com.oracle.svm.hosted.agent.jdk8.lambda.LambdaMetaFactoryRewriteVisitor;
 import com.oracle.svm.util.AgentSupport;
 import com.oracle.svm.util.TransformerInterface;
@@ -40,17 +42,20 @@ import jdk.internal.org.objectweb.asm.ClassWriter;
 /**
  * The set of {@link NativeImageBytecodeInstrumentationAgent} extensions for JDK 8.
  */
-public class NativeImageBytecodeInstrumentationAgentExtensions {
+public class NativeImageBytecodeInstrumentationAgentJDK8 implements NativeImageBytecodeInstrumentationAgentExtension {
 
-    @SuppressWarnings("unused")
-    public static void premain(String agentArgs, Instrumentation inst) {
-        TransformerInterface transformation = NativeImageBytecodeInstrumentationAgentExtensions::applyRewriteLambdasTransformation;
+    @Override
+    public void addClassFileTransformers(Instrumentation inst) {
+        if (!System.getProperty("java.specification.version").equals("1.8")) {
+            return; /* Lambda rewriting is only needed for Java 8 */
+        }
+
+        TransformerInterface transformation = NativeImageBytecodeInstrumentationAgentJDK8::applyRewriteLambdasTransformation;
         ClassFileTransformer transformer = AgentSupport.createClassInstrumentationTransformer(transformation);
         inst.addTransformer(transformer);
     }
 
-    @SuppressWarnings("unused")
-    private static byte[] applyRewriteLambdasTransformation(String moduleName, ClassLoader loader, String className, byte[] classfileBuffer) {
+    private static byte[] applyRewriteLambdasTransformation(@SuppressWarnings("unused") String moduleName, ClassLoader loader, String className, byte[] classfileBuffer) {
         ClassReader reader = new ClassReader(classfileBuffer);
         ClassWriter writer = new ClassWriter(reader, COMPUTE_MAXS);
         LambdaMetaFactoryRewriteVisitor visitor = new LambdaMetaFactoryRewriteVisitor(loader, className, writer);

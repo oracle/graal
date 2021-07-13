@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,43 +22,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.svm.core.jdk11;
 
-package com.oracle.svm.core.jdk;
+import java.util.HashMap;
+import java.util.zip.ZipFile;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URL;
-import java.net.URLConnection;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.JDK11OrLater;
 
-public class JDKVersionSpecificResourceBuilder {
+@TargetClass(value = ZipFile.class, innerClass = "Source", onlyWith = JDK11OrLater.class)
+final class Target_java_util_zip_ZipFile_Source {
 
-    public static Object buildResource(String name, URL url, URLConnection urlConnection) {
-        return new sun.misc.Resource() {
+    @Alias//
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = HashMap.class, isFinal = true)//
+    private static HashMap<Target_java_util_zip_ZipFile_Source_Key, Target_java_util_zip_ZipFile_Source> files;
+}
 
-            @Override
-            public String getName() {
-                return name;
-            }
+@TargetClass(value = ZipFile.class, innerClass = {"Source", "Key"}, onlyWith = JDK11OrLater.class)
+final class Target_java_util_zip_ZipFile_Source_Key {
+}
 
-            @Override
-            public URL getURL() {
-                return url;
-            }
-
-            @Override
-            public URL getCodeSourceURL() {
-                return null;
-            }
-
-            @Override
-            public InputStream getInputStream() throws IOException {
-                return urlConnection.getInputStream();
-            }
-
-            @Override
-            public int getContentLength() throws IOException {
-                return urlConnection.getContentLength();
-            }
-        };
-    }
+/* Dummy class to have the same name as the file. */
+public class Target_java_util_zip_ZipFile {
 }

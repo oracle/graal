@@ -22,19 +22,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.svm.hosted.jdk11;
 
-package com.oracle.svm.driver;
+import org.graalvm.compiler.options.Option;
 
-import java.nio.file.Path;
-import java.util.List;
+import com.oracle.svm.core.option.APIOption;
+import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.LocatableMultiOptionValue;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+public class NativeImageClassLoaderOptions {
+    static final String AddExportsAndOpensFormat = "<module>/<package>=<target-module>(,<target-module>)*";
 
-public class ModuleAccess {
-    @SuppressWarnings("unused")
-    public static List<String> getModuleNames(Path... modulePathEntries) {
-        assert JavaVersionUtil.JAVA_SPEC <= 8;
-        /* For Java 8 this method does not have any effect */
-        return null;
-    }
+    @APIOption(name = "add-exports", extra = true)//
+    @Option(help = "Value " + AddExportsAndOpensFormat + " updates <module> to export <package> to <target-module>, regardless of module declaration." +
+                    " <target-module> can be ALL-UNNAMED to export to all unnamed modules.")//
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> AddExports = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+
+    @APIOption(name = "add-opens", extra = true)//
+    @Option(help = "Value " + AddExportsAndOpensFormat + " updates <module> to open <package> to <target-module>, regardless of module declaration.")//
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> AddOpens = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
 }

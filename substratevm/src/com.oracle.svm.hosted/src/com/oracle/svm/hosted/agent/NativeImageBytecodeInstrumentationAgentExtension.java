@@ -24,18 +24,17 @@
  */
 package com.oracle.svm.hosted.agent;
 
+import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.Instrumentation;
 
 /**
- * Extensions to {@link NativeImageBytecodeInstrumentationAgent}.
+ * Defines a service for specifying additional {@link ClassFileTransformer}s.
  *
- * This is the default, empty set of extensions.
- *
- * Overlays of this class are provided for JDK versions that need extensions.
+ * {@link NativeImageBytecodeInstrumentationAgent} uses
+ * {@code ServiceLoader.load(NativeImageBytecodeInstrumentationAgentExtension.class)} to register
+ * additional transformers.
  */
-public class NativeImageBytecodeInstrumentationAgentExtensions {
+public interface NativeImageBytecodeInstrumentationAgentExtension {
 
-    @SuppressWarnings("unused")
-    public static void premain(String agentArgs, Instrumentation inst) {
-    }
+    void addClassFileTransformers(Instrumentation inst);
 }

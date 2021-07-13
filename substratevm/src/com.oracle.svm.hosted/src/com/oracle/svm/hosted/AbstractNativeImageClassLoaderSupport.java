@@ -95,23 +95,23 @@ public abstract class AbstractNativeImageClassLoaderSupport {
         return imagecp;
     }
 
-    ClassLoader getClassLoader() {
+    public ClassLoader getClassLoader() {
         return classPathClassLoader;
     }
 
-    abstract Class<?> loadClassFromModule(Object module, String className) throws ClassNotFoundException;
+    protected abstract Class<?> loadClassFromModule(Object module, String className) throws ClassNotFoundException;
 
-    abstract Optional<String> getMainClassFromModule(Object module);
+    protected abstract Optional<String> getMainClassFromModule(Object module);
 
-    abstract List<Path> modulepath();
+    protected abstract List<Path> modulepath();
 
-    abstract List<Path> applicationModulePath();
+    protected abstract List<Path> applicationModulePath();
 
-    abstract Optional<? extends Object> findModule(String moduleName);
+    protected abstract Optional<? extends Object> findModule(String moduleName);
 
-    abstract void processAddExportsAndAddOpens(OptionValues parsedHostedOptions);
+    protected abstract void processAddExportsAndAddOpens(OptionValues parsedHostedOptions);
 
-    abstract void initAllClasses(ForkJoinPool executor, ImageClassLoader imageClassLoader);
+    protected abstract void initAllClasses(ForkJoinPool executor, ImageClassLoader imageClassLoader);
 
     protected static class Util {
 
@@ -155,7 +155,7 @@ public abstract class AbstractNativeImageClassLoaderSupport {
         protected final ForkJoinPool executor;
         protected final ImageClassLoader imageClassLoader;
 
-        ClassInit(ForkJoinPool executor, ImageClassLoader imageClassLoader) {
+        protected ClassInit(ForkJoinPool executor, ImageClassLoader imageClassLoader) {
             this.executor = executor;
             this.imageClassLoader = imageClassLoader;
         }

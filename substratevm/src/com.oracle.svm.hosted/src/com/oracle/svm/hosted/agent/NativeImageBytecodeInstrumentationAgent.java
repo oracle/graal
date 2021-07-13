@@ -27,6 +27,7 @@ package com.oracle.svm.hosted.agent;
 import static jdk.internal.org.objectweb.asm.ClassWriter.COMPUTE_FRAMES;
 
 import java.lang.instrument.Instrumentation;
+import java.util.ServiceLoader;
 
 import com.oracle.svm.util.AgentSupport;
 
@@ -45,7 +46,10 @@ public class NativeImageBytecodeInstrumentationAgent {
             advisor = new TracingAdvisor(agentArgs);
             inst.addTransformer(AgentSupport.createClassInstrumentationTransformer(NativeImageBytecodeInstrumentationAgent::applyInitializationTrackingTransformation));
         }
-        NativeImageBytecodeInstrumentationAgentExtensions.premain(agentArgs, inst);
+        ServiceLoader<NativeImageBytecodeInstrumentationAgentExtension> extensionLoader = ServiceLoader.load(NativeImageBytecodeInstrumentationAgentExtension.class);
+        for (NativeImageBytecodeInstrumentationAgentExtension extension : extensionLoader) {
+            extension.addClassFileTransformers(inst);
+        }
     }
 
     private static byte[] applyInitializationTrackingTransformation(@SuppressWarnings("unused") String moduleName, @SuppressWarnings("unused") ClassLoader loader, String className,
