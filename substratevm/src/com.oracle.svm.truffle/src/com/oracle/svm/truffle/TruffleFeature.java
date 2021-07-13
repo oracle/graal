@@ -1006,11 +1006,11 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
 
         private static final Map<Class<?>, ClassLoader> CLASS_LOADERS = new ConcurrentHashMap<>();
         private static BeforeAnalysisAccess beforeAnalysisAccess;
-        private static boolean firstAnalysisRun;
+
+        private static final IdentityHashMap<Object, Object> registeredShapeGenerators = new IdentityHashMap<>();
 
         static void beforeAnalysis(BeforeAnalysisAccess access) {
             StaticObjectSupport.beforeAnalysisAccess = access;
-            firstAnalysisRun = true;
         }
 
         static void registerInvocationPlugins(Plugins plugins, ParsingReason reason) {
@@ -1035,32 +1035,32 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         }
 
         static void duringAnalysis(DuringAnalysisAccess access) {
-            if (firstAnalysisRun) {
-                firstAnalysisRun = false;
-                boolean requiresIteration = false;
-                // We need to register as unsafe-accessed the primitive, object, and shape fields of
-                // generated storage classes. However, these classes do not share a common super
-                // type, and their fields are not annotated. Plus, the invocation plugin does not
-                // intercept calls to `StaticShape.Builder.build()` that happen during the analysis,
-                // for example because of context pre-initialization. Therefore, we inspect the
-                // generator cache in ArrayBasedShapeGenerator, which contains references to all
-                // generated storage classes.
-                ConcurrentHashMap<?, ?> generatorCache = ReflectionUtil.readStaticField(SHAPE_GENERATOR, "generatorCache");
-                for (Map.Entry<?, ?> entry : generatorCache.entrySet()) {
-                    Object shapeGenerator = entry.getValue();
+            boolean requiresIteration = false;
+            // We need to register as unsafe-accessed the primitive, object, and shape fields of
+            // generated storage classes. However, these classes do not share a common super
+            // type, and their fields are not annotated. Plus, the invocation plugin does not
+            // intercept calls to `StaticShape.Builder.build()` that happen during the analysis,
+            // for example because of context pre-initialization. Therefore, we inspect the
+            // generator cache in ArrayBasedShapeGenerator, which contains references to all
+            // generated storage classes.
+            ConcurrentHashMap<?, ?> generatorCache = ReflectionUtil.readStaticField(SHAPE_GENERATOR, "generatorCache");
+            for (Map.Entry<?, ?> entry : generatorCache.entrySet()) {
+                Object shapeGenerator = entry.getValue();
+                if (!registeredShapeGenerators.containsKey(shapeGenerator)) {
+                    registeredShapeGenerators.put(shapeGenerator, shapeGenerator);
+                    requiresIteration = true;
                     Class<?> storageClass = ReflectionUtil.readField(SHAPE_GENERATOR, "generatedStorageClass", shapeGenerator);
                     Class<?> factoryClass = ReflectionUtil.readField(SHAPE_GENERATOR, "generatedFactoryClass", shapeGenerator);
                     for (Constructor<?> c : factoryClass.getDeclaredConstructors()) {
                         RuntimeReflection.register(c);
                     }
-                    requiresIteration = true;
                     for (String fieldName : new String[]{"primitive", "object", "shape"}) {
                         beforeAnalysisAccess.registerAsUnsafeAccessed(ReflectionUtil.lookupField(storageClass, fieldName));
                     }
                 }
-                if (requiresIteration) {
-                    access.requireAnalysisIteration();
-                }
+            }
+            if (requiresIteration) {
+                access.requireAnalysisIteration();
             }
         }
 
