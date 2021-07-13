@@ -49,7 +49,7 @@ public class NativeImageBytecodeInstrumentationAgent {
         if (System.getProperty("java.specification.version").equals("1.8")) {
             ServiceLoader<NativeImageBytecodeInstrumentationAgentExtension> extensionLoader = ServiceLoader.load(NativeImageBytecodeInstrumentationAgentExtension.class);
             for (NativeImageBytecodeInstrumentationAgentExtension extension : extensionLoader) {
-                extension.addClassInstrumentationTransformer(inst);
+                extension.addClassFileTransformers(inst);
             }
         }
     }

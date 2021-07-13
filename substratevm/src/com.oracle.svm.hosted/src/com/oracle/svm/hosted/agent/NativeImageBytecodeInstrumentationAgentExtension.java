@@ -1,5 +1,6 @@
 package com.oracle.svm.hosted.agent;
 
+import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.Instrumentation;
 
 /**
@@ -11,5 +12,5 @@ import java.lang.instrument.Instrumentation;
  */
 public interface NativeImageBytecodeInstrumentationAgentExtension {
 
-    void addClassInstrumentationTransformer(Instrumentation inst);
+    void addClassFileTransformers(Instrumentation inst);
 }
