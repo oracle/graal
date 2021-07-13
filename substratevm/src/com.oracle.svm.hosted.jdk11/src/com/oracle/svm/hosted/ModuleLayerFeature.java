@@ -40,13 +40,16 @@ import java.lang.module.Configuration;
 import java.lang.module.FindException;
 import java.lang.module.ModuleDescriptor;
 import java.lang.module.ModuleFinder;
+import java.lang.module.ModuleReference;
 import java.lang.module.ResolutionException;
+import java.lang.module.ResolvedModule;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -87,7 +90,6 @@ public final class ModuleLayerFeature implements Feature {
 
     private Field moduleNameToModuleField;
     private Field moduleParentsField;
-    private Field configurationParentsField;
     private Constructor<ModuleLayer> moduleLayerConstructor;
 
     @Override
@@ -100,7 +102,6 @@ public final class ModuleLayerFeature implements Feature {
         ImageSingletons.add(BootModuleLayerSupport.class, new BootModuleLayerSupport());
         moduleNameToModuleField = ReflectionUtil.lookupField(ModuleLayer.class, "nameToModule");
         moduleParentsField = ReflectionUtil.lookupField(ModuleLayer.class, "parents");
-        configurationParentsField = ReflectionUtil.lookupField(Configuration.class, "parents");
         moduleLayerConstructor = ReflectionUtil.lookupConstructor(ModuleLayer.class, Configuration.class, List.class, Function.class);
     }
 
@@ -141,13 +142,12 @@ public final class ModuleLayerFeature implements Feature {
     }
 
     private Configuration synthesizeRuntimeBootLayerConfiguration(List<Path> mp, Map<String, Module> reachableModules) {
-        ModuleFinder finder = ModuleFinder.of(mp.toArray(Path[]::new));
+        ModuleFinder beforeFinder = new BootModuleLayerModuleFinder();
+        ModuleFinder afterFinder = ModuleFinder.of(mp.toArray(Path[]::new));
         Set<String> roots = reachableModules.keySet();
         try {
-            Configuration cf = ModuleLayer.boot().configuration().resolve(finder, finder, roots);
-            configurationParentsField.set(cf, List.of(Configuration.empty()));
-            return cf;
-        } catch (IllegalAccessException | FindException | ResolutionException | SecurityException ex) {
+            return Configuration.empty().resolve(beforeFinder, afterFinder, roots);
+        } catch (FindException | ResolutionException | SecurityException ex) {
             throw VMError.shouldNotReachHere("Failed to synthesize the runtime boot module layer configuration.", ex);
         }
     }
@@ -158,6 +158,28 @@ public final class ModuleLayerFeature implements Feature {
             moduleParentsField.set(runtimeBootLayer, List.of(ModuleLayer.empty()));
         } catch (IllegalAccessException ex) {
             throw VMError.shouldNotReachHere("Failed to patch the runtime boot module layer.", ex);
+        }
+    }
+
+
+    static class BootModuleLayerModuleFinder implements ModuleFinder {
+
+        @Override
+        public Optional<ModuleReference> find(String name) {
+            return ModuleLayer.boot()
+                    .configuration()
+                    .findModule(name)
+                    .map(ResolvedModule::reference);
+        }
+
+        @Override
+        public Set<ModuleReference> findAll() {
+            return ModuleLayer.boot()
+                    .configuration()
+                    .modules()
+                    .stream()
+                    .map(ResolvedModule::reference)
+                    .collect(Collectors.toSet());
         }
     }
 }

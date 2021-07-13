@@ -33,6 +33,7 @@ import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 
+@SuppressWarnings("unused")
 @TargetClass(className = "java.lang.Module", onlyWith = JDK11OrLater.class)
 public final class Target_java_lang_Module {
 
@@ -41,6 +42,26 @@ public final class Target_java_lang_Module {
     public InputStream getResourceAsStream(String name) {
         ResourceStorageEntry res = Resources.get(name);
         return res == null ? null : new ByteArrayInputStream(res.getData().get(0));
+    }
+
+    @Substitute
+    private static void defineModule0(Module module, boolean isOpen, String version, String location, String[] pns) {
+    }
+
+    @Substitute
+    private static void addReads0(Module from, Module to) {
+    }
+
+    @Substitute
+    private static void addExports0(Module from, String pn, Module to) {
+    }
+
+    @Substitute
+    private static void addExportsToAll0(Module from, String pn) {
+    }
+
+    @Substitute
+    private static void addExportsToAllUnnamed0(Module from, String pn) {
     }
 
     @TargetClass(className = "java.lang.Module", innerClass = "ReflectionData", onlyWith = JDK11OrLater.class) //
