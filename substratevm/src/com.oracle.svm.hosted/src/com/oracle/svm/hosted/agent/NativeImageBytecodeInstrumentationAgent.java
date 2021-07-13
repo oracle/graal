@@ -46,11 +46,9 @@ public class NativeImageBytecodeInstrumentationAgent {
             advisor = new TracingAdvisor(agentArgs);
             inst.addTransformer(AgentSupport.createClassInstrumentationTransformer(NativeImageBytecodeInstrumentationAgent::applyInitializationTrackingTransformation));
         }
-        if (System.getProperty("java.specification.version").equals("1.8")) {
-            ServiceLoader<NativeImageBytecodeInstrumentationAgentExtension> extensionLoader = ServiceLoader.load(NativeImageBytecodeInstrumentationAgentExtension.class);
-            for (NativeImageBytecodeInstrumentationAgentExtension extension : extensionLoader) {
-                extension.addClassFileTransformers(inst);
-            }
+        ServiceLoader<NativeImageBytecodeInstrumentationAgentExtension> extensionLoader = ServiceLoader.load(NativeImageBytecodeInstrumentationAgentExtension.class);
+        for (NativeImageBytecodeInstrumentationAgentExtension extension : extensionLoader) {
+            extension.addClassFileTransformers(inst);
         }
     }
 
