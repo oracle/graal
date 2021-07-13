@@ -58,6 +58,7 @@ package bench.shootouts;
  * Contributed by Oleg Mazurov, June 2010
  */
 
+
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Scope;
@@ -70,7 +71,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class FannkuchRedux {
 
     private static final int NCHUNKS = 150;
-    @Param("9") private static int fannkuchReduxN;
+    @Param("9")
+    private static int fannkuchReduxN;
     private static int CHUNKSZ;
     private static int NTASKS;
     private static int[] Fact;
@@ -189,7 +191,7 @@ public class FannkuchRedux {
 
             int maxflips = 1;
             int chksum = 0;
-            for (int i = idxMin;;) {
+            for (int i = idxMin; ; ) {
 
                 if (p[0] != 0) {
                     int flips = countFlips();

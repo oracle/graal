@@ -71,7 +71,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 @State(Scope.Benchmark)
 public class ChameneosRedux {
 
-    @Param("20000") static int chameneosReduxN;
+    @Param("20000")
+    static int chameneosReduxN;
 
     static {
 
@@ -80,7 +81,10 @@ public class ChameneosRedux {
         Colour.YELLOW.setColours(Colour.RED, Colour.BLUE, Colour.YELLOW);
     }
 
-    private static Phaser startMeeting(final boolean isFirst, final int n, final Blackhole blackhole, final Colour... colours) {
+    private static Phaser startMeeting(final boolean isFirst
+            , final int n
+            , final Blackhole blackhole
+            , final Colour... colours) {
         final int len = colours.length;
         final MeetingPlace place = new MeetingPlace(n);
         final Creature[] creatures = new Creature[len];
@@ -95,16 +99,21 @@ public class ChameneosRedux {
 
     @Benchmark
     public static void bench(Blackhole blackhole) {
-        // int n = 20000;
+        //int n = 20000;
 
         startMeeting(true, chameneosReduxN, blackhole, Colour.BLUE, Colour.RED, Colour.YELLOW);
         Phaser phaser = startMeeting(false, chameneosReduxN, blackhole, Colour.BLUE, Colour.RED, Colour.YELLOW,
-                        Colour.RED, Colour.YELLOW, Colour.BLUE, Colour.RED,
-                        Colour.YELLOW, Colour.RED, Colour.BLUE);
+                Colour.RED, Colour.YELLOW, Colour.BLUE, Colour.RED,
+                Colour.YELLOW, Colour.RED, Colour.BLUE);
         for (final Colour c1 : Colour.values()) {
             for (final Colour c2 : Colour.values()) {
                 StringBuilder sb = new StringBuilder();
-                sb.append(c1.toString()).append(" + ").append(c2.toString()).append(" -> ").append(c1.complement(c2).toString()).append('\n');
+                sb.append(c1.toString())
+                        .append(" + ")
+                        .append(c2.toString())
+                        .append(" -> ")
+                        .append(c1.complement(c2).toString())
+                        .append('\n');
                 blackhole.consume(sb.toString());
             }
         }
@@ -196,7 +205,9 @@ public class ChameneosRedux {
         private int count = 0;
         private int sameCount = 0;
 
-        public Creature(final MeetingPlace place, final Colour colour, final Phaser phaser) {
+        public Creature(final MeetingPlace place
+                , final Colour colour
+                , final Phaser phaser) {
             this.place = place;
             this.phaser = phaser;
             exchange.id = System.identityHashCode(this);
@@ -207,7 +218,7 @@ public class ChameneosRedux {
         public void run() {
             CreatureExchange otherCreature;
 
-            for (;;) {
+            for (; ; ) {
                 otherCreature = place.meet(exchange);
                 if (otherCreature == null) {
                     phaser.arrive();
@@ -233,8 +244,8 @@ public class ChameneosRedux {
     final static class CreaturePhaser extends Phaser {
 
         static final String[] NUMBERS = {
-                        "zero", "one", "two", "three", "four", "five",
-                        "six", "seven", "eight", "nine"
+                "zero", "one", "two", "three", "four", "five",
+                "six", "seven", "eight", "nine"
         };
         static final Object lock = new Object();
         static boolean firstHasNotFinished = true;
@@ -243,7 +254,11 @@ public class ChameneosRedux {
         final Creature[] creatures;
         final Blackhole blackhole;
 
-        public CreaturePhaser(final boolean isFirst, final Colour[] colours, final Creature[] creatures, final int phases, final Blackhole blackhole) {
+        public CreaturePhaser(final boolean isFirst
+                , final Colour[] colours
+                , final Creature[] creatures
+                , final int phases
+                , final Blackhole blackhole) {
             super(phases);
             this.isFirst = isFirst;
             this.colours = colours;
@@ -252,7 +267,8 @@ public class ChameneosRedux {
         }
 
         @Override
-        protected boolean onAdvance(final int phase, final int registeredParties) {
+        protected boolean onAdvance(final int phase
+                , final int registeredParties) {
             synchronized (lock) {
                 if (!isFirst) {
                     while (firstHasNotFinished) {

@@ -70,7 +70,8 @@ import org.openjdk.jmh.infra.Blackhole;
 @State(Scope.Benchmark)
 public class NBody {
 
-    @Param("100000") static int nBodyN;
+    @Param("100000")
+    static int nBodyN;
 
     @Benchmark
     public static void bench(Blackhole blackhole) {
@@ -89,11 +90,11 @@ final class NBodySystem {
 
     public NBodySystem() {
         bodies = new Body[]{
-                        Body.sun(),
-                        Body.jupiter(),
-                        Body.saturn(),
-                        Body.uranus(),
-                        Body.neptune()
+                Body.sun(),
+                Body.jupiter(),
+                Body.saturn(),
+                Body.uranus(),
+                Body.neptune()
         };
 
         double px = 0.0;
@@ -151,7 +152,9 @@ final class NBodySystem {
         for (int i = 0; i < bodies.length; ++i) {
             Body iBody = bodies[i];
             e += 0.5 * iBody.mass *
-                            (iBody.vx * iBody.vx + iBody.vy * iBody.vy + iBody.vz * iBody.vz);
+                    (iBody.vx * iBody.vx
+                            + iBody.vy * iBody.vy
+                            + iBody.vz * iBody.vz);
 
             for (int j = i + 1; j < bodies.length; ++j) {
                 Body jBody = bodies[j];
