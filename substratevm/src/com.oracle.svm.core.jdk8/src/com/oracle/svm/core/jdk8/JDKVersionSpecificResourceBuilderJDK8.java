@@ -35,8 +35,9 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.jdk.JDKVersionSpecificResourceBuilder;
 
-public class JDKVersionSpecificResourceBuilder implements com.oracle.svm.core.jdk.JDKVersionSpecificResourceBuilder {
+public class JDKVersionSpecificResourceBuilderJDK8 implements JDKVersionSpecificResourceBuilder {
 
     @Override
     public Object buildResource(String name, URL url, URLConnection urlConnection) {
@@ -79,6 +80,6 @@ final class JDKVersionSpecificResourceBuilderFeature implements Feature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(com.oracle.svm.core.jdk.JDKVersionSpecificResourceBuilder.class, new JDKVersionSpecificResourceBuilder());
+        ImageSingletons.add(JDKVersionSpecificResourceBuilder.class, new JDKVersionSpecificResourceBuilderJDK8());
     }
 }
