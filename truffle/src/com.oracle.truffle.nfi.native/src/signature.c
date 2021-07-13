@@ -169,7 +169,7 @@ static void executeHelper(JNIEnv *env, TruffleContext *ctx, void *ret, ffi_cif *
 
     errno = errnoMirror;
 
-    ffi_call(cif, (void (*)(void)) address, ret, argPtrs);
+    ffi_call(cif, (void (*)(void))(intptr_t)address, ret, argPtrs);
 
     errnoMirror = errno;
 
@@ -216,7 +216,7 @@ static void executeHelper(JNIEnv *env, TruffleContext *ctx, void *ret, ffi_cif *
 JNIEXPORT void JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_executeNative(JNIEnv *env, jclass self, jlong truffleContext, jlong cif, jlong address,
         jbyteArray primArgs, jint patchCount, jintArray patch, jobjectArray objArgs, jbyteArray retArray) {
     jbyte *ret = retArray ? (*env)->GetByteArrayElements(env, retArray, NULL) : NULL;
-    executeHelper(env, (TruffleContext*) truffleContext, ret, (ffi_cif*) cif, address, primArgs, patchCount, patch, objArgs);
+    executeHelper(env, (TruffleContext*)(intptr_t)truffleContext, ret, (ffi_cif*)(intptr_t)cif, address, primArgs, patchCount, patch, objArgs);
     if (retArray) {
         (*env)->ReleaseByteArrayElements(env, retArray, ret, 0);
     }
@@ -225,14 +225,14 @@ JNIEXPORT void JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_
 JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_executePrimitive(JNIEnv *env, jclass self, jlong truffleContext, jlong cif, jlong address,
         jbyteArray primArgs, jint patchCount, jintArray patch, jobjectArray objArgs) {
     ffi_arg ret;
-    executeHelper(env, (TruffleContext*) truffleContext, &ret, (ffi_cif*) cif, address, primArgs, patchCount, patch, objArgs);
+    executeHelper(env, (TruffleContext*)(intptr_t)truffleContext, &ret, (ffi_cif*)(intptr_t)cif, address, primArgs, patchCount, patch, objArgs);
     return (jlong) ret;
 }
 
 JNIEXPORT jobject JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_executeObject(JNIEnv *env, jclass self, jlong truffleContext, jlong cif, jlong address,
         jbyteArray primArgs, jint patchCount, jintArray patch, jobjectArray objArgs) {
     jobject ret;
-    executeHelper(env, (TruffleContext*) truffleContext, &ret, (ffi_cif*) cif, address, primArgs, patchCount, patch, objArgs);
+    executeHelper(env, (TruffleContext*)(intptr_t)truffleContext, &ret, (ffi_cif*)(intptr_t)cif, address, primArgs, patchCount, patch, objArgs);
     return ret;
 }
 
@@ -242,21 +242,21 @@ static struct cif_data *prepareArgs(JNIEnv *env, struct __TruffleContextInternal
     int i;
     for (i = 0; i < nargs; i++) {
         jobject type = (*env)->GetObjectArrayElement(env, argTypes, i);
-        data->args[i] = (ffi_type*) (*env)->GetLongField(env, type, ctx->LibFFIType_type);
+        data->args[i] = (ffi_type*)(intptr_t)(*env)->GetLongField(env, type, ctx->LibFFIType_type);
     }
     return data;
 }
 
 JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_prepareSignature(JNIEnv *env, jclass self, jlong nativeContext, jobject retType, jint nargs, jobjectArray argTypes) {
-    struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *) nativeContext;
+    struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *)(intptr_t)nativeContext;
 
     struct cif_data *data = prepareArgs(env, ctx, nargs, argTypes);
-    ffi_type *ret = (ffi_type*) (*env)->GetLongField(env, retType, ctx->LibFFIType_type);
+    ffi_type *ret = (ffi_type*)(intptr_t)(*env)->GetLongField(env, retType, ctx->LibFFIType_type);
 
     ffi_status result = ffi_prep_cif(&data->cif, FFI_DEFAULT_ABI, nargs, ret, data->args);
 
     if (result == FFI_OK) {
-        return (jlong) data;
+        return (jlong)(intptr_t)data;
     } else {
         free(data);
         return 0;
@@ -264,15 +264,15 @@ JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext
 }
 
 JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_backend_libffi_LibFFIContext_prepareSignatureVarargs(JNIEnv *env, jclass self, jlong nativeContext, jobject retType, jint nargs, jint nFixedArgs, jobjectArray argTypes) {
-    struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *) nativeContext;
+    struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *)(intptr_t)nativeContext;
 
     struct cif_data *data = prepareArgs(env, ctx, nargs, argTypes);
-    ffi_type *ret = (ffi_type*) (*env)->GetLongField(env, retType, ctx->LibFFIType_type);
+    ffi_type *ret = (ffi_type*)(intptr_t)(*env)->GetLongField(env, retType, ctx->LibFFIType_type);
 
     ffi_status result = ffi_prep_cif_var(&data->cif, FFI_DEFAULT_ABI, nFixedArgs, nargs, ret, data->args);
 
     if (result == FFI_OK) {
-        return (jlong) data;
+        return (jlong)(intptr_t)data;
     } else {
         free(data);
         return 0;
