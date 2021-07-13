@@ -127,14 +127,14 @@ public abstract class SystemPropertiesSupport {
         lazyRuntimeValues.put("java.library.path", this::javaLibraryPath);
         lazyRuntimeValues.put("os.version", this::osVersionValue);
 
-        String targetName = System.getProperty("svm.targetName");
-        if (targetName != null) {
-            initializeProperty("os.name", targetName);
+        String targetOS = System.getProperty("svm.targetPlatformOS");
+        if (targetOS != null) {
+            initializeProperty("os.name", targetOS);
         } else {
             lazyRuntimeValues.put("os.name", this::osNameValue);
         }
 
-        String targetArch = System.getProperty("svm.targetArch");
+        String targetArch = System.getProperty("svm.targetPlatformArch");
         if (targetArch != null) {
             initializeProperty("os.arch", targetArch);
         } else {
