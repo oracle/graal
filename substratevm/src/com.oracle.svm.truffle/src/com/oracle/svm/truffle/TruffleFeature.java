@@ -1135,42 +1135,54 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
                 }
             }
         }
+    }
+}
 
-        @TargetClass(className = "com.oracle.truffle.api.staticobject.ArrayBasedShapeGenerator", onlyWith = TruffleFeature.IsEnabled.class)
-        static final class Target_com_oracle_truffle_api_staticobject_ArrayBasedShapeGenerator {
+@TargetClass(className = "com.oracle.truffle.api.staticobject.ArrayBasedShapeGenerator", onlyWith = TruffleFeature.IsEnabled.class)
+final class Target_com_oracle_truffle_api_staticobject_ArrayBasedShapeGenerator {
 
-            public static final class OffsetTransformer implements RecomputeFieldValue.CustomFieldValueTransformer {
-                @Override
-                public Object transform(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver, Object originalValue) {
-                    Class<?> generatedStorageClass = ReflectionUtil.readField(SHAPE_GENERATOR, "generatedStorageClass", receiver);
-                    String name;
-                    switch (original.getName()) {
-                        case "byteArrayOffset":
-                            name = "primitive";
-                            break;
-                        case "objectArrayOffset":
-                            name = "object";
-                            break;
-                        case "shapeOffset":
-                            name = "shape";
-                            break;
-                        default:
-                            throw VMError.shouldNotReachHere();
-                    }
-                    Field f = ReflectionUtil.lookupField(generatedStorageClass, name);
-                    assert metaAccess instanceof HostedMetaAccess;
-                    return ((HostedMetaAccess) metaAccess).lookupJavaField(f).getLocation();
-                }
+    public static final class OffsetTransformer implements RecomputeFieldValue.CustomFieldValueTransformer {
+        private static final Class<?> SHAPE_GENERATOR;
+
+        static {
+            // Checkstyle: stop
+            try {
+                SHAPE_GENERATOR = Class.forName("com.oracle.truffle.api.staticobject.ArrayBasedShapeGenerator");
+            } catch (ClassNotFoundException e) {
+                throw VMError.shouldNotReachHere(e);
             }
+            // Checkstyle: resume
+        }
 
-            @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = OffsetTransformer.class) //
-            int byteArrayOffset;
-            @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = OffsetTransformer.class) //
-            int objectArrayOffset;
-            @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = OffsetTransformer.class) //
-            int shapeOffset;
+        @Override
+        public Object transform(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver, Object originalValue) {
+            Class<?> generatedStorageClass = ReflectionUtil.readField(SHAPE_GENERATOR, "generatedStorageClass", receiver);
+            String name;
+            switch (original.getName()) {
+                case "byteArrayOffset":
+                    name = "primitive";
+                    break;
+                case "objectArrayOffset":
+                    name = "object";
+                    break;
+                case "shapeOffset":
+                    name = "shape";
+                    break;
+                default:
+                    throw VMError.shouldNotReachHere();
+            }
+            Field f = ReflectionUtil.lookupField(generatedStorageClass, name);
+            assert metaAccess instanceof HostedMetaAccess;
+            return ((HostedMetaAccess) metaAccess).lookupJavaField(f).getLocation();
         }
     }
+
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = OffsetTransformer.class) //
+    int byteArrayOffset;
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = OffsetTransformer.class) //
+    int objectArrayOffset;
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = OffsetTransformer.class) //
+    int shapeOffset;
 }
 
 @TargetClass(className = "org.graalvm.compiler.truffle.runtime.OptimizedCallTarget", onlyWith = TruffleFeature.IsEnabled.class)
