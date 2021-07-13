@@ -83,9 +83,9 @@ class TraversingBlockingQueue implements BlockingQueue<Runnable> {
             return null;
         }
         long time = System.nanoTime();
+        Runnable max = null;
         try {
             Iterator<Runnable> it = entries.iterator();
-            Runnable max = null;
             while (it.hasNext()) {
                 Runnable entry = it.next();
                 CompilationTask task = task(entry);
@@ -106,7 +106,7 @@ class TraversingBlockingQueue implements BlockingQueue<Runnable> {
             // entries.remove can only return false if a sleeping thread takes the only element
             return entries.remove(max) ? max : null;
         } finally {
-            System.err.println(String.format("First tier AVG: %s, last tier AVG %s", firstTierWeights, lastTierWeights));
+            System.err.println(String.format("%s - First tier AVG: %s, last tier AVG %s", task(max), firstTierWeights, lastTierWeights));
         }
     }
 
