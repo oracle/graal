@@ -154,6 +154,11 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
                                     public TruffleInliningData inliningData() {
                                         return inlining;
                                     }
+
+                                    @Override
+                                    public boolean hasNextTier() {
+                                        return false;
+                                    }
                                 }), null);
                 assertTrue(compilable.isValid());
             }
