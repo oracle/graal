@@ -89,7 +89,7 @@ public final class ProxyConfigurationParser extends ConfigurationParser {
 
     private void parseWithPredicatedConfig(Map<String, Object> proxyConfigObject) {
         checkAttributes(proxyConfigObject, "proxy descriptor object", Collections.singleton("interfaces"));
-        parseInterfaceList(asList(proxyConfigObject.get("interfaceList"), "interfaceList must be an array of fully qualified interface names"));
+        parseInterfaceList(asList(proxyConfigObject.get("interfaces"), "interfaces must be an array of fully qualified interface names"));
     }
 
 }

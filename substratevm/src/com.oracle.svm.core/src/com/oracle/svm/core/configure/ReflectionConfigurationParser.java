@@ -27,6 +27,7 @@ package com.oracle.svm.core.configure;
 import java.io.IOException;
 import java.io.Reader;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -71,10 +72,12 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
     }
 
     private void parseClass(Map<String, Object> data) {
+        List<String> optionalAttrs = Arrays.asList("allDeclaredConstructors", "allPublicConstructors",
+                        "allDeclaredMethods", "allPublicMethods", "allDeclaredFields", "allPublicFields",
+                        "allDeclaredClasses", "allPublicClasses", "methods", "fields");
+        checkAttributes(data, "reflection class descriptor object", Collections.singleton("name"), optionalAttrs);
+
         Object classObject = data.get("name");
-        if (classObject == null) {
-            throw new JSONParserException("Missing attribute 'name' in class descriptor object");
-        }
         String className = asString(classObject, "name");
 
         TypeResult<T> result = delegate.resolveTypeResult(className);
@@ -150,20 +153,9 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
     }
 
     private void parseField(Map<String, Object> data, T clazz) {
-        String fieldName = null;
-        boolean allowWrite = false;
-        for (Map.Entry<String, Object> entry : data.entrySet()) {
-            String propertyName = entry.getKey();
-            if (propertyName.equals("name")) {
-                fieldName = asString(entry.getValue(), "name");
-            } else if (propertyName.equals("allowWrite")) {
-                allowWrite = asBoolean(entry.getValue(), "allowWrite");
-            }
-        }
-
-        if (fieldName == null) {
-            throw new JSONParserException("Missing attribute 'name' in definition of field for class " + delegate.getTypeName(clazz));
-        }
+        checkAttributes(data, "reflection field descriptor object", Collections.singleton("name"), Collections.singleton("allowWrite"));
+        String fieldName = asString(data.get("name"), "name");
+        boolean allowWrite = data.containsKey("allowWrite") && asBoolean(data.get("allowWrite"), "allowWrite");
 
         try {
             delegate.registerField(clazz, fieldName, allowWrite);
@@ -181,23 +173,15 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
     }
 
     private void parseMethod(Map<String, Object> data, T clazz) {
-        String methodName = null;
+        checkAttributes(data, "reflection method descriptor object", Collections.singleton("name"), Collections.singleton("parameterTypes"));
+        String methodName = asString(data.get("name"), "name");
         List<T> methodParameterTypes = null;
-        for (Map.Entry<String, Object> entry : data.entrySet()) {
-            String propertyName = entry.getKey();
-            if (propertyName.equals("name")) {
-                methodName = asString(entry.getValue(), "name");
-            } else if (propertyName.equals("parameterTypes")) {
-                methodParameterTypes = parseMethodParameters(clazz, methodName, asList(entry.getValue(),
-                                "Attribute 'parameterTypes' must be a list of type names"));
-                if (methodParameterTypes == null) {
-                    return;
-                }
+        if (data.containsKey("parameterTypes")) {
+            methodParameterTypes = parseMethodParameters(clazz, methodName, asList(data.get("parameterTypes"),
+                            "Attribute 'parameterTypes' must be a list of type names"));
+            if (methodParameterTypes == null) {
+                return;
             }
-        }
-
-        if (methodName == null) {
-            throw new JSONParserException("Missing attribute 'name' in definition of method for class '" + delegate.getTypeName(clazz) + "'");
         }
 
         boolean isConstructor = CONSTRUCTOR_NAME.equals(methodName);

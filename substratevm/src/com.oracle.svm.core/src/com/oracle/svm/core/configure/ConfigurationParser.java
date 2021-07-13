@@ -28,14 +28,19 @@ import java.io.IOException;
 import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.oracle.svm.core.util.json.JSONParserException;
 
 public abstract class ConfigurationParser {
+    private final Map<String, Set<String>> seenUnknownAttributes = new HashMap<>();
+
     public void parseAndRegister(Path path) throws IOException {
         try (Reader reader = Files.newBufferedReader(path)) {
             parseAndRegister(reader);
@@ -60,12 +65,36 @@ public abstract class ConfigurationParser {
         throw new JSONParserException(errorMessage);
     }
 
-    protected static void checkAttributes(Map<String, Object> map, String type, Collection<String> requiredAttrs) {
-        List<String> unseenRequired = new ArrayList<>(requiredAttrs);
+    protected void checkAttributes(Map<String, Object> map, String type, Collection<String> requiredAttrs, Collection<String> optionalAttrs) {
+        Set<String> unseenRequired = new HashSet<>(requiredAttrs);
         unseenRequired.removeAll(map.keySet());
         if (!unseenRequired.isEmpty()) {
-            throw new JSONParserException("Missing attributes [" + String.join(", ", unseenRequired) + "] in " + type);
+            throw new JSONParserException("Missing attribute(s) [" + String.join(", ", unseenRequired) + "] in " + type);
         }
+        Set<String> unknownAttributes = new HashSet<>(map.keySet());
+        unknownAttributes.removeAll(requiredAttrs);
+        unknownAttributes.removeAll(optionalAttrs);
+
+        if (seenUnknownAttributes.containsKey(type)) {
+            unknownAttributes.removeAll(seenUnknownAttributes.get(type));
+        }
+
+        if (unknownAttributes.size() > 0) {
+            String message = "WARNING: Unknown attribute(s) [" + String.join(", ", unknownAttributes) + "] in " + type;
+            if (ConfigurationFiles.Options.StrictConfig.getValue()) {
+                throw new JSONParserException(message);
+            } else {
+                // Checkstyle: stop
+                System.err.println(message);
+                // Checkstyle: resume
+            }
+            Set<String> unknownAttributesForType = seenUnknownAttributes.computeIfAbsent(type, key -> new HashSet<>());
+            unknownAttributesForType.addAll(unknownAttributes);
+        }
+    }
+
+    protected void checkAttributes(Map<String, Object> map, String type, Collection<String> requiredAttrs) {
+        checkAttributes(map, type, requiredAttrs, Collections.emptyList());
     }
 
     protected static String asString(Object value) {

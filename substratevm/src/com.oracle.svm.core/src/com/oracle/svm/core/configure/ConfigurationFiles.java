@@ -91,6 +91,9 @@ public final class ConfigurationFiles {
         @Option(help = "Resources describing predefined classes that can be loaded at runtime.", type = OptionType.User)//
         public static final HostedOptionKey<LocatableMultiOptionValue.Strings> PredefinedClassesConfigurationResources = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
 
+        @Option(help = "Causes unknown attributes in configuration objects to cause an exception instead of emitting a warning.")//
+        public static final HostedOptionKey<Boolean> StrictConfig = new HostedOptionKey<>(false);
+
         @Option(help = "Comma-separated list of file names with declarative substitutions", type = OptionType.User)//
         public static final HostedOptionKey<LocatableMultiOptionValue.Strings> SubstitutionFiles = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
     }
