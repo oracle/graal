@@ -238,7 +238,7 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
         }
         int otherCompileTier = other.targetHighestCompiledTier();
         int compiledTier = targetHighestCompiledTier();
-        if (compiledTier != otherCompileTier) {
+        if (tier == other.tier() && compiledTier != otherCompileTier) {
             // tasks previously compiled with higher tier are better
             return compiledTier > otherCompileTier;
         }
