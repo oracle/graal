@@ -43,9 +43,7 @@ import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
-import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.graph.Edges;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeList;
@@ -62,14 +60,12 @@ import org.graalvm.compiler.nodes.calc.IntegerLessThanNode;
 import org.graalvm.compiler.nodes.calc.NarrowNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
-import org.graalvm.compiler.nodes.extended.GetClassNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
-import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.nodes.java.DynamicNewInstanceNode;
 import org.graalvm.compiler.nodes.java.InstanceOfDynamicNode;
 import org.graalvm.compiler.nodes.java.NewArrayNode;
@@ -115,7 +111,6 @@ import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.GraalEdgeUnsafePartition;
 import com.oracle.svm.core.graal.jdk.ObjectCloneWithExceptionNode;
-import com.oracle.svm.core.graal.jdk.SubstrateArraysCopyOfWithExceptionNode;
 import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
 import com.oracle.svm.core.graal.nodes.FarReturnNode;
 import com.oracle.svm.core.graal.nodes.LazyConstantNode;
@@ -188,7 +183,6 @@ public class SubstrateGraphBuilderPlugins {
         registerUnsafePlugins(metaAccess, plugins, snippetReflection, parsingReason);
         registerKnownIntrinsicsPlugins(plugins);
         registerStackValuePlugins(snippetReflection, plugins);
-        registerArraysPlugins(plugins);
         registerArrayPlugins(plugins, snippetReflection, parsingReason);
         registerClassPlugins(plugins, snippetReflection);
         registerEdgesPlugins(metaAccess, plugins);
@@ -722,46 +716,6 @@ public class SubstrateGraphBuilderPlugins {
                 return false;
             }
         });
-    }
-
-    private static void registerArraysPlugins(InvocationPlugins plugins) {
-
-        Registration r = new Registration(plugins, Arrays.class).setAllowOverwrite(true);
-
-        r.register2("copyOf", Object[].class, int.class, new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode original, ValueNode newLength) {
-                ValueNode nonNullOriginal = b.nullCheckedValue(original);
-
-                /* Get the class from the original node. */
-                GetClassNode originalArrayType = b.add(new GetClassNode(original.stamp(NodeView.DEFAULT), nonNullOriginal));
-
-                ValueNode originalLength = b.add(ArrayLengthNode.create(nonNullOriginal, b.getConstantReflection()));
-                Stamp stamp = b.getInvokeReturnStamp(b.getAssumptions()).getTrustedStamp().join(nonNullOriginal.stamp(NodeView.DEFAULT));
-
-                b.addPush(JavaKind.Object, new SubstrateArraysCopyOfWithExceptionNode(stamp, nonNullOriginal, originalLength, newLength, originalArrayType, b.bci()));
-                return true;
-            }
-        });
-
-        r.register3("copyOf", Object[].class, int.class, Class.class, new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode original, ValueNode newLength, ValueNode newArrayType) {
-                Stamp stamp;
-                if (newArrayType.isConstant()) {
-                    ResolvedJavaType newType = b.getConstantReflection().asJavaType(newArrayType.asConstant());
-                    stamp = StampFactory.objectNonNull(TypeReference.createExactTrusted(newType));
-                } else {
-                    stamp = b.getInvokeReturnStamp(b.getAssumptions()).getTrustedStamp();
-                }
-
-                ValueNode nonNullOriginal = b.nullCheckedValue(original);
-                ValueNode originalLength = b.add(ArrayLengthNode.create(nonNullOriginal, b.getConstantReflection()));
-                b.addPush(JavaKind.Object, new SubstrateArraysCopyOfWithExceptionNode(stamp, nonNullOriginal, originalLength, newLength, newArrayType, b.bci()));
-                return true;
-            }
-        });
-
     }
 
     private static void registerKnownIntrinsicsPlugins(InvocationPlugins plugins) {
