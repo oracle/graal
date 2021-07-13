@@ -67,6 +67,8 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
     private JNIFieldId javaIOObjectStreamClassClassDataSlotDesc;
     private JNIFieldId javaIOObjectStreamClassClassDataSlotHasData;
 
+    private JNIMethodId javaLangReflectConstructorDeclaringClassName;
+
     NativeImageAgentJNIHandleSet(JNIEnvironment env) {
         super(env);
         javaLangClass = newClassGlobalRef(env, "java/lang/Class");
@@ -156,5 +158,12 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
             javaIOObjectStreamClassClassDataSlotHasData = getFieldId(env, getJavaIOObjectStreamClassClassDataSlot(env), "hasData", "Z", false);
         }
         return javaIOObjectStreamClassClassDataSlotHasData;
+    }
+
+    JNIMethodId getJavaLangReflectConstructorDeclaringClassName(JNIEnvironment env, JNIObjectHandle customSerializationConstructorClass) {
+        if (javaLangReflectConstructorDeclaringClassName.equal(nullHandle())) {
+            javaLangReflectConstructorDeclaringClassName = getMethodId(env, customSerializationConstructorClass, "getName", "()Ljava/lang/String;", false);
+        }
+        return javaLangReflectConstructorDeclaringClassName;
     }
 }

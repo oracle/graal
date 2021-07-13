@@ -59,6 +59,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Supplier;
 
+import com.oracle.svm.core.jdk.Package_jdk_internal_reflect;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.UnmanagedMemory;
@@ -943,6 +944,45 @@ final class BreakpointInterceptor {
         return true;
     }
 
+    /*
+     * In rare occasions, the application can demand custom target constructor for serialization,
+     * using (see sun.reflect.ReflectionFactory#newConstructorForSerialization(java.lang.Class,
+     * java.lang.reflect.Constructor)) on JDK8 or (see
+     * jdk.internal.reflect.ReflectionFactory#newConstructorForSerialization(java.lang.Class,
+     * java.lang.reflect.Constructor)) on JDK11. We need to catch constructor class and create entry
+     * for that pair (serialization class, custom class constructor) in serialization configuration.
+     */
+    private static boolean customTargetConstructorSerialization(JNIEnvironment jni, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state) {
+        JNIObjectHandle serializeTargetClass = getObjectArgument(1);
+        String serializeTargetClassName = getClassNameOrNull(jni, serializeTargetClass);
+
+        // Skip Lambda class serialization.
+        if (serializeTargetClassName.contains("$$Lambda$")) {
+            return true;
+        }
+
+        JNIObjectHandle customConstructorObj = getObjectArgument(2);
+        JNIObjectHandle customConstructorClass = jniFunctions().getGetObjectClass().invoke(jni, customConstructorObj);
+        JNIMethodId getDeclaringClassNameMethodID = agent.handles().getJavaLangReflectConstructorDeclaringClassName(jni, customConstructorClass);
+        JNIObjectHandle declaredClassNameObj = callObjectMethod(jni, customConstructorObj, getDeclaringClassNameMethodID);
+        String customConstructorClassName = fromJniString(jni, declaredClassNameObj);
+
+        if (tracer != null) {
+            tracer.traceCall("serialization",
+                            "ObjectStreamClass.<init>",
+                            null,
+                            null,
+                            null,
+                            true,
+                            state.getFullStackTraceOrNull(),
+                            /*- String serializationTargetClass, String customTargetConstructorClass */
+                            serializeTargetClassName, customConstructorClassName);
+
+            guarantee(!testException(jni));
+        }
+        return true;
+    }
+
     @CEntryPoint
     @CEntryPointOptions(prologue = AgentIsolate.Prologue.class)
     private static void onBreakpoint(@SuppressWarnings("unused") JvmtiEnv jvmti, JNIEnvironment jni,
@@ -1241,6 +1281,9 @@ final class BreakpointInterceptor {
                                     "(Ljava/lang/ClassLoader;[Ljava/lang/Class;Ljava/lang/reflect/InvocationHandler;)Ljava/lang/Object;", BreakpointInterceptor::newProxyInstance),
 
                     brk("java/io/ObjectStreamClass", "<init>", "(Ljava/lang/Class;)V", BreakpointInterceptor::objectStreamClassConstructor),
+                    brk(Package_jdk_internal_reflect.getQualifiedName().replace(".", "/") + "/ReflectionFactory",
+                                    "newConstructorForSerialization",
+                                    "(Ljava/lang/Class;Ljava/lang/reflect/Constructor;)Ljava/lang/reflect/Constructor;", BreakpointInterceptor::customTargetConstructorSerialization),
                     optionalBrk("java/util/ResourceBundle",
                                     "getBundleImpl",
                                     "(Ljava/lang/String;Ljava/util/Locale;Ljava/lang/ClassLoader;Ljava/util/ResourceBundle$Control;)Ljava/util/ResourceBundle;",
