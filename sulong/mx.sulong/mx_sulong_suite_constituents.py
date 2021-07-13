@@ -616,11 +616,11 @@ class SulongCMakeTestSuite(SulongTestSuiteMixin, mx_cmake.CMakeNinjaProject):  #
         if not self.current_variant:
             self.abort("current_variant not set")
         _extra_cmake_config = extra_cmake_config or []
-        _extra_cmake_config.append(mx_cmake.CMakeProjectMixin.config_entry("SULONG_CURRENT_VARIANT", self.current_variant))
+        _extra_cmake_config.append(mx_cmake.CMakeNinjaProject.config_entry("SULONG_CURRENT_VARIANT", self.current_variant))
         try:
             # get either current_variant or <other>
             variant_specific_config = next(self.cmake_config_variant[x] for x in (self.current_variant, '<others>') if x in self.cmake_config_variant)
-            _extra_cmake_config.extend((mx_cmake.CMakeProjectMixin.config_entry(k, v) for k, v in variant_specific_config.items()))
+            _extra_cmake_config.extend((mx_cmake.CMakeNinjaProject.config_entry(k, v) for k, v in variant_specific_config.items()))
         except StopIteration:
             # no variant specific config
             pass
