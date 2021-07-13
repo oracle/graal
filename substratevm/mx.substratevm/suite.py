@@ -1099,6 +1099,7 @@ suite = {
                     "org.graalvm.nativeimage.Platform",
                     "com.oracle.truffle.api.TruffleLanguage.Provider",
                     "com.oracle.truffle.api.instrumentation.TruffleInstrument.Provider",
+                    "com.oracle.svm.hosted.agent.NativeImageBytecodeInstrumentationAgentExtension",
                 ],
                 "requiresConcealed": {
                     "jdk.internal.vm.ci": [
