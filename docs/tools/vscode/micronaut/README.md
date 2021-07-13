@@ -7,7 +7,7 @@ permalink: /tools/vscode/micronaut-extension/
 
 # GraalVM Tools for Micronaut Extension
 
-The [GraalVM Tools for Micronaut](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.micronaut) extension for VS Code provides support for developing applications based on the [Micronaut Framework](https://micronaut.io/).
+[GraalVM Tools for Micronaut](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.micronaut) provides support for developing applications based on the [Micronaut framework](https://micronaut.io/) in Visual Studio Code.
 The extension is Technology Preview.
 
 The extension also enables the [Micronaut Launch](https://micronaut.io/launch/) application that allows you to create Micronaut projects through an interface inside VS Code, in addition to using the console CLI.
