@@ -64,8 +64,14 @@ public class CompilationInfo {
      */
     protected HostedMethod deoptTarget;
 
-    /** A link to the regular compiled method if this method is a deoptimization target. */
-    protected HostedMethod deoptOrigin;
+    /**
+     * A link to the regular compiled method if this method is a deoptimization target.
+     *
+     * Note that it is important that this field is final: the {@link HostedMethod#getName() method
+     * name} depends on this field (to distinguish a regular method from a deoptimization target
+     * method), so mutating this field would mutate the name of a method.
+     */
+    protected final HostedMethod deoptOrigin;
 
     /* Custom parsing and compilation code that is executed instead of that of CompileQueue */
     protected ParseFunction customParseFunction;
@@ -83,8 +89,14 @@ public class CompilationInfo {
     protected final AtomicLong numVirtualCalls = new AtomicLong();
     protected final AtomicLong numEntryPointCalls = new AtomicLong();
 
-    public CompilationInfo(HostedMethod method) {
+    public CompilationInfo(HostedMethod method, HostedMethod deoptOrigin) {
         this.method = method;
+        this.deoptOrigin = deoptOrigin;
+
+        if (deoptOrigin != null) {
+            assert deoptOrigin.compilationInfo.deoptTarget == null;
+            deoptOrigin.compilationInfo.deoptTarget = method;
+        }
     }
 
     public boolean isDeoptTarget() {
@@ -109,12 +121,6 @@ public class CompilationInfo {
 
     public HostedMethod getDeoptTargetMethod() {
         return deoptTarget;
-    }
-
-    public void setDeoptTarget(HostedMethod deoptTarget) {
-        assert this.deoptTarget == null;
-        this.deoptTarget = deoptTarget;
-        deoptTarget.compilationInfo.deoptOrigin = this.method;
     }
 
     public void setGraph(StructuredGraph graph) {

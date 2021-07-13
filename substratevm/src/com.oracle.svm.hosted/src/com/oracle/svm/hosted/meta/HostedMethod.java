@@ -95,13 +95,13 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
 
     private final String uniqueShortName;
 
-    public HostedMethod(HostedUniverse universe, AnalysisMethod wrapped, HostedType holder, Signature signature, ConstantPool constantPool, ExceptionHandler[] handlers) {
+    public HostedMethod(HostedUniverse universe, AnalysisMethod wrapped, HostedType holder, Signature signature, ConstantPool constantPool, ExceptionHandler[] handlers, HostedMethod deoptOrigin) {
         this.wrapped = wrapped;
         this.holder = holder;
         this.signature = signature;
         this.constantPool = constantPool;
         this.handlers = handlers;
-        this.compilationInfo = new CompilationInfo(this);
+        this.compilationInfo = new CompilationInfo(this, deoptOrigin);
         this.uniqueShortName = SubstrateUtil.uniqueShortName(this);
 
         LocalVariableTable newLocalVariableTable = null;
