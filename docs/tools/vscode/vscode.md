@@ -7,13 +7,23 @@ permalink: /tools/vscode/
 
 # Visual Studio Code Extensions
 
-Here you will learn about GraalVM intergation into Visual Studio Code (VS Code).
+* [GraalVM Tools for Java](/tools/vscode/graalvm-extension/)
+* [GraalVM Tools for Micronaut](/tools/vscode/micronaut-extension/)
+* [GraalVM Extension Pack for Java](/tools/vscode/graalvm-extension-pack/)
+
+Here you will learn about GraalVM intergation into [Visual Studio Code (VS Code)](https://code.visualstudio.com/).
 Visual Studio Code (VS Code) is an integrated development environment that provides the embedded Git and GitHub control, syntax highlighting, code refactoring, and much more.
 
-[GraalVM Extension](graalvm/README.md), introduced with the GraalVM 19.2 release, has been created to provide a polyglot environment in VS Code.
-It provides users the environment for editing and debugging programs running on GraalVM, including JavaScript and Node.js support by default. Users can edit, run and debug either single-language applications written in any of the GraalVM-supported languages (JS, Ruby, R, and Python) or polyglot applications in the same runtime.
-The extension has progressed since then and now offers an installation wizzard that allows downloading and installing GraalVM and its optional features directly from the user interface.
+The following extensions are available for download from [Visual Studio Code Marketplace](https://marketplace.visualstudio.com/vscode):
 
-By installing the [Apache NetBeans Language Server](https://marketplace.visualstudio.com/items?itemName=asf.apache-netbeans-java) extension on top of it, users receive also editting and debugging support for Java.
+- [GraalVM Tools for Java](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm) provides a full-fledged support for the Java language and, additionally, enables a polyglot environment in VS Code, making it a comfortable and convenient integrated development environment to work with.
+Users can edit, run and debug either single-language applications written in any of the GraalVM-supported languages (Java, JS, Ruby, R, and Python), or polyglot applications without the need to install any other additional extensions.
+The extension also offers the installation wizard that allows to download and install GraalVM and its optional features directly from the user interface.
 
-[Micronaut Extension](micronaut/README.md), introduced with the GraalVM 20.3 release, provides the basic support for developing applications based on the [Micronaut Framework](https://micronaut.io/). Apart from the Micronaut project creation wizard, it adds also special special support for generating native images with GraalVM in VS Code.
+- [GraalVM Tools for Micronaut](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.micronaut) provides full support for developing applications based on the [Micronaut Framework](https://micronaut.io/). The extension also enables the [Micronaut Launch](https://micronaut.io/launch/) application that allows you to create Micronaut projects through an interface inside VS Code, in addition to using the console CLI. This extension is integrated with GraalVM to provide all Native Image capabilities. You can generate native images directly from VS Code, and deploy them to a Docker Registry.
+
+- [GraalVM Extension Pack for Java](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm-pack) is a collection of extensions that helps users write, debug and test Java, JavaScript, Python, Ruby, R and polyglot applications running on GraalVM, either standalone or using the Micronaut framework.
+GraalVM Extension Pack for Java bundles [GraalVM Tools for Java](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm), [GraalVM Tools for Micronaut](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.micronaut), and [Apache NetBeans Language Server](https://marketplace.visualstudio.com/items?itemName=asf.apache-netbeans-java) extensions.
+
+As of GraalVM 21.2.0, the GraalVM Tools for Java extension introduced a new feature in this version - the integration with VisualVM (https://visualvm.github.io), which is the all-in-one Java (and polyglot) monitoring and troubleshooting tool.
+This brings the visual Java tooling to VS Code. Proceed to each extension documentation respectively to learn more.
