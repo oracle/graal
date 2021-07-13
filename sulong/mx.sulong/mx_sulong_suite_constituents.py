@@ -433,6 +433,26 @@ class AbstractSulongNativeProject(mx.NativeProject):  # pylint: disable=too-many
         super(AbstractSulongNativeProject, self).__init__(suite, name, subDir, [srcDir], deps, workingSets, results, output, d, **args)
 
 
+class VariantCMakeNinjaBuildTask(mx_cmake.CMakeNinjaBuildTask):
+    def __init__(self, args, project, target_arch=mx.get_arch(), ninja_targets=None, variant=None):
+        self.variant = variant
+        # abuse target_arch to inject variant
+        super(VariantCMakeNinjaBuildTask, self).__init__(args, project, target_arch=os.path.join("build", variant), ninja_targets=ninja_targets)
+        # set correct target_arch
+        self.target_arch = target_arch
+
+    @property
+    def name(self):
+        return '{} ({})'.format(self.subject.name, self.variant)
+
+    def build(self):
+        try:
+            self.subject.current_variant = self.variant
+            super(VariantCMakeNinjaBuildTask, self).build()
+        finally:
+            self.subject.current_variant = None
+
+
 class SulongCMakeTestSuite(SulongTestSuiteMixin, mx_cmake.CMakeNinjaProject):  # pylint: disable=too-many-ancestors
     """Sulong test suite compiled with CMake/Ninja.
 
@@ -578,7 +598,7 @@ class SulongCMakeTestSuite(SulongTestSuiteMixin, mx_cmake.CMakeNinjaProject):  #
                 yield variant
 
         class MultiVariantBuildTask(mx.Buildable, mx.TaskSequence):
-            subtasks = [mx_cmake.VariantCMakeNinjaBuildTask(args, self, target_arch=mx.get_arch(), ninja_targets=self._ninja_targets, variant=variant) for variant in _variant()]
+            subtasks = [VariantCMakeNinjaBuildTask(args, self, target_arch=mx.get_arch(), ninja_targets=self._ninja_targets, variant=variant) for variant in _variant()]
 
             def execute(self):
                 super(MultiVariantBuildTask, self).execute()
