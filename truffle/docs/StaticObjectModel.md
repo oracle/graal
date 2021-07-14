@@ -230,7 +230,7 @@ or when creating the [Context](https://www.graalvm.org/truffle/javadoc/org/graal
 ```java
 Context context = Context.newBuilder() //
                          .allowExperimentalOptions(true) //
-                         .option("engine.RelaxSomSafetyChecks", "true") //
+                         .option("engine.RelaxStaticObjectSafetyChecks", "true") //
                          .build();
 ```
 
