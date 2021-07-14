@@ -365,6 +365,16 @@ public class SubstrateGraphBuilderPlugins {
              */
             List<Class<?>> classList = new ArrayList<>();
             FixedNode successor = unwrapNode(newArray.next());
+            /*
+             * In a case when we are creating a proxy, which contains a method with a class as a
+             * parameter, a successor node will not be StoreIndexNode, so we need to skip
+             * initialization nodes.
+             */
+            if (successor instanceof EnsureClassInitializedNode) {
+                AbstractBeginNode classInitializedNode = ((EnsureClassInitializedNode) successor).next();
+                VMError.guarantee(classInitializedNode != null);
+                successor = classInitializedNode.next();
+            }
             while (successor instanceof StoreIndexedNode) {
                 StoreIndexedNode store = (StoreIndexedNode) successor;
                 assert getDeoptProxyOriginalValue(store.array()).equals(newArray);
