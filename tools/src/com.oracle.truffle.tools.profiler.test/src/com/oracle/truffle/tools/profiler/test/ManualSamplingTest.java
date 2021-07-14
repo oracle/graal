@@ -72,7 +72,6 @@ public class ManualSamplingTest extends AbstractPolyglotTest {
     private static void assertEntry(Iterator<StackTraceEntry> iterator, String expectedName, int expectedCharIndex) {
         StackTraceEntry entry = iterator.next();
         assertEquals(expectedName, entry.getRootName());
-        assertTrue(entry.isInlined() ^ entry.isCompiled() ^ entry.isInterpreted());
         assertEquals(expectedCharIndex, entry.getSourceSection().getCharIndex());
         assertNotNull(entry.toStackTraceElement());
         assertNotNull(entry.toString());

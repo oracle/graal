@@ -260,7 +260,6 @@ public class CPUSamplerTest extends AbstractProfilerTest {
     @Test
     public void testMultiThreaded() {
         sampler.setFilter(NO_INTERNAL_ROOT_TAG_FILTER);
-        sampler.setCollecting(true);
         Runnable runnable = new Runnable() {
             @Override
             public void run() {
@@ -269,6 +268,8 @@ public class CPUSamplerTest extends AbstractProfilerTest {
                 }
             }
         };
+        runnable.run();
+        sampler.setCollecting(true);
         Thread first = new Thread(runnable);
         first.start();
         try {
