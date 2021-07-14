@@ -41,6 +41,8 @@
 
 package com.oracle.truffle.espresso.polyglot;
 
+import java.nio.ByteOrder;
+
 /**
  * Provides access to the interoperability message protocol between Truffle languages. Every method
  * represents one message specified by the protocol. In the following text we will abbreviate
@@ -1360,4 +1362,38 @@ public final class Interop {
     public static native Object getDeclaringMetaObject(Object receiver) throws UnsupportedMessageException;
 
     // endregion StackFrame Messages
+
+    // region Buffer Messages
+
+    /**
+     * Returns {@code true} if the receiver may have buffer elements.
+     * <p>
+     * If this message returns {@code true}, then {@link #getBufferSize(Object)},
+     * {@link #readBufferByte(Object, long)}, {@link #readBufferShort(Object, ByteOrder, long)},
+     * {@link #readBufferInt(Object, ByteOrder, long)},
+     * {@link #readBufferLong(Object, ByteOrder, long)},
+     * {@link #readBufferFloat(Object, ByteOrder, long)} and
+     * {@link #readBufferDouble(Object, ByteOrder, long)} must not throw
+     * {@link UnsupportedMessageException}.
+     * <p>
+     * Invoking this message does not cause any observable side-effects.
+     * <p>
+     * By default, it returns {@code false}.
+     *
+     * @since 21.1
+     */
+    public static native boolean hasBufferElements(Object receiver);
+
+    /**
+     * Returns the buffer size of the receiver, in bytes.
+     * <p>
+     * Invoking this message does not cause any observable side-effects.
+     *
+     * @throws UnsupportedMessageException if and only if {@link #hasBufferElements(Object)} returns
+     *             {@code false}
+     * @since 21.1
+     */
+    public static native long getBufferSize(Object receiver) throws UnsupportedMessageException;
+
+    // endregion Buffer Messages
 }
