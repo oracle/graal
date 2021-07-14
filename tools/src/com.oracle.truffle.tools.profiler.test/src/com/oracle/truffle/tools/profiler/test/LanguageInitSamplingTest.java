@@ -30,7 +30,6 @@ import java.util.Collection;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -38,6 +37,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleSafepoint;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
@@ -47,7 +47,6 @@ import com.oracle.truffle.tools.profiler.ProfilerNode;
 public class LanguageInitSamplingTest {
 
     @Test
-    @Ignore("Wip")
     public void testLanguageInit() {
         Context context = Context.create(LongInitLanguage.ID);
         CPUSampler sampler = CPUSampler.find(context.getEngine());
@@ -72,14 +71,19 @@ public class LanguageInitSamplingTest {
         @Override
         public Object execute(VirtualFrame frame) {
             for (int i = 0; i < 1000; i++) {
-                try {
-                    Thread.sleep(1);
-                } catch (InterruptedException e) {
-                    Assert.fail();
-                }
+                sleepSomeTime();
                 TruffleSafepoint.poll(this);
             }
-            return 1;
+            return 42;
+        }
+
+        @TruffleBoundary
+        private static void sleepSomeTime() {
+            try {
+                Thread.sleep(1);
+            } catch (InterruptedException e) {
+                Assert.fail();
+            }
         }
     }
 
@@ -89,12 +93,11 @@ public class LanguageInitSamplingTest {
 
         @Override
         protected void initializeContext(ProxyLanguage.LanguageContext context) throws Exception {
-            newTarget().call();
+// newTarget().call();
         }
 
         @Override
         protected LanguageContext createContext(Env env) {
-            newTarget().call();
             return super.createContext(env);
         }
 

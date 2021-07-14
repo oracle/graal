@@ -238,7 +238,7 @@ final class SafepointStackSampler {
                 CallTarget target = targets[i];
                 RootNode root = ((RootCallTarget) target).getRootNode();
                 SourceSection sourceSection = root.getSourceSection();
-                if (sourceSection != null && filter.includes(root, sourceSection)) {
+                if (filter.includes(root, sourceSection, null)) {
                     entries.add(new StackTraceEntry(VISITOR_TAGS, sourceSection, root, root, states[i]));
                 }
             }
