@@ -49,7 +49,7 @@ public final class OldGeneration extends Generation {
     @Platforms(Platform.HOSTED_ONLY.class)
     OldGeneration(String name) {
         super(name);
-        int age = HeapPolicy.getMaxSurvivorSpaces() + 1;
+        int age = HeapParameters.getMaxSurvivorSpaces() + 1;
         this.fromSpace = new Space("oldFromSpace", true, age);
         this.toSpace = new Space("oldToSpace", false, age);
     }

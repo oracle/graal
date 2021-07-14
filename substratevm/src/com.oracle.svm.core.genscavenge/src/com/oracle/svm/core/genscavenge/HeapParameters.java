@@ -24,7 +24,10 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -36,11 +39,61 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.heap.ReferenceAccess;
+import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 
-/** HeapPolicy contains policies for the parameters and behaviors of the heap and collector. */
-public final class HeapPolicy {
+/** Constants and variables for the size and layout of the heap and behavior of the collector. */
+public final class HeapParameters {
+    public static final class Options {
+        @Option(help = "The maximum heap size as percent of physical memory") //
+        public static final RuntimeOptionKey<Integer> MaximumHeapSizePercent = new RuntimeOptionKey<>(80);
+
+        @Option(help = "The maximum size of the young generation as a percentage of the maximum heap size") //
+        public static final RuntimeOptionKey<Integer> MaximumYoungGenerationSizePercent = new RuntimeOptionKey<>(10);
+
+        @Option(help = "Bytes that can be allocated before (re-)querying the physical memory size") //
+        public static final HostedOptionKey<Long> AllocationBeforePhysicalMemorySize = new HostedOptionKey<>(1L * 1024L * 1024L);
+
+        @Option(help = "The size of an aligned chunk.") //
+        public static final HostedOptionKey<Long> AlignedHeapChunkSize = new HostedOptionKey<Long>(1L * 1024L * 1024L) {
+            @Override
+            protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
+                int multiple = 4096;
+                UserError.guarantee(newValue > 0 && newValue % multiple == 0, "%s value must be a multiple of %d.", getName(), multiple);
+            }
+        };
+
+        /*
+         * This should be a fraction of the size of an aligned chunk, else large small arrays will
+         * not fit in an aligned chunk.
+         */
+        @Option(help = "The size at or above which an array will be allocated in its own unaligned chunk.  0 implies (AlignedHeapChunkSize / 8).") //
+        public static final HostedOptionKey<Long> LargeArrayThreshold = new HostedOptionKey<>(LARGE_ARRAY_THRESHOLD_SENTINEL_VALUE);
+
+        @Option(help = "Fill unused memory chunks with a sentinel value.") //
+        public static final HostedOptionKey<Boolean> ZapChunks = new HostedOptionKey<>(false);
+
+        @Option(help = "Before use, fill memory chunks with a sentinel value.") //
+        public static final HostedOptionKey<Boolean> ZapProducedHeapChunks = new HostedOptionKey<>(false);
+
+        @Option(help = "After use, Fill memory chunks with a sentinel value.") //
+        public static final HostedOptionKey<Boolean> ZapConsumedHeapChunks = new HostedOptionKey<>(false);
+
+        @Option(help = "Trace heap chunks during collections, if +VerboseGC and +PrintHeapShape.") //
+        public static final RuntimeOptionKey<Boolean> TraceHeapChunks = new RuntimeOptionKey<>(false);
+
+        @Option(help = "Maximum number of survivor spaces.") //
+        public static final HostedOptionKey<Integer> MaxSurvivorSpaces = new HostedOptionKey<>(0);
+
+        @Option(help = "Determines if a full GC collects the young generation separately or together with the old generation.") //
+        public static final RuntimeOptionKey<Boolean> CollectYoungGenerationSeparately = new RuntimeOptionKey<>(false);
+
+        private Options() {
+        }
+    }
+
     static final long LARGE_ARRAY_THRESHOLD_SENTINEL_VALUE = 0;
     static final int ALIGNED_HEAP_CHUNK_FRACTION_FOR_LARGE_ARRAY_THRESHOLD = 8;
 
@@ -82,7 +135,7 @@ public final class HeapPolicy {
 
     @Fold
     public static int getMaxSurvivorSpaces() {
-        return HeapPolicyOptions.MaxSurvivorSpaces.getValue();
+        return Options.MaxSurvivorSpaces.getValue();
     }
 
     /*
@@ -106,7 +159,7 @@ public final class HeapPolicy {
     }
 
     private static int getMaximumYoungGenerationSizePercent() {
-        int result = HeapPolicyOptions.MaximumYoungGenerationSizePercent.getValue();
+        int result = Options.MaximumYoungGenerationSizePercent.getValue();
         VMError.guarantee((result >= 0) && (result <= 100), "MaximumYoungGenerationSizePercent should be in [0 ..100]");
         return result;
     }
@@ -135,7 +188,7 @@ public final class HeapPolicy {
     }
 
     private static int getMaximumHeapSizePercent() {
-        int result = HeapPolicyOptions.MaximumHeapSizePercent.getValue();
+        int result = Options.MaximumHeapSizePercent.getValue();
         VMError.guarantee((result >= 0) && (result <= 100), "MaximumHeapSizePercent should be in [0 ..100]");
         return result;
     }
@@ -159,7 +212,7 @@ public final class HeapPolicy {
 
     @Fold
     public static UnsignedWord getAlignedHeapChunkSize() {
-        return WordFactory.unsigned(HeapPolicyOptions.AlignedHeapChunkSize.getValue());
+        return WordFactory.unsigned(Options.AlignedHeapChunkSize.getValue());
     }
 
     @Fold
@@ -169,11 +222,11 @@ public final class HeapPolicy {
 
     @Fold
     public static UnsignedWord getLargeArrayThreshold() {
-        long largeArrayThreshold = HeapPolicyOptions.LargeArrayThreshold.getValue();
+        long largeArrayThreshold = Options.LargeArrayThreshold.getValue();
         if (LARGE_ARRAY_THRESHOLD_SENTINEL_VALUE == largeArrayThreshold) {
             return getAlignedHeapChunkSize().unsignedDivide(ALIGNED_HEAP_CHUNK_FRACTION_FOR_LARGE_ARRAY_THRESHOLD);
         } else {
-            return WordFactory.unsigned(HeapPolicyOptions.LargeArrayThreshold.getValue());
+            return WordFactory.unsigned(Options.LargeArrayThreshold.getValue());
         }
     }
 
@@ -182,11 +235,11 @@ public final class HeapPolicy {
      */
 
     public static boolean getZapProducedHeapChunks() {
-        return HeapPolicyOptions.ZapChunks.getValue() || HeapPolicyOptions.ZapProducedHeapChunks.getValue();
+        return Options.ZapChunks.getValue() || Options.ZapProducedHeapChunks.getValue();
     }
 
     public static boolean getZapConsumedHeapChunks() {
-        return HeapPolicyOptions.ZapChunks.getValue() || HeapPolicyOptions.ZapConsumedHeapChunks.getValue();
+        return Options.ZapChunks.getValue() || Options.ZapConsumedHeapChunks.getValue();
     }
 
     static {
@@ -205,7 +258,7 @@ public final class HeapPolicy {
 
         /** The size, in bytes, of what qualifies as a "large" array. */
         public static long getUnalignedObjectSize() {
-            return HeapPolicy.getLargeArrayThreshold().rawValue();
+            return HeapParameters.getLargeArrayThreshold().rawValue();
         }
     }
 
@@ -214,7 +267,7 @@ public final class HeapPolicy {
      */
 
     private static UnsignedWord getAllocationBeforePhysicalMemorySize() {
-        return WordFactory.unsigned(HeapPolicyOptions.AllocationBeforePhysicalMemorySize.getValue());
+        return WordFactory.unsigned(Options.AllocationBeforePhysicalMemorySize.getValue());
     }
 
     /** Sample the physical memory size, before the first collection but after some allocation. */

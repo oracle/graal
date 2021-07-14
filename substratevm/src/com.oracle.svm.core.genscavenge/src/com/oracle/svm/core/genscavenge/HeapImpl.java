@@ -118,7 +118,7 @@ public final class HeapImpl extends Heap {
         this.pageSize = pageSize;
         this.gcImpl = new GCImpl(access);
         this.runtimeCodeInfoGcSupport = new RuntimeCodeInfoGCSupportImpl();
-        HeapPolicy.initialize();
+        HeapParameters.initialize();
         SubstrateDiagnostics.DiagnosticThunkRegister.getSingleton().register(new DumpHeapSettingsAndStatistics());
         SubstrateDiagnostics.DiagnosticThunkRegister.getSingleton().register(new DumpChunkInformation());
     }
@@ -251,7 +251,7 @@ public final class HeapImpl extends Heap {
         Log trace = Log.noopLog().string("[HeapImpl.promoteObject:").string("  original: ").object(original);
 
         Object result;
-        if (HeapPolicy.getMaxSurvivorSpaces() > 0 && !getGCImpl().isCompleteCollection()) {
+        if (HeapParameters.getMaxSurvivorSpaces() > 0 && !getGCImpl().isCompleteCollection()) {
             result = getYoungGeneration().promoteObject(original, header);
         } else {
             result = getOldGeneration().promoteObject(original, header);
@@ -286,7 +286,7 @@ public final class HeapImpl extends Heap {
     }
 
     void report(Log log) {
-        report(log, HeapPolicyOptions.TraceHeapChunks.getValue());
+        report(log, HeapParameters.Options.TraceHeapChunks.getValue());
     }
 
     void report(Log log, boolean traceHeapChunks) {
@@ -304,32 +304,32 @@ public final class HeapImpl extends Heap {
 
     /** Log the zap values to make it easier to search for them. */
     static Log zapValuesToLog(Log log) {
-        if (HeapPolicy.getZapProducedHeapChunks() || HeapPolicy.getZapConsumedHeapChunks()) {
+        if (HeapParameters.getZapProducedHeapChunks() || HeapParameters.getZapConsumedHeapChunks()) {
             log.string("[Heap Chunk zap values: ").indent(true);
             /* Padded with spaces so the columns line up between the int and word variants. */
             // @formatter:off
-            if (HeapPolicy.getZapProducedHeapChunks()) {
+            if (HeapParameters.getZapProducedHeapChunks()) {
                 log.string("  producedHeapChunkZapInt: ")
-                                .string("  hex: ").spaces(8).hex(HeapPolicy.getProducedHeapChunkZapInt())
-                                .string("  signed: ").spaces(9).signed(HeapPolicy.getProducedHeapChunkZapInt())
-                                .string("  unsigned: ").spaces(10).unsigned(HeapPolicy.getProducedHeapChunkZapInt()).newline();
+                                .string("  hex: ").spaces(8).hex(HeapParameters.getProducedHeapChunkZapInt())
+                                .string("  signed: ").spaces(9).signed(HeapParameters.getProducedHeapChunkZapInt())
+                                .string("  unsigned: ").spaces(10).unsigned(HeapParameters.getProducedHeapChunkZapInt()).newline();
                 log.string("  producedHeapChunkZapWord:")
-                                .string("  hex: ").hex(HeapPolicy.getProducedHeapChunkZapWord())
-                                .string("  signed: ").signed(HeapPolicy.getProducedHeapChunkZapWord())
-                                .string("  unsigned: ").unsigned(HeapPolicy.getProducedHeapChunkZapWord());
-                if (HeapPolicy.getZapConsumedHeapChunks()) {
+                                .string("  hex: ").hex(HeapParameters.getProducedHeapChunkZapWord())
+                                .string("  signed: ").signed(HeapParameters.getProducedHeapChunkZapWord())
+                                .string("  unsigned: ").unsigned(HeapParameters.getProducedHeapChunkZapWord());
+                if (HeapParameters.getZapConsumedHeapChunks()) {
                     log.newline();
                 }
             }
-            if (HeapPolicy.getZapConsumedHeapChunks()) {
+            if (HeapParameters.getZapConsumedHeapChunks()) {
                 log.string("  consumedHeapChunkZapInt: ")
-                                .string("  hex: ").spaces(8).hex(HeapPolicy.getConsumedHeapChunkZapInt())
-                                .string("  signed: ").spaces(10).signed(HeapPolicy.getConsumedHeapChunkZapInt())
-                                .string("  unsigned: ").spaces(10).unsigned(HeapPolicy.getConsumedHeapChunkZapInt()).newline();
+                                .string("  hex: ").spaces(8).hex(HeapParameters.getConsumedHeapChunkZapInt())
+                                .string("  signed: ").spaces(10).signed(HeapParameters.getConsumedHeapChunkZapInt())
+                                .string("  unsigned: ").spaces(10).unsigned(HeapParameters.getConsumedHeapChunkZapInt()).newline();
                 log.string("  consumedHeapChunkZapWord:")
-                                .string("  hex: ").hex(HeapPolicy.getConsumedHeapChunkZapWord())
-                                .string("  signed: ").signed(HeapPolicy.getConsumedHeapChunkZapWord())
-                                .string("  unsigned: ").unsigned(HeapPolicy.getConsumedHeapChunkZapWord());
+                                .string("  hex: ").hex(HeapParameters.getConsumedHeapChunkZapWord())
+                                .string("  signed: ").signed(HeapParameters.getConsumedHeapChunkZapWord())
+                                .string("  unsigned: ").unsigned(HeapParameters.getConsumedHeapChunkZapWord());
             }
             log.redent(false).string("]");
             // @formatter:on
@@ -425,7 +425,7 @@ public final class HeapImpl extends Heap {
     @Fold
     @Override
     public int getPreferredAddressSpaceAlignment() {
-        return UnsignedUtils.safeToInt(HeapPolicy.getAlignedHeapChunkAlignment());
+        return UnsignedUtils.safeToInt(HeapParameters.getAlignedHeapChunkAlignment());
     }
 
     @Fold
@@ -437,7 +437,7 @@ public final class HeapImpl extends Heap {
              * the heap base and the start of the image heap. The gap won't need any memory in the
              * native image file.
              */
-            return NumUtil.safeToInt(HeapPolicyOptions.AlignedHeapChunkSize.getValue());
+            return NumUtil.safeToInt(HeapParameters.Options.AlignedHeapChunkSize.getValue());
         }
         return 0;
     }
@@ -800,7 +800,7 @@ public final class HeapImpl extends Heap {
                 log.string("Heap base: ").zhex(KnownIntrinsics.heapBase()).newline();
             }
             log.string("Object reference size: ").signed(ConfigurationValues.getObjectLayout().getReferenceSize()).newline();
-            log.string("Aligned chunk size: ").unsigned(HeapPolicy.getAlignedHeapChunkSize()).newline();
+            log.string("Aligned chunk size: ").unsigned(HeapParameters.getAlignedHeapChunkSize()).newline();
 
             GCAccounting accounting = gc.getAccounting();
             log.string("Incremental collections: ").unsigned(accounting.getIncrementalCollectionCount()).newline();
@@ -844,7 +844,7 @@ final class Target_java_lang_Runtime {
     private long maxMemory() {
         // Query the physical memory size, so it gets set correctly instead of being estimated.
         PhysicalMemory.size();
-        return HeapPolicy.getMaximumHeapSize().rawValue();
+        return HeapParameters.getMaximumHeapSize().rawValue();
     }
 
     @Substitute

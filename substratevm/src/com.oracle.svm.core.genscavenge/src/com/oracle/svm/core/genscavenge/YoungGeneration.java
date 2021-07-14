@@ -47,7 +47,7 @@ public final class YoungGeneration extends Generation {
     YoungGeneration(String name) {
         super(name);
         this.eden = new Space("edenSpace", true, 0);
-        this.maxSurvivorSpaces = HeapPolicy.getMaxSurvivorSpaces();
+        this.maxSurvivorSpaces = HeapParameters.getMaxSurvivorSpaces();
         this.survivorFromSpaces = new Space[maxSurvivorSpaces];
         this.survivorToSpaces = new Space[maxSurvivorSpaces];
         this.survivorGreyObjectsWalkers = new GreyObjectsWalker[maxSurvivorSpaces];

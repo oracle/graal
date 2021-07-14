@@ -25,8 +25,8 @@
 package com.oracle.svm.core.genscavenge;
 
 import static com.oracle.svm.core.genscavenge.CollectionPolicy.Options.PercentTimeInIncrementalCollection;
-import static com.oracle.svm.core.genscavenge.HeapPolicy.getMaximumHeapSize;
-import static com.oracle.svm.core.genscavenge.HeapPolicy.getMinimumHeapSize;
+import static com.oracle.svm.core.genscavenge.HeapParameters.getMaximumHeapSize;
+import static com.oracle.svm.core.genscavenge.HeapParameters.getMinimumHeapSize;
 
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.Platform;
@@ -148,7 +148,7 @@ public abstract class CollectionPolicy {
          */
         private static UnsignedWord estimateUsedHeapAtNextIncrementalCollection() {
             UnsignedWord currentYoungBytes = HeapImpl.getHeapImpl().getYoungGeneration().getChunkBytes();
-            UnsignedWord maxYoungBytes = HeapPolicy.getMaximumYoungGenerationSize();
+            UnsignedWord maxYoungBytes = HeapParameters.getMaximumYoungGenerationSize();
             UnsignedWord oldBytes = GCImpl.getGCImpl().getAccounting().getOldGenerationAfterChunkBytes();
             return currentYoungBytes.add(maxYoungBytes).add(oldBytes);
         }

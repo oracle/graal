@@ -104,16 +104,16 @@ public final class Space {
     }
 
     public boolean isYoungSpace() {
-        return age <= HeapPolicy.getMaxSurvivorSpaces();
+        return age <= HeapParameters.getMaxSurvivorSpaces();
     }
 
     boolean isSurvivorSpace() {
-        return age > 0 && age <= HeapPolicy.getMaxSurvivorSpaces();
+        return age > 0 && age <= HeapParameters.getMaxSurvivorSpaces();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isOldSpace() {
-        return age == (HeapPolicy.getMaxSurvivorSpaces() + 1);
+        return age == (HeapParameters.getMaxSurvivorSpaces() + 1);
     }
 
     int getAge() {
