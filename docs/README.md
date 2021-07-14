@@ -16,8 +16,6 @@ GraalVM languages implementations are being developed and tested in separate fro
 * [GraalPython](https://github.com/oracle/graalpython/tree/master/docs/user) - Python
 * [TruffleRuby](https://github.com/oracle/truffleruby/tree/master/doc/user) - Ruby
 
-Extensions for Visual Studio Code (VS Code) also have their dedicated repository, and to contribute to GraalVM Extension Pack for Java, GraalVM or Micronaut VS Code extensions, navigate to [github.com/graalvm/vscode-extensions](https://github.com/graalvm/vscode-extensions).
-
 To update the documentation:
 
 1. Create a GitHub account or sign in to your existing account
