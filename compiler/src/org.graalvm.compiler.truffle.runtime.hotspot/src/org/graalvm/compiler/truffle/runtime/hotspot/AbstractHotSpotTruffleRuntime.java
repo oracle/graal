@@ -476,13 +476,11 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
 
     private static boolean fieldIsNotEligible(Class<?> clazz, ResolvedJavaField f) {
         /*
-         * "discovered" field of Reference class may reference unrelated objects that should not be
-         * included. The condition is structured with the intention to minimize performance impact.
-         * In any case, we have to check that the field is declared in the Reference class, because
-         * the "discovered" field is private and so subclasses can have field of the same name.
+         * Fields of Reference class are excluded because they are handled in a special way by the
+         * VM. In any case, we have to check that the field declared in the Reference class, because
+         * Reference class has private fields and so subclasses can have fields of the same names.
          */
-        return (Reference.class.isAssignableFrom(clazz) &&
-                        f.getName().equals("discovered") && f.getDeclaringClass().isAssignableFrom(getMetaAccess().lookupJavaType(Reference.class)));
+        return (Reference.class.isAssignableFrom(clazz) && f.getDeclaringClass().isAssignableFrom(getMetaAccess().lookupJavaType(Reference.class)));
     }
 
     @Override
