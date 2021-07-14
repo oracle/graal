@@ -25,8 +25,10 @@
 
 package com.oracle.svm.test.proxy;
 
+// Checkstyle: stop
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
+// Checkstyle: resume
 
 public class CustomInvocationHandler implements InvocationHandler {
     @Override
