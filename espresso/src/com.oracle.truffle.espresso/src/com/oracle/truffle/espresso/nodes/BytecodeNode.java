@@ -408,7 +408,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
 
     private final LivenessAnalysis livenessAnalysis;
 
-    private volatile Object osrState;
+    @CompilationFinal private Object osrState;
 
     @Override
     public Object executeOSR(VirtualFrame innerFrame, Frame parentFrame, int target) {
@@ -681,9 +681,9 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         CompilerAsserts.partialEvaluationConstant(slotCount);
         long[] primitives = new long[slotCount];
         Object[] refs = new Object[slotCount];
-        EspressoRootNode rootNode = getRoot();
-        if (rootNode.usesMonitors()) {
-            rootNode.initMonitorStack(frame, rootNode.getMonitorStack(parentFrame));
+        EspressoRootNode espressoRootNode = getRoot();
+        if (espressoRootNode.usesMonitors()) {
+            espressoRootNode.initMonitorStack(frame, espressoRootNode.getMonitorStack(parentFrame));
         }
         frame.setObject(primitivesSlot, primitives);
         frame.setObject(refsSlot, refs);

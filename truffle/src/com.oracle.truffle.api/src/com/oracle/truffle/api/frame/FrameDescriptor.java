@@ -118,7 +118,8 @@ public final class FrameDescriptor implements Cloneable {
     }
 
     /**
-     * Constructs new descriptor with specified {@link #getDefaultValue()} and {@link #canMaterialize()}.
+     * Constructs new descriptor with specified {@link #getDefaultValue()} and
+     * {@link #canMaterialize()}.
      *
      * @param defaultValue to be returned from {@link #getDefaultValue()}
      * @param allowMaterialize to be returned from {@link #canMaterialize()}
@@ -579,7 +580,7 @@ public final class FrameDescriptor implements Cloneable {
     /**
      * Return whether materialization is allowed.
      */
-    public boolean canMaterialize(){
+    public boolean canMaterialize() {
         return allowMaterialize;
     }
 

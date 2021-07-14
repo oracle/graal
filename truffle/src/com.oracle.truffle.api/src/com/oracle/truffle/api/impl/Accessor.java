@@ -962,8 +962,8 @@ public abstract class Accessor {
         public abstract Object onOSRBackEdge(BytecodeOSRNode osrNode, VirtualFrame parentFrame, int target);
 
         /**
-         * Reports that a child node of an {@link BytecodeOSRNode} was replaced. Allows the runtime system to
-         * invalidate any OSR targets it has created.
+         * Reports that a child node of an {@link BytecodeOSRNode} was replaced. Allows the runtime
+         * system to invalidate any OSR targets it has created.
          *
          * @param osrNode the node whose child was replaced
          * @param oldNode the replaced node
@@ -973,8 +973,8 @@ public abstract class Accessor {
         public abstract void onOSRNodeReplaced(BytecodeOSRNode osrNode, Node oldNode, Node newNode, CharSequence reason);
 
         /**
-         * Transfers state from the {@code source} frame into the {@code target} frame. The frames must
-         * have the same layout as the frame passed when executing the {@code osrNode}.
+         * Transfers state from the {@code source} frame into the {@code target} frame. The frames
+         * must have the same layout as the frame passed when executing the {@code osrNode}.
          *
          * @param osrNode the node being on-stack replaced.
          * @param source the frame to transfer state from

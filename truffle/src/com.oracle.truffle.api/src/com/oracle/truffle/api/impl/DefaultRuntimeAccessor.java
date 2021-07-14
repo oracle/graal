@@ -101,7 +101,6 @@ final class DefaultRuntimeAccessor extends Accessor {
             throw new UnsupportedOperationException();
         }
 
-
         @Override
         public OptionDescriptors getEngineOptionDescriptors() {
             return OptionDescriptors.EMPTY;

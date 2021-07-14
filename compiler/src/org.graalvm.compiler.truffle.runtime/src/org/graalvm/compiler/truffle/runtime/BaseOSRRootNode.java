@@ -28,7 +28,6 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
-import jdk.vm.ci.code.stack.InspectedFrame;
 
 /**
  * Base class for on-stack replaced (OSR) root nodes.

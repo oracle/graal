@@ -48,7 +48,15 @@ import com.oracle.truffle.api.frame.VirtualFrame;
  * Interface for Truffle bytecode nodes which can be on-stack replaced (OSR). Bytecode OSR nodes
  * must extend {@link Node} or a subclass of {@link Node}.
  *
- * @since 21.3 TODO update
+ * <p>
+ * An implementing class should declare a metadata field which can be accessed by this interface's
+ * {@link BytecodeOSRNode#getOSRMetadata getter} and {@link BytecodeOSRNode#setOSRMetadata setter}
+ * methods. The field should be annotated as
+ * {@link com.oracle.truffle.api.CompilerDirectives.CompilationFinal @CompilationFinal}. The
+ * concrete type of the object stored in this field will depend on the
+ * {@link com.oracle.truffle.api.TruffleRuntime runtime} used.
+ * 
+ * @since 21.3
  */
 public interface BytecodeOSRNode extends NodeInterface {
 
@@ -71,16 +79,6 @@ public interface BytecodeOSRNode extends NodeInterface {
      * @return the result of execution.
      */
     Object executeOSR(VirtualFrame innerFrame, Frame parentFrame, int target);
-
-    /*
-     * OSRMetadata is a virtual field representing the {@link TruffleRuntime runtime}-specific
-     * metadata required for OSR compilation.
-     * 
-     * Since interfaces cannot declare fields, a class implementing this interface should declare a
-     * field for the metadata and proxy accesses through these accessors.
-     *
-     * NOTE: this field should be marked {@code volatile} and {@link CompilationFinal}.
-     */
 
     /**
      * Gets the OSR metadata for this instance.
@@ -118,6 +116,11 @@ public interface BytecodeOSRNode extends NodeInterface {
      * 
      * This helper can be used when implementing {@link #executeOSR} to transfer state between OSR
      * and parent frames.
+     * 
+     * <p>
+     * NOTE: If a language uses this method to transfer state, the OSR metadata field must be marked
+     * {@link com.oracle.truffle.api.CompilerDirectives.CompilationFinal}, since the metadata may be
+     * used inside the compiled code to perform the state transfer.
      * 
      * @param osrNode the node being on-stack replaced.
      * @param source the frame to transfer state from

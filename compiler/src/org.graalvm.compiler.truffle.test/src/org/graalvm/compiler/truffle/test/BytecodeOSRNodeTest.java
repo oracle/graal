@@ -408,7 +408,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
 
     abstract static class BytecodeOSRTestNode extends ExecutableNode implements BytecodeOSRNode {
         public static final int DEFAULT_TARGET = -1;
-        @CompilationFinal volatile Object osrMetadata;
+        @CompilationFinal Object osrMetadata;
 
         protected BytecodeOSRTestNode(TruffleLanguage<?> language) {
             super(language);
@@ -887,7 +887,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         @CompilationFinal(dimensions = 1) private final FrameSlot[] regs;
 
         boolean compiled;
-        @CompilationFinal volatile Object osrMetadata;
+        @CompilationFinal Object osrMetadata;
 
         public static class Bytecode {
             public static final byte RETURN = 0;

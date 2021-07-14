@@ -635,7 +635,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
             }
         }
 
-        private boolean isOSRFrame(InspectedFrame frame) {
+        private static boolean isOSRFrame(InspectedFrame frame) {
             return ((OptimizedCallTarget) frame.getLocal(GraalFrameInstance.CALL_TARGET_INDEX)).getRootNode() instanceof BaseOSRRootNode;
         }
     }
