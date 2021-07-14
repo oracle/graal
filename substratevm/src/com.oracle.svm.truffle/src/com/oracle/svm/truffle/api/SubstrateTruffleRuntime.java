@@ -389,7 +389,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
         TruffleInlining inlining = new TruffleInlining();
 
         SingleThreadedCompilationTask(OptimizedCallTarget optimizedCallTarget, boolean lastTierCompilation) {
-            this.hasNextTier = optimizedCallTarget.engine.firstTierOnly || lastTierCompilation;
+            this.hasNextTier = !optimizedCallTarget.engine.firstTierOnly && !lastTierCompilation;
             this.lastTierCompilation = lastTierCompilation;
         }
 
