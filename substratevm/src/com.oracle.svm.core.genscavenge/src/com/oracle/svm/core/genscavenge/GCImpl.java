@@ -94,6 +94,8 @@ import com.oracle.svm.core.util.VMError;
  * Garbage collector (incremental or complete) for {@link HeapImpl}.
  */
 public final class GCImpl implements GC {
+    private static final OutOfMemoryError OUT_OF_MEMORY_ERROR = new OutOfMemoryError("Garbage-collected heap size exceeded.");
+
     private final GreyToBlackObjRefVisitor greyToBlackObjRefVisitor = new GreyToBlackObjRefVisitor();
     private final GreyToBlackObjectVisitor greyToBlackObjectVisitor = new GreyToBlackObjectVisitor(greyToBlackObjRefVisitor);
     private final BlackenImageHeapRootsVisitor blackenImageHeapRootsVisitor = new BlackenImageHeapRootsVisitor();
@@ -124,12 +126,39 @@ public final class GCImpl implements GC {
         collect(cause, false);
     }
 
+    public void maybeCollectOnAllocation() {
+        boolean outOfMemory;
+        if (hasNeverCollectPolicy()) {
+            outOfMemory = HeapImpl.getHeapImpl().getAccounting().getEdenUsedBytes().aboveThan(HeapPolicy.getMaximumHeapSize());
+        } else {
+            outOfMemory = maybeCollectOnAllocation(HeapPolicy.getMaximumYoungGenerationSize());
+        }
+        if (outOfMemory) {
+            throw OUT_OF_MEMORY_ERROR;
+        }
+    }
+
+    @Uninterruptible(reason = "Avoid races with other threads that also try to trigger a GC")
+    private boolean maybeCollectOnAllocation(UnsignedWord maxYoungSize) {
+        if (HeapImpl.getHeapImpl().getAccounting().getYoungUsedBytes().aboveOrEqual(maxYoungSize)) {
+            return collectWithoutAllocating(GenScavengeGCCause.OnAllocation, false);
+        }
+        return false;
+    }
+
+    @SuppressWarnings("static-method")
+    public void maybeCauseUserRequestedCollection() {
+        if (!SubstrateGCOptions.DisableExplicitGC.getValue()) {
+            HeapImpl.getHeapImpl().getGC().collectCompletely(GCCause.JavaLangSystemGC);
+        }
+    }
+
     private void collect(GCCause cause, boolean forceFullGC) {
         if (!hasNeverCollectPolicy()) {
             UnsignedWord requestingEpoch = possibleCollectionPrologue();
             boolean outOfMemory = collectWithoutAllocating(cause, forceFullGC);
             if (outOfMemory) {
-                throw HeapPolicy.OUT_OF_MEMORY_ERROR;
+                throw OUT_OF_MEMORY_ERROR;
             }
             possibleCollectionEpilogue(requestingEpoch);
         }
@@ -172,7 +201,7 @@ public final class GCImpl implements GC {
 
         printGCBefore(cause.getName());
         boolean outOfMemory = collectImpl(forceFullGC);
-        HeapPolicy.setEdenAndYoungGenBytes(WordFactory.unsigned(0), accounting.getYoungChunkBytesAfter());
+        HeapImpl.getHeapImpl().getAccounting().setEdenAndYoungGenBytes(WordFactory.unsigned(0), accounting.getYoungChunkBytesAfter());
         printGCAfter(cause.getName());
 
         finishCollection();
@@ -221,10 +250,8 @@ public final class GCImpl implements GC {
                     scavenge(true);
                 }
                 scavenge(false);
-            } else if (policy.collectIncrementally()) {
-                scavenge(true);
             } else {
-                VMError.shouldNotReachHere("A safepoint for a GC was triggered, so why did the GC policy decide not to do a GC?");
+                scavenge(true);
             }
         } finally {
             collectionTimer.close();

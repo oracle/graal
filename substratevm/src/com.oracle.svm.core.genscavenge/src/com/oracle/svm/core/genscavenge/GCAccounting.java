@@ -108,10 +108,6 @@ public final class GCAccounting {
         return youngChunkBytesAfter;
     }
 
-    public static UnsignedWord getSurvivorSpaceAfterChunkBytes(int survivorIndex) {
-        return HeapImpl.getHeapImpl().getYoungGeneration().getSurvivorFromSpaceAt(survivorIndex).getChunkBytes();
-    }
-
     UnsignedWord getLastCollectionPromotedChunkBytes() {
         return lastCollectionPromotedChunkBytes;
     }

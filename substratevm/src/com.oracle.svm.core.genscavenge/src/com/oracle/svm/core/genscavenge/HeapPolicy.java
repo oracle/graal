@@ -34,24 +34,18 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.heap.ReferenceAccess;
-import com.oracle.svm.core.jdk.UninterruptibleUtils;
-import com.oracle.svm.core.option.RuntimeOptionValues;
-import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 
 /** HeapPolicy contains policies for the parameters and behaviors of the heap and collector. */
 public final class HeapPolicy {
-    public static final OutOfMemoryError OUT_OF_MEMORY_ERROR = new OutOfMemoryError("Garbage-collected heap size exceeded.");
-
     static final long LARGE_ARRAY_THRESHOLD_SENTINEL_VALUE = 0;
     static final int ALIGNED_HEAP_CHUNK_FRACTION_FOR_LARGE_ARRAY_THRESHOLD = 8;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    HeapPolicy() {
+    static void initialize() {
         if (!SubstrateUtil.isPowerOf2(getAlignedHeapChunkSize().rawValue())) {
             throw UserError.abort("AlignedHeapChunkSize (%d) should be a power of 2.", getAlignedHeapChunkSize().rawValue());
         }
@@ -163,14 +157,6 @@ public final class HeapPolicy {
         return result;
     }
 
-    public static void setMaximumHeapSize(UnsignedWord value) {
-        RuntimeOptionValues.singleton().update(SubstrateGCOptions.MaxHeapSize, value.rawValue());
-    }
-
-    public static void setMinimumHeapSize(UnsignedWord value) {
-        RuntimeOptionValues.singleton().update(SubstrateGCOptions.MinHeapSize, value.rawValue());
-    }
-
     @Fold
     public static UnsignedWord getAlignedHeapChunkSize() {
         return WordFactory.unsigned(HeapPolicyOptions.AlignedHeapChunkSize.getValue());
@@ -213,68 +199,6 @@ public final class HeapPolicy {
     private static final UnsignedWord consumedHeapChunkZapInt = WordFactory.unsigned(0xdeadbeef);
     private static final UnsignedWord consumedHeapChunkZapWord = consumedHeapChunkZapInt.shiftLeft(32).or(consumedHeapChunkZapInt);
 
-    /*
-     * Collection-triggering Policies
-     */
-
-    private static final UninterruptibleUtils.AtomicUnsigned edenUsedBytes = new UninterruptibleUtils.AtomicUnsigned();
-    private static final UninterruptibleUtils.AtomicUnsigned youngUsedBytes = new UninterruptibleUtils.AtomicUnsigned();
-
-    public static void setEdenAndYoungGenBytes(UnsignedWord edenBytes, UnsignedWord youngBytes) {
-        assert VMOperation.isGCInProgress() : "would cause races otherwise";
-        youngUsedBytes.set(youngBytes);
-        edenUsedBytes.set(edenBytes);
-    }
-
-    public static void increaseEdenUsedBytes(UnsignedWord value) {
-        youngUsedBytes.addAndGet(value);
-        edenUsedBytes.addAndGet(value);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static UnsignedWord getYoungUsedBytes() {
-        assert !VMOperation.isGCInProgress() : "value is incorrect during a GC";
-        return youngUsedBytes.get();
-    }
-
-    public static UnsignedWord getEdenUsedBytes() {
-        assert !VMOperation.isGCInProgress() : "value is incorrect during a GC";
-        return edenUsedBytes.get();
-    }
-
-    private static UnsignedWord getAllocationBeforePhysicalMemorySize() {
-        return WordFactory.unsigned(HeapPolicyOptions.AllocationBeforePhysicalMemorySize.getValue());
-    }
-
-    public static void maybeCollectOnAllocation() {
-        if (GCImpl.hasNeverCollectPolicy()) {
-            // Don't initiate a safepoint if we won't do a collection anyways.
-            if (HeapPolicy.getEdenUsedBytes().aboveThan(HeapPolicy.getMaximumHeapSize())) {
-                throw OUT_OF_MEMORY_ERROR;
-            }
-        } else {
-            UnsignedWord maxYoungSize = getMaximumYoungGenerationSize();
-            boolean outOfMemory = maybeCollectOnAllocation(maxYoungSize);
-            if (outOfMemory) {
-                throw OUT_OF_MEMORY_ERROR;
-            }
-        }
-    }
-
-    @Uninterruptible(reason = "Avoid races with other threads that also try to trigger a GC")
-    private static boolean maybeCollectOnAllocation(UnsignedWord maxYoungSize) {
-        if (youngUsedBytes.get().aboveOrEqual(maxYoungSize)) {
-            return GCImpl.getGCImpl().collectWithoutAllocating(GenScavengeGCCause.OnAllocation, false);
-        }
-        return false;
-    }
-
-    public static void maybeCauseUserRequestedCollection() {
-        if (!SubstrateGCOptions.DisableExplicitGC.getValue()) {
-            HeapImpl.getHeapImpl().getGC().collectCompletely(GCCause.JavaLangSystemGC);
-        }
-    }
-
     public static final class TestingBackDoor {
         private TestingBackDoor() {
         }
@@ -289,10 +213,14 @@ public final class HeapPolicy {
      * Periodic tasks
      */
 
+    private static UnsignedWord getAllocationBeforePhysicalMemorySize() {
+        return WordFactory.unsigned(HeapPolicyOptions.AllocationBeforePhysicalMemorySize.getValue());
+    }
+
     /** Sample the physical memory size, before the first collection but after some allocation. */
     static void samplePhysicalMemorySize() {
         if (HeapImpl.getHeapImpl().getGCImpl().getCollectionEpoch().equal(WordFactory.zero()) &&
-                        getYoungUsedBytes().aboveThan(getAllocationBeforePhysicalMemorySize())) {
+                        HeapImpl.getHeapImpl().getAccounting().getYoungUsedBytes().aboveThan(getAllocationBeforePhysicalMemorySize())) {
             PhysicalMemory.tryInitialize();
         }
     }

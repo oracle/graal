@@ -178,7 +178,7 @@ public final class ThreadLocalAllocation {
         DeoptTester.disableDeoptTesting();
         try {
             HeapImpl.exitIfAllocationDisallowed("ThreadLocalAllocation.allocateNewInstance", DynamicHub.toClass(hub).getName());
-            HeapPolicy.maybeCollectOnAllocation();
+            GCImpl.getGCImpl().maybeCollectOnAllocation();
 
             AlignedHeader newTlab = HeapImpl.getChunkProvider().produceAlignedChunk();
             return allocateInstanceInNewTlab(hub, size, newTlab);
@@ -228,7 +228,7 @@ public final class ThreadLocalAllocation {
         DeoptTester.disableDeoptTesting();
         try {
             HeapImpl.exitIfAllocationDisallowed("Heap.allocateNewArray", DynamicHub.toClass(hub).getName());
-            HeapPolicy.maybeCollectOnAllocation();
+            GCImpl.getGCImpl().maybeCollectOnAllocation();
 
             if (size.aboveOrEqual(HeapPolicy.getLargeArrayThreshold())) {
                 /* Large arrays go into their own unaligned chunk. */

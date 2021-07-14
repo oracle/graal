@@ -538,7 +538,7 @@ public final class Space {
 
 /**
  * Accounting for a {@link Space}. For the eden space, the values are inaccurate outside of a GC
- * (see {@link HeapPolicy#getYoungUsedBytes()} and {@link HeapPolicy#getEdenUsedBytes()}.
+ * (see {@link HeapAccounting#getYoungUsedBytes()} and {@link HeapAccounting#getEdenUsedBytes()}.
  */
 final class SpaceAccounting {
     private long alignedCount;

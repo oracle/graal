@@ -35,7 +35,6 @@ import org.graalvm.nativeimage.hosted.Feature.FeatureAccess;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.util.TimeUtils;
@@ -81,38 +80,22 @@ public abstract class CollectionPolicy {
         return policyClass.cast(result);
     }
 
-    /** Return {@code true} if the current collection should entail an incremental collection. */
-    public abstract boolean collectIncrementally();
-
-    /** Return {@code true} if the current collection should entail a complete collection. */
+    /**
+     * Decides whether to do a complete collection (returning {@code true}) or an incremental
+     * collection (returning {@code false}).
+     */
     public abstract boolean collectCompletely();
 
     CollectionPolicy() {
     }
 
-    public abstract void nameToLog(Log log);
-
     public abstract String getName();
 
-    static GCAccounting getAccounting() {
-        return GCImpl.getGCImpl().getAccounting();
-    }
-
-    public static class OnlyIncrementally extends CollectionPolicy {
-
-        @Override
-        public boolean collectIncrementally() {
-            return true;
-        }
+    public static final class OnlyIncrementally extends CollectionPolicy {
 
         @Override
         public boolean collectCompletely() {
             return false;
-        }
-
-        @Override
-        public void nameToLog(Log log) {
-            log.string(getName());
         }
 
         @Override
@@ -121,21 +104,11 @@ public abstract class CollectionPolicy {
         }
     }
 
-    public static class OnlyCompletely extends CollectionPolicy {
-
-        @Override
-        public boolean collectIncrementally() {
-            return false;
-        }
+    public static final class OnlyCompletely extends CollectionPolicy {
 
         @Override
         public boolean collectCompletely() {
             return true;
-        }
-
-        @Override
-        public void nameToLog(Log log) {
-            log.string(getName());
         }
 
         @Override
@@ -144,21 +117,11 @@ public abstract class CollectionPolicy {
         }
     }
 
-    public static class NeverCollect extends CollectionPolicy {
-
-        @Override
-        public boolean collectIncrementally() {
-            return false;
-        }
+    public static final class NeverCollect extends CollectionPolicy {
 
         @Override
         public boolean collectCompletely() {
             return false;
-        }
-
-        @Override
-        public void nameToLog(Log log) {
-            log.string(getName());
         }
 
         @Override
@@ -171,11 +134,7 @@ public abstract class CollectionPolicy {
      * A collection policy that delays complete collections until the heap has at least `-Xms` space
      * in it, and then tries to balance time in incremental and complete collections.
      */
-    public static class BySpaceAndTime extends CollectionPolicy {
-        @Override
-        public boolean collectIncrementally() {
-            return true;
-        }
+    public static final class BySpaceAndTime extends CollectionPolicy {
 
         @Override
         public boolean collectCompletely() {
@@ -190,7 +149,7 @@ public abstract class CollectionPolicy {
         private static UnsignedWord estimateUsedHeapAtNextIncrementalCollection() {
             UnsignedWord currentYoungBytes = HeapImpl.getHeapImpl().getYoungGeneration().getChunkBytes();
             UnsignedWord maxYoungBytes = HeapPolicy.getMaximumYoungGenerationSize();
-            UnsignedWord oldBytes = getAccounting().getOldGenerationAfterChunkBytes();
+            UnsignedWord oldBytes = GCImpl.getGCImpl().getAccounting().getOldGenerationAfterChunkBytes();
             return currentYoungBytes.add(maxYoungBytes).add(oldBytes);
         }
 
@@ -198,16 +157,12 @@ public abstract class CollectionPolicy {
             int incrementalWeight = PercentTimeInIncrementalCollection.getValue();
             assert incrementalWeight >= 0 && incrementalWeight <= 100 : "BySpaceAndTimePercentTimeInIncrementalCollection should be in the range [0..100].";
 
-            long actualIncrementalNanos = getAccounting().getIncrementalCollectionTotalNanos();
-            long completeNanos = getAccounting().getCompleteCollectionTotalNanos();
+            GCAccounting accounting = GCImpl.getGCImpl().getAccounting();
+            long actualIncrementalNanos = accounting.getIncrementalCollectionTotalNanos();
+            long completeNanos = accounting.getCompleteCollectionTotalNanos();
             long totalNanos = actualIncrementalNanos + completeNanos;
             long expectedIncrementalNanos = TimeUtils.weightedNanos(incrementalWeight, totalNanos);
             return TimeUtils.nanoTimeLessThan(expectedIncrementalNanos, actualIncrementalNanos);
-        }
-
-        @Override
-        public void nameToLog(Log log) {
-            log.string(getName()).string(": ").signed(Options.PercentTimeInIncrementalCollection.getValue()).string("% in incremental collections");
         }
 
         @Override

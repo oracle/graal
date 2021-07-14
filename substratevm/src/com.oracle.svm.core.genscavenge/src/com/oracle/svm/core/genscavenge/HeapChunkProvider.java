@@ -121,7 +121,7 @@ final class HeapChunkProvider {
             zap(result, HeapPolicy.getProducedHeapChunkZapWord());
         }
 
-        HeapPolicy.increaseEdenUsedBytes(chunkSize);
+        HeapImpl.getHeapImpl().getAccounting().increaseEdenUsedBytes(chunkSize);
 
         log().string("  result chunk: ").zhex(result).string("  ]").newline();
         return result;
@@ -239,7 +239,7 @@ final class HeapChunkProvider {
             zap(result, HeapPolicy.getProducedHeapChunkZapWord());
         }
 
-        HeapPolicy.increaseEdenUsedBytes(chunkSize);
+        HeapImpl.getHeapImpl().getAccounting().increaseEdenUsedBytes(chunkSize);
 
         log().string("  returns ").zhex(result).string("  ]").newline();
         return result;
