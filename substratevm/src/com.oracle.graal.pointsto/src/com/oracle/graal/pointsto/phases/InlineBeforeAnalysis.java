@@ -46,7 +46,6 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.MethodSubstitutionPlugin;
-import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
@@ -159,21 +158,6 @@ class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPolicy.Scop
                     boolean trackNodeSourcePosition) {
         AnalysisMethod aMethod = (AnalysisMethod) method;
         return aMethod.ensureGraphParsed(bb).getEncodedGraph();
-    }
-
-    @Override
-    protected LoopScope tryInline(PEMethodScope methodScope, LoopScope loopScope, InvokeData invokeData, MethodCallTargetNode callTarget) {
-        ResolvedJavaMethod targetMethod = callTarget.targetMethod();
-        for (PEMethodScope cur = methodScope; cur != null; cur = cur.caller) {
-            if (targetMethod.equals(cur.method)) {
-                /*
-                 * Prevent recursive inlining. We need to do this here and not in the inlinig policy
-                 * because only here we have the MethodScope chain.
-                 */
-                return null;
-            }
-        }
-        return super.tryInline(methodScope, loopScope, invokeData, callTarget);
     }
 
     @Override
