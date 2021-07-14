@@ -85,7 +85,7 @@ public class PolyglotEngineOptionsTest extends TestWithSynchronousCompiling {
         setupContext("engine.Mode", "latency");
         OptimizedCallTarget target = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
         Assert.assertEquals(PolyglotCompilerOptions.EngineModeEnum.LATENCY, target.getOptionValue(PolyglotCompilerOptions.Mode));
-        Assert.assertEquals(false, target.engine.inlining);
+        Assert.assertEquals(true, target.engine.inlining);
         Assert.assertEquals(false, target.engine.splitting);
     }
 
