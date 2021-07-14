@@ -145,6 +145,9 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
             Stamp stamp;
             if (kind == JavaKind.Object && type instanceof ResolvedJavaType) {
                 stamp = StampFactory.object(TypeReference.createWithoutAssumptions((ResolvedJavaType) type));
+            } else if (kind.getStackKind() != kind) {
+                assert kind.getStackKind() == JavaKind.Int;
+                stamp = StampFactory.forKind(JavaKind.Int);
             } else {
                 stamp = StampFactory.forKind(kind);
             }
