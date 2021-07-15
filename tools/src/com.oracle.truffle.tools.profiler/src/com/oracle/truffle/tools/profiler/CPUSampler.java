@@ -675,7 +675,6 @@ public final class CPUSampler implements Closeable {
                         continue;
                     }
                     Map<Thread, ProfilerNode<Payload>> nodes = activeContexts.get(context);
-                    // TODO: Is this check really needed?
                     if (nodes == null) {
                         continue;
                     }
@@ -698,30 +697,28 @@ public final class CPUSampler implements Closeable {
             if (sample.stack.size() == 0) {
                 return;
             }
-            synchronized (CPUSampler.this) {
-                // now traverse the stack and insert the path into the tree
-                ProfilerNode<Payload> treeNode = threadNode;
-                for (int i = sample.stack.size() - 1; i >= 0; i--) {
-                    StackTraceEntry location = sample.stack.get(i);
-                    treeNode = addOrUpdateChild(treeNode, location);
-                    Payload payload = treeNode.getPayload();
-                    boolean isCompiled = location.isCompiled();
-                    if (i == 0) {
-                        if (isCompiled) {
-                            payload.selfCompiledHitCount++;
-                        } else {
-                            payload.selfInterpretedHitCount++;
-                        }
-                        if (gatherSelfHitTimes) {
-                            payload.selfHitTimes.add(timestamp);
-                            assert payload.selfHitTimes.size() == payload.getSelfHitCount();
-                        }
-                    }
+            // now traverse the stack and insert the path into the tree
+            ProfilerNode<Payload> treeNode = threadNode;
+            for (int i = sample.stack.size() - 1; i >= 0; i--) {
+                StackTraceEntry location = sample.stack.get(i);
+                treeNode = addOrUpdateChild(treeNode, location);
+                Payload payload = treeNode.getPayload();
+                boolean isCompiled = location.isCompiled();
+                if (i == 0) {
                     if (isCompiled) {
-                        payload.compiledHitCount++;
+                        payload.selfCompiledHitCount++;
                     } else {
-                        payload.interpretedHitCount++;
+                        payload.selfInterpretedHitCount++;
                     }
+                    if (gatherSelfHitTimes) {
+                        payload.selfHitTimes.add(timestamp);
+                        assert payload.selfHitTimes.size() == payload.getSelfHitCount();
+                    }
+                }
+                if (isCompiled) {
+                    payload.compiledHitCount++;
+                } else {
+                    payload.interpretedHitCount++;
                 }
             }
             samplesTaken.get(context).incrementAndGet();
