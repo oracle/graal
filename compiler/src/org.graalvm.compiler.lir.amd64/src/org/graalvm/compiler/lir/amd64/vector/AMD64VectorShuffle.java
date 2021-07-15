@@ -158,7 +158,8 @@ public class AMD64VectorShuffle {
 
         public ConstShuffleBytesOp(AllocatableValue result, AllocatableValue source, byte... selector) {
             super(TYPE);
-            assert AVXKind.getRegisterSize(((AMD64Kind) source.getPlatformKind())).getBytes() == selector.length;
+            assert AVXKind.getRegisterSize(((AMD64Kind) source.getPlatformKind())).getBytes() == selector.length : " Register size=" +
+                            AVXKind.getRegisterSize(((AMD64Kind) source.getPlatformKind())).getBytes() + " select length=" + selector.length;
             this.result = result;
             this.source = source;
             this.selector = selector;
