@@ -40,6 +40,7 @@ import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.classfile.attributes.EnclosingMethodAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.InnerClassesAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.PermittedSubclassesAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.SignatureAttribute;
 import com.oracle.truffle.espresso.classfile.constantpool.NameAndTypeConstant;
 import com.oracle.truffle.espresso.descriptors.ByteSequence;
@@ -602,6 +603,39 @@ public final class Target_java_lang_Class {
             return ((ObjectKlass) klass).isRecord();
         }
         return false;
+    }
+
+    @Substitution(hasReceiver = true)
+    public static @JavaType(Class[].class) StaticObject getPermittedSubclasses0(@JavaType(Class.class) StaticObject self,
+                    @InjectMeta Meta meta) {
+        Klass k = self.getMirrorKlass();
+        if (!(k instanceof ObjectKlass)) {
+            return StaticObject.NULL;
+        }
+        ObjectKlass klass = (ObjectKlass) k;
+        if (!klass.isSealed()) {
+            return StaticObject.NULL;
+        }
+        short[] classes = ((PermittedSubclassesAttribute) klass.getAttribute(PermittedSubclassesAttribute.NAME)).getClasses();
+        StaticObject[] permittedSubclasses = new StaticObject[classes.length];
+        RuntimeConstantPool pool = klass.getConstantPool();
+        int nClasses = 0;
+        for (int index : classes) {
+            Klass permitted;
+            try {
+                permitted = pool.resolvedKlassAt(klass, index);
+            } catch (EspressoException e) {
+                /* Suppress and continue */
+                continue;
+            }
+            if (permitted instanceof ObjectKlass) {
+                permittedSubclasses[nClasses++] = permitted.mirror();
+            }
+        }
+        if (nClasses == permittedSubclasses.length) {
+            return StaticObject.createArray(meta.java_lang_Class_array, permittedSubclasses);
+        }
+        return meta.java_lang_Class.allocateReferenceArray(nClasses, (i) -> permittedSubclasses[i]);
     }
 
     @Substitution(hasReceiver = true, versionFilter = VersionFilter.Java8OrEarlier.class)
