@@ -545,7 +545,8 @@ def emscripten_init(args):
     test_file = os.path.join(temp_dir, "test.c")
     with open(test_file, "w") as fp:
         fp.write("int main() { return 0; }")
-    cmd = os.path.join(emsdk_path, "upstream", "emscripten", "emcc")
+    cmd = os.path.join(emscripten_root, "emcc")
+
     if mx.run([cmd, test_file], nonZeroIsFatal=True) != 0:
         mx.abort("Error while triggering cache generation")
     shutil.rmtree(temp_dir)
