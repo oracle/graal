@@ -245,7 +245,7 @@ While the project is starting, project name with a process ID (PID) pending labe
 
 > Note: This feature was introduced with the GraalVM 21.2.0 release. Please make sure to get the latest GraalVM Tools for Java extension from the VS Code Marketplace, preferably by downloading the [GraalVM Extension Pack for Java](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm-pack).
 
-For a more detailed feature description, go to [this page](visualvm-in-vscode.md).
+For a more detailed feature description, go to [this page](visualvm-integration.md).
 
 ## JavaScript and Node.js Debugging
 

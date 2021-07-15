@@ -166,9 +166,9 @@ Subsequent actions invocation will request another process selection.
 
 The following actions are available for the JFR:
 
-* **Start flight recording** - starts a flight recording session if not already running, using the defined settings, and opens the process in VisualVM at the defined tab
-* **Dump flight recording data** - dumps and displays the flight recording data collected so far if the flight recording session is already running
-* **Stop flight recording** - stops the flight recording session if running
+* Start flight recording - starts a flight recording session if not already running, using the defined settings, and opens the process in VisualVM at the defined tab
+* Dump flight recording data - dumps and displays the flight recording data collected so far if the flight recording session is already running
+* Stop flight recording - stops the flight recording session if running
 
 The JFR node can be further expanded to access the flight recorder settings.
 The following settings can be configured using the Configure action:
