@@ -250,11 +250,31 @@ public final class HeapImpl extends Heap {
     Object promoteObject(Object original, UnsignedWord header) {
         Log trace = Log.noopLog().string("[HeapImpl.promoteObject:").string("  original: ").object(original);
 
-        Object result;
-        if (HeapParameters.getMaxSurvivorSpaces() > 0 && !getGCImpl().isCompleteCollection()) {
-            result = getYoungGeneration().promoteObject(original, header);
+        boolean isAligned = ObjectHeaderImpl.isAlignedHeader(header);
+        HeapChunk.Header<?> originalChunk;
+        Space originalSpace;
+        if (isAligned) {
+            originalChunk = AlignedHeapChunk.getEnclosingChunk(original);
+            originalSpace = HeapChunk.getSpace(originalChunk);
         } else {
-            result = getOldGeneration().promoteObject(original, header);
+            assert ObjectHeaderImpl.isUnalignedHeader(header);
+            originalChunk = UnalignedHeapChunk.getEnclosingChunk(original);
+            originalSpace = HeapChunk.getSpace(originalChunk);
+        }
+
+        Object result;
+        if (originalSpace.getAge() < HeapParameters.getMaxSurvivorSpaces()) {
+            if (isAligned) {
+                result = getYoungGeneration().promoteAlignedObject(original, (AlignedHeapChunk.AlignedHeader) originalChunk, originalSpace);
+            } else {
+                result = getYoungGeneration().promoteUnalignedObject(original, (UnalignedHeapChunk.UnalignedHeader) originalChunk, originalSpace);
+            }
+        } else {
+            if (isAligned) {
+                result = getOldGeneration().promoteAlignedObject(original, (AlignedHeapChunk.AlignedHeader) originalChunk, originalSpace);
+            } else {
+                result = getOldGeneration().promoteUnalignedObject(original, (UnalignedHeapChunk.UnalignedHeader) originalChunk, originalSpace);
+            }
         }
 
         trace.string("  result: ").object(result).string("]").newline();
