@@ -251,6 +251,7 @@ import java.util.Arrays;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.bytecode.BytecodeLookupSwitch;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
+import com.oracle.truffle.espresso.bytecode.BytecodeSwitch;
 import com.oracle.truffle.espresso.bytecode.BytecodeTableSwitch;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
@@ -674,6 +675,7 @@ public final class MethodVerifier implements ContextAccess {
         while (bci < code.endBCI()) {
             opcode = code.currentBC(bci);
             verifyGuarantee(opcode < QUICK, "invalid bytecode: " + opcode);
+            verifyEnoughBytecodes(opcode, bci);
             bciStates[bci] = setStatus(bciStates[bci], UNSEEN);
             bci = code.nextBCI(bci);
             // Check instruction has enough bytes after it
@@ -699,6 +701,31 @@ public final class MethodVerifier implements ContextAccess {
                     bciStates[bci] = JUMP_TARGET;
                 }
             }
+        }
+    }
+
+    /**
+     * Verifies that there is enough bytecodes left in the code array to compute the size of
+     * variable-length instructions.
+     */
+    private void verifyEnoughBytecodes(int opcode, int curBCI) {
+        switch (opcode) {
+            case Bytecodes.TABLESWITCH:
+                verifyGuarantee(BytecodeSwitch.getAlignedBci(curBCI)  //
+                                + 8 /* To kigh key */
+                                + 4 /* To read an int */ < code.endBCI(),
+                                "SWITCH instruction does not have enough follow-up bytes to be valid.");
+                return;
+            case Bytecodes.LOOKUPSWITCH:
+                verifyGuarantee(BytecodeSwitch.getAlignedBci(curBCI)  //
+                                + 4 /* To number of cases */
+                                + 4 /* To read an int */ < code.endBCI(),
+                                "SWITCH instruction does not have enough follow-up bytes to be valid.");
+                return;
+            case Bytecodes.WIDE:
+                verifyGuarantee(curBCI + 1 < code.endBCI(), "WIDE bytecode does not have a follow up instruction.");
+                return;
+            default:
         }
     }
 
@@ -1820,7 +1847,7 @@ public final class MethodVerifier implements ContextAccess {
         BytecodeLookupSwitch switchHelper = BytecodeLookupSwitch.INSTANCE;
         // Padding checks
         if (version51OrEarlier()) {
-            for (int j = bci + 1; j < switchHelper.getAlignedBci(bci); j++) {
+            for (int j = bci + 1; j < BytecodeSwitch.getAlignedBci(bci); j++) {
                 verifyGuarantee(code.readUByte(j) == 0, "non-zero padding for LOOKUPSWITCH");
             }
         }
@@ -1850,7 +1877,7 @@ public final class MethodVerifier implements ContextAccess {
         BytecodeTableSwitch switchHelper = BytecodeTableSwitch.INSTANCE;
         // Padding checks
         if (version51OrEarlier()) {
-            for (int j = bci + 1; j < switchHelper.getAlignedBci(bci); j++) {
+            for (int j = bci + 1; j < BytecodeSwitch.getAlignedBci(bci); j++) {
                 verifyGuarantee(code.readUByte(j) == 0, "non-zero padding for TABLESWITCH");
             }
         }
