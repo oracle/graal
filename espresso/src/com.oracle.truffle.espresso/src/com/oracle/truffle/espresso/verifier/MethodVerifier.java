@@ -613,6 +613,10 @@ public final class MethodVerifier implements ContextAccess {
         throw new VerifierError(s, VerifierError.Kind.ClassFormat);
     }
 
+    static VerifierError failFormatNoFallback(String s) {
+        throw new VerifierError(s, VerifierError.Kind.ClassFormat, false);
+    }
+
     static VerifierError failVerify(String s) {
         throw new VerifierError(s, VerifierError.Kind.Verify);
     }
