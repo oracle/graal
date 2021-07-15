@@ -44,8 +44,10 @@ import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 import static com.oracle.truffle.polyglot.EngineAccessor.LANGUAGE;
 
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
@@ -258,6 +260,38 @@ final class PolyglotLanguageInstance implements VMObject {
             }
         });
         return cache;
+    }
+
+    /*
+     * Called from TruffleFeature.StaticObjectSupport.
+     */
+    static Collection<PolyglotLanguageInstance> getActiveInstances() {
+        Set<PolyglotLanguageInstance> instances = new HashSet<>();
+        for (Object o : PolyglotEngineImpl.findActiveEngines()) {
+            collectInstances(((PolyglotEngineImpl) o), instances);
+        }
+        collectInstances(PolyglotImpl.getInstance().getPreinitializedEngine(), instances);
+        return instances;
+    }
+
+    private static void collectInstances(PolyglotEngineImpl engine, Collection<PolyglotLanguageInstance> foundInstances) {
+        for (PolyglotLanguage language : engine.idToLanguage.values()) {
+            foundInstances.addAll(language.getInstancePool());
+        }
+        collectInstances(engine.getPreInitializedContext(), foundInstances);
+        for (PolyglotContextImpl context : engine.collectAliveContexts()) {
+            collectInstances(context, foundInstances);
+        }
+    }
+
+    private static void collectInstances(PolyglotContextImpl context, Collection<PolyglotLanguageInstance> foundInstances) {
+        for (PolyglotLanguage language : context.engine.idToLanguage.values()) {
+            PolyglotLanguageContext languageContext = context.getContext(language);
+            PolyglotLanguageInstance instance = languageContext.getLanguageInstanceOrNull();
+            if (instance != null) {
+                foundInstances.add(instance);
+            }
+        }
     }
 
 }

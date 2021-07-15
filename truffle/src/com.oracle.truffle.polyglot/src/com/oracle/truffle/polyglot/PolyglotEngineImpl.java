@@ -1227,6 +1227,10 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         return allOptions;
     }
 
+    PolyglotContextImpl getPreInitializedContext() {
+        return preInitializedContext.get();
+    }
+
     void preInitialize() {
         synchronized (this.lock) {
             this.preInitializedContext.set(PolyglotContextImpl.preInitialize(this));
