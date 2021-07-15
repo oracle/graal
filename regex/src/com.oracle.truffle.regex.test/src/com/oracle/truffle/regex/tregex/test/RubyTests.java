@@ -330,4 +330,13 @@ public class RubyTests extends RegexTestBase {
         testLatin1("\\A[[:^alpha:]0]\\z", "", "1", 0, true, 0, 1);
         testLatin1("\\A[[:^alpha:]0]\\z", "", "a", 0, false);
     }
+
+    @Test
+    public void treatLeadingClosingBracketsInCharClassesAsLiteralCharacters() {
+        // check('\A[]]\z', "]", "") from test_char_class in test/mri/tests/ruby/test_regexp.rb
+        test("\\A[]]\\z", "", "]", 0, true, 0, 1);
+
+        // also test in negative char class
+        test("\\A[^]]\\z", "", "a", 0, true, 0, 1);
+    }
 }

@@ -1649,10 +1649,10 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
 
     private void collectCharClass() {
         boolean negated = false;
+        int beginPos = position - 1;
         if (match("^")) {
             negated = true;
         }
-        int beginPos = position - 1;
         int firstPosInside = position;
         classBody: while (true) {
             if (atEnd()) {
@@ -1665,10 +1665,11 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
             switch (ch) {
                 case ']':
                     if (position == firstPosInside + 1) {
-                        throw syntaxErrorAt("empty char-class", beginPos);
+                        lowerBound = Optional.of((int) ']');
                     } else {
                         break classBody;
                     }
+                    break;
                 case '\\':
                     lowerBound = classEscape();
                     break;
