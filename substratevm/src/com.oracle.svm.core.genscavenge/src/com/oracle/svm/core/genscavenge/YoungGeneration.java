@@ -254,4 +254,19 @@ public final class YoungGeneration extends Generation {
         toSpace.promoteUnalignedHeapChunk(originalChunk, originalSpace);
         return original;
     }
+
+    @Override
+    protected void promoteChunk(HeapChunk.Header<?> originalChunk, boolean isAligned, Space originalSpace) {
+        if (!originalSpace.isFromSpace()) {
+            return;
+        }
+        assert originalSpace.getAge() < maxSurvivorSpaces;
+        int age = originalSpace.getNextAgeForPromotion();
+        Space toSpace = getSurvivorToSpaceAt(age - 1);
+        if (isAligned) {
+            toSpace.promoteAlignedHeapChunk((AlignedHeapChunk.AlignedHeader) originalChunk, originalSpace);
+        } else {
+            toSpace.promoteUnalignedHeapChunk((UnalignedHeapChunk.UnalignedHeader) originalChunk, originalSpace);
+        }
+    }
 }

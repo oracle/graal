@@ -84,8 +84,15 @@ public final class OldGeneration extends Generation {
         return original;
     }
 
-    public void promoteObjectChunk(Object obj) {
-        getToSpace().promoteObjectChunk(obj);
+    @Override
+    protected void promoteChunk(HeapChunk.Header<?> originalChunk, boolean isAligned, Space originalSpace) {
+        if (originalSpace.isFromSpace()) {
+            if (isAligned) {
+                getToSpace().promoteAlignedHeapChunk((AlignedHeapChunk.AlignedHeader) originalChunk, originalSpace);
+            } else {
+                getToSpace().promoteUnalignedHeapChunk((UnalignedHeapChunk.UnalignedHeader) originalChunk, originalSpace);
+            }
+        }
     }
 
     void releaseSpaces(ChunkReleaser chunkReleaser) {

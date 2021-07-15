@@ -76,4 +76,12 @@ abstract class Generation {
      *         was promoted through HeapChunk motion.
      */
     protected abstract Object promoteUnalignedObject(Object original, UnalignedHeapChunk.UnalignedHeader originalChunk, Space originalSpace);
+
+    /**
+     * Promote a HeapChunk from its original space to this Space.
+     *
+     * This turns all the Objects in the chunk from white to grey: the objects are in this Space,
+     * but have not yet had their interior pointers visited.
+     */
+    protected abstract void promoteChunk(HeapChunk.Header<?> originalChunk, boolean isAligned, Space originalSpace);
 }

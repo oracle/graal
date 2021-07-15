@@ -938,21 +938,14 @@ public final class GCImpl implements GC {
     }
 
     @AlwaysInline("GC performance")
+    @SuppressWarnings("static-method")
     Object promoteObject(Object original, UnsignedWord header) {
         Log trace = Log.noopLog().string("[GCImpl.promoteObject:").string("  original: ").object(original);
-        HeapImpl heap = HeapImpl.getHeapImpl();
 
+        HeapImpl heap = HeapImpl.getHeapImpl();
         boolean isAligned = ObjectHeaderImpl.isAlignedHeader(header);
-        Header<?> originalChunk;
-        Space originalSpace;
-        if (isAligned) {
-            originalChunk = AlignedHeapChunk.getEnclosingChunk(original);
-            originalSpace = HeapChunk.getSpace(originalChunk);
-        } else {
-            assert ObjectHeaderImpl.isUnalignedHeader(header);
-            originalChunk = UnalignedHeapChunk.getEnclosingChunk(original);
-            originalSpace = HeapChunk.getSpace(originalChunk);
-        }
+        Header<?> originalChunk = getChunk(original, isAligned);
+        Space originalSpace = HeapChunk.getSpace(originalChunk);
 
         Object result;
         if (originalSpace.getAge() < HeapParameters.getMaxSurvivorSpaces()) {
@@ -973,17 +966,27 @@ public final class GCImpl implements GC {
         return result;
     }
 
+    private static Header<?> getChunk(Object obj, boolean isAligned) {
+        if (isAligned) {
+            return AlignedHeapChunk.getEnclosingChunk(obj);
+        }
+        assert ObjectHeaderImpl.isUnalignedObject(obj);
+        return UnalignedHeapChunk.getEnclosingChunk(obj);
+    }
+
     private static void promotePinnedObject(PinnedObjectImpl pinned) {
         HeapImpl heap = HeapImpl.getHeapImpl();
-        OldGeneration oldGen = heap.getOldGeneration();
-        /* Find the chunk the object is in, and if necessary, move it to To space. */
         Object referent = pinned.getObject();
         if (referent != null && !heap.isInImageHeap(referent)) {
-            /*
-             * The referent doesn't move, so I can ignore the result of the promotion because I
-             * don't have to update any pointers to it.
-             */
-            oldGen.promoteObjectChunk(referent);
+            boolean isAligned = ObjectHeaderImpl.isAlignedObject(referent);
+            Header<?> originalChunk = getChunk(referent, isAligned);
+            Space originalSpace = HeapChunk.getSpace(originalChunk);
+
+            if (originalSpace.getAge() < HeapParameters.getMaxSurvivorSpaces()) {
+                heap.getYoungGeneration().promoteChunk(originalChunk, isAligned, originalSpace);
+            } else {
+                heap.getOldGeneration().promoteChunk(originalChunk, isAligned, originalSpace);
+            }
         }
     }
 

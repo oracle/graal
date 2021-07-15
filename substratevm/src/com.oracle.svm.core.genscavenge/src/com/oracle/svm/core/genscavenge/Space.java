@@ -193,29 +193,6 @@ public final class Space {
         return result;
     }
 
-    /**
-     * Promote the HeapChunk containing an Object from its original space to this Space.
-     *
-     * This turns all the Objects in the chunk from white to grey: the objects are in this Space,
-     * but have not yet had their interior pointers visited.
-     */
-    void promoteObjectChunk(Object original) {
-        if (ObjectHeaderImpl.isAlignedObject(original)) {
-            AlignedHeapChunk.AlignedHeader aChunk = AlignedHeapChunk.getEnclosingChunk(original);
-            Space originalSpace = HeapChunk.getSpace(aChunk);
-            if (originalSpace.isFromSpace()) {
-                promoteAlignedHeapChunk(aChunk, originalSpace);
-            }
-        } else {
-            assert ObjectHeaderImpl.isUnalignedObject(original);
-            UnalignedHeapChunk.UnalignedHeader uChunk = UnalignedHeapChunk.getEnclosingChunk(original);
-            Space originalSpace = HeapChunk.getSpace(uChunk);
-            if (originalSpace.isFromSpace()) {
-                promoteUnalignedHeapChunk(uChunk, originalSpace);
-            }
-        }
-    }
-
     public void releaseChunks(ChunkReleaser chunkReleaser) {
         chunkReleaser.add(firstAlignedHeapChunk);
         chunkReleaser.add(firstUnalignedHeapChunk);
@@ -417,7 +394,7 @@ public final class Space {
     }
 
     /** Promote an AlignedHeapChunk by moving it to this space. */
-    private void promoteAlignedHeapChunk(AlignedHeapChunk.AlignedHeader chunk, Space originalSpace) {
+    void promoteAlignedHeapChunk(AlignedHeapChunk.AlignedHeader chunk, Space originalSpace) {
         assert this != originalSpace && originalSpace.isFromSpace();
 
         originalSpace.extractAlignedHeapChunk(chunk);
