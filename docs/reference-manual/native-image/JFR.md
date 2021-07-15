@@ -7,7 +7,7 @@ permalink: /reference-manual/native-image/JFR/
 
 # JDK Flight Recorder (JFR) with Native Image
 
-JDK Flight Recorder (JFR) is a production time profiling system that is now supported by GraalVM Native Image.
+JDK Flight Recorder (JFR) is a production-time profiling system that is now supported by GraalVM Native Image.
 
 Basically, native images that are built with `-H:+AllowVMInspection` support JFR events written in Java, and users can continue to make use of the  [`jdk.jfr.Event`](https://docs.oracle.com/en/java/javase/11/docs/api/jdk.jfr/jdk/jfr/Event.html) API and JFR itself, with a similar experience to using JFR in the Java HotSpot VM.
 However, to record JFR events at run time, JFR support and JFR recording must be enabled, and this page covers how to start using JFR with native images.
