@@ -124,7 +124,7 @@ public final class CPUSampler implements Closeable {
     private Map<TruffleContext, AtomicLong> samplesTaken = new HashMap<>(0);
     private Timer samplerThread;
     private SamplingTimerTask samplerTask;
-    private volatile SafepointStackSampler safepointStackSampler = new SafepointStackSampler(stackLimit, filter);
+    private volatile SafepointStackSampler safepointStackSampler = new SafepointStackSampler(stackLimit, filter, period);
     private boolean gatherSelfHitTimes = false;
 
     CPUSampler(Env env) {
@@ -488,7 +488,7 @@ public final class CPUSampler implements Closeable {
      */
     public Map<Thread, List<StackTraceEntry>> takeSample() {
         if (safepointStackSampler == null) {
-            this.safepointStackSampler = new SafepointStackSampler(stackLimit, filter);
+            this.safepointStackSampler = new SafepointStackSampler(stackLimit, filter, period);
         }
         if (activeContexts.isEmpty()) {
             return Collections.emptyMap();
@@ -512,7 +512,7 @@ public final class CPUSampler implements Closeable {
         if (samplerThread == null) {
             samplerThread = new Timer("Sampling thread", true);
         }
-        this.safepointStackSampler = new SafepointStackSampler(stackLimit, filter);
+        this.safepointStackSampler = new SafepointStackSampler(stackLimit, filter, period);
         this.samplerTask = new SamplingTimerTask();
         this.samplerThread.schedule(samplerTask, delay, period);
     }
