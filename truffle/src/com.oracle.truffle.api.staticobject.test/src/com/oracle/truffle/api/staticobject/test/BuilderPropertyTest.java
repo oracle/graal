@@ -151,7 +151,7 @@ public class BuilderPropertyTest extends StaticObjectModelTest {
 
     @Theory
     public void propertyId(TestEnvironment te) throws NoSuchFieldException {
-        if (!te.arrayBased) {
+        if (te.isFieldBased()) {
             StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
             StaticProperty property = new DefaultStaticProperty("property", StaticPropertyKind.Int, false);
             builder.property(property);
@@ -184,7 +184,7 @@ public class BuilderPropertyTest extends StaticObjectModelTest {
         p1.setInt(staticObject, 1);
         p2.setInt(staticObject, 2);
 
-        if (!te.arrayBased) {
+        if (te.isFieldBased()) {
             Class<?> staticObjectClass = staticObject.getClass();
             Assert.assertEquals(1, staticObjectClass.getField("field0").get(staticObject));
             Assert.assertEquals(2, staticObjectClass.getField("field1").get(staticObject));
@@ -193,7 +193,7 @@ public class BuilderPropertyTest extends StaticObjectModelTest {
 
     @Theory
     public void propertyFinal(TestEnvironment te) throws NoSuchFieldException {
-        if (!te.arrayBased) {
+        if (te.isFieldBased()) {
             StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
             StaticProperty p1 = new DefaultStaticProperty("p1", StaticPropertyKind.Int, true);
             StaticProperty p2 = new DefaultStaticProperty("p2", StaticPropertyKind.Int, false);
@@ -210,7 +210,7 @@ public class BuilderPropertyTest extends StaticObjectModelTest {
 
     @Theory
     public void propertyKind(TestEnvironment te) throws NoSuchFieldException {
-        if (!te.arrayBased) {
+        if (te.isFieldBased()) {
             StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
             StaticPropertyKind[] kinds = StaticPropertyKind.values();
             StaticProperty[] properties = new StaticProperty[kinds.length];

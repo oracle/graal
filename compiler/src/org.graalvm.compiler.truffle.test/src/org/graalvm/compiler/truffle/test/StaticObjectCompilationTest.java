@@ -131,7 +131,7 @@ public class StaticObjectCompilationTest extends PartialEvaluationTest {
         try {
             StructuredGraph graph = partialEval(te, new AllocationNode(te));
             assertNoInvokes(graph);
-            if (te.arrayBased) {
+            if (te.isArrayBased()) {
                 // The array that stores primitive fields
                 assertCount(graph, VirtualArrayNode.class, 1);
             }
@@ -148,7 +148,7 @@ public class StaticObjectCompilationTest extends PartialEvaluationTest {
             StructuredGraph graph = partialEval(te, new ReadOnceNode(te));
             assertNoInvokes(graph);
 
-            if (te.arrayBased) {
+            if (te.isArrayBased()) {
                 assertCount(graph, RawLoadNode.class, 1);
             } else {
                 assertCount(graph, LoadFieldNode.class, 1);
@@ -165,7 +165,7 @@ public class StaticObjectCompilationTest extends PartialEvaluationTest {
             StructuredGraph graph = partialEval(te, new ReadMultipleAndSumNode(te));
             assertNoInvokes(graph);
 
-            if (te.arrayBased) {
+            if (te.isArrayBased()) {
                 assertCount(graph, RawLoadNode.class, 1);
             } else {
                 assertCount(graph, LoadFieldNode.class, 1);
@@ -183,7 +183,7 @@ public class StaticObjectCompilationTest extends PartialEvaluationTest {
             StructuredGraph graph = partialEval(te, new WriteOnceNode(te));
             assertNoInvokes(graph);
 
-            if (te.arrayBased) {
+            if (te.isArrayBased()) {
                 assertCount(graph, RawStoreNode.class, 1);
             } else {
                 assertCount(graph, StoreFieldNode.class, 1);
@@ -200,7 +200,7 @@ public class StaticObjectCompilationTest extends PartialEvaluationTest {
             StructuredGraph graph = partialEval(te, new WriteMultipleNode(te));
             assertNoInvokes(graph);
 
-            if (te.arrayBased) {
+            if (te.isArrayBased()) {
                 assertCount(graph, RawStoreNode.class, 3);
             } else {
                 assertCount(graph, StoreFieldNode.class, 1);
@@ -359,7 +359,7 @@ public class StaticObjectCompilationTest extends PartialEvaluationTest {
     }
 
     static class StaticObjectTestEnvironment implements Closeable {
-        final boolean arrayBased;
+        private final boolean arrayBased;
         final TruffleLanguage<?> testLanguage;
         final Context context;
 
@@ -373,6 +373,14 @@ public class StaticObjectCompilationTest extends PartialEvaluationTest {
             context.enter();
             testLanguage = TestLanguage.getCurrentContext().getLanguage();
             context.leave();
+        }
+
+        boolean isArrayBased() {
+            return arrayBased;
+        }
+
+        boolean isFieldBased() {
+            return !arrayBased;
         }
 
         @Override

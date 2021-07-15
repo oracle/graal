@@ -247,7 +247,7 @@ public class PropertyAccessTest extends StaticObjectModelTest {
             descriptor.setter.set(p1, o2, descriptor.testValue);
             Assert.fail();
         } catch (IllegalArgumentException e) {
-            if (te.arrayBased) {
+            if (te.isArrayBased()) {
                 Assert.assertTrue(e.getMessage().startsWith("Incompatible shape on property access."));
             } else {
                 Assert.assertTrue(e.getMessage().matches("Object '.*' of class '.*' does not have the expected shape"));
