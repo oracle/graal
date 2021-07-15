@@ -49,6 +49,7 @@ import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
+import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -934,6 +935,42 @@ public final class GCImpl implements GC {
         } finally {
             scanGreyObjectsTimer.close();
         }
+    }
+
+    @AlwaysInline("GC performance")
+    Object promoteObject(Object original, UnsignedWord header) {
+        Log trace = Log.noopLog().string("[GCImpl.promoteObject:").string("  original: ").object(original);
+        HeapImpl heap = HeapImpl.getHeapImpl();
+
+        boolean isAligned = ObjectHeaderImpl.isAlignedHeader(header);
+        Header<?> originalChunk;
+        Space originalSpace;
+        if (isAligned) {
+            originalChunk = AlignedHeapChunk.getEnclosingChunk(original);
+            originalSpace = HeapChunk.getSpace(originalChunk);
+        } else {
+            assert ObjectHeaderImpl.isUnalignedHeader(header);
+            originalChunk = UnalignedHeapChunk.getEnclosingChunk(original);
+            originalSpace = HeapChunk.getSpace(originalChunk);
+        }
+
+        Object result;
+        if (originalSpace.getAge() < HeapParameters.getMaxSurvivorSpaces()) {
+            if (isAligned) {
+                result = heap.getYoungGeneration().promoteAlignedObject(original, (AlignedHeader) originalChunk, originalSpace);
+            } else {
+                result = heap.getYoungGeneration().promoteUnalignedObject(original, (UnalignedHeader) originalChunk, originalSpace);
+            }
+        } else {
+            if (isAligned) {
+                result = heap.getOldGeneration().promoteAlignedObject(original, (AlignedHeader) originalChunk, originalSpace);
+            } else {
+                result = heap.getOldGeneration().promoteUnalignedObject(original, (UnalignedHeader) originalChunk, originalSpace);
+            }
+        }
+
+        trace.string("  result: ").object(result).string("]").newline();
+        return result;
     }
 
     private static void promotePinnedObject(PinnedObjectImpl pinned) {

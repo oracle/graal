@@ -45,7 +45,6 @@ import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateDiagnostics.DiagnosticThunk;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Substitute;
@@ -244,41 +243,6 @@ public final class HeapImpl extends Heap {
         if (HeapImpl.getHeapImpl().isAllocationDisallowed()) {
             NoAllocationVerifier.exit(callSite, typeName);
         }
-    }
-
-    @AlwaysInline("GC performance")
-    Object promoteObject(Object original, UnsignedWord header) {
-        Log trace = Log.noopLog().string("[HeapImpl.promoteObject:").string("  original: ").object(original);
-
-        boolean isAligned = ObjectHeaderImpl.isAlignedHeader(header);
-        HeapChunk.Header<?> originalChunk;
-        Space originalSpace;
-        if (isAligned) {
-            originalChunk = AlignedHeapChunk.getEnclosingChunk(original);
-            originalSpace = HeapChunk.getSpace(originalChunk);
-        } else {
-            assert ObjectHeaderImpl.isUnalignedHeader(header);
-            originalChunk = UnalignedHeapChunk.getEnclosingChunk(original);
-            originalSpace = HeapChunk.getSpace(originalChunk);
-        }
-
-        Object result;
-        if (originalSpace.getAge() < HeapParameters.getMaxSurvivorSpaces()) {
-            if (isAligned) {
-                result = getYoungGeneration().promoteAlignedObject(original, (AlignedHeapChunk.AlignedHeader) originalChunk, originalSpace);
-            } else {
-                result = getYoungGeneration().promoteUnalignedObject(original, (UnalignedHeapChunk.UnalignedHeader) originalChunk, originalSpace);
-            }
-        } else {
-            if (isAligned) {
-                result = getOldGeneration().promoteAlignedObject(original, (AlignedHeapChunk.AlignedHeader) originalChunk, originalSpace);
-            } else {
-                result = getOldGeneration().promoteUnalignedObject(original, (UnalignedHeapChunk.UnalignedHeader) originalChunk, originalSpace);
-            }
-        }
-
-        trace.string("  result: ").object(result).string("]").newline();
-        return result;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
