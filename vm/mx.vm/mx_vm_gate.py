@@ -166,16 +166,14 @@ def gate_body(args, tasks):
                         newVmArgs = [arg for arg in vmArgs if not is_truffle_fallback(arg)]
                         return (newVmArgs, mainClass, mainClassArgs)
                     mx_unittest.add_config_participant(_unittest_config_participant)
-                    # Unit tests for the Static Object Model include theories.
-                    # When running with LibGraal (LibGraalHotSpotTruffleCompiler), the assumption in TruffleCompilerImplTest
-                    # that the Truffle compiler is a subtype of TruffleCompilerImpl is never satisfied, and the @Theory fails.
-                    excluded_tests = ["org.graalvm.compiler.truffle.test.StaticObjectCompilationTest"]
-                    test_libgraal_exclude = environ.get("TEST_LIBGRAAL_EXCLUDE")
-                    if test_libgraal_exclude:
-                        excluded_tests += test_libgraal_exclude.split()
-                    with NamedTemporaryFile(prefix='blacklist.', mode='w', delete=False) as fp:
-                        fp.file.writelines([l + '\n' for l in excluded_tests])
-                    unittest_args = ["--blacklist", fp.name, "--enable-timing", "--verbose"]
+                    excluded_tests = environ.get("TEST_LIBGRAAL_EXCLUDE")
+                    if excluded_tests:
+                        with NamedTemporaryFile(prefix='blacklist.', mode='w', delete=False) as fp:
+                            fp.file.writelines([l + '\n' for l in excluded_tests.split()])
+                            unittest_args = ["--blacklist", fp.name]
+                    else:
+                        unittest_args = []
+                    unittest_args = unittest_args + ["--enable-timing", "--verbose"]
                     compiler_log_file = "graal-compiler.log"
                     mx_unittest.unittest(unittest_args + extra_vm_arguments + [
                         "-Dpolyglot.engine.AllowExperimentalOptions=true",
