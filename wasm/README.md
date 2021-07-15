@@ -36,7 +36,7 @@ git clone https://github.com/graalvm/mx.git
 export PATH=$PWD/mx:$PATH
 ```
 
-3. Clone the `graal repository and enter the wasm directory.
+3. Clone the `graal` repository and enter the wasm directory.
 
 ```bash
 git clone https://github.com/oracle/graal.git
@@ -54,7 +54,7 @@ export JAVA_HOME=[path to JDK]
 mx --dy /truffle,/compiler build
 ```
 
-These steps will build the `wasm.jar` file in `mxbuild/dists/jdk<version>` directory,
+These steps will build the `wasm.jar` file in the `mxbuild/dists/jdk<version>` directory,
 which contains the GraalWasm implementation.
 
 
@@ -103,7 +103,7 @@ Finished running: BranchBlockSuite
 🍀 4/4 Wasm tests passed.
 ```
 
-The `WasmTestSuite` is the aggregation of all the basic tests.
+The `WasmTestSuite` is the aggregation of all basic tests.
 
 ### Test setup for additional tests and benchmarks
 
