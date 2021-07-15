@@ -43,7 +43,6 @@ package com.oracle.truffle.api.staticobject.test;
 import com.oracle.truffle.api.staticobject.DefaultStaticObjectFactory;
 import com.oracle.truffle.api.staticobject.DefaultStaticProperty;
 import com.oracle.truffle.api.staticobject.StaticProperty;
-import com.oracle.truffle.api.staticobject.StaticPropertyKind;
 import com.oracle.truffle.api.staticobject.StaticShape;
 import org.junit.Assert;
 import org.junit.Assume;
@@ -73,8 +72,8 @@ public class InheritanceTest extends StaticObjectModelTest {
     public void baseClassInheritance() throws NoSuchFieldException {
         try (TestEnvironment te = new TestEnvironment(config)) {
             StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
-            StaticProperty property = new DefaultStaticProperty("field1", StaticPropertyKind.Int, false);
-            builder.property(property);
+            StaticProperty property = new DefaultStaticProperty("field1");
+            builder.property(property, int.class, false);
             StaticShape<CustomStaticObjectFactory> shape = builder.build(CustomStaticObject.class, CustomStaticObjectFactory.class);
             CustomStaticObject object = shape.getFactory().create();
 
@@ -99,16 +98,16 @@ public class InheritanceTest extends StaticObjectModelTest {
     public void baseShapeInheritance() throws NoSuchFieldException, IllegalAccessException {
         try (TestEnvironment te = new TestEnvironment(config)) {
             StaticShape.Builder b1 = StaticShape.newBuilder(te.testLanguage);
-            StaticProperty s1p1 = new DefaultStaticProperty("field1", StaticPropertyKind.Int, false);
-            StaticProperty s1p2 = new DefaultStaticProperty("field2", StaticPropertyKind.Int, false);
-            b1.property(s1p1);
-            b1.property(s1p2);
+            StaticProperty s1p1 = new DefaultStaticProperty("field1");
+            StaticProperty s1p2 = new DefaultStaticProperty("field2");
+            b1.property(s1p1, int.class, false);
+            b1.property(s1p2, int.class, false);
             // StaticShape s1 declares 2 properties: s1p1 and s1p2
             StaticShape<DefaultStaticObjectFactory> s1 = b1.build();
 
             StaticShape.Builder b2 = StaticShape.newBuilder(te.testLanguage);
-            StaticProperty s2p1 = new DefaultStaticProperty("field1", StaticPropertyKind.Int, false);
-            b2.property(s2p1);
+            StaticProperty s2p1 = new DefaultStaticProperty("field1");
+            b2.property(s2p1, int.class, false);
             // StaticShape s2:
             // 1. extends s1
             // 2. declares one property: s2p1

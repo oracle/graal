@@ -48,8 +48,7 @@ final class LinkedField extends StaticProperty {
     @CompilationFinal private ParserField parserField;
     private final int slot;
 
-    LinkedField(ParserField parserField, int slot, boolean storeAsFinal, IdMode mode) {
-        super(parserField.getPropertyKind(), storeAsFinal);
+    LinkedField(ParserField parserField, int slot, IdMode mode) {
         this.parserField = maybeCorrectParserField(parserField, mode);
         this.slot = slot;
     }

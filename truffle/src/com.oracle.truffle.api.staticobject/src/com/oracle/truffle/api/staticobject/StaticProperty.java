@@ -56,7 +56,7 @@ import sun.misc.Unsafe;
  * Users of the Static Object Model can define custom subtypes of StaticProperty or use
  * {@link DefaultStaticProperty}, a trivial default implementation. In both cases, static properties
  * must be registered to a {@link StaticShape.Builder} using
- * {@link StaticShape.Builder#property(StaticProperty)}. Then, after allocating a
+ * {@link StaticShape.Builder#property(StaticProperty, Class, boolean)}. Then, after allocating a
  * {@link StaticShape} instance with one of the {@link StaticShape.Builder#build()} methods and
  * allocating a static object using the factory class provided by {@link StaticShape#getFactory()},
  * users can call the accessor methods defined in StaticProperty to get and set property values
@@ -68,34 +68,24 @@ import sun.misc.Unsafe;
  * {@linkplain StaticProperty#getId() a unique id} for that builder.
  *
  * @see DefaultStaticProperty
- * @see StaticShape.Builder#property(StaticProperty)
+ * @see StaticShape.Builder#property(StaticProperty, Class, boolean).
  * @since 21.3.0
  */
 public abstract class StaticProperty {
     private static final Unsafe UNSAFE = getUnsafe();
     private static final byte STORE_AS_FINAL = (byte) (1 << 7);
-    private final byte flags;
+    @CompilationFinal //
+    private byte flags;
     @CompilationFinal //
     private StaticShape<?> shape;
     // The offset is the actual position in the field array of an actual instance.
     @CompilationFinal //
     private int offset;
 
-    /**
-     * Constructor for subclasses. Only property accesses that match the
-     * {@linkplain StaticPropertyKind property kind} are allowed. Property values can be optionally
-     * stored in a final field. Accesses to such values might be specially optimized by the
-     * compiler. For example, reads might be constant-folded. It is up to the user to enforce that
-     * property values stored as final are not assigned more than once.
-     *
-     * @param kind the kind of static property
-     * @param storeAsFinal if this property value can be stored in a final field
-     * @since 21.3.0
-     */
-    protected StaticProperty(StaticPropertyKind kind, boolean storeAsFinal) {
+    void init(StaticPropertyKind kind, boolean storeAsFinal) {
         byte internalKind = getInternalKind(kind);
         assert (internalKind & STORE_AS_FINAL) == 0;
-        this.flags = (byte) (storeAsFinal ? STORE_AS_FINAL | internalKind : internalKind);
+        flags = (byte) (storeAsFinal ? STORE_AS_FINAL | internalKind : internalKind);
     }
 
     /**
@@ -120,9 +110,38 @@ public abstract class StaticProperty {
         return (byte) (flags & ~STORE_AS_FINAL);
     }
 
+    final String getInternalKindName() {
+        return toInternalKindName(getInternalKind());
+    }
+
+    final String toInternalKindName(byte kind) {
+        switch (kind) {
+            case 0:
+                return "long";
+            case 1:
+                return "double";
+            case 2:
+                return "int";
+            case 3:
+                return "float";
+            case 4:
+                return "short";
+            case 5:
+                return "char";
+            case 6:
+                return "byte";
+            case 7:
+                return "boolean";
+            case 8:
+                return "Object";
+            default:
+                throw new IllegalStateException("Illegal internal kind: " + getInternalKind());
+        }
+    }
+
     final void initOffset(int o) {
         if (this.offset != 0) {
-            throw new IllegalStateException("Attempt to reinitialize the offset of static property '" + getId() + "' of kind '" + StaticPropertyKind.valueOf(getInternalKind()).name() + "'.\n" +
+            throw new IllegalStateException("Attempt to reinitialize the offset of static property '" + getId() + "' of type '" + getInternalKindName() + "'.\n" +
                             "Was it added to more than one builder or multiple times to the same builder?");
         }
         this.offset = o;
@@ -130,7 +149,7 @@ public abstract class StaticProperty {
 
     final void initShape(StaticShape<?> s) {
         if (this.shape != null) {
-            throw new IllegalStateException("Attempt to reinitialize the shape of static property '" + getId() + "' of kind '" + StaticPropertyKind.valueOf(getInternalKind()).name() + "'.\n" +
+            throw new IllegalStateException("Attempt to reinitialize the shape of static property '" + getId() + "' of type '" + getInternalKindName() + "'.\n" +
                             "Was it added to more than one builder or multiple times to the same builder?");
         }
         this.shape = s;
@@ -140,8 +159,7 @@ public abstract class StaticProperty {
         byte internalKind = getInternalKind();
         if (internalKind != getInternalKind(kind)) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            String kindName = StaticPropertyKind.valueOf(internalKind).name();
-            throw new IllegalArgumentException("Static property '" + getId() + "' of kind '" + kindName + "' cannot be accessed as '" + kind.name() + "'");
+            throw new IllegalArgumentException("Static property '" + getId() + "' of type '" + getInternalKindName() + "' cannot be accessed as '" + toInternalKindName(getInternalKind(kind)) + "'");
         }
     }
 

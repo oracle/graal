@@ -43,7 +43,6 @@ package com.oracle.truffle.api.staticobject.test;
 import com.oracle.truffle.api.staticobject.DefaultStaticObjectFactory;
 import com.oracle.truffle.api.staticobject.DefaultStaticProperty;
 import com.oracle.truffle.api.staticobject.StaticProperty;
-import com.oracle.truffle.api.staticobject.StaticPropertyKind;
 import com.oracle.truffle.api.staticobject.StaticShape;
 import org.junit.Assert;
 import org.junit.Assume;
@@ -68,11 +67,11 @@ public class BuilderPropertyTest extends StaticObjectModelTest {
     public void sameBuilderSameProperty() {
         try (TestEnvironment te = new TestEnvironment(config)) {
             StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
-            StaticProperty property = new DefaultStaticProperty("property", StaticPropertyKind.Int, false);
-            builder.property(property);
+            StaticProperty property = new DefaultStaticProperty("property");
+            builder.property(property, int.class, false);
             try {
                 // You cannot add the same property twice
-                builder.property(property);
+                builder.property(property, int.class, false);
                 Assert.fail();
             } catch (IllegalArgumentException e) {
                 // You cannot add the same property twice
@@ -85,12 +84,12 @@ public class BuilderPropertyTest extends StaticObjectModelTest {
     public void sameBuilderSameId() {
         try (TestEnvironment te = new TestEnvironment(config)) {
             StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
-            StaticProperty p1 = new DefaultStaticProperty("property", StaticPropertyKind.Int, false);
-            StaticProperty p2 = new DefaultStaticProperty("property", StaticPropertyKind.Int, false);
-            builder.property(p1);
+            StaticProperty p1 = new DefaultStaticProperty("property");
+            StaticProperty p2 = new DefaultStaticProperty("property");
+            builder.property(p1, int.class, false);
             try {
                 // You cannot add two properties with the same id
-                builder.property(p2);
+                builder.property(p2, int.class, false);
                 Assert.fail();
             } catch (IllegalArgumentException e) {
                 Assert.assertEquals("This builder already contains a property with id 'property'", e.getMessage());
@@ -103,16 +102,16 @@ public class BuilderPropertyTest extends StaticObjectModelTest {
         try (TestEnvironment te = new TestEnvironment(config)) {
             StaticShape.Builder b1 = StaticShape.newBuilder(te.testLanguage);
             StaticShape.Builder b2 = StaticShape.newBuilder(te.testLanguage);
-            StaticProperty property = new DefaultStaticProperty("property", StaticPropertyKind.Int, false);
-            b1.property(property);
-            b2.property(property);
+            StaticProperty property = new DefaultStaticProperty("property");
+            b1.property(property, int.class, false);
+            b2.property(property, int.class, false);
             b1.build();
             try {
                 // You cannot build shapes that share properties
                 b2.build();
                 Assert.fail();
             } catch (RuntimeException e) {
-                Assert.assertEquals("Attempt to reinitialize the offset of static property 'property' of kind 'Int'.\nWas it added to more than one builder or multiple times to the same builder?",
+                Assert.assertEquals("Attempt to reinitialize the offset of static property 'property' of type 'int'.\nWas it added to more than one builder or multiple times to the same builder?",
                                 e.getMessage());
             }
         }
@@ -122,7 +121,7 @@ public class BuilderPropertyTest extends StaticObjectModelTest {
     public void buildTwice() {
         try (TestEnvironment te = new TestEnvironment(config)) {
             StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
-            builder.property(new DefaultStaticProperty("property", StaticPropertyKind.Int, false));
+            builder.property(new DefaultStaticProperty("property"), int.class, false);
             builder.build();
             try {
                 builder.build();
@@ -137,10 +136,10 @@ public class BuilderPropertyTest extends StaticObjectModelTest {
     public void addPropertyAgain() {
         try (TestEnvironment te = new TestEnvironment(config)) {
             StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
-            builder.property(new DefaultStaticProperty("property1", StaticPropertyKind.Int, false));
+            builder.property(new DefaultStaticProperty("property1"), int.class, false);
             builder.build();
             try {
-                builder.property(new DefaultStaticProperty("property2", StaticPropertyKind.Int, false));
+                builder.property(new DefaultStaticProperty("property2"), int.class, false);
                 Assert.fail();
             } catch (IllegalStateException e) {
                 Assert.assertEquals("This Builder instance has already built a StaticShape. It is not possible to add static properties or build other shapes", e.getMessage());
@@ -153,8 +152,8 @@ public class BuilderPropertyTest extends StaticObjectModelTest {
         try (TestEnvironment te = new TestEnvironment(config)) {
             Assume.assumeTrue(te.isFieldBased());
             StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
-            StaticProperty property = new DefaultStaticProperty("property", StaticPropertyKind.Int, false);
-            builder.property(property);
+            StaticProperty property = new DefaultStaticProperty("property");
+            builder.property(property, int.class, false);
             StaticShape<DefaultStaticObjectFactory> shape = builder.build();
             Object object = shape.getFactory().create();
             object.getClass().getField(guessGeneratedFieldName(property));
@@ -165,11 +164,14 @@ public class BuilderPropertyTest extends StaticObjectModelTest {
     public void propertyIdWithForbiddenChars() {
         try (TestEnvironment te = new TestEnvironment(config)) {
             StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
-            StaticProperty p1 = new DefaultStaticProperty("forbidden.char", StaticPropertyKind.Int, false);
-            StaticProperty p2 = new DefaultStaticProperty("forbidden;char", StaticPropertyKind.Int, false);
-            StaticProperty p3 = new DefaultStaticProperty("forbidden[char", StaticPropertyKind.Int, false);
-            StaticProperty p4 = new DefaultStaticProperty("forbidden/char", StaticPropertyKind.Int, false);
-            builder.property(p1).property(p2).property(p3).property(p4).build();
+            StaticProperty p1 = new DefaultStaticProperty("forbidden.char");
+            StaticProperty p2 = new DefaultStaticProperty("forbidden;char");
+            StaticProperty p3 = new DefaultStaticProperty("forbidden[char");
+            StaticProperty p4 = new DefaultStaticProperty("forbidden/char");
+            builder.property(p1, int.class, false) //
+                            .property(p2, int.class, false) //
+                            .property(p3, int.class, false) //
+                            .property(p4, int.class, false).build();
         }
     }
 
@@ -180,9 +182,10 @@ public class BuilderPropertyTest extends StaticObjectModelTest {
             Arrays.fill(longId, (byte) 120);
 
             StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
-            StaticProperty p1 = new DefaultStaticProperty("property1", StaticPropertyKind.Int, false);
-            StaticProperty p2 = new DefaultStaticProperty(new String(longId), StaticPropertyKind.Int, false);
-            builder.property(p1).property(p2);
+            StaticProperty p1 = new DefaultStaticProperty("property1");
+            StaticProperty p2 = new DefaultStaticProperty(new String(longId));
+            builder.property(p1, int.class, false) //
+                            .property(p2, int.class, false);
             Object staticObject = builder.build().getFactory().create();
             p1.setInt(staticObject, 1);
             p2.setInt(staticObject, 2);
@@ -200,10 +203,10 @@ public class BuilderPropertyTest extends StaticObjectModelTest {
             Assume.assumeTrue(te.isFieldBased());
 
             StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
-            StaticProperty p1 = new DefaultStaticProperty("p1", StaticPropertyKind.Int, true);
-            StaticProperty p2 = new DefaultStaticProperty("p2", StaticPropertyKind.Int, false);
-            builder.property(p1);
-            builder.property(p2);
+            StaticProperty p1 = new DefaultStaticProperty("p1");
+            StaticProperty p2 = new DefaultStaticProperty("p2");
+            builder.property(p1, int.class, true);
+            builder.property(p2, int.class, false);
             StaticShape<DefaultStaticObjectFactory> shape = builder.build();
             Object object = shape.getFactory().create();
             Field f1 = object.getClass().getField(guessGeneratedFieldName(p1));
@@ -214,53 +217,30 @@ public class BuilderPropertyTest extends StaticObjectModelTest {
     }
 
     @Test
+    @SuppressWarnings("rawtypes")
     public void propertyKind() throws NoSuchFieldException {
         try (TestEnvironment te = new TestEnvironment(config)) {
             Assume.assumeTrue(te.isFieldBased());
             StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
-            StaticPropertyKind[] kinds = StaticPropertyKind.values();
-            StaticProperty[] properties = new StaticProperty[kinds.length];
+            Class[] types = new Class[]{
+                            boolean.class,
+                            byte.class,
+                            char.class,
+                            double.class,
+                            float.class,
+                            int.class,
+                            long.class,
+                            Object.class,
+                            short.class};
+            StaticProperty[] properties = new StaticProperty[types.length];
             for (int i = 0; i < properties.length; i++) {
-                properties[i] = new DefaultStaticProperty(kinds[i].name(), kinds[i], false);
-                builder.property(properties[i]);
+                properties[i] = new DefaultStaticProperty("property" + i);
+                builder.property(properties[i], types[i], false);
             }
             StaticShape<DefaultStaticObjectFactory> shape = builder.build();
             Object object = shape.getFactory().create();
-            for (int i = 0; i < properties.length; i++) {
-                Class<?> expectedType;
-                switch (kinds[i]) {
-                    case Boolean:
-                        expectedType = boolean.class;
-                        break;
-                    case Byte:
-                        expectedType = byte.class;
-                        break;
-                    case Char:
-                        expectedType = char.class;
-                        break;
-                    case Double:
-                        expectedType = double.class;
-                        break;
-                    case Float:
-                        expectedType = float.class;
-                        break;
-                    case Int:
-                        expectedType = int.class;
-                        break;
-                    case Long:
-                        expectedType = long.class;
-                        break;
-                    case Object:
-                        expectedType = Object.class;
-                        break;
-                    case Short:
-                        expectedType = short.class;
-                        break;
-                    default:
-                        expectedType = null;
-                        Assert.fail("Unexpected type: " + kinds[i]);
-                }
-                Assert.assertEquals(expectedType, object.getClass().getField(guessGeneratedFieldName(properties[i])).getType());
+            for (int i = 0; i < types.length; i++) {
+                Assert.assertEquals(types[i], object.getClass().getField(guessGeneratedFieldName(properties[i])).getType());
             }
         }
     }
@@ -271,7 +251,7 @@ public class BuilderPropertyTest extends StaticObjectModelTest {
             StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
             for (int i = 0; i <= 65535; i++) {
                 try {
-                    builder.property(new DefaultStaticProperty("property" + i, StaticPropertyKind.Int, false));
+                    builder.property(new DefaultStaticProperty("property" + i), int.class, false);
                 } catch (IllegalArgumentException e) {
                     Assert.assertEquals("This builder already contains the maximum number of properties: 65535", e.getMessage());
                     Assert.assertEquals(65535, i);

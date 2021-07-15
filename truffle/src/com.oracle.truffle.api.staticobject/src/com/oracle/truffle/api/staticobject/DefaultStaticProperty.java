@@ -52,15 +52,12 @@ public final class DefaultStaticProperty extends StaticProperty {
     /**
      * Constructs a new DefaultStaticProperty.
      *
-     * @see StaticProperty#StaticProperty(StaticPropertyKind, boolean)
+     * @see StaticProperty
      * @param id the id of the static property, which must be immutable and unique for a given
      *            shape.
-     * @param kind the {@link StaticPropertyKind} of the static property
-     * @param storeAsFinal if the static property value can be stored in a final field
      * @since 21.3.0
      */
-    public DefaultStaticProperty(String id, StaticPropertyKind kind, boolean storeAsFinal) {
-        super(kind, storeAsFinal);
+    public DefaultStaticProperty(String id) {
         this.id = id;
     }
 

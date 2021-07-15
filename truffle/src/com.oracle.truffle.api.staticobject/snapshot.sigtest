@@ -5,13 +5,13 @@ CLSS public abstract interface com.oracle.truffle.api.staticobject.DefaultStatic
 meth public abstract java.lang.Object create()
 
 CLSS public final com.oracle.truffle.api.staticobject.DefaultStaticProperty
-cons public init(java.lang.String,com.oracle.truffle.api.staticobject.StaticPropertyKind,boolean)
+cons public init(java.lang.String)
 meth public java.lang.String getId()
 supr com.oracle.truffle.api.staticobject.StaticProperty
 hfds id
 
 CLSS public abstract com.oracle.truffle.api.staticobject.StaticProperty
-cons protected init(com.oracle.truffle.api.staticobject.StaticPropertyKind,boolean)
+cons public init()
 meth protected abstract java.lang.String getId()
 meth public final boolean compareAndExchangeBoolean(java.lang.Object,boolean,boolean)
 meth public final boolean compareAndSwapBoolean(java.lang.Object,boolean,boolean)
@@ -76,21 +76,6 @@ supr java.lang.Object
 hfds STORE_AS_FINAL,UNSAFE,flags,offset,shape
 hcls CASSupport
 
-CLSS public final !enum com.oracle.truffle.api.staticobject.StaticPropertyKind
-fld public final static com.oracle.truffle.api.staticobject.StaticPropertyKind Boolean
-fld public final static com.oracle.truffle.api.staticobject.StaticPropertyKind Byte
-fld public final static com.oracle.truffle.api.staticobject.StaticPropertyKind Char
-fld public final static com.oracle.truffle.api.staticobject.StaticPropertyKind Double
-fld public final static com.oracle.truffle.api.staticobject.StaticPropertyKind Float
-fld public final static com.oracle.truffle.api.staticobject.StaticPropertyKind Int
-fld public final static com.oracle.truffle.api.staticobject.StaticPropertyKind Long
-fld public final static com.oracle.truffle.api.staticobject.StaticPropertyKind Object
-fld public final static com.oracle.truffle.api.staticobject.StaticPropertyKind Short
-meth public static com.oracle.truffle.api.staticobject.StaticPropertyKind valueOf(java.lang.String)
-meth public static com.oracle.truffle.api.staticobject.StaticPropertyKind[] values()
-supr java.lang.Enum<com.oracle.truffle.api.staticobject.StaticPropertyKind>
-hfds BYTE_ARRAY,N_PRIMITIVES,OBJECT_ARRAY
-
 CLSS public abstract com.oracle.truffle.api.staticobject.StaticShape<%0 extends java.lang.Object>
 innr public final static Builder
 meth public final {com.oracle.truffle.api.staticobject.StaticShape%0} getFactory()
@@ -103,32 +88,10 @@ CLSS public final static com.oracle.truffle.api.staticobject.StaticShape$Builder
  outer com.oracle.truffle.api.staticobject.StaticShape
 meth public <%0 extends java.lang.Object> com.oracle.truffle.api.staticobject.StaticShape<{%%0}> build(com.oracle.truffle.api.staticobject.StaticShape<{%%0}>)
 meth public <%0 extends java.lang.Object> com.oracle.truffle.api.staticobject.StaticShape<{%%0}> build(java.lang.Class<?>,java.lang.Class<{%%0}>)
-meth public com.oracle.truffle.api.staticobject.StaticShape$Builder property(com.oracle.truffle.api.staticobject.StaticProperty)
+meth public com.oracle.truffle.api.staticobject.StaticShape$Builder property(com.oracle.truffle.api.staticobject.StaticProperty,java.lang.Class<?>,boolean)
 meth public com.oracle.truffle.api.staticobject.StaticShape<com.oracle.truffle.api.staticobject.DefaultStaticObjectFactory> build()
 supr java.lang.Object
 hfds MAX_NUMBER_OF_PROPERTIES,MAX_PROPERTY_ID_BYTE_LENGTH,hasLongPropertyId,isActive,language,staticProperties
-
-CLSS public abstract interface java.io.Serializable
-
-CLSS public abstract interface java.lang.Comparable<%0 extends java.lang.Object>
-meth public abstract int compareTo({java.lang.Comparable%0})
-
-CLSS public abstract java.lang.Enum<%0 extends java.lang.Enum<{java.lang.Enum%0}>>
-cons protected init(java.lang.String,int)
-intf java.io.Serializable
-intf java.lang.Comparable<{java.lang.Enum%0}>
-meth protected final java.lang.Object clone() throws java.lang.CloneNotSupportedException
-meth protected final void finalize()
-meth public final boolean equals(java.lang.Object)
-meth public final int compareTo({java.lang.Enum%0})
-meth public final int hashCode()
-meth public final int ordinal()
-meth public final java.lang.Class<{java.lang.Enum%0}> getDeclaringClass()
-meth public final java.lang.String name()
-meth public java.lang.String toString()
-meth public static <%0 extends java.lang.Enum<{%%0}>> {%%0} valueOf(java.lang.Class<{%%0}>,java.lang.String)
-supr java.lang.Object
-hfds name,ordinal
 
 CLSS public java.lang.Object
 cons public init()

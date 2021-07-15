@@ -63,19 +63,19 @@ final class LinkedKlassFieldLayout {
 
         for (ParserField parserField : parserKlass.getFields()) {
             if (parserField.isStatic()) {
-                LinkedField field = new LinkedField(parserField, nextStaticFieldSlot++, storeAsFinal(parserKlass, parserField), idMode);
-                staticBuilder.property(field);
+                LinkedField field = new LinkedField(parserField, nextStaticFieldSlot++, idMode);
+                staticBuilder.property(field, parserField.getPropertyType(), storeAsFinal(parserKlass, parserField));
                 staticFields[nextStaticFieldIndex++] = field;
             } else {
-                LinkedField field = new LinkedField(parserField, nextInstanceFieldSlot++, storeAsFinal(parserKlass, parserField), idMode);
-                instanceBuilder.property(field);
+                LinkedField field = new LinkedField(parserField, nextInstanceFieldSlot++, idMode);
+                instanceBuilder.property(field, parserField.getPropertyType(), storeAsFinal(parserKlass, parserField));
                 instanceFields[nextInstanceFieldIndex++] = field;
             }
         }
         for (Symbol<Name> hiddenFieldName : fieldCounter.hiddenFieldNames) {
             ParserField hiddenParserField = new ParserField(ParserField.HIDDEN, hiddenFieldName, Type.java_lang_Object, null);
-            LinkedField field = new LinkedField(hiddenParserField, nextInstanceFieldSlot++, storeAsFinal(parserKlass, hiddenParserField), idMode);
-            instanceBuilder.property(field);
+            LinkedField field = new LinkedField(hiddenParserField, nextInstanceFieldSlot++, idMode);
+            instanceBuilder.property(field, hiddenParserField.getPropertyType(), storeAsFinal(parserKlass, hiddenParserField));
             instanceFields[nextInstanceFieldIndex++] = field;
         }
         if (superKlass == null) {

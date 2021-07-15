@@ -27,9 +27,10 @@ Here is how to use the Static Object Model to represent this layout:
 public class GettingStarted {
     public void simpleShape(TruffleLanguage<?> language) {
         StaticShape.Builder builder = StaticShape.newBuilder(language);
-        StaticProperty p1 = new DefaultStaticProperty("property1", StaticPropertyKind.Int, false);
-        StaticProperty p2 = new DefaultStaticProperty("property2", StaticPropertyKind.Object, true);
-        builder.property(p1).property(p2);
+        StaticProperty p1 = new DefaultStaticProperty("property1");
+        StaticProperty p2 = new DefaultStaticProperty("property2");
+        builder.property(p1, int.class, false);
+        builder.property(p2, Object.class, true);
         StaticShape<DefaultStaticObjectFactory> shape = builder.build();
         Object staticObject = shape.getFactory().create();
         ...
@@ -38,17 +39,18 @@ public class GettingStarted {
 ```
 
 We start by creating a [StaticShape.Builder](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/staticobject/StaticShape.Builder.html) instance, passing a reference to the language that we are implementing.
-Then, we create [DefaultStaticProperty](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/staticobject/DefaultStaticProperty.html) instances that represent the properties that we want to add to the static object layout:
-  - The first argument is a String that uniquely represents the property within a builder.
-  - The second argument is the [StaticPropertyKind](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/staticobject/StaticPropertyKind.html) of the property.
-  - The third argument is a boolean value that defines if the property can be stored as a final field.
-    This gives the compiler the opportunity to perform additional optimizations.
-    For example, reads to this property might be constant-folded.
-    It's important to note that the Static Object Model does not check if a property stored as final is not assigned more than once and that it is assigned before it is read.
-    Doing so might lead to wrong behavior of the program, and it is up to the user to enforce that this cannot happen.
-
-After creating the properties we register them to the builder instance, then we create a new static shape. 
-To allocate the static object, we retrieve the [DefaultStaticObjectFactory](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/staticobject/StaticPropertyKind.html) from the shape, and we invoke its `create()` method.
+Then, we create [DefaultStaticProperty](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/staticobject/DefaultStaticProperty.html) instances that represent the properties that we want to add to the static object layout.
+The String id passed as argument must be unique within a builder.
+After creating the properties we register them to the builder instance:
+- The first argument is the [StaticProperty](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/staticobject/StaticProperty.html) that we register.
+- The second argument is the type of the property. It can be a primitive class or `Object.class`.
+- The third argument is a boolean value that defines if the property can be stored as a final field.
+  This gives the compiler the opportunity to perform additional optimizations.
+  For example, reads to this property might be constant-folded.
+  It's important to note that the Static Object Model does not check if a property stored as final is not assigned more than once and that it is assigned before it is read.
+  Doing so might lead to wrong behavior of the program, and it is up to the user to enforce that this cannot happen.
+We then create a new static shape calling `builder.build()`.
+To allocate the static object, we retrieve the [DefaultStaticObjectFactory](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/staticobject/DefaultStaticObjectFactory.html) from the shape, and we invoke its `create()` method.
 
 Now that we have our static object instance, let's see how to use the static properties to perform property accesses.
 Expanding the example above:
@@ -78,15 +80,15 @@ public class Subshapes {
     public void simpleSubShape(TruffleLanguage<?> language) {
         // Create a shape
         StaticShape.Builder b1 = StaticShape.newBuilder(language);
-        StaticProperty s1p1 = new DefaultStaticProperty("property1", StaticPropertyKind.Int, false);
-        StaticProperty s1p2 = new DefaultStaticProperty("property2", StaticPropertyKind.Object, true);
-        b1.property(s1p1).property(s1p2);
+        StaticProperty s1p1 = new DefaultStaticProperty("property1");
+        StaticProperty s1p2 = new DefaultStaticProperty("property2");
+        b1.property(s1p1, int.class, false).property(s1p2, Object.class, true);
         StaticShape<DefaultStaticObjectFactory> s1 = b1.build();
 
         // Create a sub-shape
         StaticShape.Builder b2 = StaticShape.newBuilder(language);
-        StaticProperty s2p1 = new DefaultStaticProperty("property1", StaticPropertyKind.Int, false);
-        b2.property(s2p1);
+        StaticProperty s2p1 = new DefaultStaticProperty("property1");
+        b2.property(s2p1, int.class, false);
         StaticShape<DefaultStaticObjectFactory> s2 = b2.build(s1); // passing a shape as argument builds a sub-shape
 
         // Create a static object for the sub-shape
@@ -139,8 +141,8 @@ public interface MyStaticObjectFactory {
 Finally, this is how to allocate the custom static objects:
 ```java
 public void customStaticObject(TruffleLanguage<?> language) {
-    StaticProperty property = new DefaultStaticProperty("arg1", StaticPropertyKind.Object, false);
-    StaticShape<MyStaticObjectFactory> shape = StaticShape.newBuilder(language).property(property).build(MyStaticObject.class, MyStaticObjectFactory.class);
+    StaticProperty property = new DefaultStaticProperty("arg1");
+    StaticShape<MyStaticObjectFactory> shape = StaticShape.newBuilder(language).property(property, Object.class, false).build(MyStaticObject.class, MyStaticObjectFactory.class);
     MyStaticObject staticObject = shape.getFactory().create("arg1");
     property.setObject(staticObject, "42");
     assert staticObject.arg1.equals("arg1"); // fields of the custom super class are directly accessible
@@ -169,7 +171,7 @@ class MyField {
     }
 }
 
-new MyField(new DefaultStaticProperty("property1", StaticPropertyKind.Int, false));
+new MyField(new DefaultStaticProperty("property1"));
 ```
 
 The class that represents fields can extend [StaticProperty](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/staticobject/StaticProperty.html):
@@ -177,8 +179,7 @@ The class that represents fields can extend [StaticProperty](https://www.graalvm
 class MyField extends StaticProperty {
     final Object name;
 
-    MyField(Object name, StaticPropertyKind kind, boolean storeAsFinal) {
-        super(kind, storeAsFinal);
+    MyField(Object name) {
         this.name = name;
     }
 
@@ -188,20 +189,20 @@ class MyField extends StaticProperty {
     }
 }
 
-new MyField("property1", StaticPropertyKind.Int, false);
+new MyField("property1");
 ```
 
 ## Safety Checks
 
 On property access, the Static Object Model performs two types of safety checks:
-1. That the [StaticProperty](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/staticobject/StaticProperty.html) method matches the kind of the static property.
+1. That the [StaticProperty](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/staticobject/StaticProperty.html) method matches the type of the static property.
 
 Example of wrong access:
 ```java
 public void wrongMethod(TruffleLanguage<?> language) {
     StaticShape.Builder builder = StaticShape.newBuilder(language);
-    StaticProperty property = new DefaultStaticProperty("property", StaticPropertyKind.Int, false);
-    Object staticObject = builder.property(property).build().getFactory().create();
+    StaticProperty property = new DefaultStaticProperty("property");
+    Object staticObject = builder.property(property, int.class, false).build().getFactory().create();
 
     property.setObject(staticObject, "wrong access type"); // throws IllegalArgumentException
 ```
@@ -212,8 +213,8 @@ Example of wrong access:
 ```java
 public void wrongShape(TruffleLanguage<?> language) {
     StaticShape.Builder builder = StaticShape.newBuilder(language);
-    StaticProperty property = new DefaultStaticProperty("property", StaticPropertyKind.Object, false);
-    Object staticObject1 = builder.property(property).build().getFactory().create();
+    StaticProperty property = new DefaultStaticProperty("property");;
+    Object staticObject1 = builder.property(property, Object.class, false).build().getFactory().create();
     Object staticObject2 = StaticShape.newBuilder(language).build().getFactory().create();
 
     property.setObject(staticObject2, "wrong shape"); // throws IllegalArgumentException
@@ -221,7 +222,7 @@ public void wrongShape(TruffleLanguage<?> language) {
 ```
 
 While these checks are often useful, they might be redundant if the language implementation already performs them, for example using a verifier.
-While the first type of checks (on property kind) is very efficient and cannot be disabled, the second type of checks (on the shape) is computationally expensive and can be disabled via a command line argument: 
+While the first type of checks (on property type) is very efficient and cannot be disabled, the second type of checks (on the shape) is computationally expensive and can be disabled via a command line argument: 
 ```
 --experimental-options --engine.RelaxStaticObjectSafetyChecks=true
 ```

@@ -59,9 +59,9 @@ import java.util.Objects;
  * point to learn about the Static Object Model. Here is an overview:
  * <ul>
  * <li>{@link StaticShape#newBuilder(TruffleLanguage)} returns a {@link StaticShape.Builder} object
- * that can be used to {@linkplain StaticShape.Builder#property(StaticProperty) register}
- * {@linkplain StaticProperty static properties} and to generate a new static shape by calling one
- * of its {@linkplain Builder#build() build methods}.
+ * that can be used to {@linkplain StaticShape.Builder#property(StaticProperty, Class, boolean)
+ * register} {@linkplain StaticProperty static properties} and to generate a new static shape by
+ * calling one of its {@linkplain Builder#build() build methods}.
  * <li>{@link StaticShape#getFactory()} returns an implementation of the {@linkplain Builder#build()
  * default} or the {@linkplain StaticShape.Builder#build(Class, Class) user-defined} factory
  * interface that must be used to allocate static objects with the current shape.
@@ -112,9 +112,9 @@ public abstract class StaticShape<T> {
      * same time. Users of the Static Object Model are expected to define custom subtypes of
      * {@link StaticProperty} or use {@link DefaultStaticProperty}, a trivial default
      * implementation. In both cases, static properties must be registered to a static shape builder
-     * using {@link StaticShape.Builder#property(StaticProperty)}. Then, after allocating a
-     * {@link StaticShape} instance with one of the {@link StaticShape.Builder#build()} methods and
-     * allocating a static object using the factory class provided by
+     * using {@link StaticShape.Builder#property(StaticProperty, Class, boolean)}. Then, after
+     * allocating a {@link StaticShape} instance with one of the {@link StaticShape.Builder#build()}
+     * methods and allocating a static object using the factory class provided by
      * {@link StaticShape#getFactory()}, users can call the accessor methods defined in
      * {@link StaticProperty} to get and set property values stored in a static object instance.
      *
@@ -225,20 +225,30 @@ public abstract class StaticShape<T> {
          * {@linkplain StaticProperty properties} with the same {@linkplain StaticProperty#getId()
          * id} of those in the parent shape.
          *
+         * Only property accesses that match the specified type are allowed. Property values can be
+         * optionally stored in a final field. Accesses to such values might be specially optimized
+         * by the compiler. For example, reads might be constant-folded. It is up to the user to
+         * enforce that property values stored as final are not assigned more than once.
+         *
          * @see DefaultStaticProperty
          * @param property the {@link StaticProperty} to be added
+         * @param type the type of the {@link StaticProperty} to be added. Can only be a primitive
+         *            class or Object.class
+         * @param storeAsFinal if this property value can be stored in a final field
          * @return the Builder instance
-         * @throws IllegalArgumentException if more than 65535 properties are added, or if the
+         * @throws IllegalArgumentException if more than 65535 properties are added, if the
          *             {@linkplain StaticProperty#getId() property id} is an empty string or it is
-         *             equal to the id of another static property already registered to this builder
+         *             equal to the id of another static property already registered to this
+         *             builder, or if the type is not a primitive class or Object.class
          * @throws IllegalStateException if this method is invoked after building a static shape
          * @throws NullPointerException if the {@linkplain StaticProperty#getId() property id} is
          *             null
          * @since 21.3.0
          */
-        public Builder property(StaticProperty property) {
+        public Builder property(StaticProperty property, Class<?> type, boolean storeAsFinal) {
             CompilerAsserts.neverPartOfCompilation();
             checkStatus();
+            property.init(StaticPropertyKind.valueOf(validateType(type)), storeAsFinal);
             staticProperties.put(validateAndGetId(property), property);
             return this;
         }
@@ -362,6 +372,13 @@ public abstract class StaticShape<T> {
                 throw new RuntimeException("The Truffle language instance associated to this Builder returned an unexpected class loader");
             }
             return (GeneratorClassLoader) cl;
+        }
+
+        private static Class<?> validateType(Class<?> type) {
+            if (!type.isPrimitive() && type != Object.class) {
+                throw new IllegalArgumentException("The static property type can be a primitive class or Object.class");
+            }
+            return type;
         }
 
         private String validateAndGetId(StaticProperty property) {

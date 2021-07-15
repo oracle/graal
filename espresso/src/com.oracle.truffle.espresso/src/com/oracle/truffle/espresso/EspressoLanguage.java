@@ -42,7 +42,6 @@ import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.staticobject.DefaultStaticProperty;
 import com.oracle.truffle.api.staticobject.StaticProperty;
-import com.oracle.truffle.api.staticobject.StaticPropertyKind;
 import com.oracle.truffle.api.staticobject.StaticShape;
 import com.oracle.truffle.espresso.descriptors.Names;
 import com.oracle.truffle.espresso.descriptors.Signatures;
@@ -90,13 +89,13 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     private long startupClockNanos = 0;
 
-    private static final StaticProperty ARRAY_PROPERTY = new DefaultStaticProperty("array", StaticPropertyKind.Object, true);
+    private static final StaticProperty ARRAY_PROPERTY = new DefaultStaticProperty("array");
     // This field should be static final, but until we move the static object model we cannot have a
     // SubstrateVM feature which will allow us to set the right field offsets at image build time.
     @CompilerDirectives.CompilationFinal //
     private static StaticShape<StaticObjectFactory> arrayShape;
 
-    private static final StaticProperty FOREIGN_PROPERTY = new DefaultStaticProperty("foreignObject", StaticPropertyKind.Object, true);
+    private static final StaticProperty FOREIGN_PROPERTY = new DefaultStaticProperty("foreignObject");
     // This field should be static final, but until we move the static object model we cannot have a
     // SubstrateVM feature which will allow us to set the right field offsets at image build time.
     @CompilerDirectives.CompilationFinal //
@@ -243,7 +242,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     private StaticShape<StaticObjectFactory> initializeArrayShape() {
         synchronized (EspressoLanguage.class) {
             if (arrayShape == null) {
-                arrayShape = StaticShape.newBuilder(this).property(ARRAY_PROPERTY).build(StaticObject.class, StaticObjectFactory.class);
+                arrayShape = StaticShape.newBuilder(this).property(ARRAY_PROPERTY, Object.class, true).build(StaticObject.class, StaticObjectFactory.class);
             }
             return arrayShape;
         }
@@ -264,7 +263,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     private StaticShape<StaticObjectFactory> initializeForeignShape() {
         synchronized (EspressoLanguage.class) {
             if (foreignShape == null) {
-                foreignShape = StaticShape.newBuilder(this).property(FOREIGN_PROPERTY).build(StaticObject.class, StaticObjectFactory.class);
+                foreignShape = StaticShape.newBuilder(this).property(FOREIGN_PROPERTY, Object.class, true).build(StaticObject.class, StaticObjectFactory.class);
             }
             return foreignShape;
         }

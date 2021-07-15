@@ -41,12 +41,12 @@
 package com.oracle.truffle.api.staticobject;
 
 /**
- * Describes the kind of a {@link StaticProperty}. In
+ * Describes the kind of a {@link StaticProperty}.
  *
  * @see StaticProperty
  * @since 21.3.0
  */
-public enum StaticPropertyKind {
+enum StaticPropertyKind {
     // The ordinal values of these enum types influences field scheduling in ArrayBasedStaticShape.
     // There, we want to schedule 'bigger' field types first (see `getBitCount()`).
 
@@ -159,6 +159,29 @@ public enum StaticPropertyKind {
         } else {
             throw new IllegalArgumentException("Invalid StaticPropertyKind: " + b);
         }
+    }
+
+    static StaticPropertyKind valueOf(Class<?> type) {
+        if (type == long.class) {
+            return StaticPropertyKind.Long;
+        } else if (type == double.class) {
+            return StaticPropertyKind.Double;
+        } else if (type == int.class) {
+            return StaticPropertyKind.Int;
+        } else if (type == float.class) {
+            return StaticPropertyKind.Float;
+        } else if (type == short.class) {
+            return StaticPropertyKind.Short;
+        } else if (type == char.class) {
+            return StaticPropertyKind.Char;
+        } else if (type == byte.class) {
+            return StaticPropertyKind.Byte;
+        } else if (type == boolean.class) {
+            return StaticPropertyKind.Boolean;
+        } else if (type == Object.class) {
+            return StaticPropertyKind.Object;
+        }
+        throw new IllegalArgumentException("Invalid Static Property type: " + type.getName());
     }
 
     static StaticPropertyKind valueOf(byte b) {

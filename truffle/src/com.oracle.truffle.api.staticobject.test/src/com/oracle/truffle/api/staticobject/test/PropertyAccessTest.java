@@ -43,7 +43,6 @@ package com.oracle.truffle.api.staticobject.test;
 import com.oracle.truffle.api.staticobject.DefaultStaticObjectFactory;
 import com.oracle.truffle.api.staticobject.DefaultStaticProperty;
 import com.oracle.truffle.api.staticobject.StaticProperty;
-import com.oracle.truffle.api.staticobject.StaticPropertyKind;
 import com.oracle.truffle.api.staticobject.StaticShape;
 import org.junit.Assert;
 import org.junit.Test;
@@ -68,14 +67,16 @@ public class PropertyAccessTest extends StaticObjectModelTest {
     }
 
     static class TestDescriptor {
-        final StaticPropertyKind kind;
+        final Class<?> type;
+        final String typeName;
         final Object testValue;
         final Object defaultValue;
         final PropertyGetter getter;
         final PropertySetter setter;
 
-        TestDescriptor(StaticPropertyKind kind, Object testValue, Object defaultValue, PropertyGetter getter, PropertySetter setter) {
-            this.kind = kind;
+        TestDescriptor(Class<?> type, String typeName, Object testValue, Object defaultValue, PropertyGetter getter, PropertySetter setter) {
+            this.type = type;
+            this.typeName = typeName;
             this.testValue = testValue;
             this.defaultValue = defaultValue;
             this.getter = getter;
@@ -84,92 +85,100 @@ public class PropertyAccessTest extends StaticObjectModelTest {
 
         @Override
         public String toString() {
-            return kind.name();
+            return type.getName();
         }
     }
 
+    @SuppressWarnings("rawtypes")
     @Parameterized.Parameters(name = "{0} and {1} property access")
     public static Collection<Object[]> data() {
         TestConfiguration[] configs = getTestConfigurations();
 
-        descriptors = new TestDescriptor[StaticPropertyKind.values().length];
-        for (StaticPropertyKind kind : StaticPropertyKind.values()) {
-            int i = kind.ordinal();
-            switch (kind) {
-                case Boolean:
-                    descriptors[i] = new TestDescriptor(
-                                    StaticPropertyKind.Boolean,
-                                    true,
-                                    false,
-                                    (p, obj) -> p.getBoolean(obj),
-                                    (p, obj, val) -> p.setBoolean(obj, (boolean) val));
-                    break;
-                case Byte:
-                    descriptors[i] = new TestDescriptor(
-                                    StaticPropertyKind.Byte,
-                                    (byte) 0x01,
-                                    (byte) 0,
-                                    (p, obj) -> p.getByte(obj),
-                                    (p, obj, val) -> p.setByte(obj, (byte) val));
-                    break;
-                case Char:
-                    descriptors[i] = new TestDescriptor(
-                                    StaticPropertyKind.Char,
-                                    (char) 0x0203,
-                                    (char) 0,
-                                    (p, obj) -> p.getChar(obj),
-                                    (p, obj, val) -> p.setChar(obj, (char) val));
-                    break;
-                case Double:
-                    descriptors[i] = new TestDescriptor(
-                                    StaticPropertyKind.Double,
-                                    Double.longBitsToDouble(0x161718191a1b1c1dL),
-                                    0D,
-                                    (p, obj) -> p.getDouble(obj),
-                                    (p, obj, val) -> p.setDouble(obj, (double) val));
-                    break;
-                case Float:
-                    descriptors[i] = new TestDescriptor(
-                                    StaticPropertyKind.Float,
-                                    Float.intBitsToFloat(0x12131415),
-                                    0F,
-                                    (p, obj) -> p.getFloat(obj),
-                                    (p, obj, val) -> p.setFloat(obj, (float) val));
-                    break;
-                case Int:
-                    descriptors[i] = new TestDescriptor(
-                                    StaticPropertyKind.Int,
-                                    0x0607_0809,
-                                    0,
-                                    (p, obj) -> p.getInt(obj),
-                                    (p, obj, val) -> p.setInt(obj, (int) val));
-                    break;
-                case Long:
-                    descriptors[i] = new TestDescriptor(
-                                    StaticPropertyKind.Long,
-                                    0x0a0b_0c0d_0e0f_10_11L,
-                                    0L,
-                                    (p, obj) -> p.getLong(obj),
-                                    (p, obj, val) -> p.setLong(obj, (long) val));
-                    break;
-                case Short:
-                    descriptors[i] = new TestDescriptor(
-                                    StaticPropertyKind.Short,
-                                    (short) 0x0405,
-                                    (short) 0,
-                                    (p, obj) -> p.getShort(obj),
-                                    (p, obj, val) -> p.setShort(obj, (short) val));
-                    break;
-                case Object:
-                    descriptors[i] = new TestDescriptor(
-                                    StaticPropertyKind.Object,
-                                    new Object(),
-                                    null,
-                                    (p, obj) -> p.getObject(obj),
-                                    (p, obj, val) -> p.setObject(obj, val));
-                    break;
-                default:
-                    Assert.fail();
+        Class[] types = new Class[]{
+                        boolean.class,
+                        byte.class,
+                        char.class,
+                        double.class,
+                        float.class,
+                        int.class,
+                        long.class,
+                        Object.class,
+                        short.class};
+
+        descriptors = new TestDescriptor[types.length];
+        for (int i = 0; i < types.length; i++) {
+            if (types[i] == boolean.class) {
+                descriptors[i] = new TestDescriptor(
+                                types[i],
+                                "boolean",
+                                true,
+                                false,
+                                (p, obj) -> p.getBoolean(obj),
+                                (p, obj, val) -> p.setBoolean(obj, (boolean) val));
+            } else if (types[i] == byte.class) {
+                descriptors[i] = new TestDescriptor(
+                                types[i],
+                                "byte",
+                                (byte) 0x01,
+                                (byte) 0,
+                                (p, obj) -> p.getByte(obj),
+                                (p, obj, val) -> p.setByte(obj, (byte) val));
+            } else if (types[i] == char.class) {
+                descriptors[i] = new TestDescriptor(
+                                types[i],
+                                "char",
+                                (char) 0x0203,
+                                (char) 0,
+                                (p, obj) -> p.getChar(obj),
+                                (p, obj, val) -> p.setChar(obj, (char) val));
+            } else if (types[i] == double.class) {
+                descriptors[i] = new TestDescriptor(
+                                types[i],
+                                "double",
+                                Double.longBitsToDouble(0x161718191a1b1c1dL),
+                                0D,
+                                (p, obj) -> p.getDouble(obj),
+                                (p, obj, val) -> p.setDouble(obj, (double) val));
+            } else if (types[i] == float.class) {
+                descriptors[i] = new TestDescriptor(
+                                types[i],
+                                "float",
+                                Float.intBitsToFloat(0x12131415),
+                                0F,
+                                (p, obj) -> p.getFloat(obj),
+                                (p, obj, val) -> p.setFloat(obj, (float) val));
+            } else if (types[i] == int.class) {
+                descriptors[i] = new TestDescriptor(
+                                types[i],
+                                "int",
+                                0x0607_0809,
+                                0,
+                                (p, obj) -> p.getInt(obj),
+                                (p, obj, val) -> p.setInt(obj, (int) val));
+            } else if (types[i] == long.class) {
+                descriptors[i] = new TestDescriptor(
+                                types[i],
+                                "long",
+                                0x0a0b_0c0d_0e0f_10_11L,
+                                0L,
+                                (p, obj) -> p.getLong(obj),
+                                (p, obj, val) -> p.setLong(obj, (long) val));
+            } else if (types[i] == short.class) {
+                descriptors[i] = new TestDescriptor(
+                                types[i],
+                                "short",
+                                (short) 0x0405,
+                                (short) 0,
+                                (p, obj) -> p.getShort(obj),
+                                (p, obj, val) -> p.setShort(obj, (short) val));
+            } else if (types[i] == Object.class) {
+                descriptors[i] = new TestDescriptor(
+                                types[i],
+                                "Object",
+                                new Object(),
+                                null,
+                                (p, obj) -> p.getObject(obj),
+                                (p, obj, val) -> p.setObject(obj, val));
             }
         }
 
@@ -189,8 +198,8 @@ public class PropertyAccessTest extends StaticObjectModelTest {
     public void correctAccessors() {
         try (TestEnvironment te = new TestEnvironment(config)) {
             StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
-            StaticProperty property = new DefaultStaticProperty("property", td.kind, false);
-            builder.property(property);
+            StaticProperty property = new DefaultStaticProperty("property");
+            builder.property(property, td.type, false);
             StaticShape<DefaultStaticObjectFactory> shape = builder.build();
             Object object = shape.getFactory().create();
 
@@ -211,13 +220,13 @@ public class PropertyAccessTest extends StaticObjectModelTest {
             for (TestDescriptor actualDescriptor : descriptors) {
                 if (!expectedDescriptor.equals(actualDescriptor)) {
                     StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
-                    StaticProperty property = new DefaultStaticProperty("property", expectedDescriptor.kind, false);
-                    builder.property(property);
+                    StaticProperty property = new DefaultStaticProperty("property");
+                    builder.property(property, expectedDescriptor.type, false);
                     StaticShape<DefaultStaticObjectFactory> shape = builder.build();
                     Object object = shape.getFactory().create();
 
                     // Check that wrong getters throw exceptions
-                    String expectedExceptionMessage = "Static property 'property' of kind '" + expectedDescriptor.kind.name() + "' cannot be accessed as '" + actualDescriptor.kind + "'";
+                    String expectedExceptionMessage = "Static property 'property' of type '" + expectedDescriptor.typeName + "' cannot be accessed as '" + actualDescriptor.typeName + "'";
                     try {
                         actualDescriptor.getter.get(property, object);
                         Assert.fail();
@@ -240,13 +249,13 @@ public class PropertyAccessTest extends StaticObjectModelTest {
     public void wrongShape() {
         try (TestEnvironment te = new TestEnvironment(config)) {
             StaticShape.Builder b1 = StaticShape.newBuilder(te.testLanguage);
-            StaticProperty p1 = new DefaultStaticProperty("property", td.kind, false);
-            b1.property(p1);
+            StaticProperty p1 = new DefaultStaticProperty("property");
+            b1.property(p1, td.type, false);
             StaticShape<DefaultStaticObjectFactory> s1 = b1.build();
 
             StaticShape.Builder b2 = StaticShape.newBuilder(te.testLanguage);
-            StaticProperty p2 = new DefaultStaticProperty("property", td.kind, false);
-            b2.property(p2);
+            StaticProperty p2 = new DefaultStaticProperty("property");
+            b2.property(p2, td.type, false);
             StaticShape<DefaultStaticObjectFactory> s2 = b2.build();
             Object o2 = s2.getFactory().create();
 
@@ -268,8 +277,8 @@ public class PropertyAccessTest extends StaticObjectModelTest {
     public void wrongObject() {
         try (TestEnvironment te = new TestEnvironment(config)) {
             StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
-            StaticProperty property = new DefaultStaticProperty("property", StaticPropertyKind.Int, false);
-            builder.property(property);
+            StaticProperty property = new DefaultStaticProperty("property");
+            builder.property(property, int.class, false);
             StaticShape<DefaultStaticObjectFactory> shape = builder.build();
             Object staticObject = shape.getFactory().create();
             Object wrongObject = new Object();

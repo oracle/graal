@@ -42,7 +42,6 @@ package com.oracle.truffle.api.staticobject.test;
 
 import com.oracle.truffle.api.staticobject.DefaultStaticProperty;
 import com.oracle.truffle.api.staticobject.StaticProperty;
-import com.oracle.truffle.api.staticobject.StaticPropertyKind;
 import com.oracle.truffle.api.staticobject.StaticShape;
 import com.oracle.truffle.api.staticobject.test.StaticObjectModelTest.TestConfiguration;
 import com.oracle.truffle.api.staticobject.test.StaticObjectModelTest.TestEnvironment;
@@ -60,8 +59,8 @@ public class StaticTest {
     static {
         TestEnvironment environment = new TestEnvironment(new TestConfiguration(true, false));
         StaticShape.Builder builder = StaticShape.newBuilder(environment.testLanguage);
-        property = new DefaultStaticProperty("property", StaticPropertyKind.Int, false);
-        builder.property(property);
+        property = new DefaultStaticProperty("property");
+        builder.property(property, int.class, false);
         staticObject = builder.build().getFactory().create();
         property.setInt(staticObject, 42);
     }

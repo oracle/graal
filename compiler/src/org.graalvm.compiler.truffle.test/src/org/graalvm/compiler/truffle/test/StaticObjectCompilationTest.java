@@ -33,7 +33,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.staticobject.DefaultStaticObjectFactory;
 import com.oracle.truffle.api.staticobject.DefaultStaticProperty;
 import com.oracle.truffle.api.staticobject.StaticProperty;
-import com.oracle.truffle.api.staticobject.StaticPropertyKind;
 import com.oracle.truffle.api.staticobject.StaticShape;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.calc.AddNode;
@@ -83,9 +82,10 @@ public class StaticObjectCompilationTest extends PartialEvaluationTest {
         Assume.assumeTrue(te.isFieldBased());
 
         StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
-        StaticProperty finalProperty = new DefaultStaticProperty("finalProperty", StaticPropertyKind.Int, true);
-        StaticProperty property = new DefaultStaticProperty("property", StaticPropertyKind.Int, false);
-        builder.property(finalProperty).property(property);
+        StaticProperty finalProperty = new DefaultStaticProperty("finalProperty");
+        StaticProperty property = new DefaultStaticProperty("property");
+        builder.property(finalProperty, int.class, true);
+        builder.property(property, int.class, false);
         Object staticObject = builder.build().getFactory().create();
 
         FieldBasedStorage fbs = new FieldBasedStorage();
@@ -112,13 +112,13 @@ public class StaticObjectCompilationTest extends PartialEvaluationTest {
         // Field-based storage
         Assume.assumeTrue(te.isFieldBased());
         StaticShape.Builder b1 = StaticShape.newBuilder(te.testLanguage);
-        StaticProperty s1p1 = new DefaultStaticProperty("property", StaticPropertyKind.Int, true);
-        b1.property(s1p1);
+        StaticProperty s1p1 = new DefaultStaticProperty("property");
+        b1.property(s1p1, int.class, true);
         StaticShape<DefaultStaticObjectFactory> s1 = b1.build();
 
         StaticShape.Builder b2 = StaticShape.newBuilder(te.testLanguage);
-        StaticProperty s2p1 = new DefaultStaticProperty("property", StaticPropertyKind.Int, true);
-        b2.property(s2p1);
+        StaticProperty s2p1 = new DefaultStaticProperty("property");
+        b2.property(s2p1, int.class, true);
         StaticShape<DefaultStaticObjectFactory> s2 = b2.build(s1);
         Object o2 = s2.getFactory().create();
 
@@ -252,8 +252,8 @@ public class StaticObjectCompilationTest extends PartialEvaluationTest {
 
         StaticObjectAbstractNode(StaticObjectTestEnvironment te) {
             StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
-            property = new DefaultStaticProperty("property", StaticPropertyKind.Int, false);
-            builder.property(property);
+            property = new DefaultStaticProperty("property");
+            builder.property(property, int.class, false);
             shape = builder.build();
         }
 
