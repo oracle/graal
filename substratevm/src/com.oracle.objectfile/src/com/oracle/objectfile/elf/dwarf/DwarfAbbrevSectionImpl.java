@@ -262,6 +262,8 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          *
          * <li><code>DW_AT_hi_pc : ...... DW_FORM_address</code>
          *
+         * <li><code>DW_AT_use_UTF8 : ... DW_FORM_flag</code>
+         *
          * <li><code>DW_AT_stmt_list : .. DW_FORM_data4</code> n.b only for <code>abbrev-code ==
          * class_unit1</code>
          *
@@ -781,6 +783,8 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeFlag(DwarfDebugInfo.DW_CHILDREN_yes, buffer, pos);
         pos = writeAttrType(DwarfDebugInfo.DW_AT_language, buffer, pos);
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data1, buffer, pos);
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_use_UTF8, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_flag, buffer, pos);
         pos = writeAttrType(DwarfDebugInfo.DW_AT_name, buffer, pos);
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_strp, buffer, pos);
         pos = writeAttrType(DwarfDebugInfo.DW_AT_comp_dir, buffer, pos);

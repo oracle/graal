@@ -38,6 +38,7 @@ import com.oracle.objectfile.elf.ELFMachine;
 import com.oracle.objectfile.elf.ELFObjectFile;
 import org.graalvm.compiler.debug.DebugContext;
 
+import java.io.UnsupportedEncodingException;
 import java.nio.ByteOrder;
 import java.util.Map;
 import java.util.Set;
@@ -257,6 +258,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         return pos;
     }
 
+    @SuppressWarnings("unused")
     protected int putAsciiStringBytes(String s, byte[] buffer, int pos) {
         return putAsciiStringBytes(s, 0, buffer, pos);
     }
@@ -269,6 +271,36 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
                 throw new RuntimeException("oops : expected ASCII string! " + s);
             }
             buffer[pos++] = (byte) c;
+        }
+        buffer[pos++] = '\0';
+        return pos;
+    }
+
+    protected static int countUTF8Bytes(String s) {
+        return countUTF8Bytes(s, 0);
+    }
+
+    protected static int countUTF8Bytes(String s, int startChar) {
+        try {
+            byte[] bytes = s.substring(startChar).getBytes("UTF-8");
+            return bytes.length;
+        } catch (UnsupportedEncodingException uee) {
+            throw new RuntimeException("oops : unable to convert string to UTF-8 " + s, uee);
+        }
+    }
+
+    protected int putUTF8StringBytes(String s, byte[] buffer, int pos) {
+        return putUTF8StringBytes(s, 0, buffer, pos);
+    }
+    protected int putUTF8StringBytes(String s, int startChar, byte[] buffer, int p) {
+        int pos = p;
+        try {
+            byte[] bytes = s.substring(startChar).getBytes("UTF-8");
+            for (int l = 0; l < bytes.length; l++) {
+                buffer[pos++] = bytes[l];
+            }
+        } catch (UnsupportedEncodingException uee) {
+            throw new RuntimeException("oops : unable to convert string to UTF-8 " + s, uee);
         }
         buffer[pos++] = '\0';
         return pos;
