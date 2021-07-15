@@ -44,6 +44,8 @@ import com.oracle.truffle.api.staticobject.DefaultStaticProperty;
 import com.oracle.truffle.api.staticobject.StaticProperty;
 import com.oracle.truffle.api.staticobject.StaticPropertyKind;
 import com.oracle.truffle.api.staticobject.StaticShape;
+import com.oracle.truffle.api.staticobject.test.StaticObjectModelTest.TestConfiguration;
+import com.oracle.truffle.api.staticobject.test.StaticObjectModelTest.TestEnvironment;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -51,12 +53,12 @@ import org.junit.Test;
  * When running on Native Image, this test checks that the Static Object Model can be used at image
  * built time for context pre-initialization.
  */
-public class StaticTest extends StaticObjectModelTest {
+public class StaticTest {
     private static final StaticProperty property;
     private static final Object staticObject;
 
     static {
-        TestEnvironment environment = new TestEnvironment(true, false);
+        TestEnvironment environment = new TestEnvironment(new TestConfiguration(true, false));
         StaticShape.Builder builder = StaticShape.newBuilder(environment.testLanguage);
         property = new DefaultStaticProperty("property", StaticPropertyKind.Int, false);
         builder.property(property);

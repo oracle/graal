@@ -41,32 +41,20 @@
 package com.oracle.truffle.api.staticobject.test;
 
 import com.oracle.truffle.api.staticobject.StaticShape;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
 import org.junit.Test;
-import org.junit.experimental.theories.DataPoints;
-import org.junit.experimental.theories.Theories;
-import org.junit.experimental.theories.Theory;
 import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
 import java.util.concurrent.Callable;
 
-@RunWith(Theories.class)
+@RunWith(Parameterized.class)
 public class ClassLoaderTest extends StaticObjectModelTest {
-    @DataPoints //
-    public static TestEnvironment[] environments;
-
-    @BeforeClass
-    public static void setup() {
-        environments = getTestEnvironments();
+    @Parameterized.Parameters(name = "{0}")
+    public static TestConfiguration[] data() {
+        return getTestConfigurations();
     }
 
-    @AfterClass
-    public static void teardown() {
-        for (TestEnvironment env : environments) {
-            env.close();
-        }
-    }
+    @Parameterized.Parameter public TestConfiguration config;
 
     public static class CustomStaticObject {
     }
@@ -80,16 +68,13 @@ public class ClassLoaderTest extends StaticObjectModelTest {
      * object classes. This test makes sure that the cache takes into account the class loader that
      * loaded the factory interface.
      */
-    @Theory
-    public void testA(TestEnvironment te) {
-        // Callable.class is loaded by the system class loader
-        StaticShape.newBuilder(te.testLanguage).build(Object.class, Callable.class);
-        // CustomStaticObjectFactory.class is loaded by the application class loader
-        StaticShape.newBuilder(te.testLanguage).build(CustomStaticObject.class, CustomStaticObjectFactory.class);
-    }
-
     @Test
-    public void dummy() {
-        // to make sure this file is recognized as a test
+    public void testClassLoader() {
+        try (TestEnvironment te = new TestEnvironment(config)) {
+            // Callable.class is loaded by the system class loader
+            StaticShape.newBuilder(te.testLanguage).build(Object.class, Callable.class);
+            // CustomStaticObjectFactory.class is loaded by the application class loader
+            StaticShape.newBuilder(te.testLanguage).build(CustomStaticObject.class, CustomStaticObjectFactory.class);
+        }
     }
 }
