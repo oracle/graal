@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.test.staticobject;
+package org.graalvm.compiler.truffle.test;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -44,7 +44,7 @@ import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.java.StoreFieldNode;
 import org.graalvm.compiler.nodes.virtual.VirtualArrayNode;
 import org.graalvm.compiler.nodes.virtual.VirtualInstanceNode;
-import org.graalvm.compiler.truffle.test.PartialEvaluationTest;
+import org.graalvm.polyglot.Context;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Test;
@@ -53,8 +53,15 @@ import org.junit.experimental.theories.Theories;
 import org.junit.experimental.theories.Theory;
 import org.junit.runner.RunWith;
 
+import java.io.Closeable;
+
 @RunWith(Theories.class)
-public class GraphTest extends PartialEvaluationTest {
+public class StaticObjectCompilationTest extends PartialEvaluationTest {
+    static class FieldBasedStorage {
+        final int finalProperty = 42;
+        int property;
+    }
+
     @DataPoints //
     public static final StaticObjectTestEnvironment[] environments = StaticObjectTestEnvironment.getEnvironments();
 
@@ -62,6 +69,59 @@ public class GraphTest extends PartialEvaluationTest {
     public static void teardown() {
         for (StaticObjectTestEnvironment env : environments) {
             env.close();
+        }
+    }
+
+    @Test
+    public void simplePropertyAccesses() {
+        // Field-based storage
+        try (StaticObjectTestEnvironment te = new StaticObjectTestEnvironment(false)) {
+            StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
+            StaticProperty finalProperty = new DefaultStaticProperty("finalProperty", StaticPropertyKind.Int, true);
+            StaticProperty property = new DefaultStaticProperty("property", StaticPropertyKind.Int, false);
+            builder.property(finalProperty).property(property);
+            Object staticObject = builder.build().getFactory().create();
+
+            FieldBasedStorage fbs = new FieldBasedStorage();
+
+            // Property set
+            assertPartialEvalEquals(toRootNode((f) -> fbs.property = 42), toRootNode((f) -> {
+                finalProperty.setInt(staticObject, 42);
+                return null;
+            }), new Object[0]);
+            assertPartialEvalEquals(toRootNode((f) -> fbs.property = 42), toRootNode((f) -> {
+                property.setInt(staticObject, 42);
+                return null;
+            }), new Object[0]);
+
+            finalProperty.setInt(staticObject, 42);
+            // Property get
+            assertPartialEvalEquals(toRootNode((f) -> 42), toRootNode((f) -> finalProperty.getInt(staticObject)), new Object[0]);
+            assertPartialEvalEquals(toRootNode((f) -> fbs.finalProperty), toRootNode((f) -> finalProperty.getInt(staticObject)), new Object[0]);
+            assertPartialEvalEquals(toRootNode((f) -> fbs.property), toRootNode((f) -> property.getInt(staticObject)), new Object[0]);
+        }
+    }
+
+    @Test
+    public void propertyAccessesInHierarchy() {
+        // Field-based storage
+        try (StaticObjectTestEnvironment te = new StaticObjectTestEnvironment(false)) {
+            StaticShape.Builder b1 = StaticShape.newBuilder(te.testLanguage);
+            StaticProperty s1p1 = new DefaultStaticProperty("property", StaticPropertyKind.Int, true);
+            b1.property(s1p1);
+            StaticShape<DefaultStaticObjectFactory> s1 = b1.build();
+
+            StaticShape.Builder b2 = StaticShape.newBuilder(te.testLanguage);
+            StaticProperty s2p1 = new DefaultStaticProperty("property", StaticPropertyKind.Int, true);
+            b2.property(s2p1);
+            StaticShape<DefaultStaticObjectFactory> s2 = b2.build(s1);
+            Object o2 = s2.getFactory().create();
+
+            s1p1.setInt(o2, 24);
+            s2p1.setInt(o2, 42);
+
+            assertPartialEvalEquals(toRootNode((f) -> 24), toRootNode((f) -> s1p1.getInt(o2)), new Object[0]);
+            assertPartialEvalEquals(toRootNode((f) -> 42), toRootNode((f) -> s2p1.getInt(o2)), new Object[0]);
         }
     }
 
@@ -298,8 +358,62 @@ public class GraphTest extends PartialEvaluationTest {
         }
     }
 
-    @Test
-    public void dummy() {
-        // to make sure this file is recognized as a test
+    static class StaticObjectTestEnvironment implements Closeable {
+        final boolean arrayBased;
+        final TruffleLanguage<?> testLanguage;
+        final Context context;
+
+        StaticObjectTestEnvironment(boolean arrayBased) {
+            this.arrayBased = arrayBased;
+            context = Context.newBuilder(TestLanguage.TEST_LANGUAGE_ID).//
+                            allowExperimentalOptions(true).//
+                            option("engine.StaticObjectStorageStrategy", this.arrayBased ? "array-based" : "field-based").//
+                            build();
+            context.initialize(TestLanguage.TEST_LANGUAGE_ID);
+            context.enter();
+            testLanguage = TestLanguage.getCurrentContext().getLanguage();
+            context.leave();
+        }
+
+        @Override
+        public void close() {
+            context.close();
+        }
+
+        @Override
+        public String toString() {
+            return (arrayBased ? "Array-based" : "Field-based") + " storage";
+        }
+
+        static StaticObjectTestEnvironment[] getEnvironments() {
+            return new StaticObjectTestEnvironment[]{new StaticObjectTestEnvironment(true), new StaticObjectTestEnvironment(false)};
+        }
+    }
+
+    @TruffleLanguage.Registration(id = TestLanguage.TEST_LANGUAGE_ID, name = TestLanguage.TEST_LANGUAGE_NAME)
+    public static class TestLanguage extends TruffleLanguage<TestContext> {
+        static final String TEST_LANGUAGE_NAME = "Test Language for PE tests of the Static Object Model";
+        static final String TEST_LANGUAGE_ID = "som-pe-test";
+
+        @Override
+        protected TestContext createContext(Env env) {
+            return new TestContext(this);
+        }
+
+        static TestContext getCurrentContext() {
+            return getCurrentContext(TestLanguage.class);
+        }
+    }
+
+    static class TestContext {
+        private final TestLanguage language;
+
+        TestContext(TestLanguage language) {
+            this.language = language;
+        }
+
+        TestLanguage getLanguage() {
+            return language;
+        }
     }
 }

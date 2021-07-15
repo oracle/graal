@@ -169,7 +169,7 @@ def gate_body(args, tasks):
                     # Unit tests for the Static Object Model include theories.
                     # When running with LibGraal (LibGraalHotSpotTruffleCompiler), the assumption in TruffleCompilerImplTest
                     # that the Truffle compiler is a subtype of TruffleCompilerImpl is never satisfied, and the @Theory fails.
-                    excluded_tests = ["org.graalvm.compiler.truffle.test.staticobject.*"]
+                    excluded_tests = ["org.graalvm.compiler.truffle.test.StaticObjectCompilationTest"]
                     test_libgraal_exclude = environ.get("TEST_LIBGRAAL_EXCLUDE")
                     if test_libgraal_exclude:
                         excluded_tests += test_libgraal_exclude.split()
