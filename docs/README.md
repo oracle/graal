@@ -1,7 +1,6 @@
 # How to Contribute to GraalVM Documentation
 
 The GraalVM documentation is open source and anyone can contribute to make it perfect and comprehensive.
-Contributing to the documentation is fairly easy, and the only requirement is having a GitHub account!
 
 The GraalVM documentation is presented in the form of:
 * reference documentaiton which includes getting started and user guides, reference manuals, examples, security guidelines
@@ -28,8 +27,8 @@ To update the documentation:
 A member from the GraalVM project team will review your PR and merge as appropriate.
 There is a CI pipeline that will pick up your change once merged to the master branch, and publish on the website.
 
-Do not hesitate to push fixes to broken links or typos, update an outdated section, propose information if you find it missing, or propose a new feature documentaiton.
-Help us make GraalVM better by improving the existing and contributing new documentation!
-
 The GraalVM core and its projects are hosted in the Oracle organization on GitHub, so we except a contributor to abide by the [Contributor Covenant Code of Conduct](https://www.graalvm.org/community/conduct/).
 For more specific guidelines see [Contribute to GraalVM](https://www.graalvm.org/community/contributors/).
+
+Do not hesitate to push fixes to broken links or typos, update an outdated section, propose information if you find it missing, or propose a new feature documentaiton.
+Help us make GraalVM better by improving the existing and contributing new documentation!
