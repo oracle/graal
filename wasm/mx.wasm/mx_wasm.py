@@ -538,7 +538,7 @@ def emscripten_init(args):
         fp.write("COMPILER_ENGINE=NODE_JS" + os.linesep)
         fp.write("JS_ENGINES=[NODE_JS]")
 
-    mx.log("Generated Emscripten config file at " + str(config_path))
+    mx.log("Successfully generated Emscripten config file at " + str(config_path))
     mx.log("Triggering cache generation...")
 
     temp_dir = tempfile.mkdtemp()
@@ -547,9 +547,9 @@ def emscripten_init(args):
         fp.write("int main() { return 0; }")
     cmd = os.path.join(emsdk_path, "upstream", "emscripten", "emcc")
     if mx.run([cmd, test_file], nonZeroIsFatal=True) != 0:
-        mx.abort("Error while triggering cache generation.")
-    mx.log("Successfully generated Emscripten configuration file")
+        mx.abort("Error while triggering cache generation")
     shutil.rmtree(temp_dir)
+    mx.log("Successfully initialized Emscripten")
 
 
 @mx.command(_suite.name, "wasm")
