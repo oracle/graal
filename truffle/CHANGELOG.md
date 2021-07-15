@@ -6,6 +6,10 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added a `@GenerateWrapper.Ignore` annotation to prevent methods from being instrumented in wrapper classes.
 * The native image `TruffleCheckBlackListedMethods` option was deprecated and replaced by the `TruffleCheckBlockListMethods` option.
 * Removed deprecated engine options: `engine.CompilationThreshold` and `engine.InliningTruffleTierOnExpand`
+* Added support for indicating whether a `Frame` can be materialized.
+    * Added a new `FrameDescriptor` constructor which takes a `canMaterialize` parameter (`true` by default).
+    * Added `FrameDescriptor#canMaterialize()`, which returns whether a frame can be materialized.
+    * Calls to `Frame#materialize()` will now throw an `UnsupportedOperationException` if the descriptor is marked non-materializable.
 
 ## Version 21.2.0
 * Added `TypeDescriptor.subtract(TypeDescriptor)` creating a new `TypeDescriptor` by removing the given type from a union or intersection type.

@@ -507,7 +507,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
         private final int maxTagsLength;
 
         VirtualizingLoopOSRRootNode(VirtualizingLoopOSRRootNode previousRoot, OptimizedOSRLoopNode loop, FrameDescriptor frameDescriptor,
-                                    Class<? extends VirtualFrame> clazz) {
+                        Class<? extends VirtualFrame> clazz) {
             super(loop, frameDescriptor, clazz);
             this.readFrameSlots = previousRoot.readFrameSlots;
             this.writtenFrameSlots = previousRoot.writtenFrameSlots;
@@ -517,8 +517,8 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
         }
 
         VirtualizingLoopOSRRootNode(OptimizedOSRLoopNode loop, FrameDescriptor frameDescriptor,
-                                    Class<? extends VirtualFrame> clazz,
-                                    FrameSlot[] readFrameSlots, FrameSlot[] writtenFrameSlots) {
+                        Class<? extends VirtualFrame> clazz,
+                        FrameSlot[] readFrameSlots, FrameSlot[] writtenFrameSlots) {
             super(loop, frameDescriptor, clazz);
             this.readFrameSlots = readFrameSlots;
             this.writtenFrameSlots = writtenFrameSlots;

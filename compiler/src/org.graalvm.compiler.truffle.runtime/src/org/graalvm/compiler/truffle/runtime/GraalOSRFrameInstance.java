@@ -33,20 +33,20 @@ import jdk.vm.ci.code.stack.InspectedFrame;
  * Contains a separate field for the {@link InspectedFrame} containing the most up-to-date Frame.
  */
 public final class GraalOSRFrameInstance extends GraalFrameInstance {
-    InspectedFrame osrFrame;
+    private final InspectedFrame osrFrame;
 
-    public GraalOSRFrameInstance(InspectedFrame callTargetFrame, InspectedFrame callNodeFrame, InspectedFrame osrFrame) {
+    GraalOSRFrameInstance(InspectedFrame callTargetFrame, InspectedFrame callNodeFrame, InspectedFrame osrFrame) {
         super(callTargetFrame, callNodeFrame);
         this.osrFrame = osrFrame;
     }
 
     @Override
-    public Frame getFrame(FrameAccess access) {
+    public final Frame getFrame(FrameAccess access) {
         return getFrameFrom(osrFrame, access);
     }
 
     @Override
-    public boolean isVirtualFrame() {
+    public final boolean isVirtualFrame() {
         return osrFrame.isVirtual(FRAME_INDEX);
     }
 }

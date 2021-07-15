@@ -74,7 +74,7 @@ public final class FrameDescriptor implements Cloneable {
     @CompilationFinal private volatile Assumption version;
     private EconomicMap<Object, Assumption> identifierToNotInFrameAssumptionMap;
     @CompilationFinal private volatile int size;
-    private final boolean allowMaterialize;
+    private final boolean canMaterialize;
     private final Object lock;
 
     /**
@@ -98,7 +98,8 @@ public final class FrameDescriptor implements Cloneable {
     }
 
     /**
-     * Constructs new descriptor with specified {@link #getDefaultValue()}.
+     * Constructs new descriptor with specified {@link #getDefaultValue()}. The frame can be
+     * materialized.
      *
      * @param defaultValue to be returned from {@link #getDefaultValue()}
      * @since 0.8 or earlier
@@ -108,33 +109,23 @@ public final class FrameDescriptor implements Cloneable {
     }
 
     /**
-     * Constructs new descriptor with specified {@link #canMaterialize()}.
-     *
-     * @param allowMaterialize to be returned from {@link #canMaterialize()}
-     * @since 21.3
-     */
-    public FrameDescriptor(boolean allowMaterialize) {
-        this(null, allowMaterialize);
-    }
-
-    /**
      * Constructs new descriptor with specified {@link #getDefaultValue()} and
      * {@link #canMaterialize()}.
      *
      * @param defaultValue to be returned from {@link #getDefaultValue()}
-     * @param allowMaterialize to be returned from {@link #canMaterialize()}
+     * @param canMaterialize to be returned from {@link #canMaterialize()}
      * @since 21.3
      */
-    public FrameDescriptor(Object defaultValue, boolean allowMaterialize) {
-        this(defaultValue, allowMaterialize, null);
+    public FrameDescriptor(Object defaultValue, boolean canMaterialize) {
+        this(defaultValue, canMaterialize, null);
     }
 
-    private FrameDescriptor(Object defaultValue, boolean allowMaterialize, Object lock) {
+    private FrameDescriptor(Object defaultValue, boolean canMaterialize, Object lock) {
         CompilerAsserts.neverPartOfCompilation("do not create a FrameDescriptor from compiled code");
         this.defaultValue = defaultValue;
         this.slots = new ArrayList<>();
         this.identifierToSlotMap = EconomicMap.create();
-        this.allowMaterialize = allowMaterialize;
+        this.canMaterialize = canMaterialize;
         this.lock = lock == null ? this : lock;
         newVersion(this);
     }
@@ -500,7 +491,7 @@ public final class FrameDescriptor implements Cloneable {
     public FrameDescriptor copy() {
         CompilerAsserts.neverPartOfCompilation(NEVER_PART_OF_COMPILATION_MESSAGE);
         synchronized (lock) {
-            FrameDescriptor clonedFrameDescriptor = new FrameDescriptor(this.defaultValue, this.allowMaterialize);
+            FrameDescriptor clonedFrameDescriptor = new FrameDescriptor(this.defaultValue, this.canMaterialize);
             for (int i = 0; i < slots.size(); i++) {
                 FrameSlot slot = slots.get(i);
                 clonedFrameDescriptor.addFrameSlot(slot.getIdentifier(), slot.getInfo(), FrameSlotKind.Illegal);
@@ -579,9 +570,11 @@ public final class FrameDescriptor implements Cloneable {
 
     /**
      * Return whether materialization is allowed.
+     * 
+     * @since 21.3
      */
     public boolean canMaterialize() {
-        return allowMaterialize;
+        return canMaterialize;
     }
 
     private void invalidateNotInFrameAssumption(Object identifier) {

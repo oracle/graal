@@ -130,7 +130,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
     }
 
     public static EspressoRootNode create(FrameDescriptor descriptor, EspressoMethodNode methodNode) {
-        FrameDescriptor desc = descriptor != null ? descriptor : new FrameDescriptor(false);
+        FrameDescriptor desc = descriptor != null ? descriptor : new FrameDescriptor(null, false);
         if (methodNode.getMethod().isSynchronized()) {
             return new Synchronized(desc, methodNode);
         } else {

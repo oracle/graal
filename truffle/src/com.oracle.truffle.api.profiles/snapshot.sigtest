@@ -92,7 +92,7 @@ CLSS public abstract com.oracle.truffle.api.profiles.ValueProfile
 meth public abstract <%0 extends java.lang.Object> {%%0} profile({%%0})
 meth public static com.oracle.truffle.api.profiles.ValueProfile createClassProfile()
 meth public static com.oracle.truffle.api.profiles.ValueProfile createEqualityProfile()
- anno 0 java.lang.Deprecated()
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth public static com.oracle.truffle.api.profiles.ValueProfile createIdentityProfile()
 meth public static com.oracle.truffle.api.profiles.ValueProfile getUncached()
 supr com.oracle.truffle.api.profiles.Profile
@@ -104,6 +104,7 @@ CLSS public java.lang.Object
 cons public init()
 meth protected java.lang.Object clone() throws java.lang.CloneNotSupportedException
 meth protected void finalize() throws java.lang.Throwable
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="9")
 meth public boolean equals(java.lang.Object)
 meth public final java.lang.Class<?> getClass()
 meth public final void notify()

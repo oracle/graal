@@ -1,0 +1,237 @@
+#Signature file v4.1
+#Version 
+
+CLSS public final com.oracle.truffle.espresso.polyglot.ArityException
+meth public int getActualArity()
+meth public int getExpectedArity()
+meth public java.lang.String getMessage()
+meth public static com.oracle.truffle.espresso.polyglot.ArityException create(int,int)
+meth public static com.oracle.truffle.espresso.polyglot.ArityException create(int,int,java.lang.Throwable)
+supr com.oracle.truffle.espresso.polyglot.InteropException
+hfds actualArity,expectedArity,serialVersionUID
+
+CLSS public final !enum com.oracle.truffle.espresso.polyglot.ExceptionType
+fld public final static com.oracle.truffle.espresso.polyglot.ExceptionType EXIT
+fld public final static com.oracle.truffle.espresso.polyglot.ExceptionType INTERRUPT
+fld public final static com.oracle.truffle.espresso.polyglot.ExceptionType PARSE_ERROR
+fld public final static com.oracle.truffle.espresso.polyglot.ExceptionType RUNTIME_ERROR
+meth public static com.oracle.truffle.espresso.polyglot.ExceptionType valueOf(java.lang.String)
+meth public static com.oracle.truffle.espresso.polyglot.ExceptionType[] values()
+supr java.lang.Enum<com.oracle.truffle.espresso.polyglot.ExceptionType>
+
+CLSS public final com.oracle.truffle.espresso.polyglot.ForeignException
+meth public java.lang.StackTraceElement[] getStackTrace()
+meth public java.lang.String getMessage()
+meth public java.lang.Throwable fillInStackTrace()
+meth public java.lang.Throwable getCause()
+meth public java.lang.Throwable initCause(java.lang.Throwable)
+meth public void setStackTrace(java.lang.StackTraceElement[])
+supr java.lang.RuntimeException
+hfds serialVersionUID
+
+CLSS public final com.oracle.truffle.espresso.polyglot.Interop
+meth public !varargs static java.lang.Object execute(java.lang.Object,java.lang.Object[]) throws com.oracle.truffle.espresso.polyglot.ArityException,com.oracle.truffle.espresso.polyglot.UnsupportedMessageException,com.oracle.truffle.espresso.polyglot.UnsupportedTypeException
+meth public !varargs static java.lang.Object instantiate(java.lang.Object,java.lang.Object[]) throws com.oracle.truffle.espresso.polyglot.ArityException,com.oracle.truffle.espresso.polyglot.UnsupportedMessageException,com.oracle.truffle.espresso.polyglot.UnsupportedTypeException
+meth public !varargs static java.lang.Object invokeMember(java.lang.Object,java.lang.String,java.lang.Object[]) throws com.oracle.truffle.espresso.polyglot.ArityException,com.oracle.truffle.espresso.polyglot.UnknownIdentifierException,com.oracle.truffle.espresso.polyglot.UnsupportedMessageException,com.oracle.truffle.espresso.polyglot.UnsupportedTypeException
+meth public static boolean asBoolean(java.lang.Object) throws com.oracle.truffle.espresso.polyglot.UnsupportedMessageException
+meth public static boolean fitsInByte(java.lang.Object)
+meth public static boolean fitsInDouble(java.lang.Object)
+meth public static boolean fitsInFloat(java.lang.Object)
+meth public static boolean fitsInInt(java.lang.Object)
+meth public static boolean fitsInLong(java.lang.Object)
+meth public static boolean fitsInShort(java.lang.Object)
+meth public static boolean hasArrayElements(java.lang.Object)
+meth public static boolean hasDeclaringMetaObject(java.lang.Object)
+meth public static boolean hasExceptionCause(java.lang.Object)
+meth public static boolean hasExceptionMessage(java.lang.Object)
+meth public static boolean hasExceptionStackTrace(java.lang.Object)
+meth public static boolean hasExecutableName(java.lang.Object)
+meth public static boolean hasIdentity(java.lang.Object)
+meth public static boolean hasMemberReadSideEffects(java.lang.Object,java.lang.String)
+meth public static boolean hasMemberWriteSideEffects(java.lang.Object,java.lang.String)
+meth public static boolean hasMembers(java.lang.Object)
+meth public static boolean hasMetaObject(java.lang.Object)
+meth public static boolean isArrayElementExisting(java.lang.Object,long)
+meth public static boolean isArrayElementInsertable(java.lang.Object,long)
+meth public static boolean isArrayElementModifiable(java.lang.Object,long)
+meth public static boolean isArrayElementReadable(java.lang.Object,long)
+meth public static boolean isArrayElementRemovable(java.lang.Object,long)
+meth public static boolean isArrayElementWritable(java.lang.Object,long)
+meth public static boolean isBoolean(java.lang.Object)
+meth public static boolean isException(java.lang.Object)
+meth public static boolean isExceptionIncompleteSource(java.lang.Object) throws com.oracle.truffle.espresso.polyglot.UnsupportedMessageException
+meth public static boolean isExecutable(java.lang.Object)
+meth public static boolean isIdentical(java.lang.Object,java.lang.Object)
+meth public static boolean isInstantiable(java.lang.Object)
+meth public static boolean isMemberExisting(java.lang.Object,java.lang.String)
+meth public static boolean isMemberInsertable(java.lang.Object,java.lang.String)
+meth public static boolean isMemberInvocable(java.lang.Object,java.lang.String)
+meth public static boolean isMemberModifiable(java.lang.Object,java.lang.String)
+meth public static boolean isMemberReadable(java.lang.Object,java.lang.String)
+meth public static boolean isMemberRemovable(java.lang.Object,java.lang.String)
+meth public static boolean isMemberWritable(java.lang.Object,java.lang.String)
+meth public static boolean isMetaInstance(java.lang.Object,java.lang.Object) throws com.oracle.truffle.espresso.polyglot.UnsupportedMessageException
+meth public static boolean isMetaObject(java.lang.Object)
+meth public static boolean isNull(java.lang.Object)
+meth public static boolean isNumber(java.lang.Object)
+meth public static boolean isPointer(java.lang.Object)
+meth public static boolean isString(java.lang.Object)
+meth public static byte asByte(java.lang.Object) throws com.oracle.truffle.espresso.polyglot.UnsupportedMessageException
+meth public static com.oracle.truffle.espresso.polyglot.ExceptionType getExceptionType(java.lang.Object) throws com.oracle.truffle.espresso.polyglot.UnsupportedMessageException
+meth public static double asDouble(java.lang.Object) throws com.oracle.truffle.espresso.polyglot.UnsupportedMessageException
+meth public static float asFloat(java.lang.Object) throws com.oracle.truffle.espresso.polyglot.UnsupportedMessageException
+meth public static int asInt(java.lang.Object) throws com.oracle.truffle.espresso.polyglot.UnsupportedMessageException
+meth public static int getExceptionExitStatus(java.lang.Object) throws com.oracle.truffle.espresso.polyglot.UnsupportedMessageException
+meth public static int identityHashCode(java.lang.Object) throws com.oracle.truffle.espresso.polyglot.UnsupportedMessageException
+meth public static java.lang.Object getDeclaringMetaObject(java.lang.Object) throws com.oracle.truffle.espresso.polyglot.UnsupportedMessageException
+meth public static java.lang.Object getExceptionCause(java.lang.Object) throws com.oracle.truffle.espresso.polyglot.UnsupportedMessageException
+meth public static java.lang.Object getExceptionMessage(java.lang.Object) throws com.oracle.truffle.espresso.polyglot.UnsupportedMessageException
+meth public static java.lang.Object getExceptionStackTrace(java.lang.Object) throws com.oracle.truffle.espresso.polyglot.UnsupportedMessageException
+meth public static java.lang.Object getExecutableName(java.lang.Object) throws com.oracle.truffle.espresso.polyglot.UnsupportedMessageException
+meth public static java.lang.Object getMembers(java.lang.Object) throws com.oracle.truffle.espresso.polyglot.UnsupportedMessageException
+meth public static java.lang.Object getMetaObject(java.lang.Object) throws com.oracle.truffle.espresso.polyglot.UnsupportedMessageException
+meth public static java.lang.Object getMetaQualifiedName(java.lang.Object) throws com.oracle.truffle.espresso.polyglot.UnsupportedMessageException
+meth public static java.lang.Object getMetaSimpleName(java.lang.Object) throws com.oracle.truffle.espresso.polyglot.UnsupportedMessageException
+meth public static java.lang.Object readArrayElement(java.lang.Object,long) throws com.oracle.truffle.espresso.polyglot.InvalidArrayIndexException,com.oracle.truffle.espresso.polyglot.UnsupportedMessageException
+meth public static java.lang.Object readMember(java.lang.Object,java.lang.String) throws com.oracle.truffle.espresso.polyglot.UnknownIdentifierException,com.oracle.truffle.espresso.polyglot.UnsupportedMessageException
+meth public static java.lang.Object toDisplayString(java.lang.Object)
+meth public static java.lang.Object toDisplayString(java.lang.Object,boolean)
+meth public static java.lang.RuntimeException throwException(java.lang.Object) throws com.oracle.truffle.espresso.polyglot.UnsupportedMessageException
+meth public static java.lang.String asString(java.lang.Object) throws com.oracle.truffle.espresso.polyglot.UnsupportedMessageException
+meth public static long asLong(java.lang.Object) throws com.oracle.truffle.espresso.polyglot.UnsupportedMessageException
+meth public static long asPointer(java.lang.Object) throws com.oracle.truffle.espresso.polyglot.UnsupportedMessageException
+meth public static long getArraySize(java.lang.Object) throws com.oracle.truffle.espresso.polyglot.UnsupportedMessageException
+meth public static short asShort(java.lang.Object) throws com.oracle.truffle.espresso.polyglot.UnsupportedMessageException
+meth public static void removeArrayElement(java.lang.Object,long) throws com.oracle.truffle.espresso.polyglot.InvalidArrayIndexException,com.oracle.truffle.espresso.polyglot.UnsupportedMessageException
+meth public static void removeMember(java.lang.Object,java.lang.String) throws com.oracle.truffle.espresso.polyglot.UnknownIdentifierException,com.oracle.truffle.espresso.polyglot.UnsupportedMessageException
+meth public static void toNative(java.lang.Object)
+meth public static void writeArrayElement(java.lang.Object,long,java.lang.Object) throws com.oracle.truffle.espresso.polyglot.InvalidArrayIndexException,com.oracle.truffle.espresso.polyglot.UnsupportedMessageException,com.oracle.truffle.espresso.polyglot.UnsupportedTypeException
+meth public static void writeMember(java.lang.Object,java.lang.String,java.lang.Object) throws com.oracle.truffle.espresso.polyglot.UnknownIdentifierException,com.oracle.truffle.espresso.polyglot.UnsupportedMessageException,com.oracle.truffle.espresso.polyglot.UnsupportedTypeException
+supr java.lang.Object
+
+CLSS public abstract com.oracle.truffle.espresso.polyglot.InteropException
+meth public final java.lang.Throwable fillInStackTrace()
+meth public final java.lang.Throwable getCause()
+supr java.lang.Exception
+hfds serialVersionUID
+
+CLSS public final com.oracle.truffle.espresso.polyglot.InvalidArrayIndexException
+meth public java.lang.String getMessage()
+meth public long getInvalidIndex()
+meth public static com.oracle.truffle.espresso.polyglot.InvalidArrayIndexException create(long)
+meth public static com.oracle.truffle.espresso.polyglot.InvalidArrayIndexException create(long,java.lang.Throwable)
+supr com.oracle.truffle.espresso.polyglot.InteropException
+hfds invalidIndex,serialVersionUID
+
+CLSS public final com.oracle.truffle.espresso.polyglot.Polyglot
+meth public static <%0 extends java.lang.Object> {%%0} cast(java.lang.Class<? extends {%%0}>,java.lang.Object)
+meth public static <%0 extends java.lang.Object> {%%0} eval(java.lang.String,java.lang.String,java.lang.Class<? extends {%%0}>)
+meth public static <%0 extends java.lang.Object> {%%0} importObject(java.lang.String,java.lang.Class<? extends {%%0}>)
+meth public static boolean isForeignObject(java.lang.Object)
+meth public static java.lang.Object eval(java.lang.String,java.lang.String)
+meth public static java.lang.Object importObject(java.lang.String)
+meth public static void exportObject(java.lang.String,java.lang.Object)
+supr java.lang.Object
+
+CLSS public final com.oracle.truffle.espresso.polyglot.UnknownIdentifierException
+meth public java.lang.String getMessage()
+meth public java.lang.String getUnknownIdentifier()
+meth public static com.oracle.truffle.espresso.polyglot.UnknownIdentifierException create(java.lang.String)
+meth public static com.oracle.truffle.espresso.polyglot.UnknownIdentifierException create(java.lang.String,java.lang.Throwable)
+supr com.oracle.truffle.espresso.polyglot.InteropException
+hfds serialVersionUID,unknownIdentifier
+
+CLSS public final com.oracle.truffle.espresso.polyglot.UnsupportedMessageException
+meth public java.lang.String getMessage()
+meth public static com.oracle.truffle.espresso.polyglot.UnsupportedMessageException create()
+meth public static com.oracle.truffle.espresso.polyglot.UnsupportedMessageException create(java.lang.Throwable)
+supr com.oracle.truffle.espresso.polyglot.InteropException
+hfds serialVersionUID
+
+CLSS public final com.oracle.truffle.espresso.polyglot.UnsupportedTypeException
+meth public java.lang.Object[] getSuppliedValues()
+meth public static com.oracle.truffle.espresso.polyglot.UnsupportedTypeException create(java.lang.Object[])
+meth public static com.oracle.truffle.espresso.polyglot.UnsupportedTypeException create(java.lang.Object[],java.lang.String)
+meth public static com.oracle.truffle.espresso.polyglot.UnsupportedTypeException create(java.lang.Object[],java.lang.String,java.lang.Throwable)
+supr com.oracle.truffle.espresso.polyglot.InteropException
+hfds serialVersionUID,suppliedValues
+
+CLSS public abstract interface java.io.Serializable
+
+CLSS public abstract interface java.lang.Comparable<%0 extends java.lang.Object>
+meth public abstract int compareTo({java.lang.Comparable%0})
+
+CLSS public abstract java.lang.Enum<%0 extends java.lang.Enum<{java.lang.Enum%0}>>
+cons protected init(java.lang.String,int)
+intf java.io.Serializable
+intf java.lang.Comparable<{java.lang.Enum%0}>
+meth protected final java.lang.Object clone() throws java.lang.CloneNotSupportedException
+meth protected final void finalize()
+meth public final boolean equals(java.lang.Object)
+meth public final int compareTo({java.lang.Enum%0})
+meth public final int hashCode()
+meth public final int ordinal()
+meth public final java.lang.Class<{java.lang.Enum%0}> getDeclaringClass()
+meth public final java.lang.String name()
+meth public java.lang.String toString()
+meth public static <%0 extends java.lang.Enum<{%%0}>> {%%0} valueOf(java.lang.Class<{%%0}>,java.lang.String)
+supr java.lang.Object
+hfds name,ordinal
+
+CLSS public java.lang.Exception
+cons protected init(java.lang.String,java.lang.Throwable,boolean,boolean)
+cons public init()
+cons public init(java.lang.String)
+cons public init(java.lang.String,java.lang.Throwable)
+cons public init(java.lang.Throwable)
+supr java.lang.Throwable
+hfds serialVersionUID
+
+CLSS public java.lang.Object
+cons public init()
+meth protected java.lang.Object clone() throws java.lang.CloneNotSupportedException
+meth protected void finalize() throws java.lang.Throwable
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="9")
+meth public boolean equals(java.lang.Object)
+meth public final java.lang.Class<?> getClass()
+meth public final void notify()
+meth public final void notifyAll()
+meth public final void wait() throws java.lang.InterruptedException
+meth public final void wait(long) throws java.lang.InterruptedException
+meth public final void wait(long,int) throws java.lang.InterruptedException
+meth public int hashCode()
+meth public java.lang.String toString()
+
+CLSS public java.lang.RuntimeException
+cons protected init(java.lang.String,java.lang.Throwable,boolean,boolean)
+cons public init()
+cons public init(java.lang.String)
+cons public init(java.lang.String,java.lang.Throwable)
+cons public init(java.lang.Throwable)
+supr java.lang.Exception
+hfds serialVersionUID
+
+CLSS public java.lang.Throwable
+cons protected init(java.lang.String,java.lang.Throwable,boolean,boolean)
+cons public init()
+cons public init(java.lang.String)
+cons public init(java.lang.String,java.lang.Throwable)
+cons public init(java.lang.Throwable)
+intf java.io.Serializable
+meth public final java.lang.Throwable[] getSuppressed()
+meth public final void addSuppressed(java.lang.Throwable)
+meth public java.lang.StackTraceElement[] getStackTrace()
+meth public java.lang.String getLocalizedMessage()
+meth public java.lang.String getMessage()
+meth public java.lang.String toString()
+meth public java.lang.Throwable fillInStackTrace()
+meth public java.lang.Throwable getCause()
+meth public java.lang.Throwable initCause(java.lang.Throwable)
+meth public void printStackTrace()
+meth public void printStackTrace(java.io.PrintStream)
+meth public void printStackTrace(java.io.PrintWriter)
+meth public void setStackTrace(java.lang.StackTraceElement[])
+supr java.lang.Object
+hfds CAUSE_CAPTION,EMPTY_THROWABLE_ARRAY,NULL_CAUSE_MESSAGE,SELF_SUPPRESSION_MESSAGE,SUPPRESSED_CAPTION,SUPPRESSED_SENTINEL,UNASSIGNED_STACK,backtrace,cause,depth,detailMessage,serialVersionUID,stackTrace,suppressedExceptions
+hcls PrintStreamOrWriter,SentinelHolder,WrappedPrintStream,WrappedPrintWriter
+

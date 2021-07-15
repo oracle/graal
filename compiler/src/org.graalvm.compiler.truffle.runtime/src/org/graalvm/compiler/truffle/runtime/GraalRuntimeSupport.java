@@ -81,27 +81,20 @@ final class GraalRuntimeSupport extends RuntimeSupport {
     @Override
     public Object onOSRBackEdge(BytecodeOSRNode osrNode, VirtualFrame parentFrame, int target) {
         CompilerAsserts.neverPartOfCompilation();
-        Node node;
-        try {
-            node = (Node) osrNode;
-        } catch (ClassCastException ex) {
+        if (!(osrNode instanceof Node)) {
             throw new IllegalArgumentException("Bytecode OSR node must be of type Node.");
         }
 
+        Node node = (Node) osrNode;
         BytecodeOSRMetadata osrMetadata = (BytecodeOSRMetadata) osrNode.getOSRMetadata();
         if (osrMetadata == null) {
             osrMetadata = node.atomic(() -> { // double checked locking
                 BytecodeOSRMetadata metadata = (BytecodeOSRMetadata) osrNode.getOSRMetadata();
                 if (metadata == null) {
                     OptimizedCallTarget callTarget = (OptimizedCallTarget) node.getRootNode().getCallTarget();
-                    if (callTarget.getOptionValue(PolyglotCompilerOptions.OSR)) {
-                        FrameDescriptor frameDescriptor = parentFrame.getFrameDescriptor();
-                        FrameSlot[] frameSlots = frameDescriptor.getSlots().toArray(new FrameSlot[0]);
-                        byte[] frameTags = new byte[frameSlots.length];
-                        for (int i = 0; i < frameSlots.length; i++) {
-                            frameTags[i] = frameDescriptor.getFrameSlotKind(frameSlots[i]).tag;
-                        }
-                        metadata = new BytecodeOSRMetadata(osrNode, callTarget.getOptionValue(PolyglotCompilerOptions.OSRCompilationThreshold), frameSlots, frameTags);
+                    FrameDescriptor frameDescriptor = parentFrame.getFrameDescriptor();
+                    if (callTarget.getOptionValue(PolyglotCompilerOptions.OSR) && !frameDescriptor.canMaterialize()) {
+                        metadata = new BytecodeOSRMetadata(osrNode, frameDescriptor, callTarget.getOptionValue(PolyglotCompilerOptions.OSRCompilationThreshold));
                     } else {
                         metadata = BytecodeOSRMetadata.DISABLED;
                     }
@@ -117,8 +110,7 @@ final class GraalRuntimeSupport extends RuntimeSupport {
         if (osrMetadata == BytecodeOSRMetadata.DISABLED) {
             return null;
         } else {
-            TruffleLanguage<?> language = GraalRuntimeAccessor.NODES.getLanguage(node.getRootNode());
-            return osrMetadata.onOSRBackEdge(parentFrame, target, language);
+            return osrMetadata.onOSRBackEdge(parentFrame, target);
         }
     }
 

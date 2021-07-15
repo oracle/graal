@@ -603,7 +603,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
          * With OSR, the program state may be inconsistent between OSR and non-OSR frames. The OSR
          * frame (executeRootNode(A_OSR)) contains the most up-to-date Truffle
          * {@link com.oracle.truffle.api.frame.Frame}, so we remember it. OSR should be transparent,
-         * so the call target is contained in the non-OSR frame (executeRootNode(A)).
+         * so the call target is obtained from the non-OSR frame (executeRootNode(A)).
          */
         @Override
         public T visitFrame(InspectedFrame frame) {

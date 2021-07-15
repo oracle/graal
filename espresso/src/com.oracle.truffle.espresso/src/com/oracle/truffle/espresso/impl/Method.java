@@ -416,7 +416,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     public static FrameDescriptor initFrameDescriptor(int slotCount) {
-        FrameDescriptor descriptor = new FrameDescriptor(false);
+        FrameDescriptor descriptor = new FrameDescriptor(null, false);
         for (int i = 0; i < slotCount; ++i) {
             descriptor.addFrameSlot(i, FrameSlotKind.Long);
         }
@@ -942,7 +942,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     public Method forceSplit() {
         Method result = new Method(this, getCodeAttribute().forceSplit());
-        FrameDescriptor frameDescriptor = new FrameDescriptor(false);
+        FrameDescriptor frameDescriptor = new FrameDescriptor(null, false);
         EspressoRootNode root = EspressoRootNode.create(frameDescriptor, new BytecodeNode(result.getMethodVersion(), frameDescriptor));
         result.getMethodVersion().callTarget = Truffle.getRuntime().createCallTarget(root);
         return result;
@@ -1304,7 +1304,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                     throw meta.throwExceptionWithMessage(meta.java_lang_AbstractMethodError,
                                     "Calling abstract method: " + getMethod().getDeclaringKlass().getType() + "." + getName() + " -> " + getRawSignature());
                 }
-                FrameDescriptor frameDescriptor = new FrameDescriptor(false);
+                FrameDescriptor frameDescriptor = new FrameDescriptor(null, false);
                 EspressoRootNode rootNode = EspressoRootNode.create(frameDescriptor, new BytecodeNode(this, frameDescriptor));
                 target = Truffle.getRuntime().createCallTarget(rootNode);
             }

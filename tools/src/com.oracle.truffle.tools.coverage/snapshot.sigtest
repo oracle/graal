@@ -1,30 +1,18 @@
 #Signature file v4.1
 #Version 
 
-CLSS public abstract interface !annotation com.oracle.truffle.api.library.GenerateLibrary
- anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
- anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
-innr public abstract interface static !annotation Abstract
-innr public abstract interface static !annotation DefaultExport
-intf java.lang.annotation.Annotation
-meth public abstract !hasdefault boolean defaultExportLookupEnabled()
-meth public abstract !hasdefault boolean dynamicDispatchEnabled()
-meth public abstract !hasdefault boolean pushEncapsulatingNode()
-meth public abstract !hasdefault java.lang.Class<? extends com.oracle.truffle.api.library.Library> assertions()
-meth public abstract !hasdefault java.lang.Class<?> receiverType()
-
-CLSS public abstract interface static !annotation com.oracle.truffle.api.library.GenerateLibrary$DefaultExport
- outer com.oracle.truffle.api.library.GenerateLibrary
- anno 0 java.lang.annotation.Repeatable(java.lang.Class<? extends java.lang.annotation.Annotation> value=class com.oracle.truffle.api.library.GenerateLibrary$DefaultExport$Repeat)
- anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
- anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
-innr public abstract interface static !annotation Repeat
-intf java.lang.annotation.Annotation
-meth public abstract java.lang.Class<?> value()
-
-CLSS public abstract com.oracle.truffle.api.library.Library
+CLSS public abstract com.oracle.truffle.api.instrumentation.ExecutionEventNode
 cons protected init()
-meth public abstract boolean accepts(java.lang.Object)
+meth protected final com.oracle.truffle.api.instrumentation.EventContext getInputContext(int)
+meth protected final int getInputCount()
+meth protected final java.lang.Object[] getSavedInputValues(com.oracle.truffle.api.frame.VirtualFrame)
+meth protected final void saveInputValue(com.oracle.truffle.api.frame.VirtualFrame,int,java.lang.Object)
+meth protected java.lang.Object onUnwind(com.oracle.truffle.api.frame.VirtualFrame,java.lang.Object)
+meth protected void onDispose(com.oracle.truffle.api.frame.VirtualFrame)
+meth protected void onEnter(com.oracle.truffle.api.frame.VirtualFrame)
+meth protected void onInputValue(com.oracle.truffle.api.frame.VirtualFrame,com.oracle.truffle.api.instrumentation.EventContext,int,java.lang.Object)
+meth protected void onReturnExceptional(com.oracle.truffle.api.frame.VirtualFrame,java.lang.Throwable)
+meth protected void onReturnValue(com.oracle.truffle.api.frame.VirtualFrame,java.lang.Object)
 supr com.oracle.truffle.api.nodes.Node
 
 CLSS public abstract com.oracle.truffle.api.nodes.Node
@@ -63,43 +51,67 @@ meth public java.util.Map<java.lang.String,java.lang.Object> getDebugProperties(
 supr java.lang.Object
 hfds GIL_LOCK,UNCACHED_CONTEXT_REFERENCES,UNCACHED_LANGUAGE_REFERENCES,parent
 
+CLSS public abstract interface !annotation com.oracle.truffle.api.nodes.NodeInfo
+ anno 0 java.lang.annotation.Inherited()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract !hasdefault com.oracle.truffle.api.nodes.NodeCost cost()
+meth public abstract !hasdefault java.lang.String description()
+meth public abstract !hasdefault java.lang.String language()
+meth public abstract !hasdefault java.lang.String shortName()
+
 CLSS public abstract interface com.oracle.truffle.api.nodes.NodeInterface
 
-CLSS public abstract interface com.oracle.truffle.tools.agentscript.AgentScript
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
-fld public final static java.lang.String ID = "agentscript"
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
-fld public final static java.lang.String VERSION = "1.1"
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
-meth public void registerAgentScript(com.oracle.truffle.api.source.Source)
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
+CLSS public com.oracle.truffle.tools.coverage.CountingCoverageNode
+meth protected void onEnter(com.oracle.truffle.api.frame.VirtualFrame)
+supr com.oracle.truffle.api.instrumentation.ExecutionEventNode
+hfds count
 
-CLSS public abstract com.oracle.truffle.tools.agentscript.FrameLibrary
-cons protected init()
-innr public final Query
-meth public java.lang.Object readMember(com.oracle.truffle.tools.agentscript.FrameLibrary$Query,java.lang.String) throws com.oracle.truffle.api.interop.UnknownIdentifierException
-meth public static com.oracle.truffle.tools.agentscript.FrameLibrary getUncached()
-meth public void collectNames(com.oracle.truffle.tools.agentscript.FrameLibrary$Query,java.util.Set<java.lang.String>) throws com.oracle.truffle.api.interop.InteropException
-meth public void writeMember(com.oracle.truffle.tools.agentscript.FrameLibrary$Query,java.lang.String,java.lang.Object) throws com.oracle.truffle.api.interop.UnknownIdentifierException,com.oracle.truffle.api.interop.UnsupportedTypeException
-supr com.oracle.truffle.api.library.Library
-hcls UncachedDefault
-
-CLSS public final com.oracle.truffle.tools.agentscript.FrameLibrary$Query
- outer com.oracle.truffle.tools.agentscript.FrameLibrary
-meth public com.oracle.truffle.api.frame.Frame frame()
-meth public java.lang.Iterable<com.oracle.truffle.api.Scope> findLocalScopes()
+CLSS public final com.oracle.truffle.tools.coverage.CoverageTracker
+innr public static Config
+intf java.lang.AutoCloseable
+meth public com.oracle.truffle.tools.coverage.SourceCoverage[] getCoverage()
+meth public com.oracle.truffle.tools.coverage.SourceCoverage[] resetCoverage()
+meth public void close()
+meth public void end()
+meth public void start(com.oracle.truffle.tools.coverage.CoverageTracker$Config)
 supr java.lang.Object
-hfds env,frame,where
+hfds DEFAULT_FILTER,closed,coverageNodes,coveredBinding,env,loadedRoots,loadedRootsBinding,loadedStatementBinding,loadedStatements,noReset,tracking
+hcls RootData
+
+CLSS public static com.oracle.truffle.tools.coverage.CoverageTracker$Config
+ outer com.oracle.truffle.tools.coverage.CoverageTracker
+cons public init(com.oracle.truffle.api.instrumentation.SourceSectionFilter,boolean)
+supr java.lang.Object
+hfds count,sourceSectionFilter
+
+CLSS public final com.oracle.truffle.tools.coverage.RootCoverage
+meth public boolean isCovered()
+meth public com.oracle.truffle.api.source.SourceSection getSourceSection()
+meth public com.oracle.truffle.tools.coverage.SectionCoverage[] getSectionCoverage()
+meth public java.lang.String getName()
+meth public long getCount()
+supr java.lang.Object
+hfds count,covered,name,sectionCoverage,sourceSection
+
+CLSS public final com.oracle.truffle.tools.coverage.SectionCoverage
+meth public boolean isCovered()
+meth public com.oracle.truffle.api.source.SourceSection getSourceSection()
+meth public long getCount()
+supr java.lang.Object
+hfds count,covered,sourceSection
+
+CLSS public final com.oracle.truffle.tools.coverage.SourceCoverage
+meth public com.oracle.truffle.api.source.Source getSource()
+meth public com.oracle.truffle.tools.coverage.RootCoverage[] getRoots()
+supr java.lang.Object
+hfds roots,source
+
+CLSS public abstract interface java.lang.AutoCloseable
+meth public abstract void close() throws java.lang.Exception
 
 CLSS public abstract interface java.lang.Cloneable
-
-CLSS public abstract interface !annotation java.lang.Deprecated
- anno 0 java.lang.annotation.Documented()
- anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
- anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[CONSTRUCTOR, FIELD, LOCAL_VARIABLE, METHOD, PACKAGE, MODULE, PARAMETER, TYPE])
-intf java.lang.annotation.Annotation
-meth public abstract !hasdefault boolean forRemoval()
-meth public abstract !hasdefault java.lang.String since()
 
 CLSS public java.lang.Object
 cons public init()
@@ -128,12 +140,11 @@ CLSS public abstract interface !annotation java.lang.annotation.Documented
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])
 intf java.lang.annotation.Annotation
 
-CLSS public abstract interface !annotation java.lang.annotation.Repeatable
+CLSS public abstract interface !annotation java.lang.annotation.Inherited
  anno 0 java.lang.annotation.Documented()
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])
 intf java.lang.annotation.Annotation
-meth public abstract java.lang.Class<? extends java.lang.annotation.Annotation> value()
 
 CLSS public abstract interface !annotation java.lang.annotation.Retention
  anno 0 java.lang.annotation.Documented()

@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
+import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -51,60 +53,57 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class BytecodeOSRMetadata {
     // Marker object to indicate that OSR is disabled.
-    public static final BytecodeOSRMetadata DISABLED = new BytecodeOSRMetadata(null, Integer.MAX_VALUE, null, null);
+    public static final BytecodeOSRMetadata DISABLED = new BytecodeOSRMetadata(null, null, Integer.MAX_VALUE);
     // Must be a power of 2 (polling uses bit masks)
     public static final int OSR_POLL_INTERVAL = 1024;
 
     private final BytecodeOSRNode osrNode;
+    private final FrameDescriptor frameDescriptor;
     private final Map<Integer, OptimizedCallTarget> osrCompilations;
     private final int osrThreshold;
     private int backEdgeCount;
     private volatile boolean compilationFailed;
 
     // Used for OSR state transfer.
-    @CompilationFinal(dimensions = 1) private final FrameSlot[] frameSlots;
-    @CompilationFinal(dimensions = 1) private final byte[] frameTags;
+    @CompilationFinal private volatile Assumption frameVersion;
+    @CompilationFinal(dimensions = 1) private volatile FrameSlot[] frameSlots;
+    @CompilationFinal(dimensions = 1) private volatile byte[] frameTags;
 
-    BytecodeOSRMetadata(BytecodeOSRNode osrNode, int osrThreshold, FrameSlot[] frameSlots, byte[] frameTags) {
+    BytecodeOSRMetadata(BytecodeOSRNode osrNode, FrameDescriptor frameDescriptor, int osrThreshold) {
         this.osrNode = osrNode;
+        if (frameDescriptor != null && frameDescriptor.canMaterialize()) {
+            throw new IllegalArgumentException("Cannot perform OSR on a frame which can be materialized.");
+        }
+        this.frameDescriptor = frameDescriptor;
         this.osrCompilations = new ConcurrentHashMap<>();
         this.osrThreshold = osrThreshold;
         this.backEdgeCount = 0;
         this.compilationFailed = false;
-        this.frameSlots = frameSlots;
-        this.frameTags = frameTags;
     }
 
-    final Object onOSRBackEdge(VirtualFrame parentFrame, int target, TruffleLanguage<?> language) {
+    final Object onOSRBackEdge(VirtualFrame parentFrame, int target) {
         if (!incrementAndPoll() || compilationFailed) {
             // note: incur volatile read of compilationFailed only if poll succeeds
-            return null;
-        }
-        if (parentFrame.getFrameDescriptor().canMaterialize()) {
-            // If the frame is materializeable, give up on OSR. State could become inconsistent.
-            osrNode.setOSRMetadata(DISABLED);
             return null;
         }
 
         OptimizedCallTarget osrTarget = osrCompilations.get(target);
         if (osrTarget == null) {
-            synchronized (this) {
-                osrTarget = osrCompilations.get(target);
-                if (osrTarget == null) {
-                    osrTarget = requestOSR(target, language, parentFrame.getFrameDescriptor());
-                    if (osrTarget != null) {
-                        osrCompilations.put(target, osrTarget);
+            osrTarget = ((Node) osrNode).atomic(() -> {
+                OptimizedCallTarget lockedTarget = osrCompilations.get(target);
+                if (lockedTarget == null) {
+                    lockedTarget = requestOSR(target);
+                    if (lockedTarget != null) {
+                        osrCompilations.put(target, lockedTarget);
                     }
                 }
-            }
+                return lockedTarget;
+            });
         }
         if (osrTarget != null && !osrTarget.isCompiling()) {
             if (!osrTarget.isValid()) {
                 invalidateOSRTarget(target, "OSR compilation failed or cancelled");
                 return null;
-            }
-            if (parentFrame.getFrameDescriptor().canMaterialize()) {
-                throw new AssertionError("Frame passed to OSR should not be materializeable.");
             }
             return osrTarget.callOSR(parentFrame);
         }
@@ -123,8 +122,10 @@ public final class BytecodeOSRMetadata {
         return (newBackEdgeCount >= osrThreshold && (newBackEdgeCount & (OSR_POLL_INTERVAL - 1)) == 0);
     }
 
-    private synchronized OptimizedCallTarget requestOSR(int target, TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+    private synchronized OptimizedCallTarget requestOSR(int target) {
         assert !osrCompilations.containsKey(target);
+        TruffleLanguage<?> language = GraalRuntimeAccessor.NODES.getLanguage(((Node) osrNode).getRootNode());
+        updateFrameSlots();
         OptimizedCallTarget callTarget = GraalTruffleRuntime.getRuntime().createOSRCallTarget(new BytecodeOSRRootNode(osrNode, target, language, frameDescriptor));
         callTarget.compile(false);
         if (callTarget.isCompilationFailed()) {
@@ -135,29 +136,53 @@ public final class BytecodeOSRMetadata {
         return callTarget;
     }
 
+    private synchronized void updateFrameSlots() {
+        CompilerAsserts.neverPartOfCompilation();
+        if (!Assumption.isValidAssumption(this.frameVersion)) {
+            // Another thread could modify the frame in the middle of this method.
+            // If we get the frame slots before the assumption, the slots may be updated in between,
+            // and we might obtain the new (valid) assumption, despite our slots actually being
+            // stale. Get the assumption first to avoid this race.
+            Assumption frameVersion = frameDescriptor.getVersion();
+            FrameSlot[] frameSlots = frameDescriptor.getSlots().toArray(new FrameSlot[0]);
+            byte[] frameTags = new byte[frameSlots.length];
+            for (int i = 0; i < frameSlots.length; i++) {
+                frameTags[i] = frameDescriptor.getFrameSlotKind(frameSlots[i]).tag;
+            }
+            this.frameVersion = frameVersion;
+            this.frameSlots = frameSlots;
+            this.frameTags = frameTags;
+        }
+    }
+
     /**
      * Transfer state from {@code source} to {@code target}. Can be used to transfer state into (or
      * out of) an OSR frame.
      */
     @ExplodeLoop
     public void executeTransfer(FrameWithoutBoxing source, FrameWithoutBoxing target) {
-        byte[] currentSourceTags = source.getTags();
-        byte[] currentTargetTags = target.getTags();
-
-        if (currentSourceTags.length != frameTags.length) {
+        // The frames should use the same descriptor.
+        if (source.getFrameDescriptor() != frameDescriptor) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new AssertionError("Source frame contains an unexpected number of slots.");
-        } else if (currentTargetTags.length != frameTags.length) {
+            throw new IllegalArgumentException("Source frame descriptor is different from the descriptor used for compilation.");
+        } else if (target.getFrameDescriptor() != frameDescriptor) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new AssertionError("Target frame contains an unexpected number of slots.");
+            throw new IllegalArgumentException("Target frame descriptor is different from the descriptor used for compilation.");
         }
 
+        // The frame version could have changed; if so, deoptimize and update the slots+tags.
+        if (!frameVersion.isValid()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            updateFrameSlots();
+        }
+
+        byte[] currentSourceTags = source.getTags();
         for (int i = 0; i < frameSlots.length; i++) {
             FrameSlot slot = frameSlots[i];
-
             byte expectedTag = frameTags[i];
             byte actualTag = currentSourceTags[i];
 
+            // The tag for this slot may have changed; if so, deoptimize and update it.
             boolean tagsCondition = expectedTag == actualTag;
             if (!tagsCondition) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -188,7 +213,7 @@ public final class BytecodeOSRMetadata {
                     break;
                 default:
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    throw new AssertionError("Defined frame slot " + slot + " is illegal. Please initialize frame slot with a FrameSlotKind.");
+                    throw new IllegalStateException("Defined frame slot " + slot + " is illegal. Please initialize frame slot with a FrameSlotKind.");
             }
         }
     }

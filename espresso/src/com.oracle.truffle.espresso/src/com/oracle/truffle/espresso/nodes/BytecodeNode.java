@@ -430,11 +430,11 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         private static final long serialVersionUID = 117347248600170993L;
         private final Object result;
 
-        public EspressoOSRReturnException(Object result) {
+        EspressoOSRReturnException(Object result) {
             this.result = result;
         }
 
-        public Object getResult() {
+        Object getResult() {
             return result;
         }
     }

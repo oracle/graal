@@ -42,6 +42,8 @@ package com.oracle.truffle.api.nodes;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 
 /**
@@ -55,7 +57,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
  * {@link com.oracle.truffle.api.CompilerDirectives.CompilationFinal @CompilationFinal}. The
  * concrete type of the object stored in this field will depend on the
  * {@link com.oracle.truffle.api.TruffleRuntime runtime} used.
- * 
+ *
  * @since 21.3
  */
 public interface BytecodeOSRNode extends NodeInterface {
@@ -67,7 +69,7 @@ public interface BytecodeOSRNode extends NodeInterface {
      * <li>execute this node from the {@code target} location
      * <li>transfer state from the {@code innerFrame} back to the {@code parentFrame} (if necessary)
      * </ul>
-     *
+     * <p>
      * NOTE: The result of {@link Frame#getArguments()} for {@code innerFrame} is undefined and
      * should not be used. Additionally, since the parent frame could also come from an OSR call (in
      * the situation where an OSR call deoptimizes), the arguments of {@code parentFrame} are also
@@ -77,20 +79,23 @@ public interface BytecodeOSRNode extends NodeInterface {
      * @param parentFrame the frame of the previous invocation (which may itself be an OSR frame).
      * @param target the target location to execute from (e.g., bytecode index).
      * @return the result of execution.
+     * @since 21.3
      */
     Object executeOSR(VirtualFrame innerFrame, Frame parentFrame, int target);
 
     /**
      * Gets the OSR metadata for this instance.
-     * 
+     *
      * @return the OSR metadata.
+     * @since 21.3
      */
     Object getOSRMetadata();
 
     /**
      * Sets the OSR metadata for this instance.
-     * 
+     *
      * @param osrMetadata the OSR metadata.
+     * @since 21.3
      */
     void setOSRMetadata(Object osrMetadata);
 
@@ -102,6 +107,7 @@ public interface BytecodeOSRNode extends NodeInterface {
      * @param parentFrame frame at current point of execution.
      * @param target target location of the jump (e.g., bytecode index).
      * @return result if OSR was performed, or {@code null} otherwise.
+     * @since 21.3
      */
     static Object reportOSRBackEdge(BytecodeOSRNode osrNode, VirtualFrame parentFrame, int target) {
         if (!CompilerDirectives.inInterpreter()) {
@@ -113,18 +119,23 @@ public interface BytecodeOSRNode extends NodeInterface {
     /**
      * Transfers state from the {@code source} frame into the {@code target} frame. The frames must
      * have the same layout as the frame passed when executing the {@code osrNode}.
-     * 
+     * <p>
      * This helper can be used when implementing {@link #executeOSR} to transfer state between OSR
      * and parent frames.
-     * 
+     *
      * <p>
      * NOTE: If a language uses this method to transfer state, the OSR metadata field must be marked
      * {@link com.oracle.truffle.api.CompilerDirectives.CompilationFinal}, since the metadata may be
      * used inside the compiled code to perform the state transfer.
-     * 
+     *
      * @param osrNode the node being on-stack replaced.
      * @param source the frame to transfer state from
      * @param target the frame to transfer state into
+     * @throws IllegalArgumentException if either frame has a different descriptor from the frame
+     *             used to execute this node.
+     * @throws IllegalStateException if a slot in the source frame has not been initialized using
+     *             {@link com.oracle.truffle.api.frame.FrameDescriptor#setFrameSlotKind}.
+     * @since 21.3
      */
     static void doOSRFrameTransfer(BytecodeOSRNode osrNode, Frame source, Frame target) {
         NodeAccessor.RUNTIME.doOSRFrameTransfer(osrNode, source, target);

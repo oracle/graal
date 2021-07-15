@@ -208,7 +208,7 @@ public class FrameTest {
         class FrameRootNode extends RootNode {
 
             FrameRootNode() {
-                super(null, new FrameDescriptor(false));
+                super(null, new FrameDescriptor(null, false));
             }
 
             @Override
@@ -217,7 +217,7 @@ public class FrameTest {
                 frameInstance.getFrame(FrameInstance.FrameAccess.READ_WRITE); // succeeds
                 try {
                     frameInstance.getFrame(FrameInstance.FrameAccess.MATERIALIZE);
-                    Assert.fail("materializing a non-materializeable frame should fail");
+                    Assert.fail("materializing a non-materializable frame should fail");
                 } catch (IllegalArgumentException ex) {
                     // fall through
                 }

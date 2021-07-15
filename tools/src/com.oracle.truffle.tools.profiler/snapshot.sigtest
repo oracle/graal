@@ -89,7 +89,7 @@ meth public void clearData()
 meth public void close()
 meth public void setCollecting(boolean)
 supr java.lang.Object
-hfds CLEAN_INTERVAL,RECURSIVE,activeBinding,closed,collecting,env,initializedLanguages,newReferences,processedReferences,referenceQueue,referenceThread,summaryData
+hfds CLEAN_INTERVAL,INTEROP,RECURSIVE,activeBinding,closed,collecting,env,initializedLanguages,newReferences,processedReferences,referenceQueue,referenceThread,summaryData
 hcls Listener,ObjectWeakReference
 
 CLSS public final com.oracle.truffle.tools.profiler.HeapSummary
@@ -118,7 +118,7 @@ meth public void setCollecting(boolean)
 meth public void setFilter(com.oracle.truffle.api.instrumentation.SourceSectionFilter)
 meth public void setStackLimit(int)
 supr java.lang.Object
-hfds DEFAULT_FILTER,activeBinding,closed,collecting,copyPayload,env,filter,mergePayload,payloadFactory,rootNodes,shadowStack,stackLimit,stackOverflowed,stacksBinding
+hfds DEFAULT_FILTER,INTEROP,activeBinding,closed,collecting,copyPayload,env,filter,mergePayload,payloadFactory,rootNodes,shadowStack,stackLimit,stackOverflowed,stacksBinding
 hcls Listener
 
 CLSS public final static com.oracle.truffle.tools.profiler.MemoryTracer$AllocationEventInfo
@@ -196,6 +196,7 @@ CLSS public java.lang.Object
 cons public init()
 meth protected java.lang.Object clone() throws java.lang.CloneNotSupportedException
 meth protected void finalize() throws java.lang.Throwable
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="9")
 meth public boolean equals(java.lang.Object)
 meth public final java.lang.Class<?> getClass()
 meth public final void notify()

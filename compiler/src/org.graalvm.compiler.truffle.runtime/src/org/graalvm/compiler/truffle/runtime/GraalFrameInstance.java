@@ -36,16 +36,16 @@ import com.oracle.truffle.api.nodes.Node;
 import jdk.vm.ci.code.stack.InspectedFrame;
 
 public class GraalFrameInstance implements FrameInstance {
-    protected static final int CALL_TARGET_INDEX = 0;
-    protected static final int FRAME_INDEX = 1;
+    static final int CALL_TARGET_INDEX = 0;
+    static final int FRAME_INDEX = 1;
 
-    protected static final int CALL_NODE_NOTIFY_INDEX = 1;
+    static final int CALL_NODE_NOTIFY_INDEX = 1;
 
-    public static final Method CALL_TARGET_METHOD;
-    public static final Method CALL_DIRECT;
-    public static final Method CALL_INLINED;
-    public static final Method CALL_INLINED_CALL;
-    public static final Method CALL_INDIRECT;
+    static final Method CALL_TARGET_METHOD;
+    static final Method CALL_DIRECT;
+    static final Method CALL_INLINED;
+    static final Method CALL_INLINED_CALL;
+    static final Method CALL_INDIRECT;
 
     static {
         try {
@@ -60,15 +60,13 @@ public class GraalFrameInstance implements FrameInstance {
         }
     }
 
-
     private final InspectedFrame callTargetFrame;
     private final InspectedFrame callNodeFrame;
 
-    public GraalFrameInstance(InspectedFrame callTargetFrame, InspectedFrame callNodeFrame) {
+    GraalFrameInstance(InspectedFrame callTargetFrame, InspectedFrame callNodeFrame) {
         this.callTargetFrame = callTargetFrame;
         this.callNodeFrame = callNodeFrame;
     }
-
 
     @TruffleBoundary
     protected static Frame getFrameFrom(InspectedFrame inspectedFrame, FrameAccess access) {
@@ -95,12 +93,12 @@ public class GraalFrameInstance implements FrameInstance {
     }
 
     @Override
-    public CallTarget getCallTarget() {
+    public final CallTarget getCallTarget() {
         return (CallTarget) callTargetFrame.getLocal(CALL_TARGET_INDEX);
     }
 
     @Override
-    public Node getCallNode() {
+    public final Node getCallNode() {
         if (callNodeFrame != null) {
             Object receiver = callNodeFrame.getLocal(CALL_NODE_NOTIFY_INDEX);
             if (receiver instanceof Node) {
