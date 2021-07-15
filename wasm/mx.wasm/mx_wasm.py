@@ -531,10 +531,10 @@ def emscripten_init(args):
     mx.log("Emscripten SDK path: " + str(emsdk_path))
 
     with open(config_path, "w") as fp:
-        fp.write("LLVM_ROOT=" + llvm_root + os.linesep)
-        fp.write("BINARYEN_ROOT=" + binaryen_root + os.linesep)
-        fp.write("EMSCRIPTEN_ROOT=" + emscripten_root + os.linesep)
-        fp.write("NODE_JS=" + node_js + os.linesep)
+        fp.write("LLVM_ROOT='" + llvm_root + "'" + os.linesep)
+        fp.write("BINARYEN_ROOT='" + binaryen_root + "'" + os.linesep)
+        fp.write("EMSCRIPTEN_ROOT='" + emscripten_root + "'" + os.linesep)
+        fp.write("NODE_JS='" + node_js + "'" + os.linesep)
         fp.write("COMPILER_ENGINE=NODE_JS" + os.linesep)
         fp.write("JS_ENGINES=[NODE_JS]")
 
