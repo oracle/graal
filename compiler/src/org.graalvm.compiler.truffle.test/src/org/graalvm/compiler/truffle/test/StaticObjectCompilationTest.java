@@ -390,10 +390,9 @@ public class StaticObjectCompilationTest extends PartialEvaluationTest {
         }
     }
 
-    @TruffleLanguage.Registration(id = TestLanguage.TEST_LANGUAGE_ID, name = TestLanguage.TEST_LANGUAGE_NAME)
+    @TruffleLanguage.Registration(id = TestLanguage.TEST_LANGUAGE_ID, name = TestLanguage.TEST_LANGUAGE_ID)
     public static class TestLanguage extends TruffleLanguage<TestContext> {
-        static final String TEST_LANGUAGE_NAME = "Test Language for PE tests of the Static Object Model";
-        static final String TEST_LANGUAGE_ID = "som-pe-test";
+        static final String TEST_LANGUAGE_ID = "StaticObjectCompilationTest_TestLanguage";
 
         @Override
         protected TestContext createContext(Env env) {
