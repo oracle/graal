@@ -1385,6 +1385,26 @@ public final class Interop {
     public static native boolean hasBufferElements(Object receiver);
 
     /**
+     * Returns {@code true} if the receiver is a modifiable buffer.
+     * <p>
+     * If this message returns {@code true}, then {@link #getBufferSize(Object)},
+     * {@link #writeBufferByte(Object, long, byte)},
+     * {@link #writeBufferShort(Object, ByteOrder, long, short)},
+     * {@link #writeBufferInt(Object, ByteOrder, long, int)},
+     * {@link #writeBufferLong(Object, ByteOrder, long, long)},
+     * {@link #writeBufferFloat(Object, ByteOrder, long, float)} and
+     * {@link #writeBufferDouble(Object, ByteOrder, long, double)} must not throw
+     * {@link UnsupportedMessageException}.
+     * <p>
+     * Invoking this message does not cause any observable side-effects.
+     *
+     * @throws UnsupportedMessageException if and only if {@link #hasBufferElements(Object)} returns
+     *             {@code false}
+     * @since 21.1
+     */
+    public static native boolean isBufferWritable(Object receiver) throws UnsupportedMessageException;
+
+    /**
      * Returns the buffer size of the receiver, in bytes.
      * <p>
      * Invoking this message does not cause any observable side-effects.
@@ -1394,6 +1414,224 @@ public final class Interop {
      * @since 21.1
      */
     public static native long getBufferSize(Object receiver) throws UnsupportedMessageException;
+
+    /**
+     * Reads the byte from the receiver object at the given byte offset from the start of the
+     * buffer.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this message is <em>not</em>
+     * thread-safe.
+     * <p>
+     * Invoking this message does not cause any observable side-effects.
+     *
+     * @return the byte at the given index
+     * @throws InvalidBufferOffsetException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= </code>{@link #getBufferSize(Object)}
+     * @throws UnsupportedMessageException if and only if either {@link #hasBufferElements(Object)}
+     *             returns {@code false} returns {@code false}
+     * @since 21.1
+     */
+    public static native byte readBufferByte(Object receiver, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException;
+
+    /**
+     * Writes the given byte from the receiver object at the given byte offset from the start of the
+     * buffer.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this message is <em>not</em>
+     * thread-safe.
+     *
+     * @throws InvalidBufferOffsetException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= </code>{@link #getBufferSize(Object)}
+     * @throws UnsupportedMessageException if and only if either {@link #hasBufferElements(Object)}
+     *             or {@link #isBufferWritable} returns {@code false}
+     * @since 21.1
+     */
+    public static native void writeBufferByte(Object receiver, long byteOffset, byte value) throws UnsupportedMessageException, InvalidBufferOffsetException;
+
+    /**
+     * Reads the short from the receiver object in the given byte order at the given byte offset
+     * from the start of the buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this message is <em>not</em>
+     * thread-safe.
+     * <p>
+     * Invoking this message does not cause any observable side-effects.
+     *
+     * @return the short at the given byte offset from the start of the buffer
+     * @throws InvalidBufferOffsetException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize(Object)} - 1</code>
+     * @throws UnsupportedMessageException if and only if {@link #hasBufferElements(Object)} returns
+     *             {@code false}
+     * @since 21.1
+     */
+    public static native short readBufferShort(Object receiver, ByteOrder order, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException;
+
+    /**
+     * Writes the given short from the receiver object in the given byte order at the given byte
+     * offset from the start of the buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this message is <em>not</em>
+     * thread-safe.
+     *
+     * @throws InvalidBufferOffsetException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize(Object)} - 1</code>
+     * @throws UnsupportedMessageException if and only if either {@link #hasBufferElements(Object)}
+     *             or {@link #isBufferWritable} returns {@code false}
+     * @since 21.1
+     */
+    public static native void writeBufferShort(Object receiver, ByteOrder order, long byteOffset, short value) throws UnsupportedMessageException, InvalidBufferOffsetException;
+
+    /**
+     * Reads the int from the receiver object in the given byte order at the given byte offset from
+     * the start of the buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this message is <em>not</em>
+     * thread-safe.
+     * <p>
+     * Invoking this message does not cause any observable side-effects.
+     *
+     * @return the int at the given byte offset from the start of the buffer
+     * @throws InvalidBufferOffsetException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize(Object)} - 3</code>
+     * @throws UnsupportedMessageException if and only if {@link #hasBufferElements(Object)} returns
+     *             {@code false}
+     * @since 21.1
+     */
+    public static native int readBufferInt(Object receiver, ByteOrder order, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException;
+
+    /**
+     * Writes the given int from the receiver object in the given byte order at the given byte
+     * offset from the start of the buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this message is <em>not</em>
+     * thread-safe.
+     *
+     * @throws InvalidBufferOffsetException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize(Object)} - 3</code>
+     * @throws UnsupportedMessageException if and only if either {@link #hasBufferElements(Object)}
+     *             or {@link #isBufferWritable} returns {@code false}
+     * @since 21.1
+     */
+    public static native void writeBufferInt(Object receiver, ByteOrder order, long byteOffset, int value) throws UnsupportedMessageException, InvalidBufferOffsetException;
+
+    /**
+     * Reads the long from the receiver object in the given byte order at the given byte offset from
+     * the start of the buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this message is <em>not</em>
+     * thread-safe.
+     * <p>
+     * Invoking this message does not cause any observable side-effects.
+     *
+     * @return the int at the given byte offset from the start of the buffer
+     * @throws InvalidBufferOffsetException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize(Object)} - 7</code>
+     * @throws UnsupportedMessageException if and only if {@link #hasBufferElements(Object)} returns
+     *             {@code false}
+     * @since 21.1
+     */
+    public static native long readBufferLong(Object receiver, ByteOrder order, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException;
+
+    /**
+     * Writes the given long from the receiver object in the given byte order at the given byte
+     * offset from the start of the buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this message is <em>not</em>
+     * thread-safe.
+     *
+     * @throws InvalidBufferOffsetException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize(Object)} - 7</code>
+     * @throws UnsupportedMessageException if and only if either {@link #hasBufferElements(Object)}
+     *             or {@link #isBufferWritable} returns {@code false}
+     * @since 21.1
+     */
+    public static native void writeBufferLong(Object receiver, ByteOrder order, long byteOffset, long value) throws UnsupportedMessageException, InvalidBufferOffsetException;
+
+    /**
+     * Reads the float from the receiver object in the given byte order at the given byte offset
+     * from the start of the buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this message is <em>not</em>
+     * thread-safe.
+     * <p>
+     * Invoking this message does not cause any observable side-effects.
+     *
+     * @return the float at the given byte offset from the start of the buffer
+     * @throws InvalidBufferOffsetException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize(Object)} - 3</code>
+     * @throws UnsupportedMessageException if and only if {@link #hasBufferElements(Object)} returns
+     *             {@code false}
+     * @since 21.1
+     */
+    public static native float readBufferFloat(Object receiver, ByteOrder order, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException;
+
+    /**
+     * Writes the given float from the receiver object in the given byte order at the given byte
+     * offset from the start of the buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this message is <em>not</em>
+     * thread-safe.
+     *
+     * @throws InvalidBufferOffsetException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize(Object)} - 3</code>
+     * @throws UnsupportedMessageException if and only if either {@link #hasBufferElements(Object)}
+     *             or {@link #isBufferWritable} returns {@code false}
+     * @since 21.1
+     */
+    public static native void writeBufferFloat(Object receiver, ByteOrder order, long byteOffset, float value) throws UnsupportedMessageException, InvalidBufferOffsetException;
+
+    /**
+     * Reads the double from the receiver object in the given byte order at the given byte offset
+     * from the start of the buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this message is <em>not</em>
+     * thread-safe.
+     * <p>
+     * Invoking this message does not cause any observable side-effects.
+     *
+     * @return the double at the given byte offset from the start of the buffer
+     * @throws InvalidBufferOffsetException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize(Object)} - 7</code>
+     * @throws UnsupportedMessageException if and only if {@link #hasBufferElements(Object)} returns
+     *             {@code false}
+     * @since 21.1
+     */
+    public static native double readBufferDouble(Object receiver, ByteOrder order, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException;
+
+    /**
+     * Writes the given double from the receiver object in the given byte order at the given byte
+     * offset from the start of the buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this message is <em>not</em>
+     * thread-safe.
+     *
+     * @throws InvalidBufferOffsetException if and only if
+     *             <code>byteOffset < 0 || byteOffset >= {@link #getBufferSize(Object)} - 7</code>
+     * @throws UnsupportedMessageException if and only if either {@link #hasBufferElements(Object)}
+     *             or {@link #isBufferWritable} returns {@code false}
+     * @since 21.1
+     */
+    public static native void writeBufferDouble(Object receiver, ByteOrder order, long byteOffset, double value) throws UnsupportedMessageException, InvalidBufferOffsetException;
 
     // endregion Buffer Messages
 }
