@@ -38,8 +38,6 @@ import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.graph.Edges;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.Canonicalizable;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
@@ -49,6 +47,8 @@ import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.LoadIndexedNode;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.CoreProvidersDelegate;
 import org.graalvm.compiler.nodes.util.GraphUtil;
@@ -333,7 +333,11 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
                 }
             }
             if (!node.isDeleted()) {
-                GraphUtil.unlinkFixedNode((FixedWithNextNode) node);
+                if (node instanceof WithExceptionNode) {
+                    GraphUtil.unlinkAndKillExceptionEdge((WithExceptionNode) node);
+                } else {
+                    GraphUtil.unlinkFixedNode((FixedWithNextNode) node);
+                }
                 node.replaceAtUsagesAndDelete(canonical);
             }
             assert lookupNode(loopScope, nodeOrderId) == node;

@@ -101,7 +101,7 @@ public class HostedGraphKit extends SubstrateGraphKit {
     }
 
     public void emitEnsureInitializedCall(ResolvedJavaType type) {
-        if (SubstrateClassInitializationPlugin.needsRuntimeInitialization(graph.method().getDeclaringClass(), type)) {
+        if (EnsureClassInitializedNode.needsRuntimeInitialization(graph.method().getDeclaringClass(), type)) {
             ValueNode hub = createConstant(getConstantReflection().asJavaClass(type), JavaKind.Object);
             appendWithUnwind(new EnsureClassInitializedNode(hub));
         }
