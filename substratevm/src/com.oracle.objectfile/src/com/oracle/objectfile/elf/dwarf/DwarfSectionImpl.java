@@ -292,6 +292,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     protected int putUTF8StringBytes(String s, byte[] buffer, int pos) {
         return putUTF8StringBytes(s, 0, buffer, pos);
     }
+
     protected int putUTF8StringBytes(String s, int startChar, byte[] buffer, int p) {
         int pos = p;
         try {

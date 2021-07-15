@@ -203,7 +203,8 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
 
     private static int computeDirTableSize(ClassEntry classEntry) {
         /*
-         * Table contains a sequence of 'nul'-terminated UTF8 dir name bytes followed by an extra 'nul'.
+         * Table contains a sequence of 'nul'-terminated UTF8 dir name bytes followed by an extra
+         * 'nul'.
          *
          * For now we assume dir and file names are ASCII byte strings.
          */
@@ -222,7 +223,8 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         /*
          * Table contains a sequence of file entries followed by an extra 'nul'
          *
-         * each file entry consists of a 'nul'-terminated UTF8 file name, a dir entry idx and two 0 time stamps
+         * each file entry consists of a 'nul'-terminated UTF8 file name, a dir entry idx and two 0
+         * time stamps
          */
         int fileSize = 0;
         for (FileEntry localEntry : classEntry.getLocalFiles()) {
