@@ -1527,6 +1527,73 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
 
     // endregion StackFrame Messages
 
+    // region Buffer Messages
+
+    /**
+     * Returns {@code true} if the receiver may have buffer elements.
+     *
+     * <p>
+     * If this message returns {@code true}, then {@link InteropLibrary#getBufferSize(Object)},
+     * {@link InteropLibrary#readBufferByte(Object, long)}, {@link InteropLibrary#readBufferShort(Object, ByteOrder, long)},
+     * {@link InteropLibrary#readBufferInt(Object, ByteOrder, long)},
+     * {@link InteropLibrary#readBufferLong(Object, ByteOrder, long)},
+     * {@link InteropLibrary#readBufferFloat(Object, ByteOrder, long)} and
+     * {@link InteropLibrary#readBufferDouble(Object, ByteOrder, long)} must not throw
+     * {@link UnsupportedMessageException}.
+     *
+     * <p>
+     * Invoking this message does not cause any observable side-effects.
+     *
+     * @since 21.1
+     */
+    @Substitution
+    @ReportPolymorphism
+    static abstract class HasBufferElements extends Node {
+        static final int LIMIT = 2;
+
+        abstract boolean execute(@JavaType(Object.class) StaticObject receiver);
+
+        @Specialization
+        boolean doCached(
+                        @JavaType(Object.class) StaticObject receiver,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
+            return interop.hasBufferElements(unwrap(receiver));
+        }
+    }
+
+    /**
+     * Returns the buffer size of the receiver, in bytes.
+     * 
+     * <p>
+     * Invoking this message does not cause any observable side-effects.
+     *
+     * @see InteropLibrary#getBufferSize(Object)
+     * @since 21.1
+     */
+    @Substitution
+    @Throws(others = @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnsupportedMessageException;"))
+    static abstract class GetBufferSize extends Node {
+        static final int LIMIT = 2;
+
+        abstract long execute(@JavaType(Object.class) StaticObject receiver);
+
+        @Specialization
+        long doCached(
+                        @JavaType(Object.class) StaticObject receiver,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @CachedContext(EspressoLanguage.class) ContextReference<EspressoContext> contextRef,
+                        @Cached BranchProfile errorProfile) {
+            try {
+                return interop.getBufferSize(unwrap(receiver));
+            } catch (InteropException e) {
+                errorProfile.enter();
+                throw throwInteropException(e, contextRef.get().getMeta());
+            }
+        }
+    }
+
+    // endregion Buffer Messages
+
     private static Object unwrap(StaticObject receiver) {
         return receiver.isForeignObject() ? receiver.rawForeignObject() : receiver;
     }
