@@ -47,6 +47,10 @@ import com.oracle.truffle.api.staticobject.StaticShape;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * When running on Native Image, this test checks that the Static Object Model can be used at image
+ * built time for context pre-initialization.
+ */
 public class StaticTest extends StaticObjectModelTest {
     private static final StaticProperty property;
     private static final Object staticObject;
