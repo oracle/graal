@@ -182,9 +182,12 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
     private final Set<String> methodHandleInvokeMethodNames;
 
     private final Class<?> varHandleClass;
+    private final Class<?> varHandleAccessModeClass;
     private final ResolvedJavaType varHandleType;
     private final Field varHandleVFormField;
     private final Method varFormInitMethod;
+    private final Method varHandleIsAccessModeSupportedMethod;
+    private final Method varHandleAccessModeTypeMethod;
 
     private static final Method unsupportedFeatureMethod = ReflectionUtil.lookupMethod(VMError.class, "unsupportedFeature", String.class);
 
@@ -215,18 +218,24 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         if (JavaVersionUtil.JAVA_SPEC >= 11) {
             try {
                 varHandleClass = Class.forName("java.lang.invoke.VarHandle");
+                varHandleAccessModeClass = Class.forName("java.lang.invoke.VarHandle$AccessMode");
                 varHandleType = universeProviders.getMetaAccess().lookupJavaType(varHandleClass);
                 varHandleVFormField = ReflectionUtil.lookupField(varHandleClass, "vform");
                 Class<?> varFormClass = Class.forName("java.lang.invoke.VarForm");
                 varFormInitMethod = ReflectionUtil.lookupMethod(varFormClass, "getMethodType_V", int.class);
+                varHandleIsAccessModeSupportedMethod = ReflectionUtil.lookupMethod(varHandleClass, "isAccessModeSupported", varHandleAccessModeClass);
+                varHandleAccessModeTypeMethod = ReflectionUtil.lookupMethod(varHandleClass, "accessModeType", varHandleAccessModeClass);
             } catch (ClassNotFoundException ex) {
                 throw VMError.shouldNotReachHere(ex);
             }
         } else {
             varHandleClass = null;
+            varHandleAccessModeClass = null;
             varHandleType = null;
             varHandleVFormField = null;
             varFormInitMethod = null;
+            varHandleIsAccessModeSupportedMethod = null;
+            varHandleAccessModeTypeMethod = null;
         }
     }
 
@@ -338,6 +347,25 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                 Object varHandle = SubstrateObjectConstant.asObject(args[0].asJavaConstant());
                 Object varForm = varHandleVFormField.get(varHandle);
                 varFormInitMethod.invoke(varForm, 0);
+
+                /*
+                 * The AccessMode used for the access that we are going to intrinsify is hidden in a
+                 * AccessDescriptor object that is also passed in as a parameter to the intrinsified
+                 * method. Initializing all AccessMode enum values is easier than trying to extract
+                 * the actual AccessMode.
+                 */
+                for (Object accessMode : varHandleAccessModeClass.getEnumConstants()) {
+                    /*
+                     * Force initialization of the @Stable field VarHandle.vform.memberName_table.
+                     * Starting with JDK 17, this field is lazily initialized.
+                     */
+                    varHandleIsAccessModeSupportedMethod.invoke(varHandle, accessMode);
+                    /*
+                     * Force initialization of the @Stable field
+                     * VarHandle.typesAndInvokers.methodType_table.
+                     */
+                    varHandleAccessModeTypeMethod.invoke(varHandle, accessMode);
+                }
             } catch (ReflectiveOperationException ex) {
                 throw VMError.shouldNotReachHere(ex);
             }
@@ -887,15 +915,16 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
     }
 
     private static boolean reportUnsupportedFeature(GraphBuilderContext b, ResolvedJavaMethod methodHandleMethod) {
+        if (SubstrateOptions.areMethodHandlesSupported()) {
+            /* Do nothing, the method will be compiled elsewhere */
+            return false;
+        }
+
         String message = "Invoke with MethodHandle argument could not be reduced to at most a single call or single field access. " +
                         "The method handle must be a compile time constant, e.g., be loaded from a `static final` field. " +
                         "Method that contains the method handle invocation: " + methodHandleMethod.format("%H.%n(%p)");
 
-        if (SubstrateOptions.areMethodHandlesSupported()) {
-            /* Do nothing, the method will be compiled elsewhere */
-            return false;
-
-        } else if (NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
+        if (NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
             /*
              * Ensure that we have space on the expression stack for the (unused) return value of
              * the invoke.
