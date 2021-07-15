@@ -48,6 +48,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.impl.asm.ClassVisitor;
 import com.oracle.truffle.api.impl.asm.ClassWriter;
@@ -88,7 +89,7 @@ import static com.oracle.truffle.api.impl.asm.Opcodes.T_BYTE;
 import static com.oracle.truffle.api.impl.asm.Opcodes.V1_8;
 
 final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
-    private static final ConcurrentHashMap<Pair<Class<?>, Class<?>>, ArrayBasedShapeGenerator<?>> generatorCache = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<Pair<Class<?>, Class<?>>, Object> generatorCache = TruffleOptions.AOT ? new ConcurrentHashMap<>() : null;
     private static final String[] ARRAY_SIZE_FIELDS = new String[]{"primitiveArraySize", "objectArraySize"};
 
     private final Class<?> generatedStorageClass;
@@ -127,15 +128,25 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
         return shapeOffset;
     }
 
+    // Invoked also from TruffleFeature.StaticObjectSupport
+    static <T> ArrayBasedShapeGenerator<T> getShapeGenerator(TruffleLanguage<?> language, GeneratorClassLoader gcl, Class<?> storageSuperClass, Class<T> storageFactoryInterface) {
+        if (TruffleOptions.AOT) {
+            return getShapeGenerator(generatorCache, gcl, storageSuperClass, storageFactoryInterface);
+        }
+        ConcurrentHashMap<Pair<Class<?>, Class<?>>, Object> cache = SomAccessor.ENGINE.getGeneratorCache(SomAccessor.LANGUAGE.getPolyglotLanguageInstance(language));
+        return getShapeGenerator(cache, gcl, storageSuperClass, storageFactoryInterface);
+    }
+
     @SuppressWarnings("unchecked")
-    static <T> ArrayBasedShapeGenerator<T> getShapeGenerator(GeneratorClassLoader gcl, Class<?> storageSuperClass, Class<T> storageFactoryInterface) {
+    private static <T> ArrayBasedShapeGenerator<T> getShapeGenerator(ConcurrentHashMap<Pair<Class<?>, Class<?>>, Object> cache, GeneratorClassLoader gcl, Class<?> storageSuperClass,
+                    Class<T> storageFactoryInterface) {
         Pair<Class<?>, Class<?>> pair = Pair.create(storageSuperClass, storageFactoryInterface);
-        ArrayBasedShapeGenerator<T> sg = (ArrayBasedShapeGenerator<T>) generatorCache.get(pair);
+        ArrayBasedShapeGenerator<T> sg = (ArrayBasedShapeGenerator<T>) cache.get(pair);
         if (sg == null) {
             Class<?> generatedStorageClass = generateStorage(gcl, storageSuperClass);
             Class<? extends T> generatedFactoryClass = generateFactory(gcl, generatedStorageClass, storageFactoryInterface);
             sg = new ArrayBasedShapeGenerator<>(generatedStorageClass, generatedFactoryClass);
-            ArrayBasedShapeGenerator<T> prevSg = (ArrayBasedShapeGenerator<T>) generatorCache.putIfAbsent(pair, sg);
+            ArrayBasedShapeGenerator<T> prevSg = (ArrayBasedShapeGenerator<T>) cache.putIfAbsent(pair, sg);
             if (prevSg != null) {
                 sg = prevSg;
             }

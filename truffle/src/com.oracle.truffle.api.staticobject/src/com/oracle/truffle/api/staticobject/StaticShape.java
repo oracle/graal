@@ -282,7 +282,7 @@ public abstract class StaticShape<T> {
         public <T> StaticShape<T> build(StaticShape<T> parentShape) {
             Objects.requireNonNull(parentShape);
             GeneratorClassLoader gcl = getOrCreateClassLoader(parentShape.getFactoryInterface());
-            ShapeGenerator<T> sg = ShapeGenerator.getShapeGenerator(gcl, parentShape, getStorageStrategy());
+            ShapeGenerator<T> sg = ShapeGenerator.getShapeGenerator(language, gcl, parentShape, getStorageStrategy());
             return build(sg, parentShape);
         }
 
@@ -325,7 +325,7 @@ public abstract class StaticShape<T> {
         public <T> StaticShape<T> build(Class<?> superClass, Class<T> factoryInterface) {
             validateClasses(superClass, factoryInterface);
             GeneratorClassLoader gcl = getOrCreateClassLoader(factoryInterface);
-            ShapeGenerator<T> sg = ShapeGenerator.getShapeGenerator(gcl, superClass, factoryInterface, getStorageStrategy());
+            ShapeGenerator<T> sg = ShapeGenerator.getShapeGenerator(language, gcl, superClass, factoryInterface, getStorageStrategy());
             return build(sg, null);
         }
 

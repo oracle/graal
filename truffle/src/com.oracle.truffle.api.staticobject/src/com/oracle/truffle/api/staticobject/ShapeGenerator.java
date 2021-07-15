@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.staticobject;
 
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.impl.asm.ClassVisitor;
 import com.oracle.truffle.api.impl.asm.FieldVisitor;
 import com.oracle.truffle.api.impl.asm.Type;
@@ -61,15 +62,15 @@ abstract class ShapeGenerator<T> {
 
     abstract StaticShape<T> generateShape(StaticShape<T> parentShape, Map<String, StaticProperty> staticProperties, boolean safetyChecks);
 
-    static <T> ShapeGenerator<T> getShapeGenerator(GeneratorClassLoader gcl, StaticShape<T> parentShape, StorageStrategy strategy) {
+    static <T> ShapeGenerator<T> getShapeGenerator(TruffleLanguage<?> language, GeneratorClassLoader gcl, StaticShape<T> parentShape, StorageStrategy strategy) {
         Class<?> parentStorageClass = parentShape.getStorageClass();
         Class<?> storageSuperclass = strategy == StorageStrategy.ARRAY_BASED ? parentStorageClass.getSuperclass() : parentStorageClass;
-        return getShapeGenerator(gcl, storageSuperclass, parentShape.getFactoryInterface(), strategy);
+        return getShapeGenerator(language, gcl, storageSuperclass, parentShape.getFactoryInterface(), strategy);
     }
 
-    static <T> ShapeGenerator<T> getShapeGenerator(GeneratorClassLoader gcl, Class<?> storageSuperClass, Class<T> storageFactoryInterface, StorageStrategy strategy) {
+    static <T> ShapeGenerator<T> getShapeGenerator(TruffleLanguage<?> language, GeneratorClassLoader gcl, Class<?> storageSuperClass, Class<T> storageFactoryInterface, StorageStrategy strategy) {
         if (strategy == StorageStrategy.ARRAY_BASED) {
-            return ArrayBasedShapeGenerator.getShapeGenerator(gcl, storageSuperClass, storageFactoryInterface);
+            return ArrayBasedShapeGenerator.getShapeGenerator(language, gcl, storageSuperClass, storageFactoryInterface);
         } else {
             return FieldBasedShapeGenerator.getShapeGenerator(gcl, storageSuperClass, storageFactoryInterface);
         }
