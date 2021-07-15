@@ -348,7 +348,7 @@ def svm_gate_body(args, tasks):
 
     with Task('Run Truffle unittests with SVM image', tasks, tags=["svmjunit"]) as t:
         if t:
-            truffle_args = ['--build-args', '-ea', '-esa', '--macro:truffle',
+            truffle_args = ['--build-args', '--macro:truffle',
                                         '-H:MaxRuntimeCompileMethods=5000',
                                         '-H:+TruffleCheckBlackListedMethods',
                                         '--run-args', '--very-verbose', '--enable-timing']
@@ -458,7 +458,7 @@ def _native_junit(native_image, unittest_args, build_args=None, run_args=None, b
         with open(unittest_file, 'r') as f:
             mx.log('Building junit image for matching: ' + ' '.join(l.rstrip() for l in f))
         extra_image_args = mx.get_runtime_jvm_args(unittest_deps, jdk=mx_compiler.jdk)
-        unittest_image = native_image(build_args + extra_image_args + ['--macro:junit=' + unittest_file, '-H:Path=' + junit_test_dir])
+        unittest_image = native_image(['-ea', '-esa'] + build_args + extra_image_args + ['--macro:junit=' + unittest_file, '-H:Path=' + junit_test_dir])
         mx.log('Running: ' + ' '.join(map(pipes.quote, [unittest_image] + run_args)))
         mx.run([unittest_image] + run_args)
     finally:
