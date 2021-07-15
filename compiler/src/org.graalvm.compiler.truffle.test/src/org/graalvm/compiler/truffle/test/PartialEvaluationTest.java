@@ -102,11 +102,11 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
     }
 
     @FunctionalInterface
-    protected interface FrameFunciton {
+    protected interface FrameFunction {
         Object execute(VirtualFrame frame);
     }
 
-    protected RootNode toRootNode(FrameFunciton f) {
+    protected RootNode toRootNode(FrameFunction f) {
         return new RootNode(null) {
             @Override
             public Object execute(VirtualFrame frame) {

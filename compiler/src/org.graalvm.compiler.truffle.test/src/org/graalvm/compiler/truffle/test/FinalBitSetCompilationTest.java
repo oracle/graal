@@ -75,7 +75,7 @@ public class FinalBitSetCompilationTest extends PartialEvaluationTest {
         }
     }
 
-    private void assertConstant(Object expectedConstant, FrameFunciton ff) {
+    private void assertConstant(Object expectedConstant, FrameFunction ff) {
         assertPartialEvalEquals(toRootNode((f) -> expectedConstant), toRootNode(ff), new Object[0]);
     }
 }
