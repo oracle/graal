@@ -1584,8 +1584,7 @@ public final class SourceSectionFilter {
                 assert rootNode == null ||
                                 rootSection == null ||
                                 !rootSection.getSource().isInternal() ||
-                                rootSection.getSource().isInternal() && rootNode.isInternal() : //
-                                "The root's source is internal, but the root node is not. Root node = " + rootNode.getClass();
+                                rootSection.getSource().isInternal() && rootNode.isInternal() : "The root's source is internal, but the root node is not. Root node = " + rootNode.getClass();
                 return rootNode == null || !rootNode.isInternal();
             }
 

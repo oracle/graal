@@ -33,31 +33,33 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleSafepoint;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import com.oracle.truffle.tools.profiler.CPUSampler;
 import com.oracle.truffle.tools.profiler.ProfilerNode;
 
-public class LanguageInitSamplingTest {
+public class NoTagSamplingTest {
 
     @Test
-    public void testLanguageInit() {
-        Context context = Context.create(LongInitLanguage.ID);
+    public void testNoTagSampling() {
+        Context context = Context.create(NoTagLanguage.ID);
         CPUSampler sampler = CPUSampler.find(context.getEngine());
         sampler.setCollecting(true);
         try {
-            context.eval(Source.newBuilder(LongInitLanguage.ID, "", "").build());
+            Source source = Source.newBuilder(NoTagLanguage.ID, "", "").build();
+            context.eval(source);
+            context.eval(source);
         } catch (IOException e) {
             Assert.fail();
         }
         sampler.setCollecting(false);
-        Collection<ProfilerNode<CPUSampler.Payload>> profilerNodes = sampler.getThreadToNodesMap().get(Thread.currentThread());
+        Collection<ProfilerNode<CPUSampler.Payload>> profilerNodes = sampler.getThreadToNodesMap().values().iterator().next();
         Assert.assertEquals(1, profilerNodes.size());
 
     }
@@ -68,15 +70,6 @@ public class LanguageInitSamplingTest {
             super(language);
         }
 
-        @Override
-        public Object execute(VirtualFrame frame) {
-            for (int i = 0; i < 1000; i++) {
-                sleepSomeTime();
-                TruffleSafepoint.poll(this);
-            }
-            return 42;
-        }
-
         @TruffleBoundary
         private static void sleepSomeTime() {
             try {
@@ -85,21 +78,20 @@ public class LanguageInitSamplingTest {
                 Assert.fail();
             }
         }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            for (int i = 0; i < 100; i++) {
+                sleepSomeTime();
+                TruffleSafepoint.poll(this);
+            }
+            return 42;
+        }
     }
 
-    @TruffleLanguage.Registration(id = LongInitLanguage.ID, name = LongInitLanguage.ID, version = "0.0.1")
-    public static class LongInitLanguage extends ProxyLanguage {
-        static final String ID = "LongInitLanguage";
-
-        @Override
-        protected void initializeContext(ProxyLanguage.LanguageContext context) throws Exception {
-// newTarget().call();
-        }
-
-        @Override
-        protected LanguageContext createContext(Env env) {
-            return super.createContext(env);
-        }
+    @TruffleLanguage.Registration(id = NoTagLanguage.ID, name = NoTagLanguage.ID, version = "0.0.1")
+    public static class NoTagLanguage extends ProxyLanguage {
+        static final String ID = "NoTagSamplingTest_NoTagLanguage";
 
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
