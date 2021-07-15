@@ -32,12 +32,20 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.ReportPolymorphism;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -47,6 +55,7 @@ import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.substitutions.Target_com_oracle_truffle_espresso_polyglot_PolyglotFactory.CastImplNodeGen;
 import com.oracle.truffle.espresso.substitutions.Target_com_oracle_truffle_espresso_polyglot_PolyglotFactory.CastImplNodeGen;
 
 @EspressoSubstitutions
@@ -99,7 +108,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
     }
 
     @GenerateUncached
-    abstract static class CastImpl extends SubstitutionNode {
+    static abstract class CastImpl extends SubstitutionNode {
 
         static final int LIMIT = 3;
 
@@ -352,7 +361,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
     public static @JavaType(Object.class) StaticObject importObject(@JavaType(String.class) StaticObject name, @InjectMeta Meta meta) {
         if (!meta.getContext().getEnv().isPolyglotBindingsAccessAllowed()) {
             throw meta.throwExceptionWithMessage(meta.java_lang_SecurityException,
-                            "Polyglot bindings are not accessible for this language. Use --polyglot or allowPolyglotAccess when building the context.");
+                            "Polyglot bindings are not accessible for this language. Use --polyglot or allowPolyglotAccess when building the contextRef.get().");
         }
         Object binding = meta.getContext().getEnv().importSymbol(name.toString());
         if (binding == null) {
@@ -368,7 +377,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
     public static void exportObject(@JavaType(String.class) StaticObject name, @JavaType(Object.class) StaticObject value, @InjectMeta Meta meta) {
         if (!meta.getContext().getEnv().isPolyglotBindingsAccessAllowed()) {
             throw meta.throwExceptionWithMessage(meta.java_lang_SecurityException,
-                            "Polyglot bindings are not accessible for this language. Use --polyglot or allowPolyglotAccess when building the context.");
+                            "Polyglot bindings are not accessible for this language. Use --polyglot or allowPolyglotAccess when building the contextRef.get().");
         }
         String bindingName = meta.toHostString(name);
         if (value.isForeignObject()) {
