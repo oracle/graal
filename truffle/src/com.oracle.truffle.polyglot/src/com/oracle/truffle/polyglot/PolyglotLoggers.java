@@ -161,6 +161,15 @@ final class PolyglotLoggers {
     }
 
     /**
+     * Used reflectively by {@code ContextPreInitializationTest}.
+     */
+    static boolean hasActiveFileHandlers() {
+        synchronized (fileHandlers) {
+            return !fileHandlers.isEmpty();
+        }
+    }
+
+    /**
      * Creates a {@link Handler} printing log messages into given {@link OutputStream}.
      *
      * @param out the {@link OutputStream} to print log messages into

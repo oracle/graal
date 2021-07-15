@@ -92,6 +92,7 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.FileSystem;
 import org.junit.After;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -1009,6 +1010,55 @@ public class ContextPreInitializationTest {
         assertEquals(1, firstLangCtx.disposeContextCount);
         assertEquals(2, firstLangCtx.initializeThreadCount);
         assertEquals(2, firstLangCtx.disposeThreadCount);
+    }
+
+    @Test
+    public void testRedirectedLogging() throws Exception {
+        Assume.assumeTrue(System.getProperty("polyglot.log.file") == null);
+        setPatchable(FIRST);
+        Path preInitLogFile = Files.createTempFile("preinit", ".log");
+        Path patchLogFile = Files.createTempFile("patch", ".log");
+        try {
+            System.setProperty("polyglot.log.engine.level", "FINE");
+            System.setProperty("polyglot.log.file", preInitLogFile.toString());
+            doContextPreinitialize(FIRST);
+            assertFalse(hasActiveFileHandlers());
+            List<CountingContext> contexts = new ArrayList<>(emittedContexts);
+            assertEquals(1, contexts.size());
+            final CountingContext firstLangCtx = findContext(FIRST, contexts);
+            assertNotNull(firstLangCtx);
+            assertEquals(1, firstLangCtx.createContextCount);
+            assertEquals(1, firstLangCtx.initializeContextCount);
+            assertEquals(0, firstLangCtx.patchContextCount);
+            assertEquals(0, firstLangCtx.disposeContextCount);
+            assertEquals(1, firstLangCtx.initializeThreadCount);
+            assertEquals(1, firstLangCtx.disposeThreadCount);
+            assertTrue(new String(Files.readAllBytes(preInitLogFile)).contains("Pre-initialized context for language: ContextPreInitializationFirst"));
+            System.setProperty("polyglot.log.file", patchLogFile.toString());
+            try (Context ctx = Context.newBuilder().option("log.engine.level", "FINE").build()) {
+                Value res = ctx.eval(Source.create(FIRST, "test"));
+                assertEquals("test", res.asString());
+                contexts = new ArrayList<>(emittedContexts);
+                assertEquals(1, contexts.size());
+                assertEquals(1, firstLangCtx.createContextCount);
+                assertEquals(1, firstLangCtx.initializeContextCount);
+                assertEquals(1, firstLangCtx.patchContextCount);
+                assertEquals(0, firstLangCtx.disposeContextCount);
+                assertEquals(2, firstLangCtx.initializeThreadCount);
+                assertEquals(1, firstLangCtx.disposeThreadCount);
+                assertTrue(new String(Files.readAllBytes(patchLogFile)).contains("Successfully patched context of language: ContextPreInitializationFirst"));
+            }
+            contexts = new ArrayList<>(emittedContexts);
+            assertEquals(1, contexts.size());
+            assertEquals(1, firstLangCtx.createContextCount);
+            assertEquals(1, firstLangCtx.initializeContextCount);
+            assertEquals(1, firstLangCtx.patchContextCount);
+            assertEquals(1, firstLangCtx.disposeContextCount);
+            assertEquals(2, firstLangCtx.initializeThreadCount);
+            assertEquals(2, firstLangCtx.disposeThreadCount);
+        } finally {
+            System.clearProperty("polyglot.log.engine.level");
+        }
     }
 
     @Test
@@ -1989,6 +2039,13 @@ public class ContextPreInitializationTest {
             // PreinitializeContexts should only be set during pre-initialization, not at runtime
             System.clearProperty("polyglot.image-build-time.PreinitializeContexts");
         }
+    }
+
+    private static boolean hasActiveFileHandlers() throws ReflectiveOperationException {
+        Class<?> polyglotLoggersClass = Class.forName("com.oracle.truffle.polyglot.PolyglotLoggers");
+        Method m = polyglotLoggersClass.getDeclaredMethod("hasActiveFileHandlers");
+        m.setAccessible(true);
+        return (boolean) m.invoke(null);
     }
 
     private static Collection<? extends CountingContext> findContexts(
