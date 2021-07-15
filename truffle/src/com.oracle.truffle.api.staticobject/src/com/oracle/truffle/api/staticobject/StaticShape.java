@@ -252,10 +252,9 @@ public abstract class StaticShape<T> {
          * @see StaticShape.Builder#build(StaticShape)
          * @see StaticShape.Builder#build(Class, Class)
          * @return the new {@link StaticShape}
-         * @throws IllegalStateException if this method is invoked more than once
-         * @throws RuntimeException if a static property was added to more than one builder or
-         *             multiple times to the same builder, or if this method is invoked at Native
-         *             Image build time
+         * @throws IllegalStateException if a static property was added to more than one builder or
+         *             multiple times to the same builder, or if this method is invoked more than
+         *             once
          * @since 21.3.0
          */
         public StaticShape<DefaultStaticObjectFactory> build() {
@@ -275,10 +274,9 @@ public abstract class StaticShape<T> {
          * @param parentShape the parent {@linkplain StaticShape shape}
          * @param <T> the generic type of the parent {@linkplain StaticShape shape}
          * @return the new {@link StaticShape}
-         * @throws IllegalStateException if this method is invoked more than once
-         * @throws RuntimeException if a static property was added to more than one builder or
-         *             multiple times to the same builder, or if this method is invoked at Native
-         *             Image build time
+         * @throws IllegalStateException if a static property was added to more than one builder or
+         *             multiple times to the same builder, or if this method is invoked more than
+         *             once
          * @since 21.3.0
          */
         public <T> StaticShape<T> build(StaticShape<T> parentShape) {
@@ -319,10 +317,9 @@ public abstract class StaticShape<T> {
          *             is not assignable from superClass, if superClass has abstract methods or if
          *             superClass is {@link Cloneable} and overrides {@link Object#clone()} with a
          *             final method
-         * @throws IllegalStateException if this method is invoked more than once
-         * @throws RuntimeException if a static property was added to more than one builder or
-         *             multiple times to the same builder, or if this method is invoked at Native
-         *             Image build time
+         * @throws IllegalStateException if a static property was added to more than one builder or
+         *             multiple times to the same builder, or if this method is invoked more than
+         *             once
          * @since 21.3.0
          */
         public <T> StaticShape<T> build(Class<?> superClass, Class<T> factoryInterface) {

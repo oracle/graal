@@ -122,7 +122,7 @@ public abstract class StaticProperty {
 
     final void initOffset(int o) {
         if (this.offset != 0) {
-            throw new RuntimeException("Attempt to reinitialize the offset of static property '" + getId() + "' of kind '" + StaticPropertyKind.valueOf(getInternalKind()).name() + "'.\n" +
+            throw new IllegalStateException("Attempt to reinitialize the offset of static property '" + getId() + "' of kind '" + StaticPropertyKind.valueOf(getInternalKind()).name() + "'.\n" +
                             "Was it added to more than one builder or multiple times to the same builder?");
         }
         this.offset = o;
@@ -130,7 +130,7 @@ public abstract class StaticProperty {
 
     final void initShape(StaticShape<?> s) {
         if (this.shape != null) {
-            throw new RuntimeException("Attempt to reinitialize the shape of static property '" + getId() + "' of kind '" + StaticPropertyKind.valueOf(getInternalKind()).name() + "'.\n" +
+            throw new IllegalStateException("Attempt to reinitialize the shape of static property '" + getId() + "' of kind '" + StaticPropertyKind.valueOf(getInternalKind()).name() + "'.\n" +
                             "Was it added to more than one builder or multiple times to the same builder?");
         }
         this.shape = s;
