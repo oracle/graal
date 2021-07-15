@@ -1068,6 +1068,18 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
         }
     }
 
+    private CodePointSet getUnicodeCharClass(char className) {
+        return trimToEncoding(UNICODE_CHAR_CLASSES.get(className));
+    }
+
+    private CodePointSet getUnicodePosixCharClass(String className) {
+        return trimToEncoding(UNICODE_POSIX_CHAR_CLASSES.get(className));
+    }
+
+    private CodePointSet trimToEncoding(CodePointSet codePointSet) {
+        return inSource.getEncoding().getFullSet().createIntersectionSingleRange(codePointSet);
+    }
+
     /**
      * Tries to parse an assertion escape. An assertion escape can be one of the following:
      * <ul>
@@ -1100,14 +1112,14 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                 if (getLocalFlags().isAscii()) {
                     emitWordBoundaryAssertion(WORD_BOUNDARY, ASCII_CHAR_CLASSES.get('w'), ASCII_CHAR_CLASSES.get('W'));
                 } else {
-                    emitWordBoundaryAssertion(WORD_BOUNDARY, UNICODE_CHAR_CLASSES.get('w'), UNICODE_CHAR_CLASSES.get('W'));
+                    emitWordBoundaryAssertion(WORD_BOUNDARY, getUnicodeCharClass('w'), getUnicodeCharClass('W'));
                 }
                 return true;
             case 'B':
                 if (getLocalFlags().isAscii()) {
                     emitWordBoundaryAssertion(WORD_NON_BOUNDARY, ASCII_CHAR_CLASSES.get('w'), ASCII_CHAR_CLASSES.get('W'));
                 } else {
-                    emitWordBoundaryAssertion(WORD_NON_BOUNDARY, UNICODE_CHAR_CLASSES.get('w'), UNICODE_CHAR_CLASSES.get('W'));
+                    emitWordBoundaryAssertion(WORD_NON_BOUNDARY, getUnicodeCharClass('w'), getUnicodeCharClass('W'));
                 }
                 return true;
             default:
@@ -1168,7 +1180,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                     charSet = ASCII_CHAR_CLASSES.get(className);
                 } else {
                     assert getLocalFlags().isUnicode();
-                    charSet = UNICODE_CHAR_CLASSES.get(className);
+                    charSet = getUnicodeCharClass('w');
                 }
                 if (inCharClass) {
                     curCharClass.addSet(charSet);
@@ -1198,13 +1210,13 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                     }
                     CodePointSet property;
                     if (UNICODE_POSIX_CHAR_CLASSES.containsKey(propertySpec.toLowerCase())) {
-                        property = UNICODE_POSIX_CHAR_CLASSES.get(propertySpec.toLowerCase());
+                        property = getUnicodePosixCharClass(propertySpec.toLowerCase());
                     } else if (UnicodeProperties.isSupportedGeneralCategory(propertySpec, true)) {
-                        property = UnicodeProperties.getProperty("General_Category=" + propertySpec, true);
+                        property = trimToEncoding(UnicodeProperties.getProperty("General_Category=" + propertySpec, true));
                     } else if (UnicodeProperties.isSupportedScript(propertySpec, true)) {
-                        property = UnicodeProperties.getProperty("Script=" + propertySpec, true);
+                        property = trimToEncoding(UnicodeProperties.getProperty("Script=" + propertySpec, true));
                     } else if (UnicodeProperties.isSupportedProperty(propertySpec, true)) {
-                        property = UnicodeProperties.getProperty(propertySpec, true);
+                        property = trimToEncoding(UnicodeProperties.getProperty(propertySpec, true));
                     } else {
                         bailOut("unsupported Unicode property " + propertySpec);
                         // So that the property variable is always written to.
@@ -1637,10 +1649,10 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
 
     private void collectCharClass() {
         boolean negated = false;
+        int beginPos = position - 1;
         if (match("^")) {
             negated = true;
         }
-        int beginPos = position - 1;
         int firstPosInside = position;
         classBody: while (true) {
             if (atEnd()) {
@@ -1653,10 +1665,11 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
             switch (ch) {
                 case ']':
                     if (position == firstPosInside + 1) {
-                        throw syntaxErrorAt("empty char-class", beginPos);
+                        lowerBound = Optional.of((int) ']');
                     } else {
                         break classBody;
                     }
+                    break;
                 case '\\':
                     lowerBound = classEscape();
                     break;
@@ -1832,7 +1845,7 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
                 charSet = ASCII_POSIX_CHAR_CLASSES.get(className);
             } else {
                 assert getLocalFlags().isDefault() || getLocalFlags().isUnicode();
-                charSet = UNICODE_POSIX_CHAR_CLASSES.get(className);
+                charSet = getUnicodePosixCharClass(className);
             }
             if (negated) {
                 charSet = charSet.createInverse(inSource.getEncoding());
