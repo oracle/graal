@@ -7,7 +7,7 @@ permalink: /reference-manual/native-image/ARM64/
 
 # Native Image ARM64 Support
 
-As of version 21.0, GraalVM distributions for Linux version 7.6 or higher on ARM 64-bit system are available.
+As of version 21.0, GraalVM distributions for Linux on ARM 64-bit system are available.
 Unless explicitly noted within the [limitations](#Limitations), all Native Image features should work on this architecture.
 
 ## Limitations
