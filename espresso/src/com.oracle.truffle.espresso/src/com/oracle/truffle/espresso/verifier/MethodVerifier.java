@@ -262,6 +262,7 @@ import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.DynamicConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.FieldRefConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.InvokeDynamicConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.MemberRefConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.MethodRefConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.PoolConstant;
 import com.oracle.truffle.espresso.descriptors.Signatures;
@@ -272,8 +273,8 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.descriptors.Validation;
 import com.oracle.truffle.espresso.impl.ContextAccess;
-import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.Member;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
@@ -281,7 +282,6 @@ import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.perf.DebugCloseable;
 import com.oracle.truffle.espresso.perf.DebugTimer;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.EspressoException;
 
 /**
  * Should be a complete bytecode verifier. Given the version of the classfile from which the method
@@ -1011,7 +1011,7 @@ public final class MethodVerifier implements ContextAccess {
     }
 
     private void validateExceptionHandlers() {
-        formatGuarantee(exceptionHandlers.length == 0 || maxStack >= 1, "Method with exception handlers has a zero max stack value.");
+        verifyGuarantee(exceptionHandlers.length == 0 || maxStack >= 1, "Method with exception handlers has a zero max stack value.");
         for (ExceptionHandler handler : exceptionHandlers) {
             validateFormatBCI(handler.getHandlerBCI());
             int startBCI = handler.getStartBCI();
@@ -1785,7 +1785,7 @@ public final class MethodVerifier implements ContextAccess {
             Operand receiver = checkInitAccess(stack.popRef(fieldHolder), fieldHolder);
             verifyGuarantee(!receiver.isArrayType(), "Trying to access field of an array type: " + receiver);
             if (!receiver.isUninitThis()) {
-                checkProtectedField(receiver, fieldHolderType, code.readCPI(bci));
+                checkProtectedMember(receiver, fieldHolderType, frc, false);
             }
         }
     }
@@ -1806,7 +1806,7 @@ public final class MethodVerifier implements ContextAccess {
             Symbol<Type> fieldHolderType = getTypes().fromName(frc.getHolderKlassName(pool));
             Operand fieldHolder = kindToOperand(fieldHolderType);
             Operand receiver = checkInitAccess(stack.popRef(fieldHolder), fieldHolder);
-            checkProtectedField(receiver, fieldHolderType, code.readCPI(bci));
+            checkProtectedMember(receiver, fieldHolderType, frc, false);
             verifyGuarantee(!receiver.isArrayType(), "Trying to access field of an array type: " + receiver);
         }
 
@@ -2042,7 +2042,7 @@ public final class MethodVerifier implements ContextAccess {
             Operand stackOp = stack.initUninit(toInit);
             locals.initUninit(toInit, stackOp);
 
-            checkProtectedMethod(stackOp, methodHolder, code.readCPI(bci));
+            checkProtectedMember(stackOp, methodHolder, mrc, true);
         } else {
             verifyGuarantee(checkMethodSpecialAccess(methodHolderOp), "invokespecial must specify a method in this class or a super class");
             Operand stackOp = checkInit(stack.popRef(methodHolderOp));
@@ -2080,7 +2080,7 @@ public final class MethodVerifier implements ContextAccess {
         Operand stackOp = checkInit(stack.popRef(methodHolderOp));
 
         // Perform protected method access checks
-        checkProtectedMethod(stackOp, methodHolder, code.readCPI(bci));
+        checkProtectedMember(stackOp, methodHolder, mrc, true);
 
         if (!(returnOp == Void)) {
             stack.push(returnOp);
@@ -2204,8 +2204,8 @@ public final class MethodVerifier implements ContextAccess {
 
     // Helper methods
 
-    private void checkProtectedField(Operand stackOp, Symbol<Type> fieldHolderType, int fieldCPI) {
-        /**
+    private void checkProtectedMember(Operand stackOp, Symbol<Type> holderType, MemberRefConstant mrc, boolean method) {
+        /*
          * 4.10.1.8.
          *
          * If the name of a class is not the name of any superclass, it cannot be a superclass, and
@@ -2214,7 +2214,7 @@ public final class MethodVerifier implements ContextAccess {
         if (stackOp.getType() == thisKlass.getType()) {
             return;
         }
-        /**
+        /*
          * If the MemberClassName is the same as the name of a superclass, the class being resolved
          * may indeed be a superclass. In this case, if no superclass named MemberClassName in a
          * different run-time package has a protected member named MemberName with descriptor
@@ -2222,74 +2222,31 @@ public final class MethodVerifier implements ContextAccess {
          */
         Klass superKlass = thisKlass.getSuperKlass();
         while (superKlass != null) {
-            if (superKlass.getType() == fieldHolderType) {
-                final Field field;
-                try {
-                    field = pool.resolvedFieldAt(thisKlass, fieldCPI).getField();
-                } catch (EspressoException e) {
-                    if (getMeta().java_lang_IllegalArgumentException.isAssignableFrom(e.getExceptionObject().getKlass())) {
-                        throw failVerify(EspressoException.getMessage(e.getExceptionObject()));
-                    }
-                    throw e;
+            if (superKlass.getType() == holderType) {
+                Operand holderOp = kindToOperand(holderType);
+                Member<?> member;
+                if (method) {
+                    /* Non-failing method lookup. */
+                    member = holderOp.getKlass().lookupMethod(mrc.getName(pool), ((MethodRefConstant) mrc).getSignature(pool));
+                } else {
+                    /* Non-failing field lookup. */
+                    member = holderOp.getKlass().lookupField(mrc.getName(pool), ((FieldRefConstant) mrc).getType(pool));
                 }
-                /**
+                /*
                  * If there does exist a protected superclass member in a different run-time
                  * package, then load MemberClassName; if the member in question is not protected,
                  * the check does not apply. (Using a superclass member that is not protected is
                  * trivially correct.)
                  */
-                if (!field.isProtected()) {
+                if (member == null || !member.isProtected()) {
                     return;
                 }
-                if (!thisKlass.getRuntimePackage().contentEquals(Types.getRuntimePackage(fieldHolderType))) {
-                    verifyGuarantee(stackOp.compliesWith(thisOperand), "Illegal protected field access");
-                }
-            }
-            superKlass = superKlass.getSuperKlass();
-        }
-    }
-
-    private void checkProtectedMethod(Operand stackOp, Symbol<Type> methodHolderType, int methodCPI) {
-        /**
-         * 4.10.1.8.
-         *
-         * If the name of a class is not the name of any superclass, it cannot be a superclass, and
-         * so it can safely be ignored.
-         */
-        if (stackOp.getType() == thisKlass.getType()) {
-            return;
-        }
-        /**
-         * If the MemberClassName is the same as the name of a superclass, the class being resolved
-         * may indeed be a superclass. In this case, if no superclass named MemberClassName in a
-         * different run-time package has a protected member named MemberName with descriptor
-         * MemberDescriptor, the protected check does not apply.
-         */
-        Klass superKlass = thisKlass.getSuperKlass();
-        while (superKlass != null) {
-            if (superKlass.getType() == methodHolderType) {
-                final Method method;
-                try {
-                    method = pool.resolvedMethodAt(thisKlass, methodCPI);
-                } catch (EspressoException e) {
-                    if (getMeta().java_lang_IllegalArgumentException.isAssignableFrom(e.getExceptionObject().getKlass())) {
-                        throw failVerify(EspressoException.getMessage(e.getExceptionObject()));
-                    }
-                    throw e;
-                }
-                /**
-                 * If there does exist a protected superclass member in a different run-time
-                 * package, then load MemberClassName; if the member in question is not protected,
-                 * the check does not apply. (Using a superclass member that is not protected is
-                 * trivially correct.)
-                 */
-                if (!method.isProtected()) {
-                    return;
-                }
-                if (!thisKlass.getRuntimePackage().contentEquals(Types.getRuntimePackage(methodHolderType))) {
-                    if (stackOp.isArrayType() && Type.java_lang_Object.equals(methodHolderType) && Name.clone.equals(method.getName())) {
-                        // Special case: Arrays pretend to implement Object.clone().
-                        return;
+                if (!thisKlass.getRuntimePackage().contentEquals(Types.getRuntimePackage(holderType))) {
+                    if (method) {
+                        if (stackOp.isArrayType() && Type.java_lang_Object.equals(holderType) && Name.clone.equals(member.getName())) {
+                            // Special case: Arrays pretend to implement Object.clone().
+                            return;
+                        }
                     }
                     verifyGuarantee(stackOp.compliesWith(thisOperand), "Illegal protected field access");
                 }
@@ -2391,7 +2348,7 @@ public final class MethodVerifier implements ContextAccess {
     private static void xaload(OperandStack stack, PrimitiveOperand kind) {
         stack.popInt();
         Operand op = stack.popArray();
-        verifyGuarantee(op == Null || !kind.compliesWith(op.getComponent()), "Loading " + kind + " from " + op + " array.");
+        verifyGuarantee(op == Null || kind.compliesWith(op.getComponent()), "Loading " + kind + " from " + op + " array.");
         stack.push(kind.toStack());
     }
 
@@ -2399,7 +2356,7 @@ public final class MethodVerifier implements ContextAccess {
         stack.pop(kind);
         stack.popInt();
         Operand array = stack.popArray();
-        verifyGuarantee(array == Null || !kind.compliesWith(array.getComponent()), "got array of type: " + array + ", while storing a " + kind);
+        verifyGuarantee(array == Null || kind.compliesWith(array.getComponent()), "got array of type: " + array + ", while storing a " + kind);
     }
 
     private static boolean wideOpcodes(int op) {
