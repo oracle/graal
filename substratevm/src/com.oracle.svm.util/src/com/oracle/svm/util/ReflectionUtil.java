@@ -84,12 +84,19 @@ public final class ReflectionUtil {
     }
 
     public static Field lookupField(Class<?> declaringClass, String fieldName) {
+        return lookupField(false, declaringClass, fieldName);
+    }
+
+    public static Field lookupField(boolean optional, Class<?> declaringClass, String fieldName) {
         try {
             Field result = declaringClass.getDeclaredField(fieldName);
             openModule(declaringClass);
             result.setAccessible(true);
             return result;
         } catch (ReflectiveOperationException ex) {
+            if (optional) {
+                return null;
+            }
             throw new ReflectionUtilError(ex);
         }
     }
