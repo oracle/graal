@@ -354,7 +354,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         Assert.assertFalse(bytecodeNode.compiled);
         BytecodeOSRMetadata osrMetadata = (BytecodeOSRMetadata) bytecodeNode.getOSRMetadata();
         Assert.assertNotEquals(osrMetadata, BytecodeOSRMetadata.DISABLED);
-        Assert.assertTrue(osrMetadata.getOSRCompilations().isEmpty());
+        Assert.assertNull(osrMetadata.getOSRCompilations()); // don't even bother allocating the map
     }
 
     @Test
@@ -621,9 +621,11 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
 
                 @Override
                 public Void visitFrame(FrameInstance frameInstance) {
-                    if (getGraalOSRMetadata() != null) {
+                    BytecodeOSRMetadata metadata = getGraalOSRMetadata();
+                    if (metadata != null) {
                         // We should never see the OSR call target in a stack trace.
-                        Assert.assertNotSame(getGraalOSRMetadata().getOSRCompilations().get(DEFAULT_TARGET), frameInstance.getCallTarget());
+                        Assert.assertTrue(metadata.getOSRCompilations() == null ||
+                                        metadata.getOSRCompilations().get(DEFAULT_TARGET) != frameInstance.getCallTarget());
                     }
                     if (first) {
                         first = false;

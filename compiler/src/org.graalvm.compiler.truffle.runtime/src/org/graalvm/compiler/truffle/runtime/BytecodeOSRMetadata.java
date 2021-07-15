@@ -59,7 +59,7 @@ public final class BytecodeOSRMetadata {
 
     private final BytecodeOSRNode osrNode;
     private final FrameDescriptor frameDescriptor;
-    private final Map<Integer, OptimizedCallTarget> osrCompilations;
+    private Map<Integer, OptimizedCallTarget> osrCompilations;
     private final int osrThreshold;
     private int backEdgeCount;
     private volatile boolean compilationFailed;
@@ -75,7 +75,7 @@ public final class BytecodeOSRMetadata {
             throw new IllegalArgumentException("Cannot perform OSR on a frame which can be materialized.");
         }
         this.frameDescriptor = frameDescriptor;
-        this.osrCompilations = new ConcurrentHashMap<>();
+        this.osrCompilations = null;
         this.osrThreshold = osrThreshold;
         this.backEdgeCount = 0;
         this.compilationFailed = false;
@@ -87,8 +87,18 @@ public final class BytecodeOSRMetadata {
             return null;
         }
 
-        OptimizedCallTarget osrTarget = osrCompilations.get(target);
+        OptimizedCallTarget osrTarget;
+        if (osrCompilations == null) {
+            ((Node) osrNode).atomic(() -> {
+                if (osrCompilations == null) {
+                    osrCompilations = new ConcurrentHashMap<>();
+                }
+            });
+        }
+
+        osrTarget = osrCompilations.get(target);
         if (osrTarget == null) {
+            // Lock to request compilation.
             osrTarget = ((Node) osrNode).atomic(() -> {
                 OptimizedCallTarget lockedTarget = osrCompilations.get(target);
                 if (lockedTarget == null) {
@@ -100,6 +110,7 @@ public final class BytecodeOSRMetadata {
                 return lockedTarget;
             });
         }
+
         if (osrTarget != null && !osrTarget.isCompiling()) {
             if (!osrTarget.isValid()) {
                 invalidateOSRTarget(target, "OSR compilation failed or cancelled");
@@ -123,7 +134,7 @@ public final class BytecodeOSRMetadata {
     }
 
     private synchronized OptimizedCallTarget requestOSR(int target) {
-        assert !osrCompilations.containsKey(target);
+        assert osrCompilations != null && !osrCompilations.containsKey(target);
         TruffleLanguage<?> language = GraalRuntimeAccessor.NODES.getLanguage(((Node) osrNode).getRootNode());
         updateFrameSlots();
         OptimizedCallTarget callTarget = GraalTruffleRuntime.getRuntime().createOSRCallTarget(new BytecodeOSRRootNode(osrNode, target, language, frameDescriptor));
@@ -219,25 +230,29 @@ public final class BytecodeOSRMetadata {
     }
 
     private synchronized void invalidateOSRTarget(int target, CharSequence reason) {
-        OptimizedCallTarget callTarget = osrCompilations.remove(target);
-        if (callTarget != null) {
-            if (callTarget.isCompilationFailed()) {
-                markCompilationFailed();
-            }
-            callTarget.invalidate(reason);
-        }
-    }
-
-    synchronized void nodeReplaced(Node oldNode, Node newNode, CharSequence reason) {
-        for (OptimizedCallTarget callTarget : osrCompilations.values()) {
+        if (osrCompilations != null) {
+            OptimizedCallTarget callTarget = osrCompilations.remove(target);
             if (callTarget != null) {
                 if (callTarget.isCompilationFailed()) {
                     markCompilationFailed();
                 }
-                callTarget.nodeReplaced(oldNode, newNode, reason);
+                callTarget.invalidate(reason);
             }
         }
-        osrCompilations.clear();
+    }
+
+    synchronized void nodeReplaced(Node oldNode, Node newNode, CharSequence reason) {
+        if (osrCompilations != null) {
+            for (OptimizedCallTarget callTarget : osrCompilations.values()) {
+                if (callTarget != null) {
+                    if (callTarget.isCompilationFailed()) {
+                        markCompilationFailed();
+                    }
+                    callTarget.nodeReplaced(oldNode, newNode, reason);
+                }
+            }
+            osrCompilations.clear();
+        }
     }
 
     private void markCompilationFailed() {
