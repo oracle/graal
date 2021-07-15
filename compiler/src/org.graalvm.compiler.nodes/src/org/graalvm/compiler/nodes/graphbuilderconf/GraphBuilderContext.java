@@ -260,6 +260,20 @@ public interface GraphBuilderContext extends GraphBuilderTool {
     }
 
     /**
+     * Computes the recursive inlining depth of the provided method, i.e., counts how often the
+     * provided method is already in the {@link #getParent()} chain starting at this context.
+     */
+    default int recursiveInliningDepth(ResolvedJavaMethod method) {
+        int result = 0;
+        for (GraphBuilderContext cur = this; cur != null; cur = cur.getParent()) {
+            if (method.equals(cur.getMethod())) {
+                result++;
+            }
+        }
+        return result;
+    }
+
+    /**
      * Determines if this parsing context is within the bytecode of an intrinsic or a method inlined
      * by an intrinsic.
      */
