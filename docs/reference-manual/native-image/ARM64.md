@@ -16,6 +16,6 @@ Mostly all Native Image features are supported on ARM64, except for the limitati
 
 * `-R:[+|-]WriteableCodeCache`: must be disabled.
 * `--libc=<value>`: `musl` is not supported.
-* `--gc=<value>`: The G1 Ggrbage collector (`G1`) is not supported.
+* `--gc=<value>`: The G1 garbage collector (`G1`) is not supported.
 
 For more information about these options, please refer to [Native Image Options](Options.md) and [Native Image Hosted and Runtime Options](HostedvsRuntimeOptions.md).
