@@ -226,16 +226,32 @@ class WasmBenchmarkSuite(JMHDistBenchmarkSuite):
     def successPatterns(self):
         return []
 
-    def isWasmBenchmarkVm(self, bmSuiteArgs):
+    def getBenchmarkName(self, bmSuiteArgs):
         parser = argparse.ArgumentParser()
-        parser.add_argument("--jvm-config")
-        jvm_config = parser.parse_known_args(bmSuiteArgs)[0].jvm_config
-        return jvm_config in ("node", "native")
+        parser.add_argument("-Dwasmbench.benchmarkName")
+        name = vars(parser.parse_known_args(bmSuiteArgs)[0])["Dwasmbench.benchmarkName"]
+        return name
 
     def rules(self, out, benchmarks, bmSuiteArgs):
-        if self.isWasmBenchmarkVm(bmSuiteArgs):
-            return []
-        return [WasmJMHJsonRule(mx_benchmark.JMHBenchmarkSuiteBase.jmh_result_file, self.benchSuiteName(bmSuiteArgs))]
+        return [
+            WasmJMHJsonRule(mx_benchmark.JMHBenchmarkSuiteBase.jmh_result_file, self.benchSuiteName(bmSuiteArgs)),
+            mx_benchmark.StdOutRule(
+                r"Iteration (?P<iteration>[0-9]+), result = -?[0-9]+, sec = ([0-9]+\.[0-9]+), ops / sec = (?P<value>([0-9]+\.[0-9]+))", # pylint: disable=line-too-long
+                {
+                    "benchmark": self.getBenchmarkName(bmSuiteArgs),
+                    "bench-suite": self.benchSuiteName(bmSuiteArgs),
+                    "vm": self.name(),
+                    "config.name": "default",
+                    "metric.name": "throughput",
+                    "metric.value": ("<value>", float),
+                    "metric.unit": "op/s",
+                    "metric.type": "numeric",
+                    "metric.score-function": "id",
+                    "metric.better": "higher",
+                    "metric.iteration": ("<iteration>", int)
+                }
+            )
+        ]
 
 
 add_bm_suite(WasmBenchmarkSuite())
