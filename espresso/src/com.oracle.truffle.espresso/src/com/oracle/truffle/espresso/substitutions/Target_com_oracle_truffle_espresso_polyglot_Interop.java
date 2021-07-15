@@ -22,9 +22,10 @@
  */
 package com.oracle.truffle.espresso.substitutions;
 
+import java.nio.ByteOrder;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
@@ -36,6 +37,7 @@ import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
@@ -49,8 +51,6 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-
-import java.nio.ByteOrder;
 
 @EspressoSubstitutions
 public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
@@ -1534,7 +1534,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      *
      * <p>
      * If this message returns {@code true}, then {@link InteropLibrary#getBufferSize(Object)},
-     * {@link InteropLibrary#readBufferByte(Object, long)}, {@link InteropLibrary#readBufferShort(Object, ByteOrder, long)},
+     * {@link InteropLibrary#readBufferByte(Object, long)},
+     * {@link InteropLibrary#readBufferShort(Object, ByteOrder, long)},
      * {@link InteropLibrary#readBufferInt(Object, ByteOrder, long)},
      * {@link InteropLibrary#readBufferLong(Object, ByteOrder, long)},
      * {@link InteropLibrary#readBufferFloat(Object, ByteOrder, long)} and
@@ -1582,11 +1583,681 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(Object.class) StaticObject receiver,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @CachedContext(EspressoLanguage.class) ContextReference<EspressoContext> contextRef,
-                        @Cached BranchProfile errorProfile) {
+                        @Cached BranchProfile exceptionProfile) {
             try {
                 return interop.getBufferSize(unwrap(receiver));
             } catch (InteropException e) {
-                errorProfile.enter();
+                exceptionProfile.enter();
+                throw throwInteropException(e, contextRef.get().getMeta());
+            }
+        }
+    }
+
+    /**
+     * Returns {@code true} if the receiver is a modifiable buffer.
+     * <p>
+     * If this message returns {@code true}, then {@link InteropLibrary#getBufferSize(Object)},
+     * {@link InteropLibrary#writeBufferByte(Object, long, byte)},
+     * {@link InteropLibrary#writeBufferShort(Object, ByteOrder, long, short)},
+     * {@link InteropLibrary#writeBufferInt(Object, ByteOrder, long, int)},
+     * {@link InteropLibrary#writeBufferLong(Object, ByteOrder, long, long)},
+     * {@link InteropLibrary#writeBufferFloat(Object, ByteOrder, long, float)} and
+     * {@link InteropLibrary#writeBufferDouble(Object, ByteOrder, long, double)} must not throw
+     * {@link UnsupportedMessageException}.
+     * <p>
+     * Invoking this message does not cause any observable side-effects.
+     * <p>
+     * By default, it returns {@code false} if {@link InteropLibrary#hasBufferElements(Object)}
+     * return {@code true}, and throws {@link UnsupportedMessageException} otherwise.
+     *
+     * @see InteropLibrary#isBufferWritable(Object)
+     * @since 21.1
+     */
+    @Substitution
+    @Throws(others = @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnsupportedMessageException;"))
+    static abstract class IsBufferWritable extends Node {
+        static final int LIMIT = 2;
+
+        abstract boolean execute(@JavaType(Object.class) StaticObject receiver);
+
+        @Specialization
+        boolean doCached(
+                        @JavaType(Object.class) StaticObject receiver,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @CachedContext(EspressoLanguage.class) ContextReference<EspressoContext> contextRef,
+                        @Cached BranchProfile exceptionProfile) {
+            try {
+                return interop.isBufferWritable(unwrap(receiver));
+            } catch (InteropException e) {
+                exceptionProfile.enter();
+                throw throwInteropException(e, contextRef.get().getMeta());
+            }
+        }
+    }
+
+    /**
+     * Reads the byte from the receiver object at the given byte offset from the start of the
+     * buffer.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this message is <em>not</em>
+     * thread-safe.
+     * <p>
+     * Invoking this message does not cause any observable side-effects.
+     *
+     * <p>
+     * Throws InvalidBufferOffsetException if and only if
+     * <code>byteOffset < 0 || byteOffset >= </code>{@link InteropLibrary#getBufferSize(Object)}
+     * <p>
+     * Throws UnsupportedMessageException if and only if either
+     * {@link InteropLibrary#hasBufferElements(Object)} returns {@code false} returns {@code false}
+     *
+     * @since 21.1
+     */
+    @Substitution
+    @Throws(others = {
+                    @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnsupportedMessageException;"),
+                    @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/InvalidBufferOffsetException;")
+    })
+    static abstract class ReadBufferByte extends Node {
+        static final int LIMIT = 2;
+
+        abstract byte execute(@JavaType(Object.class) StaticObject receiver, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException;
+
+        @Specialization
+        byte doCached(
+                        @JavaType(Object.class) StaticObject receiver,
+                        long byteOffset,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @CachedContext(EspressoLanguage.class) ContextReference<EspressoContext> contextRef,
+                        @Cached BranchProfile exceptionProfile) {
+            try {
+                return interop.readBufferByte(unwrap(receiver), byteOffset);
+            } catch (InteropException e) {
+                exceptionProfile.enter();
+                throw throwInteropException(e, contextRef.get().getMeta());
+            }
+        }
+    }
+
+    /**
+     * Writes the given byte from the receiver object at the given byte offset from the start of the
+     * buffer.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this message is <em>not</em>
+     * thread-safe.
+     *
+     * <p>
+     * Throws InvalidBufferOffsetException if and only if
+     * <code>byteOffset < 0 || byteOffset >= </code>{@link InteropLibrary#getBufferSize(Object)}
+     * <p>
+     * Throws UnsupportedMessageException if and only if either
+     * {@link InteropLibrary#hasBufferElements(Object)} or {@link InteropLibrary#isBufferWritable}
+     * returns {@code false}
+     *
+     * @since 21.1
+     */
+    @Substitution
+    @Throws(others = {
+                    @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnsupportedMessageException;"),
+                    @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/InvalidBufferOffsetException;")
+    })
+    static abstract class WriteBufferByte extends Node {
+        static final int LIMIT = 2;
+
+        abstract void execute(@JavaType(Object.class) StaticObject receiver, long byteOffset, byte value);
+
+        @Specialization
+        void doCached(
+                        @JavaType(Object.class) StaticObject receiver,
+                        long byteOffset,
+                        byte value,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @CachedContext(EspressoLanguage.class) ContextReference<EspressoContext> contextRef,
+                        @Cached BranchProfile exceptionProfile) {
+            try {
+                interop.writeBufferByte(unwrap(receiver), byteOffset, value);
+            } catch (InteropException e) {
+                exceptionProfile.enter();
+                throw throwInteropException(e, contextRef.get().getMeta());
+            }
+        }
+    }
+
+    @TruffleBoundary
+    static @JavaType(ByteOrder.class) StaticObject getLittleEndian(EspressoContext context) {
+        Meta meta = context.getMeta();
+        StaticObject staticStorage = meta.java_nio_ByteOrder.tryInitializeAndGetStatics();
+        return meta.java_nio_ByteOrder_LITTLE_ENDIAN.getObject(staticStorage);
+    }
+
+    /**
+     * Reads the short from the receiver object in the given byte order at the given byte offset
+     * from the start of the buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this message is <em>not</em>
+     * thread-safe.
+     * <p>
+     * Invoking this message does not cause any observable side-effects.
+     *
+     * <p>
+     * Returns the short at the given byte offset from the start of the buffer.
+     *
+     * <p>
+     * Throws InvalidBufferOffsetException if and only if
+     * <code>byteOffset < 0 || byteOffset >= {@link InteropLibrary#getBufferSize(Object)} - 1</code>
+     * <p>
+     * Throws UnsupportedMessageException if and only if
+     * {@link InteropLibrary#hasBufferElements(Object)} returns {@code false}
+     *
+     * @since 21.1
+     */
+    @Substitution
+    @Throws(others = {
+                    @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnsupportedMessageException;"),
+                    @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/InvalidBufferOffsetException;")
+    })
+    static abstract class ReadBufferShort extends Node {
+        static final int LIMIT = 2;
+
+        abstract short execute(@JavaType(Object.class) StaticObject receiver, @JavaType(ByteOrder.class) StaticObject order, long byteOffset);
+
+        @Specialization
+        short doCached(
+                        @JavaType(Object.class) StaticObject receiver,
+                        @JavaType(ByteOrder.class) StaticObject order,
+                        long byteOffset,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @CachedContext(EspressoLanguage.class) ContextReference<EspressoContext> contextRef,
+                        @Cached BranchProfile exceptionProfile,
+                        @Cached("getLittleEndian(context)") @JavaType(ByteOrder.class) StaticObject littleEndian) {
+            try {
+                return interop.readBufferShort(unwrap(receiver),
+                                order == littleEndian
+                                                ? ByteOrder.LITTLE_ENDIAN
+                                                : ByteOrder.BIG_ENDIAN,
+                                byteOffset);
+            } catch (InteropException e) {
+                exceptionProfile.enter();
+                throw throwInteropException(e, contextRef.get().getMeta());
+            }
+        }
+    }
+
+    /**
+     * Writes the given short from the receiver object in the given byte order at the given byte
+     * offset from the start of the buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this message is <em>not</em>
+     * thread-safe.
+     *
+     * <p>
+     * Throws InvalidBufferOffsetException if and only if
+     * <code>byteOffset < 0 || byteOffset >= {@link InteropLibrary#getBufferSize(Object)} - 1</code>
+     * <p>
+     * Throws UnsupportedMessageException if and only if either
+     * {@link InteropLibrary#hasBufferElements(Object)} or {@link InteropLibrary#isBufferWritable}
+     * returns {@code false}
+     * 
+     * @since 21.1
+     */
+    @Substitution
+    @Throws(others = {
+                    @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnsupportedMessageException;"),
+                    @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/InvalidBufferOffsetException;")
+    })
+    static abstract class WriteBufferShort extends Node {
+        static final int LIMIT = 2;
+
+        abstract void execute(@JavaType(Object.class) StaticObject receiver, @JavaType(ByteOrder.class) StaticObject order, long byteOffset, short value);
+
+        @Specialization
+        void doCached(
+                        @JavaType(Object.class) StaticObject receiver,
+                        @JavaType(ByteOrder.class) StaticObject order,
+                        long byteOffset,
+                        short value,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @CachedContext(EspressoLanguage.class) ContextReference<EspressoContext> contextRef,
+                        @Cached BranchProfile exceptionProfile,
+                        @Cached("getLittleEndian(context)") @JavaType(ByteOrder.class) StaticObject littleEndian) {
+            try {
+                interop.writeBufferShort(unwrap(receiver),
+                                order == littleEndian
+                                                ? ByteOrder.LITTLE_ENDIAN
+                                                : ByteOrder.BIG_ENDIAN,
+                                byteOffset,
+                                value);
+            } catch (InteropException e) {
+                exceptionProfile.enter();
+                throw throwInteropException(e, contextRef.get().getMeta());
+            }
+        }
+    }
+
+    /**
+     * Reads the int from the receiver object in the given byte order at the given byte offset from
+     * the start of the buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this message is <em>not</em>
+     * thread-safe.
+     * <p>
+     * Invoking this message does not cause any observable side-effects.
+     *
+     * <p>
+     * Returns the int at the given byte offset from the start of the buffer
+     * <p>
+     * Throws InvalidBufferOffsetException if and only if
+     * <code>byteOffset < 0 || byteOffset >= {@link InteropLibrary#getBufferSize(Object)} - 3</code>
+     * <p>
+     * Throws UnsupportedMessageException if and only if
+     * {@link InteropLibrary#hasBufferElements(Object)} returns {@code false}
+     * 
+     * @since 21.1
+     */
+    @Substitution
+    @Throws(others = {
+                    @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnsupportedMessageException;"),
+                    @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/InvalidBufferOffsetException;")
+    })
+    static abstract class ReadBufferInt extends Node {
+        static final int LIMIT = 2;
+
+        abstract int execute(@JavaType(Object.class) StaticObject receiver, @JavaType(ByteOrder.class) StaticObject order, long byteOffset);
+
+        @Specialization
+        int doCached(
+                        @JavaType(Object.class) StaticObject receiver,
+                        @JavaType(ByteOrder.class) StaticObject order,
+                        long byteOffset,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @CachedContext(EspressoLanguage.class) ContextReference<EspressoContext> contextRef,
+                        @Cached BranchProfile exceptionProfile,
+                        @Cached("getLittleEndian(context)") @JavaType(ByteOrder.class) StaticObject littleEndian) {
+            try {
+                return interop.readBufferInt(unwrap(receiver),
+                                order == littleEndian
+                                                ? ByteOrder.LITTLE_ENDIAN
+                                                : ByteOrder.BIG_ENDIAN,
+                                byteOffset);
+            } catch (InteropException e) {
+                exceptionProfile.enter();
+                throw throwInteropException(e, contextRef.get().getMeta());
+            }
+        }
+    }
+
+    /**
+     * Writes the given int from the receiver object in the given byte order at the given byte
+     * offset from the start of the buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this message is <em>not</em>
+     * thread-safe.
+     *
+     * <p>
+     * Throws InvalidBufferOffsetException if and only if
+     * <code>byteOffset < 0 || byteOffset >= {@link InteropLibrary#getBufferSize(Object)} - 3</code>
+     * <p>
+     * Throws UnsupportedMessageException if and only if either
+     * {@link InteropLibrary#hasBufferElements(Object)} or {@link InteropLibrary#isBufferWritable}
+     * returns {@code false}
+     * 
+     * @since 21.1
+     */
+    @Substitution
+    @Throws(others = {
+                    @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnsupportedMessageException;"),
+                    @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/InvalidBufferOffsetException;")
+    })
+    static abstract class WriteBufferInt extends Node {
+        static final int LIMIT = 2;
+
+        abstract void execute(@JavaType(Object.class) StaticObject receiver, @JavaType(ByteOrder.class) StaticObject order, long byteOffset, int value);
+
+        @Specialization
+        void doCached(
+                        @JavaType(Object.class) StaticObject receiver,
+                        @JavaType(ByteOrder.class) StaticObject order,
+                        long byteOffset,
+                        int value,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @CachedContext(EspressoLanguage.class) ContextReference<EspressoContext> contextRef,
+                        @Cached BranchProfile exceptionProfile,
+                        @Cached("getLittleEndian(context)") @JavaType(ByteOrder.class) StaticObject littleEndian) {
+            try {
+                interop.writeBufferInt(unwrap(receiver),
+                                order == littleEndian
+                                                ? ByteOrder.LITTLE_ENDIAN
+                                                : ByteOrder.BIG_ENDIAN,
+                                byteOffset,
+                                value);
+            } catch (InteropException e) {
+                exceptionProfile.enter();
+                throw throwInteropException(e, contextRef.get().getMeta());
+            }
+        }
+    }
+
+    /**
+     * Reads the long from the receiver object in the given byte order at the given byte offset from
+     * the start of the buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this message is <em>not</em>
+     * thread-safe.
+     * <p>
+     * Invoking this message does not cause any observable side-effects.
+     *
+     * Returns the int at the given byte offset from the start of the buffer
+     * <p>
+     * Throws InvalidBufferOffsetException if and only if
+     * <code>byteOffset < 0 || byteOffset >= {@link InteropLibrary#getBufferSize(Object)} - 7</code>
+     * <p>
+     * Throws UnsupportedMessageException if and only if
+     * {@link InteropLibrary#hasBufferElements(Object)} returns {@code false}
+     * 
+     * @since 21.1
+     */
+    @Substitution
+    @Throws(others = {
+                    @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnsupportedMessageException;"),
+                    @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/InvalidBufferOffsetException;")
+    })
+    static abstract class ReadBufferLong extends Node {
+        static final int LIMIT = 2;
+
+        abstract long execute(@JavaType(Object.class) StaticObject receiver, @JavaType(ByteOrder.class) StaticObject order, long byteOffset);
+
+        @Specialization
+        long doCached(
+                        @JavaType(Object.class) StaticObject receiver,
+                        @JavaType(ByteOrder.class) StaticObject order,
+                        long byteOffset,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @CachedContext(EspressoLanguage.class) ContextReference<EspressoContext> contextRef,
+                        @Cached BranchProfile exceptionProfile,
+                        @Cached("getLittleEndian(context)") @JavaType(ByteOrder.class) StaticObject littleEndian) {
+            try {
+                return interop.readBufferLong(unwrap(receiver),
+                                order == littleEndian
+                                                ? ByteOrder.LITTLE_ENDIAN
+                                                : ByteOrder.BIG_ENDIAN,
+                                byteOffset);
+            } catch (InteropException e) {
+                exceptionProfile.enter();
+                throw throwInteropException(e, contextRef.get().getMeta());
+            }
+        }
+    }
+
+    /**
+     * Writes the given long from the receiver object in the given byte order at the given byte
+     * offset from the start of the buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this message is <em>not</em>
+     * thread-safe.
+     *
+     * <p>
+     * Throws InvalidBufferOffsetException if and only if
+     * <code>byteOffset < 0 || byteOffset >= {@link InteropLibrary#getBufferSize(Object)} - 7</code>
+     * <p>
+     * Throws UnsupportedMessageException if and only if either
+     * {@link InteropLibrary#hasBufferElements(Object)} or {@link InteropLibrary#isBufferWritable}
+     * returns {@code false}
+     * 
+     * @since 21.1
+     */
+    @Substitution
+    @Throws(others = {
+                    @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnsupportedMessageException;"),
+                    @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/InvalidBufferOffsetException;")
+    })
+    static abstract class WriteBufferLong extends Node {
+        static final int LIMIT = 2;
+
+        abstract void execute(@JavaType(Object.class) StaticObject receiver, @JavaType(ByteOrder.class) StaticObject order, long byteOffset, long value);
+
+        @Specialization
+        void doCached(
+                        @JavaType(Object.class) StaticObject receiver,
+                        @JavaType(ByteOrder.class) StaticObject order,
+                        long byteOffset,
+                        long value,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @CachedContext(EspressoLanguage.class) ContextReference<EspressoContext> contextRef,
+                        @Cached BranchProfile exceptionProfile,
+                        @Cached("getLittleEndian(context)") @JavaType(ByteOrder.class) StaticObject littleEndian) {
+            try {
+                interop.writeBufferLong(unwrap(receiver),
+                                order == littleEndian
+                                                ? ByteOrder.LITTLE_ENDIAN
+                                                : ByteOrder.BIG_ENDIAN,
+                                byteOffset,
+                                value);
+            } catch (InteropException e) {
+                exceptionProfile.enter();
+                throw throwInteropException(e, contextRef.get().getMeta());
+            }
+        }
+    }
+
+    /**
+     * Reads the float from the receiver object in the given byte order at the given byte offset
+     * from the start of the buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this message is <em>not</em>
+     * thread-safe.
+     * <p>
+     * Invoking this message does not cause any observable side-effects.
+     *
+     * Returns the float at the given byte offset from the start of the buffer
+     * <p>
+     * Throws InvalidBufferOffsetException if and only if
+     * <code>byteOffset < 0 || byteOffset >= {@link InteropLibrary#getBufferSize(Object)} - 3</code>
+     * <p>
+     * Throws UnsupportedMessageException if and only if
+     * {@link InteropLibrary#hasBufferElements(Object)} returns {@code false}
+     * 
+     * @since 21.1
+     */
+    @Substitution
+    @Throws(others = {
+                    @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnsupportedMessageException;"),
+                    @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/InvalidBufferOffsetException;")
+    })
+    static abstract class ReadBufferFloat extends Node {
+        static final int LIMIT = 2;
+
+        abstract float execute(@JavaType(Object.class) StaticObject receiver, @JavaType(ByteOrder.class) StaticObject order, long byteOffset);
+
+        @Specialization
+        float doCached(
+                        @JavaType(Object.class) StaticObject receiver,
+                        @JavaType(ByteOrder.class) StaticObject order,
+                        long byteOffset,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @CachedContext(EspressoLanguage.class) ContextReference<EspressoContext> contextRef,
+                        @Cached BranchProfile exceptionProfile,
+                        @Cached("getLittleEndian(context)") @JavaType(ByteOrder.class) StaticObject littleEndian) {
+            try {
+                return interop.readBufferFloat(unwrap(receiver),
+                                order == littleEndian
+                                                ? ByteOrder.LITTLE_ENDIAN
+                                                : ByteOrder.BIG_ENDIAN,
+                                byteOffset);
+            } catch (InteropException e) {
+                exceptionProfile.enter();
+                throw throwInteropException(e, contextRef.get().getMeta());
+            }
+        }
+    }
+
+    /**
+     * Writes the given float from the receiver object in the given byte order at the given byte
+     * offset from the start of the buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this message is <em>not</em>
+     * thread-safe.
+     *
+     * <p>
+     * Throws InvalidBufferOffsetException if and only if
+     * <code>byteOffset < 0 || byteOffset >= {@link InteropLibrary#getBufferSize(Object)} - 3</code>
+     * <p>
+     * Throws UnsupportedMessageException if and only if either
+     * {@link InteropLibrary#hasBufferElements(Object)} or {@link InteropLibrary#isBufferWritable}
+     * returns {@code false}
+     * 
+     * @since 21.1
+     */
+    @Substitution
+    @Throws(others = {
+                    @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnsupportedMessageException;"),
+                    @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/InvalidBufferOffsetException;")
+    })
+    static abstract class WriteBufferFloat extends Node {
+        static final int LIMIT = 2;
+
+        abstract void execute(@JavaType(Object.class) StaticObject receiver, @JavaType(ByteOrder.class) StaticObject order, long byteOffset, float value);
+
+        @Specialization
+        void doCached(
+                        @JavaType(Object.class) StaticObject receiver,
+                        @JavaType(ByteOrder.class) StaticObject order,
+                        long byteOffset,
+                        float value,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @CachedContext(EspressoLanguage.class) ContextReference<EspressoContext> contextRef,
+                        @Cached BranchProfile exceptionProfile,
+                        @Cached("getLittleEndian(context)") @JavaType(ByteOrder.class) StaticObject littleEndian) {
+            try {
+                interop.writeBufferFloat(unwrap(receiver),
+                                order == littleEndian
+                                                ? ByteOrder.LITTLE_ENDIAN
+                                                : ByteOrder.BIG_ENDIAN,
+                                byteOffset,
+                                value);
+            } catch (InteropException e) {
+                exceptionProfile.enter();
+                throw throwInteropException(e, contextRef.get().getMeta());
+            }
+        }
+    }
+
+    /**
+     * Reads the double from the receiver object in the given byte order at the given byte offset
+     * from the start of the buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this message is <em>not</em>
+     * thread-safe.
+     * <p>
+     * Invoking this message does not cause any observable side-effects.
+     *
+     * Returns the double at the given byte offset from the start of the buffer
+     * <p>
+     * Throws InvalidBufferOffsetException if and only if
+     * <code>byteOffset < 0 || byteOffset >= {@link InteropLibrary#getBufferSize(Object)} - 7</code>
+     * <p>
+     * Throws UnsupportedMessageException if and only if
+     * {@link InteropLibrary#hasBufferElements(Object)} returns {@code false}
+     * 
+     * @since 21.1
+     */
+    @Substitution
+    @Throws(others = {
+                    @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnsupportedMessageException;"),
+                    @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/InvalidBufferOffsetException;")
+    })
+    static abstract class ReadBufferDouble extends Node {
+        static final int LIMIT = 2;
+
+        abstract double execute(@JavaType(Object.class) StaticObject receiver, @JavaType(ByteOrder.class) StaticObject order, long byteOffset);
+
+        @Specialization
+        double doCached(
+                        @JavaType(Object.class) StaticObject receiver,
+                        @JavaType(ByteOrder.class) StaticObject order,
+                        long byteOffset,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @CachedContext(EspressoLanguage.class) ContextReference<EspressoContext> contextRef,
+                        @Cached BranchProfile exceptionProfile,
+                        @Cached("getLittleEndian(context)") @JavaType(ByteOrder.class) StaticObject littleEndian) {
+            try {
+                return interop.readBufferDouble(unwrap(receiver),
+                                order == littleEndian
+                                                ? ByteOrder.LITTLE_ENDIAN
+                                                : ByteOrder.BIG_ENDIAN,
+                                byteOffset);
+            } catch (InteropException e) {
+                exceptionProfile.enter();
+                throw throwInteropException(e, contextRef.get().getMeta());
+            }
+        }
+    }
+
+    /**
+     * Writes the given double from the receiver object in the given byte order at the given byte
+     * offset from the start of the buffer.
+     * <p>
+     * Unaligned accesses are supported.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this message is <em>not</em>
+     * thread-safe.
+     *
+     * <p>
+     * Throws InvalidBufferOffsetException if and only if
+     * <code>byteOffset < 0 || byteOffset >= {@link InteropLibrary#getBufferSize(Object)} - 7</code>
+     * <p>
+     * Throws UnsupportedMessageException if and only if either
+     * {@link InteropLibrary#hasBufferElements(Object)} or {@link InteropLibrary#isBufferWritable}
+     * returns {@code false}
+     * 
+     * @since 21.1
+     */
+    @Substitution
+    @Throws(others = {
+                    @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnsupportedMessageException;"),
+                    @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/InvalidBufferOffsetException;")
+    })
+    static abstract class WriteBufferDouble extends Node {
+        static final int LIMIT = 2;
+
+        abstract void execute(@JavaType(Object.class) StaticObject receiver, @JavaType(ByteOrder.class) StaticObject order, long byteOffset, double value);
+
+        @Specialization
+        void doCached(
+                        @JavaType(Object.class) StaticObject receiver,
+                        @JavaType(ByteOrder.class) StaticObject order,
+                        long byteOffset,
+                        double value,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @CachedContext(EspressoLanguage.class) ContextReference<EspressoContext> contextRef,
+                        @Cached BranchProfile exceptionProfile,
+                        @Cached("getLittleEndian(context)") @JavaType(ByteOrder.class) StaticObject littleEndian) {
+            try {
+                interop.writeBufferDouble(unwrap(receiver),
+                                order == littleEndian
+                                                ? ByteOrder.LITTLE_ENDIAN
+                                                : ByteOrder.BIG_ENDIAN,
+                                byteOffset,
+                                value);
+            } catch (InteropException e) {
+                exceptionProfile.enter();
                 throw throwInteropException(e, contextRef.get().getMeta());
             }
         }
@@ -1675,6 +2346,18 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                             ? (StaticObject) meta.polyglot.InvalidArrayIndexException_create_long.invokeDirect(null, invalidIndex)
                             // InvalidArrayIndexException.create(long invalidIndex, Throwable cause)
                             : (StaticObject) meta.polyglot.InvalidArrayIndexException_create_long_Throwable.invokeDirect(null, invalidIndex, wrapForeignException(cause, meta));
+            throw EspressoException.wrap(exception, meta);
+        }
+
+        if (e instanceof InvalidBufferOffsetException) {
+            long byteOffset = ((InvalidBufferOffsetException) e).getByteOffset();
+            long length = ((InvalidBufferOffsetException) e).getLength();
+            Throwable cause = e.getCause();
+            StaticObject exception = (cause == null || !(cause instanceof AbstractTruffleException))
+                            // InvalidArrayIndexException.create(long byteOffset)
+                            ? (StaticObject) meta.polyglot.InvalidBufferOffsetException_create_long_long.invokeDirect(null, byteOffset, length)
+                            // InvalidArrayIndexException.create(long byteOffset, Throwable cause)
+                            : (StaticObject) meta.polyglot.InvalidBufferOffsetException_create_long_long_Throwable.invokeDirect(null, byteOffset, length, wrapForeignException(cause, meta));
             throw EspressoException.wrap(exception, meta);
         }
 
