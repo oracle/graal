@@ -339,6 +339,17 @@ public final class CPUSampler implements Closeable {
     }
 
     /**
+     * Returns how may samples were missed, i.e. how many times taking a stack sample was requested
+     * but was not provided by the runtime in a timely manner.
+     * 
+     * @return The number of missed samples.
+     * @since 21.3.0
+     */
+    public int missedSamples() {
+        return safepointStackSampler.missedSamples();
+    }
+
+    /**
      * Merges all the 'per thread' profiles into one set of nodes and returns it.
      *
      * @return The roots of the trees representing the profile of the execution.

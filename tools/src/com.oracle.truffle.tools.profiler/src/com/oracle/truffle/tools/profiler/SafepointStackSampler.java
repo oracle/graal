@@ -63,6 +63,7 @@ final class SafepointStackSampler {
     private final ThreadLocal<SyntheticFrame> syntheticFrameThreadLocal = ThreadLocal.withInitial(() -> null);
     private final long period;
     private boolean overflowed;
+    private int missedSamples;
 
     SafepointStackSampler(int stackLimit, SourceSectionFilter sourceSectionFilter, long period) {
         this.stackLimit = stackLimit;
@@ -104,6 +105,7 @@ final class SafepointStackSampler {
             return null;
         } catch (TimeoutException e) {
             future.cancel(false);
+            missedSamples++;
         }
         // we compute the time to find out how accurate this sample is.
         List<StackSample> perThreadSamples = new ArrayList<>();
@@ -124,6 +126,10 @@ final class SafepointStackSampler {
 
     boolean hasOverflowed() {
         return overflowed;
+    }
+
+    public int missedSamples() {
+        return missedSamples;
     }
 
     private void stackOverflowed(boolean visitorOverflowed) {
