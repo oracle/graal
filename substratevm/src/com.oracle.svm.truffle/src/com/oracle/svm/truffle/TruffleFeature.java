@@ -1043,24 +1043,19 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
             // for example because of context pre-initialization. Therefore, we inspect the
             // generator cache in ArrayBasedShapeGenerator, which contains references to all
             // generated storage classes.
-            WeakHashMap<Class<?>, WeakHashMap<Class<?>, ?>> generatorCache = ReflectionUtil.readStaticField(SHAPE_GENERATOR, "generatorCache");
-            // Checkstyle: stop
-            synchronized (generatorCache) {
-                // Checkstyle: resume
-                for (WeakHashMap<Class<?>, ?> innerMap : generatorCache.values()) {
-                    for (Object shapeGenerator : innerMap.values()) {
-                        if (!registeredShapeGenerators.containsKey(shapeGenerator)) {
-                            registeredShapeGenerators.put(shapeGenerator, shapeGenerator);
-                            requiresIteration = true;
-                            Class<?> storageClass = ReflectionUtil.readField(SHAPE_GENERATOR, "generatedStorageClass", shapeGenerator);
-                            Class<?> factoryClass = ReflectionUtil.readField(SHAPE_GENERATOR, "generatedFactoryClass", shapeGenerator);
-                            for (Constructor<?> c : factoryClass.getDeclaredConstructors()) {
-                                RuntimeReflection.register(c);
-                            }
-                            for (String fieldName : new String[]{"primitive", "object", "shape"}) {
-                                beforeAnalysisAccess.registerAsUnsafeAccessed(ReflectionUtil.lookupField(storageClass, fieldName));
-                            }
-                        }
+            ConcurrentHashMap<?, ?> generatorCache = ReflectionUtil.readStaticField(SHAPE_GENERATOR, "generatorCache");
+            for (Map.Entry<?, ?> entry : generatorCache.entrySet()) {
+                Object shapeGenerator = entry.getValue();
+                if (!registeredShapeGenerators.containsKey(shapeGenerator)) {
+                    registeredShapeGenerators.put(shapeGenerator, shapeGenerator);
+                    requiresIteration = true;
+                    Class<?> storageClass = ReflectionUtil.readField(SHAPE_GENERATOR, "generatedStorageClass", shapeGenerator);
+                    Class<?> factoryClass = ReflectionUtil.readField(SHAPE_GENERATOR, "generatedFactoryClass", shapeGenerator);
+                    for (Constructor<?> c : factoryClass.getDeclaredConstructors()) {
+                        RuntimeReflection.register(c);
+                    }
+                    for (String fieldName : new String[]{"primitive", "object", "shape"}) {
+                        beforeAnalysisAccess.registerAsUnsafeAccessed(ReflectionUtil.lookupField(storageClass, fieldName));
                     }
                 }
             }

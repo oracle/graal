@@ -44,7 +44,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Map;
-import java.util.WeakHashMap;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -55,6 +55,7 @@ import com.oracle.truffle.api.impl.asm.Label;
 import com.oracle.truffle.api.impl.asm.MethodVisitor;
 import com.oracle.truffle.api.impl.asm.Opcodes;
 import com.oracle.truffle.api.impl.asm.Type;
+import org.graalvm.collections.Pair;
 
 import static com.oracle.truffle.api.impl.asm.Opcodes.ACC_FINAL;
 import static com.oracle.truffle.api.impl.asm.Opcodes.ACC_PUBLIC;
@@ -87,7 +88,7 @@ import static com.oracle.truffle.api.impl.asm.Opcodes.T_BYTE;
 import static com.oracle.truffle.api.impl.asm.Opcodes.V1_8;
 
 final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
-    private static final WeakHashMap<Class<?>, WeakHashMap<Class<?>, ArrayBasedShapeGenerator<?>>> generatorCache = new WeakHashMap<>();
+    private static final ConcurrentHashMap<Pair<Class<?>, Class<?>>, ArrayBasedShapeGenerator<?>> generatorCache = new ConcurrentHashMap<>();
     private static final String[] ARRAY_SIZE_FIELDS = new String[]{"primitiveArraySize", "objectArraySize"};
 
     private final Class<?> generatedStorageClass;
@@ -128,22 +129,15 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
 
     @SuppressWarnings("unchecked")
     static <T> ArrayBasedShapeGenerator<T> getShapeGenerator(GeneratorClassLoader gcl, Class<?> storageSuperClass, Class<T> storageFactoryInterface) {
-        ArrayBasedShapeGenerator<T> sg;
-        WeakHashMap<Class<?>, ArrayBasedShapeGenerator<?>> innerMap;
-        synchronized (generatorCache) {
-            innerMap = generatorCache.get(storageSuperClass);
-            if (innerMap == null) {
-                innerMap = new WeakHashMap<>();
-                generatorCache.put(storageSuperClass, innerMap);
-            }
-            sg = (ArrayBasedShapeGenerator<T>) innerMap.get(storageFactoryInterface);
-        }
+        Pair<Class<?>, Class<?>> pair = Pair.create(storageSuperClass, storageFactoryInterface);
+        ArrayBasedShapeGenerator<T> sg = (ArrayBasedShapeGenerator<T>) generatorCache.get(pair);
         if (sg == null) {
             Class<?> generatedStorageClass = generateStorage(gcl, storageSuperClass);
             Class<? extends T> generatedFactoryClass = generateFactory(gcl, generatedStorageClass, storageFactoryInterface);
             sg = new ArrayBasedShapeGenerator<>(generatedStorageClass, generatedFactoryClass);
-            synchronized (generatorCache) {
-                innerMap.put(storageFactoryInterface, sg);
+            ArrayBasedShapeGenerator<T> prevSg = (ArrayBasedShapeGenerator<T>) generatorCache.putIfAbsent(pair, sg);
+            if (prevSg != null) {
+                sg = prevSg;
             }
         }
         return sg;
