@@ -82,6 +82,14 @@ public abstract class StaticProperty {
     @CompilationFinal //
     private int offset;
 
+    /**
+     * Constructor for subclasses.
+     * 
+     * @since 21.3.0
+     */
+    protected StaticProperty() {
+    }
+
     void init(StaticPropertyKind kind, boolean storeAsFinal) {
         byte internalKind = getInternalKind(kind);
         assert (internalKind & STORE_AS_FINAL) == 0;
