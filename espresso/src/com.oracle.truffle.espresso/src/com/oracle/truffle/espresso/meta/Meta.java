@@ -54,6 +54,10 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+
 /**
  * Introspection API to access the guest world from the host. Provides seamless conversions from
  * host to guest classes for a well known subset (e.g. common types and exceptions).
@@ -80,6 +84,12 @@ public final class Meta implements ContextAccess {
         java_lang_Cloneable = knownKlass(Type.java_lang_Cloneable);
         java_io_Serializable = knownKlass(Type.java_io_Serializable);
         ARRAY_SUPERINTERFACES = new ObjectKlass[]{java_lang_Cloneable, java_io_Serializable};
+        java_lang_Object_array = java_lang_Object.array();
+
+        EspressoError.guarantee(
+                new HashSet<>(Arrays.asList(ARRAY_SUPERINTERFACES))
+                        .equals(new HashSet<>(Arrays.asList(java_lang_Object_array.getSuperInterfaces()))),
+                "arrays super interfaces must contain java.lang.Cloneable and java.io.Serializable");
 
         java_lang_Class = knownKlass(Type.java_lang_Class);
         HIDDEN_MIRROR_KLASS = java_lang_Class.requireHiddenField(Name.HIDDEN_MIRROR_KLASS);
@@ -93,7 +103,6 @@ public final class Meta implements ContextAccess {
         java_lang_Class_forName_String_boolean_ClassLoader = java_lang_Class.requireDeclaredMethod(Name.forName, Signature.Class_String_boolean_ClassLoader);
         HIDDEN_PROTECTION_DOMAIN = java_lang_Class.requireHiddenField(Name.HIDDEN_PROTECTION_DOMAIN);
 
-        java_lang_Object_array = java_lang_Object.array();
 
         // Primitives.
         _boolean = new PrimitiveKlass(context, JavaKind.Boolean);
