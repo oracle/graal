@@ -168,10 +168,11 @@ public class BuilderPropertyTest extends StaticObjectModelTest {
             StaticProperty p2 = new DefaultStaticProperty("forbidden;char");
             StaticProperty p3 = new DefaultStaticProperty("forbidden[char");
             StaticProperty p4 = new DefaultStaticProperty("forbidden/char");
-            builder.property(p1, int.class, false) //
-                            .property(p2, int.class, false) //
-                            .property(p3, int.class, false) //
-                            .property(p4, int.class, false).build();
+            builder.property(p1, int.class, false);
+            builder.property(p2, int.class, false);
+            builder.property(p3, int.class, false);
+            builder.property(p4, int.class, false);
+            builder.build();
         }
     }
 
@@ -184,8 +185,8 @@ public class BuilderPropertyTest extends StaticObjectModelTest {
             StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
             StaticProperty p1 = new DefaultStaticProperty("property1");
             StaticProperty p2 = new DefaultStaticProperty(new String(longId));
-            builder.property(p1, int.class, false) //
-                            .property(p2, int.class, false);
+            builder.property(p1, int.class, false);
+            builder.property(p2, int.class, false);
             Object staticObject = builder.build().getFactory().create();
             p1.setInt(staticObject, 1);
             p2.setInt(staticObject, 2);
