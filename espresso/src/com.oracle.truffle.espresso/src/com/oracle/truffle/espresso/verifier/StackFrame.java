@@ -28,10 +28,10 @@ import static com.oracle.truffle.espresso.verifier.MethodVerifier.Int;
 import static com.oracle.truffle.espresso.verifier.MethodVerifier.Invalid;
 import static com.oracle.truffle.espresso.verifier.MethodVerifier.Long;
 import static com.oracle.truffle.espresso.verifier.MethodVerifier.Null;
-import static com.oracle.truffle.espresso.verifier.MethodVerifier.failFormatIf;
 import static com.oracle.truffle.espresso.verifier.MethodVerifier.failVerify;
-import static com.oracle.truffle.espresso.verifier.MethodVerifier.failVerifyIf;
+import static com.oracle.truffle.espresso.verifier.MethodVerifier.formatGuarantee;
 import static com.oracle.truffle.espresso.verifier.MethodVerifier.isType2;
+import static com.oracle.truffle.espresso.verifier.MethodVerifier.verifyGuarantee;
 
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 
@@ -144,8 +144,8 @@ final class OperandStack {
 
     void procSize(int modif) {
         size += modif;
-        failVerifyIf(size > stack.length, "insufficent stack size: " + stack.length);
-        failVerifyIf(size < 0, "invalid stack access: " + size);
+        verifyGuarantee(size <= stack.length, "insufficent stack size: " + stack.length);
+        verifyGuarantee(size >= 0, "invalid stack access: " + size);
     }
 
     void pushInt() {
@@ -173,42 +173,39 @@ final class OperandStack {
         }
     }
 
-    void popInt() {
-        pop(Int);
+    private Operand popAny() {
+        verifyGuarantee(top > 0, "Popping an empty stack");
+        Operand op = stack[--top];
+        procSize(-op.slots());
+        return op;
     }
 
     Operand popRef() {
-        procSize(-1);
-        failVerifyIf(top <= 0, "Popping an empty stack");
-        Operand op = stack[--top];
-        failVerifyIf(!op.isReference(), "Invalid operand. Expected a reference, found: " + op);
+        Operand op = popAny();
+        verifyGuarantee(op.isReference(), "Invalid operand. Expected a reference, found: " + op);
         return op;
     }
 
     Operand popRef(Operand kind) {
-        procSize(-(kind.slots()));
-        failVerifyIf(top <= 0, "Popping an empty stack");
-        Operand op = stack[--top];
-        failVerifyIf(!op.isReference(), "Popped " + op + " when a reference was expected!");
-        failVerifyIf(!op.compliesWith(kind), "Type check error: " + op + " cannot be merged into " + kind);
+        Operand op = popRef();
+        verifyGuarantee(op.compliesWith(kind), "Type check error: " + op + " cannot be merged into " + kind);
         return op;
     }
 
     public Operand popUninitRef(Operand kind) {
-        procSize(-(kind.slots()));
-        failVerifyIf(top <= 0, "Popping an empty stack");
-        Operand op = stack[--top];
-        failVerifyIf(!op.compliesWith(kind), "Type check error: " + op + " cannot be merged into " + kind);
-        failVerifyIf(!op.isUninit(), "Calling initialization method on already initialized reference.");
+        Operand op = popRef(kind);
+        verifyGuarantee(op.isUninit(), "Calling initialization method on already initialized reference.");
         return op;
     }
 
     Operand popArray() {
-        procSize(-1);
-        failVerifyIf(top <= 0, "Popping an empty stack");
-        Operand op = stack[--top];
-        failVerifyIf(!(op == Null || op.isArrayType()), "Invalid operand. Expected array, found: " + op);
+        Operand op = popRef();
+        verifyGuarantee(op == Null || op.isArrayType(), "Invalid operand. Expected array, found: " + op);
         return op;
+    }
+
+    void popInt() {
+        pop(Int);
     }
 
     void popFloat() {
@@ -224,19 +221,15 @@ final class OperandStack {
     }
 
     Operand popObjOrRA() {
-        procSize(-1);
-        failVerifyIf(top <= 0, "Popping an empty stack");
-        Operand op = stack[--top];
-        failVerifyIf(!(op.isReference() || op.isReturnAddress()), op + " on stack, required: Reference or ReturnAddress");
+        Operand op = popAny();
+        verifyGuarantee(op.isReference() || op.isReturnAddress(), op + " on stack, required: Reference or ReturnAddress");
         return op;
     }
 
     Operand pop(Operand k) {
         if (!k.getKind().isStackInt() || k == Int) {
-            procSize(-(k.slots()));
-            failVerifyIf(top <= 0, "Popping an empty stack");
-            Operand op = stack[--top];
-            failVerifyIf(!(op.compliesWith(k)), stack[top] + " on stack, required: " + k);
+            Operand op = popAny();
+            verifyGuarantee(op.compliesWith(k), op + " on stack, required: " + k);
             return op;
         } else {
             return pop(Int);
@@ -246,31 +239,31 @@ final class OperandStack {
     void dup() {
         procSize(1);
         Operand v = stack[top - 1];
-        failVerifyIf(isType2(v), "type 2 operand for dup.");
-        failVerifyIf(v.isTopOperand(), "dup of Top type.");
+        verifyGuarantee(!isType2(v), "type 2 operand for dup.");
+        verifyGuarantee(!v.isTopOperand(), "dup of Top type.");
         stack[top] = v;
         top++;
     }
 
     void pop() {
         procSize(-1);
-        Operand v1 = stack[top - 1];
-        failVerifyIf(v1.isTopOperand(), "dup2x2 of Top type.");
-        failVerifyIf(isType2(v1), "type 2 operand for pop.");
+        Operand v = stack[top - 1];
+        verifyGuarantee(!isType2(v), "type 2 operand for pop.");
+        verifyGuarantee(!v.isTopOperand(), "dup2x2 of Top type.");
         top--;
     }
 
     void pop2() {
         procSize(-2);
         Operand v1 = stack[top - 1];
-        failVerifyIf(v1.isTopOperand(), "dup2x2 of Top type.");
+        verifyGuarantee(!v1.isTopOperand(), "dup2x2 of Top type.");
         if (isType2(v1)) {
             top--;
             return;
         }
         Operand v2 = stack[top - 2];
-        failVerifyIf(v2.isTopOperand(), "dup2x2 of Top type.");
-        failVerifyIf(isType2(v2), "type 2 second operand for pop2.");
+        verifyGuarantee(!v2.isTopOperand(), "dup2x2 of Top type.");
+        verifyGuarantee(!isType2(v2), "type 2 second operand for pop2.");
         top = top - 2;
     }
 
@@ -278,8 +271,8 @@ final class OperandStack {
         procSize(1);
         Operand v1 = stack[top - 1];
         Operand v2 = stack[top - 2];
-        failVerifyIf(isType2(v1) || isType2(v2), "type 2 operand for dupx1.");
-        failVerifyIf(v1.isTopOperand() || v2.isTopOperand(), "dupx1 of Top type.");
+        verifyGuarantee(!isType2(v1) && !isType2(v2), "type 2 operand for dupx1.");
+        verifyGuarantee(!v1.isTopOperand() && !v2.isTopOperand(), "dupx1 of Top type.");
         System.arraycopy(stack, top - 2, stack, top - 1, 2);
         top++;
         stack[top - 3] = v1;
@@ -288,17 +281,17 @@ final class OperandStack {
     void dupx2() {
         procSize(1);
         Operand v1 = stack[top - 1];
-        failVerifyIf(isType2(v1), "type 2 first operand for dupx2.");
         Operand v2 = stack[top - 2];
-        failVerifyIf(v1.isTopOperand() || v2.isTopOperand(), "dupx2 of Top type.");
+        verifyGuarantee(!isType2(v1), "type 2 first operand for dupx2.");
+        verifyGuarantee(!v1.isTopOperand() && !v2.isTopOperand(), "dupx2 of Top type.");
         if (isType2(v2)) {
             System.arraycopy(stack, top - 2, stack, top - 1, 2);
             top++;
             stack[top - 3] = v1;
         } else {
             Operand v3 = stack[top - 3];
-            failVerifyIf(isType2(v3), "type 2 third operand for dupx2.");
-            failVerifyIf(v3.isTopOperand(), "dupx2 of Top type.");
+            verifyGuarantee(!isType2(v3), "type 2 third operand for dupx2.");
+            verifyGuarantee(!v3.isTopOperand(), "dupx2 of Top type.");
             System.arraycopy(stack, top - 3, stack, top - 2, 3);
             top++;
             stack[top - 4] = v1;
@@ -313,8 +306,8 @@ final class OperandStack {
             top++;
         } else {
             Operand v2 = stack[top - 2];
-            failVerifyIf(isType2(v2), "type 2 second operand for dup2.");
-            failVerifyIf(v1.isTopOperand() || v2.isTopOperand(), "dup2 of Top type.");
+            verifyGuarantee(!isType2(v2), "type 2 second operand for dup2.");
+            verifyGuarantee(!v1.isTopOperand() && !v2.isTopOperand(), "dup2 of Top type.");
             System.arraycopy(stack, top - 2, stack, top, 2);
             top = top + 2;
         }
@@ -324,8 +317,8 @@ final class OperandStack {
         procSize(2);
         Operand v1 = stack[top - 1];
         Operand v2 = stack[top - 2];
-        failVerifyIf(isType2(v2), "type 2 second operand for dup2x1");
-        failVerifyIf(v2.isTopOperand() || v1.isTopOperand(), "dup2x1 of Top type.");
+        verifyGuarantee(!isType2(v2), "type 2 second operand for dup2x1");
+        verifyGuarantee(!v2.isTopOperand() && !v1.isTopOperand(), "dup2x1 of Top type.");
         if (isType2(v1)) {
             System.arraycopy(stack, top - 2, stack, top - 1, 2);
             top++;
@@ -333,8 +326,8 @@ final class OperandStack {
             return;
         }
         Operand v3 = stack[top - 3];
-        failVerifyIf(isType2(v3), "type 2 third operand for dup2x1.");
-        failVerifyIf(v3.isTopOperand(), "dup2x1 of Top type.");
+        verifyGuarantee(!isType2(v3), "type 2 third operand for dup2x1.");
+        verifyGuarantee(!v3.isTopOperand(), "dup2x1 of Top type.");
         System.arraycopy(stack, top - 3, stack, top - 1, 3);
         top = top + 2;
         stack[top - 5] = v2;
@@ -348,7 +341,7 @@ final class OperandStack {
         boolean b1 = isType2(v1);
         boolean b2 = isType2(v2);
 
-        failVerifyIf(v1.isTopOperand() || v2.isTopOperand(), "dup2x2 of Top type.");
+        verifyGuarantee(!v1.isTopOperand() || !v2.isTopOperand(), "dup2x2 of Top type.");
 
         if (b1 && b2) {
             System.arraycopy(stack, top - 2, stack, top - 1, 2);
@@ -358,7 +351,7 @@ final class OperandStack {
         }
         Operand v3 = stack[top - 3];
         boolean b3 = isType2(v3);
-        failVerifyIf(v3.isTopOperand(), "dup2x2 of Top type.");
+        verifyGuarantee(!v3.isTopOperand(), "dup2x2 of Top type.");
         if (!b1 && !b2 && b3) {
             System.arraycopy(stack, top - 3, stack, top - 1, 3);
             stack[top - 3] = v2;
@@ -373,7 +366,7 @@ final class OperandStack {
             return;
         }
         Operand v4 = stack[top - 4];
-        failVerifyIf(v4.isTopOperand(), "dup2x2 of Top type.");
+        verifyGuarantee(!v4.isTopOperand(), "dup2x2 of Top type.");
         boolean b4 = isType2(v4);
         if (!b1 && !b2 && !b3 && !b4) {
             System.arraycopy(stack, top - 4, stack, top - 2, 4);
@@ -389,19 +382,14 @@ final class OperandStack {
     void swap() {
         Operand v1 = stack[top - 1];
         Operand v2 = stack[top - 2];
-        boolean b1 = isType2(v1);
-        boolean b2 = isType2(v2);
-        failVerifyIf(v1.isTopOperand() || v2.isTopOperand(), "swap of Top type.");
-        if (!b1 && !b2) {
-            stack[top - 1] = v2;
-            stack[top - 2] = v1;
-            return;
-        }
-        throw failVerify("Type 2 operand for SWAP");
+        verifyGuarantee(!isType2(v1) && !isType2(v2), "Type 2 operand for SWAP");
+        verifyGuarantee(!v1.isTopOperand() && !v2.isTopOperand(), "swap of Top type.");
+        stack[top - 1] = v2;
+        stack[top - 2] = v1;
     }
 
     int mergeInto(StackFrame stackFrame) {
-        failVerifyIf(size != stackFrame.stackSize, "Inconsistent stack height: " + top + " != " + stackFrame.stack.length);
+        verifyGuarantee(size == stackFrame.stackSize, "Inconsistent stack height: " + size + " != " + stackFrame.stackSize);
         int secondIndex = 0;
         for (int index = 0; index < top; index++) {
             Operand op1 = stack[index];
@@ -410,7 +398,7 @@ final class OperandStack {
                 return index;
             }
             if (isType2(op1) && op2.isTopOperand()) {
-                failVerifyIf(!stackFrame.stack[secondIndex++].isTopOperand(), "Inconsistent stack Map: " + op1 + " vs. " + op2 + " and " + stackFrame.stack[secondIndex - 1]);
+                verifyGuarantee(stackFrame.stack[secondIndex++].isTopOperand(), "Inconsistent stack Map: " + op1 + " vs. " + op2 + " and " + stackFrame.stack[secondIndex - 1]);
             }
 
         }
@@ -437,7 +425,12 @@ final class Locals {
 
     Locals(MethodVerifier mv) {
         Operand[] parsedSig = mv.getOperandSig(mv.getSig());
-        failFormatIf(parsedSig.length - (mv.isStatic() ? 1 : 0) > mv.getMaxLocals(), "Too many method arguments for the number of locals !");
+        int sigSize = mv.isStatic() ? 0 : 1;
+        for (int i = 0; i < parsedSig.length - 1; i++) {
+            Operand op = parsedSig[i];
+            sigSize += isType2(op) ? 2 : 1;
+        }
+        formatGuarantee(sigSize <= mv.getMaxLocals(), "Too many method arguments for the number of locals !");
         this.registers = new Operand[mv.getMaxLocals()];
         int index = 0;
         if (!mv.isStatic()) {
@@ -473,22 +466,22 @@ final class Locals {
 
     Operand load(int index, Operand expected) {
         Operand op = registers[index];
-        failVerifyIf(!op.compliesWith(expected), "Incompatible register type. Expected: " + expected + ", found: " + op);
+        verifyGuarantee(op.compliesWith(expected), "Incompatible register type. Expected: " + expected + ", found: " + op);
         if (isType2(expected)) {
-            failVerifyIf(!registers[index + 1].isTopOperand(), "Loading corrupted long primitive from locals!");
+            verifyGuarantee(registers[index + 1].isTopOperand(), "Loading corrupted long primitive from locals!");
         }
         return op;
     }
 
     Operand loadRef(int index) {
         Operand op = registers[index];
-        failVerifyIf(!op.isReference(), "Incompatible register type. Expected a reference, found: " + op);
+        verifyGuarantee(op.isReference(), "Incompatible register type. Expected a reference, found: " + op);
         return op;
     }
 
     ReturnAddressOperand loadReturnAddress(int index) {
         Operand op = registers[index];
-        failVerifyIf(!op.isReturnAddress(), "Incompatible register type. Expected a ReturnAddress, found: " + op);
+        verifyGuarantee(op.isReturnAddress(), "Incompatible register type. Expected a ReturnAddress, found: " + op);
         return (ReturnAddressOperand) op;
     }
 
