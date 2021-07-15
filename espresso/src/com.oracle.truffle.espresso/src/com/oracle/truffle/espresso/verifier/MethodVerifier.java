@@ -735,6 +735,7 @@ public final class MethodVerifier implements ContextAccess {
             BytecodeLookupSwitch switchHelper = BytecodeLookupSwitch.INSTANCE;
             int low = 0;
             int high = switchHelper.numberOfCases(code, bci);
+            verifyGuarantee(high > 0, "number of keys in LOOKUPSWITCH less than 0");
             int oldKey = 0;
             boolean init = false;
             int target;
@@ -756,6 +757,8 @@ public final class MethodVerifier implements ContextAccess {
             BytecodeTableSwitch switchHelper = BytecodeTableSwitch.INSTANCE;
             int low = switchHelper.lowKey(code, bci);
             int high = switchHelper.highKey(code, bci);
+            verifyGuarantee(low <= high, "low must be less than or equal to high in TABLESWITCH.");
+            verifyGuarantee(high - low + 1 >= 0, "too many keys in tableswitch");
             int target;
             // if high == MAX_INT, i < high will always be true. This loop condition is to avoid
             // an infinite loop in this case.
