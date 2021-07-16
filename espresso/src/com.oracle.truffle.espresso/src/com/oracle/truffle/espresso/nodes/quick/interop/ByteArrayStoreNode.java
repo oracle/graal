@@ -58,6 +58,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
  * <ul>
  * <li>Throws guest {@link ArrayIndexOutOfBoundsException} if the index is out of bounds.
  * <li>Throws guest {@link ClassCastException} if the result cannot be converted to byte/boolean.
+ * <li>Throws guest {@link ArrayStoreException} if the underlying interop array/buffer is read-only.
  * </ul>
  */
 @ImportStatic(Utils.class)
@@ -95,6 +96,7 @@ public abstract class ByteArrayStoreNode extends QuickNode {
             Meta meta = context.getMeta();
             throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
         } catch (UnsupportedMessageException e) {
+            // Read-only foreign object.
             readOnlyProfile.enter();
             Meta meta = context.getMeta();
             throw meta.throwExceptionWithMessage(meta.java_lang_ArrayStoreException, e.getMessage());
