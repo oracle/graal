@@ -210,7 +210,7 @@ polyglot --jvm --shell
 
 If you have installed all optional languages packs to the core GraalVM installation, then the Polyglot Shell will look like:
 ```shell
-GraalVM MultiLanguage Shell 21.1.0
+GraalVM MultiLanguage Shell 21.2.0
 Copyright (c) 2013-2021, Oracle and/or its affiliates
 Java version 1.8|11
 JavaScript version  21.2.0
