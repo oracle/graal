@@ -7,12 +7,9 @@ permalink: /tools/vscode/graalvm-extension/
 
 # GraalVM Tools for Java Extension
 
-[GraalVM Tools for Java](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm) provides basic support for editing and debugging programs running on [GraalVM](http://www.graalvm.org) in Visual Studio Code.
-The extension is Technology Preview.
-
-GraalVM Tools for Java extension provides a full-fledged support for the Java language and, additionally, enables
-a polyglot environment in VS Code, making it a comfortable and convenient integrated development environment to work with.
+[GraalVM Tools for Java](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm) extension provides a full-fledged support for the Java language and, additionally, enables a polyglot environment in VS Code, making it a comfortable and convenient integrated development environment to work with.
 Users can edit and debug applications written in the GraalVM supported languages (Java, JS, Ruby, R, and Python) without the need to install any other additional extensions.
+The extension is Technology Preview.
 
 #### Table of contents
 - [Features](#features)
@@ -46,7 +43,7 @@ This extension for VS Code also provides editing and debugging capabilities for 
 
 The GraalVM Tools for Java extension is a prerequisite for the [Micronaut support in VS Code](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.micronaut), which brings many more possibilities for Java developers.
 
-The development team is actively working on further improvements and are focused on tne GraalVM Extension providing high usability to developers.
+The development team is actively working on further improvements and are focused on the GraalVM Extension providing high usability to developers.
 
 ## Installation and Setup
 
@@ -71,12 +68,12 @@ The Download & Install GraalVM action prompts you to:
 * Pick a Java version: 8, 11, or 16
 * Select the destination folder
 
-![Download and Install GraalVM](images/download_install_graalvm_view.png)
+![Download and Install GraalVM](images/set_graalvm_default_sdk.png)
 
 If you prefer GraalVM Community Edition, the installation wizard will download the package from [Github](https://github.com/graalvm/graalvm-ce-builds/releases) in the background and display the progress.
 
 If you select GraalVM Enterprise Editon, you will be prompted to accept the Oracle Technology Network License Agreement and requested to enter your email address.
-Providing your email address is optional, but if you do not enter it, the GraalVM Enterprise Edition License will prompt everytime.
+Providing your email address is mandatory.
 
 ![Accept Oracle License Agreement](images/otn_license_accept.png)
 
@@ -231,8 +228,6 @@ Once a GraalVM installation is set as active, the Command Palette contains the f
 A special launch configuration **Launch VisualVM & Java 8+ Application** is provided by the GraalVM Tools for Java extension to start VisualVM along with the project.
 Follow these steps to start VisualVM automatically from within the VS Code:
 
-![VisualVM and VS Code Integration](images/vscode_visualvm.png)
-
 1. Create the _launch.json_ file. If not already created, create a new launch.json file from the Run and Debug activity using the create a launch.json file link. Select the Java 8+ environment when asked.
 
 2. Open the launch.json file and click the Add Configuration... button in the bottom right corner of the editor. Select the **GraalVM: Launch Java 8+ Application with VisualVM** configuration. Make sure to save the launch.json file after editing.
@@ -241,11 +236,13 @@ Follow these steps to start VisualVM automatically from within the VS Code:
 
 4. Select the **Launch VisualVM & Java 8+ Application** launch configuration in the Run and Debug activity. Use the Start Debugging or Run Without Debugging action to start the current project.
 
+The Process node displays _ProjectName (pid pending)..._ while waiting for the project process, followed by _ProjectName (pid 12345)_ once the project process has been started.
+
 While the project is starting, project name with a process ID (PID) pending label is displayed in the Process node in VisualVM pane. Once the project process starts, the Process node shows its PID and the action defined in step 3 is performed.
 
 > Note: This feature was introduced with the GraalVM 21.2.0 release. Please make sure to get the latest GraalVM Tools for Java extension from the VS Code Marketplace, preferably by downloading the [GraalVM Extension Pack for Java](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm-pack).
 
-For a more detailed feature description, go to [this page](visualvm-integration.md).
+For a more detailed feature description, go to [this page](visualvm-in-vscode.md).
 
 ## JavaScript and Node.js Debugging
 
