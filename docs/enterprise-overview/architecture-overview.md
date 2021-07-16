@@ -132,11 +132,11 @@ The following table lists supported and experimental features in GraalVM Enterpr
 
 | Feature | Linux AMD64 | Linux ARM64 | macOS | Windows |
 |--------------------|---------------|---------------|---------------|
-| Native Image | early adopter | experimental | early adopter | experimental |
-| LLVM runtime | supported | experimental | supported | not available |
-| LLVM toolchain | supported | experimental | supported | not available |
-| JavaScript | supported | experimental | supported | experimental |
-| Node.js  | supported | experimental | supported | experimental |
+| Native Image | early adopter | early adopter | early adopter | early adopter |
+| LLVM runtime | supported | supported | supported | not available |
+| LLVM toolchain | supported | supported | supported | not available |
+| JavaScript | supported | supported | supported | supported |
+| Node.js  | supported | supported | supported | supported |
 | Java on Truffle | experimental | experimental | experimental | experimental |
 | Python | experimental | not available | experimental | not available |
 | Ruby | experimental | experimental | experimental | not available |
