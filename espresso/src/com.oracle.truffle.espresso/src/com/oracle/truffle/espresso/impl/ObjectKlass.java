@@ -898,24 +898,19 @@ public final class ObjectKlass extends Klass {
             for (Method m : getDeclaredMethods()) {
                 try {
                     MethodVerifier.verify(m);
-                    /*
-                     * The verifier convention use host exceptions and they must be explicitly
-                     * converted. This is acceptable since these particular set of host exceptions
-                     * are not expected at all e.g. we don't expect any host
-                     * VerifyError/ClassFormatError to be thrown by the host itself (at this point,
-                     * or even ever at all).
-                     */
-                } catch (VerifyError e) {
-                    throw meta.throwExceptionWithMessage(meta.java_lang_VerifyError, e.getMessage());
-                } catch (ClassFormatError e) {
-                    throw meta.throwExceptionWithMessage(meta.java_lang_ClassFormatError, e.getMessage());
-                } catch (IncompatibleClassChangeError e) {
-                    throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, e.getMessage());
-                } catch (NoClassDefFoundError e) {
-                    throw meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, e.getMessage());
+                } catch (MethodVerifier.VerifierError e) {
+                    switch (e.kind()) {
+                        case Verify:
+                            throw meta.throwExceptionWithMessage(meta.java_lang_VerifyError, e.getMessage());
+                        case ClassFormat:
+                            throw meta.throwExceptionWithMessage(meta.java_lang_ClassFormatError, e.getMessage());
+                        case NoClassDefFound:
+                            throw meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, e.getMessage());
+                    }
                 }
             }
         }
+
     }
 
     void print(PrintStream out) {
