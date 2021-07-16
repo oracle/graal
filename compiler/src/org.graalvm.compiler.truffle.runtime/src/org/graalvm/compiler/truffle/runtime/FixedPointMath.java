@@ -43,6 +43,6 @@ public final class FixedPointMath {
     }
 
     public static double toDouble(int fixedPointValue) {
-        return ((double) fixedPointValue) / (1 <<  SCALE);
+        return ((double) fixedPointValue) / (1 << SCALE);
     }
 }

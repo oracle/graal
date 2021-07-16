@@ -277,7 +277,6 @@ public final class EngineData {
             traversingFirstTierBonus = (2.0 * options.get(LastTierCompilationThreshold)) / options.get(FirstTierCompilationThreshold);
         }
 
-
         this.returnTypeSpeculation = options.get(ReturnTypeSpeculation);
         this.argumentTypeSpeculation = options.get(ArgumentTypeSpeculation);
         this.traceCompilation = options.get(TraceCompilation);
