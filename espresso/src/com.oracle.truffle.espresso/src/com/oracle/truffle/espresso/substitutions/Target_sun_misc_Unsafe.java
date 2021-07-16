@@ -31,9 +31,7 @@ import java.util.concurrent.locks.LockSupport;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
-import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -698,7 +696,7 @@ public final class Target_sun_misc_Unsafe {
     }
 
     @Substitution(hasReceiver = true)
-    static abstract class GetByte extends Node {
+    abstract static class GetByte extends Node {
 
         abstract byte execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address);
 
@@ -712,85 +710,85 @@ public final class Target_sun_misc_Unsafe {
     }
 
     @Substitution(hasReceiver = true)
-    static abstract class GetChar extends Node {
+    abstract static class GetChar extends Node {
 
         abstract char execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address);
 
         @Specialization
         char doCached(
-                @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
-                long address,
-                @CachedContext(EspressoLanguage.class) EspressoContext context) {
+                        @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
+                        long address,
+                        @CachedContext(EspressoLanguage.class) EspressoContext context) {
             return UnsafeAccess.getIfAllowed(context).getChar(address);
         }
     }
 
     @Substitution(hasReceiver = true)
-    static abstract class GetShort extends Node {
+    abstract static class GetShort extends Node {
 
         abstract short execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address);
 
         @Specialization
         short doCached(
-                @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
-                long address,
-                @CachedContext(EspressoLanguage.class) EspressoContext context) {
+                        @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
+                        long address,
+                        @CachedContext(EspressoLanguage.class) EspressoContext context) {
             return UnsafeAccess.getIfAllowed(context).getShort(address);
         }
     }
 
     @Substitution(hasReceiver = true)
-    static abstract class GetInt extends Node {
+    abstract static class GetInt extends Node {
 
         abstract int execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address);
 
         @Specialization
         int doCached(
-                @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
-                long address,
-                @CachedContext(EspressoLanguage.class) EspressoContext context) {
+                        @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
+                        long address,
+                        @CachedContext(EspressoLanguage.class) EspressoContext context) {
             return UnsafeAccess.getIfAllowed(context).getInt(address);
         }
     }
 
     @Substitution(hasReceiver = true)
-    static abstract class GetFloat extends Node {
+    abstract static class GetFloat extends Node {
 
         abstract float execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address);
 
         @Specialization
         float doCached(
-                @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
-                long address,
-                @CachedContext(EspressoLanguage.class) EspressoContext context) {
+                        @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
+                        long address,
+                        @CachedContext(EspressoLanguage.class) EspressoContext context) {
             return UnsafeAccess.getIfAllowed(context).getFloat(address);
         }
     }
 
     @Substitution(hasReceiver = true)
-    static abstract class GetDouble extends Node {
+    abstract static class GetDouble extends Node {
 
         abstract double execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address);
 
         @Specialization
         double doCached(
-                @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
-                long address,
-                @CachedContext(EspressoLanguage.class) EspressoContext context) {
+                        @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
+                        long address,
+                        @CachedContext(EspressoLanguage.class) EspressoContext context) {
             return UnsafeAccess.getIfAllowed(context).getDouble(address);
         }
     }
 
     @Substitution(hasReceiver = true)
-    static abstract class GetLong extends Node {
+    abstract static class GetLong extends Node {
 
         abstract long execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address);
 
         @Specialization
         long doCached(
-                @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
-                long address,
-                @CachedContext(EspressoLanguage.class) EspressoContext context) {
+                        @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
+                        long address,
+                        @CachedContext(EspressoLanguage.class) EspressoContext context) {
             return UnsafeAccess.getIfAllowed(context).getLong(address);
         }
     }
@@ -982,106 +980,106 @@ public final class Target_sun_misc_Unsafe {
      * @see #getByte
      */
     @Substitution(hasReceiver = true)
-    static abstract class PutByte extends Node {
+    abstract static class PutByte extends Node {
 
         abstract void execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, byte value);
 
         @Specialization
         void doCached(
-                @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
-                long address,
-                byte value,
-                @CachedContext(EspressoLanguage.class) EspressoContext context) {
+                        @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
+                        long address,
+                        byte value,
+                        @CachedContext(EspressoLanguage.class) EspressoContext context) {
             UnsafeAccess.getIfAllowed(context).putByte(address, value);
         }
     }
 
     @Substitution(hasReceiver = true)
-    static abstract class PutChar extends Node {
+    abstract static class PutChar extends Node {
 
         abstract void execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, char value);
 
         @Specialization
         void doCached(
-                @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
-                long address,
-                char value,
-                @CachedContext(EspressoLanguage.class) EspressoContext context) {
+                        @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
+                        long address,
+                        char value,
+                        @CachedContext(EspressoLanguage.class) EspressoContext context) {
             UnsafeAccess.getIfAllowed(context).putChar(address, value);
         }
     }
 
     @Substitution(hasReceiver = true)
-    static abstract class PutShort extends Node {
+    abstract static class PutShort extends Node {
 
         abstract void execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, short value);
 
         @Specialization
         void doCached(
-                @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
-                long address,
-                short value,
-                @CachedContext(EspressoLanguage.class) EspressoContext context) {
+                        @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
+                        long address,
+                        short value,
+                        @CachedContext(EspressoLanguage.class) EspressoContext context) {
             UnsafeAccess.getIfAllowed(context).putShort(address, value);
         }
     }
 
     @Substitution(hasReceiver = true)
-    static abstract class PutInt extends Node {
+    abstract static class PutInt extends Node {
 
         abstract void execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, int value);
 
         @Specialization
         void doCached(
-                @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
-                long address,
-                int value,
-                @CachedContext(EspressoLanguage.class) EspressoContext context) {
+                        @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
+                        long address,
+                        int value,
+                        @CachedContext(EspressoLanguage.class) EspressoContext context) {
             UnsafeAccess.getIfAllowed(context).putInt(address, value);
         }
     }
 
     @Substitution(hasReceiver = true)
-    static abstract class PutFloat extends Node {
+    abstract static class PutFloat extends Node {
 
         abstract void execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, float value);
 
         @Specialization
         void doCached(
-                @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
-                long address,
-                float value,
-                @CachedContext(EspressoLanguage.class) EspressoContext context) {
+                        @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
+                        long address,
+                        float value,
+                        @CachedContext(EspressoLanguage.class) EspressoContext context) {
             UnsafeAccess.getIfAllowed(context).putFloat(address, value);
         }
     }
 
     @Substitution(hasReceiver = true)
-    static abstract class PutDouble extends Node {
+    abstract static class PutDouble extends Node {
 
         abstract void execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, double value);
 
         @Specialization
         void doCached(
-                @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
-                long address,
-                double value,
-                @CachedContext(EspressoLanguage.class) EspressoContext context) {
+                        @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
+                        long address,
+                        double value,
+                        @CachedContext(EspressoLanguage.class) EspressoContext context) {
             UnsafeAccess.getIfAllowed(context).putDouble(address, value);
         }
     }
 
     @Substitution(hasReceiver = true)
-    static abstract class PutLong extends Node {
+    abstract static class PutLong extends Node {
 
         abstract void execute(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, long address, long value);
 
         @Specialization
         void doCached(
-                @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
-                long address,
-                long value,
-                @CachedContext(EspressoLanguage.class) EspressoContext context) {
+                        @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
+                        long address,
+                        long value,
+                        @CachedContext(EspressoLanguage.class) EspressoContext context) {
             UnsafeAccess.getIfAllowed(context).putLong(address, value);
         }
     }

@@ -1550,7 +1550,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      */
     @Substitution
     @ReportPolymorphism
-    static abstract class HasBufferElements extends Node {
+    abstract static class HasBufferElements extends Node {
         static final int LIMIT = 2;
 
         abstract boolean execute(@JavaType(Object.class) StaticObject receiver);
@@ -1574,7 +1574,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      */
     @Substitution
     @Throws(others = @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnsupportedMessageException;"))
-    static abstract class GetBufferSize extends Node {
+    abstract static class GetBufferSize extends Node {
         static final int LIMIT = 2;
 
         abstract long execute(@JavaType(Object.class) StaticObject receiver);
@@ -1616,7 +1616,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
      */
     @Substitution
     @Throws(others = @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnsupportedMessageException;"))
-    static abstract class IsBufferWritable extends Node {
+    abstract static class IsBufferWritable extends Node {
         static final int LIMIT = 2;
 
         abstract boolean execute(@JavaType(Object.class) StaticObject receiver);
@@ -1659,7 +1659,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                     @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnsupportedMessageException;"),
                     @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/InvalidBufferOffsetException;")
     })
-    static abstract class ReadBufferByte extends Node {
+    abstract static class ReadBufferByte extends Node {
         static final int LIMIT = 2;
 
         abstract byte execute(@JavaType(Object.class) StaticObject receiver, long byteOffset);
@@ -1702,7 +1702,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                     @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnsupportedMessageException;"),
                     @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/InvalidBufferOffsetException;")
     })
-    static abstract class WriteBufferByte extends Node {
+    abstract static class WriteBufferByte extends Node {
         static final int LIMIT = 2;
 
         abstract void execute(@JavaType(Object.class) StaticObject receiver, long byteOffset, byte value);
@@ -1762,7 +1762,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                     @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/InvalidBufferOffsetException;")
     })
     @ImportStatic(ByteOrderUtils.class)
-    static abstract class ReadBufferShort extends Node {
+    abstract static class ReadBufferShort extends Node {
         static final int LIMIT = 2;
 
         abstract short execute(@JavaType(Object.class) StaticObject receiver, @JavaType(ByteOrder.class) StaticObject order, long byteOffset);
@@ -1814,7 +1814,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                     @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/InvalidBufferOffsetException;")
     })
     @ImportStatic(ByteOrderUtils.class)
-    static abstract class WriteBufferShort extends Node {
+    abstract static class WriteBufferShort extends Node {
         static final int LIMIT = 2;
 
         abstract void execute(@JavaType(Object.class) StaticObject receiver, @JavaType(ByteOrder.class) StaticObject order, long byteOffset, short value);
@@ -1871,7 +1871,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                     @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/InvalidBufferOffsetException;")
     })
     @ImportStatic(ByteOrderUtils.class)
-    static abstract class ReadBufferInt extends Node {
+    abstract static class ReadBufferInt extends Node {
         static final int LIMIT = 2;
 
         abstract int execute(@JavaType(Object.class) StaticObject receiver, @JavaType(ByteOrder.class) StaticObject order, long byteOffset);
@@ -1923,7 +1923,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                     @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/InvalidBufferOffsetException;")
     })
     @ImportStatic(ByteOrderUtils.class)
-    static abstract class WriteBufferInt extends Node {
+    abstract static class WriteBufferInt extends Node {
         static final int LIMIT = 2;
 
         abstract void execute(@JavaType(Object.class) StaticObject receiver, @JavaType(ByteOrder.class) StaticObject order, long byteOffset, int value);
@@ -1979,7 +1979,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                     @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/InvalidBufferOffsetException;")
     })
     @ImportStatic(ByteOrderUtils.class)
-    static abstract class ReadBufferLong extends Node {
+    abstract static class ReadBufferLong extends Node {
         static final int LIMIT = 2;
 
         abstract long execute(@JavaType(Object.class) StaticObject receiver, @JavaType(ByteOrder.class) StaticObject order, long byteOffset);
@@ -2031,7 +2031,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                     @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/InvalidBufferOffsetException;")
     })
     @ImportStatic(ByteOrderUtils.class)
-    static abstract class WriteBufferLong extends Node {
+    abstract static class WriteBufferLong extends Node {
         static final int LIMIT = 2;
 
         abstract void execute(@JavaType(Object.class) StaticObject receiver, @JavaType(ByteOrder.class) StaticObject order, long byteOffset, long value);
@@ -2087,7 +2087,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                     @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/InvalidBufferOffsetException;")
     })
     @ImportStatic(ByteOrderUtils.class)
-    static abstract class ReadBufferFloat extends Node {
+    abstract static class ReadBufferFloat extends Node {
         static final int LIMIT = 2;
 
         abstract float execute(@JavaType(Object.class) StaticObject receiver, @JavaType(ByteOrder.class) StaticObject order, long byteOffset);
@@ -2139,7 +2139,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                     @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/InvalidBufferOffsetException;")
     })
     @ImportStatic(ByteOrderUtils.class)
-    static abstract class WriteBufferFloat extends Node {
+    abstract static class WriteBufferFloat extends Node {
         static final int LIMIT = 2;
 
         abstract void execute(@JavaType(Object.class) StaticObject receiver, @JavaType(ByteOrder.class) StaticObject order, long byteOffset, float value);
@@ -2195,7 +2195,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                     @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/InvalidBufferOffsetException;")
     })
     @ImportStatic(ByteOrderUtils.class)
-    static abstract class ReadBufferDouble extends Node {
+    abstract static class ReadBufferDouble extends Node {
         static final int LIMIT = 2;
 
         abstract double execute(@JavaType(Object.class) StaticObject receiver, @JavaType(ByteOrder.class) StaticObject order, long byteOffset);
@@ -2247,7 +2247,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                     @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/InvalidBufferOffsetException;")
     })
     @ImportStatic(ByteOrderUtils.class)
-    static abstract class WriteBufferDouble extends Node {
+    abstract static class WriteBufferDouble extends Node {
         static final int LIMIT = 2;
 
         abstract void execute(@JavaType(Object.class) StaticObject receiver, @JavaType(ByteOrder.class) StaticObject order, long byteOffset, double value);
