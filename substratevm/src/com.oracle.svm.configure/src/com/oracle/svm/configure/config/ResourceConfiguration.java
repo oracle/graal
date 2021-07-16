@@ -25,6 +25,7 @@
 package com.oracle.svm.configure.config;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Set;
 import java.util.Comparator;
 import java.util.concurrent.ConcurrentHashMap;
@@ -38,8 +39,11 @@ import com.oracle.svm.configure.json.JsonPrinter;
 import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.core.configure.ConditionalElement;
 import com.oracle.svm.core.configure.ResourcesRegistry;
+import org.graalvm.collections.Pair;
 
 public class ResourceConfiguration implements ConfigurationBase {
+
+    private static final String PROPERTY_BUNDLE = "java.util.PropertyResourceBundle";
 
     public static class ParserAdapter implements ResourcesRegistry {
 
@@ -62,7 +66,7 @@ public class ResourceConfiguration implements ConfigurationBase {
         @Override
         public void addResourceBundles(ConfigurationCondition condition, String name) {
             // TODO extent the API
-            configuration.addBundle(condition, "todo", name, "TODO");
+            configuration.addBundle(condition, Collections.emptyList(), name, "TODO");
         }
     }
 
@@ -105,15 +109,22 @@ public class ResourceConfiguration implements ConfigurationBase {
         ignoredResources.computeIfAbsent(new ConditionalElement<>(condition, pattern), p -> Pattern.compile(p.getElement()));
     }
 
-    public void addBundle(ConfigurationCondition condition, String className, String baseName, String localeTag) {
+    public void addBundle(ConfigurationCondition condition, List<Pair<String, String>> bundleInfo, String baseName, String queriedLocaleTag) {
         ConditionalElement<String> key = new ConditionalElement<>(condition, baseName);
         BundleConfiguration config = bundles.get(key);
         if (config == null) {
             config = new BundleConfiguration(baseName);
             bundles.put(key, config);
         }
-        config.locales.add(localeTag);
-        config.classNames.add(className);
+        for (Pair<String, String> pair : bundleInfo) {
+            String className = pair.getLeft();
+            String localeTag = pair.getRight();
+            if (!className.equals(PROPERTY_BUNDLE)) {
+                config.classNames.add(className);
+            } else {
+                config.locales.add(localeTag);
+            }
+        }
     }
 
     public boolean anyResourceMatches(String s) {
@@ -156,7 +167,7 @@ public class ResourceConfiguration implements ConfigurationBase {
     }
 
     private void printResourceBundle(BundleConfiguration config, JsonWriter writer) throws IOException {
-        writer.append('{').quote("name").append(':').quote(config.baseName).append(',').quote("localeTags").append(":");
+        writer.append('{').quote("name").append(':').quote(config.baseName).append(',').quote("locales").append(":");
         JsonPrinter.printCollection(writer, config.locales, Comparator.naturalOrder(), (String p, JsonWriter w) -> w.quote(p));
         writer.append(',').quote("classNames").append(":");
         JsonPrinter.printCollection(writer, config.classNames, Comparator.naturalOrder(), (String p, JsonWriter w) -> w.quote(p));

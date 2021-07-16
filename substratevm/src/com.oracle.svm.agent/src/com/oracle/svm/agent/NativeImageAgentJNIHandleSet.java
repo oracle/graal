@@ -73,6 +73,8 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
     private JNIMethodId javaLangReflectConstructorDeclaringClassName;
 
     final JNIMethodId javaUtilLocaleToLanguageTag;
+    final JNIFieldId javaUtilResourceBundleParentField;
+    final JNIMethodId javaUtilResourceBundleGetLocale;
 
     NativeImageAgentJNIHandleSet(JNIEnvironment env) {
         super(env);
@@ -107,6 +109,9 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
 
         JNIObjectHandle javaUtilLocale = findClass(env, "java/util/Locale");
         javaUtilLocaleToLanguageTag = getMethodId(env, javaUtilLocale, "toLanguageTag", "()Ljava/lang/String;", false);
+        JNIObjectHandle javaUtilResourceBundle = findClass(env, "java/util/ResourceBundle");
+        javaUtilResourceBundleParentField = getFieldId(env, javaUtilResourceBundle, "parent", "Ljava/util/ResourceBundle;", false);
+        javaUtilResourceBundleGetLocale = getMethodId(env, javaUtilResourceBundle, "getLocale", "()Ljava/util/Locale;", false);
     }
 
     JNIMethodId getJavaLangReflectExecutableGetParameterTypes(JNIEnvironment env) {

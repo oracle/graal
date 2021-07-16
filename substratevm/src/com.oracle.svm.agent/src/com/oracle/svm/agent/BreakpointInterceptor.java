@@ -41,6 +41,7 @@ import static com.oracle.svm.jvmtiagentbase.Support.jniFunctions;
 import static com.oracle.svm.jvmtiagentbase.Support.jvmtiEnv;
 import static com.oracle.svm.jvmtiagentbase.Support.jvmtiFunctions;
 import static com.oracle.svm.jvmtiagentbase.Support.newObjectL;
+import static com.oracle.svm.jvmtiagentbase.Support.readObjectField;
 import static com.oracle.svm.jvmtiagentbase.Support.testException;
 import static com.oracle.svm.jvmtiagentbase.Support.toCString;
 import static com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEvent.JVMTI_EVENT_BREAKPOINT;
@@ -59,6 +60,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Supplier;
 
+import org.graalvm.collections.Pair;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.UnmanagedMemory;
@@ -647,15 +649,15 @@ final class BreakpointInterceptor {
         JNIObjectHandle loader = getObjectArgument(2);
         JNIObjectHandle control = getObjectArgument(3);
         JNIObjectHandle result = Support.callStaticObjectMethodLLLL(jni, bp.clazz, bp.method, baseName, locale, loader, control);
-        String className = Tracer.UNKNOWN_VALUE;
+        List<Pair<String, String>> bundleInfo = null;
         if (clearException(jni)) {
             result = nullHandle();
         } else {
-            className = extractClassName(jni, result);
+            bundleInfo = extractBundleInfo(jni, result);
         }
-        String languageTag = fromJniString(jni, callObjectMethod(jni, locale, agent.handles().javaUtilLocaleToLanguageTag));
+        String languageTag = readLocaleTag(jni, locale);
         traceBreakpoint(jni, nullHandle(), nullHandle(), callerClass, "getBundleImplJDK8OrEarlier", result.notEqual(nullHandle()),
-                        state.getFullStackTraceOrNull(), fromJniString(jni, baseName), languageTag, Tracer.UNKNOWN_VALUE, Tracer.UNKNOWN_VALUE, className);
+                        state.getFullStackTraceOrNull(), fromJniString(jni, baseName), languageTag, Tracer.UNKNOWN_VALUE, Tracer.UNKNOWN_VALUE, bundleInfo);
         return true;
     }
 
@@ -675,27 +677,49 @@ final class BreakpointInterceptor {
         JNIObjectHandle locale = getObjectArgument(3);
         JNIObjectHandle control = getObjectArgument(4);
         JNIObjectHandle result = Support.callStaticObjectMethodLLLLL(jni, bp.clazz, bp.method, callerModule, module, baseName, locale, control);
-        String className = Tracer.UNKNOWN_VALUE;
+        List<Pair<String, String>> bundleInfo = null;
         if (clearException(jni)) {
             result = nullHandle();
         } else {
-            className = extractClassName(jni, result);
+            bundleInfo = extractBundleInfo(jni, result);
         }
-        String languageTag = fromJniString(jni, callObjectMethod(jni, locale, agent.handles().javaUtilLocaleToLanguageTag));
+        String languageTag = readLocaleTag(jni, locale);
         traceBreakpoint(jni, nullHandle(), nullHandle(), callerClass, "getBundleImplJDK11OrLater", result.notEqual(nullHandle()),
-                        state.getFullStackTraceOrNull(), Tracer.UNKNOWN_VALUE, Tracer.UNKNOWN_VALUE, fromJniString(jni, baseName), languageTag, Tracer.UNKNOWN_VALUE, className);
+                        state.getFullStackTraceOrNull(), Tracer.UNKNOWN_VALUE, Tracer.UNKNOWN_VALUE, fromJniString(jni, baseName), languageTag, Tracer.UNKNOWN_VALUE, bundleInfo);
         return true;
     }
 
-    private static String extractClassName(JNIEnvironment jni, JNIObjectHandle result) {
-        JNIObjectHandle clazz = callObjectMethod(jni, result, agent.handles().javaLangObjectGetClass);
-        if (!clearException(jni)) {
-            JNIObjectHandle classNameHandle = callObjectMethod(jni, clazz, agent.handles().javaLangClassGetName);
-            if (!clearException(jni)) {
-                return fromJniString(jni, classNameHandle);
+    private static String readLocaleTag(JNIEnvironment jni, JNIObjectHandle locale) {
+        return fromJniString(jni, callObjectMethod(jni, locale, agent.handles().javaUtilLocaleToLanguageTag));
+    }
+
+    private static List<Pair<String, String>> extractBundleInfo(JNIEnvironment jni, JNIObjectHandle result) {
+        List<Pair<String, String>> res = new ArrayList<>();
+        JNIObjectHandle curr = result;
+        while (!nullHandle().equal(curr)) {
+            JNIObjectHandle locale = callObjectMethod(jni, curr, agent.handles().javaUtilResourceBundleGetLocale);
+            if (clearException(jni)) {
+                return null;
             }
+            String localeTag = readLocaleTag(jni, locale);
+            JNIObjectHandle clazz = callObjectMethod(jni, result, agent.handles().javaLangObjectGetClass);
+            if (!clearException(jni)) {
+                JNIObjectHandle classNameHandle = callObjectMethod(jni, clazz, agent.handles().javaLangClassGetName);
+                if (!clearException(jni)) {
+                    res.add(Pair.create(fromJniString(jni, classNameHandle), localeTag));
+                }
+            }
+            curr = getParent(jni, curr);
         }
-        return Tracer.UNKNOWN_VALUE;
+        return res;
+    }
+
+    private static JNIObjectHandle getParent(JNIEnvironment jni, JNIObjectHandle curr) {
+        JNIObjectHandle parent = readObjectField(jni, curr, agent.handles().javaUtilResourceBundleParentField);
+        if (!clearException(jni)) {
+            return parent;
+        }
+        return nullHandle();
     }
 
     private static boolean loadClass(JNIEnvironment jni, Breakpoint bp, InterceptedState state) {

@@ -264,6 +264,10 @@ public final class Support {
         return nullHandle();
     }
 
+    public static JNIObjectHandle readObjectField(JNIEnvironment env, JNIObjectHandle obj, JNIFieldId fieldId) {
+        return jniFunctions().getGetObjectField().invoke(env, obj, fieldId);
+    }
+
     /*
      * We use the Call*A functions that take a jvalue* for the Java arguments because that doesn't
      * require that calling conventions for a varargs call are the same as those for a regular call
