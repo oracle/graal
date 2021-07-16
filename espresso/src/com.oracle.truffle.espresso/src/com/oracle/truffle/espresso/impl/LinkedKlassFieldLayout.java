@@ -27,6 +27,7 @@ import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.staticobject.StaticShape;
+import com.oracle.truffle.api.staticobject.StaticShape.Builder;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -49,9 +50,9 @@ final class LinkedKlassFieldLayout {
 
     final int fieldTableLength;
 
-    LinkedKlassFieldLayout(EspressoLanguage language, JavaVersion version, ParserKlass parserKlass, LinkedKlass superKlass) {
-        StaticShape.Builder instanceBuilder = StaticShape.newBuilder(language);
-        StaticShape.Builder staticBuilder = StaticShape.newBuilder(language);
+    LinkedKlassFieldLayout(EspressoLanguage language, JavaVersion version, ClassRegistry registry, ParserKlass parserKlass, LinkedKlass superKlass, boolean anonymousClass) {
+        Builder instanceBuilder = anonymousClass ? StaticShape.newBuilder(language) : registry.getOrCreateShapeBuilder(language, parserKlass.getType(), false);
+        Builder staticBuilder = anonymousClass ? StaticShape.newBuilder(language) : registry.getOrCreateShapeBuilder(language, parserKlass.getType(), true);
 
         FieldCounter fieldCounter = new FieldCounter(parserKlass, version);
         int nextInstanceFieldIndex = 0;
@@ -65,21 +66,15 @@ final class LinkedKlassFieldLayout {
 
         for (ParserField parserField : parserKlass.getFields()) {
             if (parserField.isStatic()) {
-                LinkedField field = new LinkedField(parserField, nextStaticFieldSlot++, idMode);
-                staticBuilder.property(field, parserField.getPropertyType(), storeAsFinal(parserKlass, parserField));
-                staticFields[nextStaticFieldIndex++] = field;
+                createAndRegisterLinkedField(language, registry, parserKlass, parserField, nextStaticFieldSlot++, nextStaticFieldIndex++, idMode, staticBuilder, staticFields);
             } else {
-                LinkedField field = new LinkedField(parserField, nextInstanceFieldSlot++, idMode);
-                instanceBuilder.property(field, parserField.getPropertyType(), storeAsFinal(parserKlass, parserField));
-                instanceFields[nextInstanceFieldIndex++] = field;
+                createAndRegisterLinkedField(language, registry, parserKlass, parserField, nextInstanceFieldSlot++, nextInstanceFieldIndex++, idMode, instanceBuilder, instanceFields);
             }
         }
         for (HiddenField hiddenField : fieldCounter.hiddenFieldNames) {
             if (hiddenField.versionRange.contains(version)) {
                 ParserField hiddenParserField = new ParserField(ParserField.HIDDEN, hiddenField.name, hiddenField.type, null);
-                LinkedField field = new LinkedField(hiddenParserField, nextInstanceFieldSlot++, idMode);
-                instanceBuilder.property(field, hiddenParserField.getPropertyType(), storeAsFinal(parserKlass, hiddenParserField));
-                instanceFields[nextInstanceFieldIndex++] = field;
+                createAndRegisterLinkedField(language, registry, parserKlass, hiddenParserField, nextInstanceFieldSlot++, nextInstanceFieldIndex++, idMode, instanceBuilder, instanceFields);
             }
         }
         if (superKlass == null) {
@@ -120,6 +115,17 @@ final class LinkedKlassFieldLayout {
         }
         // All fields have unique {name, type} pairs, use the concatenation of both for the ID.
         return LinkedField.IdMode.WITH_TYPE;
+    }
+
+    private static void createAndRegisterLinkedField(EspressoLanguage language, ClassRegistry registry, ParserKlass parserKlass, ParserField parserField, int slot, int index, LinkedField.IdMode idMode, Builder builder, LinkedField[] linkedFields) {
+        LinkedField field = new LinkedField(parserField, slot, idMode);
+        Class<?> parserFieldType = parserField.getPropertyType();
+        if (parserFieldType.isPrimitive()) {
+            builder.property(field, parserFieldType, storeAsFinal(parserKlass, parserField));
+        } else {
+            builder.property(field, registry.getOrCreateShapeBuilder(language, parserField.getType(), false), storeAsFinal(parserKlass, parserField));
+        }
+        linkedFields[index] = field;
     }
 
     private static boolean storeAsFinal(ParserKlass klass, ParserField field) {

@@ -1079,9 +1079,13 @@ public abstract class Accessor {
 
         public abstract int getBaseInstanceSize(Class<?> type);
 
-        public abstract Object[] getNonPrimitiveResolvedFields(Class<?> type);
+        public abstract Object[] getResolvedFields(Class<?> type, boolean includePrimitive, boolean includeSuperclasses);
 
         public abstract Object getFieldValue(Object resolvedJavaField, Object obj);
+
+        public abstract String getFieldName(Object resolvedJavaField);
+
+        public abstract int getFieldOffset(Object resolvedJavaField);
 
         public AbstractFastThreadLocal getContextThreadLocal() {
             return DefaultContextThreadLocal.SINGLETON;

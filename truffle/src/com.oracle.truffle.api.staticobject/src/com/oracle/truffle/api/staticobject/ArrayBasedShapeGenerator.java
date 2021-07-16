@@ -131,7 +131,7 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
 
     // Invoked also from TruffleBaseFeature.StaticObjectSupport
     @SuppressWarnings("unchecked")
-    static <T> ArrayBasedShapeGenerator<T> getShapeGenerator(TruffleLanguage<?> language, GeneratorClassLoader gcl, Class<?> storageSuperClass, Class<T> storageFactoryInterface) {
+    static <T> ArrayBasedShapeGenerator<T> getShapeGenerator(TruffleLanguage<?> language, GeneratorClassLoader gcl, Class<?> storageSuperClass, Class<T> storageFactoryInterface, String storageClassName) {
         ConcurrentHashMap<Pair<Class<?>, Class<?>>, Object> cache;
         if (TruffleOptions.AOT) {
             cache = generatorCache;
@@ -144,7 +144,7 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
             if (ImageInfo.inImageRuntimeCode()) {
                 throw new IllegalStateException("This code should not be executed at Native Image run time. Please report this issue");
             }
-            Class<?> generatedStorageClass = generateStorage(gcl, storageSuperClass);
+            Class<?> generatedStorageClass = generateStorage(gcl, storageSuperClass, storageClassName);
             Class<? extends T> generatedFactoryClass = generateFactory(gcl, generatedStorageClass, storageFactoryInterface);
             sg = new ArrayBasedShapeGenerator<>(generatedStorageClass, generatedFactoryClass);
             ArrayBasedShapeGenerator<T> prevSg = (ArrayBasedShapeGenerator<T>) cache.putIfAbsent(pair, sg);
@@ -164,7 +164,7 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
     }
 
     @Override
-    StaticShape<T> generateShape(StaticShape<T> parentShape, Map<String, StaticProperty> staticProperties, boolean safetyChecks) {
+    StaticShape<T> generateShape(StaticShape<T> parentShape, Map<String, StaticProperty> staticProperties, boolean safetyChecks, String storageClassName) {
         return ArrayBasedStaticShape.create(this, generatedStorageClass, generatedFactoryClass, (ArrayBasedStaticShape<T>) parentShape, staticProperties.values(), safetyChecks);
     }
 
@@ -419,22 +419,21 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
         }
     }
 
-    private static Class<?> generateStorage(GeneratorClassLoader gcl, Class<?> storageSuperClass) {
+    private static Class<?> generateStorage(GeneratorClassLoader gcl, Class<?> storageSuperClass, String storageClassName) {
         String storageSuperName = Type.getInternalName(storageSuperClass);
-        String storageName = generateStorageName();
 
         ClassWriter storageWriter = new ClassWriter(0);
         int storageAccess = ACC_PUBLIC | ACC_SUPER | ACC_SYNTHETIC;
-        storageWriter.visit(V1_8, storageAccess, storageName, null, storageSuperName, null);
-        addStorageConstructors(storageWriter, storageName, storageSuperClass, storageSuperName);
+        storageWriter.visit(V1_8, storageAccess, storageClassName, null, storageSuperName, null);
+        addStorageConstructors(storageWriter, storageClassName, storageSuperClass, storageSuperName);
         addStorageField(storageWriter, "primitive", StaticPropertyKind.BYTE_ARRAY, true);
         addStorageField(storageWriter, "object", StaticPropertyKind.OBJECT_ARRAY, true);
         addStorageField(storageWriter, "shape", StaticPropertyKind.Object.toByte(), true);
         if (Cloneable.class.isAssignableFrom(storageSuperClass)) {
-            addCloneMethod(storageSuperClass, storageWriter, storageName);
+            addCloneMethod(storageSuperClass, storageWriter, storageClassName);
         }
         storageWriter.visitEnd();
-        return load(gcl, storageName, storageWriter.toByteArray());
+        return load(gcl, storageClassName, storageWriter.toByteArray());
     }
 
     private static <T> Class<? extends T> generateFactory(GeneratorClassLoader gcl, Class<?> storageClass, Class<T> storageFactoryInterface) {

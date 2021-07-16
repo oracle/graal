@@ -174,7 +174,7 @@ public class PropertyAccessTest extends StaticObjectModelTest {
             } else if (types[i] == Object.class) {
                 descriptors[i] = new TestDescriptor(
                                 types[i],
-                                "Object",
+                                "java.lang.Object",
                                 new Object(),
                                 null,
                                 (p, obj) -> p.getObject(obj),

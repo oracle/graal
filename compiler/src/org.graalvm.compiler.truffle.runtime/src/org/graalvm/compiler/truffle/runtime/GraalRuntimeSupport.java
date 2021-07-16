@@ -304,13 +304,23 @@ final class GraalRuntimeSupport extends RuntimeSupport {
     }
 
     @Override
-    public Object[] getNonPrimitiveResolvedFields(Class<?> type) {
-        return GraalTruffleRuntime.getRuntime().getNonPrimitiveResolvedFields(type);
+    public Object[] getResolvedFields(Class<?> type, boolean includePrimitive, boolean includeSuperclasses) {
+        return GraalTruffleRuntime.getRuntime().getResolvedFields(type, includePrimitive, includeSuperclasses);
     }
 
     @Override
     public Object getFieldValue(Object resolvedJavaField, Object obj) {
         return GraalTruffleRuntime.getRuntime().getFieldValue((ResolvedJavaField) resolvedJavaField, obj);
+    }
+
+    @Override
+    public String getFieldName(Object resolvedJavaField) {
+        return ((ResolvedJavaField) resolvedJavaField).getName();
+    }
+
+    @Override
+    public int getFieldOffset(Object resolvedJavaField) {
+        return ((ResolvedJavaField) resolvedJavaField).getOffset();
     }
 
     @Override

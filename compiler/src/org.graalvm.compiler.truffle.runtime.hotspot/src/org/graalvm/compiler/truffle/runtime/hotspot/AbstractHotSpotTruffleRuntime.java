@@ -603,18 +603,18 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
     }
 
     @Override
-    protected Object[] getNonPrimitiveResolvedFields(Class<?> type) {
+    protected Object[] getResolvedFields(Class<?> type, boolean includePrimitive, boolean includeSuperclasses) {
         if (type.isArray() || type.isPrimitive()) {
             throw new IllegalArgumentException("Class " + type.getName() + " is a primitive type or an array class!");
         }
         HotSpotMetaAccessProvider meta = (HotSpotMetaAccessProvider) getMetaAccess();
         ResolvedJavaType javaType = meta.lookupJavaType(type);
-        ResolvedJavaField[] fields = javaType.getInstanceFields(true);
+        ResolvedJavaField[] fields = javaType.getInstanceFields(includeSuperclasses);
         ResolvedJavaField[] fieldsToReturn = new ResolvedJavaField[fields.length];
         int fieldsCount = 0;
         for (int i = 0; i < fields.length; i++) {
             final ResolvedJavaField f = fields[i];
-            if (!f.getJavaKind().isPrimitive() && !fieldIsNotEligible(type, f)) {
+            if ((includePrimitive || !f.getJavaKind().isPrimitive()) && !fieldIsNotEligible(type, f)) {
                 fieldsToReturn[fieldsCount++] = f;
             }
         }

@@ -53,6 +53,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * A StaticShape is an immutable descriptor of the layout of a static object and is a good entry
@@ -206,6 +207,9 @@ public abstract class StaticShape<T> {
     public static final class Builder {
         private static final int MAX_NUMBER_OF_PROPERTIES = 65535;
         private static final int MAX_PROPERTY_ID_BYTE_LENGTH = 65535;
+        private static final String DELIMITER = "$$";
+        private static final AtomicInteger counter = new AtomicInteger();
+        private final String storageClassName;
         private final HashMap<String, StaticProperty> staticProperties = new LinkedHashMap<>();
         private final TruffleLanguage<?> language;
         boolean hasLongPropertyId = false;
@@ -213,6 +217,7 @@ public abstract class StaticShape<T> {
 
         Builder(TruffleLanguage<?> language) {
             this.language = language;
+            storageClassName = generateStorageName();
         }
 
         /**
@@ -246,9 +251,22 @@ public abstract class StaticShape<T> {
          * @since 21.3.0
          */
         public Builder property(StaticProperty property, Class<?> type, boolean storeAsFinal) {
+            validateType(type);
+            return property(property, getDescriptor(type.getName()), StaticPropertyKind.valueOf(type), storeAsFinal);
+        }
+
+        public Builder property(StaticProperty property, Builder builder, boolean storeAsFinal) {
+            return property(property, getDescriptor(builder.storageClassName), StaticPropertyKind.Object, storeAsFinal);
+        }
+
+        public Builder property(StaticProperty property, StaticShape<?> shape, boolean storeAsFinal) {
+            return property(property, getDescriptor(shape.getStorageClass().getName()), StaticPropertyKind.Object, storeAsFinal);
+        }
+
+        private Builder property(StaticProperty property, String descriptor, StaticPropertyKind kind, boolean storeAsFinal) {
             CompilerAsserts.neverPartOfCompilation();
             checkStatus();
-            property.init(StaticPropertyKind.valueOf(validateType(type)), storeAsFinal);
+            property.init(descriptor, kind, storeAsFinal);
             staticProperties.put(validateAndGetId(property), property);
             return this;
         }
@@ -292,7 +310,7 @@ public abstract class StaticShape<T> {
         public <T> StaticShape<T> build(StaticShape<T> parentShape) {
             Objects.requireNonNull(parentShape);
             GeneratorClassLoader gcl = getOrCreateClassLoader(parentShape.getFactoryInterface());
-            ShapeGenerator<T> sg = ShapeGenerator.getShapeGenerator(language, gcl, parentShape, getStorageStrategy());
+            ShapeGenerator<T> sg = ShapeGenerator.getShapeGenerator(language, gcl, parentShape, getStorageStrategy(), storageClassName);
             return build(sg, parentShape);
         }
 
@@ -335,7 +353,7 @@ public abstract class StaticShape<T> {
         public <T> StaticShape<T> build(Class<?> superClass, Class<T> factoryInterface) {
             validateClasses(superClass, factoryInterface);
             GeneratorClassLoader gcl = getOrCreateClassLoader(factoryInterface);
-            ShapeGenerator<T> sg = ShapeGenerator.getShapeGenerator(language, gcl, superClass, factoryInterface, getStorageStrategy());
+            ShapeGenerator<T> sg = ShapeGenerator.getShapeGenerator(language, gcl, superClass, factoryInterface, getStorageStrategy(), storageClassName);
             return build(sg, null);
         }
 
@@ -344,7 +362,7 @@ public abstract class StaticShape<T> {
             checkStatus();
             Map<String, StaticProperty> properties = hasLongPropertyId ? defaultPropertyIds(staticProperties) : staticProperties;
             boolean safetyChecks = !SomAccessor.ENGINE.areStaticObjectSafetyChecksRelaxed(SomAccessor.LANGUAGE.getPolyglotLanguageInstance(language));
-            StaticShape<T> shape = sg.generateShape(parentShape, properties, safetyChecks);
+            StaticShape<T> shape = sg.generateShape(parentShape, properties, safetyChecks, storageClassName);
             for (StaticProperty staticProperty : properties.values()) {
                 staticProperty.initShape(shape);
             }
@@ -362,6 +380,33 @@ public abstract class StaticShape<T> {
             isActive = false;
         }
 
+        private static String generateStorageName() {
+            return ShapeGenerator.class.getPackage().getName().replace('.', '/') + "/GeneratedStaticObject" + DELIMITER + counter.incrementAndGet();
+        }
+
+        private static String getDescriptor(String className) {
+            switch (className) {
+                case "long":
+                    return "J";
+                case "double":
+                    return "D";
+                case "int":
+                    return "I";
+                case "float":
+                    return "F";
+                case "short":
+                    return "S";
+                case "char":
+                    return "C";
+                case "byte":
+                    return "B";
+                case "boolean":
+                    return "Z";
+                default:
+                    return "L" + className.replace('.', '/') + ";";
+            }
+        }
+
         private GeneratorClassLoader getOrCreateClassLoader(Class<?> referenceClass) {
             ClassLoader cl = SomAccessor.ENGINE.getStaticObjectClassLoader(SomAccessor.LANGUAGE.getPolyglotLanguageInstance(language), referenceClass);
             if (cl == null) {
@@ -374,11 +419,10 @@ public abstract class StaticShape<T> {
             return (GeneratorClassLoader) cl;
         }
 
-        private static Class<?> validateType(Class<?> type) {
+        private static void validateType(Class<?> type) {
             if (!type.isPrimitive() && type != Object.class) {
                 throw new IllegalArgumentException("The static property type can be a primitive class or Object.class");
             }
-            return type;
         }
 
         private String validateAndGetId(StaticProperty property) {

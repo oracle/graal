@@ -184,6 +184,31 @@ enum StaticPropertyKind {
         throw new IllegalArgumentException("Invalid Static Property type: " + type.getName());
     }
 
+    static StaticPropertyKind valudeOf(String type) {
+        switch (type) {
+            case "long":
+                return StaticPropertyKind.Long;
+            case "double":
+                return StaticPropertyKind.Double;
+            case "int":
+                return StaticPropertyKind.Int;
+            case "float":
+                return StaticPropertyKind.Float;
+            case "short":
+                return StaticPropertyKind.Short;
+            case "char":
+                return StaticPropertyKind.Char;
+            case "byte":
+                return StaticPropertyKind.Byte;
+            case "boolean":
+                return StaticPropertyKind.Boolean;
+            case "java.lang.Object":
+                return StaticPropertyKind.Object;
+            default:
+                throw new IllegalStateException("Illegal internal type: " + type);
+        }
+    }
+
     static StaticPropertyKind valueOf(byte b) {
         return StaticPropertyKind.values()[b];
     }

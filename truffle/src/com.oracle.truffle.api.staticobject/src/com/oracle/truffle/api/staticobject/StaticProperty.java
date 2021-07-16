@@ -78,6 +78,8 @@ public abstract class StaticProperty {
     @CompilationFinal //
     private byte flags;
     @CompilationFinal //
+    private String descriptor;
+    @CompilationFinal //
     private StaticShape<?> shape;
     // The offset is the actual position in the field array of an actual instance.
     @CompilationFinal //
@@ -91,7 +93,8 @@ public abstract class StaticProperty {
     protected StaticProperty() {
     }
 
-    void init(StaticPropertyKind kind, boolean storeAsFinal) {
+    void init(String descriptor, StaticPropertyKind kind, boolean storeAsFinal) {
+        this.descriptor = descriptor;
         byte internalKind = getInternalKind(kind);
         assert (internalKind & STORE_AS_FINAL) == 0;
         flags = (byte) (storeAsFinal ? STORE_AS_FINAL | internalKind : internalKind);
@@ -109,6 +112,10 @@ public abstract class StaticProperty {
 
     final boolean storeAsFinal() {
         return (flags & STORE_AS_FINAL) == STORE_AS_FINAL;
+    }
+
+    final String getDescriptor() {
+        return descriptor;
     }
 
     private static byte getInternalKind(StaticPropertyKind kind) {
@@ -142,7 +149,7 @@ public abstract class StaticProperty {
             case 7:
                 return "boolean";
             case 8:
-                return "Object";
+                return "java.lang.Object";
             default:
                 throw new IllegalStateException("Illegal internal kind: " + getInternalKind());
         }

@@ -240,13 +240,25 @@ final class DefaultRuntimeAccessor extends Accessor {
 
         @SuppressWarnings("unused")
         @Override
-        public Object[] getNonPrimitiveResolvedFields(Class<?> type) {
+        public Object[] getResolvedFields(Class<?> type, boolean includePrimitive, boolean includeSuperclasses) {
             throw new UnsupportedOperationException();
         }
 
         @SuppressWarnings("unused")
         @Override
         public Object getFieldValue(Object resolvedJavaField, Object obj) {
+            throw new UnsupportedOperationException();
+        }
+
+        @SuppressWarnings("unused")
+        @Override
+        public String getFieldName(Object resolvedJavaField){
+            throw new UnsupportedOperationException();
+        }
+
+        @SuppressWarnings("unused")
+        @Override
+        public int getFieldOffset(Object resolvedJavaField){
             throw new UnsupportedOperationException();
         }
 

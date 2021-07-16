@@ -30,6 +30,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.staticobject.StaticShape;
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.ClassfileStream;
 import com.oracle.truffle.espresso.classfile.Constants;
@@ -235,6 +237,9 @@ public abstract class ClassRegistry implements ContextAccess {
      * a whole class registry and all its contained classes.
      */
     protected final ConcurrentHashMap<Symbol<Type>, ClassRegistries.RegistryEntry> classes = new ConcurrentHashMap<>();
+
+    protected final ConcurrentHashMap<Symbol<Type>, StaticShape.Builder> instanceBuilders = new ConcurrentHashMap<>();
+    protected final ConcurrentHashMap<Symbol<Type>, StaticShape.Builder> staticBuilders = new ConcurrentHashMap<>();
 
     /**
      * Strong hidden classes must be referenced by the class loader data to prevent them from being
@@ -447,7 +452,7 @@ public abstract class ClassRegistry implements ContextAccess {
 
         try (DebugCloseable define = KLASS_DEFINE.scope(getContext().getTimers())) {
             // FIXME(peterssen): Do NOT create a LinkedKlass every time, use a global cache.
-            LinkedKlass linkedKlass = LinkedKlass.create(context.getLanguage(), context.getJavaVersion(), parserKlass, superKlass == null ? null : superKlass.getLinkedKlass(), linkedInterfaces);
+            LinkedKlass linkedKlass = LinkedKlass.create(context.getLanguage(), context.getJavaVersion(), this, parserKlass, superKlass == null ? null : superKlass.getLinkedKlass(), linkedInterfaces, info.isAnonymousClass());
             klass = new ObjectKlass(context, linkedKlass, superKlass, superInterfaces, getClassLoader(), info);
         }
 
@@ -536,5 +541,18 @@ public abstract class ClassRegistry implements ContextAccess {
         if (removed != null && removed.klass() != null) {
             getRegistries().removeUnloadedKlassConstraint(removed.klass(), type);
         }
+    }
+
+    StaticShape.Builder getOrCreateShapeBuilder(TruffleLanguage<?> language, Symbol<Type> type, boolean isStatic) {
+        ConcurrentHashMap<Symbol<Type>, StaticShape.Builder> map = isStatic ? staticBuilders : instanceBuilders;
+        StaticShape.Builder builder = map.get(type);
+        if (builder == null) {
+            builder = StaticShape.newBuilder(language);
+            StaticShape.Builder prevBuilder = map.putIfAbsent(type, builder);
+            if (prevBuilder != null) {
+                builder = prevBuilder;
+            }
+        }
+        return builder;
     }
 }
