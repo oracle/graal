@@ -25,6 +25,8 @@
 
 package com.oracle.svm.hosted;
 
+import static com.oracle.svm.core.jdk.Resources.RESOURCES_INTERNAL_PATH_SEPARATOR;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -48,6 +50,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.svm.core.util.VMError;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
@@ -268,7 +271,7 @@ public final class ResourcesFeature implements Feature {
             /* Resources always use / as the separator, as do our resource inclusion patterns */
             String relativeFilePath;
             if (entry != root) {
-                relativeFilePath = root.relativize(entry).toString().replace(File.separatorChar, '/');
+                relativeFilePath = root.relativize(entry).toString().replace(File.separatorChar, RESOURCES_INTERNAL_PATH_SEPARATOR);
                 allEntries.add(relativeFilePath);
             } else {
                 relativeFilePath = "";
@@ -291,7 +294,7 @@ public final class ResourcesFeature implements Feature {
         }
 
         for (String entry : allEntries) {
-            int last = entry.lastIndexOf('/');
+            int last = entry.lastIndexOf(RESOURCES_INTERNAL_PATH_SEPARATOR);
             String key = last == -1 ? "" : entry.substring(0, last);
             List<String> dirContent = matchedDirectoryResources.get(key);
             if (dirContent != null && !dirContent.contains(entry)) {
@@ -328,14 +331,16 @@ public final class ResourcesFeature implements Feature {
     }
 
     private static boolean matches(Pattern[] includePatterns, Pattern[] excludePatterns, String relativePath) {
+        VMError.guarantee(!relativePath.contains("\\"), "Resource path contains backslash!");
+        String relativePathWithTrailingSlash = relativePath + RESOURCES_INTERNAL_PATH_SEPARATOR;
         for (Pattern p : excludePatterns) {
-            if (p.matcher(relativePath).matches()) {
+            if (p.matcher(relativePath).matches() || p.matcher(relativePathWithTrailingSlash).matches()) {
                 return false;
             }
         }
 
         for (Pattern p : includePatterns) {
-            if (p.matcher(relativePath).matches()) {
+            if (p.matcher(relativePath).matches() || p.matcher(relativePathWithTrailingSlash).matches()) {
                 return true;
             }
         }
