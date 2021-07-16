@@ -60,6 +60,7 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
     private final long id;
     private final Consumer<CompilationTask> action;
     private final EngineData engineData;
+    private final TruffleInlining inliningData = new TruffleInlining();
     private volatile Future<?> future;
     private volatile boolean cancelled;
     private volatile boolean started;
@@ -67,8 +68,6 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
     private int lastCount;
     private long lastTime;
     private double lastWeight;
-
-    private final TruffleInlining inliningData = new TruffleInlining();
 
     private CompilationTask(BackgroundCompileQueue.Priority priority, WeakReference<OptimizedCallTarget> targetRef, Consumer<CompilationTask> action, long id) {
         this.priority = priority;
@@ -264,6 +263,18 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
         double weight = rate(count, elapsed) * count;
         lastTime = currentTime;
         lastCount = count;
+        // @formatter:off
+        // We multiply first tier compilations with this bonus to bring first and last tier
+        // compilation weights to roughly the same order of magnitude.
+        // By default the traversingFirstTierBonus is: 2 * LastTierCompilationThreshold / FirstTierCompilationThreshold
+        //                                             ^    \________________________________________________________/
+        //  This controls for the fact that second tier                             |
+        //  compilations are already compiled in the first                          |
+        //  tier and are thus faster                                                |
+        //                                                                          |
+        //                                   This controls for the fact that weight is a multiple of the callAndLoopCount and this
+        //                                   count is on the order of the thresholds which is much smaller for first tier compilations
+        // @formatter:on
         lastWeight = weight * (isFirstTier() ? engineData.traversingFirstTierBonus : 1);
         assert weight >= 0.0 : "weight must be positive";
         return true;

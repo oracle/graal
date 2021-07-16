@@ -270,7 +270,13 @@ public final class EngineData {
         priorityQueue = options.get(PriorityQueue);
         weightingBothTiers = options.get(TraversingQueueWeightingBothTiers);
         traversingFirstTierPriority = options.get(TraversingQueueFirstTierPriority);
-        traversingFirstTierBonus= options.get(TraversingQueueFirstTierBonus);
+        if (TraversingQueueFirstTierBonus.hasBeenSet(options)) {
+            traversingFirstTierBonus = options.get(TraversingQueueFirstTierBonus);
+        } else {
+            // See usage of traversingFirstTierBonus for explanation of this forula.
+            traversingFirstTierBonus = (2.0 * options.get(LastTierCompilationThreshold)) / options.get(FirstTierCompilationThreshold);
+        }
+
 
         this.returnTypeSpeculation = options.get(ReturnTypeSpeculation);
         this.argumentTypeSpeculation = options.get(ArgumentTypeSpeculation);
