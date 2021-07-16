@@ -33,7 +33,6 @@ import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 import java.util.function.Function;
 
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
-import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
@@ -89,7 +88,6 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.PlatformKind;
-import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
 
@@ -286,8 +284,8 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
         }
         boolean mirrored = emitCompare(cmpKind, left, actualRight, cond, unorderedIsTrue);
         Condition finalCondition = mirrored ? cond.mirror() : cond;
-        boolean finalUnorderedIsTrue = mirrored ? !unorderedIsTrue : unorderedIsTrue;
-        ConditionFlag cmpCondition = toConditionFlag(((AArch64Kind) cmpKind).isInteger(), finalCondition, finalUnorderedIsTrue);
+        // Note mirroring does *not* affect unorderedIsTrue
+        ConditionFlag cmpCondition = toConditionFlag(((AArch64Kind) cmpKind).isInteger(), finalCondition, unorderedIsTrue);
         Variable result = newVariable(LIRKind.mergeReferenceInformation(trueValue, falseValue));
 
         if (isIntConstant(trueValue, 1) && isIntConstant(falseValue, 0)) {
@@ -334,8 +332,8 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
 
         boolean mirrored = emitCompare(cmpKind, left, actualRight, cond, unorderedIsTrue);
         Condition finalCondition = mirrored ? cond.mirror() : cond;
-        boolean finalUnorderedIsTrue = mirrored ? !unorderedIsTrue : unorderedIsTrue;
-        ConditionFlag cmpCondition = toConditionFlag(((AArch64Kind) cmpKind).isInteger(), finalCondition, finalUnorderedIsTrue);
+        // Note mirroring does *not* affect unorderedIsTrue
+        ConditionFlag cmpCondition = toConditionFlag(((AArch64Kind) cmpKind).isInteger(), finalCondition, unorderedIsTrue);
         append(new BranchOp(cmpCondition, trueDestination, falseDestination, trueDestinationProbability));
     }
 
@@ -344,9 +342,9 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     /**
-     * Takes a Condition and unorderedIsTrue flag and returns the correct Aarch64 specific
-     * ConditionFlag. Note: This is only correct if the emitCompare code for floats has correctly
-     * handled the case of 'EQ && unorderedIsTrue', respectively 'NE && !unorderedIsTrue'!
+     * Takes a Condition and unorderedIsTrue flag and returns the correct AArch64 specific
+     * ConditionFlag. Note: This is only correct if the emitCompare code for floats correctly
+     * handles 'EQ && unorderedIsTrue' and 'NE && !unorderedIsTrue'!
      */
     private static ConditionFlag toFloatConditionFlag(Condition cond, boolean unorderedIsTrue) {
         switch (cond) {
@@ -368,7 +366,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     /**
-     * Takes a Condition and returns the correct Aarch64 specific ConditionFlag.
+     * Takes a Condition and returns the correct AArch64 specific ConditionFlag.
      */
     private static ConditionFlag toIntConditionFlag(Condition cond) {
         switch (cond) {
@@ -398,8 +396,8 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     /**
-     * This method emits the compare instruction, and may reorder the operands. It returns true if
-     * it did so.
+     * This method emits the compare instruction, and may mirror (switch) the operands. It returns
+     * true if it did so.
      *
      * @param a the left operand of the comparison. Has to have same type as b. Non null.
      * @param b the right operand of the comparison. Has to have same type as a. Non null.
@@ -410,137 +408,59 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
         Value right;
         boolean mirrored;
         AArch64Kind kind = (AArch64Kind) cmpKind;
+
+        /*
+         * AArch64 compares 32 or 64 bits. Note currently the size of the comparison within
+         * AArch64Compare is based on the size of the operands, not the comparison size provided.
+         *
+         * This minimum comparison size is defined in
+         * AArch64LoweringProviderMixin::smallestCompareWidth.
+         */
+        assert a.getPlatformKind() == b.getPlatformKind();
+        int cmpBitSize = cmpKind.getSizeInBytes() * Byte.SIZE;
+        GraalError.guarantee(cmpBitSize >= 32 && cmpKind == a.getPlatformKind(), "Unexpected comparison parameters.");
+
+        /*
+         * The AArch64 integer comparison instruction left operand can be the stack pointer register
+         * (sp), but not the right operand.
+         */
+        boolean aIsStackPointer;
+        boolean bIsStackPointer;
+        boolean aIsConstant;
+        boolean bIsConstant;
         if (kind.isInteger()) {
-            Value aExt = a;
-            Value bExt = b;
-
-            assert a.getPlatformKind() == b.getPlatformKind();
-            /*
-             * AArch64 compares 32 or 64 bits: sign extend a and b as required. Note currently the
-             * size of the comparison within AArch64Compare is based on the size of the operands,
-             * not the comparison size provided here.
-             */
-            int compareBits = cmpKind.getSizeInBytes() * Byte.SIZE;
-            int operandBits = a.getPlatformKind().getSizeInBytes() * Byte.SIZE;
-            switch (compareBits) {
-                case 8:
-                case 16:
-                    /* Lower bits need to be sign extended. */
-                    aExt = arithmeticLIRGen.emitSignExtend(a, compareBits, 64);
-                    bExt = arithmeticLIRGen.emitSignExtend(b, compareBits, 64);
-                    break;
-                case 32:
-                case 64:
-                    /*
-                     * May need to extend operands to be at least 32 bits. If both operands are
-                     * 32-bits, it is unnecessary to extend them to 64 bits, even if compareBits is
-                     * 64.
-                     */
-                    if (operandBits < 32) {
-                        aExt = arithmeticLIRGen.emitSignExtend(a, operandBits, compareBits);
-                        bExt = arithmeticLIRGen.emitSignExtend(b, operandBits, compareBits);
-                    }
-                    break;
-                default:
-                    throw GraalError.shouldNotReachHere();
-
-            }
-
-            /*
-             * The AArch64 comparison instruction can treat register 31 as the stack pointer
-             * register (sp) for the left operand, but not for the right operand.
-             */
-            boolean aIsStackPointer = ValueUtil.isRegister(aExt) && ValueUtil.asRegister(aExt).equals(AArch64.sp);
-            boolean bIsStackPointer = ValueUtil.isRegister(bExt) && ValueUtil.asRegister(bExt).equals(AArch64.sp);
-
-            if (aIsStackPointer && bIsStackPointer) {
-                /*
-                 * If both a and b are sp, this cannot be encoded in an AArch64 comparison. Hence,
-                 * sp must be moved to a register.
-                 */
-                left = right = emitMove(aExt);
-                mirrored = false;
-            } else if (bIsStackPointer || (isCompareConstant(aExt) && !isCompareConstant(bExt))) {
-                left = bExt;
-                right = loadNonConst(aExt);
-                mirrored = true;
-            } else {
-                left = aExt;
-                right = loadNonConst(bExt);
-                mirrored = false;
-            }
-            append(new AArch64Compare.CompareOp(loadReg(left), loadNonCompareConst(right)));
-        } else if (kind.isSIMD()) {
-            if (AArch64Compare.FloatCompareOp.isFloatCmpConstant(a, condition, unorderedIsTrue)) {
-                left = b;
-                right = a;
-                mirrored = true;
-            } else if (AArch64Compare.FloatCompareOp.isFloatCmpConstant(b, condition, unorderedIsTrue)) {
-                left = a;
-                right = b;
-                mirrored = false;
-            } else {
-                left = a;
-                right = loadReg(b);
-                mirrored = false;
-            }
-            append(new AArch64Compare.FloatCompareOp(loadReg(left), right, condition, unorderedIsTrue));
+            aIsStackPointer = ValueUtil.isRegister(a) && ValueUtil.asRegister(a).equals(AArch64.sp);
+            bIsStackPointer = ValueUtil.isRegister(b) && ValueUtil.asRegister(b).equals(AArch64.sp);
+            aIsConstant = AArch64Compare.CompareOp.isCompareConstant(a);
+            bIsConstant = AArch64Compare.CompareOp.isCompareConstant(b);
         } else {
-            throw GraalError.shouldNotReachHere();
+            assert kind.isSIMD();
+            // sp is an integer register
+            aIsStackPointer = false;
+            bIsStackPointer = false;
+            aIsConstant = AArch64Compare.FloatCompareOp.isCompareConstant(a, condition, unorderedIsTrue);
+            bIsConstant = AArch64Compare.FloatCompareOp.isCompareConstant(b, condition, unorderedIsTrue);
         }
+
+        if (aIsStackPointer && bIsStackPointer) {
+            /*
+             * If both a and b are sp, this cannot be encoded in an AArch64 comparison. Hence, sp
+             * must be moved to a register.
+             */
+            left = right = emitMove(a);
+            mirrored = false;
+        } else if (bIsStackPointer || (aIsConstant && !bIsConstant)) {
+            left = b;
+            right = a;
+            mirrored = true;
+        } else {
+            left = a;
+            right = bIsConstant ? b : loadReg(b);
+            mirrored = false;
+        }
+        left = loadReg(left);
+        append(kind.isInteger() ? new AArch64Compare.CompareOp(left, right) : new AArch64Compare.FloatCompareOp(left, right, condition, unorderedIsTrue));
         return mirrored;
-    }
-
-    /**
-     * If value is a constant that cannot be used directly with a gpCompare instruction load it into
-     * a register and return the register, otherwise return constant value unchanged.
-     */
-    protected Value loadNonCompareConst(Value value) {
-        if (!isCompareConstant(value)) {
-            return loadReg(value);
-        }
-        return value;
-    }
-
-    /**
-     * Checks whether value can be used directly with a gpCompare instruction. This is <b>not</b>
-     * the same as {@link AArch64ArithmeticLIRGenerator#isArithmeticConstant(JavaConstant)}, because
-     * 0.0 is a valid compare constant for floats, while there are no arithmetic constants for
-     * floats.
-     *
-     * @param value any type. Non null.
-     * @return true if value can be used directly in comparison instruction, false otherwise.
-     */
-    public boolean isCompareConstant(Value value) {
-        if (isJavaConstant(value)) {
-            JavaConstant constant = asJavaConstant(value);
-            if (constant instanceof PrimitiveConstant) {
-                final long longValue = constant.asLong();
-                long maskedValue;
-                switch (constant.getJavaKind()) {
-                    case Boolean:
-                    case Byte:
-                        maskedValue = longValue & 0xFF;
-                        break;
-                    case Char:
-                    case Short:
-                        maskedValue = longValue & 0xFFFF;
-                        break;
-                    case Int:
-                        maskedValue = longValue & 0xFFFF_FFFFL;
-                        break;
-                    case Long:
-                        maskedValue = longValue;
-                        break;
-                    default:
-                        throw GraalError.shouldNotReachHere();
-                }
-                return AArch64MacroAssembler.isArithmeticImmediate(maskedValue);
-            } else {
-                return constant.isDefaultForKind();
-            }
-        }
-        return false;
     }
 
     /**
