@@ -149,6 +149,7 @@ public final class ClassfileParser {
     public static final char JAVA_MIN_SUPPORTED_VERSION = JAVA_1_1_VERSION;
     public static final char JAVA_MAX_SUPPORTED_VERSION = JAVA_11_VERSION;
     public static final char JAVA_MAX_SUPPORTED_MINOR_VERSION = 0;
+    public static final char JAVA_PREVIEW_MINOR_VERSION = 65535;
 
     private final ClasspathFile classfile;
 
@@ -263,11 +264,13 @@ public final class ClassfileParser {
      * <li>Major_version = current_major_version and minor_version <= MAX_SUPPORTED_MINOR (= 0).
      */
     private static void versionCheck8(int maxMajor, int major, int minor) {
-        if (major < JAVA_MIN_SUPPORTED_VERSION ||
-                        major > maxMajor ||
-                        (major == maxMajor && minor > JAVA_MAX_SUPPORTED_MINOR_VERSION)) {
-            throw unsupportedClassVersionError("Unsupported major.minor version " + major + "." + minor);
+        if (major == maxMajor && minor <= JAVA_MAX_SUPPORTED_MINOR_VERSION) {
+            return;
         }
+        if (major >= JAVA_MIN_SUPPORTED_VERSION && major < maxMajor) {
+            return;
+        }
+        throw unsupportedClassVersionError("Unsupported major.minor version " + major + "." + minor);
     }
 
     /**
@@ -279,12 +282,16 @@ public final class ClassfileParser {
      * present.
      */
     private static void versionCheck11(int maxMajor, int major, int minor) {
-        if (major < JAVA_MIN_SUPPORTED_VERSION ||
-                        major > maxMajor ||
-                        major != JAVA_1_1_VERSION && minor != 0 ||
-                        (major == maxMajor) && (minor > JAVA_MAX_SUPPORTED_MINOR_VERSION)) {
-            throw unsupportedClassVersionError("Unsupported major.minor version " + major + "." + minor);
+        if (major == maxMajor && (minor <= JAVA_MAX_SUPPORTED_MINOR_VERSION || minor == JAVA_PREVIEW_MINOR_VERSION)) {
+            return;
         }
+        if (major < maxMajor && major > JAVA_MIN_SUPPORTED_VERSION && minor == 0) {
+            return;
+        }
+        if (major == JAVA_MIN_SUPPORTED_VERSION) {
+            return;
+        }
+        throw unsupportedClassVersionError("Unsupported major.minor version " + major + "." + minor);
     }
 
     private static EspressoException unsupportedClassVersionError(String message) {
@@ -1279,6 +1286,9 @@ public final class ClassfileParser {
 
     private PermittedSubclassesAttribute parsePermittedSubclasses(Symbol<Name> attributeName) {
         assert PermittedSubclassesAttribute.NAME.equals(attributeName);
+        if ((classFlags & ACC_FINAL) != 0) {
+            throw ConstantPool.classFormatError("A final class may not declare a permitted subclasses attribute.");
+        }
         int numberOfClasses = stream.readU2();
         if (numberOfClasses == 0) {
             return PermittedSubclassesAttribute.EMPTY;
@@ -1294,11 +1304,13 @@ public final class ClassfileParser {
 
     private RecordAttribute parseRecord(Symbol<Name> recordAttributeName) {
         assert RecordAttribute.NAME.equals(recordAttributeName);
-        int length = stream.readU2();
-        RecordAttribute.RecordComponentInfo[] components = new RecordAttribute.RecordComponentInfo[length];
-        for (int i = 0; i < length; i++) {
+        int count = stream.readU2();
+        RecordAttribute.RecordComponentInfo[] components = new RecordAttribute.RecordComponentInfo[count];
+        for (int i = 0; i < count; i++) {
             final int name = stream.readU2();
             final int descriptor = stream.readU2();
+            pool.utf8At(name).validateUTF8();
+            pool.utf8At(descriptor).validateType(false);
             Attribute[] componentAttributes = parseRecordComponentAttributes();
             components[i] = new RecordAttribute.RecordComponentInfo(name, descriptor, componentAttributes);
         }
@@ -1310,8 +1322,7 @@ public final class ClassfileParser {
         Attribute[] componentAttributes = new Attribute[size];
         CommonAttributeParser commonAttributeParser = new CommonAttributeParser(InfoType.Record);
         for (int j = 0; j < size; j++) {
-            final int attributeNameIndex = stream.readU2();
-            final Symbol<Name> attributeName = pool.symbolAt(attributeNameIndex, "attribute name");
+            final Symbol<Name> attributeName = pool.symbolAt(stream.readU2(), "attribute name");
             final int attributeSize = stream.readS4();
             Attribute attr = commonAttributeParser.parseCommonAttribute(attributeName, attributeSize);
             componentAttributes[j] = attr == null ? new Attribute(attributeName, stream.readByteArray(attributeSize)) : attr;
