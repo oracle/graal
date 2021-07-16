@@ -74,18 +74,4 @@ public abstract class MacroStateSplitNode extends MacroNode implements StateSpli
     public LocationIdentity getKilledLocationIdentity() {
         return LocationIdentity.any();
     }
-
-    protected void replaceSnippetInvokes(StructuredGraph snippetGraph) {
-        for (MethodCallTargetNode call : snippetGraph.getNodes(MethodCallTargetNode.TYPE)) {
-            Invoke invoke = call.invoke();
-            if (!call.targetMethod().equals(getTargetMethod())) {
-                throw new GraalError("unexpected invoke %s in snippet", getClass().getSimpleName());
-            }
-            assert invoke.stateAfter().bci == BytecodeFrame.AFTER_BCI;
-            // Here we need to fix the bci of the invoke
-            InvokeNode newInvoke = snippetGraph.add(new InvokeNode(invoke.callTarget(), bci(), invoke.getKilledLocationIdentity()));
-            newInvoke.setStateAfter(invoke.stateAfter());
-            snippetGraph.replaceFixedWithFixed((InvokeNode) invoke.asNode(), newInvoke);
-        }
-    }
 }
