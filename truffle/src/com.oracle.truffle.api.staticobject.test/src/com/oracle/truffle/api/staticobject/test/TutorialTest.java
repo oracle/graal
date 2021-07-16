@@ -132,10 +132,10 @@ public class TutorialTest extends StaticObjectModelTest {
             StaticShape<MyStaticObjectFactory> shape = StaticShape.newBuilder(te.testLanguage).property(property, Object.class, false).build(MyStaticObject.class, MyStaticObjectFactory.class);
             MyStaticObject staticObject = shape.getFactory().create("arg1");
             property.setObject(staticObject, "42");
-            assert staticObject.arg1.equals("arg1"); // fields of the custom super class are
-                                                     // directly accessible
-            assert property.getObject(staticObject).equals("42"); // static properties are
-                                                                  // accessible as usual
+            // fields of the custom super class are directly accessible
+            assert staticObject.arg1.equals("arg1");
+            // static properties are accessible as usual
+            assert property.getObject(staticObject).equals("42");
         }
     }
 
@@ -165,7 +165,8 @@ public class TutorialTest extends StaticObjectModelTest {
 
             @Override
             public String getId() {
-                return name.toString(); // this string must be a unique identifier within a Builder
+                // this string must be a unique identifier within a Builder
+                return name.toString();
             }
         }
 
