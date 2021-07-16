@@ -132,10 +132,6 @@ public abstract class MacroWithExceptionNode extends WithExceptionNode implement
         }
     }
 
-    public LocationIdentity getLocationIdentity() {
-        return LocationIdentity.any();
-    }
-
     protected InvokeWithExceptionNode createInvoke() {
         return createInvoke(this);
     }
