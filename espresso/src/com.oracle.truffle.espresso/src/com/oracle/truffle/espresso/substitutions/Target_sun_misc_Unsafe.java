@@ -706,9 +706,8 @@ public final class Target_sun_misc_Unsafe {
         byte doCached(
                         @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
                         long address,
-                        @CachedContext(EspressoLanguage.class) EspressoContext context,
-                        @Cached BranchProfile unsupportedProfile) {
-            return UnsafeUtils.getUnsafe(context, unsupportedProfile).getByte(address);
+                        @CachedContext(EspressoLanguage.class) EspressoContext context) {
+            return UnsafeAccess.getIfAllowed(context).getByte(address);
         }
     }
 
@@ -721,9 +720,8 @@ public final class Target_sun_misc_Unsafe {
         char doCached(
                 @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
                 long address,
-                @CachedContext(EspressoLanguage.class) EspressoContext context,
-                @Cached BranchProfile unsupportedProfile) {
-            return UnsafeUtils.getUnsafe(context, unsupportedProfile).getChar(address);
+                @CachedContext(EspressoLanguage.class) EspressoContext context) {
+            return UnsafeAccess.getIfAllowed(context).getChar(address);
         }
     }
 
@@ -736,9 +734,8 @@ public final class Target_sun_misc_Unsafe {
         short doCached(
                 @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
                 long address,
-                @CachedContext(EspressoLanguage.class) EspressoContext context,
-                @Cached BranchProfile unsupportedProfile) {
-            return UnsafeUtils.getUnsafe(context, unsupportedProfile).getShort(address);
+                @CachedContext(EspressoLanguage.class) EspressoContext context) {
+            return UnsafeAccess.getIfAllowed(context).getShort(address);
         }
     }
 
@@ -751,9 +748,8 @@ public final class Target_sun_misc_Unsafe {
         int doCached(
                 @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
                 long address,
-                @CachedContext(EspressoLanguage.class) EspressoContext context,
-                @Cached BranchProfile unsupportedProfile) {
-            return UnsafeUtils.getUnsafe(context, unsupportedProfile).getInt(address);
+                @CachedContext(EspressoLanguage.class) EspressoContext context) {
+            return UnsafeAccess.getIfAllowed(context).getInt(address);
         }
     }
 
@@ -766,9 +762,8 @@ public final class Target_sun_misc_Unsafe {
         float doCached(
                 @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
                 long address,
-                @CachedContext(EspressoLanguage.class) EspressoContext context,
-                @Cached BranchProfile unsupportedProfile) {
-            return UnsafeUtils.getUnsafe(context, unsupportedProfile).getFloat(address);
+                @CachedContext(EspressoLanguage.class) EspressoContext context) {
+            return UnsafeAccess.getIfAllowed(context).getFloat(address);
         }
     }
 
@@ -781,9 +776,8 @@ public final class Target_sun_misc_Unsafe {
         double doCached(
                 @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
                 long address,
-                @CachedContext(EspressoLanguage.class) EspressoContext context,
-                @Cached BranchProfile unsupportedProfile) {
-            return UnsafeUtils.getUnsafe(context, unsupportedProfile).getDouble(address);
+                @CachedContext(EspressoLanguage.class) EspressoContext context) {
+            return UnsafeAccess.getIfAllowed(context).getDouble(address);
         }
     }
 
@@ -796,9 +790,8 @@ public final class Target_sun_misc_Unsafe {
         long doCached(
                 @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
                 long address,
-                @CachedContext(EspressoLanguage.class) EspressoContext context,
-                @Cached BranchProfile unsupportedProfile) {
-            return UnsafeUtils.getUnsafe(context, unsupportedProfile).getLong(address);
+                @CachedContext(EspressoLanguage.class) EspressoContext context) {
+            return UnsafeAccess.getIfAllowed(context).getLong(address);
         }
     }
 
@@ -998,9 +991,8 @@ public final class Target_sun_misc_Unsafe {
                 @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
                 long address,
                 byte value,
-                @CachedContext(EspressoLanguage.class) EspressoContext context,
-                @Cached BranchProfile unsupportedProfile) {
-            UnsafeUtils.getUnsafe(context, unsupportedProfile).putByte(address, value);
+                @CachedContext(EspressoLanguage.class) EspressoContext context) {
+            UnsafeAccess.getIfAllowed(context).putByte(address, value);
         }
     }
 
@@ -1014,9 +1006,8 @@ public final class Target_sun_misc_Unsafe {
                 @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
                 long address,
                 char value,
-                @CachedContext(EspressoLanguage.class) EspressoContext context,
-                @Cached BranchProfile unsupportedProfile) {
-            UnsafeUtils.getUnsafe(context, unsupportedProfile).putChar(address, value);
+                @CachedContext(EspressoLanguage.class) EspressoContext context) {
+            UnsafeAccess.getIfAllowed(context).putChar(address, value);
         }
     }
 
@@ -1030,9 +1021,8 @@ public final class Target_sun_misc_Unsafe {
                 @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
                 long address,
                 short value,
-                @CachedContext(EspressoLanguage.class) EspressoContext context,
-                @Cached BranchProfile unsupportedProfile) {
-            UnsafeUtils.getUnsafe(context, unsupportedProfile).putShort(address, value);
+                @CachedContext(EspressoLanguage.class) EspressoContext context) {
+            UnsafeAccess.getIfAllowed(context).putShort(address, value);
         }
     }
 
@@ -1046,9 +1036,8 @@ public final class Target_sun_misc_Unsafe {
                 @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
                 long address,
                 int value,
-                @CachedContext(EspressoLanguage.class) EspressoContext context,
-                @Cached BranchProfile unsupportedProfile) {
-            UnsafeUtils.getUnsafe(context, unsupportedProfile).putInt(address, value);
+                @CachedContext(EspressoLanguage.class) EspressoContext context) {
+            UnsafeAccess.getIfAllowed(context).putInt(address, value);
         }
     }
 
@@ -1062,9 +1051,8 @@ public final class Target_sun_misc_Unsafe {
                 @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
                 long address,
                 float value,
-                @CachedContext(EspressoLanguage.class) EspressoContext context,
-                @Cached BranchProfile unsupportedProfile) {
-            UnsafeUtils.getUnsafe(context, unsupportedProfile).putFloat(address, value);
+                @CachedContext(EspressoLanguage.class) EspressoContext context) {
+            UnsafeAccess.getIfAllowed(context).putFloat(address, value);
         }
     }
 
@@ -1078,9 +1066,8 @@ public final class Target_sun_misc_Unsafe {
                 @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
                 long address,
                 double value,
-                @CachedContext(EspressoLanguage.class) EspressoContext context,
-                @Cached BranchProfile unsupportedProfile) {
-            UnsafeUtils.getUnsafe(context, unsupportedProfile).putDouble(address, value);
+                @CachedContext(EspressoLanguage.class) EspressoContext context) {
+            UnsafeAccess.getIfAllowed(context).putDouble(address, value);
         }
     }
 
@@ -1094,9 +1081,8 @@ public final class Target_sun_misc_Unsafe {
                 @SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self,
                 long address,
                 long value,
-                @CachedContext(EspressoLanguage.class) EspressoContext context,
-                @Cached BranchProfile unsupportedProfile) {
-            UnsafeUtils.getUnsafe(context, unsupportedProfile).putLong(address, value);
+                @CachedContext(EspressoLanguage.class) EspressoContext context) {
+            UnsafeAccess.getIfAllowed(context).putLong(address, value);
         }
     }
 
