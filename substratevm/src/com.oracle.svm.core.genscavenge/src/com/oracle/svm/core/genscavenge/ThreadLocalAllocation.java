@@ -206,7 +206,7 @@ public final class ThreadLocalAllocation {
              * has other objects in it, and the next collection could throw an OutOfMemoryError if
              * this object is allocated and survives.
              */
-            if (size.aboveOrEqual(HeapParameters.getMaximumHeapSize())) {
+            if (size.aboveOrEqual(GCImpl.getPolicy().getMaximumHeapSize())) {
                 throw new OutOfMemoryError("Array allocation too large.");
             }
 

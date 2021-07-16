@@ -828,7 +828,7 @@ final class Target_java_lang_Runtime {
     private long maxMemory() {
         // Query the physical memory size, so it gets set correctly instead of being estimated.
         PhysicalMemory.size();
-        return HeapParameters.getMaximumHeapSize().rawValue();
+        return GCImpl.getPolicy().getMaximumHeapSize().rawValue();
     }
 
     @Substitute

@@ -49,9 +49,9 @@ import com.oracle.svm.core.thread.VMThreads;
  * Allocates and frees the memory for aligned and unaligned heap chunks. The methods are
  * thread-safe, so no locking is necessary when calling them.
  *
- * Memory for aligned chunks is not immediately released to the OS. Up to
- * {@link HeapParameters#getMinimumHeapSize()} chunks are saved in an unused chunk list. Memory for
- * unaligned chunks is released immediately.
+ * Memory for aligned chunks is not immediately released to the OS. Chunks with a total of up to
+ * {@link AbstractCollectionPolicy#getMaximumFreeReservedSize()} bytes are saved in an unused chunk
+ * list. Memory for unaligned chunks is released immediately.
  */
 final class HeapChunkProvider {
     /**
@@ -135,10 +135,10 @@ final class HeapChunkProvider {
         assert HeapChunk.getPrevious(firstChunk).isNull() : "prev must be null";
         AlignedHeader cur = firstChunk;
 
-        UnsignedWord minimumHeapSize = HeapParameters.getMinimumHeapSize();
-        UnsignedWord committedBytesAfterGC = GCImpl.getChunkBytes().add(getBytesInUnusedChunks());
-        if (minimumHeapSize.aboveThan(committedBytesAfterGC)) {
-            UnsignedWord chunksToKeep = minimumHeapSize.subtract(committedBytesAfterGC).unsignedDivide(HeapParameters.getAlignedHeapChunkSize());
+        UnsignedWord unusedBytes = getBytesInUnusedChunks();
+        UnsignedWord reserved = GCImpl.getPolicy().getMaximumFreeReservedSize();
+        if (reserved.aboveThan(unusedBytes)) {
+            UnsignedWord chunksToKeep = reserved.subtract(unusedBytes).unsignedDivide(HeapParameters.getAlignedHeapChunkSize());
             while (cur.isNonNull() && chunksToKeep.aboveThan(0)) {
                 AlignedHeader next = HeapChunk.getNext(cur);
                 cleanAlignedChunk(cur);

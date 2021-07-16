@@ -34,11 +34,9 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.PhysicalMemory;
-import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.util.UserError;
@@ -128,11 +126,6 @@ public final class HeapParameters {
         return (int) consumedHeapChunkZapInt.rawValue();
     }
 
-    public static UnsignedWord m(long bytes) {
-        assert 0 <= bytes;
-        return WordFactory.unsigned(bytes).multiply(1024).multiply(1024);
-    }
-
     @Fold
     public static int getMaxSurvivorSpaces() {
         return Options.MaxSurvivorSpaces.getValue();
@@ -142,71 +135,15 @@ public final class HeapParameters {
      * Memory configuration
      */
 
-    public static UnsignedWord getMaximumYoungGenerationSize() {
-        long runtimeValue = SubstrateGCOptions.MaxNewSize.getValue();
-        if (runtimeValue != 0L) {
-            return WordFactory.unsigned(runtimeValue);
-        }
-
-        /* If no value is set, use a fraction of the maximum heap size. */
-        UnsignedWord maxHeapSize = getMaximumHeapSize();
-        UnsignedWord youngSizeAsFraction = maxHeapSize.unsignedDivide(100).multiply(getMaximumYoungGenerationSizePercent());
-        /* But not more than 256MB. */
-        UnsignedWord maxSize = m(256);
-        UnsignedWord youngSize = (youngSizeAsFraction.belowOrEqual(maxSize) ? youngSizeAsFraction : maxSize);
-        /* But do not cache the result as it is based on values that might change. */
-        return youngSize;
-    }
-
-    private static int getMaximumYoungGenerationSizePercent() {
+    static int getMaximumYoungGenerationSizePercent() {
         int result = Options.MaximumYoungGenerationSizePercent.getValue();
         VMError.guarantee((result >= 0) && (result <= 100), "MaximumYoungGenerationSizePercent should be in [0 ..100]");
         return result;
     }
 
-    public static UnsignedWord getMaximumHeapSize() {
-        long runtimeValue = SubstrateGCOptions.MaxHeapSize.getValue();
-        if (runtimeValue != 0L) {
-            return WordFactory.unsigned(runtimeValue);
-        }
-
-        /*
-         * If the physical size is known yet, the maximum size of the heap is a fraction of the size
-         * of the physical memory.
-         */
-        UnsignedWord addressSpaceSize = ReferenceAccess.singleton().getAddressSpaceSize();
-        if (PhysicalMemory.isInitialized()) {
-            UnsignedWord physicalMemorySize = PhysicalMemory.getCachedSize();
-            int maximumHeapSizePercent = getMaximumHeapSizePercent();
-            /* Do not cache because `-Xmx` option parsing may not have happened yet. */
-            UnsignedWord result = physicalMemorySize.unsignedDivide(100).multiply(maximumHeapSizePercent);
-            if (result.belowThan(addressSpaceSize)) {
-                return result;
-            }
-        }
-        return addressSpaceSize;
-    }
-
-    private static int getMaximumHeapSizePercent() {
+    static int getMaximumHeapSizePercent() {
         int result = Options.MaximumHeapSizePercent.getValue();
         VMError.guarantee((result >= 0) && (result <= 100), "MaximumHeapSizePercent should be in [0 ..100]");
-        return result;
-    }
-
-    public static UnsignedWord getMinimumHeapSize() {
-        long runtimeValue = SubstrateGCOptions.MinHeapSize.getValue();
-        if (runtimeValue != 0L) {
-            /* If `-Xms` has been parsed from the command line, use that value. */
-            return WordFactory.unsigned(runtimeValue);
-        }
-
-        /* A default value chosen to delay the first full collection. */
-        UnsignedWord result = getMaximumYoungGenerationSize().multiply(2);
-        /* But not larger than -Xmx. */
-        if (result.aboveThan(getMaximumHeapSize())) {
-            result = getMaximumHeapSize();
-        }
-        /* But do not cache the result as it is based on values that might change. */
         return result;
     }
 
