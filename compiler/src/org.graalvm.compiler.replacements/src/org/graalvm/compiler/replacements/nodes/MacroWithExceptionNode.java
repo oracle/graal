@@ -65,9 +65,9 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
           size = SIZE_UNKNOWN,
           sizeRationale = "If this node is not optimized away it will be lowered to a call, which we cannot estimate")
 //@formatter:on
-public abstract class MacroStateSplitWithExceptionNode extends WithExceptionNode implements MacroInvokable, StateSplit, SingleMemoryKill {
+public abstract class MacroWithExceptionNode extends WithExceptionNode implements MacroInvokable, StateSplit, SingleMemoryKill {
 
-    public static final NodeClass<MacroStateSplitWithExceptionNode> TYPE = NodeClass.create(MacroStateSplitWithExceptionNode.class);
+    public static final NodeClass<MacroWithExceptionNode> TYPE = NodeClass.create(MacroWithExceptionNode.class);
     @Input protected NodeInputList<ValueNode> arguments;
     @OptionalInput(InputType.State) protected FrameState stateAfter;
 
@@ -77,7 +77,7 @@ public abstract class MacroStateSplitWithExceptionNode extends WithExceptionNode
     protected final InvokeKind invokeKind;
     protected final StampPair returnStamp;
 
-    protected MacroStateSplitWithExceptionNode(NodeClass<? extends MacroStateSplitWithExceptionNode> c, MacroParams p) {
+    protected MacroWithExceptionNode(NodeClass<? extends MacroWithExceptionNode> c, MacroParams p) {
         super(c, p.returnStamp != null ? p.returnStamp.getTrustedStamp() : null);
         this.arguments = new NodeInputList<>(this, p.arguments);
         this.bci = p.bci;
