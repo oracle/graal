@@ -110,38 +110,15 @@ suite = {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
+                "truffle:TRUFFLE_API",
                 "truffle:TRUFFLE_NFI",
                 "com.oracle.truffle.espresso.jdwp",
-                "com.oracle.truffle.espresso.staticobject",
             ],
             "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR", "ESPRESSO_PROCESSOR"],
             "javaCompliance": "1.8+",
             "checkstyle": "com.oracle.truffle.espresso",
             "checkstyleVersion": "8.8",
             "checkPackagePrefix": False,  # java.lang.ref.PublicFinalReference
-        },
-
-        "com.oracle.truffle.espresso.staticobject": {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "dependencies": [
-                "truffle:TRUFFLE_API",
-                "truffle:TRUFFLE_ASM_7.2",
-            ],
-            "javaCompliance": "1.8+",
-            "checkstyle": "com.oracle.truffle.espresso",
-            "javadocType": "api",
-        },
-
-        "com.oracle.truffle.espresso.staticobject.test": {
-            "subDir" : "src",
-            "sourceDirs" : ["src"],
-            "dependencies" : [
-                "com.oracle.truffle.espresso.staticobject",
-                "mx:JUNIT"
-            ],
-            "javaCompliance": "1.8+",
-            "checkstyle": "com.oracle.truffle.espresso",
         },
 
         "com.oracle.truffle.espresso.processor": {
@@ -309,20 +286,6 @@ suite = {
                 "org.graalvm.language.java.home": "<path:ESPRESSO_SUPPORT>",
                 "polyglot.java.JVMLibraryPath": "<path:ESPRESSO_JVM_SUPPORT>/truffle",
             },
-            "maven": False,
-        },
-
-        "ESPRESSO_STATICOBJECT_TESTS": {
-            "subDir": "src",
-            "dependencies": [
-                "com.oracle.truffle.espresso.staticobject.test",
-            ],
-            "distDependencies": [
-                "espresso:ESPRESSO",
-            ],
-            "exclude": [
-                "mx:JUNIT",
-            ],
             "maven": False,
         },
 

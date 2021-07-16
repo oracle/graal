@@ -28,8 +28,6 @@ import java.util.Arrays;
 
 import org.junit.Test;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.utilities.FinalBitSet;
 
 public class FinalBitSetCompilationTest extends PartialEvaluationTest {
@@ -77,23 +75,7 @@ public class FinalBitSetCompilationTest extends PartialEvaluationTest {
         }
     }
 
-    private void assertConstant(Object expectedConstant, TestFunction test) {
-        assertPartialEvalEquals(new RootNode(null) {
-            @Override
-            public Object execute(VirtualFrame frame) {
-                return expectedConstant;
-            }
-        }, new RootNode(null) {
-            @Override
-            public Object execute(VirtualFrame frame) {
-                return test.execute(frame);
-            }
-        }, new Object[0]);
+    private void assertConstant(Object expectedConstant, FrameFunction ff) {
+        assertPartialEvalEquals(toRootNode((f) -> expectedConstant), toRootNode(ff), new Object[0]);
     }
-
-    @FunctionalInterface
-    interface TestFunction {
-        Object execute(VirtualFrame frame);
-    }
-
 }
