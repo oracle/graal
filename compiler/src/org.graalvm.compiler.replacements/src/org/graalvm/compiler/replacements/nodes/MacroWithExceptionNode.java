@@ -40,11 +40,9 @@ import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
-import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
-import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.replacements.nodes.MacroNode.MacroParams;
 import org.graalvm.word.LocationIdentity;
 
@@ -65,7 +63,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
           size = SIZE_UNKNOWN,
           sizeRationale = "If this node is not optimized away it will be lowered to a call, which we cannot estimate")
 //@formatter:on
-public abstract class MacroWithExceptionNode extends WithExceptionNode implements MacroInvokable, StateSplit, SingleMemoryKill {
+public abstract class MacroWithExceptionNode extends WithExceptionNode implements MacroInvokable {
 
     public static final NodeClass<MacroWithExceptionNode> TYPE = NodeClass.create(MacroWithExceptionNode.class);
     @Input protected NodeInputList<ValueNode> arguments;
