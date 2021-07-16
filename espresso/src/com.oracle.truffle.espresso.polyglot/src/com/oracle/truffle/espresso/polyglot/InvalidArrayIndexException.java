@@ -42,8 +42,7 @@
 package com.oracle.truffle.espresso.polyglot;
 
 /**
- * An exception thrown if an array does not contain a element with an index. Interop exceptions are
- * supposed to be caught and converted into a guest language error by the caller.
+ * An exception thrown if an array does not contain a element with an index.
  *
  * @see #getInvalidIndex()
  * @since 21.0
@@ -100,10 +99,7 @@ public final class InvalidArrayIndexException extends InteropException {
      * caused this problem. An example for this is a language specific proxy mechanism that invokes
      * guest language code to describe an object. If the guest language code fails to execute and
      * this interop exception is a valid interpretation of the error, then the error should be
-     * provided as cause. The cause can then be used by the source language as new exception cause
-     * if the {@link InteropException} is translated to a source language error. If the
-     * {@link InteropException} is discarded, then the cause will most likely get discarded by the
-     * source language as well.
+     * provided as cause.
      *
      * @param invalidIndex the index that could not be accessed
      * @param cause the guest language exception that caused the error.
