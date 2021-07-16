@@ -92,7 +92,6 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.FileSystem;
 import org.junit.After;
 import org.junit.Assert;
-import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -1014,15 +1013,15 @@ public class ContextPreInitializationTest {
 
     @Test
     public void testRedirectedLogging() throws Exception {
-        Assume.assumeTrue(System.getProperty("polyglot.log.file") == null);
         setPatchable(FIRST);
+        String origLogFile = System.getProperty("polyglot.log.file");
         Path preInitLogFile = Files.createTempFile("preinit", ".log");
         Path patchLogFile = Files.createTempFile("patch", ".log");
         try {
             System.setProperty("polyglot.log.engine.level", "FINE");
             System.setProperty("polyglot.log.file", preInitLogFile.toString());
             doContextPreinitialize(FIRST);
-            assertFalse(hasActiveFileHandlers());
+            assertFalse(getActiveFileHandlers().contains(preInitLogFile));
             List<CountingContext> contexts = new ArrayList<>(emittedContexts);
             assertEquals(1, contexts.size());
             final CountingContext firstLangCtx = findContext(FIRST, contexts);
@@ -1058,6 +1057,10 @@ public class ContextPreInitializationTest {
             assertEquals(2, firstLangCtx.disposeThreadCount);
         } finally {
             System.clearProperty("polyglot.log.engine.level");
+            System.clearProperty("polyglot.log.file");
+            if (origLogFile != null) {
+                System.setProperty("polyglot.log.file", origLogFile);
+            }
         }
     }
 
@@ -2041,11 +2044,12 @@ public class ContextPreInitializationTest {
         }
     }
 
-    private static boolean hasActiveFileHandlers() throws ReflectiveOperationException {
+    @SuppressWarnings("unchecked")
+    private static Set<Path> getActiveFileHandlers() throws ReflectiveOperationException {
         Class<?> polyglotLoggersClass = Class.forName("com.oracle.truffle.polyglot.PolyglotLoggers");
-        Method m = polyglotLoggersClass.getDeclaredMethod("hasActiveFileHandlers");
+        Method m = polyglotLoggersClass.getDeclaredMethod("getActiveFileHandlers");
         m.setAccessible(true);
-        return (boolean) m.invoke(null);
+        return (Set<Path>) m.invoke(null);
     }
 
     private static Collection<? extends CountingContext> findContexts(
