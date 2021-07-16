@@ -52,12 +52,12 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
- * This duplicates a {@link MacroStateSplitNode} using {@link WithExceptionNode} as a base class.
+ * This duplicates a {@link MacroNode} using {@link WithExceptionNode} as a base class.
  *
  * See the documentation of {@link MacroInvokable} for more information.
  *
  * @see MacroInvokable
- * @see MacroStateSplitNode
+ * @see MacroNode
  */
 //@formatter:off
 @NodeInfo(cycles = CYCLES_UNKNOWN,

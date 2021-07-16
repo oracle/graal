@@ -34,7 +34,7 @@ import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
-import org.graalvm.compiler.replacements.nodes.MacroStateSplitNode;
+import org.graalvm.compiler.replacements.nodes.MacroNode;
 
 import jdk.vm.ci.hotspot.HotSpotObjectConstant;
 import jdk.vm.ci.meta.Assumptions;
@@ -42,7 +42,7 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 @NodeInfo
-public final class CallSiteTargetNode extends MacroStateSplitNode implements Canonicalizable, Lowerable {
+public final class CallSiteTargetNode extends MacroNode implements Canonicalizable, Lowerable {
 
     public static final NodeClass<CallSiteTargetNode> TYPE = NodeClass.create(CallSiteTargetNode.class);
 

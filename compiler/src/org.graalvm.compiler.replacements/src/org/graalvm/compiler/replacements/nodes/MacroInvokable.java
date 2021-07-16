@@ -57,8 +57,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * used as a replacement.</li>
  * <li>If a {@link MethodSubstitution} for the target method is found, this substitution is used as
  * a replacement.</li>
- * <li>Otherwise, the macro node is replaced with an {@link InvokeNode}. Note that this is only
- * possible if the macro node is a {@link MacroStateSplitNode}.</li>
+ * <li>Otherwise, the macro node is replaced with an {@link InvokeNode}.</li>
  * </ul>
  */
 public interface MacroInvokable extends Invokable, Lowerable {

@@ -36,7 +36,7 @@ import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
  * analysis.
  */
 @NodeInfo
-public class VirtualizableInvokeMacroNode extends MacroStateSplitNode implements Virtualizable {
+public class VirtualizableInvokeMacroNode extends MacroNode implements Virtualizable {
 
     public static final NodeClass<VirtualizableInvokeMacroNode> TYPE = NodeClass.create(VirtualizableInvokeMacroNode.class);
 
