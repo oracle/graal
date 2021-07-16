@@ -204,7 +204,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
         @JavaType(Object.class)
         StaticObject doString(
                         EspressoContext context,
-                        Klass targetKlass,
+                        @SuppressWarnings("unused") Klass targetKlass,
                         @JavaType(Object.class) StaticObject value,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached BranchProfile exceptionProfile) {
@@ -224,7 +224,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
         @JavaType(Object.class)
         StaticObject doForeignException(
                         EspressoContext context,
-                        Klass targetKlass,
+                        @SuppressWarnings("unused") Klass targetKlass,
                         @JavaType(Object.class) StaticObject value,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached BranchProfile exceptionProfile) {
