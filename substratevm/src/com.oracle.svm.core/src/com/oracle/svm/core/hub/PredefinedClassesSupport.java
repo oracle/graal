@@ -158,16 +158,19 @@ public final class PredefinedClassesSupport {
     }
 
     private boolean loadClass0(ClassLoader classLoader, ProtectionDomain protectionDomain, Class<?> clazz) {
+        if (DynamicHub.fromClass(clazz).isLoaded()) {
+            return false;
+        }
+
+        loadSuperType(clazz, clazz.getSuperclass(), classLoader);
+        for (Class<?> intf : clazz.getInterfaces()) {
+            loadSuperType(clazz, intf, classLoader);
+        }
+
         lock.lock();
         try {
-            boolean alreadyLoaded = (loadedClassesByName.get(clazz.getName()) == clazz);
-            if (alreadyLoaded) {
+            if (DynamicHub.fromClass(clazz).isLoaded()) {
                 return false;
-            }
-
-            throwIfUnresolvable(clazz.getSuperclass(), classLoader);
-            for (Class<?> intf : clazz.getInterfaces()) {
-                throwIfUnresolvable(intf, classLoader);
             }
 
             /*
@@ -186,18 +189,41 @@ public final class PredefinedClassesSupport {
         }
     }
 
+    private static void loadSuperType(Class<?> clazz, Class<?> supertype, ClassLoader classLoader) {
+        if (supertype == null) {
+            return;
+        }
+        if (classLoader != null && !DynamicHub.fromClass(supertype).isLoaded()) {
+            Class<?> loaded;
+            try {
+                loaded = classLoader.loadClass(supertype.getName());
+            } catch (ClassNotFoundException e) {
+                throw throwUnresolvable(supertype, e);
+            }
+            if (loaded != supertype) {
+                throw new LinkageError("Loader " + classLoader + " supplied unexpected class " + loaded.getName() + " for supertype of " + clazz.getName() + " when expecting " + supertype.getName());
+            }
+        } else {
+            throwIfUnresolvable(supertype, classLoader);
+        }
+    }
+
     public static void throwIfUnresolvable(Class<?> clazz, ClassLoader classLoader) {
         if (clazz == null) {
             return;
         }
         DynamicHub hub = DynamicHub.fromClass(clazz);
         if (!hub.isLoaded() || !ClassUtil.isSameOrParentLoader(clazz.getClassLoader(), classLoader)) {
-            String name = clazz.getName();
-            // NoClassDefFoundError with ClassNotFoundException required by Java VM spec, 5.3
-            NoClassDefFoundError error = new NoClassDefFoundError(name.replace('.', '/'));
-            error.initCause(new ClassNotFoundException(name));
-            throw error;
+            throw throwUnresolvable(clazz, null);
         }
+    }
+
+    /** Throw a NoClassDefFoundError with ClassNotFoundException as required by Java VM spec 5.3. */
+    private static RuntimeException throwUnresolvable(Class<?> clazz, ClassNotFoundException cause) {
+        String name = clazz.getName();
+        NoClassDefFoundError error = new NoClassDefFoundError(name.replace('.', '/'));
+        error.initCause((cause != null) ? cause : new ClassNotFoundException(name));
+        throw error;
     }
 
     static Class<?> getLoadedForNameOrNull(String name, ClassLoader classLoader) {
