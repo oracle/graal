@@ -52,6 +52,7 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
 
@@ -1687,6 +1688,13 @@ public final class ClassfileParser {
                 throw ConstantPool.classFormatError(classType + " superinterfaces cannot contain arrays nor primitives");
             }
             interfaces[i] = interfaceType;
+        }
+        // Check for duplicate interfaces in the interface array.
+        Set<Symbol<Type>> present = new HashSet<>(interfaces.length);
+        for (Symbol<Type> t : interfaces) {
+            if (!present.add(t)) {
+                throw ConstantPool.classFormatError("Duplicate interface name in classfile: " + t);
+            }
         }
         return interfaces;
     }
