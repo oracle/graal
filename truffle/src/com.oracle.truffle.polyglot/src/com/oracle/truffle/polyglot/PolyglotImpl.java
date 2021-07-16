@@ -300,6 +300,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             LanguageCache.resetNativeImageCacheLanguageHomes();
             // Clear logger settings
             engine.logLevels.clear();
+            engine.logHandler.close();
             engine.logHandler = null;
         }
         preInitializedEngineRef.set(engine);

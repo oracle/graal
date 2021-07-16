@@ -1965,7 +1965,10 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
      */
     static void resetFallbackEngine() {
         synchronized (PolyglotImpl.class) {
-            fallbackEngine = null;
+            if (fallbackEngine != null) {
+                fallbackEngine.ensureClosed(false, false);
+                fallbackEngine = null;
+            }
         }
     }
 
