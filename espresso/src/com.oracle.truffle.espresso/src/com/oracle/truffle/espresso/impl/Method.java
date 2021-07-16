@@ -41,6 +41,7 @@ import java.io.PrintStream;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.function.IntFunction;
 import java.util.logging.Level;
 
 import com.oracle.truffle.api.Assumption;
@@ -1174,6 +1175,73 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     public boolean isRemovedByRedefition() {
         return !removedByRedefinition.isValid();
+    }
+
+    public StaticObject makeMirror() {
+        Meta meta = getMeta();
+        Attribute rawRuntimeVisibleAnnotations = getAttribute(Name.RuntimeVisibleAnnotations);
+        StaticObject runtimeVisibleAnnotations = rawRuntimeVisibleAnnotations != null
+                        ? StaticObject.wrap(rawRuntimeVisibleAnnotations.getData(), meta)
+                        : StaticObject.NULL;
+
+        Attribute rawRuntimeVisibleParameterAnnotations = getAttribute(Name.RuntimeVisibleParameterAnnotations);
+        StaticObject runtimeVisibleParameterAnnotations = rawRuntimeVisibleParameterAnnotations != null
+                        ? StaticObject.wrap(rawRuntimeVisibleParameterAnnotations.getData(), meta)
+                        : StaticObject.NULL;
+
+        Attribute rawRuntimeVisibleTypeAnnotations = getAttribute(Name.RuntimeVisibleTypeAnnotations);
+        StaticObject runtimeVisibleTypeAnnotations = rawRuntimeVisibleTypeAnnotations != null
+                        ? StaticObject.wrap(rawRuntimeVisibleTypeAnnotations.getData(), meta)
+                        : StaticObject.NULL;
+
+        Attribute rawAnnotationDefault = getAttribute(Name.AnnotationDefault);
+        StaticObject annotationDefault = rawAnnotationDefault != null
+                        ? StaticObject.wrap(rawAnnotationDefault.getData(), meta)
+                        : StaticObject.NULL;
+        final Klass[] rawParameterKlasses = resolveParameterKlasses();
+        StaticObject parameterTypes = meta.java_lang_Class.allocateReferenceArray(
+                        getParameterCount(),
+                        new IntFunction<StaticObject>() {
+                            @Override
+                            public StaticObject apply(int j) {
+                                return rawParameterKlasses[j].mirror();
+                            }
+                        });
+
+        final Klass[] rawCheckedExceptions = getCheckedExceptions();
+        StaticObject guestCheckedExceptions = meta.java_lang_Class.allocateReferenceArray(rawCheckedExceptions.length, new IntFunction<StaticObject>() {
+            @Override
+            public StaticObject apply(int j) {
+                return rawCheckedExceptions[j].mirror();
+            }
+        });
+
+        SignatureAttribute signatureAttribute = (SignatureAttribute) getAttribute(Name.Signature);
+        StaticObject guestGenericSignature = StaticObject.NULL;
+        if (signatureAttribute != null) {
+            String sig = getConstantPool().symbolAt(signatureAttribute.getSignatureIndex(), "signature").toString();
+            guestGenericSignature = meta.toGuestString(sig);
+        }
+
+        StaticObject instance = meta.java_lang_reflect_Method.allocateInstance();
+
+        meta.java_lang_reflect_Method_init.invokeDirect(
+                        /* this */ instance,
+                        /* declaringClass */ getDeclaringKlass().mirror(),
+                        /* name */ getContext().getStrings().intern(getName()),
+                        /* parameterTypes */ parameterTypes,
+                        /* returnType */ resolveReturnKlass().mirror(),
+                        /* checkedExceptions */ guestCheckedExceptions,
+                        /* modifiers */ getMethodModifiers(),
+                        /* slot */ getVTableIndex(),
+                        /* signature */ guestGenericSignature,
+
+                        /* annotations */ runtimeVisibleAnnotations,
+                        /* parameterAnnotations */ runtimeVisibleParameterAnnotations,
+                        /* annotationDefault */ annotationDefault);
+        meta.HIDDEN_METHOD_KEY.setHiddenObject(instance, this);
+        meta.HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS.setHiddenObject(instance, runtimeVisibleTypeAnnotations);
+        return instance;
     }
 
     public final class MethodVersion implements MethodRef {
