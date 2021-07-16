@@ -366,9 +366,9 @@ public class SubstrateGraphBuilderPlugins {
             List<Class<?>> classList = new ArrayList<>();
             FixedNode successor = unwrapNode(newArray.next());
             /*
-             * In a case when we are creating a proxy, which contains a method with a class as a
-             * parameter, a successor node will not be StoreIndexNode, so we need to skip
-             * initialization nodes.
+             * In a case when we are creating a proxy, which contains a method with a class
+             * (initialized at runtime) as a parameter, a successor node will not be StoreIndexNode,
+             * so we need to skip initialization nodes.
              */
             if (successor instanceof EnsureClassInitializedNode) {
                 AbstractBeginNode classInitializedNode = ((EnsureClassInitializedNode) successor).next();
