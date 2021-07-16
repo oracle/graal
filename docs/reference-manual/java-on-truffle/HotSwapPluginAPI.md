@@ -25,7 +25,7 @@ Review the HotSwap Plugin API by going through a running example that will enabl
 ## Micronaut HotSwap Plugin
 ​
 The Micronaut HotSwap plugin example implementation is hosted as a [fork](https://github.com/javeleon/micronaut-core) of Micronaut-core.
-The following instructions are based on a Mac OS X setup and only minor variations are needed for Windows.
+The following instructions are based on a macOS X setup and only minor variations are needed for Windows.
 To get started:
 ​
 1. Clone the repository:

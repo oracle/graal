@@ -45,16 +45,15 @@ GraalVM Enterprise's `/bin` directory is similar to that of a standard JDK, but 
 
 Check the versions of the runtimes provided by default:
 ```shell
-java -version
-java version "11.0.11" 2021-04-20 LTS
-Java(TM) SE Runtime Environment GraalVM EE 21.1.0 (build 11.0.11+8-LTS-jvmci-21.1-b03)
-Java HotSpot(TM) 64-Bit Server VM GraalVM EE 21.1.0 (build 11.0.11+8-LTS-jvmci-21.1-b03, mixed mode, sharing)
+java version "11.0.12" 2021-07-20 LTS
+Java(TM) SE Runtime Environment GraalVM EE 21.2.0 (build 11.0.12+8-LTS-jvmci-21.2-b06)
+Java HotSpot(TM) 64-Bit Server VM GraalVM EE 21.2.0 (build 11.0.12+8-LTS-jvmci-21.2-b06, mixed mode, sharing)
 
 js -version
-GraalVM JavaScript (GraalVM EE Native 21.1.0)
+GraalVM JavaScript (GraalVM EE Native 21.2.0)
 
 lli --version
-LLVM 10.0.0 (GraalVM EE Native 21.1.0)
+LLVM 10.0.0 (GraalVM EE Native 21.2.0)
 ```
 
 Further below you will find information on how to add other optionally available GraalVM Enterprise runtimes including Node.js, Ruby, R, Python, and WebAssembly.
@@ -96,7 +95,7 @@ Node.js support is not installed by default, but can be easily added with GraalV
 ```shell
 gu install nodejs
 node -v
-v14.16.1
+v15.12.0
 ```
 
 More than 100,000 npm packages are regularly tested and are compatible with GraalVM Enterprise, including modules like express, react, async, request, browserify, grunt, mocha, and underscore.

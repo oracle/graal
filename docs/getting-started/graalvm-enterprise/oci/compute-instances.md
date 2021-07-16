@@ -114,3 +114,8 @@ If you want to upgrade an existing version, and also remove the obsolete GraalVM
 sudo yum upgrade <package_name>
 ```
 The `yum upgrade` command will upgrade the whole system.
+
+## Learn More
+
+To test GraalVM Enterprise in OCI, we recommend running the [Accelerate Applications in Oracle Cloud with GraalVM Enterprise](https://luna.oracle.com/lab/d502417b-df66-45be-9fed-a3ac8e3f09b1/steps) interactive workshop.
+The purpose of this lab is to give you an overview of GraalVM Enterprise and its advantages. You will run demo projects to compare performance and see how GraalVM Enterprise can accelerate applications in OracIe Cloud.
