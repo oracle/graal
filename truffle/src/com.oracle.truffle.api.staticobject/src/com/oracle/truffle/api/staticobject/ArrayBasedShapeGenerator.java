@@ -57,6 +57,7 @@ import com.oracle.truffle.api.impl.asm.MethodVisitor;
 import com.oracle.truffle.api.impl.asm.Opcodes;
 import com.oracle.truffle.api.impl.asm.Type;
 import org.graalvm.collections.Pair;
+import org.graalvm.nativeimage.ImageInfo;
 
 import static com.oracle.truffle.api.impl.asm.Opcodes.ACC_FINAL;
 import static com.oracle.truffle.api.impl.asm.Opcodes.ACC_PUBLIC;
@@ -140,6 +141,9 @@ final class ArrayBasedShapeGenerator<T> extends ShapeGenerator<T> {
         Pair<Class<?>, Class<?>> pair = Pair.create(storageSuperClass, storageFactoryInterface);
         ArrayBasedShapeGenerator<T> sg = (ArrayBasedShapeGenerator<T>) cache.get(pair);
         if (sg == null) {
+            if (ImageInfo.inImageRuntimeCode()) {
+                throw new IllegalStateException("This code should not be executed at Native Image run time. Please report this issue");
+            }
             Class<?> generatedStorageClass = generateStorage(gcl, storageSuperClass);
             Class<? extends T> generatedFactoryClass = generateFactory(gcl, generatedStorageClass, storageFactoryInterface);
             sg = new ArrayBasedShapeGenerator<>(generatedStorageClass, generatedFactoryClass);
