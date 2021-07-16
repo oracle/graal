@@ -66,7 +66,7 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
     // Traversing queue related
     private int lastCount;
     private long lastTime;
-    double lastWeight;
+    private double lastWeight;
 
     private final TruffleInlining inliningData = new TruffleInlining();
 
@@ -186,7 +186,7 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
 
     @Override
     public String toString() {
-        return "Task[id=" + id + ", p=(" + priority.tier + "," + lastWeight + ")]";
+        return "Task[id=" + id + ", tier=" + priority.tier + ", weight=" + lastWeight + "]";
     }
 
     /**
