@@ -905,13 +905,14 @@ public final class ObjectKlass extends Klass {
                 try {
                     MethodVerifier.verify(m);
                 } catch (MethodVerifier.VerifierError e) {
+                    String message = String.format("Verification for class `%s` failed for method `%s`: \n\t%s", getExternalName(), m.getNameAsString(), e.getMessage());
                     switch (e.kind()) {
                         case Verify:
-                            throw meta.throwExceptionWithMessage(meta.java_lang_VerifyError, e.getMessage());
+                            throw meta.throwExceptionWithMessage(meta.java_lang_VerifyError, message);
                         case ClassFormat:
-                            throw meta.throwExceptionWithMessage(meta.java_lang_ClassFormatError, e.getMessage());
+                            throw meta.throwExceptionWithMessage(meta.java_lang_ClassFormatError, message);
                         case NoClassDefFound:
-                            throw meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, e.getMessage());
+                            throw meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, message);
                     }
                 }
             }
