@@ -739,7 +739,7 @@ public final class MethodVerifier implements ContextAccess {
             BytecodeLookupSwitch switchHelper = BytecodeLookupSwitch.INSTANCE;
             int low = 0;
             int high = switchHelper.numberOfCases(code, bci);
-            verifyGuarantee(high > 0, "number of keys in LOOKUPSWITCH less than 0");
+            verifyGuarantee(high >= 0, "number of keys in LOOKUPSWITCH less than 0");
             int oldKey = 0;
             boolean init = false;
             int target;
@@ -1010,12 +1010,12 @@ public final class MethodVerifier implements ContextAccess {
         // Marks BCIs in-between opcodes, and marks jump targets.
         initVerifier();
 
-        // Check that BCIs in exception handlers are legal.
-        validateExceptionHandlers();
-
         // Extract the initial stack frame, and extract stack maps if available.
         initStackFrames();
         stackMapInitialized = true;
+
+        // Check that BCIs in exception handlers are legal.
+        validateExceptionHandlers();
 
         // Check that unconditional jumps have stack maps following them.
         validateUnconditionalJumps();
