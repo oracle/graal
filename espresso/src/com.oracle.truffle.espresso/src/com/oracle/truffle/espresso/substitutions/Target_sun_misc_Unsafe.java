@@ -684,17 +684,6 @@ public final class Target_sun_misc_Unsafe {
 
     // region get*(long offset)
 
-    static final class UnsafeUtils {
-        static Unsafe getUnsafe(EspressoContext context, BranchProfile unsupportedProfile) {
-            if (context.NativeAccessAllowed) {
-                return UnsafeAccess.get();
-            }
-            unsupportedProfile.enter();
-            Meta meta = context.getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_UnsupportedOperationException, "Cannot perform unsafe operations unless the Context allows native access");
-        }
-    }
-
     @Substitution(hasReceiver = true)
     abstract static class GetByte extends Node {
 
