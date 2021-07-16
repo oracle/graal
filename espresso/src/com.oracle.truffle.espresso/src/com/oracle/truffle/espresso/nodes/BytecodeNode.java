@@ -408,22 +408,22 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
 
     private final LivenessAnalysis livenessAnalysis;
 
-    @CompilationFinal private Object osrState;
+    @CompilationFinal private Object osrMetadata;
 
     @Override
-    public Object executeOSR(VirtualFrame innerFrame, Frame parentFrame, int target) {
-        initializeOSRBody(innerFrame, parentFrame, target);
-        return executeBodyFromBCI(innerFrame, target);
+    public Object executeOSR(VirtualFrame osrFrame, Frame parentFrame, int target) {
+        initializeOSRBody(osrFrame, parentFrame, target);
+        return executeBodyFromBCI(osrFrame, target);
     }
 
     @Override
     public Object getOSRMetadata() {
-        return osrState;
+        return osrMetadata;
     }
 
     @Override
     public void setOSRMetadata(Object osrMetadata) {
-        this.osrState = osrMetadata;
+        this.osrMetadata = osrMetadata;
     }
 
     private static final class EspressoOSRReturnException extends ControlFlowException {

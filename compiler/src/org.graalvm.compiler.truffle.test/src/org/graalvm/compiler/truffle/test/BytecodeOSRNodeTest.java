@@ -447,8 +447,8 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         }
 
         @Override
-        public Object executeOSR(VirtualFrame innerFrame, Frame parentFrame, int target) {
-            return execute(innerFrame);
+        public Object executeOSR(VirtualFrame osrFrame, Frame parentFrame, int target) {
+            return execute(osrFrame);
         }
 
         @Override
@@ -480,11 +480,11 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         }
 
         @Override
-        public Object executeOSR(VirtualFrame innerFrame, Frame parentFrame, int target) {
-            setInt(innerFrame, indexSlot, getInt(parentFrame, indexSlot));
+        public Object executeOSR(VirtualFrame osrFrame, Frame parentFrame, int target) {
+            setInt(osrFrame, indexSlot, getInt(parentFrame, indexSlot));
             int numIterations = getInt(parentFrame, numIterationsSlot);
-            setInt(innerFrame, numIterationsSlot, numIterations);
-            return executeLoop(innerFrame, numIterations);
+            setInt(osrFrame, numIterationsSlot, numIterations);
+            return executeLoop(osrFrame, numIterations);
         }
 
         @Override
@@ -768,12 +768,12 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         }
 
         @Override
-        public Object executeOSR(VirtualFrame innerFrame, Frame parentFrame, int target) {
-            BytecodeOSRNode.doOSRFrameTransfer(this, parentFrame, innerFrame);
+        public Object executeOSR(VirtualFrame osrFrame, Frame parentFrame, int target) {
+            BytecodeOSRNode.doOSRFrameTransfer(this, parentFrame, osrFrame);
             try {
-                return executeLoop(innerFrame);
+                return executeLoop(osrFrame);
             } finally {
-                BytecodeOSRNode.doOSRFrameTransfer(this, innerFrame, parentFrame);
+                BytecodeOSRNode.doOSRFrameTransfer(this, osrFrame, parentFrame);
             }
         }
 
@@ -948,11 +948,11 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
 
         @Override
         @ExplodeLoop
-        public Object executeOSR(VirtualFrame innerFrame, Frame parentFrame, int target) {
+        public Object executeOSR(VirtualFrame osrFrame, Frame parentFrame, int target) {
             for (int i = 0; i < regs.length; i++) {
-                setInt(innerFrame, i, getInt(parentFrame, i));
+                setInt(osrFrame, i, getInt(parentFrame, i));
             }
-            return executeFromBCI(innerFrame, target);
+            return executeFromBCI(osrFrame, target);
         }
 
         @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)

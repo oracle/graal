@@ -42,49 +42,56 @@ package com.oracle.truffle.api.nodes;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 
 /**
- * Interface for Truffle bytecode nodes which can be on-stack replaced (OSR). Bytecode OSR nodes
- * must extend {@link Node} or a subclass of {@link Node}.
+ * Interface for Truffle bytecode nodes which can be on-stack replaced (OSR).
  *
- * <p>
- * An implementing class should declare a metadata field which can be accessed by this interface's
- * {@link BytecodeOSRNode#getOSRMetadata getter} and {@link BytecodeOSRNode#setOSRMetadata setter}
- * methods. The field should be annotated as
- * {@link com.oracle.truffle.api.CompilerDirectives.CompilationFinal @CompilationFinal}. The
- * concrete type of the object stored in this field will depend on the
- * {@link com.oracle.truffle.api.TruffleRuntime runtime} used.
+ * There are a few restrictions Bytecode OSR nodes must satisfy in order for OSR to work correctly:
+ *
+ * <ol>
+ * <li>The node must extend {@link Node} or a subclass of {@link Node}.</li>
+ * <li>The node must provide storage for the OSR metadata maintained by the runtime using an
+ * instance field. The field should be
+ * {@link com.oracle.truffle.api.CompilerDirectives.CompilationFinal @CompilationFinal}, and the
+ * {@link BytecodeOSRNode#getOSRMetadata} and {@link BytecodeOSRNode#setOSRMetadata} methods should
+ * proxy accesses to it.</li>
+ * <li>{@link Frame Frames} passed to to this node's {@link BytecodeOSRNode#executeOSR} method must
+ * be non-materializable.</li>
+ * </ol>
  *
  * @since 21.3
  */
 public interface BytecodeOSRNode extends NodeInterface {
 
     /**
-     * Entrypoint for invoking this node through OSR. Typically, this method will:
+     * Entrypoint to invoke this node through OSR. Typically, this method will:
      * <ul>
-     * <li>transfer state from the {@code parentFrame} into the {@code innerFrame} (if necessary)
+     * <li>transfer state from the {@code parentFrame} into the {@code osrFrame} (if necessary)
      * <li>execute this node from the {@code target} location
-     * <li>transfer state from the {@code innerFrame} back to the {@code parentFrame} (if necessary)
+     * <li>transfer state from the {@code osrFrame} back to the {@code parentFrame} (if necessary)
      * </ul>
      * <p>
-     * NOTE: The result of {@link Frame#getArguments()} for {@code innerFrame} is undefined and
-     * should not be used. Additionally, since the parent frame could also come from an OSR call (in
-     * the situation where an OSR call deoptimizes), the arguments of {@code parentFrame} are also
+     * NOTE: The result of {@link Frame#getArguments()} for {@code osrFrame} is undefined and should
+     * not be used. Additionally, since the parent frame could also come from an OSR call (in the
+     * situation where an OSR call deoptimizes), the arguments of {@code parentFrame} are also
      * undefined.
      *
-     * @param innerFrame the frame to use for OSR.
+     * @param osrFrame the frame to use for OSR.
      * @param parentFrame the frame of the previous invocation (which may itself be an OSR frame).
      * @param target the target location to execute from (e.g., bytecode index).
      * @return the result of execution.
      * @since 21.3
      */
-    Object executeOSR(VirtualFrame innerFrame, Frame parentFrame, int target);
+    Object executeOSR(VirtualFrame osrFrame, Frame parentFrame, int target);
 
     /**
      * Gets the OSR metadata for this instance.
+     *
+     * The metadata should be stored on a
+     * {@link com.oracle.truffle.api.CompilerDirectives.CompilationFinal @CompilationFinal} instance
+     * field. Refer to the documentation for {@link BytecodeOSRNode this interface} for a more
+     * complete description.
      *
      * @return the OSR metadata.
      * @since 21.3
@@ -94,19 +101,29 @@ public interface BytecodeOSRNode extends NodeInterface {
     /**
      * Sets the OSR metadata for this instance.
      *
+     * The metadata should be stored on a
+     * {@link com.oracle.truffle.api.CompilerDirectives.CompilationFinal @CompilationFinal} instance
+     * field. Refer to the documentation for {@link BytecodeOSRNode this interface} for a more
+     * complete description.
+     *
      * @param osrMetadata the OSR metadata.
      * @since 21.3
      */
     void setOSRMetadata(Object osrMetadata);
 
     /**
-     * Reports a back edge to the target location. This information can be used to trigger on-stack
-     * replacement (OSR).
+     * Reports a back edge to the target location. This information may be used to trigger on-stack
+     * replacement (OSR), if the Truffle runtime supports it.
+     *
+     * <p>
+     * If OSR occurs, this method returns the result of OSR execution. The caller of this method can
+     * forward this result back to its caller rather than continuing execution from the
+     * {@code target}.
      *
      * @param osrNode the node for which to report a back-edge.
-     * @param parentFrame frame at current point of execution.
+     * @param parentFrame frame at the current point of execution.
      * @param target target location of the jump (e.g., bytecode index).
-     * @return result if OSR was performed, or {@code null} otherwise.
+     * @return the result if OSR was performed, or {@code null} otherwise.
      * @since 21.3
      */
     static Object reportOSRBackEdge(BytecodeOSRNode osrNode, VirtualFrame parentFrame, int target) {
@@ -118,7 +135,7 @@ public interface BytecodeOSRNode extends NodeInterface {
 
     /**
      * Transfers state from the {@code source} frame into the {@code target} frame. The frames must
-     * have the same layout as the frame passed when executing the {@code osrNode}.
+     * have the same layout as the frame used to execute the {@code osrNode}.
      * <p>
      * This helper can be used when implementing {@link #executeOSR} to transfer state between OSR
      * and parent frames.

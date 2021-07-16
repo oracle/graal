@@ -41,12 +41,12 @@ public final class GraalOSRFrameInstance extends GraalFrameInstance {
     }
 
     @Override
-    public final Frame getFrame(FrameAccess access) {
+    public Frame getFrame(FrameAccess access) {
         return getFrameFrom(osrFrame, access);
     }
 
     @Override
-    public final boolean isVirtualFrame() {
+    public boolean isVirtualFrame() {
         return osrFrame.isVirtual(FRAME_INDEX);
     }
 }

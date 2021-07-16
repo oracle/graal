@@ -59,7 +59,7 @@ public final class BytecodeOSRMetadata {
 
     private final BytecodeOSRNode osrNode;
     private final FrameDescriptor frameDescriptor;
-    private Map<Integer, OptimizedCallTarget> osrCompilations;
+    private volatile Map<Integer, OptimizedCallTarget> osrCompilations;
     private final int osrThreshold;
     private int backEdgeCount;
     private volatile boolean compilationFailed;
@@ -81,7 +81,7 @@ public final class BytecodeOSRMetadata {
         this.compilationFailed = false;
     }
 
-    final Object onOSRBackEdge(VirtualFrame parentFrame, int target) {
+    Object onOSRBackEdge(VirtualFrame parentFrame, int target) {
         if (!incrementAndPoll() || compilationFailed) {
             // note: incur volatile read of compilationFailed only if poll succeeds
             return null;
@@ -154,15 +154,15 @@ public final class BytecodeOSRMetadata {
             // If we get the frame slots before the assumption, the slots may be updated in between,
             // and we might obtain the new (valid) assumption, despite our slots actually being
             // stale. Get the assumption first to avoid this race.
-            Assumption frameVersion = frameDescriptor.getVersion();
-            FrameSlot[] frameSlots = frameDescriptor.getSlots().toArray(new FrameSlot[0]);
-            byte[] frameTags = new byte[frameSlots.length];
-            for (int i = 0; i < frameSlots.length; i++) {
-                frameTags[i] = frameDescriptor.getFrameSlotKind(frameSlots[i]).tag;
+            Assumption newFrameVersion = frameDescriptor.getVersion();
+            FrameSlot[] newFrameSlots = frameDescriptor.getSlots().toArray(new FrameSlot[0]);
+            byte[] newFrameTags = new byte[newFrameSlots.length];
+            for (int i = 0; i < newFrameSlots.length; i++) {
+                newFrameTags[i] = frameDescriptor.getFrameSlotKind(newFrameSlots[i]).tag;
             }
-            this.frameVersion = frameVersion;
-            this.frameSlots = frameSlots;
-            this.frameTags = frameTags;
+            this.frameVersion = newFrameVersion;
+            this.frameSlots = newFrameSlots;
+            this.frameTags = newFrameTags;
         }
     }
 
