@@ -66,7 +66,7 @@ public abstract class TypeCheckNode extends Node {
 
     @Specialization(guards = "isJLObject(context, typeToCheck)")
     protected boolean typeCheckJLObject(Klass typeToCheck, Klass k,
-                                        @CachedContext(EspressoLanguage.class) EspressoContext context) {
+                    @CachedContext(EspressoLanguage.class) EspressoContext context) {
         return !k.isPrimitive();
     }
 
@@ -90,11 +90,11 @@ public abstract class TypeCheckNode extends Node {
 
     @Specialization(replaces = "typeCheckCached", guards = "arrayBiggerDim(k, typeToCheck)")
     protected boolean typeCheckArrayLowerDim(ArrayKlass typeToCheck, ArrayKlass k,
-                                             @CachedContext(EspressoLanguage.class) EspressoContext context) {
+                    @CachedContext(EspressoLanguage.class) EspressoContext context) {
         Klass elem = typeToCheck.getElementalType();
         return elem == context.getMeta().java_lang_Object ||
-                elem == context.getMeta().java_io_Serializable ||
-                elem == context.getMeta().java_lang_Cloneable;
+                        elem == context.getMeta().java_io_Serializable ||
+                        elem == context.getMeta().java_lang_Cloneable;
     }
 
     /*
@@ -134,7 +134,7 @@ public abstract class TypeCheckNode extends Node {
         return typeToCheck.checkOrdinaryClassSubclassing(k);
     }
 
-    protected static  boolean isJLObject(EspressoContext context, Klass k) {
+    protected static boolean isJLObject(EspressoContext context, Klass k) {
         return k == context.getMeta().java_lang_Object;
     }
 

@@ -87,9 +87,8 @@ public final class Meta implements ContextAccess {
         java_lang_Object_array = java_lang_Object.array();
 
         EspressoError.guarantee(
-                new HashSet<>(Arrays.asList(ARRAY_SUPERINTERFACES))
-                        .equals(new HashSet<>(Arrays.asList(java_lang_Object_array.getSuperInterfaces()))),
-                "arrays super interfaces must contain java.lang.Cloneable and java.io.Serializable");
+                        new HashSet<>(Arrays.asList(ARRAY_SUPERINTERFACES)).equals(new HashSet<>(Arrays.asList(java_lang_Object_array.getSuperInterfaces()))),
+                        "arrays super interfaces must contain java.lang.Cloneable and java.io.Serializable");
 
         java_lang_Class = knownKlass(Type.java_lang_Class);
         HIDDEN_MIRROR_KLASS = java_lang_Class.requireHiddenField(Name.HIDDEN_MIRROR_KLASS);
@@ -102,7 +101,6 @@ public final class Meta implements ContextAccess {
         java_lang_Class_forName_String = java_lang_Class.requireDeclaredMethod(Name.forName, Signature.Class_String);
         java_lang_Class_forName_String_boolean_ClassLoader = java_lang_Class.requireDeclaredMethod(Name.forName, Signature.Class_String_boolean_ClassLoader);
         HIDDEN_PROTECTION_DOMAIN = java_lang_Class.requireHiddenField(Name.HIDDEN_PROTECTION_DOMAIN);
-
 
         // Primitives.
         _boolean = new PrimitiveKlass(context, JavaKind.Boolean);

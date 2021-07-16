@@ -50,8 +50,11 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
  * <p>
  * Augmented with two interop extensions:
  * <ul>
- * <li> For Truffle buffers ({@link InteropLibrary#hasBufferElements(Object) buffer-like} foreign objects) wrapped as {@code byte[]}, BASTORE is mapped to {@link InteropLibrary#writeBufferByte(Object, long, byte)}.
- * <li> For {@link InteropLibrary#hasArrayElements(Object) array-like} foreign objects, BASTORE is mapped to {@link InteropLibrary#writeArrayElement(Object, long, Object)}.
+ * <li>For Truffle buffers ({@link InteropLibrary#hasBufferElements(Object) buffer-like} foreign
+ * objects) wrapped as {@code byte[]}, BASTORE is mapped to
+ * {@link InteropLibrary#writeBufferByte(Object, long, byte)}.
+ * <li>For {@link InteropLibrary#hasArrayElements(Object) array-like} foreign objects, BASTORE is
+ * mapped to {@link InteropLibrary#writeArrayElement(Object, long, Object)}.
  * </ul>
  *
  * <h3>Exceptions</h3>
@@ -81,14 +84,14 @@ public abstract class ByteArrayStoreNode extends QuickNode {
     abstract void executeStore(StaticObject array, int index, byte value);
 
     @Specialization(guards = {
-            "array.isForeignObject()",
-            "isBufferLikeByteArray(context, interop, array)"
+                    "array.isForeignObject()",
+                    "isBufferLikeByteArray(context, interop, array)"
     })
     void doBufferLike(StaticObject array, int index, byte value,
-                   @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                   @CachedContext(EspressoLanguage.class) EspressoContext context,
-                   @Cached BranchProfile outOfBoundsProfile,
-                   @Cached BranchProfile readOnlyProfile) {
+                    @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                    @CachedContext(EspressoLanguage.class) EspressoContext context,
+                    @Cached BranchProfile outOfBoundsProfile,
+                    @Cached BranchProfile readOnlyProfile) {
         try {
             interop.writeBufferByte(array.rawForeignObject(), index, value);
         } catch (InvalidBufferOffsetException e) {
@@ -104,9 +107,9 @@ public abstract class ByteArrayStoreNode extends QuickNode {
     }
 
     @Specialization(guards = {
-            "array.isForeignObject()",
-            "!isBufferLikeByteArray(context, interop, array)",
-            "isArrayLike(interop, array.rawForeignObject())"
+                    "array.isForeignObject()",
+                    "!isBufferLikeByteArray(context, interop, array)",
+                    "isArrayLike(interop, array.rawForeignObject())"
     })
     void doArrayLike(StaticObject array, int index, byte value,
                     @CachedLibrary(limit = "LIMIT") InteropLibrary interop,

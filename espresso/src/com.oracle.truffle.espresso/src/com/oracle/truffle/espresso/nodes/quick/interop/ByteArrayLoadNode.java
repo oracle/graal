@@ -53,8 +53,11 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
  * <p>
  * Augmented with two interop extensions:
  * <ul>
- * <li> For Truffle buffers ({@link InteropLibrary#hasBufferElements(Object) buffer-like} foreign objects) wrapped as {@code byte[]}, BALOAD is mapped to {@link InteropLibrary#readBufferByte(Object, long)}.
- * <li> For {@link InteropLibrary#hasArrayElements(Object) array-like} foreign objects, BALOAD is mapped to {@link InteropLibrary#readArrayElement(Object, long)}.
+ * <li>For Truffle buffers ({@link InteropLibrary#hasBufferElements(Object) buffer-like} foreign
+ * objects) wrapped as {@code byte[]}, BALOAD is mapped to
+ * {@link InteropLibrary#readBufferByte(Object, long)}.
+ * <li>For {@link InteropLibrary#hasArrayElements(Object) array-like} foreign objects, BALOAD is
+ * mapped to {@link InteropLibrary#readArrayElement(Object, long)}.
  * </ul>
  *
  * <h3>Exceptions</h3>
@@ -82,13 +85,13 @@ public abstract class ByteArrayLoadNode extends QuickNode {
     abstract byte executeLoad(StaticObject array, int index);
 
     @Specialization(guards = {
-            "array.isForeignObject()",
-            "isBufferLikeByteArray(context, interop, array)"
+                    "array.isForeignObject()",
+                    "isBufferLikeByteArray(context, interop, array)"
     })
     byte doBufferLike(StaticObject array, int index,
-                   @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                   @CachedContext(EspressoLanguage.class) EspressoContext context,
-                   @Cached BranchProfile outOfBoundsProfile) {
+                    @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                    @CachedContext(EspressoLanguage.class) EspressoContext context,
+                    @Cached BranchProfile outOfBoundsProfile) {
         try {
             return interop.readBufferByte(array.rawForeignObject(), index);
         } catch (InvalidBufferOffsetException e) {
@@ -102,9 +105,9 @@ public abstract class ByteArrayLoadNode extends QuickNode {
     }
 
     @Specialization(guards = {
-            "array.isForeignObject()",
-            "!isBufferLikeByteArray(context, interop, array)",
-            "isArrayLike(interop, array.rawForeignObject())"
+                    "array.isForeignObject()",
+                    "!isBufferLikeByteArray(context, interop, array)",
+                    "isArrayLike(interop, array.rawForeignObject())"
     })
     byte doArrayLike(StaticObject array, int index,
                     @CachedLibrary(limit = "LIMIT") InteropLibrary interop,

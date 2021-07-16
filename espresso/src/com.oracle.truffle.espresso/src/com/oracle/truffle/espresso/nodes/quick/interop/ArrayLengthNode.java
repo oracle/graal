@@ -49,8 +49,11 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
  * <p>
  * Augmented with two interop extensions:
  * <ul>
- * <li> For Truffle buffers ({@link InteropLibrary#hasBufferElements(Object) buffer-like} foreign objects) wrapped as {@code byte[]}, ARRAYLENGTH is mapped to {@link InteropLibrary#getBufferSize(Object)}.
- * <li> For {@link InteropLibrary#hasArrayElements(Object) array-like} foreign objects wrapped as {@code byte[]}, ARRAYLENGTH is mapped to {@link InteropLibrary#getBufferSize(Object)}.
+ * <li>For Truffle buffers ({@link InteropLibrary#hasBufferElements(Object) buffer-like} foreign
+ * objects) wrapped as {@code byte[]}, ARRAYLENGTH is mapped to
+ * {@link InteropLibrary#getBufferSize(Object)}.
+ * <li>For {@link InteropLibrary#hasArrayElements(Object) array-like} foreign objects wrapped as
+ * {@code byte[]}, ARRAYLENGTH is mapped to {@link InteropLibrary#getBufferSize(Object)}.
  * </ul>
  *
  * <h3>Exceptions</h3>
@@ -123,4 +126,3 @@ public abstract class ArrayLengthNode extends QuickNode {
         return InterpreterToVM.arrayLength(array);
     }
 }
-
