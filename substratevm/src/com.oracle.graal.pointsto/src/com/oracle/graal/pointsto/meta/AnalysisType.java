@@ -829,9 +829,14 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
         }
     }
 
+    private volatile AnalysisType arrayClass = null;
+
     @Override
     public final AnalysisType getArrayClass() {
-        return universe.lookup(wrapped.getArrayClass());
+        if (arrayClass == null) {
+            arrayClass = universe.lookup(wrapped.getArrayClass());
+        }
+        return arrayClass;
     }
 
     @Override
