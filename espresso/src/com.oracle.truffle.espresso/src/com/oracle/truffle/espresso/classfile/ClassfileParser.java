@@ -49,8 +49,11 @@ import static com.oracle.truffle.espresso.classfile.Constants.JVM_RECOGNIZED_MET
 
 import java.io.IOException;
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Objects;
+
+import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
@@ -251,9 +254,11 @@ public final class ClassfileParser {
      */
     private void verifyVersion(int major, int minor) {
         if (context.getJavaVersion().java8OrEarlier()) {
-            versionCheck8(context.getJavaVersion().classFileVersion(), major, minor);
+            versionCheck8OrEarlier(context.getJavaVersion().classFileVersion(), major, minor);
+        } else if (context.getJavaVersion().java11OrEarlier()) {
+            versionCheck11OrEarlier(context.getJavaVersion().classFileVersion(), major, minor);
         } else {
-            versionCheck11(context.getJavaVersion().classFileVersion(), major, minor);
+            versionCheck12OrLater(context.getJavaVersion().classFileVersion(), major, minor);
         }
     }
 
@@ -263,7 +268,7 @@ public final class ClassfileParser {
      * <li>Major_version >= 45 and major_version <= current_major_version, any minor version.
      * <li>Major_version = current_major_version and minor_version <= MAX_SUPPORTED_MINOR (= 0).
      */
-    private static void versionCheck8(int maxMajor, int major, int minor) {
+    private static void versionCheck8OrEarlier(int maxMajor, int major, int minor) {
         if (major == maxMajor && minor <= JAVA_MAX_SUPPORTED_MINOR_VERSION) {
             return;
         }
@@ -281,7 +286,7 @@ public final class ClassfileParser {
      * <li>Major_version = current_major_version and minor_version = 65535 and --enable-preview is
      * present.
      */
-    private static void versionCheck11(int maxMajor, int major, int minor) {
+    private static void versionCheck11OrEarlier(int maxMajor, int major, int minor) {
         if (major == maxMajor && (minor <= JAVA_MAX_SUPPORTED_MINOR_VERSION || minor == JAVA_PREVIEW_MINOR_VERSION)) {
             return;
         }
@@ -289,6 +294,29 @@ public final class ClassfileParser {
             return;
         }
         if (major == JAVA_MIN_SUPPORTED_VERSION) {
+            return;
+        }
+        throw unsupportedClassVersionError("Unsupported major.minor version " + major + "." + minor);
+    }
+
+    /**
+     * Hotspot comment (17): A legal major_version.minor_version must be one of the following:
+     *
+     * <li>Major_version >= 45 and major_version < 56, any minor_version.
+     * <li>Major_version >= 56 and major_version <= JVM_CLASSFILE_MAJOR_VERSION and minor_version =
+     * 0.
+     * <li>Major_version = JVM_CLASSFILE_MAJOR_VERSION and minor_version = 65535 and
+     * --enable-preview is present.
+     *
+     */
+    private static void versionCheck12OrLater(int maxMajor, int major, int minor) {
+        if (major >= JAVA_12_VERSION && major <= maxMajor && minor == 0) {
+            return;
+        }
+        if (major >= JAVA_MIN_SUPPORTED_VERSION && major < JAVA_12_VERSION) {
+            return;
+        }
+        if (major == maxMajor && minor == JAVA_PREVIEW_MINOR_VERSION) {
             return;
         }
         throw unsupportedClassVersionError("Unsupported major.minor version " + major + "." + minor);
@@ -1034,7 +1062,7 @@ public final class ClassfileParser {
         boolean isLVTT = Name.LocalVariableTypeTable.equals(name);
         int entryCount = stream.readU2();
         if (entryCount == 0) {
-            return LocalVariableTable.EMPTY;
+            return isLVTT ? LocalVariableTable.EMPTY_LVTT : LocalVariableTable.EMPTY_LVT;
         }
         Local[] locals = new Local[entryCount];
         for (int i = 0; i < entryCount; i++) {
@@ -1383,6 +1411,7 @@ public final class ClassfileParser {
 
         int attributeCount = stream.readU2();
         final Attribute[] codeAttributes = spawnAttributesArray(attributeCount);
+        int totalLocalTableCount = 0;
 
         CommonAttributeParser commonAttributeParser = new CommonAttributeParser(InfoType.Code);
 
@@ -1399,8 +1428,10 @@ public final class ClassfileParser {
                 codeAttributes[i] = parseLineNumberTable(attributeName);
             } else if (attributeName.equals(Name.LocalVariableTable)) {
                 codeAttributes[i] = parseLocalVariableAttribute(attributeName, code, maxLocals);
+                totalLocalTableCount++;
             } else if (attributeName.equals(Name.LocalVariableTypeTable)) {
                 codeAttributes[i] = parseLocalVariableTypeAttribute(attributeName, code, maxLocals);
+                totalLocalTableCount++;
             } else if (attributeName.equals(Name.StackMapTable)) {
                 if (stackMapTable != null) {
                     throw ConstantPool.classFormatError("Duplicate StackMapTable attribute");
@@ -1417,7 +1448,42 @@ public final class ClassfileParser {
             }
         }
 
+        if (totalLocalTableCount > 0) {
+            validateLocalTables(codeAttributes);
+        }
+
         return new CodeAttribute(name, maxStack, maxLocals, code, entries, codeAttributes, majorVersion);
+    }
+
+    private void validateLocalTables(Attribute[] codeAttributes) {
+        if (getMajorVersion() < JAVA_1_5_VERSION) {
+            return;
+        }
+        EconomicMap<Local, Boolean> table = EconomicMap.create(Local.localEquivalence);
+        ArrayList<LocalVariableTable> typeTables = new ArrayList<>();
+        for (Attribute attr : codeAttributes) {
+            if (attr.getName() == Name.LocalVariableTable) {
+                LocalVariableTable localTable = (LocalVariableTable) attr;
+                for (Local local : localTable.getLocals()) {
+                    if (table.put(local, false) != null) {
+                        throw ConstantPool.classFormatError("Duplicate local in local variable table: " + local);
+                    }
+                }
+            } else if (attr.getName() == Name.LocalVariableTypeTable) {
+                typeTables.add((LocalVariableTable) attr);
+            }
+        }
+        for (LocalVariableTable typeTable : typeTables) {
+            for (Local local : typeTable.getLocals()) {
+                Boolean present = table.put(local, true);
+                if (present == null) {
+                    throw ConstantPool.classFormatError("Local in local variable type table does not match any local variable table entry: " + local);
+                }
+                if (present) {
+                    throw ConstantPool.classFormatError("Duplicate local in local variable type table: " + local);
+                }
+            }
+        }
     }
 
     private ExceptionHandler[] parseExceptionHandlerEntries() {
