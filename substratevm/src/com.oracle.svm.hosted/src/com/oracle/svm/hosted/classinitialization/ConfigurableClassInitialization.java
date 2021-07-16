@@ -111,7 +111,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
         if (configurationSealed && ClassInitializationOptions.PrintClassInitialization.getValue()) {
             List<ClassOrPackageConfig> allConfigs = classInitializationConfiguration.allConfigs();
             allConfigs.sort(Comparator.comparing(ClassOrPackageConfig::getName));
-            String path = Paths.get(Paths.get(SubstrateOptions.Path.getValue()).toString(), "reports").toAbsolutePath().toString();
+            String path = Paths.get(Paths.get(SubstrateOptions.getImageDestinationDirectory()).toString(), "reports").toAbsolutePath().toString();
             ReportUtils.report("class initialization configuration", path, "class_initialization_configuration", "csv", writer -> {
                 writer.println("Class or Package Name, Initialization Kind, Reasons");
                 for (ClassOrPackageConfig config : allConfigs) {

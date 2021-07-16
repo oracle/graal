@@ -285,7 +285,8 @@ public class NativeImageGeneratorRunner {
             parsedHostedOptions = new OptionValues(optionParser.getHostedValues());
             DebugContext debug = new DebugContext.Builder(parsedHostedOptions, new GraalDebugHandlersFactory(GraalAccess.getOriginalSnippetReflection())).build();
 
-            imageName = SubstrateOptions.Name.getValue(parsedHostedOptions);
+            SubstrateOptions.verifyImagePath(parsedHostedOptions);
+            imageName = SubstrateOptions.getImageName(parsedHostedOptions);
             if (imageName.length() == 0) {
                 throw UserError.abort("No output file name specified. Use '%s'.", SubstrateOptionsParser.commandArgument(SubstrateOptions.Name, "<output-file>"));
             }

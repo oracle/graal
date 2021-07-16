@@ -1703,7 +1703,7 @@ public class NativeImageGenerator {
     }
 
     public static Path generatedFiles(OptionValues optionValues) {
-        String pathName = SubstrateOptions.Path.getValue(optionValues);
+        String pathName = SubstrateOptions.getImageDestinationDirectory(optionValues);
         Path path = FileSystems.getDefault().getPath(pathName);
         if (!Files.exists(path)) {
             try {

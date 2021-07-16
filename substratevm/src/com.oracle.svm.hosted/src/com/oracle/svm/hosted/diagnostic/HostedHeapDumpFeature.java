@@ -127,7 +127,7 @@ public class HostedHeapDumpFeature implements Feature {
 
     private static Path getDumpLocation() {
         try {
-            Path folder = Paths.get(Paths.get(SubstrateOptions.Path.getValue()).toString(), "dumps").toAbsolutePath();
+            Path folder = Paths.get(Paths.get(SubstrateOptions.getImageDestinationDirectory()).toString(), "dumps").toAbsolutePath();
             return Files.createDirectories(folder);
         } catch (IOException e) {
             throw new Error("Cannot create heap dumps directory.", e);

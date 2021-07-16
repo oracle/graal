@@ -31,6 +31,7 @@ import static org.graalvm.compiler.options.OptionType.Debug;
 import static org.graalvm.compiler.options.OptionType.Expert;
 import static org.graalvm.compiler.options.OptionType.User;
 
+import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -45,15 +46,16 @@ import org.graalvm.compiler.options.OptionStability;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.APIOptionGroup;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.util.UserError;
-import org.graalvm.nativeimage.ImageSingletons;
 
 public class SubstrateOptions {
 
@@ -77,8 +79,37 @@ public class SubstrateOptions {
     @Option(help = "Name of the main entry point method. Optional if --shared is used.")//
     public static final HostedOptionKey<String> Method = new HostedOptionKey<>("main");
 
+    @Option(help = "Directory of the image file to be generated", type = OptionType.User)//
+    public static final HostedOptionKey<String> Path = new HostedOptionKey<>(null);
+
     @Option(help = "Name of the output file to be generated", type = OptionType.User)//
     public static final HostedOptionKey<String> Name = new HostedOptionKey<>("");
+
+    public static String getImageDestinationDirectory() {
+        return getImageDestinationDirectory(HostedOptionValues.singleton());
+    }
+
+    public static String getImageDestinationDirectory(OptionValues values) {
+        if (Paths.get(Name.getValue(values)).getNameCount() > 1) {
+            return Paths.get(Path.getValue(values)).resolve(Name.getValue(values)).getParent().toString();
+        }
+        return Path.getValue(values);
+    }
+
+    public static String getImageName(OptionValues options) {
+        return Paths.get(Name.getValue(options)).getFileName().toString();
+    }
+
+    public static void verifyImagePath(OptionValues values) {
+        java.nio.file.Path path = Paths.get(Name.getValue(values));
+        UserError.guarantee(!path.isAbsolute(), "Image name may not be specified as an absolute path: %s%n", path);
+
+        if (path.getNameCount() > 1) {
+            java.nio.file.Path destinationDirectory = Paths.get(getImageDestinationDirectory(values));
+            UserError.guarantee(Files.exists(destinationDirectory), "Given image destination directory does not exist: %s%n", destinationDirectory);
+            UserError.guarantee(Files.isDirectory(destinationDirectory), "Given image destination is not a directory: %s%n", destinationDirectory);
+        }
+    }
 
     @APIOption(name = "shared")//
     @Option(help = "Build shared library")//
@@ -163,9 +194,6 @@ public class SubstrateOptions {
 
     @Option(help = "Path passed to the linker as the -rpath (list of comma-separated directories)")//
     public static final HostedOptionKey<LocatableMultiOptionValue.Strings> LinkerRPath = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
-
-    @Option(help = "Directory of the image file to be generated", type = OptionType.User)//
-    public static final HostedOptionKey<String> Path = new HostedOptionKey<>(null);
 
     public static final class GCGroup implements APIOptionGroup {
         @Override
@@ -471,7 +499,7 @@ public class SubstrateOptions {
 
     public static Path getDebugInfoSourceCacheRoot() {
         try {
-            return Paths.get(Path.getValue()).resolve(DebugInfoSourceCacheRoot.getValue());
+            return Paths.get(getImageDestinationDirectory()).resolve(DebugInfoSourceCacheRoot.getValue());
         } catch (InvalidPathException ipe) {
             throw UserError.abort("Invalid path provided for option DebugInfoSourceCacheRoot %s", DebugInfoSourceCacheRoot.getValue());
         }
@@ -567,7 +595,7 @@ public class SubstrateOptions {
     public static final RuntimeOptionKey<String> FlightRecorderLogging = new RuntimeOptionKey<>("all=warning");
 
     public static String reportsPath() {
-        return Paths.get(Paths.get(Path.getValue()).toString(), ImageSingletons.lookup(ReportingSupport.class).reportsPath).toAbsolutePath().toString();
+        return Paths.get(Paths.get(getImageDestinationDirectory()).toString(), ImageSingletons.lookup(ReportingSupport.class).reportsPath).toAbsolutePath().toString();
     }
 
     public static class ReportingSupport {
