@@ -1432,7 +1432,6 @@ public final class ClassfileParser {
                 totalLocalTableCount++;
             } else if (attributeName.equals(Name.LocalVariableTypeTable)) {
                 codeAttributes[i] = parseLocalVariableTypeAttribute(attributeName, code, maxLocals);
-                totalLocalTableCount++;
             } else if (attributeName.equals(Name.StackMapTable)) {
                 if (stackMapTable != null) {
                     throw ConstantPool.classFormatError("Duplicate StackMapTable attribute");
