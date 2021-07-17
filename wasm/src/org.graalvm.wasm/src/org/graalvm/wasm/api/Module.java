@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,7 +55,6 @@ import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmCustomSection;
 import org.graalvm.wasm.WasmFunction;
 import org.graalvm.wasm.WasmModule;
-import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.constants.ImportIdentifier;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
@@ -85,7 +84,7 @@ public class Module extends Dictionary {
             } else if (module.exportedTableNames().contains(name)) {
                 list.add(new ModuleExportDescriptor(name, table.name(), null));
             } else if (f != null) {
-                list.add(new ModuleExportDescriptor(name, function.name(), functionTypeToString(f)));
+                list.add(new ModuleExportDescriptor(name, function.name(), WebAssembly.functionTypeToString(f)));
             } else if (globalIndex != null) {
                 String valueType = ValueType.fromByteValue(module.globalValueType(globalIndex)).toString();
                 list.add(new ModuleExportDescriptor(name, global.name(), valueType));
@@ -104,7 +103,7 @@ public class Module extends Dictionary {
             switch (descriptor.identifier) {
                 case ImportIdentifier.FUNCTION:
                     final WasmFunction f = module.importedFunction(descriptor);
-                    list.add(new ModuleImportDescriptor(f.importedModuleName(), f.importedFunctionName(), function.name(), functionTypeToString(f)));
+                    list.add(new ModuleImportDescriptor(f.importedModuleName(), f.importedFunctionName(), function.name(), WebAssembly.functionTypeToString(f)));
                     break;
                 case ImportIdentifier.TABLE:
                     if (Objects.equals(module.importedTable(), descriptor)) {
@@ -133,25 +132,6 @@ public class Module extends Dictionary {
             }
         }
         return new Sequence<>(list);
-    }
-
-    private static String functionTypeToString(WasmFunction f) {
-        StringBuilder typeInfo = new StringBuilder();
-
-        typeInfo.append(f.index());
-
-        typeInfo.append('(');
-        int argumentCount = f.numArguments();
-        for (int i = 0; i < argumentCount; i++) {
-            typeInfo.append(ValueType.fromByteValue(f.argumentTypeAt(i)));
-        }
-        typeInfo.append(')');
-
-        byte returnType = f.returnType();
-        if (returnType != WasmType.VOID_TYPE) {
-            typeInfo.append(ValueType.fromByteValue(f.returnType()));
-        }
-        return typeInfo.toString();
     }
 
     public Sequence<ByteArrayBuffer> customSections(Object sectionName) {
