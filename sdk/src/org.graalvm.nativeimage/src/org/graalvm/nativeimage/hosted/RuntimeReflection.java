@@ -48,6 +48,7 @@ import java.lang.reflect.Modifier;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 //Checkstyle: allow reflection
@@ -68,7 +69,7 @@ public final class RuntimeReflection {
      * @since 19.0
      */
     public static void register(Class<?>... classes) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(classes);
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(ConfigurationCondition.objectReachable(), classes);
     }
 
     /**
@@ -79,7 +80,7 @@ public final class RuntimeReflection {
      * @since 19.0
      */
     public static void register(Executable... methods) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(methods);
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(ConfigurationCondition.objectReachable(), methods);
     }
 
     /**
@@ -90,7 +91,7 @@ public final class RuntimeReflection {
      * @since 19.0
      */
     public static void register(Field... fields) {
-        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(false, fields);
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(ConfigurationCondition.objectReachable(), false, fields);
     }
 
     /**

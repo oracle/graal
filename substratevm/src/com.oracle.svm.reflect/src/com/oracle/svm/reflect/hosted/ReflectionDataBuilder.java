@@ -42,6 +42,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -52,10 +53,11 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.FeatureAccessImpl;
+import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
 import com.oracle.svm.util.ReflectionUtil;
 
-public class ReflectionDataBuilder implements RuntimeReflectionSupport {
+public class ReflectionDataBuilder extends ConditionalConfigurationRegistry implements RuntimeReflectionSupport {
 
     public static final Field[] EMPTY_FIELDS = new Field[0];
     public static final Method[] EMPTY_METHODS = new Method[0];
@@ -70,7 +72,6 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
     private final Set<Executable> reflectionMethods = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final Set<Field> reflectionFields = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
-    /* Keep track of classes already processed for reflection. */
     private final Set<Class<?>> processedClasses = new HashSet<>();
 
     private final ReflectionDataAccessors accessors;
@@ -108,8 +109,12 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
     }
 
     @Override
-    public void register(Class<?>... classes) {
+    public void register(ConfigurationCondition condition, Class<?>... classes) {
         checkNotSealed();
+        registerConditionalConfiguration(condition, () -> registerClasses(classes));
+    }
+
+    private void registerClasses(Class<?>[] classes) {
         for (Class<?> clazz : classes) {
             if (reflectionClasses.add(clazz)) {
                 modifiedClasses.add(clazz);
@@ -118,8 +123,12 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
     }
 
     @Override
-    public void register(Executable... methods) {
+    public void register(ConfigurationCondition condition, Executable... methods) {
         checkNotSealed();
+        registerConditionalConfiguration(condition, () -> registerMethods(methods));
+    }
+
+    private void registerMethods(Executable[] methods) {
         for (Executable method : methods) {
             if (reflectionMethods.add(method)) {
                 modifiedClasses.add(method.getDeclaringClass());
@@ -128,8 +137,12 @@ public class ReflectionDataBuilder implements RuntimeReflectionSupport {
     }
 
     @Override
-    public void register(boolean finalIsWritable, Field... fields) {
+    public void register(ConfigurationCondition condition, boolean finalIsWritable, Field... fields) {
         checkNotSealed();
+        registerConditionalConfiguration(condition, () -> registerFields(fields));
+    }
+
+    private void registerFields(Field[] fields) {
         // Unsafe and write accesses are always enabled for fields because accessors use Unsafe.
         for (Field field : fields) {
             if (reflectionFields.add(field)) {

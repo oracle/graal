@@ -40,12 +40,51 @@
  */
 package org.graalvm.nativeimage.impl;
 
-public interface RuntimeSerializationSupport {
+import java.util.Objects;
 
-    void register(ConfigurationCondition condition, Class<?>... classes);
+public final class ConfigurationCondition implements Comparable<ConfigurationCondition> {
+    private final String typeName;
+    private static final ConfigurationCondition OBJECT_REACHABLE = new ConfigurationCondition(Object.class.getTypeName());
 
-    void registerWithTargetConstructorClass(ConfigurationCondition condition, Class<?> clazz, Class<?> customTargetConstructorClazz);
+    public static ConfigurationCondition objectReachable() {
+        return OBJECT_REACHABLE;
+    }
 
-    void registerWithTargetConstructorClass(ConfigurationCondition condition, String className, String customTargetConstructorClassName);
+    public static ConfigurationCondition create(String typeReachability) {
+        Objects.requireNonNull(typeReachability);
+        if (OBJECT_REACHABLE.typeName.equals(typeReachability)) {
+            return OBJECT_REACHABLE;
+        }
+        return new ConfigurationCondition(typeReachability);
+    }
 
+    private ConfigurationCondition(String typeName) {
+        this.typeName = typeName;
+    }
+
+    public String getTypeName() {
+        return typeName;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        ConfigurationCondition condition = (ConfigurationCondition) o;
+        return Objects.equals(typeName, condition.typeName);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(typeName);
+    }
+
+    @Override
+    public int compareTo(ConfigurationCondition o) {
+        return this.typeName.compareTo(o.typeName);
+    }
 }
