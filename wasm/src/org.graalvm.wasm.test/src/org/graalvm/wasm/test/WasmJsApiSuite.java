@@ -794,6 +794,23 @@ public class WasmJsApiSuite {
         }
     }
 
+    @Test
+    public void testFuncType() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WebAssemblyInstantiatedSource instantiatedSource = wasm.instantiate(binaryWithTableExport, null);
+            final Instance instance = instantiatedSource.instance();
+            try {
+                final Object funcType = wasm.readMember("func_type");
+                final Table table = (Table) instance.exports().readMember("defaultTable");
+                final Object fn = table.get(0);
+                Assert.assertEquals("func_type", "0(i32)i32", InteropLibrary.getUncached(funcType).execute(funcType, fn));
+            } catch (InteropException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
     private static void runTest(Consumer<WasmContext> testCase) throws IOException {
         final Context.Builder contextBuilder = Context.newBuilder("wasm");
         contextBuilder.option("wasm.Builtins", "testutil:testutil");
