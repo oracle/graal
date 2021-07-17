@@ -75,6 +75,7 @@ import org.graalvm.nativeimage.c.type.WordPointer;
 
 import com.oracle.svm.agent.stackaccess.InterceptedState;
 import com.oracle.svm.agent.tracing.core.Tracer;
+import com.oracle.svm.configure.trace.AccessAdvisor;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.jni.JNIObjectHandles;
@@ -997,6 +998,11 @@ final class BreakpointInterceptor {
         if (loader.equal(nullHandle())) { // boot class loader
             return;
         }
+        String className = fromCString(name);
+        if (className != null && AccessAdvisor.PROXY_CLASS_NAME_PATTERN.matcher(className).matches()) {
+            // Proxy classes are handled using a different mechanism, so we ignore them here
+            return;
+        }
         for (JNIObjectHandle builtinLoader : builtinClassLoaders) {
             if (jniFunctions().getIsSameObject().invoke(jni, loader, builtinLoader)) {
                 return;
@@ -1007,7 +1013,7 @@ final class BreakpointInterceptor {
         }
         byte[] data = new byte[classDataLen];
         CTypeConversion.asByteBuffer(classData, classDataLen).get(data);
-        tracer.traceCall("classloading", "onClassFileLoadHook", null, null, null, null, state.getFullStackTraceOrNull(), fromCString(name), data);
+        tracer.traceCall("classloading", "onClassFileLoadHook", null, null, null, null, state.getFullStackTraceOrNull(), className, data);
     }
 
     private static final CEntryPointLiteral<CFunctionPointer> onBreakpointLiteral = CEntryPointLiteral.create(BreakpointInterceptor.class, "onBreakpoint",

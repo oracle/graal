@@ -39,6 +39,7 @@ import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
+import com.oracle.svm.util.ClassUtil;
 
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -57,7 +58,7 @@ public final class CFunctionCallStubMethod extends CCallStubMethod {
 
     @Override
     protected String getCorrespondingAnnotationName() {
-        return getAnnotationClass().getSimpleName();
+        return ClassUtil.getUnqualifiedName(getAnnotationClass());
     }
 
     private Class<?> getAnnotationClass() {

@@ -36,6 +36,7 @@ import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.util.ClassUtil;
 
 @AutomaticFeature
 @Platforms(Platform.HOSTED_ONLY.class)
@@ -99,7 +100,7 @@ class JavaThreadsFeature implements Feature {
     private <K, V> boolean registerReachableObject(Map<K, V> map, K object, V value) {
         boolean result = map.putIfAbsent(object, value) == null;
         if (sealed && result) {
-            throw UserError.abort("%s is reachable in the image heap but was not seen during the points-to analysis: %s", object.getClass().getSimpleName(), object);
+            throw UserError.abort("%s is reachable in the image heap but was not seen during the points-to analysis: %s", ClassUtil.getUnqualifiedName(object.getClass()), object);
         }
         return result;
     }

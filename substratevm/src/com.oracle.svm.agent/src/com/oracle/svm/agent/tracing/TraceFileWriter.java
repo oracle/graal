@@ -96,10 +96,10 @@ public class TraceFileWriter extends Tracer implements TracingResultWriter {
     }
 
     private static void printValue(JsonWriter json, Object value) throws IOException {
-        String s;
+        String s = null;
         if (value instanceof byte[]) {
             s = Base64.getEncoder().encodeToString((byte[]) value);
-        } else {
+        } else if (value != null) {
             s = value.toString();
         }
         json.quote(s);

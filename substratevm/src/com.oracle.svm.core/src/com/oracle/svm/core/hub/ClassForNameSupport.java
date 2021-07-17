@@ -50,26 +50,12 @@ public final class ClassForNameSupport {
         singleton().knownClasses.put(clazz.getName(), clazz);
     }
 
-    public static Class<?> forNameOrNull(String className, boolean initialize, ClassLoader classLoader) {
+    public static Class<?> forNameOrNull(String className, ClassLoader classLoader) {
         Class<?> result = singleton().knownClasses.get(className);
         if (result == null) {
             result = PredefinedClassesSupport.getLoadedForNameOrNull(className, classLoader);
-            if (result == null) {
-                return null;
-            }
         }
         // Note: for non-predefined classes, we (currently) don't need to check the provided loader
-        if (initialize) {
-            DynamicHub.fromClass(result).ensureInitialized();
-        }
-        return result;
-    }
-
-    public static Class<?> forName(String className, boolean initialize, ClassLoader classLoader) throws ClassNotFoundException {
-        Class<?> result = forNameOrNull(className, initialize, classLoader);
-        if (result == null) {
-            throw new ClassNotFoundException(className);
-        }
         return result;
     }
 

@@ -39,7 +39,6 @@ import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.SubstrateUtil;
@@ -129,6 +128,8 @@ class ResourcesHelper {
 @SuppressWarnings("static-method")
 public final class Target_java_lang_ClassLoader {
 
+    @Alias private Target_java_lang_ClassLoader parent;
+
     /**
      * This field can be safely deleted, but that would require substituting the entire constructor
      * of ClassLoader, so we just reset it. The original javadoc mentions: "The classes loaded by
@@ -203,37 +204,36 @@ public final class Target_java_lang_ClassLoader {
 
     @Substitute
     private Class<?> loadClass(String name) throws ClassNotFoundException {
-        boolean nameValid;
-        if (JavaVersionUtil.JAVA_SPEC < 17) {
-            nameValid = checkName(name);
-        } else {
-            nameValid = checkNameJDK17OrLater(name);
-        }
-        if (!nameValid) {
-            /*
-             * Names that contain `/` or start with '[' are invalid. Calling `ClassLoader.loadClass`
-             * to create a `Class` object of an array class is invalid and a
-             * `ClassNotFoundException` will be thrown. Instead, `Class.forName` should be used
-             * directly to load array classes.
-             */
-            throw new ClassNotFoundException(name);
-        }
-        return ClassForNameSupport.forName(name, false, SubstrateUtil.cast(this, ClassLoader.class));
+        return loadClass(name, false);
     }
 
     @Alias
-    @TargetElement(onlyWith = JDK16OrEarlier.class)
-    private native boolean checkName(String name);
+    protected native Class<?> findLoadedClass(String name);
 
-    // JDK-8265605
     @Alias
-    @TargetElement(onlyWith = JDK17OrLater.class, name = "checkName")
-    private static native boolean checkNameJDK17OrLater(String name);
+    protected native Class<?> findClass(String name);
 
     @Substitute
     @SuppressWarnings("unused")
-    Class<?> loadClass(String name, boolean resolve) {
-        throw VMError.unsupportedFeature("Target_java_lang_ClassLoader.loadClass(String, boolean)");
+    Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
+        Class<?> clazz = findLoadedClass(name);
+        if (clazz != null) {
+            return clazz;
+        }
+        if (!PredefinedClassesSupport.supportsBytecodes()) {
+            throw new ClassNotFoundException(name);
+        }
+        if (parent != null) {
+            try {
+                clazz = parent.loadClass(name);
+                if (clazz != null) {
+                    return clazz;
+                }
+            } catch (ClassNotFoundException ignored) {
+                // not found in parent loader
+            }
+        }
+        return findClass(name);
     }
 
     @Delete
@@ -255,7 +255,11 @@ public final class Target_java_lang_ClassLoader {
     @SuppressWarnings({"unused"})
     Class<?> loadClass(Target_java_lang_Module module, String name) {
         /* The module system is not supported for now, therefore the module parameter is ignored. */
-        return ClassForNameSupport.forNameOrNull(name, false, SubstrateUtil.cast(this, ClassLoader.class));
+        try {
+            return loadClass(name, false);
+        } catch (ClassNotFoundException e) {
+            return null;
+        }
     }
 
     /**
@@ -286,7 +290,7 @@ public final class Target_java_lang_ClassLoader {
         if (name == null) {
             return null;
         }
-        return ClassForNameSupport.forNameOrNull(name, false, SubstrateUtil.cast(this, ClassLoader.class));
+        return ClassForNameSupport.forNameOrNull(name, SubstrateUtil.cast(this, ClassLoader.class));
     }
 
     @Substitute
@@ -374,6 +378,11 @@ public final class Target_java_lang_ClassLoader {
             off = 0;
         }
         return PredefinedClassesSupport.loadClass(SubstrateUtil.cast(this, ClassLoader.class), name, array, off, len, null);
+    }
+
+    @Substitute
+    protected void resolveClass(@SuppressWarnings("unused") Class<?> c) {
+        // All classes are already linked at runtime.
     }
 
     @Delete

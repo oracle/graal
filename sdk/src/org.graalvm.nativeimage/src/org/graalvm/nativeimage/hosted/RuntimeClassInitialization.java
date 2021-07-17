@@ -96,7 +96,7 @@ public final class RuntimeClassInitialization {
     public static void initializeAtRunTime(Class<?>... classes) {
         StackTraceElement[] stacktrace = Thread.currentThread().getStackTrace();
         for (Class<?> aClass : classes) {
-            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).initializeAtRunTime(aClass, classReason(stacktrace, aClass.getSimpleName() + ".class"));
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).initializeAtRunTime(aClass, classReason(stacktrace, getUnqualifiedName(aClass) + ".class"));
         }
     }
 
@@ -115,7 +115,7 @@ public final class RuntimeClassInitialization {
     public static void initializeAtBuildTime(Class<?>... classes) {
         StackTraceElement[] stacktrace = Thread.currentThread().getStackTrace();
         for (Class<?> aClass : classes) {
-            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).initializeAtBuildTime(aClass, classReason(stacktrace, aClass.getSimpleName() + ".class"));
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).initializeAtBuildTime(aClass, classReason(stacktrace, getUnqualifiedName(aClass) + ".class"));
         }
     }
 
@@ -165,6 +165,16 @@ public final class RuntimeClassInitialization {
 
     private static String classReason(StackTraceElement[] stacktrace, String simpleName) {
         return "from feature " + getCaller(stacktrace) + " with '" + simpleName + "'";
+    }
+
+    /**
+     * Alternative to {@link Class#getSimpleName} that does not probe the enclosing class or method
+     * which fails when they are not yet loaded. Duplicated from
+     * {@code ClassUtil.getUnqualifiedName} which is not reachable here.
+     */
+    private static String getUnqualifiedName(Class<?> aClass) {
+        String name = aClass.getTypeName();
+        return name.substring(name.lastIndexOf('.') + 1); // strip the package name
     }
 
     private RuntimeClassInitialization() {

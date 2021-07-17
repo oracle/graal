@@ -53,6 +53,7 @@ import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.c.util.FileUtils;
+import com.oracle.svm.util.ClassUtil;
 
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
@@ -354,7 +355,7 @@ public abstract class CCompilerInvoker {
     private CompilerInfo getCCompilerInfo() {
         Path compilerPath = getCCompilerPath().toAbsolutePath();
         if (!SubstrateOptions.CheckToolchain.getValue()) {
-            return new CompilerInfo(compilerPath, null, getClass().getSimpleName(), null, 0, 0, 0, null);
+            return new CompilerInfo(compilerPath, null, ClassUtil.getUnqualifiedName(getClass()), null, 0, 0, 0, null);
         }
         List<String> compilerCommand = createCompilerCommand(compilerPath, getVersionInfoOptions(), null);
         Process compilerProcess = null;
