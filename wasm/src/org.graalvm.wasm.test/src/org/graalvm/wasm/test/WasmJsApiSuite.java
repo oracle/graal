@@ -814,7 +814,7 @@ public class WasmJsApiSuite {
     }
 
     @Test
-    public void testFuncType() throws IOException {
+    public void testFuncTypeTable() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
             final WebAssemblyInstantiatedSource instantiatedSource = wasm.instantiate(binaryWithTableExport, null);
@@ -823,7 +823,28 @@ public class WasmJsApiSuite {
                 final Object funcType = wasm.readMember("func_type");
                 final Table table = (Table) instance.exports().readMember("defaultTable");
                 final Object fn = table.get(0);
-                Assert.assertEquals("func_type", "0(i32)i32", InteropLibrary.getUncached(funcType).execute(funcType, fn));
+                InteropLibrary interop = InteropLibrary.getUncached(funcType);
+                Assert.assertEquals("func_type", "0(i32)i32", interop.execute(funcType, fn));
+                // set + get should not break func_type()
+                table.set(0, fn);
+                final Object fnAgain = table.get(0);
+                Assert.assertEquals("func_type", "0(i32)i32", interop.execute(funcType, fnAgain));
+            } catch (InteropException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    @Test
+    public void testFuncTypeExport() throws IOException {
+        runTest(context -> {
+            final WebAssembly wasm = new WebAssembly(context);
+            final WebAssemblyInstantiatedSource instantiatedSource = wasm.instantiate(binaryWithMemoryExport, null);
+            final Instance instance = instantiatedSource.instance();
+            try {
+                final Object funcType = wasm.readMember("func_type");
+                final Object fn = instance.exports().readMember("readZero");
+                Assert.assertEquals("func_type", "0()i32", InteropLibrary.getUncached(funcType).execute(funcType, fn));
             } catch (InteropException e) {
                 throw new RuntimeException(e);
             }
