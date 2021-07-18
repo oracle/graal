@@ -198,7 +198,8 @@ suite = {
             "dependencies": ["com.oracle.svm.core"],
             "requires" : [
                 "java.logging",
-                "jdk.unsupported"
+                "jdk.unsupported",
+                "java.compiler",
             ],
             "requiresConcealed" : {
                 "java.base" : [

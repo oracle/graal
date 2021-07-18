@@ -30,6 +30,7 @@ import com.oracle.svm.core.jdk.BootModuleLayerSupport;
 import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
+import jdk.internal.module.ModuleReferenceImpl;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -107,6 +108,13 @@ public final class ModuleLayerFeature implements Feature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
+        // Because we synthesize the boot layer after analysis, we need to
+        // register every type in ModuleLayer's object graph as in heap
+        access.registerAsInHeap(ModuleLayer.class);
+        access.registerAsInHeap(Configuration.class);
+        access.registerAsInHeap(ResolvedModule.class);
+        access.registerAsInHeap(ModuleReferenceImpl.class);
+
         access.registerReachabilityHandler(
                 a -> a.registerAsUnsafeAccessed(ReflectionUtil.lookupField(ClassLoader.class, "classLoaderValueMap")),
                 ReflectionUtil.lookupMethod(ClassLoader.class, "trySetObjectField", String.class, Object.class)
@@ -115,16 +123,17 @@ public final class ModuleLayerFeature implements Feature {
     }
 
     @Override
-    public void duringAnalysis(DuringAnalysisAccess access) {
-        FeatureImpl.DuringAnalysisAccessImpl accessImpl = (FeatureImpl.DuringAnalysisAccessImpl) access;
+    public void afterAnalysis(AfterAnalysisAccess access) {
+        FeatureImpl.AfterAnalysisAccessImpl accessImpl = (FeatureImpl.AfterAnalysisAccessImpl) access;
         AnalysisUniverse universe = accessImpl.getUniverse();
 
         Map<String, Module> reachableModules = universe.getTypes()
                 .stream()
                 .filter(t -> t.isReachable() && !t.isArray())
                 .map(t -> t.getJavaClass().getModule())
+                .distinct()
                 .filter(m -> m.isNamed() && !m.getDescriptor().modifiers().contains(ModuleDescriptor.Modifier.SYNTHETIC))
-                .collect(Collectors.toMap(Module::getName, m -> m, (m1, m2) -> m1));
+                .collect(Collectors.toMap(Module::getName, m -> m));
 
         ModuleLayer runtimeBootLayer = synthesizeRuntimeBootLayer(accessImpl.imageClassLoader, reachableModules);
         BootModuleLayerSupport.instance().setBootLayer(runtimeBootLayer);
@@ -135,6 +144,8 @@ public final class ModuleLayerFeature implements Feature {
         try {
             ModuleLayer runtimeBootLayer = moduleLayerConstructor.newInstance(cf, List.of(), null);
             patchRuntimeBootLayer(runtimeBootLayer, reachableModules);
+            // Ensure that the lazy field ModuleLayer.modules gets set
+            runtimeBootLayer.modules();
             return runtimeBootLayer;
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException ex) {
             throw VMError.shouldNotReachHere("Failed to synthesize the runtime boot module layer.", ex);
