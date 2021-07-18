@@ -236,9 +236,8 @@ Follow these steps to start VisualVM automatically from within the VS Code:
 
 4. Select the **Launch VisualVM & Java 8+ Application** launch configuration in the Run and Debug activity. Use the Start Debugging or Run Without Debugging action to start the current project.
 
-The Process node displays _ProjectName (pid pending)..._ while waiting for the project process, followed by _ProjectName (pid 12345)_ once the project process has been started.
-
-While the project is starting, project name with a process ID (PID) pending label is displayed in the Process node in VisualVM pane. Once the project process starts, the Process node shows its PID and the action defined in step 3 is performed.
+While the project is starting, the Process node in VisualVM pane displays project name with a "pid pending" label.
+Once the project process starts, the Process node is updated to show its process ID (PID) and the action defined in step 3 is performed.
 
 > Note: This feature was introduced with the GraalVM 21.2.0 release. Please make sure to get the latest GraalVM Tools for Java extension from the VS Code Marketplace, preferably by downloading the [GraalVM Extension Pack for Java](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm-pack).
 
