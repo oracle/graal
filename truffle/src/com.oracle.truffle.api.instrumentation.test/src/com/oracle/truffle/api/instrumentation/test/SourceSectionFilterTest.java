@@ -45,16 +45,21 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
+import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.IndexRange;
+import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -62,6 +67,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.ReflectionUtils;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
 public class SourceSectionFilterTest extends AbstractPolyglotTest {
 
@@ -969,4 +975,74 @@ public class SourceSectionFilterTest extends AbstractPolyglotTest {
         return tags;
     }
 
+    @Test
+    public void testRootNodeNullSourceSection() {
+        SourceSectionRootNode rootNode = new SourceSectionRootNode(null, null);
+        Assert.assertTrue(SourceSectionFilter.ANY.includes(rootNode, rootNode.getSourceSection(), null));
+        Assert.assertTrue(SourceSectionFilter.newBuilder().includeInternal(false).build().includes(rootNode, rootNode.getSourceSection(), null));
+        Assert.assertFalse(SourceSectionFilter.newBuilder().lineIs(1).build().includes(rootNode, rootNode.getSourceSection(), null));
+    }
+
+    @Test
+    public void testRootNode() {
+        Source source = Source.newBuilder("", "asdf", "").build();
+        // Source section is "sd"
+        SourceSection section = source.createSection(1, 2);
+        SourceSectionRootNode rootNode = new SourceSectionRootNode(section, null);
+        Assert.assertTrue(SourceSectionFilter.ANY.includes(rootNode, rootNode.getSourceSection(), null));
+        Assert.assertTrue(SourceSectionFilter.newBuilder().includeInternal(false).build().includes(rootNode, rootNode.getSourceSection(), null));
+        Assert.assertTrue(SourceSectionFilter.newBuilder().lineIs(1).build().includes(rootNode, rootNode.getSourceSection(), null));
+        Assert.assertTrue(SourceSectionFilter.newBuilder().lineIs(1).columnIn(IndexRange.between(2, 3)).build().includes(rootNode, rootNode.getSourceSection(), null));
+        Assert.assertFalse(SourceSectionFilter.newBuilder().lineIs(1).columnIn(IndexRange.between(20, 30)).build().includes(rootNode, rootNode.getSourceSection(), null));
+    }
+
+    @Test
+    public void testRootNodeWithTags() {
+        try (Context context = Context.newBuilder(ProvidesTagLanguage.ID).build()) {
+            context.eval(org.graalvm.polyglot.Source.create(ProvidesTagLanguage.ID, "asdf"));
+        }
+    }
+
+    @TruffleLanguage.Registration(id = ProvidesTagLanguage.ID, name = ProvidesTagLanguage.ID, version = "1.0")
+    @ProvidedTags({StandardTags.RootTag.class})
+    public static class ProvidesTagLanguage extends ProxyLanguage {
+        static final String ID = "SourceSectionFilterTest_ProvidesTagLanguage";
+
+        @Override
+        protected CallTarget parse(ParsingRequest request) throws Exception {
+            final Source source = request.getSource();
+            SourceSection section = source.createSection(1, 2);
+            SourceSectionRootNode rootNode = new SourceSectionRootNode(section, this);
+
+            final Set<Class<?>> rootTags = new HashSet<>();
+            rootTags.add(StandardTags.RootTag.class);
+            final Set<Class<?>> statementTags = new HashSet<>();
+            statementTags.add(StandardTags.StatementTag.class);
+
+            Assert.assertTrue(SourceSectionFilter.ANY.includes(rootNode, rootNode.getSourceSection(), rootTags));
+            Assert.assertTrue(SourceSectionFilter.newBuilder().tagIs(StandardTags.RootTag.class).build().includes(rootNode, rootNode.getSourceSection(), rootTags));
+            Assert.assertFalse(SourceSectionFilter.newBuilder().tagIs(StandardTags.RootTag.class).build().includes(rootNode, rootNode.getSourceSection(), statementTags));
+            return Truffle.getRuntime().createCallTarget(rootNode);
+        }
+    }
+
+    static class SourceSectionRootNode extends RootNode {
+        private final SourceSection sourceSection;
+
+        SourceSectionRootNode(SourceSection sourceSection, TruffleLanguage<?> language) {
+            super(language);
+            this.sourceSection = sourceSection;
+        }
+
+        @Override
+        public SourceSection getSourceSection() {
+            return sourceSection;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return 42;
+        }
+
+    }
 }
