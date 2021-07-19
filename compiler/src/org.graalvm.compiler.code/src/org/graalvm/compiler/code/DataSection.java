@@ -48,7 +48,11 @@ public final class DataSection implements Iterable<Data> {
 
     static class Options {
         // @formatter:off
-        @Option(help = "An adversarial constant layout that always forces misalignment.",
+        @Option(help = "Place N-byte constants in the data section such that they are misaligned with respect to N*2. " +
+                "For example, place 4 byte constants at offset 4, 12 or 20, etc. " +
+                "This layout is used to detect instructions that load constants with alignment smaller " +
+                "than the fetch size. For instance, an XORPS instruction that does a 16-byte fetch of a " +
+                "4-byte float not aligned to 16 bytes will cause a segfault.",
                 type = OptionType.Debug)
         static final OptionKey<Boolean> ForceAdversarialLayout = new OptionKey<>(false);
         // @formatter:on
