@@ -187,11 +187,10 @@ public final class BytecodeOSRMetadata {
             updateFrameSlots();
         }
 
-        byte[] currentSourceTags = source.getTags();
         for (int i = 0; i < frameSlots.length; i++) {
             FrameSlot slot = frameSlots[i];
             byte expectedTag = frameTags[i];
-            byte actualTag = currentSourceTags[i];
+            byte actualTag = source.getTag(slot);
 
             // The tag for this slot may have changed; if so, deoptimize and update it.
             boolean tagsCondition = expectedTag == actualTag;

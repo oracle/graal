@@ -52,9 +52,9 @@ import com.oracle.truffle.api.frame.VirtualFrame;
  * <ol>
  * <li>The node must extend {@link Node} or a subclass of {@link Node}.</li>
  * <li>The node must provide storage for the OSR metadata maintained by the runtime using an
- * instance field. The field should be
+ * instance field. The field must be
  * {@link com.oracle.truffle.api.CompilerDirectives.CompilationFinal @CompilationFinal}, and the
- * {@link BytecodeOSRNode#getOSRMetadata} and {@link BytecodeOSRNode#setOSRMetadata} methods should
+ * {@link BytecodeOSRNode#getOSRMetadata} and {@link BytecodeOSRNode#setOSRMetadata} methods must
  * proxy accesses to it.</li>
  * <li>{@link Frame Frames} passed to to this node's {@link BytecodeOSRNode#executeOSR} method must
  * be non-materializable.</li>
@@ -72,7 +72,7 @@ public interface BytecodeOSRNode extends NodeInterface {
      * <li>transfer state from the {@code osrFrame} back to the {@code parentFrame} (if necessary)
      * </ul>
      * <p>
-     * NOTE: The result of {@link Frame#getArguments()} for {@code osrFrame} is undefined and should
+     * NOTE: The result of {@link Frame#getArguments()} for {@code osrFrame} is undefined and must
      * not be used. Additionally, since the parent frame could also come from an OSR call (in the
      * situation where an OSR call deoptimizes), the arguments of {@code parentFrame} are also
      * undefined.
@@ -88,7 +88,7 @@ public interface BytecodeOSRNode extends NodeInterface {
     /**
      * Gets the OSR metadata for this instance.
      *
-     * The metadata should be stored on a
+     * The metadata must be stored on a
      * {@link com.oracle.truffle.api.CompilerDirectives.CompilationFinal @CompilationFinal} instance
      * field. Refer to the documentation for {@link BytecodeOSRNode this interface} for a more
      * complete description.
@@ -101,7 +101,7 @@ public interface BytecodeOSRNode extends NodeInterface {
     /**
      * Sets the OSR metadata for this instance.
      *
-     * The metadata should be stored on a
+     * The metadata must be stored on a
      * {@link com.oracle.truffle.api.CompilerDirectives.CompilationFinal @CompilationFinal} instance
      * field. Refer to the documentation for {@link BytecodeOSRNode this interface} for a more
      * complete description.
