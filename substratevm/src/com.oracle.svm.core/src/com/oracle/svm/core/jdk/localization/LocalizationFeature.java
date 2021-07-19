@@ -296,7 +296,7 @@ public abstract class LocalizationFeature implements Feature {
             /*- Fallthrough to also allow adding custom locales */
         }
         List<String> invalid = new ArrayList<>();
-        for (String tag : Options.IncludeLocales.getValue().values()) {
+        for (String tag : OptionUtils.flatten(",", Options.IncludeLocales.getValue().values())) {
             Locale locale = parseLocaleFromTag(tag);
             if (locale != null) {
                 locales.add(locale);

@@ -94,6 +94,10 @@ public final class InlineBeforeAnalysisPolicyImpl extends InlineBeforeAnalysisPo
         if (b.getDepth() > allowedDepth) {
             return false;
         }
+        if (b.recursiveInliningDepth(method) > 0) {
+            /* Prevent recursive inlining. */
+            return false;
+        }
 
         AnalysisMethod caller = (AnalysisMethod) b.getMethod();
         AnalysisMethod callee = (AnalysisMethod) method;

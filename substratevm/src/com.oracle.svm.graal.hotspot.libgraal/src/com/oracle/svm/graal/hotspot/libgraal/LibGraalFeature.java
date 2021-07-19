@@ -307,9 +307,13 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
         }
 
         Class<?> findClass(String name) {
-            Class<?> c = loader.findClass(name).get();
+            String internalName = name;
+            if (name.startsWith("L") && name.endsWith(";")) {
+                internalName = name.substring(1, name.length() - 1);
+            }
+            Class<?> c = loader.findClass(internalName).get();
             if (c == null) {
-                throw error("Class " + name + " not found");
+                throw error("Class " + internalName + " not found");
             }
             return c;
         }

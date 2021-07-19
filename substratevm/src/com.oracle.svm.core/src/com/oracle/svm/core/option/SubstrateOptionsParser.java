@@ -50,6 +50,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ClassUtil;
 
 /**
  * This class contains methods for parsing options and matching them against
@@ -323,7 +324,7 @@ public class SubstrateOptionsParser {
         } else if (optionType.isEnum()) {
             value = Enum.valueOf(optionType.asSubclass(Enum.class), valueString);
         } else {
-            throw VMError.shouldNotReachHere(option + " uses unsupported option value class: " + optionType.getSimpleName());
+            throw VMError.shouldNotReachHere(option + " uses unsupported option value class: " + ClassUtil.getUnqualifiedName(optionType));
         }
         return value;
     }

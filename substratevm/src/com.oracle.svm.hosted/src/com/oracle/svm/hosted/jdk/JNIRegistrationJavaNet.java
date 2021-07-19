@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.jdk;
 
+import java.lang.reflect.Field;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.Proxy;
@@ -40,6 +41,7 @@ import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.jni.JNIRuntimeAccess;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
+import com.oracle.svm.util.ReflectionUtil;
 
 /**
  * Registration of classes, methods, and fields accessed via JNI by C code of the JDK.
@@ -190,8 +192,13 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
         /* Java_java_net_Inet6Address_init */
         JNIRuntimeAccess.register(constructor(a, "java.net.Inet6Address"));
         JNIRuntimeAccess.register(fields(a, "java.net.Inet6Address", "holder6"));
-        if (JavaVersionUtil.JAVA_SPEC < 13) {
-            JNIRuntimeAccess.register(fields(a, "java.net.Inet6Address", "cached_scope_id"));
+        if (JavaVersionUtil.JAVA_SPEC < 13) { // JDK-8216417
+            Class<?> c = clazz(a, "java.net.Inet6Address");
+            boolean optional = JavaVersionUtil.JAVA_SPEC == 11; // JDK-8269385
+            Field f = ReflectionUtil.lookupField(optional, c, "cached_scope_id");
+            if (f != null) {
+                JNIRuntimeAccess.register(f);
+            }
         }
         JNIRuntimeAccess.register(fields(a, "java.net.Inet6Address$Inet6AddressHolder", "ipaddress", "scope_id", "scope_id_set", "scope_ifname"));
     }

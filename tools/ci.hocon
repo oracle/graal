@@ -13,6 +13,30 @@ toolsGateLite : ${toolsCommon} {
   ]
 }
 
+toolsCoverageWhitelisting: [
+  "--jacoco-whitelist-package",
+  "org.graalvm.tools",
+  "--jacoco-whitelist-package",
+  "com.oracle.truffle.tools"
+]
+
+toolsCoverageWeekly: {
+  "run": [
+    [
+      "mx"
+    ] ${toolsCoverageWhitelisting} [
+      "--strict-compliance",
+      "gate", 
+      "--strict-mode",
+      "--jacoco-omit-excluded",
+      "--jacocout", 
+      "html"
+    ],
+    ["mx"] ${toolsCoverageWhitelisting} ["coverage-upload"]
+  ],
+  targets: ["weekly"]
+}
+
 toolsWeekly: ${tools-weekly-notifications} {
   targets: ["weekly"]
 }
@@ -29,6 +53,7 @@ builds += [
     targets : [gate],
     name: "gate-tools-javadoc"
   },
+
   ${windows-amd64} ${oraclejdk8}  ${toolsGateLite} ${devkits.windows-oraclejdk8} {
     targets : [gate],
     name: "gate-tools-windows-8"
@@ -36,7 +61,8 @@ builds += [
 
   ${darwin-amd64} ${oraclejdk8} ${toolsGateLite} ${toolsWeekly} {
     name: "gate-tools-mac-lite-8"
-  }
+  },
+
   ${darwin-amd64} ${oraclejdk11} ${toolsGateLite} ${toolsWeekly} {
     name: "gate-tools-mac-lite-oraclejdk-11"
   }
@@ -45,5 +71,9 @@ builds += [
   }
   ${linux-aarch64} ${labsjdk11} ${toolsGateLite} ${toolsWeekly} {
     name: "gate-tools-linux-aarch64-lite-labsjdk-11"
+  },
+
+  ${linux-amd64} ${oraclejdk8} ${toolsCommon} ${eclipse} ${jdt} ${toolsCoverageWeekly} {
+    name: "weekly-tools-coverage"
   }
 ]

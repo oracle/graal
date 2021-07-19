@@ -318,7 +318,9 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
     private void handleAliasClass(Class<?> annotatedClass, Class<?> originalClass, TargetClass targetClassAnnotation) {
         if (VerifyNamingConventions.getValue() && targetClassAnnotation.classNameProvider() == TargetClass.NoClassNameProvider.class) {
             String expectedName = substitutionName(originalClass);
+            // Checkstyle: allow Class.getSimpleName
             String actualName = annotatedClass.getSimpleName();
+            // Checkstyle: disallow Class.getSimpleName
             guarantee(actualName.equals(expectedName) || actualName.startsWith(expectedName + "_"),
                             "Naming convention violation: %s must be named %s or %s_<suffix>", annotatedClass, expectedName, expectedName);
         }
@@ -951,7 +953,10 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
 
     private static Class<?> findInnerClass(Class<?> outerClass, String innerClassSimpleName) {
         for (Class<?> innerClass : outerClass.getDeclaredClasses()) {
-            if (innerClass.getSimpleName().equals(innerClassSimpleName)) {
+            // Checkstyle: allow Class.getSimpleName
+            String simpleName = innerClass.getSimpleName();
+            // Checkstyle: disallow Class.getSimpleName
+            if (simpleName.equals(innerClassSimpleName)) {
                 return innerClass;
             }
         }

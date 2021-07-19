@@ -5,6 +5,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 ## Version 21.3.0
 * Added a `@GenerateWrapper.Ignore` annotation to prevent methods from being instrumented in wrapper classes.
 * The native image `TruffleCheckBlackListedMethods` option was deprecated and replaced by the `TruffleCheckBlockListMethods` option.
+* Added new [Static Object Model](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/staticobject/package-summary.html) APIs to represent the layout of objects that, once defined, do not change the number and the type of their properties. It is particularly well suited for, but not limited to, the implementation of the object model of static programming languages. For more information, read the [Javadoc](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/staticobject/package-summary.html) and the [tutorial](https://github.com/oracle/graal/blob/master/truffle/docs/StaticObjectModel.md).
 * Removed deprecated engine options: `engine.CompilationThreshold` and `engine.InliningTruffleTierOnExpand`
 * Added support for indicating whether a `Frame` can be materialized.
     * Added a new `FrameDescriptor` constructor which takes a `canMaterialize` parameter (`true` by default).

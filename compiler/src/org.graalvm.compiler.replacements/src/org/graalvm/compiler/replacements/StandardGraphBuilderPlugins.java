@@ -1232,7 +1232,8 @@ public class StandardGraphBuilderPlugins {
             assert !memoryOrder.emitBarriers : "Barriers for address based Unsafe put is not supported.";
             // Emits a null-check for the otherwise unused receiver
             unsafe.get();
-            b.add(new UnsafeMemoryStoreNode(address, value, unsafeAccessKind, OFF_HEAP_LOCATION));
+            ValueNode maskedValue = b.maskSubWordValue(value, unsafeAccessKind);
+            b.add(new UnsafeMemoryStoreNode(address, maskedValue, unsafeAccessKind, OFF_HEAP_LOCATION));
             b.getGraph().markUnsafeAccess();
             return true;
         }

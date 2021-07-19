@@ -79,6 +79,7 @@ import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.graal.pointsto.util.CompletionExecutor.DebugContextRunnable;
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.Timer.StopTimer;
+import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.ImageGeneratorThreadMarker;
 
 import jdk.vm.ci.common.JVMCIError;
@@ -778,8 +779,8 @@ public abstract class BigBang {
             if (nanos > 500_000_000L && r instanceof TypeFlowRunnable) {
                 TypeFlow<?> tf = ((TypeFlowRunnable) r).getTypeFlow();
                 String source = String.valueOf(tf.getSource());
-                System.out.format("LONG RUNNING  %.2f  %s %x %s  state %s %x  uses %d observers %d%n", (double) nanos / 1_000_000_000, tf.getClass().getSimpleName(), System.identityHashCode(tf),
-                                source, PointsToStats.asString(tf.getState()), System.identityHashCode(tf.getState()), tf.getUses().size(), tf.getObservers().size());
+                System.out.format("LONG RUNNING  %.2f  %s %x %s  state %s %x  uses %d observers %d%n", (double) nanos / 1_000_000_000, ClassUtil.getUnqualifiedName(tf.getClass()),
+                                System.identityHashCode(tf), source, PointsToStats.asString(tf.getState()), System.identityHashCode(tf.getState()), tf.getUses().size(), tf.getObservers().size());
             }
         }
 

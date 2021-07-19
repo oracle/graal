@@ -979,7 +979,7 @@ public abstract class ObjectFile {
 
         @Override
         public String toString() {
-            return getClass().getSimpleName() + "(" + name + ")";
+            return getClass().getName() + "(" + name + ")";
         }
 
         @Override

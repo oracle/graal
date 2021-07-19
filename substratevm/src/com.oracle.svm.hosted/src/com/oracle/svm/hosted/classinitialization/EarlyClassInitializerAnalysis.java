@@ -227,10 +227,8 @@ final class ClassInitializerHasSideEffectsException extends GraalBailoutExceptio
 final class AbortOnRecursiveInliningPlugin implements InlineInvokePlugin {
     @Override
     public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod original, ValueNode[] arguments) {
-        for (GraphBuilderContext parent = b.getParent(); parent != null; parent = parent.getParent()) {
-            if (parent.getMethod().equals(original)) {
-                return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
-            }
+        if (b.recursiveInliningDepth(original) > 0) {
+            return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
         }
         if (original.getCode() == null) {
             return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;

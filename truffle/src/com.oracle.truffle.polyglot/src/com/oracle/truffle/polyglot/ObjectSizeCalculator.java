@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.polyglot;
 
+import java.lang.ref.Reference;
 import java.lang.reflect.Array;
 import java.util.ArrayDeque;
 import java.util.Arrays;
@@ -460,10 +461,12 @@ final class ObjectSizeCalculator {
         // Padded fields + header size
         private final long objectSize;
         private final Object[] resolvedJavaFields;
+        private final boolean isReference;
 
         ObjectClassInfo(Class<?> clazz) {
             this.resolvedJavaFields = EngineAccessor.RUNTIME.getNonPrimitiveResolvedFields(clazz);
             this.objectSize = EngineAccessor.RUNTIME.getBaseInstanceSize(clazz);
+            this.isReference = Reference.class.isAssignableFrom(clazz);
         }
 
         @Override
@@ -473,17 +476,30 @@ final class ObjectSizeCalculator {
 
         @Override
         public void visit(CalculationState calculationState, Object obj) {
-            for (Object f : resolvedJavaFields) {
-                Object nextObj = EngineAccessor.RUNTIME.getFieldValue(f, obj);
-                ClassInfo classInfo = canProceed(calculationState.classInfos, nextObj);
-                if (classInfo != StopClassInfo.INSTANCE && calculationState.alreadyVisited.add(nextObj)) {
-                    classInfo.increaseByBaseSize(calculationState, nextObj);
-                    if (calculationState.dataSize > calculationState.stopAtBytes) {
-                        break;
-                    }
-                    enqueue(calculationState.pending, nextObj);
+            if (isReference) {
+                Object nextObj = ((Reference<?>) obj).get();
+                if (enqueueOrStop(calculationState, nextObj)) {
+                    return;
                 }
             }
+            for (Object f : resolvedJavaFields) {
+                Object nextObj = EngineAccessor.RUNTIME.getFieldValue(f, obj);
+                if (enqueueOrStop(calculationState, nextObj)) {
+                    break;
+                }
+            }
+        }
+
+        private static boolean enqueueOrStop(CalculationState calculationState, Object nextObj) {
+            ClassInfo classInfo = canProceed(calculationState.classInfos, nextObj);
+            if (classInfo != StopClassInfo.INSTANCE && calculationState.alreadyVisited.add(nextObj)) {
+                classInfo.increaseByBaseSize(calculationState, nextObj);
+                if (calculationState.dataSize > calculationState.stopAtBytes) {
+                    return true;
+                }
+                enqueue(calculationState.pending, nextObj);
+            }
+            return false;
         }
     }
 
