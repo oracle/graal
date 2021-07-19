@@ -272,10 +272,10 @@ public class CompilationResultBuilder {
     }
 
     /**
-     * Calls {@link CompilationResult#close()} on {@link #compilationResult}.
+     * Calls {@link CompilationResult#close(OptionValues)} on {@link #compilationResult}.
      */
     protected void closeCompilationResult() {
-        compilationResult.close();
+        compilationResult.close(options);
     }
 
     public void recordExceptionHandlers(int pcOffset, LIRFrameState info) {
@@ -525,7 +525,7 @@ public class CompilationResultBuilder {
     public AbstractAddress asAddress(Value value) {
         assert isStackSlot(value);
         StackSlot slot = asStackSlot(value);
-        int size = slot.getPlatformKind().getSizeInBytes() * 8;
+        int size = slot.getPlatformKind().getSizeInBytes() * Byte.SIZE;
         return asm.makeAddress(size, frameMap.getRegisterConfig().getFrameRegister(), frameMap.offsetForStackSlot(slot));
     }
 

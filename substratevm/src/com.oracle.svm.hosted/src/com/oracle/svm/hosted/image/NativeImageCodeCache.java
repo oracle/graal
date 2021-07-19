@@ -40,6 +40,7 @@ import java.util.TreeMap;
 import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.core.option.HostedOptionValues;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.DataSection;
 import org.graalvm.compiler.debug.DebugContext;
@@ -160,7 +161,7 @@ public abstract class NativeImageCodeCache {
                 }
             }
         }
-        dataSection.close();
+        dataSection.close(HostedOptionValues.singleton());
     }
 
     public void addConstantsToHeap() {

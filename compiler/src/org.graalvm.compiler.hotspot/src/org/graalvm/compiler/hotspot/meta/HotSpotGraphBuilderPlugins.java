@@ -1055,7 +1055,6 @@ public class HotSpotGraphBuilderPlugins {
                     return true;
                 }
             });
-
             r = new Registration(plugins, PhantomReference.class, replacements);
             r.register2("refersTo0", Receiver.class, Object.class, new InvocationPlugin() {
                 @Override
