@@ -1827,7 +1827,6 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
     private void setClosingState() {
         assert Thread.holdsLock(this);
         closingThread = Thread.currentThread();
-        clearExplicitContextStack();
         closingLock.lock();
         State targetState;
         switch (state) {
@@ -2000,8 +1999,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         return finishClose(cancelOperation, notifyInstruments);
     }
 
-    private void clearExplicitContextStack() {
-        assert Thread.holdsLock(this);
+    synchronized void clearExplicitContextStack() {
         PolyglotThreadInfo threadInfo = getCachedThreadInfo();
         if (!threadInfo.explicitContextStack.isEmpty()) {
             PolyglotContextImpl c = this;
