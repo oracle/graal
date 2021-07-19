@@ -997,9 +997,20 @@ public class SourceSectionFilterTest extends AbstractPolyglotTest {
     }
 
     @Test
+    public void testRootNodeInternal() {
+        final String characters = "asdf";
+        // Source section is "sd"
+        SourceSection internalSection = Source.newBuilder("", characters, "").internal(true).build().createSection(1, 2);
+        SourceSectionRootNode internalRootNode = new SourceSectionRootNode(internalSection, null, true);
+        Assert.assertFalse(SourceSectionFilter.newBuilder().includeInternal(false).build().includes(internalRootNode, internalRootNode.getSourceSection(), null));
+        SourceSectionRootNode internalRootNodeNoSourceSection = new SourceSectionRootNode(null, null, true);
+        Assert.assertFalse(SourceSectionFilter.newBuilder().includeInternal(false).build().includes(internalRootNodeNoSourceSection, null, null));
+    }
+
+    @Test
     public void testRootNodeWithTags() {
-        try (Context context = Context.newBuilder(ProvidesTagLanguage.ID).build()) {
-            context.eval(org.graalvm.polyglot.Source.create(ProvidesTagLanguage.ID, "asdf"));
+        try (Context c = Context.newBuilder(ProvidesTagLanguage.ID).build()) {
+            c.eval(org.graalvm.polyglot.Source.create(ProvidesTagLanguage.ID, "asdf"));
         }
     }
 
@@ -1028,10 +1039,21 @@ public class SourceSectionFilterTest extends AbstractPolyglotTest {
 
     static class SourceSectionRootNode extends RootNode {
         private final SourceSection sourceSection;
+        private final boolean internal;
 
         SourceSectionRootNode(SourceSection sourceSection, TruffleLanguage<?> language) {
+            this(sourceSection, language, false);
+        }
+
+        SourceSectionRootNode(SourceSection sourceSection, TruffleLanguage<?> language, boolean internal) {
             super(language);
             this.sourceSection = sourceSection;
+            this.internal = internal;
+        }
+
+        @Override
+        public boolean isInternal() {
+            return internal;
         }
 
         @Override

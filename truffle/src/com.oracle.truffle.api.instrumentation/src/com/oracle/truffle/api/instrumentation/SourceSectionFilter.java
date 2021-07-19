@@ -166,6 +166,9 @@ public final class SourceSectionFilter {
             if (!exp.isIncluded(providedTags, node, nodeSourceSection)) {
                 return false;
             }
+            if (!exp.isRootIncluded(providedTags, nodeSourceSection, rootNode, 0)) {
+                return false;
+            }
         }
         return true;
     }
