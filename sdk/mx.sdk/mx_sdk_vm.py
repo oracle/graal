@@ -133,6 +133,15 @@ class AbstractNativeImageConfig(_with_metaclass(ABCMeta, object)):
             add_exports.append('--add-exports=' + required_module_name + '/' + required_package_name + "=" + target_modules_str)
         return sorted(add_exports)
 
+    def get_add_exports(self, missing_jars):
+        if self.use_modules is None:
+            return ''
+        distributions = self.jar_distributions
+        distributions_transitive = mx.classpath_entries(distributions)
+        distributions_transitive_clean = [entry for entry in distributions_transitive if str(entry) not in missing_jars]
+        required_exports = mx_javamodules.requiredExports(distributions_transitive_clean, base_jdk())
+        return AbstractNativeImageConfig.get_add_exports_list(required_exports)
+
 
 class LauncherConfig(AbstractNativeImageConfig):
     def __init__(self, destination, jar_distributions, main_class, build_args, is_main_launcher=True,
@@ -148,10 +157,10 @@ class LauncherConfig(AbstractNativeImageConfig):
         :param str custom_launcher_script: Custom launcher script, to be used when not compiled as a native image
         """
         super(LauncherConfig, self).__init__(destination, jar_distributions, build_args, use_modules, home_finder=home_finder, **kwargs)
+        self.main_module = main_module
+        assert self.use_modules is None or self.main_module
         self.main_class = main_class
         self.is_main_launcher = is_main_launcher
-        assert use_modules is None or main_module
-        self.main_module = main_module
         self.default_symlinks = default_symlinks
         self.is_sdk_launcher = is_sdk_launcher
         self.custom_launcher_script = custom_launcher_script
@@ -165,15 +174,6 @@ class LauncherConfig(AbstractNativeImageConfig):
             raise Exception('the relative home path of {} is already set to {} and cannot also be set to {} for {}'.format(
                 language, self.relative_home_paths[language], path, self.destination))
         self.relative_home_paths[language] = path
-
-    def get_add_exports(self, missing_jars):
-        if self.use_modules is None:
-            return ''
-        distributions = self.jar_distributions
-        distributions_transitive = mx.classpath_entries(distributions)
-        distributions_transitive_clean = [entry for entry in distributions_transitive if str(entry) not in missing_jars]
-        required_exports = mx_javamodules.requiredExports(distributions_transitive_clean, base_jdk())
-        return ' '.join(AbstractNativeImageConfig.get_add_exports_list(required_exports))
 
 
 class LanguageLauncherConfig(LauncherConfig):
@@ -191,11 +191,11 @@ class LanguageLauncherConfig(LauncherConfig):
 
 
 class LibraryConfig(AbstractNativeImageConfig):
-    def __init__(self, destination, jar_distributions, build_args, jvm_library=False, **kwargs):
+    def __init__(self, destination, jar_distributions, build_args, jvm_library=False, use_modules=None, **kwargs):
         """
         :param bool jvm_library
         """
-        super(LibraryConfig, self).__init__(destination, jar_distributions, build_args, **kwargs)
+        super(LibraryConfig, self).__init__(destination, jar_distributions, build_args, use_modules, **kwargs)
         self.jvm_library = jvm_library
 
 
@@ -615,6 +615,7 @@ def _patch_default_security_policy(build_dir, jmods_dir, dst_jdk_dir):
     graalvm_policy_utf8 = graalvm_policy.encode('utf-8')
     policy_entry = 'lib/security/default.policy'
     patched_java_base = join(build_dir, 'java.base.jmod')
+    patched_java_base_source = join(build_dir, 'java.base.jmod.source')
     dst_patched_java_base = join(dst_jdk_dir, 'jmods', 'java.base.jmod')
 
     def open_jmods(to_read, to_write=None):
@@ -629,6 +630,13 @@ def _patch_default_security_policy(build_dir, jmods_dir, dst_jdk_dir):
         return in_fp
 
     def needs_patching(java_base_jmod):
+        # Return True if a different JDK was used for the current patched java.base
+        if not exists(patched_java_base_source):
+            return True
+        with open(patched_java_base_source) as fp:
+            source = fp.read()
+            if source != jmods_dir:
+                return True
         if exists(java_base_jmod):
             with open_jmods(java_base_jmod) as fp:
                 with ZipFile(fp, 'r') as zf:
@@ -639,6 +647,10 @@ def _patch_default_security_policy(build_dir, jmods_dir, dst_jdk_dir):
     if not needs_patching(dst_patched_java_base):
         shutil.copy(dst_patched_java_base, patched_java_base)
         return patched_java_base
+
+    # Record the jmods directory of the original java.base module
+    with mx.open(patched_java_base_source, 'w') as fp:
+        fp.write(jmods_dir)
 
     fps = open_jmods(join(jmods_dir, 'java.base.jmod'), patched_java_base)
     with fps[0] as src_f, fps[1] as dst_f:

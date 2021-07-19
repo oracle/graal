@@ -201,7 +201,7 @@ public final class Types {
         return index;
     }
 
-    public static boolean isReference(Symbol<Type> type) {
+    public static boolean isReference(ByteSequence type) {
         return type.length() > 1;
     }
 

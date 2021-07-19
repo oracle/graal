@@ -92,10 +92,9 @@ public class HostedUniverse implements Universe {
 
     public synchronized HostedMethod createDeoptTarget(HostedMethod method) {
         if (method.compilationInfo.getDeoptTargetMethod() == null) {
-            HostedMethod deoptTarget = new HostedMethod(this, method.getWrapped(), method.getDeclaringClass(), method.getSignature(), method.getConstantPool(), method.getExceptionHandlers());
+            HostedMethod deoptTarget = new HostedMethod(this, method.getWrapped(), method.getDeclaringClass(), method.getSignature(), method.getConstantPool(), method.getExceptionHandlers(), method);
             assert method.staticAnalysisResults != null;
             deoptTarget.staticAnalysisResults = method.staticAnalysisResults;
-            method.compilationInfo.setDeoptTarget(deoptTarget);
         }
         return method.compilationInfo.getDeoptTargetMethod();
     }

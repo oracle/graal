@@ -129,6 +129,7 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
         try {
             body.execute(context, frame, stacklocals);
         } catch (StackOverflowError e) {
+            CompilerDirectives.transferToInterpreter();
             throw WasmException.create(Failure.CALL_STACK_EXHAUSTED);
         }
 
@@ -156,6 +157,7 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
                 return Double.longBitsToDouble(returnValue);
             }
             default:
+                CompilerDirectives.transferToInterpreter();
                 throw WasmException.format(Failure.UNSPECIFIED_INTERNAL, this, "Unknown return type id: %d", body.returnTypeId());
         }
     }

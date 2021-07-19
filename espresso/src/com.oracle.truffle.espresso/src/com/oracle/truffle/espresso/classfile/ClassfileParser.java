@@ -80,6 +80,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.impl.ParserField;
 import com.oracle.truffle.espresso.impl.ParserKlass;
 import com.oracle.truffle.espresso.impl.ParserMethod;
@@ -94,7 +95,6 @@ import com.oracle.truffle.espresso.runtime.ClasspathFile;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.substitutions.Host;
 
 @SuppressWarnings("try")
 public final class ClassfileParser {
@@ -158,7 +158,7 @@ public final class ClassfileParser {
 
     private final ClassfileStream stream;
 
-    private final StaticObject[] constantPoolPatches;
+    private final ClassRegistry.ClassDefinitionInfo classDefinitionInfo;
 
     private Symbol<Type> classType;
 
@@ -173,18 +173,18 @@ public final class ClassfileParser {
 
     private ConstantPool pool;
 
-    private ClassfileParser(ClassfileStream stream, StaticObject loader, String requestedClassType, EspressoContext context, StaticObject[] constantPoolPatches) {
+    private ClassfileParser(ClassfileStream stream, StaticObject loader, String requestedClassType, EspressoContext context, ClassRegistry.ClassDefinitionInfo info) {
         this.requestedClassType = requestedClassType;
         this.context = context;
         this.classfile = null;
         this.stream = Objects.requireNonNull(stream);
-        this.constantPoolPatches = constantPoolPatches;
         this.loader = loader;
+        this.classDefinitionInfo = info;
     }
 
     // Note: only used for reading the class name from class bytes
     private ClassfileParser(ClassfileStream stream, EspressoContext context) {
-        this(stream, null, "", context, null);
+        this(stream, null, "", context, ClassRegistry.ClassDefinitionInfo.EMPTY);
     }
 
     void handleBadConstant(Tag tag, ClassfileStream s) {
@@ -217,11 +217,11 @@ public final class ClassfileParser {
     }
 
     public static ParserKlass parse(ClassfileStream stream, StaticObject loader, String requestedClassName, EspressoContext context) {
-        return parse(stream, loader, requestedClassName, context, null);
+        return parse(stream, loader, requestedClassName, context, ClassRegistry.ClassDefinitionInfo.EMPTY);
     }
 
-    public static ParserKlass parse(ClassfileStream stream, StaticObject loader, String requestedClassName, EspressoContext context, @Host(Object[].class) StaticObject[] constantPoolPatches) {
-        return new ClassfileParser(stream, loader, requestedClassName, context, constantPoolPatches).parseClass();
+    public static ParserKlass parse(ClassfileStream stream, StaticObject loader, String requestedClassName, EspressoContext context, ClassRegistry.ClassDefinitionInfo info) {
+        return new ClassfileParser(stream, loader, requestedClassName, context, info).parseClass();
     }
 
     private ParserKlass parseClass() {
@@ -323,11 +323,7 @@ public final class ClassfileParser {
         verifyVersion(majorVersion, minorVersion);
 
         try (DebugCloseable closeable = CONSTANT_POOL.scope(context.getTimers())) {
-            if (constantPoolPatches == null) {
-                this.pool = ConstantPool.parse(context.getLanguage(), stream, this, majorVersion, minorVersion);
-            } else {
-                this.pool = ConstantPool.parse(context.getLanguage(), stream, this, constantPoolPatches, context, majorVersion, minorVersion);
-            }
+            this.pool = ConstantPool.parse(context.getLanguage(), stream, this, classDefinitionInfo.patches, context, majorVersion, minorVersion);
         }
 
         // JVM_ACC_MODULE is defined in JDK-9 and later.
@@ -408,7 +404,7 @@ public final class ClassfileParser {
         // Ensure there are no trailing bytes
         stream.checkEndOfFile();
 
-        return new ParserKlass(pool, classFlags, thisKlassName, thisKlassType, superKlass, superInterfaces, methods, fields, attributes, thisKlassIndex);
+        return new ParserKlass(pool, classDefinitionInfo.patchFlags(classFlags), thisKlassName, thisKlassType, superKlass, superInterfaces, methods, fields, attributes, thisKlassIndex);
     }
 
     public static Symbol<Symbol.Name> getClassName(byte[] bytes, EspressoContext context) {
@@ -424,11 +420,7 @@ public final class ClassfileParser {
         verifyVersion(majorVersion, minorVersion);
 
         try (DebugCloseable closeable = CONSTANT_POOL.scope(context.getTimers())) {
-            if (constantPoolPatches == null) {
-                this.pool = ConstantPool.parse(context.getLanguage(), stream, this, majorVersion, minorVersion);
-            } else {
-                this.pool = ConstantPool.parse(context.getLanguage(), stream, this, constantPoolPatches, context, majorVersion, minorVersion);
-            }
+            this.pool = ConstantPool.parse(context.getLanguage(), stream, this, classDefinitionInfo.patches, context, majorVersion, minorVersion);
         }
 
         // JVM_ACC_MODULE is defined in JDK-9 and later.
@@ -1284,8 +1276,8 @@ public final class ClassfileParser {
     private Attribute[] parseRecordComponentAttributes() {
         final int size = stream.readU2();
         Attribute[] componentAttributes = new Attribute[size];
+        CommonAttributeParser commonAttributeParser = new CommonAttributeParser(InfoType.Record);
         for (int j = 0; j < size; j++) {
-            CommonAttributeParser commonAttributeParser = new CommonAttributeParser(InfoType.Record);
             final int attributeNameIndex = stream.readU2();
             final Symbol<Name> attributeName = pool.symbolAt(attributeNameIndex, "attribute name");
             final int attributeSize = stream.readS4();

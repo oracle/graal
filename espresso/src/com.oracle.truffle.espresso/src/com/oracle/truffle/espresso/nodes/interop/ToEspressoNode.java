@@ -157,7 +157,7 @@ public abstract class ToEspressoNode extends Node {
     @SuppressWarnings("unused")
     @Specialization(guards = {"!isStaticObject(value)", "interop.isNull(value)", "!klass.isPrimitive()"})
     Object doForeignNull(Object value, Klass klass, @CachedLibrary(limit = "LIMIT") InteropLibrary interop, @CachedContext(EspressoLanguage.class) EspressoContext context) {
-        return StaticObject.createForeignNull(value);
+        return StaticObject.createForeignNull(context.getLanguage(), value);
     }
 
     @Specialization(guards = {"isStringCompatible(klass)"})
@@ -201,7 +201,7 @@ public abstract class ToEspressoNode extends Node {
         } catch (ClassCastException e) {
             throw UnsupportedTypeException.create(new Object[]{value}, "Could not cast foreign object to " + klass.getNameAsString() + ": " + e.getMessage());
         }
-        return StaticObject.createForeign(klass, value, interop);
+        return StaticObject.createForeign(context.getLanguage(), klass, value, interop);
     }
 
 /*
@@ -216,11 +216,12 @@ public abstract class ToEspressoNode extends Node {
 
     @Specialization(guards = {"!isStaticObject(value)", "!interop.isNull(value)"})
     Object doForeignArray(Object value, ArrayKlass klass,
-                    @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
+                    @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                    @CachedContext(EspressoLanguage.class) EspressoContext context) throws UnsupportedTypeException {
         if (!interop.hasArrayElements(value)) {
             throw UnsupportedTypeException.create(new Object[]{value}, "Cannot cast a non-array value to an array type");
         }
-        return StaticObject.createForeign(klass, value, interop);
+        return StaticObject.createForeign(context.getLanguage(), klass, value, interop);
     }
 
     public static void checkHasAllFieldsOrThrow(Object value, ObjectKlass klass, InteropLibrary interopLibrary, Meta meta) {

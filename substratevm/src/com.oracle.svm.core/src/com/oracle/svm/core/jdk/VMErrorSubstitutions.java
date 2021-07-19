@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.jdk;
 
+import org.graalvm.compiler.nodes.UnreachableNode;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.c.function.CodePointer;
@@ -34,9 +35,7 @@ import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import org.graalvm.compiler.nodes.UnreachableNode;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.log.LogHandlerExtension;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.stack.ThreadStackPrinter;
@@ -115,11 +114,9 @@ public class VMErrorSubstitutions {
     @NeverInline("Starting a stack walk in the caller frame")
     private static void doShutdown(CodePointer callerIP, String msg, Throwable ex) {
         LogHandler logHandler = ImageSingletons.lookup(LogHandler.class);
-        try {
-            if (!(logHandler instanceof LogHandlerExtension) || ((LogHandlerExtension) logHandler).fatalContext(callerIP, msg, ex)) {
-                Log log = Log.log();
-                log.autoflush(true);
-
+        Log log = Log.enterFatalContext(logHandler, callerIP, msg, ex);
+        if (log != null) {
+            try {
                 /*
                  * Print the error message. If the diagnostic output fails, at least we printed the
                  * most important bit of information.
@@ -148,9 +145,11 @@ public class VMErrorSubstitutions {
                     log.string(": ").string(ex.getClass().getName()).string(": ").string(JDKUtils.getRawMessage(ex));
                 }
                 log.newline();
+            } catch (Throwable ignored) {
+                /*
+                 * Ignore exceptions reported during error reporting, we are going to exit anyway.
+                 */
             }
-        } catch (Throwable ignored) {
-            /* Ignore exceptions reported during error reporting, we are going to exit anyway. */
         }
         logHandler.fatalError();
     }

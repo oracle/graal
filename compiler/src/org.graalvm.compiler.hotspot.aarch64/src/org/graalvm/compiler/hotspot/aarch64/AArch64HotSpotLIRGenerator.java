@@ -38,6 +38,7 @@ import static org.graalvm.compiler.hotspot.meta.HotSpotConstantLoadAction.RESOLV
 import static org.graalvm.compiler.lir.LIRValueUtil.asConstant;
 import static org.graalvm.compiler.lir.LIRValueUtil.isConstantValue;
 
+import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.function.Function;
 
@@ -63,6 +64,7 @@ import org.graalvm.compiler.hotspot.HotSpotLIRGenerationResult;
 import org.graalvm.compiler.hotspot.HotSpotLIRGenerator;
 import org.graalvm.compiler.hotspot.HotSpotLockStack;
 import org.graalvm.compiler.hotspot.HotSpotMarkId;
+import org.graalvm.compiler.hotspot.debug.BenchmarkCounters;
 import org.graalvm.compiler.hotspot.meta.HotSpotConstantLoadAction;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.meta.HotSpotRegistersProvider;
@@ -73,17 +75,18 @@ import org.graalvm.compiler.lir.LabelRef;
 import org.graalvm.compiler.lir.SwitchStrategy;
 import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.VirtualStackSlot;
-import org.graalvm.compiler.lir.StandardOp.ZapRegistersOp;
 import org.graalvm.compiler.lir.aarch64.AArch64AddressValue;
+import org.graalvm.compiler.lir.aarch64.AArch64ArithmeticOp;
 import org.graalvm.compiler.lir.aarch64.AArch64CCall;
 import org.graalvm.compiler.lir.aarch64.AArch64Call;
+import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.StrategySwitchOp;
 import org.graalvm.compiler.lir.aarch64.AArch64FrameMapBuilder;
 import org.graalvm.compiler.lir.aarch64.AArch64Move;
+import org.graalvm.compiler.lir.aarch64.AArch64Move.StoreOp;
 import org.graalvm.compiler.lir.aarch64.AArch64PrefetchOp;
+import org.graalvm.compiler.lir.aarch64.AArch64ReadTimestampCounter;
 import org.graalvm.compiler.lir.aarch64.AArch64RestoreRegistersOp;
 import org.graalvm.compiler.lir.aarch64.AArch64SaveRegistersOp;
-import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.StrategySwitchOp;
-import org.graalvm.compiler.lir.aarch64.AArch64Move.StoreOp;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.options.OptionValues;
 
@@ -92,7 +95,6 @@ import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
-import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.hotspot.HotSpotCompressedNullConstant;
 import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;
 import jdk.vm.ci.hotspot.HotSpotObjectConstant;
@@ -322,6 +324,36 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
         }
     }
 
+    /**
+     * Within {@link AArch64HotSpotCounterOp} ADDS is used to perform the benchmark counter
+     * increment. Thus, in order for a constant to be directly used, it must fit in the immediate
+     * operand of this instruction.
+     */
+    private Value transformBenchmarkCounterIncrement(Value increment) {
+        if (AArch64ArithmeticLIRGenerator.isValidBinaryConstant(AArch64ArithmeticOp.ADDS, increment)) {
+            return increment;
+        } else {
+            return asAllocatable(increment);
+        }
+    }
+
+    @Override
+    public LIRInstruction createBenchmarkCounter(String name, String group, Value increment) {
+        if (BenchmarkCounters.enabled) {
+            return new AArch64HotSpotCounterOp(name, group, transformBenchmarkCounterIncrement(increment), getProviders().getRegisters(), config);
+        }
+        throw GraalError.shouldNotReachHere("BenchmarkCounters are not enabled!");
+    }
+
+    @Override
+    public LIRInstruction createMultiBenchmarkCounter(String[] names, String[] groups, Value[] increments) {
+        if (BenchmarkCounters.enabled) {
+            Value[] incrementValues = (Value[]) Arrays.stream(increments).map(this::transformBenchmarkCounterIncrement).toArray();
+            return new AArch64HotSpotCounterOp(names, groups, incrementValues, getProviders().getRegisters(), config);
+        }
+        throw GraalError.shouldNotReachHere("BenchmarkCounters are not enabled!");
+    }
+
     @Override
     public void emitPrefetchAllocate(Value address) {
         append(new AArch64PrefetchOp(asAddressValue(address), PrefetchMode.PSTL1KEEP));
@@ -478,6 +510,14 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
         return result;
     }
 
+    @Override
+    public Value emitRandomSeed() {
+        Variable result = newVariable(LIRKind.value(AArch64Kind.QWORD));
+        AArch64ReadTimestampCounter timestamp = new AArch64ReadTimestampCounter(result);
+        append(timestamp);
+        return result;
+    }
+
     private Value emitConstantRetrieval(ForeignCallDescriptor foreignCall, HotSpotConstantLoadAction action, Constant constant, Value constantDescription, LIRFrameState frameState) {
         AllocatableValue[] constantDescriptions = new AllocatableValue[]{asAllocatable(constantDescription)};
         return emitConstantRetrieval(foreignCall, action, constant, constantDescriptions, frameState);
@@ -536,16 +576,6 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
 
     public void setDebugInfoBuilder(HotSpotDebugInfoBuilder debugInfoBuilder) {
         this.debugInfoBuilder = debugInfoBuilder;
-    }
-
-    @Override
-    public ZapRegistersOp createZapRegisters(Register[] zappedRegisters, JavaConstant[] zapValues) {
-        throw GraalError.unimplemented();
-    }
-
-    @Override
-    public LIRInstruction createZapArgumentSpace(StackSlot[] zappedStack, JavaConstant[] zapValues) {
-        throw GraalError.unimplemented();
     }
 
     @Override

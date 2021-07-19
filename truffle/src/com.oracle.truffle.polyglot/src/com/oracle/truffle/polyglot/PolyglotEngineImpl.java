@@ -1227,6 +1227,10 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         return allOptions;
     }
 
+    PolyglotContextImpl getPreInitializedContext() {
+        return preInitializedContext.get();
+    }
+
     void preInitialize() {
         synchronized (this.lock) {
             this.preInitializedContext.set(PolyglotContextImpl.preInitialize(this));
@@ -1656,7 +1660,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                 synchronized (this.lock) {
                     removeContext(context);
                 }
-                if (patchResult) {
+                if (patchResult && arePreInitializedLanguagesCompatible(context, config)) {
                     Collection<PolyglotInstrument> toCreate = null;
                     for (PolyglotInstrument instrument : idToInstrument.values()) {
                         if (instrument.getOptionValuesIfExists() != null) {
@@ -1687,6 +1691,22 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             }
         }
         return context;
+    }
+
+    private static boolean arePreInitializedLanguagesCompatible(PolyglotContextImpl context, PolyglotContextConfig config) {
+        Map<String, PolyglotLanguageContext> preInitializedLanguages = new HashMap<>();
+        for (PolyglotLanguageContext languageContext : context.contexts) {
+            if (languageContext.isInitialized() && !languageContext.language.isHost()) {
+                preInitializedLanguages.put(languageContext.language.getId(), languageContext);
+            }
+        }
+        for (String allowedLanguage : config.allowedPublicLanguages) {
+            PolyglotLanguageContext languageContext = preInitializedLanguages.remove(allowedLanguage);
+            if (languageContext != null) {
+                preInitializedLanguages.keySet().removeAll(languageContext.getAccessibleLanguages(true).keySet());
+            }
+        }
+        return preInitializedLanguages.isEmpty();
     }
 
     private void checkTruffleRuntime() {
@@ -1949,7 +1969,10 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
      */
     static void resetFallbackEngine() {
         synchronized (PolyglotImpl.class) {
-            fallbackEngine = null;
+            if (fallbackEngine != null) {
+                fallbackEngine.ensureClosed(false, false);
+                fallbackEngine = null;
+            }
         }
     }
 

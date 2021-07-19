@@ -52,12 +52,12 @@ public class RawBufferLog extends RealLog {
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "This implementation only allocates on the stack.")
     @Override
-    protected Log rawBytes(CCharPointer bytes, UnsignedWord lenghtAsWord) {
-        int lenght = (int) lenghtAsWord.rawValue();
+    protected Log rawBytes(CCharPointer bytes, UnsignedWord lengthAsWord) {
+        int length = (int) lengthAsWord.rawValue();
 
         /* Write bytes to rawBuffer until full. */
         int bytesLeft = getRawBufferBytesLeft();
-        int bytesToWrite = Math.min(bytesLeft, lenght);
+        int bytesToWrite = Math.min(bytesLeft, length);
 
         int index = 0;
         while (bytesToWrite > 0) {

@@ -141,8 +141,6 @@ public class ContextPreInitializationTest {
         ContextPreInitializationTestSecondLanguage.lookupService = false;
         ContextPreInitializationFirstInstrument.actions = null;
         BaseLanguage.actions.clear();
-        BaseLanguage.parseStdOutOutput.clear();
-        BaseLanguage.parseStdErrOutput.clear();
         resetSystemPropertiesOptions();
         resetLanguageHomes();
         patchableLanguages.clear();
@@ -154,8 +152,10 @@ public class ContextPreInitializationTest {
         setPatchable();
         final String stdOutContent = "output";
         final String stdErrContent = "error";
-        BaseLanguage.parseStdOutOutput.put(FIRST, stdOutContent);
-        BaseLanguage.parseStdErrOutput.put(FIRST, stdErrContent);
+        BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_EXECUTE, (env) -> {
+            write(env.out(), stdOutContent);
+            write(env.err(), stdErrContent);
+        });
         doContextPreinitialize();
         List<CountingContext> contexts = new ArrayList<>(emittedContexts);
         assertEquals(0, contexts.size());
@@ -176,10 +176,14 @@ public class ContextPreInitializationTest {
         final String firstStdErrContent = "first-error";
         final String secondStdOutContent = "second-output";
         final String secondStdErrContent = "second-error";
-        BaseLanguage.parseStdOutOutput.put(FIRST, firstStdOutContent);
-        BaseLanguage.parseStdErrOutput.put(FIRST, firstStdErrContent);
-        BaseLanguage.parseStdOutOutput.put(SECOND, secondStdOutContent);
-        BaseLanguage.parseStdErrOutput.put(SECOND, secondStdErrContent);
+        BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_EXECUTE, (env) -> {
+            write(env.out(), firstStdOutContent);
+            write(env.err(), firstStdErrContent);
+        });
+        BaseLanguage.registerAction(ContextPreInitializationTestSecondLanguage.class, ActionKind.ON_EXECUTE, (env) -> {
+            write(env.out(), secondStdOutContent);
+            write(env.err(), secondStdErrContent);
+        });
         doContextPreinitialize(FIRST);
         List<CountingContext> contexts = new ArrayList<>(emittedContexts);
         assertEquals(1, contexts.size());
@@ -1008,6 +1012,59 @@ public class ContextPreInitializationTest {
     }
 
     @Test
+    public void testRedirectedLogging() throws Exception {
+        setPatchable(FIRST);
+        String origLogFile = System.getProperty("polyglot.log.file");
+        Path preInitLogFile = Files.createTempFile("preinit", ".log");
+        Path patchLogFile = Files.createTempFile("patch", ".log");
+        try {
+            System.setProperty("polyglot.log.engine.level", "FINE");
+            System.setProperty("polyglot.log.file", preInitLogFile.toString());
+            doContextPreinitialize(FIRST);
+            assertFalse(getActiveFileHandlers().contains(preInitLogFile));
+            List<CountingContext> contexts = new ArrayList<>(emittedContexts);
+            assertEquals(1, contexts.size());
+            final CountingContext firstLangCtx = findContext(FIRST, contexts);
+            assertNotNull(firstLangCtx);
+            assertEquals(1, firstLangCtx.createContextCount);
+            assertEquals(1, firstLangCtx.initializeContextCount);
+            assertEquals(0, firstLangCtx.patchContextCount);
+            assertEquals(0, firstLangCtx.disposeContextCount);
+            assertEquals(1, firstLangCtx.initializeThreadCount);
+            assertEquals(1, firstLangCtx.disposeThreadCount);
+            assertTrue(new String(Files.readAllBytes(preInitLogFile)).contains("Pre-initialized context for language: ContextPreInitializationFirst"));
+            System.setProperty("polyglot.log.file", patchLogFile.toString());
+            try (Context ctx = Context.newBuilder().option("log.engine.level", "FINE").build()) {
+                Value res = ctx.eval(Source.create(FIRST, "test"));
+                assertEquals("test", res.asString());
+                contexts = new ArrayList<>(emittedContexts);
+                assertEquals(1, contexts.size());
+                assertEquals(1, firstLangCtx.createContextCount);
+                assertEquals(1, firstLangCtx.initializeContextCount);
+                assertEquals(1, firstLangCtx.patchContextCount);
+                assertEquals(0, firstLangCtx.disposeContextCount);
+                assertEquals(2, firstLangCtx.initializeThreadCount);
+                assertEquals(1, firstLangCtx.disposeThreadCount);
+                assertTrue(new String(Files.readAllBytes(patchLogFile)).contains("Successfully patched context of language: ContextPreInitializationFirst"));
+            }
+            contexts = new ArrayList<>(emittedContexts);
+            assertEquals(1, contexts.size());
+            assertEquals(1, firstLangCtx.createContextCount);
+            assertEquals(1, firstLangCtx.initializeContextCount);
+            assertEquals(1, firstLangCtx.patchContextCount);
+            assertEquals(1, firstLangCtx.disposeContextCount);
+            assertEquals(2, firstLangCtx.initializeThreadCount);
+            assertEquals(2, firstLangCtx.disposeThreadCount);
+        } finally {
+            System.clearProperty("polyglot.log.engine.level");
+            System.clearProperty("polyglot.log.file");
+            if (origLogFile != null) {
+                System.setProperty("polyglot.log.file", origLogFile);
+            }
+        }
+    }
+
+    @Test
     public void testEngineBoundLoggers() throws Exception {
         String loggerName = "engine";
         String loggerLevelOptionName = String.format("log.%s.level", loggerName);
@@ -1806,6 +1863,14 @@ public class ContextPreInitializationTest {
 
     @Test
     public void testThreadLocalActions() throws Exception {
+        BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_EXECUTE, (env) -> {
+            env.submitThreadLocal(new Thread[]{Thread.currentThread()}, new ThreadLocalAction(false, false) {
+                @Override
+                protected void perform(Access access) {
+                    // Empty action just to do TraceStackTraceInterval logging
+                }
+            });
+        });
         setPatchable(FIRST);
         doContextPreinitialize(FIRST);
         List<CountingContext> contexts = new ArrayList<>(emittedContexts);
@@ -1826,6 +1891,52 @@ public class ContextPreInitializationTest {
         }
         Optional<String> message = handler.logs.stream().map((r) -> r.getMessage()).filter((m) -> m.contains("[tl]")).findAny();
         assertTrue(message.isPresent());
+    }
+
+    @Test
+    @SuppressWarnings("try")
+    public void testRestrictedPermittedLanguagesMatched() throws Exception {
+        setPatchable(FIRST, SECOND, INTERNAL);
+        ContextPreInitializationTestFirstLanguage.callDependentLanguage = true;
+        ContextPreInitializationTestSecondLanguage.callDependentLanguageInCreate = true;
+        doContextPreinitialize(FIRST, SECOND);
+        List<CountingContext> contexts = new ArrayList<>(emittedContexts);
+        assertEquals(3, contexts.size());
+        CountingContext firstLangCtx = findContext(FIRST, contexts);
+        assertNotNull(firstLangCtx);
+        CountingContext secondLangCtx = findContext(SECOND, contexts);
+        assertNotNull(secondLangCtx);
+        CountingContext internalLangCtx = findContext(INTERNAL, contexts);
+        assertNotNull(internalLangCtx);
+        try (Context ctx = Context.newBuilder(SECOND).allowPolyglotAccess(PolyglotAccess.ALL).build()) {
+            ctx.eval(Source.create(SECOND, "test"));
+            contexts = new ArrayList<>(emittedContexts);
+            assertEquals(3, contexts.size());
+        }
+    }
+
+    @Test
+    @SuppressWarnings("try")
+    public void testRestrictedPermittedLanguagesUnmatched() throws Exception {
+        setPatchable(FIRST, SECOND, INTERNAL, SHARED);
+        ContextPreInitializationTestFirstLanguage.callDependentLanguage = true;
+        ContextPreInitializationTestSecondLanguage.callDependentLanguageInCreate = true;
+        doContextPreinitialize(FIRST, SECOND, SHARED);
+        List<CountingContext> contexts = new ArrayList<>(emittedContexts);
+        assertEquals(4, contexts.size());
+        CountingContext firstLangCtx = findContext(FIRST, contexts);
+        assertNotNull(firstLangCtx);
+        CountingContext secondLangCtx = findContext(SECOND, contexts);
+        assertNotNull(secondLangCtx);
+        CountingContext internalLangCtx = findContext(INTERNAL, contexts);
+        assertNotNull(internalLangCtx);
+        CountingContext sharedLangCtx = findContext(SHARED, contexts);
+        assertNotNull(sharedLangCtx);
+        try (Context ctx = Context.newBuilder(SECOND).allowPolyglotAccess(PolyglotAccess.ALL).build()) {
+            ctx.eval(Source.create(SECOND, "test"));
+            contexts = new ArrayList<>(emittedContexts);
+            assertEquals(7, contexts.size());
+        }
     }
 
     private static IsSameFileResult testIsSameFileImpl(boolean allowIO, FileSystem fs) throws ReflectiveOperationException {
@@ -1933,6 +2044,14 @@ public class ContextPreInitializationTest {
         }
     }
 
+    @SuppressWarnings("unchecked")
+    private static Set<Path> getActiveFileHandlers() throws ReflectiveOperationException {
+        Class<?> polyglotLoggersClass = Class.forName("com.oracle.truffle.polyglot.PolyglotLoggers");
+        Method m = polyglotLoggersClass.getDeclaredMethod("getActiveFileHandlers");
+        m.setAccessible(true);
+        return (Set<Path>) m.invoke(null);
+    }
+
     private static Collection<? extends CountingContext> findContexts(
                     final String languageId,
                     Collection<? extends CountingContext> contexts) {
@@ -1960,6 +2079,15 @@ public class ContextPreInitializationTest {
     private static int nextId() {
         int id = NEXT_ORDER_INDEX.getAndIncrement();
         return id;
+    }
+
+    private static void write(final OutputStream out, final String content) {
+        try {
+            out.write(content.getBytes("UTF-8"));
+            out.flush();
+        } catch (IOException ioe) {
+            throw new RuntimeException(ioe);
+        }
     }
 
     static class CountingContext {
@@ -2020,12 +2148,12 @@ public class ContextPreInitializationTest {
     enum ActionKind {
         ON_INITIALIZE_CONTEXT,
         ON_PATCH_CONTEXT,
+        ON_EXECUTE,
         ON_FINALIZE_CONTEXT
     }
 
     static class BaseLanguage extends TruffleLanguage<CountingContext> {
-        static Map<String, String> parseStdOutOutput = new HashMap<>();
-        static Map<String, String> parseStdErrOutput = new HashMap<>();
+
         static Map<Pair<Class<? extends BaseLanguage>, ActionKind>, Consumer<TruffleLanguage.Env>> actions = new HashMap<>();
 
         static void registerAction(Class<? extends BaseLanguage> languageClass, ActionKind kind, Consumer<TruffleLanguage.Env> action) {
@@ -2106,7 +2234,7 @@ public class ContextPreInitializationTest {
             return Truffle.getRuntime().createCallTarget(new RootNode(this) {
                 @Override
                 public Object execute(VirtualFrame frame) {
-                    executeImpl(lookupContextReference(languageClass).get(), getLanguageInfo());
+                    executeImpl(lookupContextReference(languageClass).get());
                     return result;
                 }
             });
@@ -2118,31 +2246,9 @@ public class ContextPreInitializationTest {
         }
 
         @CompilerDirectives.TruffleBoundary
-        private static void executeImpl(CountingContext ctx, LanguageInfo info) {
-            ctx.environment().submitThreadLocal(new Thread[]{Thread.currentThread()}, new ThreadLocalAction(false, false) {
-                @Override
-                protected void perform(Access access) {
-                    // Empty action just to do TraceStackTraceInterval logging
-                }
-            });
-            String msg = parseStdOutOutput.get(info.getId());
-            if (msg != null) {
-                write(ctx.environment().out(), msg);
-            }
-            msg = parseStdErrOutput.get(info.getId());
-            if (msg != null) {
-                write(ctx.environment().err(), msg);
-            }
-            assertEquals(0, ctx.disposeContextCount);
-        }
-
-        private static void write(final OutputStream out, final String content) {
-            try {
-                out.write(content.getBytes("UTF-8"));
-                out.flush();
-            } catch (IOException ioe) {
-                throw new RuntimeException(ioe);
-            }
+        private void executeImpl(CountingContext context) {
+            findAction(ActionKind.ON_EXECUTE).ifPresent((c) -> c.accept(context.environment()));
+            assertEquals(0, context.disposeContextCount);
         }
 
         Optional<Consumer<Env>> findAction(ActionKind kind) {

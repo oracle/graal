@@ -38,12 +38,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.oracle.svm.core.configure.ConfigurationFile;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.SerializationConfigurationParser;
 import com.oracle.svm.core.configure.SerializationConfigurationParser.SerializationParserFunction;
@@ -231,7 +231,7 @@ final class SerializationBuilder {
         }
         stubConstructor = newConstructorForSerialization(SerializationSupport.StubForAbstractClass.class, null);
 
-        serializationSupport = new SerializationSupport();
+        serializationSupport = new SerializationSupport(stubConstructor);
         ImageSingletons.add(SerializationRegistry.class, serializationSupport);
     }
 
@@ -289,6 +289,10 @@ final class SerializationBuilder {
             targetConstructor = stubConstructor;
             targetConstructorClass = targetConstructor.getDeclaringClass();
         } else {
+            if (customTargetConstructorClass == serializationTargetClass) {
+                /* No custom constructor needed. Simply use existing no-arg constructor. */
+                return customTargetConstructorClass;
+            }
             Constructor<?> customConstructorToCall = null;
             if (customTargetConstructorClass != null) {
                 try {

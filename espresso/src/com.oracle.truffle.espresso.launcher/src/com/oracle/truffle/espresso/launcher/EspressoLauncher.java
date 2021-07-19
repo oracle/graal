@@ -168,6 +168,8 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
         String classpath = null;
         String jarFileName = null;
         ArrayList<String> unrecognized = new ArrayList<>();
+        boolean isRelaxStaticObjectSafetyChecksSet = false;
+
         Arguments args = new Arguments(arguments);
         while (args.next()) {
             String arg = args.getKey();
@@ -233,6 +235,11 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
 
                 case "-XX:+PauseOnExit":
                     pauseOnExit = true;
+                    break;
+
+                case "--engine.RelaxStaticObjectSafetyChecks":
+                    isRelaxStaticObjectSafetyChecksSet = true;
+                    unrecognized.add(args.getArg());
                     break;
 
                 default:
@@ -335,6 +342,13 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
         }
 
         espressoOptions.put("java.Classpath", classpath);
+
+        if (!isRelaxStaticObjectSafetyChecksSet) {
+            // Since Espresso has a verifier, the Static Object Model does not need to perform shape
+            // checks and can use unsafe casts. Cmd line args have precedence over this default
+            // value.
+            espressoOptions.put("engine.RelaxStaticObjectSafetyChecks", "true");
+        }
 
         return unrecognized;
     }

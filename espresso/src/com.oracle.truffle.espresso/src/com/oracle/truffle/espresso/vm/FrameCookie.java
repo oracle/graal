@@ -23,7 +23,6 @@
 
 package com.oracle.truffle.espresso.vm;
 
-import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
@@ -35,7 +34,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
  * same frame)
  * <li>extend this class functionality to support multi-cookies.
  * 
- * @see VM#JVM_DoPrivileged(StaticObject, StaticObject, StaticObject, boolean, DirectCallNode, Meta,
+ * @see VM#JVM_DoPrivileged(StaticObject, StaticObject, StaticObject, boolean, Meta,
  *      com.oracle.truffle.espresso.substitutions.SubstitutionProfiler)
  * @see StackWalk.FrameWalker#doStackWalk(com.oracle.truffle.espresso.runtime.StaticObject)
  */

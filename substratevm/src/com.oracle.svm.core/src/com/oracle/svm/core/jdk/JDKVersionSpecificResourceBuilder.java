@@ -28,10 +28,7 @@ package com.oracle.svm.core.jdk;
 import java.net.URL;
 import java.net.URLConnection;
 
-public class JDKVersionSpecificResourceBuilder {
+public interface JDKVersionSpecificResourceBuilder {
 
-    @SuppressWarnings("unused")
-    public static Object buildResource(String name, URL url, URLConnection urlConnection) {
-        return null;
-    }
+    Object buildResource(String name, URL url, URLConnection urlConnection);
 }

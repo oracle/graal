@@ -94,18 +94,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 public final class ReflectionPlugins {
     public static class ReflectionPluginRegistry extends IntrinsificationPluginRegistry {
-
-        private static ReflectionPluginRegistry singleton() {
-            return ImageSingletons.lookup(ReflectionPluginRegistry.class);
-        }
-
-        public static AutoCloseable startThreadLocalRegistry() {
-            return IntrinsificationPluginRegistry.startThreadLocalRegistry(singleton());
-        }
-
-        public static AutoCloseable pauseThreadLocalRegistry() {
-            return IntrinsificationPluginRegistry.pauseThreadLocalRegistry(singleton());
-        }
     }
 
     static class Options {
@@ -491,10 +479,10 @@ public final class ReflectionPlugins {
             }
 
             /* During parsing for analysis we intrinsify and cache the result for compilation. */
-            ImageSingletons.lookup(ReflectionPluginRegistry.class).add(context.getCallingContext(), replaced);
+            ImageSingletons.lookup(ReflectionPluginRegistry.class).add(context.getMethod(), context.bci(), replaced);
         }
         /* During parsing for compilation we only intrinsify if intrinsified during analysis. */
-        return ImageSingletons.lookup(ReflectionPluginRegistry.class).get(context.getCallingContext());
+        return ImageSingletons.lookup(ReflectionPluginRegistry.class).get(context.getMethod(), context.bci());
     }
 
     private static <T> boolean isDeleted(T element, MetaAccessProvider metaAccess) {

@@ -49,7 +49,7 @@ import com.oracle.truffle.espresso.impl.PrimitiveKlass;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.substitutions.Host;
+import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 /**
@@ -484,10 +484,15 @@ public final class Meta implements ContextAccess {
 
         java_lang_Class_classRedefinedCount = java_lang_Class.requireDeclaredField(Name.classRedefinedCount, Type._int);
         java_lang_Class_name = java_lang_Class.requireDeclaredField(Name.name, Type.java_lang_String);
+        java_lang_Class_classLoader = java_lang_Class.requireDeclaredField(Name.classLoader, Type.java_lang_ClassLoader);
+        java_lang_Class_componentType = diff() //
+                        .field(VERSION_9_OR_HIGHER, Name.componentType, Type.java_lang_Class)//
+                        .notRequiredField(java_lang_Class);
+        java_lang_Class_classData = diff() //
+                        .field(higher(15), Name.classData, Type.java_lang_Object)//
+                        .notRequiredField(java_lang_Class);
 
         // Classes and Members that differ from Java 8 to 11
-
-        java_lang_Class_classLoader = java_lang_Class.requireDeclaredField(Name.classLoader, Type.java_lang_ClassLoader);
 
         if (getJavaVersion().java9OrLater()) {
             java_lang_System_initializeSystemClass = null;
@@ -852,6 +857,8 @@ public final class Meta implements ContextAccess {
     public final Method java_lang_Class_forName_String_boolean_ClassLoader;
     public final Field java_lang_Class_classRedefinedCount;
     public final Field java_lang_Class_name;
+    public final Field java_lang_Class_componentType;
+    public final Field java_lang_Class_classData;
 
     // Primitives.
     public final PrimitiveKlass _boolean;
@@ -1455,7 +1462,7 @@ public final class Meta implements ContextAccess {
      * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
      *            Throwable}.
      */
-    public @Host(Throwable.class) static StaticObject initExceptionWithMessage(@Host(Throwable.class) ObjectKlass exceptionKlass, @Host(String.class) StaticObject message) {
+    public @JavaType(Throwable.class) static StaticObject initExceptionWithMessage(@JavaType(Throwable.class) ObjectKlass exceptionKlass, @JavaType(String.class) StaticObject message) {
         assert exceptionKlass.getMeta().java_lang_Throwable.isAssignableFrom(exceptionKlass);
         assert StaticObject.isNull(message) || exceptionKlass.getMeta().java_lang_String.isAssignableFrom(message.getKlass());
         return exceptionKlass.getMeta().dispatch.initEx(exceptionKlass, message, null);
@@ -1472,7 +1479,7 @@ public final class Meta implements ContextAccess {
      * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
      *            Throwable}.
      */
-    public @Host(Throwable.class) static StaticObject initExceptionWithMessage(@Host(Throwable.class) ObjectKlass exceptionKlass, String message) {
+    public @JavaType(Throwable.class) static StaticObject initExceptionWithMessage(@JavaType(Throwable.class) ObjectKlass exceptionKlass, String message) {
         return initExceptionWithMessage(exceptionKlass, exceptionKlass.getMeta().toGuestString(message));
     }
 
@@ -1486,7 +1493,7 @@ public final class Meta implements ContextAccess {
      * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
      *            Throwable}.
      */
-    public @Host(Throwable.class) static StaticObject initException(@Host(Throwable.class) ObjectKlass exceptionKlass) {
+    public @JavaType(Throwable.class) static StaticObject initException(@JavaType(Throwable.class) ObjectKlass exceptionKlass) {
         assert exceptionKlass.getMeta().java_lang_Throwable.isAssignableFrom(exceptionKlass);
         return exceptionKlass.getMeta().dispatch.initEx(exceptionKlass, null, null);
     }
@@ -1502,7 +1509,7 @@ public final class Meta implements ContextAccess {
      * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
      *            Throwable}.
      */
-    public @Host(Throwable.class) static StaticObject initExceptionWithCause(@Host(Throwable.class) ObjectKlass exceptionKlass, @Host(Throwable.class) StaticObject cause) {
+    public @JavaType(Throwable.class) static StaticObject initExceptionWithCause(@JavaType(Throwable.class) ObjectKlass exceptionKlass, @JavaType(Throwable.class) StaticObject cause) {
         assert exceptionKlass.getMeta().java_lang_Throwable.isAssignableFrom(exceptionKlass);
         assert StaticObject.isNull(cause) || exceptionKlass.getMeta().java_lang_Throwable.isAssignableFrom(cause.getKlass());
         return exceptionKlass.getMeta().dispatch.initEx(exceptionKlass, null, cause);
@@ -1518,7 +1525,7 @@ public final class Meta implements ContextAccess {
      * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
      *            Throwable}.
      */
-    public EspressoException throwException(@Host(Throwable.class) ObjectKlass exceptionKlass) {
+    public EspressoException throwException(@JavaType(Throwable.class) ObjectKlass exceptionKlass) {
         throw throwException(initException(exceptionKlass));
     }
 
@@ -1529,7 +1536,7 @@ public final class Meta implements ContextAccess {
      * The given instance must be a non-{@link StaticObject#NULL NULL}, guest
      * {@link #java_lang_Throwable Throwable}.
      */
-    public EspressoException throwException(@Host(Throwable.class) StaticObject throwable) {
+    public EspressoException throwException(@JavaType(Throwable.class) StaticObject throwable) {
         assert InterpreterToVM.instanceOf(throwable, throwable.getKlass().getMeta().java_lang_Throwable);
         throw EspressoException.wrap(throwable, this);
     }
@@ -1545,7 +1552,7 @@ public final class Meta implements ContextAccess {
      * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
      *            Throwable}.
      */
-    public EspressoException throwExceptionWithMessage(@Host(Throwable.class) ObjectKlass exceptionKlass, @Host(String.class) StaticObject message) {
+    public EspressoException throwExceptionWithMessage(@JavaType(Throwable.class) ObjectKlass exceptionKlass, @JavaType(String.class) StaticObject message) {
         throw throwException(initExceptionWithMessage(exceptionKlass, message));
     }
 
@@ -1560,7 +1567,7 @@ public final class Meta implements ContextAccess {
      * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
      *            Throwable}.
      */
-    public EspressoException throwExceptionWithMessage(@Host(Throwable.class) ObjectKlass exceptionKlass, String message) {
+    public EspressoException throwExceptionWithMessage(@JavaType(Throwable.class) ObjectKlass exceptionKlass, String message) {
         throw throwExceptionWithMessage(exceptionKlass, exceptionKlass.getMeta().toGuestString(message));
     }
 
@@ -1572,7 +1579,7 @@ public final class Meta implements ContextAccess {
      * @param exceptionKlass guest exception class, subclass of guest {@link #java_lang_Throwable
      *            Throwable}.
      */
-    public EspressoException throwExceptionWithCause(@Host(Throwable.class) ObjectKlass exceptionKlass, @Host(Throwable.class) StaticObject cause) {
+    public EspressoException throwExceptionWithCause(@JavaType(Throwable.class) ObjectKlass exceptionKlass, @JavaType(Throwable.class) StaticObject cause) {
         throw throwException(initExceptionWithCause(exceptionKlass, cause));
     }
 
@@ -1623,7 +1630,7 @@ public final class Meta implements ContextAccess {
      * @throws NoClassDefFoundError guest exception is no representation of type can be found.
      */
     @TruffleBoundary
-    public Klass loadKlassOrFail(Symbol<Type> type, @Host(ClassLoader.class) StaticObject classLoader, StaticObject protectionDomain) {
+    public Klass loadKlassOrFail(Symbol<Type> type, @JavaType(ClassLoader.class) StaticObject classLoader, StaticObject protectionDomain) {
         assert classLoader != null : "use StaticObject.NULL for BCL";
         Klass k = loadKlassOrNull(type, classLoader, protectionDomain);
         if (k == null) {
@@ -1640,12 +1647,12 @@ public final class Meta implements ContextAccess {
      * @see #loadKlassOrFail(Symbol, StaticObject, StaticObject)
      */
     @TruffleBoundary
-    public Klass loadKlassOrNull(Symbol<Type> type, @Host(ClassLoader.class) StaticObject classLoader, StaticObject protectionDomain) {
+    public Klass loadKlassOrNull(Symbol<Type> type, @JavaType(ClassLoader.class) StaticObject classLoader, StaticObject protectionDomain) {
         return getRegistries().loadKlass(type, classLoader, protectionDomain);
     }
 
     @TruffleBoundary
-    private ObjectKlass loadKlassOrNull(Symbol<Type> type, @Host(ClassLoader.class) StaticObject classLoader) {
+    private ObjectKlass loadKlassOrNull(Symbol<Type> type, @JavaType(ClassLoader.class) StaticObject classLoader) {
         return (ObjectKlass) loadKlassOrNull(type, classLoader, StaticObject.NULL);
     }
 
@@ -1700,7 +1707,8 @@ public final class Meta implements ContextAccess {
      *
      * @return The asked Klass, or null if no representation can be found.
      */
-    public Klass resolveSymbolOrNull(Symbol<Type> type, @Host(ClassLoader.class) StaticObject classLoader, StaticObject protectionDomain) {
+    public Klass resolveSymbolOrNull(Symbol<Type> type, @JavaType(ClassLoader.class) StaticObject classLoader, StaticObject protectionDomain) {
+        CompilerAsserts.partialEvaluationConstant(type);
         assert classLoader != null : "use StaticObject.NULL for BCL";
         // Resolution only resolves references. Bypass loading for primitives.
         Klass k = resolvePrimitive(type);
@@ -1723,7 +1731,7 @@ public final class Meta implements ContextAccess {
      *
      * @see #resolveSymbolOrNull(Symbol, StaticObject, StaticObject)
      */
-    public Klass resolveSymbolOrFail(Symbol<Type> type, @Host(ClassLoader.class) StaticObject classLoader, ObjectKlass exception, StaticObject protectionDomain) {
+    public Klass resolveSymbolOrFail(Symbol<Type> type, @JavaType(ClassLoader.class) StaticObject classLoader, ObjectKlass exception, StaticObject protectionDomain) {
         Klass k = resolveSymbolOrNull(type, classLoader, protectionDomain);
         if (k == null) {
             throw throwException(exception);
@@ -1735,7 +1743,7 @@ public final class Meta implements ContextAccess {
      * Same as {@link #resolveSymbolOrFail(Symbol, StaticObject, ObjectKlass, StaticObject)}, but
      * throws {@link NoClassDefFoundError} by default..
      */
-    public Klass resolveSymbolOrFail(Symbol<Type> type, @Host(ClassLoader.class) StaticObject classLoader, StaticObject protectionDomain) {
+    public Klass resolveSymbolOrFail(Symbol<Type> type, @JavaType(ClassLoader.class) StaticObject classLoader, StaticObject protectionDomain) {
         return resolveSymbolOrFail(type, classLoader, java_lang_NoClassDefFoundError, protectionDomain);
     }
 
@@ -1874,56 +1882,56 @@ public final class Meta implements ContextAccess {
         }
     }
 
-    public boolean unboxBoolean(@Host(Boolean.class) StaticObject boxed) {
+    public boolean unboxBoolean(@JavaType(Boolean.class) StaticObject boxed) {
         if (StaticObject.isNull(boxed) || boxed.getKlass() != java_lang_Boolean) {
             throw throwException(java_lang_IllegalArgumentException);
         }
         return (boolean) java_lang_Boolean_value.get(boxed);
     }
 
-    public byte unboxByte(@Host(Byte.class) StaticObject boxed) {
+    public byte unboxByte(@JavaType(Byte.class) StaticObject boxed) {
         if (StaticObject.isNull(boxed) || boxed.getKlass() != java_lang_Byte) {
             throw throwException(java_lang_IllegalArgumentException);
         }
         return (byte) java_lang_Byte_value.get(boxed);
     }
 
-    public char unboxCharacter(@Host(Character.class) StaticObject boxed) {
+    public char unboxCharacter(@JavaType(Character.class) StaticObject boxed) {
         if (StaticObject.isNull(boxed) || boxed.getKlass() != java_lang_Character) {
             throw throwException(java_lang_IllegalArgumentException);
         }
         return (char) java_lang_Character_value.get(boxed);
     }
 
-    public short unboxShort(@Host(Short.class) StaticObject boxed) {
+    public short unboxShort(@JavaType(Short.class) StaticObject boxed) {
         if (StaticObject.isNull(boxed) || boxed.getKlass() != java_lang_Short) {
             throw throwException(java_lang_IllegalArgumentException);
         }
         return (short) java_lang_Short_value.get(boxed);
     }
 
-    public float unboxFloat(@Host(Float.class) StaticObject boxed) {
+    public float unboxFloat(@JavaType(Float.class) StaticObject boxed) {
         if (StaticObject.isNull(boxed) || boxed.getKlass() != java_lang_Float) {
             throw throwException(java_lang_IllegalArgumentException);
         }
         return (float) java_lang_Float_value.get(boxed);
     }
 
-    public int unboxInteger(@Host(Integer.class) StaticObject boxed) {
+    public int unboxInteger(@JavaType(Integer.class) StaticObject boxed) {
         if (StaticObject.isNull(boxed) || boxed.getKlass() != java_lang_Integer) {
             throw throwException(java_lang_IllegalArgumentException);
         }
         return (int) java_lang_Integer_value.get(boxed);
     }
 
-    public double unboxDouble(@Host(Double.class) StaticObject boxed) {
+    public double unboxDouble(@JavaType(Double.class) StaticObject boxed) {
         if (StaticObject.isNull(boxed) || boxed.getKlass() != java_lang_Double) {
             throw throwException(java_lang_IllegalArgumentException);
         }
         return (double) java_lang_Double_value.get(boxed);
     }
 
-    public long unboxLong(@Host(Long.class) StaticObject boxed) {
+    public long unboxLong(@JavaType(Long.class) StaticObject boxed) {
         if (StaticObject.isNull(boxed) || boxed.getKlass() != java_lang_Long) {
             throw throwException(java_lang_IllegalArgumentException);
         }
@@ -1934,35 +1942,35 @@ public final class Meta implements ContextAccess {
 
     // region Guest boxing
 
-    public @Host(Boolean.class) StaticObject boxBoolean(boolean value) {
+    public @JavaType(Boolean.class) StaticObject boxBoolean(boolean value) {
         return (StaticObject) java_lang_Boolean_valueOf.invokeDirect(null, value);
     }
 
-    public @Host(Byte.class) StaticObject boxByte(byte value) {
+    public @JavaType(Byte.class) StaticObject boxByte(byte value) {
         return (StaticObject) java_lang_Byte_valueOf.invokeDirect(null, value);
     }
 
-    public @Host(Character.class) StaticObject boxCharacter(char value) {
+    public @JavaType(Character.class) StaticObject boxCharacter(char value) {
         return (StaticObject) java_lang_Character_valueOf.invokeDirect(null, value);
     }
 
-    public @Host(Short.class) StaticObject boxShort(short value) {
+    public @JavaType(Short.class) StaticObject boxShort(short value) {
         return (StaticObject) java_lang_Short_valueOf.invokeDirect(null, value);
     }
 
-    public @Host(Float.class) StaticObject boxFloat(float value) {
+    public @JavaType(Float.class) StaticObject boxFloat(float value) {
         return (StaticObject) java_lang_Float_valueOf.invokeDirect(null, value);
     }
 
-    public @Host(Integer.class) StaticObject boxInteger(int value) {
+    public @JavaType(Integer.class) StaticObject boxInteger(int value) {
         return (StaticObject) java_lang_Integer_valueOf.invokeDirect(null, value);
     }
 
-    public @Host(Double.class) StaticObject boxDouble(double value) {
+    public @JavaType(Double.class) StaticObject boxDouble(double value) {
         return (StaticObject) java_lang_Double_valueOf.invokeDirect(null, value);
     }
 
-    public @Host(Long.class) StaticObject boxLong(long value) {
+    public @JavaType(Long.class) StaticObject boxLong(long value) {
         return (StaticObject) java_lang_Long_valueOf.invokeDirect(null, value);
     }
 

@@ -71,7 +71,7 @@ class JniProcessor extends AbstractProcessor {
             if (!advisor.shouldIgnore(lazyValue(forNameString), callerClassLazyValue)) {
                 if (function.equals("FindClass")) {
                     configuration.getOrCreateType(forNameString);
-                } else if (!lookupName.startsWith("com/sun/proxy/$Proxy")) { // DefineClass
+                } else if (!AccessAdvisor.PROXY_CLASS_NAME_PATTERN.matcher(lookupName).matches()) { // DefineClass
                     logWarning("Unsupported JNI function DefineClass used to load class " + forNameString);
                 }
             }

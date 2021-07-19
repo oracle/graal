@@ -1096,7 +1096,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
                         throw syntaxErrorAtRel(PyErrorMessages.invalidOctalEscape(code), 1 + code.length());
                     }
                     return codePoint;
-                } else if (isAsciiLetter(ch)) {
+                } else if (isAsciiLetter(ch) || isDecDigit(ch)) {
                     throw syntaxErrorAtRel(PyErrorMessages.badEscape(ch), 2);
                 } else {
                     return ch;
@@ -1224,7 +1224,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
                     return;
                 }
                 if (lowerBound.isPresent() && upperBound.isPresent() && lowerBound.get().compareTo(upperBound.get()) > 0) {
-                    throw syntaxErrorAtAbs(PyErrorMessages.MIN_REPEAT_GREATER_THAN_MAX_REPEAT, start);
+                    throw syntaxErrorAtAbs(PyErrorMessages.MIN_REPEAT_GREATER_THAN_MAX_REPEAT, start + 1);
                 }
                 if (lowerBound.isPresent()) {
                     emitSnippet(inPattern.substring(start, position));
@@ -1417,10 +1417,10 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
     }
 
     /**
-     * Parses a parenthesized comment, assuming that the '(#' prefix was already parsed.
+     * Parses a parenthesized comment, assuming that the '(?#' prefix was already parsed.
      */
     private void parenComment() {
-        int start = position - 2;
+        int start = position - 3;
         getMany(c -> c != ')');
         if (!match(")")) {
             throw syntaxErrorAtAbs(PyErrorMessages.UNTERMINATED_COMMENT, start);
@@ -1598,6 +1598,13 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
                     throw syntaxErrorHere(PyErrorMessages.MISSING_FLAG);
                 }
                 ch = consumeChar();
+                if (!PythonFlags.isValidFlagChar(ch)) {
+                    if (Character.isAlphabetic(ch)) {
+                        throw syntaxErrorAtRel(PyErrorMessages.UNKNOWN_FLAG, 1);
+                    } else {
+                        throw syntaxErrorAtRel(PyErrorMessages.MISSING_FLAG, 1);
+                    }
+                }
                 PythonFlags negativeFlags = PythonFlags.EMPTY_INSTANCE;
                 while (PythonFlags.isValidFlagChar(ch)) {
                     negativeFlags = negativeFlags.addFlag(ch);
@@ -1641,7 +1648,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
      */
     private void localFlags(PythonFlags positiveFlags, PythonFlags negativeFlags, int start) {
         if (positiveFlags.overlaps(negativeFlags)) {
-            throw syntaxErrorHere(PyErrorMessages.INLINE_FLAGS_FLAG_TURNED_ON_AND_OFF);
+            throw syntaxErrorAtRel(PyErrorMessages.INLINE_FLAGS_FLAG_TURNED_ON_AND_OFF, 1);
         }
         PythonFlags newFlags = getLocalFlags().addFlags(positiveFlags).delFlags(negativeFlags);
         if (positiveFlags.numberOfTypeFlags() > 0) {

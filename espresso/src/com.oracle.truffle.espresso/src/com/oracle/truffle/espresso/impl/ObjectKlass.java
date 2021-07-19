@@ -76,7 +76,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.substitutions.Host;
+import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.verifier.MethodVerifier;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
@@ -143,13 +143,15 @@ public final class ObjectKlass extends Klass {
     }
 
     public ObjectKlass(EspressoContext context, LinkedKlass linkedKlass, ObjectKlass superKlass, ObjectKlass[] superInterfaces, StaticObject classLoader) {
-        this(context, linkedKlass, superKlass, superInterfaces, classLoader, null);
+        this(context, linkedKlass, superKlass, superInterfaces, classLoader, ClassRegistry.ClassDefinitionInfo.EMPTY);
     }
 
-    public ObjectKlass(EspressoContext context, LinkedKlass linkedKlass, ObjectKlass superKlass, ObjectKlass[] superInterfaces, StaticObject classLoader, Klass hostKlass) {
+    public ObjectKlass(EspressoContext context, LinkedKlass linkedKlass, ObjectKlass superKlass, ObjectKlass[] superInterfaces, StaticObject classLoader, ClassRegistry.ClassDefinitionInfo info) {
         super(context, linkedKlass.getName(), linkedKlass.getType(), superKlass, superInterfaces, linkedKlass.getFlags());
 
-        this.hostKlass = hostKlass;
+        this.nest = info.dynamicNest;
+        this.hostKlass = info.hostKlass;
+
         // TODO(peterssen): Make writable copy.
         RuntimeConstantPool pool = new RuntimeConstantPool(getContext(), linkedKlass.getConstantPool(), classLoader);
         definingClassLoader = pool.getClassLoader();
@@ -210,6 +212,20 @@ public final class ObjectKlass extends Klass {
             superInterface.addSubType(this);
         }
         this.klassVersion = new KlassVersion(pool, linkedKlass, methods, mirandaMethods, vtable, itable, iKlassTable);
+
+        // Only forcefully initialization of the mirror if necessary
+        if (info.protectionDomain != null && !StaticObject.isNull(info.protectionDomain)) {
+            // Protection domain should not be host null, and will be initialized to guest null on
+            // mirror creation.
+            getMeta().HIDDEN_PROTECTION_DOMAIN.setHiddenObject(mirror(), info.protectionDomain);
+        }
+        if (info.classData != null) {
+            getMeta().java_lang_Class_classData.setHiddenObject(mirror(), info.classData);
+        }
+        if (!info.addedToRegistry()) {
+            initSelfReferenceInPool();
+        }
+
         this.initState = LINKED;
         assert verifyTables();
     }
@@ -445,7 +461,7 @@ public final class ObjectKlass extends Klass {
     }
 
     @Override
-    public @Host(ClassLoader.class) StaticObject getDefiningClassLoader() {
+    public @JavaType(ClassLoader.class) StaticObject getDefiningClassLoader() {
         return definingClassLoader;
     }
 
@@ -606,12 +622,19 @@ public final class ObjectKlass extends Klass {
             return EMPTY_ARRAY;
         }
         RuntimeConstantPool pool = getConstantPool();
-        Klass[] result = new Klass[nestMembers.getClasses().length];
-        for (int i = 0; i < result.length; i++) {
+        ArrayList<Klass> klasses = new ArrayList<>();
+        for (int i = 0; i < nestMembers.getClasses().length; i++) {
             int index = nestMembers.getClasses()[i];
-            result[i] = pool.resolvedKlassAt(this, index);
+            try {
+                klasses.add(pool.resolvedKlassAt(this, index));
+            } catch (EspressoException e) {
+                /*
+                 * Don't allow badly constructed nest members to break execution here, only report
+                 * well-constructed entries.
+                 */
+            }
         }
-        return result;
+        return klasses.toArray(Klass.EMPTY_ARRAY);
     }
 
     Field lookupFieldTableImpl(int slot) {
@@ -875,24 +898,19 @@ public final class ObjectKlass extends Klass {
             for (Method m : getDeclaredMethods()) {
                 try {
                     MethodVerifier.verify(m);
-                    /*
-                     * The verifier convention use host exceptions and they must be explicitly
-                     * converted. This is acceptable since these particular set of host exceptions
-                     * are not expected at all e.g. we don't expect any host
-                     * VerifyError/ClassFormatError to be thrown by the host itself (at this point,
-                     * or even ever at all).
-                     */
-                } catch (VerifyError e) {
-                    throw meta.throwExceptionWithMessage(meta.java_lang_VerifyError, e.getMessage());
-                } catch (ClassFormatError e) {
-                    throw meta.throwExceptionWithMessage(meta.java_lang_ClassFormatError, e.getMessage());
-                } catch (IncompatibleClassChangeError e) {
-                    throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, e.getMessage());
-                } catch (NoClassDefFoundError e) {
-                    throw meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, e.getMessage());
+                } catch (MethodVerifier.VerifierError e) {
+                    switch (e.kind()) {
+                        case Verify:
+                            throw meta.throwExceptionWithMessage(meta.java_lang_VerifyError, e.getMessage());
+                        case ClassFormat:
+                            throw meta.throwExceptionWithMessage(meta.java_lang_ClassFormatError, e.getMessage());
+                        case NoClassDefFound:
+                            throw meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, e.getMessage());
+                    }
                 }
             }
         }
+
     }
 
     void print(PrintStream out) {
@@ -1005,7 +1023,7 @@ public final class ObjectKlass extends Klass {
         return result;
     }
 
-    private void initPackage(@Host(ClassLoader.class) StaticObject classLoader) {
+    private void initPackage(@JavaType(ClassLoader.class) StaticObject classLoader) {
         if (!Names.isUnnamedPackage(getRuntimePackage())) {
             ClassRegistry registry = getRegistries().getClassRegistry(classLoader);
             packageEntry = registry.packages().lookup(getRuntimePackage());
@@ -1074,6 +1092,16 @@ public final class ObjectKlass extends Klass {
     private boolean hasDeclaredDefaultMethods() {
         assert !hasDeclaredDefaultMethods || isInterface();
         return hasDeclaredDefaultMethods;
+    }
+
+    public void initSelfReferenceInPool() {
+        getConstantPool().setKlassAt(getLinkedKlass().getParserKlass().getThisKlassIndex(), this);
+    }
+
+    @SuppressWarnings("static-method")
+    public boolean isRecord() {
+        // TODO:
+        return false;
     }
 
     @Override

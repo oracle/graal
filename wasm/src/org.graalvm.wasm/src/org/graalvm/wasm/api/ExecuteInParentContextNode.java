@@ -40,6 +40,7 @@
  */
 package org.graalvm.wasm.api;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -71,6 +72,7 @@ public class ExecuteInParentContextNode extends WasmBuiltinRootNode {
         try {
             return InteropLibrary.getUncached().execute(executable, frame.getArguments());
         } catch (UnsupportedTypeException | UnsupportedMessageException | ArityException e) {
+            CompilerDirectives.transferToInterpreter();
             throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Call failed: %s", getMessage(e));
         } finally {
             truffleContext.leave(this, prev);

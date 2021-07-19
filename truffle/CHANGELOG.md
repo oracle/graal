@@ -5,6 +5,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 ## Version 21.3.0
 * Added a `@GenerateWrapper.Ignore` annotation to prevent methods from being instrumented in wrapper classes.
 * The native image `TruffleCheckBlackListedMethods` option was deprecated and replaced by the `TruffleCheckBlockListMethods` option.
+* Added new [Static Object Model](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/staticobject/package-summary.html) APIs to represent the layout of objects that, once defined, do not change the number and the type of their properties. It is particularly well suited for, but not limited to, the implementation of the object model of static programming languages. For more information, read the [Javadoc](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/staticobject/package-summary.html) and the [tutorial](https://github.com/oracle/graal/blob/master/truffle/docs/StaticObjectModel.md).
+* Removed deprecated engine options: `engine.CompilationThreshold` and `engine.InliningTruffleTierOnExpand`
 
 ## Version 21.2.0
 * Added `TypeDescriptor.subtract(TypeDescriptor)` creating a new `TypeDescriptor` by removing the given type from a union or intersection type.
@@ -17,7 +19,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Methods annotated with `@Fallback`  of the Truffle specialization DSL now support `@Cached`, `@CachedContext`, `@CachedLanguage`, `@Bind` and dispatched `@CachedLibrary` parameters.
 * Deprecated and added methods to support expected arity ranges in `ArityException` instances. Note that the replacement methods now include more strict validations.
 * `DebugValue` methods `hashCode()` and `equals()` provide result of the interop `identityHashCode` and `isIdentical` calls on the corresponding guest objects, respectively.
-* Enabled by default the traversing compilation queue with dynamic thresholds, see `PolyglotCompilerOptions#TraversingCompilationQueue`, `PolyglotCompilerOptions#DynamicCompilationThresholds`, `PolyglotCompilerOptions#DynamicCompilerThresholdsMinScale`, `PolyglotCompilerOptions#DynamicCompilerThresholdsMinNormalLoad` and `PolyglotCompilerOptions#DynamicCompilerThresholdsMaxNormalLoad`.
+* Enabled by default the traversing compilation queue with dynamic thresholds, see `--engine.TraversingCompilationQueue`, `--engine.DynamicCompilationThresholds`, `--engine.DynamicCompilerThresholdsMinScale`, `--engine.DynamicCompilerThresholdsMinNormalLoad` and `--engine.DynamicCompilerThresholdsMaxNormalLoad`.
 * Added `LoopConditionProfile#create()` as an alias of `createCountingProfile()` so it can be used like `@Cached LoopConditionProfile loopProfile`.
 * Enabled by default the traversing compilation queue with dynamic thresholds. See [the documentation](https://github.com/oracle/graal/blob/master/truffle/docs/TraversingCompilationQueue.md) for more information.
 * Changed behavior of parameterized `Function<Object, Object>` conversion such that an `Object[]` argument is passed through to the guest function as a single array argument. Both raw `Function` and `Function<Object[], Object>` treat an `Object[]` as an array of arguments, like before.

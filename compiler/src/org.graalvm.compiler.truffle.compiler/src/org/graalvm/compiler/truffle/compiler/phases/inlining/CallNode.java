@@ -43,6 +43,8 @@ import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.phases.common.inlining.InliningUtil;
+import org.graalvm.compiler.phases.common.inlining.InliningUtil.InlineeReturnAction;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
 import org.graalvm.compiler.truffle.common.TruffleInliningData;
@@ -104,7 +106,7 @@ public final class CallNode extends Node implements Comparable<CallNode> {
         callTree.add(root);
         root.ir = request.graph;
         root.policyData = callTree.getPolicy().newCallNodeData(root);
-        final GraphManager.Entry entry = callTree.getGraphManager().peRoot(callTree.truffleTierOnExpand);
+        final GraphManager.Entry entry = callTree.getGraphManager().peRoot();
         EconomicMap<Invoke, TruffleCallNode> invokeToTruffleCallNode = entry.invokeToTruffleCallNode;
         root.verifyTrivial(entry);
         addChildren(root, invokeToTruffleCallNode);
@@ -223,7 +225,7 @@ public final class CallNode extends Node implements Comparable<CallNode> {
         assert ir == null;
         GraphManager.Entry entry;
         try {
-            entry = getCallTree().getGraphManager().pe(truffleAST, getCallTree().truffleTierOnExpand);
+            entry = getCallTree().getGraphManager().pe(truffleAST);
         } catch (PermanentBailoutException e) {
             state = State.BailedOut;
             return;
@@ -264,13 +266,17 @@ public final class CallNode extends Node implements Comparable<CallNode> {
     }
 
     public void inline() {
+        inline(InliningUtil.NoReturnAction);
+    }
+
+    public void inline(InlineeReturnAction returnAction) {
         assert state == State.Expanded : "Cannot inline node that is not expanded: " + state;
         assert ir != null && getParent() != null;
         if (!invoke.isAlive()) {
             remove();
             return;
         }
-        UnmodifiableEconomicMap<Node, Node> replacements = getCallTree().getGraphManager().doInline(invoke, ir, truffleAST);
+        UnmodifiableEconomicMap<Node, Node> replacements = getCallTree().getGraphManager().doInline(invoke, ir, truffleAST, returnAction);
         updateChildInvokes(replacements);
         state = State.Inlined;
         getCallTree().inlined++;

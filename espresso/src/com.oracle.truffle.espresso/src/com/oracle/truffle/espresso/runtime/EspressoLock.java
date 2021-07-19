@@ -28,8 +28,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.espresso.impl.Stable;
-import com.oracle.truffle.espresso.substitutions.SuppressFBWarnings;
+import com.oracle.truffle.espresso.impl.SuppressFBWarnings;
 
 /**
  * Lock implementation for guest objects. Provides a similar interface to {@link Object} built-in
@@ -120,7 +119,7 @@ final class EspressoLockImpl extends ReentrantLock implements EspressoLock {
 
     private static final long serialVersionUID = -2776792497346642438L;
 
-    @Stable private volatile Condition waitCondition;
+    private volatile Condition waitCondition;
 
     @SuppressFBWarnings(value = "JLM_JSR166_LOCK_MONITORENTER", justification = "Espresso runtime method.")
     private Condition getWaitCondition() {

@@ -40,6 +40,19 @@
  */
 package org.graalvm.wasm.api;
 
+import static java.lang.Integer.compareUnsigned;
+import static org.graalvm.wasm.WasmMath.minUnsigned;
+import static org.graalvm.wasm.api.JsConstants.JS_LIMITS;
+
+import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmFunctionInstance;
+import org.graalvm.wasm.WasmTable;
+import org.graalvm.wasm.WasmVoidResult;
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
+import org.graalvm.wasm.exception.WasmJsApiException;
+
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
@@ -50,17 +63,6 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.RootNode;
-import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmFunctionInstance;
-import org.graalvm.wasm.WasmTable;
-import org.graalvm.wasm.WasmVoidResult;
-import org.graalvm.wasm.exception.Failure;
-import org.graalvm.wasm.exception.WasmException;
-import org.graalvm.wasm.exception.WasmJsApiException;
-
-import static java.lang.Integer.compareUnsigned;
-import static org.graalvm.wasm.WasmMath.minUnsigned;
-import static org.graalvm.wasm.api.JsConstants.JS_LIMITS;
 
 @ExportLibrary(InteropLibrary.class)
 public class Table extends Dictionary {
@@ -162,13 +164,17 @@ public class Table extends Dictionary {
                     try {
                         return InteropLibrary.getUncached().execute(element, frame.getArguments());
                     } catch (UnsupportedTypeException e) {
+                        CompilerDirectives.transferToInterpreter();
                         throw WasmException.format(Failure.UNSPECIFIED_TRAP, "Table element %s has an unsupported type.", element);
                     } catch (ArityException e) {
+                        CompilerDirectives.transferToInterpreter();
                         throw WasmException.format(Failure.UNSPECIFIED_TRAP, "Table element %s has unexpected arity.", element);
                     } catch (UnsupportedMessageException e) {
+                        CompilerDirectives.transferToInterpreter();
                         throw WasmException.format(Failure.UNSPECIFIED_TRAP, "Table element %s is not executable.", element);
                     }
                 } else {
+                    CompilerDirectives.transferToInterpreter();
                     throw WasmException.format(Failure.UNSPECIFIED_TRAP, "Table element %s is not executable.", element);
                 }
             }

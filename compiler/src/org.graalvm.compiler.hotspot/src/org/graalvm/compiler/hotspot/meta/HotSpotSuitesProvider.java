@@ -36,6 +36,7 @@ import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotBackend;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import org.graalvm.compiler.hotspot.HotSpotInstructionProfiling;
+import org.graalvm.compiler.hotspot.lir.HotSpotZapRegistersPhase;
 import org.graalvm.compiler.hotspot.lir.VerifyMaxRegisterSizePhase;
 import org.graalvm.compiler.hotspot.phases.AheadOfTimeVerificationPhase;
 import org.graalvm.compiler.hotspot.phases.LoadJavaMirrorWithKlassPhase;
@@ -172,6 +173,9 @@ public class HotSpotSuitesProvider extends SuitesProviderBase {
     @Override
     public LIRSuites createLIRSuites(OptionValues options) {
         LIRSuites suites = defaultSuitesCreator.createLIRSuites(options);
+        if (Assertions.detailedAssertionsEnabled(options)) {
+            suites.getPostAllocationOptimizationStage().appendPhase(new HotSpotZapRegistersPhase());
+        }
         String profileInstructions = HotSpotBackend.Options.ASMInstructionProfiling.getValue(options);
         if (profileInstructions != null) {
             suites.getPostAllocationOptimizationStage().appendPhase(new HotSpotInstructionProfiling(profileInstructions));

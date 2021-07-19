@@ -39,6 +39,8 @@ import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
+import org.graalvm.nativeimage.ImageSingletons;
+
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
@@ -76,7 +78,7 @@ class ResourcesHelper {
                 return null;
             }
             URLConnection urlConnection = url.openConnection();
-            Object resource = JDKVersionSpecificResourceBuilder.buildResource(resourceName, url, urlConnection);
+            Object resource = ImageSingletons.lookup(JDKVersionSpecificResourceBuilder.class).buildResource(resourceName, url, urlConnection);
             VMError.guarantee(resource != null);
             return (T) resource;
         } catch (IOException e) {
@@ -125,6 +127,8 @@ class ResourcesHelper {
 @TargetClass(ClassLoader.class)
 @SuppressWarnings("static-method")
 public final class Target_java_lang_ClassLoader {
+
+    @Alias private Target_java_lang_ClassLoader parent;
 
     /**
      * This field can be safely deleted, but that would require substituting the entire constructor
@@ -200,29 +204,46 @@ public final class Target_java_lang_ClassLoader {
 
     @Substitute
     private Class<?> loadClass(String name) throws ClassNotFoundException {
-        if (!checkName(name)) {
-            /*
-             * Names that contain `/` or start with '[' are invalid. Calling `ClassLoader.loadClass`
-             * to create a `Class` object of an array class is invalid and a
-             * `ClassNotFoundException` will be thrown. Instead, `Class.forName` should be used
-             * directly to load array classes.
-             */
-            throw new ClassNotFoundException(name);
-        }
-        return ClassForNameSupport.forName(name, false, SubstrateUtil.cast(this, ClassLoader.class));
+        return loadClass(name, false);
     }
 
     @Alias
-    private native boolean checkName(String name);
+    protected native Class<?> findLoadedClass(String name);
+
+    @Alias
+    protected native Class<?> findClass(String name);
 
     @Substitute
     @SuppressWarnings("unused")
-    Class<?> loadClass(String name, boolean resolve) {
-        throw VMError.unsupportedFeature("Target_java_lang_ClassLoader.loadClass(String, boolean)");
+    Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
+        Class<?> clazz = findLoadedClass(name);
+        if (clazz != null) {
+            return clazz;
+        }
+        if (!PredefinedClassesSupport.supportsBytecodes()) {
+            throw new ClassNotFoundException(name);
+        }
+        if (parent != null) {
+            try {
+                clazz = parent.loadClass(name);
+                if (clazz != null) {
+                    return clazz;
+                }
+            } catch (ClassNotFoundException ignored) {
+                // not found in parent loader
+            }
+        }
+        return findClass(name);
     }
 
     @Delete
+    @TargetElement(onlyWith = JDK16OrEarlier.class)
     native Class<?> findBootstrapClassOrNull(String name);
+
+    // JDK-8265605
+    @Delete
+    @TargetElement(onlyWith = JDK17OrLater.class, name = "findBootstrapClassOrNull")
+    static native Class<?> findBootstrapClassOrNullJDK17OrLater(String name);
 
     @Substitute
     @SuppressWarnings("unused")
@@ -234,7 +255,11 @@ public final class Target_java_lang_ClassLoader {
     @SuppressWarnings({"unused"})
     Class<?> loadClass(Target_java_lang_Module module, String name) {
         /* The module system is not supported for now, therefore the module parameter is ignored. */
-        return ClassForNameSupport.forNameOrNull(name, false, SubstrateUtil.cast(this, ClassLoader.class));
+        try {
+            return loadClass(name, false);
+        } catch (ClassNotFoundException e) {
+            return null;
+        }
     }
 
     /**
@@ -265,7 +290,7 @@ public final class Target_java_lang_ClassLoader {
         if (name == null) {
             return null;
         }
-        return ClassForNameSupport.forNameOrNull(name, false, SubstrateUtil.cast(this, ClassLoader.class));
+        return ClassForNameSupport.forNameOrNull(name, SubstrateUtil.cast(this, ClassLoader.class));
     }
 
     @Substitute
@@ -338,6 +363,9 @@ public final class Target_java_lang_ClassLoader {
     @Substitute
     @SuppressWarnings({"unused", "static-method"})
     private Class<?> defineClass(String name, java.nio.ByteBuffer b, ProtectionDomain protectionDomain) {
+        if (!PredefinedClassesSupport.supportsBytecodes()) {
+            throw PredefinedClassesSupport.throwBytecodeSupportDisabled();
+        }
         byte[] array;
         int off;
         int len = b.remaining();
@@ -350,6 +378,11 @@ public final class Target_java_lang_ClassLoader {
             off = 0;
         }
         return PredefinedClassesSupport.loadClass(SubstrateUtil.cast(this, ClassLoader.class), name, array, off, len, null);
+    }
+
+    @Substitute
+    protected void resolveClass(@SuppressWarnings("unused") Class<?> c) {
+        // All classes are already linked at runtime.
     }
 
     @Delete
@@ -377,7 +410,13 @@ public final class Target_java_lang_ClassLoader {
     private static native Class<?> defineClass2(ClassLoader loader, String name, java.nio.ByteBuffer b, int off, int len, ProtectionDomain pd, String source);
 
     @Delete
+    @TargetElement(onlyWith = JDK16OrEarlier.class)
     private native Class<?> findBootstrapClass(String name);
+
+    // JDK-8265605
+    @Delete
+    @TargetElement(onlyWith = JDK17OrLater.class, name = "findBootstrapClass")
+    private static native Class<?> findBootstrapClassJDK17OrLater(String name);
 
     @Delete
     @TargetElement(onlyWith = JDK14OrEarlier.class)

@@ -53,6 +53,7 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -81,7 +82,7 @@ import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.dispatch.BaseInterop;
 import com.oracle.truffle.espresso.runtime.dispatch.EspressoInterop;
-import com.oracle.truffle.espresso.substitutions.Host;
+import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
 
@@ -600,7 +601,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     }
 
     @Override
-    public abstract @Host(ClassLoader.class) StaticObject getDefiningClassLoader();
+    public abstract @JavaType(ClassLoader.class) StaticObject getDefiningClassLoader();
 
     public abstract ConstantPool getConstantPool();
 
@@ -867,6 +868,13 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
      */
     public final boolean isAnonymous() {
         return getHostClass() != null;
+    }
+
+    /**
+     * Returns {@code true} if this represents a hidden class.
+     */
+    public final boolean isHidden() {
+        return (getModifiers() & Constants.ACC_IS_HIDDEN_CLASS) != 0;
     }
 
     /**

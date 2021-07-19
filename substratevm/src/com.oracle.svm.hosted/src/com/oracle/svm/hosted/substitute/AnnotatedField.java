@@ -33,6 +33,7 @@ import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.meta.ReadableJavaField;
 import com.oracle.svm.hosted.c.GraalAccess;
+import com.oracle.svm.util.ClassUtil;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaType;
@@ -87,7 +88,7 @@ public class AnnotatedField implements ReadableJavaField, OriginalFieldProvider 
          * constant folding is not valid.
          */
         assert (injectedAnnotation instanceof Delete) || (injectedAnnotation instanceof InjectAccessors) : "Unknown annotation @" +
-                        injectedAnnotation.annotationType().getSimpleName() + ", should constant folding be permitted?";
+                        ClassUtil.getUnqualifiedName(injectedAnnotation.annotationType()) + ", should constant folding be permitted?";
         return false;
     }
 

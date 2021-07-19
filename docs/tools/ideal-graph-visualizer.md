@@ -1,5 +1,7 @@
 ---
-layout: ohc
+layout: docs
+toc_group: tools
+link_title: Ideal Graph Visualizer
 permalink: /tools/igv/
 ---
 

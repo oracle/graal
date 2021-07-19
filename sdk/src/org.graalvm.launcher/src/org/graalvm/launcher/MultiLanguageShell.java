@@ -251,7 +251,7 @@ class MultiLanguageShell implements Closeable {
 
     private static Terminal terminal() throws IOException {
         // Create a system Terminal. JANSI and JNA are not shipped in the SDK JLINE3 jar.
-        return TerminalBuilder.builder().jansi(false).jna(false).system(true).signalHandler(Terminal.SignalHandler.SIG_IGN).build();
+        return TerminalBuilder.builder().jansi(Launcher.OS.getCurrent() == Launcher.OS.Windows).jna(false).system(true).signalHandler(Terminal.SignalHandler.SIG_IGN).build();
     }
 
     private Map<String, Language> prompts() {

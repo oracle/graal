@@ -259,7 +259,7 @@ class BaseSpringBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
 
 class BasePetClinicBenchmarkSuite(BaseSpringBenchmarkSuite):
     def version(self):
-        return "0.1.5"
+        return "0.1.6"
 
     def applicationDist(self):
         return mx.library("PETCLINIC_" + self.version(), True).get_path(True)
@@ -304,7 +304,7 @@ mx_benchmark.add_bm_suite(PetClinicWrkBenchmarkSuite())
 
 class BaseSpringHelloWorldBenchmarkSuite(BaseSpringBenchmarkSuite):
     def version(self):
-        return "1.0.0"
+        return "1.0.1"
 
     def applicationDist(self):
         return mx.library("SPRING_HW_" + self.version(), True).get_path(True)
@@ -373,13 +373,13 @@ class BaseQuarkusBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
 
 class BaseTikaBenchmarkSuite(BaseQuarkusBenchmarkSuite):
     def version(self):
-        return "1.0.5"
+        return "1.0.6"
 
     def applicationDist(self):
         return mx.library("TIKA_" + self.version(), True).get_path(True)
 
     def applicationPath(self):
-        return os.path.join(self.applicationDist(), "tika-quickstart-" + self.version() + "-SNAPSHOT-runner.jar")
+        return os.path.join(self.applicationDist(), "tika-quickstart-" + self.version() + "-runner.jar")
 
     def serviceEndpoint(self):
         return 'parse'
@@ -402,13 +402,13 @@ mx_benchmark.add_bm_suite(TikaWrkBenchmarkSuite())
 
 class BaseQuarkusHelloWorldBenchmarkSuite(BaseQuarkusBenchmarkSuite):
     def version(self):
-        return "1.0.0"
+        return "1.0.1"
 
     def applicationDist(self):
         return mx.library("QUARKUS_HW_" + self.version(), True).get_path(True)
 
     def applicationPath(self):
-        return os.path.join(self.applicationDist(), "quarkus-hello-world-" + self.version() + "-SNAPSHOT-runner.jar")
+        return os.path.join(self.applicationDist(), "quarkus-hello-world-" + self.version() + "-runner.jar")
 
     def serviceEndpoint(self):
         return 'hello'
@@ -455,7 +455,7 @@ class BaseMicronautBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
 
 class BaseShopCartBenchmarkSuite(BaseMicronautBenchmarkSuite):
     def version(self):
-        return "0.3.4"
+        return "0.3.5"
 
     def applicationDist(self):
         shopcartCache = mx.library("SHOPCART_" + self.version(), True).get_path(True)
@@ -504,7 +504,7 @@ mx_benchmark.add_bm_suite(ShopCartWrkBenchmarkSuite())
 
 class BaseMicronautHelloWorldBenchmarkSuite(BaseMicronautBenchmarkSuite):
     def version(self):
-        return "1.0.0"
+        return "1.0.1"
 
     def applicationDist(self):
         return mx.library("MICRONAUT_HW_" + self.version(), True).get_path(True)
@@ -2062,10 +2062,10 @@ class ConsoleBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
         return self.name()
 
     def helloWorldPath(self):
-            helloWorld = mx.distribution("GRAAL_BENCH_CONSOLE")
-            if helloWorld:
-                return helloWorld.path
-            return None
+        helloWorld = mx.distribution("GRAAL_BENCH_CONSOLE")
+        if helloWorld:
+            return helloWorld.path
+        return None
 
     def classpathAndMainClass(self, benchmark):
         main_class = _consoleConfig.get(benchmark)["mainClass"]
@@ -2084,7 +2084,7 @@ class ConsoleBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
         vmArgs = self.runArgs(bmSuiteArgs)
         runArgs = self.runArgs(bmSuiteArgs)
         appArgs = self.appArgs(benchmarks[0])
-        return (vmArgs + self.classpathAndMainClass(benchmarks[0]) + runArgs + appArgs)
+        return vmArgs + self.classpathAndMainClass(benchmarks[0]) + runArgs + appArgs
 
     def benchmarkList(self, bmSuiteArgs):
         return sorted(_consoleConfig.keys())

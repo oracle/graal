@@ -36,7 +36,6 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FrameState;
-import org.graalvm.compiler.nodes.KillingBeginNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.WithExceptionNode;
@@ -137,13 +136,9 @@ public class ArrayCopyWithExceptionNode extends WithExceptionNode implements Arr
         SubstrateArraycopyNode plainArrayCopy = this.asNode().graph()
                         .add(new SubstrateArraycopyNode(getSource(), getSourcePosition(), getDestination(), getDestinationPosition(), getLength(), getElementKind(), getBci()));
         plainArrayCopy.setStateAfter(stateAfter);
-        AbstractBeginNode nextBegin = this.next;
         AbstractBeginNode oldException = this.exceptionEdge;
         graph().replaceSplitWithFixed(this, plainArrayCopy, this.next());
         GraphUtil.killCFG(oldException);
-        if (nextBegin instanceof KillingBeginNode && ((KillingBeginNode) nextBegin).getKilledLocationIdentity().equals(plainArrayCopy.getKilledLocationIdentity())) {
-            plainArrayCopy.graph().removeFixed(nextBegin);
-        }
         return plainArrayCopy;
     }
 }

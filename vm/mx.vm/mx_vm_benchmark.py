@@ -121,11 +121,13 @@ class NativeImageVM(GraalVm):
             self.bmSuite = bm_suite
             self.benchmark_suite_name = bm_suite.benchSuiteName(args) if len(inspect.getargspec(bm_suite.benchSuiteName).args) > 1 else bm_suite.benchSuiteName() # pylint: disable=deprecated-method
             self.benchmark_name = bm_suite.benchmarkName()
+            self.executable, self.classpath_arguments, self.system_properties, cmd_line_image_run_args = NativeImageVM.extract_benchmark_arguments(args)
             self.extra_image_build_arguments = bm_suite.extra_image_build_argument(self.benchmark_name, args)
-            self.extra_run_args = bm_suite.extra_run_arg(self.benchmark_name, args)
-            self.extra_agent_run_args = bm_suite.extra_agent_run_arg(self.benchmark_name, args)
-            self.extra_profile_run_args = bm_suite.extra_profile_run_arg(self.benchmark_name, args)
-            self.extra_agent_profile_run_args = bm_suite.extra_agent_profile_run_arg(self.benchmark_name, args)
+            # use list() to create fresh copies to safeguard against accidental modification
+            self.image_run_args = bm_suite.extra_run_arg(self.benchmark_name, args, list(cmd_line_image_run_args))
+            self.extra_agent_run_args = bm_suite.extra_agent_run_arg(self.benchmark_name, args, list(cmd_line_image_run_args))
+            self.extra_profile_run_args = bm_suite.extra_profile_run_arg(self.benchmark_name, args, list(cmd_line_image_run_args))
+            self.extra_agent_profile_run_args = bm_suite.extra_agent_profile_run_arg(self.benchmark_name, args, list(cmd_line_image_run_args))
             self.benchmark_output_dir = bm_suite.benchmark_output_dir(self.benchmark_name, args)
             self.pgo_iteration_num = None
             self.params = ['extra-image-build-argument', 'extra-run-arg', 'extra-agent-run-arg', 'extra-profile-run-arg',
@@ -136,7 +138,6 @@ class NativeImageVM(GraalVm):
             self.skip_agent_assertions = bm_suite.skip_agent_assertions(self.benchmark_name, args)
             self.root_dir = self.benchmark_output_dir if self.benchmark_output_dir else mx.suite('vm').get_output_root(platformDependent=False, jdkDependent=False)
             self.executable_suffix = ('-' + self.benchmark_name) if self.benchmark_name else ''
-            self.executable, self.classpath_arguments, self.system_properties, self.image_run_args = NativeImageVM.extract_benchmark_arguments(args)
             self.executable_name = (os.path.splitext(os.path.basename(self.executable[1]))[0] + self.executable_suffix if self.executable[0] == '-jar' else self.executable[0] + self.executable_suffix).lower()
             self.final_image_name = self.executable_name + '-' + vm.config_name()
             self.output_dir = mx.join(os.path.abspath(self.root_dir), 'native-image-benchmarks', self.executable_name + '-' + vm.config_name())
@@ -147,7 +148,7 @@ class NativeImageVM(GraalVm):
             self.analysis_report_path = os.path.join(self.output_dir, self.executable_name + '-analysis.json')
             self.base_image_build_args = [os.path.join(mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True), 'bin', 'native-image')]
             self.base_image_build_args += ['--no-fallback', '-g', '--allow-incomplete-classpath']
-            self.base_image_build_args += ['-H:+VerifyGraalGraphs', '-H:+VerifyPhases'] if vm.is_gate else []
+            self.base_image_build_args += ['-H:+VerifyGraalGraphs', '-H:+VerifyPhases', '--diagnostics-mode'] if vm.is_gate else []
             self.base_image_build_args += ['-J-ea', '-J-esa'] if vm.is_gate and not bm_suite.skip_build_assertions(self.benchmark_name) else []
 
             self.base_image_build_args += self.system_properties
@@ -515,10 +516,8 @@ class NativeImageVM(GraalVm):
 
         if self.hotspot_pgo and not self.is_gate and config.extra_agent_profile_run_args:
             hotspot_run_args += config.extra_agent_profile_run_args
-        elif config.extra_agent_run_args:
-            hotspot_run_args += config.extra_agent_run_args
         else:
-            hotspot_run_args += config.image_run_args
+            hotspot_run_args += config.extra_agent_run_args
 
         hotspot_args = hotspot_vm_args + config.classpath_arguments + config.executable + config.system_properties + hotspot_run_args
         java_command = os.path.join(mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True), 'bin', 'java')
@@ -550,10 +549,7 @@ class NativeImageVM(GraalVm):
 
     def run_stage_instrument_run(self, config, stages, image_path, profile_path):
         image_run_cmd = [image_path, '-XX:ProfilesDumpFile=' + profile_path]
-        if config.extra_profile_run_args:
-            image_run_cmd += config.extra_profile_run_args
-        else:
-            image_run_cmd += config.image_run_args + config.extra_run_args
+        image_run_cmd += config.extra_profile_run_args
         with stages.set_command(image_run_cmd) as s:
             s.execute_command()
             if s.exit_code == 0:
@@ -571,7 +567,7 @@ class NativeImageVM(GraalVm):
 
     def run_stage_run(self, config, stages, out):
         image_path = os.path.join(config.output_dir, config.final_image_name)
-        with stages.set_command([image_path] + config.image_run_args + config.extra_run_args) as s:
+        with stages.set_command([image_path] + config.image_run_args) as s:
             s.execute_command(vm=self)
             if s.exit_code == 0:
                 # The image size for benchmarks is tracked by printing on stdout and matching the rule.
@@ -808,7 +804,7 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
     def benchmarkList(self, bmSuiteArgs):
         if not hasattr(self, "_benchmarks"):
             self._benchmarks = []
-            for group in ["interpreter", "compiler"]:
+            for group in ["interpreter", "compiler", "warmup"]:
                 dir_path = os.path.join(self._get_benchmark_root(), group)
                 for f in os.listdir(dir_path):
                     f_path = os.path.join(dir_path, f)
@@ -851,6 +847,8 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
             return "compile-time"
         elif metric == "partial-evaluation-time":
             return "pe-time"
+        elif metric == "one-shot":
+            return "one-shot"
         else:
             return "time"
 

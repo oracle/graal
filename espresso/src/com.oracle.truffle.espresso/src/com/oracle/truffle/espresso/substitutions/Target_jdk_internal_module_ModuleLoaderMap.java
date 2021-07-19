@@ -25,35 +25,48 @@ package com.oracle.truffle.espresso.substitutions;
 
 import java.util.Set;
 
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 @EspressoSubstitutions
-public class Target_jdk_internal_module_ModuleLoaderMap {
+final class Target_jdk_internal_module_ModuleLoaderMap {
 
     public static final String HOTSWAP_MODULE_NAME = "espresso.hotswap";
     public static final String POLYGLOT_MODULE_NAME = "espresso.polyglot";
 
     @Substitution
-    public static @Host(Set.class) StaticObject bootModules(
-                    // Checkstyle: stop
-                    @GuestCall(target = "jdk_internal_module_ModuleLoaderMap_bootModules", original = true) DirectCallNode original,
-                    // Checkstyle: resume
-                    @InjectMeta Meta meta) {
-        // fetch original platform modules set
-        @Host(Set.class)
-        StaticObject originalResult = (StaticObject) original.call();
-        // inject our platform modules if options are enabled
-        Method add = ((ObjectKlass) originalResult.getKlass()).itableLookup(meta.java_util_Set, meta.java_util_Set_add.getITableIndex());
-        if (meta.getContext().JDWPOptions != null) {
-            add.invokeDirect(originalResult, meta.toGuestString(HOTSWAP_MODULE_NAME));
+    abstract static class BootModules extends Node {
+
+        abstract @JavaType(Set.class) StaticObject execute();
+
+        @Specialization
+        @JavaType(Set.class)
+        StaticObject executeImpl(
+                        @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @Cached("create(context.getMeta().jdk_internal_module_ModuleLoaderMap_bootModules.getCallTargetNoSubstitution())") DirectCallNode original) {
+
+            Meta meta = context.getMeta();
+            // fetch original platform modules set
+            @JavaType(Set.class)
+            StaticObject originalResult = (StaticObject) original.call();
+            // inject our platform modules if options are enabled
+            Method add = ((ObjectKlass) originalResult.getKlass()).itableLookup(meta.java_util_Set, meta.java_util_Set_add.getITableIndex());
+            if (context.JDWPOptions != null) {
+                add.invokeDirect(originalResult, meta.toGuestString(HOTSWAP_MODULE_NAME));
+            }
+            if (context.Polyglot) {
+                add.invokeDirect(originalResult, meta.toGuestString(POLYGLOT_MODULE_NAME));
+            }
+            return originalResult;
         }
-        if (meta.getContext().Polyglot) {
-            add.invokeDirect(originalResult, meta.toGuestString(POLYGLOT_MODULE_NAME));
-        }
-        return originalResult;
     }
 }

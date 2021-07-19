@@ -27,6 +27,7 @@ package com.oracle.svm.hosted;
 import static org.graalvm.compiler.options.OptionType.Debug;
 import static org.graalvm.compiler.options.OptionType.User;
 
+import java.nio.file.Paths;
 import java.util.Arrays;
 
 import org.graalvm.collections.EconomicMap;
@@ -36,11 +37,14 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
+import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationOptions;
 
 public class NativeImageOptions {
 
@@ -81,7 +85,7 @@ public class NativeImageOptions {
     @Option(help = "Print the sizes of the native image heap as the image is built")//
     public static final HostedOptionKey<Boolean> PrintImageHeapPartitionSizes = new HostedOptionKey<>(false);
 
-    @Option(help = "Print features-specific information")//
+    @Option(help = "Print a list of active features")//
     public static final HostedOptionKey<Boolean> PrintFeatures = new HostedOptionKey<>(false);
 
     @Option(help = "Directory for temporary files generated during native image generation. If this option is specified, the temporary files are not deleted so that you can inspect them after native image generation")//
@@ -180,6 +184,23 @@ public class NativeImageOptions {
 
     @Option(help = "Maximum number of types allowed in the image. Used for tests where small number of types is necessary.", type = Debug)//
     public static final HostedOptionKey<Integer> MaxReachableTypes = new HostedOptionKey<>(-1);
+
+    @Option(help = "Sets the dir where diagnostic information is dumped.")//
+    public static final HostedOptionKey<String> DiagnosticsDir = new HostedOptionKey<>(
+                    Paths.get("reports", ReportUtils.timeStampedFileName("diagnostics", "")).toString());
+
+    @Option(help = "Enables the diagnostic mode.")//
+    public static final HostedOptionKey<Boolean> DiagnosticsMode = new HostedOptionKey<Boolean>(false) {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
+            if (newValue) {
+                ClassInitializationOptions.PrintClassInitialization.update(values, true);
+                SubstitutionReportFeature.Options.ReportPerformedSubstitutions.update(values, true);
+                SubstrateOptions.DumpTargetInfo.update(values, true);
+                PrintFeatures.update(values, true);
+            }
+        }
+    };
 
     public static int getMaximumNumberOfConcurrentThreads(OptionValues optionValues) {
         int maxNumberOfThreads = NativeImageOptions.NumberOfThreads.getValue(optionValues);

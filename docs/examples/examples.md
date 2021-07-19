@@ -19,3 +19,6 @@ The [Native Image Examples](native-image-examples.md) illustrate GraalVM's uniqu
 Here you can also find an even more sophisticated example of polyglot native executables.
 
 The [Java/Kotlin Native Image Example](java-kotlin-aot.md) demonstrates how to compile a Java and Kotlin application ahead-of-time, and illustrates the performance gain.
+
+The [Oracle Database Example](examples/mle-oracle.md) contains instructions on how to run the Oracle Database Multilingual Engine (MLE) which is the integration of GraalVM in the Oracle
+Database 21c.

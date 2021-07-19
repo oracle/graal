@@ -26,6 +26,7 @@ package com.oracle.svm.hosted;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.nio.file.Files;
@@ -70,6 +71,7 @@ import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.image.AbstractImage.NativeImageKind;
 import com.oracle.svm.hosted.option.HostedOptionParser;
+import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
@@ -151,7 +153,7 @@ public class NativeImageGeneratorRunner {
      */
     public static ImageClassLoader installNativeImageClassLoader(String[] classpath, String[] modulepath) {
         NativeImageSystemClassLoader nativeImageSystemClassLoader = NativeImageSystemClassLoader.singleton();
-        NativeImageClassLoaderSupport nativeImageClassLoaderSupport = new NativeImageClassLoaderSupport(nativeImageSystemClassLoader.defaultSystemClassLoader, classpath, modulepath);
+        AbstractNativeImageClassLoaderSupport nativeImageClassLoaderSupport = createNativeImageClassLoaderSupport(nativeImageSystemClassLoader.defaultSystemClassLoader, classpath, modulepath);
         ClassLoader nativeImageClassLoader = nativeImageClassLoaderSupport.getClassLoader();
         Thread.currentThread().setContextClassLoader(nativeImageClassLoader);
         /*
@@ -174,6 +176,21 @@ public class NativeImageGeneratorRunner {
         NativeImageGenerator.setSystemPropertiesForImageEarly();
 
         return new ImageClassLoader(NativeImageGenerator.getTargetPlatform(nativeImageClassLoader), nativeImageClassLoaderSupport);
+    }
+
+    private static AbstractNativeImageClassLoaderSupport createNativeImageClassLoaderSupport(ClassLoader defaultSystemClassLoader, String[] classpath, String[] modulePath) {
+        if (JavaVersionUtil.JAVA_SPEC >= 11) {
+            /* Instantiate module-aware NativeImageClassLoaderSupport */
+            try {
+                Class<?> nativeImageClassLoaderSupport = Class.forName("com.oracle.svm.hosted.jdk11.NativeImageClassLoaderSupportJDK11OrLater");
+                Constructor<?> nativeImageClassLoaderSupportConstructor = nativeImageClassLoaderSupport.getConstructor(ClassLoader.class, String[].class, String[].class);
+                return (AbstractNativeImageClassLoaderSupport) nativeImageClassLoaderSupportConstructor.newInstance(defaultSystemClassLoader, classpath, modulePath);
+            } catch (ReflectiveOperationException e) {
+                throw VMError.shouldNotReachHere("Unable to reflectively instantiate module-aware NativeImageClassLoaderSupport", e);
+            }
+        } else {
+            return new NativeImageClassLoaderSupport(defaultSystemClassLoader, classpath, modulePath);
+        }
     }
 
     public static List<String> extractDriverArguments(List<String> args) {
@@ -305,20 +322,22 @@ public class NativeImageGeneratorRunner {
                                 SubstrateOptionsParser.commandArgument(SubstrateOptions.Class, "<fully-qualified-class-name>"));
             }
 
+            classLoader.processAddExportsAndAddOpens(parsedHostedOptions);
+
             if (!className.isEmpty() || !moduleName.isEmpty()) {
-                classLoader.processAddExportsAndAddOpens(parsedHostedOptions);
                 Method mainEntryPoint;
                 Class<?> mainClass;
                 try {
-                    Object jpmsModule = null;
+                    Object mainModule = null;
                     if (!moduleName.isEmpty()) {
-                        jpmsModule = classLoader.findModule(moduleName)
-                                        .orElseThrow(() -> {
-                                            String errorMsg = "Module " + moduleName + " for mainclass not found.";
-                                            return UserError.abort(errorMsg);
-                                        });
+                        mainModule = classLoader.findModule(moduleName)
+                                        .orElseThrow(() -> UserError.abort("Module " + moduleName + " for mainclass not found."));
                     }
-                    mainClass = classLoader.loadClassFromModule(jpmsModule, className);
+                    if (className.isEmpty()) {
+                        className = classLoader.getMainClassFromModule(mainModule)
+                                        .orElseThrow(() -> UserError.abort("module %s does not have a ModuleMainClass attribute, use -m <module>/<main-class>", moduleName));
+                    }
+                    mainClass = classLoader.forName(className, mainModule);
                 } catch (ClassNotFoundException ex) {
                     throw UserError.abort("Main entry point class '%s' not found.", className);
                 }
@@ -450,7 +469,7 @@ public class NativeImageGeneratorRunner {
             return false;
         }
         if (!isValidArchitecture()) {
-            reportToolUserError("runs only on architecture AMD64. Detected architecture: " + GraalAccess.getOriginalTarget().arch.getClass().getSimpleName());
+            reportToolUserError("runs only on architecture AMD64. Detected architecture: " + ClassUtil.getUnqualifiedName(GraalAccess.getOriginalTarget().arch.getClass()));
         }
         if (!isValidOperatingSystem()) {
             reportToolUserError("runs on Linux, Mac OS X and Windows only. Detected OS: " + System.getProperty("os.name"));

@@ -34,6 +34,7 @@ import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
+import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
@@ -61,11 +62,15 @@ import com.oracle.svm.hosted.meta.MethodPointer;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import sun.misc.Unsafe;
 
 /**
  * Writes the native image heap into one or multiple {@link RelocatableBuffer}s.
  */
 public final class NativeImageHeapWriter {
+
+    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
+
     private final NativeImageHeap heap;
     private final ImageHeapLayoutInfo heapLayout;
     private long sectionOffsetOfARelocatablePointer;
@@ -157,14 +162,16 @@ public final class NativeImageHeapWriter {
         }
     }
 
+    private final boolean useHeapBase = NativeImageHeap.useHeapBase();
+    private final CompressEncoding compressEncoding = ImageSingletons.lookup(CompressEncoding.class);
+
     void writeReference(RelocatableBuffer buffer, int index, Object target, Object reason) {
         assert !(target instanceof WordBase) : "word values are not references";
         mustBeReferenceAligned(index);
         if (target != null) {
             ObjectInfo targetInfo = heap.getObjectInfo(target);
             verifyTargetDidNotChange(target, reason, targetInfo);
-            if (NativeImageHeap.useHeapBase()) {
-                CompressEncoding compressEncoding = ImageSingletons.lookup(CompressEncoding.class);
+            if (useHeapBase) {
                 int shift = compressEncoding.getShift();
                 writeReferenceValue(buffer, index, targetInfo.getAddress() >>> shift);
             } else {
@@ -380,11 +387,10 @@ public final class NativeImageHeapWriter {
                     writeConstant(buffer, elementIndex, kind, element, info);
                 }
             } else {
-                for (int i = 0; i < length; i++) {
-                    final int elementIndex = info.getIndexInBuffer(objectLayout.getArrayElementOffset(kind, i));
-                    final Object element = Array.get(array, i);
-                    writeConstant(buffer, elementIndex, kind, element, info);
-                }
+                int elementIndex = info.getIndexInBuffer(objectLayout.getArrayElementOffset(kind, 0));
+                int elementTypeSize = UNSAFE.arrayIndexScale(array.getClass());
+                assert elementTypeSize == kind.getByteCount();
+                UNSAFE.copyMemory(array, UNSAFE.arrayBaseOffset(array.getClass()), buffer.getBackingArray(), Unsafe.ARRAY_BYTE_BASE_OFFSET + elementIndex, length * elementTypeSize);
             }
 
         } else {

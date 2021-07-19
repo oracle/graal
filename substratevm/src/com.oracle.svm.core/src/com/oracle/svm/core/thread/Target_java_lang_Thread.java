@@ -49,7 +49,6 @@ import com.oracle.svm.core.jdk.LoomJDK;
 import com.oracle.svm.core.jdk.NotLoomJDK;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
 import com.oracle.svm.core.monitor.MonitorSupport;
-import com.oracle.svm.core.option.XOptions;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.util.VMError;
 
@@ -66,12 +65,17 @@ public final class Target_java_lang_Thread {
      *
      * After JDK 11, a field with same name has been introduced and the logic to set / reset it has
      * moved into Java code. So this injected field and the substitutions that maintain it are no
-     * longer necessary.
+     * longer necessary. See {@link #interruptedJDK14OrLater}.
      */
     @Inject //
     @TargetElement(onlyWith = JDK11OrEarlier.class) //
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     volatile boolean interrupted;
+
+    @Alias //
+    @TargetElement(name = "interrupted", onlyWith = JDK14OrLater.class) //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    volatile boolean interruptedJDK14OrLater;
 
     @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     boolean wasStartedByCurrentIsolate;
@@ -342,27 +346,24 @@ public final class Target_java_lang_Thread {
         }
 
         /* Choose a stack size based on parameters, command line flags, and system restrictions. */
-        long chosenStackSize = SubstrateOptions.StackSize.getHostedValue();
-        long stackSize = JavaContinuations.LoomCompatibilityUtil.getStackSize(this);
-        if (stackSize != 0) {
+        long stackSize;
+        long threadSpecificStackSize = JavaContinuations.LoomCompatibilityUtil.getStackSize(this);
+        if (threadSpecificStackSize != 0) {
             /* If the user set a thread stack size at thread creation, then use that. */
-            chosenStackSize = stackSize;
+            stackSize = threadSpecificStackSize;
         } else {
             /* If the user set a thread stack size on the command line, then use that. */
-            final int defaultThreadStackSize = (int) XOptions.getXss().getValue();
-            if (defaultThreadStackSize != 0L) {
-                chosenStackSize = defaultThreadStackSize;
-            }
+            stackSize = SubstrateOptions.StackSize.getValue();
         }
 
-        if (chosenStackSize != 0) {
+        if (stackSize != 0) {
             /*
              * Add the yellow+red zone size: This area of the stack is not accessible to the user's
              * Java code, so it would be surprising if we gave the user less stack space to use than
              * explicitly requested. In particular, a size less than the yellow+red size would lead
              * to an immediate StackOverflowError.
              */
-            chosenStackSize += StackOverflowCheck.singleton().yellowAndRedZoneSize();
+            stackSize += StackOverflowCheck.singleton().yellowAndRedZoneSize();
         }
 
         /*
@@ -375,7 +376,7 @@ public final class Target_java_lang_Thread {
          */
         JavaContinuations.LoomCompatibilityUtil.setThreadStatus(this, ThreadStatus.RUNNABLE);
         wasStartedByCurrentIsolate = true;
-        JavaThreads.singleton().startThread(JavaThreads.fromTarget(this), chosenStackSize);
+        JavaThreads.singleton().startThread(JavaThreads.fromTarget(this), stackSize);
     }
 
     @Substitute
@@ -387,6 +388,14 @@ public final class Target_java_lang_Thread {
     @Substitute
     private void setPriority0(int priority) {
     }
+
+    /**
+     * Avoid in VM-internal contexts: this method is not {@code final} and can be overridden with
+     * code that does locking or performs other actions that can be unsafe in a specific context.
+     * Use {@link JavaThreads#isInterrupted} instead.
+     */
+    @Alias
+    public native boolean isInterrupted();
 
     @Substitute
     @TargetElement(onlyWith = JDK11OrEarlier.class)

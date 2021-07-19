@@ -30,12 +30,28 @@ import java.net.URL;
 import java.util.Enumeration;
 import java.util.List;
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
 @TargetClass(className = "jdk.internal.loader.BuiltinClassLoader", onlyWith = JDK11OrLater.class)
 @SuppressWarnings({"unused", "static-method"})
 final class Target_jdk_internal_loader_BuiltinClassLoader {
+
+    @Substitute
+    protected Class<?> findClass(String name) throws ClassNotFoundException {
+        throw new ClassNotFoundException(name);
+    }
+
+    @Substitute
+    protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
+        Target_java_lang_ClassLoader self = SubstrateUtil.cast(this, Target_java_lang_ClassLoader.class);
+        Class<?> clazz = self.findLoadedClass(name);
+        if (clazz == null) {
+            throw new ClassNotFoundException(name);
+        }
+        return clazz;
+    }
 
     @Substitute
     public URL findResource(String mn, String name) {

@@ -248,7 +248,7 @@ public class TruffleGraphBuilderPlugins {
     public static void registerGraalCompilerDirectivesPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess) {
         final ResolvedJavaType graalCompilerDirectivesType = getRuntime().resolveType(metaAccess, "org.graalvm.compiler.truffle.runtime.GraalCompilerDirectives");
         Registration r = new Registration(plugins, new ResolvedJavaSymbol(graalCompilerDirectivesType));
-        r.register0("inFirstTier", new InvocationPlugin() {
+        r.register0("hasNextTier", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 // This method must not be intrinsified until after graph decoding.

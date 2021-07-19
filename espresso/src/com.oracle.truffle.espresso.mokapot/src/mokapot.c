@@ -1500,8 +1500,8 @@ JNIEXPORT jboolean JNICALL JVM_IsRecord(JNIEnv *env, jclass cls) {
 
 JNIEXPORT jclass JNICALL JVM_LookupDefineClass(JNIEnv *env, jclass lookup, const char *name, const jbyte *buf,
                       jsize len, jobject pd, jboolean init, int flags, jobject classData) {
-  UNIMPLEMENTED(JVM_LookupDefineClass);
-  return NULL;
+  IMPLEMENTED(JVM_LookupDefineClass);
+  return (*getEnv())->JVM_LookupDefineClass(env, lookup, name, buf, len, pd, init, flags, classData);
 }
 
 JNIEXPORT jboolean JNICALL JVM_PhantomReferenceRefersTo(JNIEnv *env, jobject ref, jobject o) {

@@ -43,6 +43,8 @@ package org.graalvm.wasm.constants;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 
+import com.oracle.truffle.api.CompilerDirectives;
+
 public final class GlobalModifier {
     public static final int CONSTANT = 0x00;
     public static final int MUTABLE = 0x01;
@@ -54,6 +56,7 @@ public final class GlobalModifier {
             case MUTABLE:
                 return "var";
             default:
+                CompilerDirectives.transferToInterpreter();
                 throw WasmException.create(Failure.UNSPECIFIED_INVALID, "Unknown modifier: 0x" + Integer.toHexString(modifier));
         }
     }

@@ -53,4 +53,5 @@ native-image --pgo=profile.iprof OptimizedImage
 ./optimizedimage
 ```
 
-You can collect multiple profile files, by specifying different names, and add them to the image build.
+You can specify where to write the profile when running an instrumented native image by passing the `-XX:ProfilesDumpFile=YourFileName` option at run time.
+You can also collect multiple profile files, by specifying different names, and add them to the image build.

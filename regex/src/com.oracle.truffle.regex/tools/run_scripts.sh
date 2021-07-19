@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -68,6 +68,8 @@ unzip -d dat dat/ucd.nounihan.flat.zip
 clojure --init generate_case_fold_table.clj --eval '(-main)' > dat/case-fold-table.txt
 
 ./update_case_fold_table.py
+
+./generate_ruby_case_folding.py > ../src/com/oracle/truffle/regex/tregex/parser/flavors/RubyCaseFoldingData.java
 
 rm -r ./dat
 

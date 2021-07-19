@@ -30,8 +30,10 @@ import static org.graalvm.compiler.java.BytecodeParserOptions.InlineDuringParsin
 import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createStandardInlineInfo;
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
@@ -102,6 +104,10 @@ import java.util.function.ToLongFunction;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 
+import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
+import com.oracle.svm.hosted.c.GraalAccess;
+import com.oracle.svm.hosted.meta.HostedMetaAccess;
+import com.oracle.truffle.api.staticobject.StaticShape;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
@@ -158,9 +164,6 @@ import com.oracle.svm.hosted.FeatureImpl.BeforeCompilationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.meta.HostedType;
-import com.oracle.svm.hosted.phases.ExperimentalNativeImageInlineDuringParsingSupport;
-import com.oracle.svm.hosted.phases.IntrinsifyMethodHandlesInvocationPlugin;
-import com.oracle.svm.hosted.snippets.ReflectionPlugins;
 import com.oracle.svm.hosted.snippets.SubstrateGraphBuilderPlugins;
 import com.oracle.svm.truffle.api.SubstrateThreadLocalHandshake;
 import com.oracle.svm.truffle.api.SubstrateThreadLocalHandshakeSnippets;
@@ -310,9 +313,6 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
     public void afterRegistration(AfterRegistrationAccess a) {
         imageClassLoader = a.getApplicationClassLoader();
 
-        /* Inline during parsing does not work well with deopt targets ATM. */
-        ImageSingletons.lookup(ExperimentalNativeImageInlineDuringParsingSupport.class).disableNativeImageInlineDuringParsing();
-
         TruffleRuntime runtime = Truffle.getRuntime();
         UserError.guarantee(runtime != null, "TruffleRuntime not available via Truffle.getRuntime()");
         UserError.guarantee(runtime instanceof SubstrateTruffleRuntime || runtime instanceof DefaultTruffleRuntime,
@@ -373,6 +373,8 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
 
     @Override
     public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, Plugins plugins, ParsingReason reason) {
+        StaticObjectSupport.registerInvocationPlugins(plugins, reason);
+
         /*
          * We need to constant-fold Profile.isProfilingEnabled already during static analysis, so
          * that we get exact types for fields that store profiles.
@@ -445,6 +447,8 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
     @SuppressWarnings("deprecation")
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
+        StaticObjectSupport.beforeAnalysis(access);
+
         BeforeAnalysisAccessImpl config = (BeforeAnalysisAccessImpl) access;
 
         getLanguageClasses().forEach(RuntimeReflection::registerForReflectiveInstantiation);
@@ -590,16 +594,6 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
                 return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
             }
 
-            /*
-             * We can't inline methods that use intrnsifications. By inlining them we are opening a
-             * door for inconsistencies between parsing in analysis and parsing for runtime methods.
-             */
-            if (ImageSingletons.lookup(IntrinsifyMethodHandlesInvocationPlugin.IntrinsificationRegistry.class).hasIntrinsifications((AnalysisMethod) original)) {
-                return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
-            } else if (ImageSingletons.lookup(ReflectionPlugins.ReflectionPluginRegistry.class).hasIntrinsifications((AnalysisMethod) original)) {
-                return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
-            }
-
             for (ResolvedJavaMethod m : partialEvaluator.getNeverInlineMethods()) {
                 if (original.equals(m)) {
                     return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
@@ -617,6 +611,8 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
 
     @Override
     public void duringAnalysis(DuringAnalysisAccess access) {
+        StaticObjectSupport.duringAnalysis(access);
+
         if (firstAnalysisRun) {
             firstAnalysisRun = false;
             Object keep = invokeStaticMethod("com.oracle.truffle.polyglot.PolyglotContextImpl", "resetSingleContextState", Collections.singleton(boolean.class), false);
@@ -998,6 +994,196 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
             collectImplementations(subType, implementations);
         }
     }
+
+    private static final class StaticObjectSupport {
+        private static final Class<?> GENERATOR_CLASS_LOADER_CLASS = loadClass("com.oracle.truffle.api.staticobject.GeneratorClassLoader");
+        private static final Constructor<?> GENERATOR_CLASS_LOADER_CONSTRUCTOR = ReflectionUtil.lookupConstructor(GENERATOR_CLASS_LOADER_CLASS, Class.class);
+
+        private static final Class<?> SHAPE_GENERATOR = loadClass("com.oracle.truffle.api.staticobject.ArrayBasedShapeGenerator");
+        private static final Method GET_SHAPE_GENERATOR = ReflectionUtil.lookupMethod(SHAPE_GENERATOR, "getShapeGenerator", TruffleLanguage.class, GENERATOR_CLASS_LOADER_CLASS, Class.class,
+                        Class.class);
+
+        private static final Method VALIDATE_CLASSES = ReflectionUtil.lookupMethod(StaticShape.Builder.class, "validateClasses", Class.class, Class.class);
+
+        private static final Map<Class<?>, ClassLoader> CLASS_LOADERS = new ConcurrentHashMap<>();
+        private static BeforeAnalysisAccess beforeAnalysisAccess;
+
+        private static final IdentityHashMap<Object, Object> registeredShapeGenerators = new IdentityHashMap<>();
+
+        static void beforeAnalysis(BeforeAnalysisAccess access) {
+            StaticObjectSupport.beforeAnalysisAccess = access;
+        }
+
+        static void registerInvocationPlugins(Plugins plugins, ParsingReason reason) {
+            if (reason == ParsingReason.PointsToAnalysis) {
+                InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins.getInvocationPlugins(), StaticShape.Builder.class);
+                r.register3("build", InvocationPlugin.Receiver.class, Class.class, Class.class, new InvocationPlugin() {
+                    @Override
+                    public boolean inlineOnly() {
+                        // Use the plugin only during parsing.
+                        return true;
+                    }
+
+                    @Override
+                    public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode arg1, ValueNode arg2) {
+                        Class<?> superClass = getArgumentClass(b, targetMethod, 1, arg1);
+                        Class<?> factoryInterface = getArgumentClass(b, targetMethod, 2, arg2);
+                        generate(superClass, factoryInterface, beforeAnalysisAccess);
+                        return false;
+                    }
+                });
+            }
+        }
+
+        static void duringAnalysis(DuringAnalysisAccess access) {
+            boolean requiresIteration = false;
+            // We need to register as unsafe-accessed the primitive, object, and shape fields of
+            // generated storage classes. However, these classes do not share a common super
+            // type, and their fields are not annotated. Plus, the invocation plugin does not
+            // intercept calls to `StaticShape.Builder.build()` that happen during the analysis,
+            // for example because of context pre-initialization. Therefore, we inspect the
+            // generator cache in ArrayBasedShapeGenerator, which contains references to all
+            // generated storage classes.
+            ConcurrentHashMap<?, ?> generatorCache = ReflectionUtil.readStaticField(SHAPE_GENERATOR, "generatorCache");
+            for (Map.Entry<?, ?> entry : generatorCache.entrySet()) {
+                Object shapeGenerator = entry.getValue();
+                if (!registeredShapeGenerators.containsKey(shapeGenerator)) {
+                    registeredShapeGenerators.put(shapeGenerator, shapeGenerator);
+                    requiresIteration = true;
+                    Class<?> storageClass = ReflectionUtil.readField(SHAPE_GENERATOR, "generatedStorageClass", shapeGenerator);
+                    Class<?> factoryClass = ReflectionUtil.readField(SHAPE_GENERATOR, "generatedFactoryClass", shapeGenerator);
+                    for (Constructor<?> c : factoryClass.getDeclaredConstructors()) {
+                        RuntimeReflection.register(c);
+                    }
+                    for (String fieldName : new String[]{"primitive", "object", "shape"}) {
+                        beforeAnalysisAccess.registerAsUnsafeAccessed(ReflectionUtil.lookupField(storageClass, fieldName));
+                    }
+                }
+            }
+            if (requiresIteration) {
+                access.requireAnalysisIteration();
+            }
+        }
+
+        private static Class<?> getArgumentClass(GraphBuilderContext b, ResolvedJavaMethod targetMethod, int parameterIndex, ValueNode arg) {
+            SubstrateGraphBuilderPlugins.checkParameterUsage(arg.isConstant(), b, targetMethod, parameterIndex, "parameter is not a compile time constant");
+            return OriginalClassProvider.getJavaClass(GraalAccess.getOriginalSnippetReflection(), b.getConstantReflection().asJavaType(arg.asJavaConstant()));
+        }
+
+        @SuppressWarnings("unused")
+        private static void generate(Class<?> storageSuperClass, Class<?> factoryInterface, BeforeAnalysisAccess access) {
+            try {
+                VALIDATE_CLASSES.invoke(null, storageSuperClass, factoryInterface);
+            } catch (ReflectiveOperationException e) {
+                if (e instanceof InvocationTargetException && e.getCause() instanceof IllegalArgumentException) {
+                    // Do not generate classes that will fail validation at run time.
+                    registerReflectionAccessesForRuntimeValidation(storageSuperClass, factoryInterface);
+                    return;
+                }
+                throw VMError.shouldNotReachHere(e);
+            }
+
+            // Checkstyle: stop
+            ClassLoader generatorCL = getGeneratorClassLoader(factoryInterface);
+            // Checkstyle: resume
+            Object generator;
+            try {
+                GET_SHAPE_GENERATOR.invoke(null, null, generatorCL, storageSuperClass, factoryInterface);
+            } catch (ReflectiveOperationException e) {
+                throw VMError.shouldNotReachHere(e);
+            }
+        }
+
+        // Checkstyle: stop
+        private static ClassLoader getGeneratorClassLoader(Class<?> factoryInterface) {
+            ClassLoader cl = CLASS_LOADERS.get(factoryInterface);
+            if (cl == null) {
+                ClassLoader newCL;
+                try {
+                    newCL = (ClassLoader) GENERATOR_CLASS_LOADER_CONSTRUCTOR.newInstance(factoryInterface);
+                } catch (ReflectiveOperationException e) {
+                    throw VMError.shouldNotReachHere(e);
+                }
+                cl = CLASS_LOADERS.putIfAbsent(factoryInterface, newCL);
+                if (cl == null) {
+                    cl = newCL;
+                }
+            }
+            return cl;
+        }
+        // Checkstyle: resume
+
+        // Checkstyle: stop
+        private static Class<?> loadClass(String name) {
+            try {
+                return Class.forName(name);
+            } catch (ClassNotFoundException e) {
+                throw VMError.shouldNotReachHere(e);
+            }
+        }
+        // Checkstyle: resume
+
+        private static void registerReflectionAccessesForRuntimeValidation(Class<?> storageSuperClass, Class<?> factoryInterface) {
+            for (Method m : factoryInterface.getMethods()) {
+                RuntimeReflection.register(m);
+            }
+            for (Constructor<?> c : storageSuperClass.getDeclaredConstructors()) {
+                RuntimeReflection.register(c);
+            }
+            for (Class<?> clazz = storageSuperClass; clazz != null; clazz = clazz.getSuperclass()) {
+                for (Method m : clazz.getDeclaredMethods()) {
+                    RuntimeReflection.register(m);
+                }
+            }
+        }
+    }
+}
+
+@TargetClass(className = "com.oracle.truffle.api.staticobject.ArrayBasedShapeGenerator", onlyWith = TruffleFeature.IsEnabled.class)
+final class Target_com_oracle_truffle_api_staticobject_ArrayBasedShapeGenerator {
+
+    public static final class OffsetTransformer implements RecomputeFieldValue.CustomFieldValueTransformer {
+        private static final Class<?> SHAPE_GENERATOR;
+
+        static {
+            // Checkstyle: stop
+            try {
+                SHAPE_GENERATOR = Class.forName("com.oracle.truffle.api.staticobject.ArrayBasedShapeGenerator");
+            } catch (ClassNotFoundException e) {
+                throw VMError.shouldNotReachHere(e);
+            }
+            // Checkstyle: resume
+        }
+
+        @Override
+        public Object transform(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver, Object originalValue) {
+            Class<?> generatedStorageClass = ReflectionUtil.readField(SHAPE_GENERATOR, "generatedStorageClass", receiver);
+            String name;
+            switch (original.getName()) {
+                case "byteArrayOffset":
+                    name = "primitive";
+                    break;
+                case "objectArrayOffset":
+                    name = "object";
+                    break;
+                case "shapeOffset":
+                    name = "shape";
+                    break;
+                default:
+                    throw VMError.shouldNotReachHere();
+            }
+            Field f = ReflectionUtil.lookupField(generatedStorageClass, name);
+            assert metaAccess instanceof HostedMetaAccess;
+            return ((HostedMetaAccess) metaAccess).lookupJavaField(f).getLocation();
+        }
+    }
+
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = OffsetTransformer.class) //
+    int byteArrayOffset;
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = OffsetTransformer.class) //
+    int objectArrayOffset;
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = OffsetTransformer.class) //
+    int shapeOffset;
 }
 
 @TargetClass(className = "org.graalvm.compiler.truffle.runtime.OptimizedCallTarget", onlyWith = TruffleFeature.IsEnabled.class)

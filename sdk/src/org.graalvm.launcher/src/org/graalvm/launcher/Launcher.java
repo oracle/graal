@@ -1089,11 +1089,10 @@ public abstract class Launcher {
 
     private void printBasicNativeHelp() {
         launcherOption("--vm.D<property>=<value>", "Sets a system property");
-        /* The default values are *copied* from com.oracle.svm.core.genscavenge.HeapPolicy */
-        launcherOption("--vm.Xmn<value>", "Sets the maximum size of the young generation, in bytes. Default: 256MB.");
-        launcherOption("--vm.Xmx<value>", "Sets the maximum size of the heap, in bytes. Default: MaximumHeapSizePercent * physical memory.");
-        launcherOption("--vm.Xms<value>", "Sets the minimum size of the heap, in bytes. Default: 2 * maximum young generation size.");
-        launcherOption("--vm.Xss<value>", "Sets the size of each thread stack, in bytes. Default: OS-dependent.");
+        launcherOption("--vm.Xmn<value>", "Sets the maximum size of the young generation, in bytes.");
+        launcherOption("--vm.Xmx<value>", "Sets the maximum size of the heap, in bytes.");
+        launcherOption("--vm.Xms<value>", "Sets the minimum size of the heap, in bytes.");
+        launcherOption("--vm.Xss<value>", "Sets the size of each thread stack, in bytes.");
     }
 
     private static final String CLASSPATH = System.getProperty("org.graalvm.launcher.classpath");

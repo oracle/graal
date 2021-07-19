@@ -286,7 +286,7 @@ public class UniverseBuilder {
             sHandlers[i] = new ExceptionHandler(h.getStartBCI(), h.getEndBCI(), h.getHandlerBCI(), h.catchTypeCPI(), catchType);
         }
 
-        HostedMethod sMethod = new HostedMethod(hUniverse, aMethod, holder, signature, constantPool, sHandlers);
+        HostedMethod sMethod = new HostedMethod(hUniverse, aMethod, holder, signature, constantPool, sHandlers, null);
         assert !hUniverse.methods.containsKey(aMethod);
         hUniverse.methods.put(aMethod, sMethod);
 

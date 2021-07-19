@@ -940,6 +940,11 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
         }
 
         @Override
+        public boolean hasNextTier() {
+            return delegate.hasNextTier();
+        }
+
+        @Override
         public String toString() {
             return delegate.toString();
         }

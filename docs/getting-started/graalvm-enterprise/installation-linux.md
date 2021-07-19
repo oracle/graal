@@ -26,6 +26,7 @@ Follow these steps to install Oracle GraalVM Enterprise Edition on the Linux ope
   export JAVA_HOME=/path/to/<graalvm>
   ```
 8. To check whether the installation was successful, run the `java -version` command.
+
 Optionally, you can specify GraalVM Enterprise as the default JRE or JDK installation in your Java IDE.
 
 ## Supported Functionalities
@@ -36,7 +37,7 @@ The base installation can be extended with:
 Tools/Utilities:
 * [Native Image](/reference-manual/enterprise-native-image/) -- a technology to compile an application ahead-of-time into a native executable
 * [LLVM toolchain](/reference-manual/llvm/) -- a set of tools and APIs for compiling native programs to bitcode that can be executed on GraalVM Enterprise
-​* [Java on Truffle](/reference-manual/java-on-truffle/) -- a Java Virtual Machine implementation based on a Truffle interpreter for GraalVM Enterprise
+* [Java on Truffle](/reference-manual/java-on-truffle/) -- a Java Virtual Machine implementation based on a Truffle interpreter for GraalVM Enterprise
 
 Runtimes:
 * [Node.js](/reference-manual/js/) -- Node.js 14.16.1 compatible

@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted.code;
 
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -40,6 +41,11 @@ public class CompilationInfo {
     protected final HostedMethod method;
 
     protected final AtomicBoolean inParseQueue = new AtomicBoolean(false);
+    /**
+     * No need for this flag to be atomic, because {@link CompileQueue#compilations} is used to
+     * ensure each method is compiled only once.
+     */
+    protected boolean inCompileQueue;
 
     protected volatile StructuredGraph graph;
 
@@ -58,8 +64,14 @@ public class CompilationInfo {
      */
     protected HostedMethod deoptTarget;
 
-    /** A link to the regular compiled method if this method is a deoptimization target. */
-    protected HostedMethod deoptOrigin;
+    /**
+     * A link to the regular compiled method if this method is a deoptimization target.
+     *
+     * Note that it is important that this field is final: the {@link HostedMethod#getName() method
+     * name} depends on this field (to distinguish a regular method from a deoptimization target
+     * method), so mutating this field would mutate the name of a method.
+     */
+    protected final HostedMethod deoptOrigin;
 
     /* Custom parsing and compilation code that is executed instead of that of CompileQueue */
     protected ParseFunction customParseFunction;
@@ -72,8 +84,19 @@ public class CompilationInfo {
     protected long numDeoptEntryPoints;
     protected long numDuringCallEntryPoints;
 
-    public CompilationInfo(HostedMethod method) {
+    /* Statistics collected when method is put into compile queue. */
+    protected final AtomicLong numDirectCalls = new AtomicLong();
+    protected final AtomicLong numVirtualCalls = new AtomicLong();
+    protected final AtomicLong numEntryPointCalls = new AtomicLong();
+
+    public CompilationInfo(HostedMethod method, HostedMethod deoptOrigin) {
         this.method = method;
+        this.deoptOrigin = deoptOrigin;
+
+        if (deoptOrigin != null) {
+            assert deoptOrigin.compilationInfo.deoptTarget == null;
+            deoptOrigin.compilationInfo.deoptTarget = method;
+        }
     }
 
     public boolean isDeoptTarget() {
@@ -98,12 +121,6 @@ public class CompilationInfo {
 
     public HostedMethod getDeoptTargetMethod() {
         return deoptTarget;
-    }
-
-    public void setDeoptTarget(HostedMethod deoptTarget) {
-        assert this.deoptTarget == null;
-        this.deoptTarget = deoptTarget;
-        deoptTarget.compilationInfo.deoptOrigin = this.method;
     }
 
     public void setGraph(StructuredGraph graph) {

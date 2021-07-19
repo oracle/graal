@@ -35,9 +35,9 @@ import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
+import org.graalvm.compiler.truffle.common.TruffleInliningData;
 
 import com.oracle.truffle.api.Truffle;
-import org.graalvm.compiler.truffle.common.TruffleInliningData;
 
 public final class CompilationTask implements TruffleCompilationTask, Callable<Void>, Comparable<CompilationTask> {
 
@@ -152,6 +152,19 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
     @Override
     public TruffleInliningData inliningData() {
         return inliningData;
+    }
+
+    @Override
+    public boolean hasNextTier() {
+        if (isLastTier()) {
+            return false;
+        }
+        OptimizedCallTarget callTarget = targetRef.get();
+        if (callTarget == null) {
+            // Does not matter what we return if the target is not available
+            return false;
+        }
+        return !callTarget.engine.firstTierOnly;
     }
 
     public Future<?> getFuture() {

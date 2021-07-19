@@ -35,7 +35,7 @@ import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.substitutions.Host;
+import com.oracle.truffle.espresso.substitutions.JavaType;
 
 /**
  * Implementation of {@link Klass} for primitive types. Primitive classes don't have a .class
@@ -74,7 +74,7 @@ public final class PrimitiveKlass extends Klass {
     }
 
     @Override
-    public @Host(ClassLoader.class) StaticObject getDefiningClassLoader() {
+    public @JavaType(ClassLoader.class) StaticObject getDefiningClassLoader() {
         return StaticObject.NULL; // BCL
     }
 
