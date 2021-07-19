@@ -205,6 +205,12 @@ class WasmJMHJsonRule(mx_benchmark.JMHJsonRule):
         name_arg = next(arg for arg in result["jvmArgs"] if arg.startswith(name_flag))
         return name_arg[len(name_flag):]
 
+    def parse(self, text):
+        filename = self._prepend_working_dir(self.filename)
+        if not os.path.exists(filename):
+            return []
+        return super(WasmJMHJsonRule, self).parse(text)
+
 
 class WasmBenchmarkSuite(JMHDistBenchmarkSuite):
     def name(self):
