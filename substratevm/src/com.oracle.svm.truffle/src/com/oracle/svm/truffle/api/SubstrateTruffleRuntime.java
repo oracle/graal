@@ -280,7 +280,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
         }
 
         try {
-            doCompile(optimizedCallTarget, new SingleThreadedCompilationTask(lastTierCompilation));
+            doCompile(optimizedCallTarget, new SingleThreadedCompilationTask(optimizedCallTarget, lastTierCompilation));
         } catch (com.oracle.truffle.api.OptimizationFailedException e) {
             if (optimizedCallTarget.getOptionValue(PolyglotCompilerOptions.CompilationExceptionsArePrinted)) {
                 Log.log().string(printStackTraceToString(e));
@@ -385,9 +385,11 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
      */
     private static class SingleThreadedCompilationTask implements TruffleCompilationTask {
         private final boolean lastTierCompilation;
+        private final boolean hasNextTier;
         TruffleInlining inlining = new TruffleInlining();
 
-        SingleThreadedCompilationTask(boolean lastTierCompilation) {
+        SingleThreadedCompilationTask(OptimizedCallTarget optimizedCallTarget, boolean lastTierCompilation) {
+            this.hasNextTier = !optimizedCallTarget.engine.firstTierOnly && !lastTierCompilation;
             this.lastTierCompilation = lastTierCompilation;
         }
 
@@ -405,6 +407,11 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
         @Override
         public TruffleInliningData inliningData() {
             return inlining;
+        }
+
+        @Override
+        public boolean hasNextTier() {
+            return hasNextTier;
         }
 
     }

@@ -171,6 +171,11 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
             public TruffleInliningData inliningData() {
                 return inlining;
             }
+
+            @Override
+            public boolean hasNextTier() {
+                return false;
+            }
         };
     }
 
