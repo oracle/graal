@@ -89,14 +89,14 @@ simpleLanguageMavenProjectGate:  {
 builds += [
   ${linux-amd64} ${oraclejdk8}    ${truffleCommon} {run : [["mx", "build"], ["mx", "sigtest", "--check", "all"]], targets : [gate], name: "gate-truffle-sigtest"},
   ${linux-amd64} ${oraclejdk11}   ${truffleCommon} {run : [["mx", "build"], ["mx", "sigtest", "--check", "bin"]], targets : [gate], name: "gate-truffle-sigtest-11"},
-  ${linux-amd64} ${oraclejdk16}   ${truffleCommon} {run : [["mx", "build"], ["mx", "sigtest", "--check", "bin"]], targets : [gate], name: "gate-truffle-sigtest-16"},
+  ${linux-amd64} ${oraclejdk17}   ${truffleCommon} {run : [["mx", "build"], ["mx", "sigtest", "--check", "bin"]], targets : [gate], name: "gate-truffle-sigtest-17"},
 
   ${linux-amd64} ${oraclejdk8}    ${truffleCommon} ${simpleToolMavenProjectGate} {name: "gate-external-mvn-simpletool-8"},
   ${linux-amd64} ${labsjdk-ee-11} ${truffleCommon} ${simpleToolMavenProjectGate} {name: "gate-external-mvn-simpletool-11"},
-  ${linux-amd64} ${labsjdk-ee-16} ${truffleCommon} ${simpleToolMavenProjectGate} {name: "gate-external-mvn-simpletool-16"},
+  ${linux-amd64} ${labsjdk-ee-17} ${truffleCommon} ${simpleToolMavenProjectGate} {name: "gate-external-mvn-simpletool-17"},
   ${linux-amd64} ${oraclejdk8}    ${truffleCommon} ${simpleLanguageMavenProjectGate} {name: "gate-external-mvn-simplelanguage-8"},
   ${linux-amd64} ${labsjdk-ee-11} ${truffleCommon} ${simpleLanguageMavenProjectGate} {name: "gate-external-mvn-simplelanguage-11"},
-  ${linux-amd64} ${labsjdk-ee-16} ${truffleCommon} ${simpleLanguageMavenProjectGate} {name: "gate-external-mvn-simplelanguage-16"},
+  ${linux-amd64} ${labsjdk-ee-17} ${truffleCommon} ${simpleLanguageMavenProjectGate} {name: "gate-external-mvn-simplelanguage-17"},
 
   ${linux-amd64} ${oraclejdk8}    ${truffleCommon} ${eclipse} ${jdt} {
     timelimit : "45:00",
@@ -108,11 +108,11 @@ builds += [
     run : [["mx", "--strict-compliance", "gate", "--strict-mode"]],
     targets : [gate],
     name: "gate-truffle-oraclejdk-11"},
-  ${linux-amd64} ${oraclejdk16}   ${truffleCommon} ${eclipse} {
+  ${linux-amd64} ${oraclejdk17}   ${truffleCommon} ${eclipse} {
     environment: {DISABLE_DSL_STATE_BITS_TESTS: "true"},
     run : [["mx", "--strict-compliance", "gate", "--strict-mode"]],
     targets : [gate],
-    name: "gate-truffle-oraclejdk-16"},
+    name: "gate-truffle-oraclejdk-17"},
   ${linux-amd64} ${oraclejdk8}    ${truffleCommon} {
     run : [
         ["mx", "build"],
@@ -138,8 +138,8 @@ builds += [
   ${darwin-amd64} ${oraclejdk11} ${gateLite} ${truffleWeekly} {
     name: "gate-truffle-mac-lite-oraclejdk-11"
   },
-  ${darwin-amd64} ${oraclejdk16} ${gateLite} ${truffleWeekly} {
-    name: "gate-truffle-mac-lite-oraclejdk-16"
+  ${darwin-amd64} ${oraclejdk17} ${gateLite} ${truffleWeekly} {
+    name: "gate-truffle-mac-lite-oraclejdk-17"
   },
   ${windows-amd64} ${oraclejdk8} ${truffleCommon} ${devkits.windows-oraclejdk8} {
     # TODO make that a full gate run

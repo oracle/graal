@@ -102,7 +102,7 @@ builds += [
 
   ${common_vm_linux} ${vm_bench_polybench_nfi_linux_amd64} ${vm_java_8} {name: bench-vm-${vm_setup.short_name}-polybench-nfi-linux-amd64-java8 }
   ${common_vm_linux} ${vm_bench_polybench_nfi_linux_amd64} ${vm_java_11} {name: bench-vm-${vm_setup.short_name}-polybench-nfi-linux-amd64-java11 }
-  ${common_vm_linux} ${vm_bench_polybench_nfi_linux_amd64} ${vm_java_16} {name: bench-vm-${vm_setup.short_name}-polybench-nfi-linux-amd64-java16 }
+  ${common_vm_linux} ${vm_bench_polybench_nfi_linux_amd64} ${vm_java_17} {name: bench-vm-${vm_setup.short_name}-polybench-nfi-linux-amd64-java17 }
 
   ${bench_daily_vm_linux} ${vm_bench_js_linux} {
     run: [

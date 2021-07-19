@@ -11,11 +11,11 @@
     "labsjdk-ce-11":      {"name": "labsjdk",   "version": "ce-11.0.12+5-jvmci-21.3-b01", "platformspecific": true },
     "labsjdk-ee-11":      {"name": "labsjdk",   "version": "ee-11.0.13+2-jvmci-21.3-b01", "platformspecific": true },
 
-    "oraclejdk16":        {"name": "oraclejdk", "version": "16.0.1+4", "platformspecific": true },
-    "labsjdk-ce-16":      {"name": "labsjdk",   "version": "ce-16.0.2+7-jvmci-21.2-b05", "platformspecific": true },
-    "labsjdk-ce-16Debug": {"name": "labsjdk",   "version": "ce-16.0.2+7-jvmci-21.2-b05-debug", "platformspecific": true },
-    "labsjdk-ee-16":      {"name": "labsjdk",   "version": "ee-16.0.2+7-jvmci-21.2-b05", "platformspecific": true },
-    "labsjdk-ee-16Debug": {"name": "labsjdk",   "version": "ee-16.0.2+7-jvmci-21.2-b05-debug", "platformspecific": true }
+    "oraclejdk17":        {"name": "oraclejdk", "version": "17.0.1+2", "platformspecific": true },
+    "labsjdk-ce-17":      {"name": "labsjdk",   "version": "ce-17+26-jvmci-21.3-b01", "platformspecific": true },
+    "labsjdk-ce-17Debug": {"name": "labsjdk",   "version": "ce-17+26-jvmci-21.3-b01-debug", "platformspecific": true },
+    "labsjdk-ee-17":      {"name": "labsjdk",   "version": "ee-17.0.1+1-jvmci-21.3-b01", "platformspecific": true },
+    "labsjdk-ee-17Debug": {"name": "labsjdk",   "version": "ee-17.0.1+1-jvmci-21.3-b01-debug", "platformspecific": true }
   },
 
   "COMMENT" : "The devkits versions reflect those used to build the JVMCI JDKs (e.g., see devkit_platform_revisions in <jdk>/make/conf/jib-profiles.js)",
@@ -23,7 +23,7 @@
       "windows-oraclejdk8": { "packages" : { "devkit:VS2017-15.9.16+1" : "==0" }},
       "windows-openjdk8":   { "packages" : { "devkit:VS2017-15.9.16+1" : "==0" }},
       "windows-jdk11":      { "packages" : { "devkit:VS2017-15.9.24+1" : "==0" }},
-      "windows-jdk16":      { "packages" : { "devkit:VS2019-16.7.2+1"  : "==1" }}
+      "windows-jdk17":      { "packages" : { "devkit:VS2019-16.9.3+1"  : "==0" }}
   },
   "deps": {
     "common": {
