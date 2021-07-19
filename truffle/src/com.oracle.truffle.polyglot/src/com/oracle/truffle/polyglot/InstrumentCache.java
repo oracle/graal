@@ -138,7 +138,13 @@ final class InstrumentCache {
             if (loader == null || !isValidLoader(loader)) {
                 continue;
             }
-            exportTruffle(loader);
+            if (!TruffleOptions.AOT) {
+                // In JDK 9+, the Truffle API packages must be dynamically exported to
+                // a Truffle instrument since the Truffle API module descriptor only
+                // exports the packages to modules known at build time (such as the
+                // Graal module).
+                EngineAccessor.JDKSERVICES.exportTo(loader, null);
+            }
             for (TruffleInstrument.Provider provider : ServiceLoader.load(TruffleInstrument.Provider.class, loader)) {
                 loadInstrumentImpl(provider, list, classNamesUsed);
             }
@@ -208,16 +214,6 @@ final class InstrumentCache {
             return truffleInstrumentClassAsSeenByLoader == TruffleInstrument.class;
         } catch (ClassNotFoundException ex) {
             return false;
-        }
-    }
-
-    private static void exportTruffle(ClassLoader loader) {
-        if (!TruffleOptions.AOT) {
-            // In JDK 9+, the Truffle API packages must be dynamically exported to
-            // a Truffle instrument since the Truffle API module descriptor only
-            // exports the packages to modules known at build time (such as the
-            // Graal module).
-            EngineAccessor.JDKSERVICES.exportTo(loader, null);
         }
     }
 

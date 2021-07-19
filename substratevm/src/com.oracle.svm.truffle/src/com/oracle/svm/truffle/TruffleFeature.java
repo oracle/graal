@@ -131,7 +131,6 @@ import org.graalvm.compiler.truffle.runtime.TruffleCallBoundary;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
-import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -292,10 +291,6 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         invokeStaticMethod("com.oracle.truffle.polyglot.LanguageCache", "removeLanguageFromNativeImage", Collections.singletonList(String.class), mimeType);
     }
 
-    private static Collection<Class<?>> getLanguageClasses() {
-        return invokeStaticMethod("com.oracle.truffle.polyglot.LanguageCache", "getLanguageClasses", Collections.emptyList());
-    }
-
     @SuppressWarnings("unchecked")
     private static <T> T invokeStaticMethod(String className, String methodName, Collection<Class<?>> parameterTypes, Object... args) {
         try {
@@ -450,8 +445,6 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         StaticObjectSupport.beforeAnalysis(access);
 
         BeforeAnalysisAccessImpl config = (BeforeAnalysisAccessImpl) access;
-
-        getLanguageClasses().forEach(RuntimeReflection::registerForReflectiveInstantiation);
 
         config.registerHierarchyForReflectiveInstantiation(DefaultExportProvider.class);
         config.registerHierarchyForReflectiveInstantiation(TruffleInstrument.class);
