@@ -215,10 +215,10 @@ public class FloatStamp extends PrimitiveStamp {
             return this;
         }
         if (isEmpty()) {
-            return this;
+            return otherStamp;
         }
         if (otherStamp.isEmpty()) {
-            return otherStamp;
+            return this;
         }
         FloatStamp other = (FloatStamp) otherStamp;
         assert getBits() == other.getBits();

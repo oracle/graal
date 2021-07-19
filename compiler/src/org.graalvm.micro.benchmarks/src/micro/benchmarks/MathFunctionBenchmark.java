@@ -106,4 +106,22 @@ public class MathFunctionBenchmark extends BenchmarkBase {
     public void strictMathSqrt(ThreadState state, Blackhole blackhole) {
         blackhole.consume(StrictMath.sqrt(state.k));
     }
+
+    @Benchmark
+    public void mathSignum(ThreadState state, Blackhole blackhole) {
+        double[] data = state.data;
+        for (int i = 0; i < data.length; i++) {
+            double[] result = state.result;
+            result[i] = Math.signum(data[i]);
+        }
+    }
+
+    @Benchmark
+    public void mathCopySign(ThreadState state, Blackhole blackhole) {
+        double[] data = state.data;
+        for (int i = 0; i < data.length; i++) {
+            double[] result = state.result;
+            result[i] = Math.copySign(data[i], data[i] + 1.0D);
+        }
+    }
 }

@@ -56,7 +56,7 @@ public final class AArch64CGlobalDataLoadAddressOp extends AArch64LIRInstruction
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-        int bits = result.getPlatformKind().getSizeInBytes() * 8;
+        int bits = result.getPlatformKind().getSizeInBytes() * Byte.SIZE;
         if (SubstrateUtil.HOSTED) {
             // AOT compilation: record patch that is fixed up later
             crb.compilationResult.recordDataPatch(masm.position(), new CGlobalDataReference(dataInfo));

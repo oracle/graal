@@ -30,7 +30,6 @@ import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static org.graalvm.compiler.lir.amd64.AMD64HotSpotHelper.pointerConstant;
 import static org.graalvm.compiler.lir.amd64.AMD64HotSpotHelper.recordExternalAddress;
 
-import jdk.vm.ci.meta.PlatformKind;
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
@@ -44,6 +43,7 @@ import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
 
 public class AMD64MathSignumOp extends AMD64LIRInstruction {
@@ -66,7 +66,7 @@ public class AMD64MathSignumOp extends AMD64LIRInstruction {
             // @formatter:on
     });
 
-    private ArrayDataPointerConstant floatSignMask = pointerConstant(8, new int[]{
+    private ArrayDataPointerConstant floatSignMask = pointerConstant(16, new int[]{
             // @formatter:off
             0x80000000, 0x80000000
             // @formatter:on
@@ -78,7 +78,7 @@ public class AMD64MathSignumOp extends AMD64LIRInstruction {
             // @formatter:on
     });
 
-    private ArrayDataPointerConstant doubleSignMask = pointerConstant(8, new int[]{
+    private ArrayDataPointerConstant doubleSignMask = pointerConstant(16, new int[]{
             // @formatter:off
             0x00000000, 0x80000000
             // @formatter:on

@@ -99,7 +99,6 @@ import org.graalvm.compiler.nodes.calc.LeftShiftNode;
 import org.graalvm.compiler.nodes.calc.ObjectEqualsNode;
 import org.graalvm.compiler.nodes.calc.RightShiftNode;
 import org.graalvm.compiler.nodes.calc.SignExtendNode;
-import org.graalvm.compiler.nodes.calc.SignumNode;
 import org.graalvm.compiler.nodes.calc.SubNode;
 import org.graalvm.compiler.nodes.calc.UnsignedRightShiftNode;
 import org.graalvm.compiler.nodes.calc.XorNode;
@@ -233,7 +232,6 @@ public class HotSpotGraphBuilderPlugins {
                 registerStringPlugins(invocationPlugins, replacements, wordTypes, foreignCalls, config);
                 registerArraysSupportPlugins(invocationPlugins, config, replacements);
                 registerReferencePlugins(invocationPlugins, replacements);
-                registerMathSupportPlugins(invocationPlugins, config, replacements);
             }
         });
         if (!IS_IN_NATIVE_IMAGE) {
@@ -1067,49 +1065,6 @@ public class HotSpotGraphBuilderPlugins {
                     JavaReadNode read = b.add(new JavaReadNode(StampFactory.object(), JavaKind.Object, address, locationIdentity, BarrierType.PHANTOM_FIELD, true));
                     LogicNode objectEquals = b.add(ObjectEqualsNode.create(b.getConstantReflection(), b.getMetaAccess(), b.getOptions(), read, o, NodeView.DEFAULT));
                     b.addPush(JavaKind.Boolean, ConditionalNode.create(objectEquals, b.add(forBoolean(true)), b.add(forBoolean(false)), NodeView.DEFAULT));
-                    return true;
-                }
-
-                @Override
-                public boolean inlineOnly() {
-                    return true;
-                }
-            });
-        }
-    }
-
-    private static void registerMathSupportPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
-        if (config.useSignumIntrinsic) {
-            Registration r = new Registration(plugins, "java.lang.Math", replacements);
-            r.register1("signum", float.class, new InvocationPlugin() {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode f) {
-                    b.addPush(JavaKind.Float, new SignumNode(f));
-                    return true;
-                }
-
-                @Override
-                public boolean inlineOnly() {
-                    return true;
-                }
-            });
-
-            r.register1("signum", double.class, new InvocationPlugin() {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode d) {
-                    b.addPush(JavaKind.Double, new SignumNode(d));
-                    return true;
-                }
-
-                @Override
-                public boolean inlineOnly() {
-                    return true;
-                }
-            });
-            r.register1("signum", double.class, new InvocationPlugin() {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode d) {
-                    b.addPush(JavaKind.Double, new SignumNode(d));
                     return true;
                 }
 

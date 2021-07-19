@@ -27,15 +27,21 @@ package org.graalvm.compiler.nodes.calc;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
+import org.graalvm.compiler.core.common.type.FloatStamp;
+import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.ArithmeticLIRLowerable;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+
+import jdk.vm.ci.meta.JavaConstant;
 
 /**
  * Signum function of the input.
@@ -45,11 +51,54 @@ public final class SignumNode extends UnaryNode implements ArithmeticLIRLowerabl
     public static final NodeClass<SignumNode> TYPE = NodeClass.create(SignumNode.class);
 
     public SignumNode(ValueNode x) {
-        super(TYPE, x.stamp(NodeView.DEFAULT).unrestricted(), x);
+        super(TYPE, computeStamp(x.stamp(NodeView.DEFAULT)), x);
+    }
+
+    private static Stamp computeStamp(Stamp stamp) {
+        FloatStamp floatStamp = (FloatStamp) stamp;
+        if (floatStamp.isNaN()) {
+            return floatStamp;
+        }
+        if (floatStamp.isNonNaN()) {
+            if (floatStamp.lowerBound() > 0) {
+                return new FloatStamp(floatStamp.getBits(), 1.0D, 1.0D, true);
+            }
+            if (floatStamp.upperBound() < 0) {
+                return new FloatStamp(floatStamp.getBits(), -1.0D, -1.0D, true);
+            }
+        }
+        FloatStamp result = new FloatStamp(floatStamp.getBits(), Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY, !floatStamp.canBeNaN());
+        if (floatStamp.contains(0.0d)) {
+            // this also covers stamp.contains(-0.0d)
+            result = (FloatStamp) result.meet(new FloatStamp(floatStamp.getBits(), 0.0d, 0.0d, true));
+        }
+        if (floatStamp.upperBound() > 0) {
+            result = (FloatStamp) result.meet(new FloatStamp(floatStamp.getBits(), 1.0d, 1.0d, true));
+        }
+        if (floatStamp.lowerBound() < 0) {
+            result = (FloatStamp) result.meet(new FloatStamp(floatStamp.getBits(), -1.0d, -1.0d, true));
+        }
+        return result;
+    }
+
+    @Override
+    public Stamp foldStamp(Stamp newStamp) {
+        return computeStamp(newStamp);
     }
 
     @Override
     public Node canonical(CanonicalizerTool tool, ValueNode forValue) {
+        if (forValue.isJavaConstant()) {
+            JavaConstant c = forValue.asJavaConstant();
+            switch (c.getJavaKind()) {
+                case Float:
+                    return ConstantNode.forFloat(Math.signum(c.asFloat()));
+                case Double:
+                    return ConstantNode.forDouble(Math.signum(c.asDouble()));
+                default:
+                    throw GraalError.shouldNotReachHere();
+            }
+        }
         return this;
     }
 

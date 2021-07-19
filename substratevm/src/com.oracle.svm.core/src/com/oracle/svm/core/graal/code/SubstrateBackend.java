@@ -33,6 +33,7 @@ import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.tiers.SuitesProvider;
 import org.graalvm.compiler.phases.util.Providers;
@@ -101,7 +102,7 @@ public abstract class SubstrateBackend extends Backend {
     public CompilationResult newCompilationResult(CompilationIdentifier compilationIdentifier, String name) {
         return new CompilationResult(compilationIdentifier, name) {
             @Override
-            public void close() {
+            public void close(OptionValues options) {
                 /*
                  * Do nothing, we do not want our CompilationResult to be closed because we
                  * aggregate all data items and machine code in the native image heap.

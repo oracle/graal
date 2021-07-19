@@ -115,6 +115,7 @@ import org.graalvm.compiler.lir.amd64.AMD64ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.lir.amd64.AMD64Binary;
 import org.graalvm.compiler.lir.amd64.AMD64BinaryConsumer;
 import org.graalvm.compiler.lir.amd64.AMD64ClearRegisterOp;
+import org.graalvm.compiler.lir.amd64.AMD64MathCopySignOp;
 import org.graalvm.compiler.lir.amd64.AMD64MathCosOp;
 import org.graalvm.compiler.lir.amd64.AMD64MathExpOp;
 import org.graalvm.compiler.lir.amd64.AMD64MathLog10Op;
@@ -182,7 +183,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
                 if (isAvx) {
                     getLIRGen().append(new AVXBinaryOp(VXORPS, getRegisterSize(result), result, asAllocatable(input), asAllocatable(getLIRGen().emitJavaConstant(floatMask))));
                 } else {
-                    getLIRGen().append(new AMD64Binary.DataTwoOp(SSEOp.XOR, PS, result, input, floatMask, 16));
+                    getLIRGen().append(new AMD64Binary.DataTwoOp(SSEOp.XOR, PS, result, input, floatMask, PS.getBytes()));
                 }
                 break;
             case DOUBLE:
@@ -190,7 +191,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
                 if (isAvx) {
                     getLIRGen().append(new AVXBinaryOp(VXORPD, getRegisterSize(result), result, asAllocatable(input), asAllocatable(getLIRGen().emitJavaConstant(doubleMask))));
                 } else {
-                    getLIRGen().append(new AMD64Binary.DataTwoOp(SSEOp.XOR, PD, result, input, doubleMask, 16));
+                    getLIRGen().append(new AMD64Binary.DataTwoOp(SSEOp.XOR, PD, result, input, doubleMask, PD.getBytes()));
                 }
                 break;
             default:
@@ -278,7 +279,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
 
     private Variable emitBinaryConst(LIRKind resultKind, AMD64RMOp op, OperandSize size, AllocatableValue a, JavaConstant b) {
         Variable result = getLIRGen().newVariable(resultKind);
-        getLIRGen().append(new AMD64Binary.DataTwoOp(op, size, result, a, b));
+        getLIRGen().append(new AMD64Binary.DataTwoOp(op, size, result, a, b, size.getBytes()));
         return result;
     }
 
@@ -1159,6 +1160,13 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     public Value emitMathSignum(Value input) {
         Variable result = getLIRGen().newVariable(input.getValueKind());
         getLIRGen().append(new AMD64MathSignumOp(getLIRGen(), result, asAllocatable(input)));
+        return result;
+    }
+
+    @Override
+    public Value emitMathCopySign(Value magnitude, Value sign) {
+        Variable result = getLIRGen().newVariable(magnitude.getValueKind());
+        getLIRGen().append(new AMD64MathCopySignOp(getLIRGen(), result, asAllocatable(magnitude), asAllocatable(sign)));
         return result;
     }
 

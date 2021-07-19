@@ -99,7 +99,7 @@ public abstract class AssemblerTest extends GraalTest {
             byte[] targetCode = test.generateCode(compResult, codeCache.getTarget(), registerConfig, cc);
             compResult.setTargetCode(targetCode, targetCode.length);
             compResult.setTotalFrameSize(0);
-            compResult.close();
+            compResult.close(options);
 
             InstalledCode code = backend.addInstalledCode(debug, method, asCompilationRequest(compilationId), compResult);
 

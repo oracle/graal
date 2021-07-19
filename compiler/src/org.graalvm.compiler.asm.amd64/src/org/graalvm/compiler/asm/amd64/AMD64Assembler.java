@@ -1635,6 +1635,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             asm.emitByte(op);
             asm.emitOperandHelper(dst, src2, 0, getDisp8Scale(useEvex, size));
         }
+
+        public boolean isPacked() {
+            return pp == P_ || pp == P_66;
+        }
     }
 
     public static final class VexGeneralPurposeRVMOp extends VexRVMOp {
@@ -3660,6 +3664,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         SSEOp.XOR.emit(this, PD, dst, src);
     }
 
+    /**
+     * Caller needs to ensure that loading 128-bit memory from src won't cause a segment fault.
+     * E.g., constants stored into the data section should be aligned to 16 bytes.
+     */
     public final void xorpd(Register dst, AMD64Address src) {
         SSEOp.XOR.emit(this, PD, dst, src);
     }
@@ -3668,6 +3676,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         SSEOp.XOR.emit(this, PS, dst, src);
     }
 
+    /**
+     * Caller needs to ensure that loading 128-bit memory from src won't cause a segment fault.
+     * E.g., constants stored into the data section should be aligned to 16 bytes.
+     */
     public final void xorps(Register dst, AMD64Address src) {
         SSEOp.XOR.emit(this, PS, dst, src);
     }

@@ -28,48 +28,44 @@ import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
 import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDSize;
-import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ElementSize;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
-import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
-import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 @Opcode("MATH_SIGNUM")
-public final class AArch64MathSignumOp extends AArch64LIRInstruction {
-    public static final LIRInstructionClass<AArch64MathSignumOp> TYPE = LIRInstructionClass.create(AArch64MathSignumOp.class);
+public final class AArch64MathCopySignOp extends AArch64LIRInstruction {
+    public static final LIRInstructionClass<AArch64MathCopySignOp> TYPE = LIRInstructionClass.create(AArch64MathCopySignOp.class);
 
     @Def({REG}) protected Value result;
     /**
-     * This argument must be Alive to ensure that result and input are not assigned to the same
-     * register, which would break the code generation by destroying input too early.
+     * These arguments must be Alive to ensure that they are not assigned to the same register as
+     * result, which would break the code generation by destroying these arguments too early.
      */
-    @Alive({REG}) protected Value input;
-    @Temp({REG}) protected Value scratch;
+    @Alive({REG}) protected Value magnitude;
+    @Alive({REG}) protected Value sign;
 
-    public AArch64MathSignumOp(LIRGeneratorTool tool, Value result, AllocatableValue input) {
+    public AArch64MathCopySignOp(Value result, AllocatableValue magnitude, AllocatableValue sign) {
         super(TYPE);
         this.result = result;
-        this.input = input;
-        this.scratch = tool.newVariable(LIRKind.value(input.getPlatformKind()));
+        this.magnitude = magnitude;
+        this.sign = sign;
     }
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
         Register resultReg = asRegister(result);
-        Register inputReg = asRegister(input);
-        Register floatScratch = asRegister(scratch);
+        Register magnitudeReg = asRegister(magnitude);
+        Register signReg = asRegister(sign);
 
         int size = result.getPlatformKind().getSizeInBytes() * Byte.SIZE;
-        masm.fmov(size, floatScratch, 0.0d);
-        masm.neon.facgtSSS(ElementSize.fromKind(result.getPlatformKind()), resultReg, inputReg, floatScratch);
-        masm.neon.ushrSSI(ElementSize.DoubleWord, resultReg, resultReg, 1);
-        masm.fmov(size, floatScratch, 1.0d);
-        masm.neon.bslVVV(ASIMDSize.HalfReg, resultReg, floatScratch, inputReg);
+        masm.fmov(size, resultReg, 0);
+        masm.fneg(size, resultReg, resultReg);
+        masm.neon.bslVVV(ASIMDSize.HalfReg, resultReg, signReg, magnitudeReg);
     }
+
 }

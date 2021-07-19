@@ -48,6 +48,7 @@ import org.graalvm.compiler.lir.aarch64.AArch64ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.lir.aarch64.AArch64ArithmeticOp;
 import org.graalvm.compiler.lir.aarch64.AArch64BitManipulationOp;
 import org.graalvm.compiler.lir.aarch64.AArch64Convert;
+import org.graalvm.compiler.lir.aarch64.AArch64MathCopySignOp;
 import org.graalvm.compiler.lir.aarch64.AArch64MathSignumOp;
 import org.graalvm.compiler.lir.aarch64.AArch64Move;
 import org.graalvm.compiler.lir.aarch64.AArch64Move.LoadOp;
@@ -127,7 +128,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
             case DWORD:
             case QWORD:
                 getLIRGen().append(new AArch64Unary.MemoryOp(isSigned, targetSize,
-                                memoryKind.getSizeInBytes() * 8, result, address, state));
+                                memoryKind.getSizeInBytes() * Byte.SIZE, result, address, state));
                 break;
             default:
                 throw GraalError.shouldNotReachHere();
@@ -500,7 +501,16 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
         assert input.getPlatformKind() == AArch64Kind.DOUBLE ||
                         input.getPlatformKind() == AArch64Kind.SINGLE;
         Variable result = getLIRGen().newVariable(input.getValueKind());
-        getLIRGen().append(new AArch64MathSignumOp(result, asAllocatable(input)));
+        getLIRGen().append(new AArch64MathSignumOp(getLIRGen(), result, asAllocatable(input)));
+        return result;
+    }
+
+    @Override
+    public Value emitMathCopySign(Value magnitude, Value sign) {
+        assert magnitude.getPlatformKind() == AArch64Kind.DOUBLE ||
+                        magnitude.getPlatformKind() == AArch64Kind.SINGLE;
+        Variable result = getLIRGen().newVariable(magnitude.getValueKind());
+        getLIRGen().append(new AArch64MathCopySignOp(result, asAllocatable(magnitude), asAllocatable(sign)));
         return result;
     }
 

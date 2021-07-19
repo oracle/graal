@@ -34,6 +34,10 @@ import java.util.Objects;
 import java.util.function.BiConsumer;
 
 import org.graalvm.compiler.code.DataSection.Data;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionType;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.BufferUtil;
 
 import jdk.vm.ci.code.site.DataSectionReference;
@@ -41,6 +45,14 @@ import jdk.vm.ci.meta.SerializableConstant;
 import jdk.vm.ci.meta.VMConstant;
 
 public final class DataSection implements Iterable<Data> {
+
+    static class Options {
+        // @formatter:off
+        @Option(help = "An adversarial constant layout that always forces misalignment.",
+                type = OptionType.Debug)
+        static final OptionKey<Boolean> ForceAdversarialLayout = new OptionKey<>(false);
+        // @formatter:on
+    }
 
     public interface Patches {
 
@@ -276,7 +288,7 @@ public final class DataSection implements Iterable<Data> {
     }
 
     /**
-     * Determines if this object has been {@link #close() closed}.
+     * Determines if this object has been {@link #close(OptionValues) closed}.
      */
     public boolean closed() {
         return closed;
@@ -287,7 +299,7 @@ public final class DataSection implements Iterable<Data> {
      *
      * This must be called exactly once.
      */
-    public void close() {
+    public void close(OptionValues option) {
         checkOpen();
         closed = true;
 
@@ -299,7 +311,12 @@ public final class DataSection implements Iterable<Data> {
         for (Data d : dataItems) {
             alignment = lcm(alignment, d.alignment);
             position = align(position, d.alignment);
-
+            if (Options.ForceAdversarialLayout.getValue(option)) {
+                if (position % (d.alignment * 2) == 0) {
+                    position = position + d.alignment;
+                    assert position % d.alignment == 0;
+                }
+            }
             d.ref.setOffset(position);
             position += d.size;
         }
