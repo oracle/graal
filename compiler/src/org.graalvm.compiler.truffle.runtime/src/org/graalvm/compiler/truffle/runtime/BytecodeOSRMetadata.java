@@ -62,7 +62,6 @@ public final class BytecodeOSRMetadata {
     private volatile Map<Integer, OptimizedCallTarget> osrCompilations;
     private final int osrThreshold;
     private int backEdgeCount;
-    private volatile boolean compilationFailed;
 
     // Used for OSR state transfer.
     @CompilationFinal private volatile Assumption frameVersion;
@@ -78,12 +77,10 @@ public final class BytecodeOSRMetadata {
         this.osrCompilations = null;
         this.osrThreshold = osrThreshold;
         this.backEdgeCount = 0;
-        this.compilationFailed = false;
     }
 
     Object onOSRBackEdge(VirtualFrame parentFrame, int target) {
-        if (!incrementAndPoll() || compilationFailed) {
-            // note: incur volatile read of compilationFailed only if poll succeeds
+        if (!incrementAndPoll()) {
             return null;
         }
 
@@ -255,11 +252,6 @@ public final class BytecodeOSRMetadata {
     }
 
     private void markCompilationFailed() {
-        /*
-         * Replace this object with the DISABLED marker object. Another thread may already have a
-         * handle to this object, so also mark the failure internally so we can avoid recompilation.
-         */
-        compilationFailed = true;
         osrNode.setOSRMetadata(DISABLED);
     }
 
