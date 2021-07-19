@@ -180,6 +180,7 @@ class NativeWasmBenchmarkVm(WasmBenchmarkVm):
 
     def run_vm(self, args, out=None, err=None, cwd=None, nonZeroIsFatal=False):
         jar, suite, benchmark = self.parse_jar_suite_benchmark(args)
+        suite = os.path.join(suite, "native")
         tmp_dir = None
         try:
             tmp_dir = self.extract_jar_to_tempdir(jar, suite, benchmark)
