@@ -100,7 +100,7 @@ public final class LanguageRegistrationProcessor extends AbstractRegistrationPro
         }
         boolean foundConstructor = false;
         for (ExecutableElement constructor : ElementFilter.constructorsIn(annotatedElement.getEnclosedElements())) {
-            if (!constructor.getModifiers().contains(Modifier.PUBLIC)) {
+            if (constructor.getModifiers().contains(Modifier.PRIVATE)) {
                 continue;
             }
             if (!constructor.getParameters().isEmpty()) {
@@ -136,7 +136,7 @@ public final class LanguageRegistrationProcessor extends AbstractRegistrationPro
             valid = false;
         } else {
             if (!foundConstructor) {
-                emitError("A TruffleLanguage subclass must have a public no argument constructor.", annotatedElement);
+                emitError("A TruffleLanguage subclass must have at least package protected no argument constructor.", annotatedElement);
                 return false;
             }
         }

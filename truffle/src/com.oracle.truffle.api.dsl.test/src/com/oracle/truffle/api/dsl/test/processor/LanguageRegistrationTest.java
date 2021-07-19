@@ -69,7 +69,7 @@ public class LanguageRegistrationTest {
     }
 
     @TruffleLanguage.Registration(id = "myLangNoCnstr", name = "", version = "0")
-    @ExpectError("A TruffleLanguage subclass must have a public no argument constructor.")
+    @ExpectError("A TruffleLanguage subclass must have at least package protected no argument constructor.")
     public static final class MyLangWrongConstr extends TruffleLanguage<Object> {
 
         private MyLangWrongConstr() {
