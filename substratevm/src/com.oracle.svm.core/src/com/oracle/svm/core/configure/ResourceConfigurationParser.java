@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,12 +27,18 @@ package com.oracle.svm.core.configure;
 import java.io.IOException;
 import java.io.Reader;
 import java.util.Collections;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.function.Consumer;
+import java.util.stream.Collectors;
 import java.util.function.BiConsumer;
 
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
+import com.oracle.svm.core.jdk.localization.LocalizationSupport;
 import com.oracle.svm.core.util.json.JSONParser;
 
 public class ResourceConfigurationParser extends ConfigurationParser {
@@ -88,10 +94,43 @@ public class ResourceConfigurationParser extends ConfigurationParser {
         }
         if (bundlesObject != null) {
             List<Object> bundles = asList(bundlesObject, "Attribute 'bundles' must be a list of bundles");
-            for (Object object : bundles) {
-                parseStringEntry(object, "name", registry::addResourceBundles, "bundle descriptor object", "'bundles' list");
+            for (Object bundle : bundles) {
+                parseBundle(bundle);
             }
         }
+    }
+
+    private void parseBundle(Object bundle) {
+        Map<String, Object> resource = asMap(bundle, "Elements of 'bundles' list must be a bundle descriptor object");
+        checkAttributes(resource, "bundle descriptor object", Collections.singletonList("name"), Arrays.asList("locales", "classNames"));
+        String basename = asString(resource.get("name"), "Missing attribute 'name' in bundle descriptor object");
+        Object locales = resource.get("locales");
+        if (locales != null) {
+            List<Locale> asList = asList(locales, "Attribute 'locales' must be a list of locales")
+                            .stream()
+                            .map(ResourceConfigurationParser::parseLocale)
+                            .collect(Collectors.toList());
+            registry.addResourceBundles(basename, asList);
+        } else {
+            registry.addResourceBundles(basename);
+        }
+        Object classNames = resource.get("classNames");
+        if (classNames != null) {
+            List<Object> asList = asList(classNames, "Attribute 'classNames' must be a list of classes");
+            for (Object o : asList) {
+                String className = asString(o, "Elements of 'classNames' must of strings.");
+                registry.addClassBasedResourceBundle(className);
+            }
+        }
+    }
+
+    private static Locale parseLocale(Object input) {
+        String localeTag = asString(input, "Elements of 'locales' must be strings.");
+        Locale locale = LocalizationSupport.parseLocaleFromTag(localeTag);
+        if (locale == null) {
+            throw new JSONParserException(localeTag + " is not a valid locale tag");
+        }
+        return locale;
     }
 
     private void parseStringEntry(Object data, String valueKey, BiConsumer<ConfigurationCondition, String> resourceRegistry, String expectedType, String parentType) {

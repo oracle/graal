@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,8 @@
  */
 package com.oracle.svm.core.configure;
 
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import java.util.Collection;
+import java.util.Locale;
 
 public interface ResourcesRegistry {
 
@@ -63,4 +64,8 @@ public interface ResourcesRegistry {
     void ignoreResources(ConfigurationCondition condition, String pattern);
 
     void addResourceBundles(ConfigurationCondition condition, String name);
+
+    void addClassBasedResourceBundle(String className);
+
+    void addResourceBundles(String basename, Collection<Locale> locales);
 }

@@ -27,6 +27,7 @@ package com.oracle.svm.core.jdk.localization;
 
 import java.nio.charset.Charset;
 import java.util.HashMap;
+import java.util.IllformedLocaleException;
 import java.util.Locale;
 import java.util.Map;
 import java.util.PropertyResourceBundle;
@@ -121,5 +122,27 @@ public class LocalizationSupport {
     @SuppressWarnings("unused")
     public void prepareNonCompliant(Class<?> clazz) {
         /*- By default, there is nothing to do */
+    }
+
+    /**
+     * @return locale for given tag or null for invalid ones
+     */
+    public static Locale parseLocaleFromTag(String tag) {
+        try {
+            return new Locale.Builder().setLanguageTag(tag).build();
+        } catch (IllformedLocaleException ex) {
+            /*- Custom made locales consisting of at most three parts separated by '-' are also supported */
+            String[] parts = tag.split("-");
+            switch (parts.length) {
+                case 1:
+                    return new Locale(parts[0]);
+                case 2:
+                    return new Locale(parts[0], parts[1]);
+                case 3:
+                    return new Locale(parts[0], parts[1], parts[2]);
+                default:
+                    return null;
+            }
+        }
     }
 }

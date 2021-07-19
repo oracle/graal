@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,10 @@
 package com.oracle.svm.configure.config;
 
 import java.io.IOException;
+import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.Comparator;
 import java.util.concurrent.ConcurrentHashMap;
@@ -68,6 +71,29 @@ public class ResourceConfiguration implements ConfigurationBase {
             // TODO extent the API
             configuration.addBundle(condition, Collections.emptyList(), name, "TODO");
         }
+
+        public void addResourceBundles(String baseName) {
+            configuration.addBundle(baseName);
+        }
+
+        @Override
+        public void addClassBasedResourceBundle(String className) {
+            configuration.addClassBasedResourceBundle(className);
+        }
+
+        @Override
+        public void addResourceBundles(String basename, Collection<Locale> locales) {
+            configuration.addBundle(basename, locales);
+        }
+    }
+
+    private void addClassBasedResourceBundle(String className) {
+        String baseName = className;
+        int split = baseName.lastIndexOf('_');
+        if (split != -1) {
+            baseName = baseName.substring(0, split);
+        }
+        getOrCreateBundleConfig(baseName).classNames.add(className);
     }
 
     public static class BundleConfiguration {
@@ -109,6 +135,17 @@ public class ResourceConfiguration implements ConfigurationBase {
         ignoredResources.computeIfAbsent(new ConditionalElement<>(condition, pattern), p -> Pattern.compile(p.getElement()));
     }
 
+    private void addBundle(String basename, Collection<Locale> locales) {
+        BundleConfiguration config = getOrCreateBundleConfig(basename);
+        for (Locale locale : locales) {
+            config.locales.add(locale.toLanguageTag());
+        }
+    }
+
+    private void addBundle(String baseName) {
+        getOrCreateBundleConfig(baseName);
+    }
+
     public void addBundle(ConfigurationCondition condition, List<Pair<String, String>> bundleInfo, String baseName, String queriedLocaleTag) {
         ConditionalElement<String> key = new ConditionalElement<>(condition, baseName);
         BundleConfiguration config = bundles.get(key);
@@ -125,6 +162,10 @@ public class ResourceConfiguration implements ConfigurationBase {
                 config.locales.add(localeTag);
             }
         }
+    }
+
+    private BundleConfiguration getOrCreateBundleConfig(String baseName) {
+        return bundles.computeIfAbsent(baseName, key -> new BundleConfiguration(baseName));
     }
 
     public boolean anyResourceMatches(String s) {
