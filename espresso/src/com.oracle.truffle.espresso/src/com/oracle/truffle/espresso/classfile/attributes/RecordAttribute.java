@@ -82,7 +82,7 @@ public class RecordAttribute extends Attribute {
 
             // Find and set annotations
             doAnnotation(component, Name.RuntimeVisibleAnnotations, meta.java_lang_reflect_RecordComponent_annotations, meta);
-            doAnnotation(component, Name.RuntimeVisibleAnnotations, meta.java_lang_reflect_RecordComponent_typeAnnotations, meta);
+            doAnnotation(component, Name.RuntimeVisibleTypeAnnotations, meta.java_lang_reflect_RecordComponent_typeAnnotations, meta);
 
             return component;
         }
