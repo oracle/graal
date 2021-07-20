@@ -32,6 +32,7 @@ import java.nio.file.Path;
 import java.util.Base64;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 
 import com.oracle.svm.agent.tracing.core.Tracer;
 import com.oracle.svm.agent.tracing.core.TracingResultWriter;
@@ -100,7 +101,7 @@ public class TraceFileWriter extends Tracer implements TracingResultWriter {
         if (value instanceof byte[]) {
             s = Base64.getEncoder().encodeToString((byte[]) value);
         } else if (value != null) {
-            s = value.toString();
+            s = Objects.toString(value);
         }
         json.quote(s);
     }
