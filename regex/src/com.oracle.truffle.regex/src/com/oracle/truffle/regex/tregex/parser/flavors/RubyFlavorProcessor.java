@@ -1410,7 +1410,13 @@ public final class RubyFlavorProcessor implements RegexFlavorProcessor {
     private boolean lineBreak() {
         if (curChar() == 'R') {
             advance();
-            bailOut("line break escape not supported");
+            // When matching \\x0d, we check that it is not followed by \\x0a to emulate the
+            // atomic group in the original Ruby expansion: (?>\x0d\x0a|[\x0a-\x0d\x85\u2028\u2029])
+            if (inSource.getEncoding().isUnicode()) {
+                emitSnippet("(?:\\x0d\\x0a|\\x0d(?!\\x0a)|[\\x0a-\\x0c\\x85\\u2028\\u2029])");
+            } else {
+                emitSnippet("(?:\\x0d\\x0a|\\x0d(?!\\x0a)|[\\x0a-\\x0c])");
+            }
             return true;
         } else {
             return false;

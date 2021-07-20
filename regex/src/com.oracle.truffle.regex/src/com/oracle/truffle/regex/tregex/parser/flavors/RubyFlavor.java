@@ -86,11 +86,10 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.NFATraversalRegexASTV
  * also don't support those backreferences.</li>
  * <li>(?>....) atomic groups: This construct allows control over the matcher's backtracking by
  * making committed choices which can't be undone. This is not something we can support using
- * ECMAScript regexes.</li>
+ * ECMAScript regexes, however these is an option ({@code IgnoreAtomicGroups}), that lets atomic
+ * groups be treated like any other groups.</li>
  * <li>\X extended grapheme cluster escapes: This is just syntactic sugar for a certain expression
  * which uses atomic groups, and it is therefore not supported.</li>
- * <li>\R line break escapes: These are also translated by Joni to atomic groups, which we do not
- * support.</li>
  * <li>possessive quantifiers, e.g. a*+: Possessive quantifiers are quantifiers which consume
  * greedily and also do not allow backtracking, so they are another example of the atomic groups
  * that we do not support (a*+ is equivalent to (?>a*)).</li>

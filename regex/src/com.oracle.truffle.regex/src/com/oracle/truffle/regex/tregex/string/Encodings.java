@@ -101,6 +101,8 @@ public final class Encodings {
 
         public abstract boolean isFixedCodePointWidth(CodePointSet set);
 
+        public abstract boolean isUnicode();
+
         public abstract AbstractStringBuffer createStringBuffer(int capacity);
 
         public abstract DFAStateNode.LoopOptimizationNode extractLoopOptNode(CodePointSet loopCPS);
@@ -142,6 +144,11 @@ public final class Encodings {
 
             @Override
             public boolean isFixedCodePointWidth(CodePointSet set) {
+                return true;
+            }
+
+            @Override
+            public boolean isUnicode() {
                 return true;
             }
 
@@ -218,6 +225,11 @@ public final class Encodings {
                 int min = set.getMin();
                 int max = set.getMax();
                 return !(min < 0x10000 && max > 0x10000);
+            }
+
+            @Override
+            public boolean isUnicode() {
+                return true;
             }
 
             @Override
@@ -316,6 +328,11 @@ public final class Encodings {
             }
 
             @Override
+            public boolean isUnicode() {
+                return true;
+            }
+
+            @Override
             public StringBufferUTF16 createStringBuffer(int capacity) {
                 return new StringBufferUTF16(capacity);
             }
@@ -400,6 +417,11 @@ public final class Encodings {
             }
 
             @Override
+            public boolean isUnicode() {
+                return true;
+            }
+
+            @Override
             public StringBufferUTF8 createStringBuffer(int capacity) {
                 return new StringBufferUTF8(capacity);
             }
@@ -463,6 +485,11 @@ public final class Encodings {
             @Override
             public boolean isFixedCodePointWidth(CodePointSet set) {
                 return true;
+            }
+
+            @Override
+            public boolean isUnicode() {
+                return false;
             }
 
             @Override

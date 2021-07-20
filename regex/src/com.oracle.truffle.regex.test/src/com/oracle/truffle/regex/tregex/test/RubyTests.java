@@ -340,6 +340,7 @@ public class RubyTests extends RegexTestBase {
         test("\\A[^]]\\z", "", "a", 0, true, 0, 1);
     }
 
+    @Test
     public void ignoreAtomicGroups() {
         test("(?>foo)", "", "foo", 0, true, 0, 3);
     }
@@ -349,5 +350,16 @@ public class RubyTests extends RegexTestBase {
         Assert.assertFalse(compileRegex("(?:foo)+", "").getMember("isBacktracking").asBoolean());
         Assert.assertTrue(compileRegex("(?:foo){64}", "").getMember("isBacktracking").asBoolean());
         Assert.assertTrue(compileRegex("(x+)\\1", "").getMember("isBacktracking").asBoolean());
+    }
+
+    @Test
+    public void lineBreakEscape() {
+        test("\\R", "", "\r", 0, true, 0, 1);
+        test("\\R", "", "\n", 0, true, 0, 1);
+        test("\\R", "", "\r\n", 0, true, 0, 2);
+
+        test("\\A\\R\\R\\z", "", "\r\r", 0, true, 0, 2);
+        test("\\A\\R\\R\\z", "", "\n\n", 0, true, 0, 2);
+        test("\\A\\R\\R\\z", "", "\r\n", 0, false);
     }
 }
