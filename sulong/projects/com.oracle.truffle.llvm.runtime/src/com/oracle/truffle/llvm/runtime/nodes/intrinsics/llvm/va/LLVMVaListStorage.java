@@ -268,7 +268,16 @@ public class LLVMVaListStorage implements TruffleObject {
     protected Object[] realArguments;
     protected int numberOfExplicitArguments;
 
-    protected LLVMPointer nativized;
+    protected final LLVMPointer vaListStackPtr;
+    protected boolean nativized;
+
+    protected LLVMVaListStorage(LLVMPointer vaListStackPtr) {
+        this.vaListStackPtr = vaListStackPtr;
+    }
+
+    public boolean isNativized() {
+        return nativized;
+    }
 
     // InteropLibrary implementation
 
@@ -395,13 +404,13 @@ public class LLVMVaListStorage implements TruffleObject {
 
     @ExportMessage
     public boolean isPointer() {
-        return nativized != null && LLVMNativePointer.isInstance(nativized);
+        return isNativized() && LLVMNativePointer.isInstance(vaListStackPtr);
     }
 
     @ExportMessage
     public long asPointer() throws UnsupportedMessageException {
         if (isPointer()) {
-            return LLVMNativePointer.cast(nativized).asNative();
+            return LLVMNativePointer.cast(vaListStackPtr).asNative();
         }
         throw UnsupportedMessageException.create();
     }
