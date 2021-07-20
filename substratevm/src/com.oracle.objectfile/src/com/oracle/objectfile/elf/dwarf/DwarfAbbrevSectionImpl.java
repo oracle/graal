@@ -1349,7 +1349,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeTag(DwarfDebugInfo.DW_TAG_inlined_subroutine, buffer, pos);
         pos = writeFlag(withChildren ? DwarfDebugInfo.DW_CHILDREN_yes : DwarfDebugInfo.DW_CHILDREN_no, buffer, pos);
         pos = writeAttrType(DwarfDebugInfo.DW_AT_abstract_origin, buffer, pos);
-        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref4, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref_addr, buffer, pos);
         pos = writeAttrType(DwarfDebugInfo.DW_AT_low_pc, buffer, pos);
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_addr, buffer, pos);
         pos = writeAttrType(DwarfDebugInfo.DW_AT_hi_pc, buffer, pos);
