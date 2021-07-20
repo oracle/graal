@@ -25,11 +25,11 @@ You can get Oracle GraalVM Enterprise Edition by:
 Getting GraalVM Enterprise installed and ready-to-go should take a few minutes.
 Choose your operating system and proceed to the installation steps for your specific platform:
 
-* [Linux](/getting-started/installation-linux/)
-* [Linux ARM64](/getting-started/installation-linux-aarch64/)
-* [Oracle Linux](/getting-started/oci/compute-instances/)
-* [macOS](/getting-started/installation-macos/)
-* [Windows](/getting-started/installation-windows/)
+* [Linux](installation-linux.md)
+* [Linux ARM64](installation-linux-aarch64.md)
+* [Oracle Linux](oci/compute-instances.md)
+* [macOS](installation-macos.md)
+* [Windows](installation-windows.md)
 
 ## Start Running Applications
 
