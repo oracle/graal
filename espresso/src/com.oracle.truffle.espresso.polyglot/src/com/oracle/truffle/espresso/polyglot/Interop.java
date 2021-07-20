@@ -1634,4 +1634,128 @@ public final class Interop {
     public static native void writeBufferDouble(Object receiver, ByteOrder order, long byteOffset, double value) throws UnsupportedMessageException, InvalidBufferOffsetException;
 
     // endregion Buffer Messages
+
+    // region Iterator Messages
+
+    /**
+     * Returns {@code true} if the receiver provides an iterator. For example, an array or a list
+     * provide an iterator over their content. Invoking this message does not cause any observable
+     * side-effects. By default returns {@code true} for receivers that have
+     * {@link #hasArrayElements(Object) array elements}.
+     *
+     * @see #getIterator(Object)
+     * @since 21.1
+     */
+    public static native boolean hasIterator(Object receiver);
+
+    /**
+     * Returns the iterator for the receiver. The return value is always an
+     * {@link #isIterator(Object) iterator}. Invoking this message does not cause any observable
+     * side-effects.
+     *
+     * @throws UnsupportedMessageException if and only if {@link #hasIterator(Object)} returns
+     *             {@code false} for the same receiver.
+     * @since 21.1
+     */
+    public static native Object getIterator(Object receiver) throws UnsupportedMessageException;
+
+    /**
+     * Returns {@code true} if the receiver represents an iterator. Invoking this message does not
+     * cause any observable side-effects. Returns {@code false} by default.
+     *
+     * @see #hasIterator(Object)
+     * @see #getIterator(Object)
+     * @since 21.1
+     */
+    public static native boolean isIterator(Object receiver);
+
+    /**
+     * Returns {@code true} if the receiver is an iterator which has more elements, else
+     * {@code false}. Multiple calls to the {@link #hasIteratorNextElement(Object)} might lead to
+     * different results if the underlying data structure is modified.
+     * <p>
+     * The following example shows how the {@link #hasIteratorNextElement(Object)
+     * hasIteratorNextElement} message can be emulated in languages where iterators only have a next
+     * method and throw an exception if there are no further elements.
+     *
+     * <pre>
+     * &#64;ExportLibrary(InteropLibrary.class)
+     * abstract class InteropIterator implements TruffleObject {
+     *
+     *     &#64;SuppressWarnings("serial")
+     *     public static final class Stop extends AbstractTruffleException {
+     *     }
+     *
+     *     private static final Object STOP = new Object();
+     *     private Object next;
+     *
+     *     protected InteropIterator() {
+     *     }
+     *
+     *     protected abstract Object next() throws Stop;
+     *
+     *     &#64;ExportMessage
+     *     &#64;SuppressWarnings("static-method")
+     *     boolean isIterator() {
+     *         return true;
+     *     }
+     *
+     *     &#64;ExportMessage
+     *     boolean hasIteratorNextElement() {
+     *         fetchNext();
+     *         return next != STOP;
+     *     }
+     *
+     *     &#64;ExportMessage
+     *     Object getIteratorNextElement() throws StopIterationException {
+     *         fetchNext();
+     *         Object res = next;
+     *         if (res == STOP) {
+     *             throw StopIterationException.create();
+     *         } else {
+     *             next = null;
+     *         }
+     *         return res;
+     *     }
+     *
+     *     private void fetchNext() {
+     *         if (next == null) {
+     *             try {
+     *                 next = next();
+     *             } catch (Stop stop) {
+     *                 next = STOP;
+     *             }
+     *         }
+     *     }
+     * }
+     * </pre>
+     *
+     * @throws UnsupportedMessageException if and only if {@link #isIterator(Object)} returns
+     *             {@code false} for the same receiver.
+     * @see #isIterator(Object)
+     * @see #getIteratorNextElement(Object)
+     * @since 21.1
+     */
+    public static native boolean hasIteratorNextElement(Object receiver) throws UnsupportedMessageException;
+
+    /**
+     * Returns the next element in the iteration. When the underlying data structure is modified the
+     * {@link #getIteratorNextElement(Object)} may throw the {@link StopIterationException} despite
+     * the {@link #hasIteratorNextElement(Object)} returned {@code true}.
+     *
+     * @throws UnsupportedMessageException if {@link #isIterator(Object)} returns {@code false} for
+     *             the same receiver or when the underlying iterator element exists but is not
+     *             readable.
+     * @throws StopIterationException if the iteration has no more elements. Even if the
+     *             {@link StopIterationException} was thrown it might not be thrown again by a next
+     *             {@link #getIteratorNextElement(Object)} invocation on the same receiver due to a
+     *             modification of an underlying iterable.
+     *
+     * @see #isIterator(Object)
+     * @see #hasIteratorNextElement(Object)
+     * @since 21.1
+     */
+    public static native Object getIteratorNextElement(Object receiver) throws UnsupportedMessageException, StopIterationException;
+
+    // endregion Iterator Messages
 }
