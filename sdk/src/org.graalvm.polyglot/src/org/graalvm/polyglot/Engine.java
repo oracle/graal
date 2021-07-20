@@ -108,6 +108,8 @@ import org.graalvm.polyglot.management.ExecutionEvent;
  */
 public final class Engine implements AutoCloseable {
 
+    private static volatile Throwable initializationException;
+
     final AbstractEngineDispatch dispatch;
     final Object receiver;
     final Engine currentAPI;
@@ -317,7 +319,19 @@ public final class Engine implements AutoCloseable {
     }
 
     static AbstractPolyglotImpl getImpl() {
-        return ImplHolder.IMPL;
+        try {
+            return ImplHolder.IMPL;
+        } catch (NoClassDefFoundError e) {
+            // Workaround for https://bugs.openjdk.java.net/browse/JDK-8048190
+            Throwable cause = initializationException;
+            if (cause != null && e.getCause() == null) {
+                e.initCause(cause);
+            }
+            throw e;
+        } catch (Throwable e) {
+            initializationException = e;
+            throw e;
+        }
     }
 
     /*
