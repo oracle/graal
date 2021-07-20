@@ -61,7 +61,7 @@ public class Memory extends Dictionary {
         addMembers(new Object[]{
                         "descriptor", this.descriptor,
                         "grow", new Executable(args -> grow((Integer) args[0])),
-                        "buffer", new Executable(args -> MemoryArrayBuffer.create(memory)),
+                        "buffer", new Executable(args -> memory),
         });
     }
 
