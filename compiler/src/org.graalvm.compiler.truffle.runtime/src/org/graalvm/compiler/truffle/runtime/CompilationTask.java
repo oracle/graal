@@ -266,7 +266,7 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
         // @formatter:off
         // We multiply first tier compilations with this bonus to bring first and last tier
         // compilation weights to roughly the same order of magnitude.
-        // By default the traversingFirstTierBonus is: 2 * LastTierCompilationThreshold / FirstTierCompilationThreshold
+        // By default the traversingFirstTierBonus is: 3 * LastTierCompilationThreshold / FirstTierCompilationThreshold
         //                                             ^    \________________________________________________________/
         //  This controls for the fact that second tier                             |
         //  compilations are already compiled in the first                          |

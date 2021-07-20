@@ -274,7 +274,7 @@ public final class EngineData {
             traversingFirstTierBonus = options.get(TraversingQueueFirstTierBonus);
         } else {
             // See usage of traversingFirstTierBonus for explanation of this forula.
-            traversingFirstTierBonus = (2.0 * options.get(LastTierCompilationThreshold)) / options.get(FirstTierCompilationThreshold);
+            traversingFirstTierBonus = (3.0 * options.get(LastTierCompilationThreshold)) / options.get(FirstTierCompilationThreshold);
         }
 
         this.returnTypeSpeculation = options.get(ReturnTypeSpeculation);
