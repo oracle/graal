@@ -142,7 +142,7 @@ public class InstrumentationEventTest {
         if (error != null) {
             throw error;
         }
-        // keep executed sources alive to avoid collection of the underlying code.
+        // Prevent garbage collection of ASTs from breaking InputFilterTest.
         sources.add(source);
     }
 
