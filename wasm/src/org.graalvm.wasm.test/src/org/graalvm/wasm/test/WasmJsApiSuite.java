@@ -55,6 +55,7 @@ import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.wasm.ModuleLimits;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunctionInstance;
+import org.graalvm.wasm.WasmTable;
 import org.graalvm.wasm.api.ByteArrayBuffer;
 import org.graalvm.wasm.api.Dictionary;
 import org.graalvm.wasm.api.Executable;
@@ -68,9 +69,6 @@ import org.graalvm.wasm.api.ModuleExportDescriptor;
 import org.graalvm.wasm.api.ModuleImportDescriptor;
 import org.graalvm.wasm.api.ProxyGlobal;
 import org.graalvm.wasm.api.Sequence;
-import org.graalvm.wasm.api.Table;
-import org.graalvm.wasm.api.TableDescriptor;
-import org.graalvm.wasm.api.TableKind;
 import org.graalvm.wasm.api.WebAssembly;
 import org.graalvm.wasm.api.WebAssemblyInstantiatedSource;
 import org.graalvm.wasm.constants.Sizes;
@@ -202,13 +200,13 @@ public class WasmJsApiSuite {
     public void testInstantiateWithImportTable() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final Table table = Table.create(new TableDescriptor(TableKind.anyfunc.name(), 4, 8));
+            final WasmTable table = WebAssembly.tableAlloc(4, 8);
             Dictionary importObject = Dictionary.create(new Object[]{
                             "host", Dictionary.create(new Object[]{
                                             "defaultTable", table
                             }),
             });
-            table.set(0, new WasmFunctionInstance(context, null,
+            WebAssembly.tableWrite(table, 0, new WasmFunctionInstance(context, null,
                             Truffle.getRuntime().createCallTarget(new RootNode(context.language()) {
                                 @Override
                                 public Object execute(VirtualFrame frame) {
@@ -234,8 +232,8 @@ public class WasmJsApiSuite {
             final WebAssemblyInstantiatedSource instantiatedSource = wasm.instantiate(binaryWithTableExport, null);
             final Instance instance = instantiatedSource.instance();
             try {
-                final Table table = (Table) instance.exports().readMember("defaultTable");
-                final Object result = InteropLibrary.getUncached().execute(table.get(0), 9);
+                final WasmTable table = (WasmTable) instance.exports().readMember("defaultTable");
+                final Object result = InteropLibrary.getUncached().execute(WebAssembly.tableRead(table, 0), 9);
                 Assert.assertEquals("Must be 81.", 81, result);
             } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException | ArityException e) {
                 throw new RuntimeException(e);
@@ -400,8 +398,10 @@ public class WasmJsApiSuite {
                                         return 42;
                                     }
                                 }));
-                lib.execute(lib.readMember(lib.readMember(exports, "a"), "set"), 0, f);
-                final Object readValue = lib.execute(lib.readMember(lib.readMember(exports, "b"), "get"), 0);
+                final Object writeTable = wasm.readMember("table_write");
+                final Object readTable = wasm.readMember("table_read");
+                lib.execute(writeTable, lib.readMember(exports, "a"), 0, f);
+                final Object readValue = lib.execute(readTable, lib.readMember(exports, "b"), 0);
                 Assert.assertEquals("Written function should correspond ro read function", 42, lib.asInt(lib.execute(readValue)));
             } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException | ArityException e) {
                 throw new RuntimeException(e);
@@ -458,7 +458,8 @@ public class WasmJsApiSuite {
             // We should be able to get element 1.
             try {
                 final Object exports = lib.readMember(instance, "exports");
-                lib.execute(lib.readMember(lib.readMember(exports, "t"), "get"), 0);
+                final Object readTable = wasm.readMember("table_read");
+                lib.execute(readTable, lib.readMember(exports, "t"), 0);
             } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException | ArityException e) {
                 throw new RuntimeException(e);
             }
@@ -466,7 +467,8 @@ public class WasmJsApiSuite {
             // But not element 2.
             try {
                 final Object exports = lib.readMember(instance, "exports");
-                lib.execute(lib.readMember(lib.readMember(exports, "t"), "get"), 1);
+                final Object readTable = wasm.readMember("table_read");
+                lib.execute(readTable, lib.readMember(exports, "t"), 1);
                 Assert.fail("Should have failed - export count exceeds the limit");
             } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException | ArityException e) {
                 throw new RuntimeException(e);
@@ -497,7 +499,8 @@ public class WasmJsApiSuite {
             // We should be able to set element 1.
             try {
                 final Object exports = lib.readMember(instance, "exports");
-                lib.execute(lib.readMember(lib.readMember(exports, "t"), "set"), 0, functionInstance);
+                final Object writeTable = wasm.readMember("table_write");
+                lib.execute(writeTable, lib.readMember(exports, "t"), 0, functionInstance);
             } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException | ArityException e) {
                 throw new RuntimeException(e);
             }
@@ -505,7 +508,8 @@ public class WasmJsApiSuite {
             // But not element 2.
             try {
                 final Object exports = lib.readMember(instance, "exports");
-                lib.execute(lib.readMember(lib.readMember(exports, "t"), "get"), 1, functionInstance);
+                final Object writeTable = wasm.readMember("table_write");
+                lib.execute(writeTable, lib.readMember(exports, "t"), 1, functionInstance);
                 Assert.fail("Should have failed - export count exceeds the limit");
             } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException | ArityException e) {
                 throw new RuntimeException(e);
@@ -526,7 +530,8 @@ public class WasmJsApiSuite {
             // We should be able to grow the table to 10,000,000.
             try {
                 final Object exports = lib.readMember(instance, "exports");
-                lib.execute(lib.readMember(lib.readMember(exports, "t"), "grow"), 9999999);
+                final Object grow = wasm.readMember("table_grow");
+                lib.execute(grow, lib.readMember(exports, "t"), 9999999);
             } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException | ArityException e) {
                 throw new RuntimeException(e);
             }
@@ -534,7 +539,8 @@ public class WasmJsApiSuite {
             // But growing to 10,000,001 should fail.
             try {
                 final Object exports = lib.readMember(instance, "exports");
-                lib.execute(lib.readMember(lib.readMember(exports, "t"), "grow"), 1);
+                final Object grow = wasm.readMember("table_grow");
+                lib.execute(grow, lib.readMember(exports, "t"), 1);
                 Assert.fail("Should have failed - export count exceeds the limit");
             } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException | ArityException e) {
                 throw new RuntimeException(e);
@@ -821,13 +827,13 @@ public class WasmJsApiSuite {
             final Instance instance = instantiatedSource.instance();
             try {
                 final Object funcType = wasm.readMember("func_type");
-                final Table table = (Table) instance.exports().readMember("defaultTable");
-                final Object fn = table.get(0);
+                final WasmTable table = (WasmTable) instance.exports().readMember("defaultTable");
+                final Object fn = WebAssembly.tableRead(table, 0);
                 InteropLibrary interop = InteropLibrary.getUncached(funcType);
                 Assert.assertEquals("func_type", "0(i32)i32", interop.execute(funcType, fn));
                 // set + get should not break func_type()
-                table.set(0, fn);
-                final Object fnAgain = table.get(0);
+                WebAssembly.tableWrite(table, 0, fn);
+                final Object fnAgain = WebAssembly.tableRead(table, 0);
                 Assert.assertEquals("func_type", "0(i32)i32", interop.execute(funcType, fnAgain));
             } catch (InteropException e) {
                 throw new RuntimeException(e);
