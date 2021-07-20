@@ -38,6 +38,8 @@ import org.graalvm.compiler.debug.DebugContext;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFieldInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugInstanceTypeInfo;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugCodeInfo;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLineInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugMethodInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugRangeInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo;
@@ -137,7 +139,7 @@ public class ClassEntry extends StructureTypeEntry {
         /* Add details of fields and field types */
         debugInstanceTypeInfo.fieldInfoProvider().forEach(debugFieldInfo -> this.processField(debugFieldInfo, debugInfoBase, debugContext));
         /* Add details of methods and method types */
-        debugInstanceTypeInfo.methodInfoProvider().forEach(methodFieldInfo -> this.methods.add(this.processMethod(methodFieldInfo, debugInfoBase, debugContext, false)));
+        debugInstanceTypeInfo.methodInfoProvider().forEach(debugMethodInfo -> this.methods.add(this.processMethod(debugMethodInfo, debugInfoBase, debugContext)));
         /* Sort methods to improve lookup speed */
         this.methods.sort(MethodEntry::compareTo);
     }
@@ -273,7 +275,15 @@ public class ClassEntry extends StructureTypeEntry {
         interfaceClassEntry.addImplementor(this, debugContext);
     }
 
-    protected MethodEntry processMethod(DebugMethodInfo debugMethodInfo, DebugInfoBase debugInfoBase, DebugContext debugContext, boolean fromRangeInfo) {
+    protected MethodEntry processMethod(DebugMethodInfo debugMethodInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
+        boolean fromRange = debugMethodInfo instanceof DebugCodeInfo;
+        boolean fromInlineRange = false;
+        if (debugMethodInfo instanceof DebugLineInfo) {
+            DebugLineInfo lineInfo = (DebugLineInfo) debugMethodInfo;
+            if (lineInfo.getCaller() != null) {
+                fromInlineRange = true;
+            }
+        }
         String methodName = debugInfoBase.uniqueDebugString(debugMethodInfo.name());
         String resultTypeName = TypeEntry.canonicalize(debugMethodInfo.valueType());
         int modifiers = debugMethodInfo.modifiers();
@@ -298,7 +308,7 @@ public class ClassEntry extends StructureTypeEntry {
          */
         FileEntry methodFileEntry = debugInfoBase.ensureFileEntry(debugMethodInfo);
         return new MethodEntry(methodFileEntry, debugMethodInfo.symbolNameForMethod(), methodName, this, resultType,
-                        paramTypeArray, paramNameArray, modifiers, debugMethodInfo.isDeoptTarget(), fromRangeInfo);
+                        paramTypeArray, paramNameArray, modifiers, debugMethodInfo.isDeoptTarget(), fromRange, fromInlineRange);
     }
 
     @Override
@@ -349,7 +359,7 @@ public class ClassEntry extends StructureTypeEntry {
             MethodEntry methodEntry = methodIterator.next();
             int comparisonResult = methodEntry.compareTo(methodName, paramSignature, returnTypeName);
             if (comparisonResult == 0) {
-                methodEntry.setInRangeAndUpdateFileEntry(debugInfoBase, debugRangeInfo);
+                methodEntry.updateRangeInfo(debugInfoBase, debugRangeInfo);
                 if (methodEntry.fileEntry != null) {
                     /* Ensure that the methodEntry's fileEntry is present in the localsFileIndex */
                     indexLocalFileEntry(methodEntry.fileEntry);
@@ -360,7 +370,7 @@ public class ClassEntry extends StructureTypeEntry {
                 break;
             }
         }
-        MethodEntry newMethodEntry = processMethod(debugRangeInfo, debugInfoBase, debugContext, true);
+        MethodEntry newMethodEntry = processMethod(debugRangeInfo, debugInfoBase, debugContext);
         methodIterator.add(newMethodEntry);
         return newMethodEntry;
     }

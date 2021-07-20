@@ -26,6 +26,8 @@
 
 package com.oracle.objectfile.debugentry;
 
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugCodeInfo;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLineInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugRangeInfo;
 
 import java.util.Arrays;
@@ -34,23 +36,32 @@ import java.util.stream.Collectors;
 public class MethodEntry extends MemberEntry implements Comparable<MethodEntry> {
     final TypeEntry[] paramTypes;
     final String[] paramNames;
-    public final boolean isDeoptTarget;
-    boolean isInRange;
-
+    static final int DEOPT = 1 << 0;
+    static final int IN_RANGE = 1 << 1;
+    static final int INLINED = 1 << 2;
+    int flags;
     final String symbolName;
     private String signature;
 
     public MethodEntry(FileEntry fileEntry, String symbolName, String methodName, ClassEntry ownerType,
                     TypeEntry valueType, TypeEntry[] paramTypes, String[] paramNames, int modifiers,
-                    boolean isDeoptTarget, boolean isInRange) {
+                    boolean isDeoptTarget, boolean fromRange, boolean fromInlineRange) {
         super(fileEntry, methodName, ownerType, valueType, modifiers);
         assert ((paramTypes == null && paramNames == null) ||
                         (paramTypes != null && paramNames != null && paramTypes.length == paramNames.length));
         this.paramTypes = paramTypes;
         this.paramNames = paramNames;
-        this.isDeoptTarget = isDeoptTarget;
-        this.isInRange = isInRange;
         this.symbolName = symbolName;
+        this.flags = 0;
+        if (isDeoptTarget) {
+            setIsDeopt();
+        }
+        if (fromRange) {
+            setIsInRange();
+        }
+        if (fromInlineRange) {
+            setIsInlined();
+        }
     }
 
     public String methodName() {
@@ -91,8 +102,28 @@ public class MethodEntry extends MemberEntry implements Comparable<MethodEntry> 
         return paramNames[idx];
     }
 
+    private void setIsDeopt() {
+        flags |= DEOPT;
+    }
+
+    public boolean isDeopt() {
+        return (flags & DEOPT) != 0;
+    }
+
+    private void setIsInRange() {
+        flags |= IN_RANGE;
+    }
+
     public boolean isInRange() {
-        return isInRange;
+        return (flags & IN_RANGE) != 0;
+    }
+
+    private void setIsInlined() {
+        flags |= INLINED;
+    }
+
+    public boolean isInlined() {
+        return (flags & INLINED) != 0;
     }
 
     /**
@@ -105,19 +136,30 @@ public class MethodEntry extends MemberEntry implements Comparable<MethodEntry> 
      * @param debugInfoBase
      * @param debugRangeInfo
      */
-    public void setInRangeAndUpdateFileEntry(DebugInfoBase debugInfoBase, DebugRangeInfo debugRangeInfo) {
-        if (isInRange) {
-            assert fileEntry == debugInfoBase.ensureFileEntry(debugRangeInfo);
-            return;
+    public void updateRangeInfo(DebugInfoBase debugInfoBase, DebugRangeInfo debugRangeInfo) {
+        if (debugRangeInfo instanceof DebugLineInfo) {
+            DebugLineInfo lineInfo = (DebugLineInfo) debugRangeInfo;
+            if (lineInfo.getCaller() != null) {
+                /* this is a real inlined method not just a top level primary range */
+                setIsInlined();
+            }
+        } else if (debugRangeInfo instanceof DebugCodeInfo) {
+            /* this method has been seen in a primary range */
+            if (isInRange()) {
+                /* it has already been seen -- just check for consistency */
+                assert fileEntry == debugInfoBase.ensureFileEntry(debugRangeInfo);
+            } else {
+                /*
+                 * If the MethodEntry was added by traversing the DeclaredMethods of a Class its
+                 * fileEntry may point to the original source file, which will be wrong for
+                 * substituted methods. As a result when setting a MethodEntry as isInRange we also
+                 * make sure that its fileEntry reflects the file info associated with the
+                 * corresponding Range.
+                 */
+                setIsInRange();
+                fileEntry = debugInfoBase.ensureFileEntry(debugRangeInfo);
+            }
         }
-        isInRange = true;
-        /*
-         * If the MethodEntry was added by traversing the DeclaredMethods of a Class its fileEntry
-         * will point to the original source file, thus it will be wrong for substituted methods. As
-         * a result when setting a MethodEntry as isInRange we also make sure that its fileEntry
-         * reflects the file info associated with the corresponding Range.
-         */
-        fileEntry = debugInfoBase.ensureFileEntry(debugRangeInfo);
     }
 
     public String getSymbolName() {

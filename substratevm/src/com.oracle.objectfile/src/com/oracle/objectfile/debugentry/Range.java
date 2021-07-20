@@ -123,7 +123,7 @@ public class Range {
     }
 
     public boolean isDeoptTarget() {
-        return methodEntry.isDeoptTarget;
+        return methodEntry.isDeopt();
     }
 
     private String getExtendedMethodName(boolean includeClass, boolean includeParams, boolean includeReturnType) {
