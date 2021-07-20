@@ -1410,6 +1410,10 @@ public final class Meta implements ContextAccess {
         public final Method InvalidBufferOffsetException_create_long_long;
         public final Method InvalidBufferOffsetException_create_long_long_Throwable;
 
+        public final ObjectKlass StopIterationException;
+        public final Method StopIterationException_create;
+        public final Method StopIterationException_create_Throwable;
+
         public final ObjectKlass ForeignException;
         public final ObjectKlass ExceptionType;
         public final Field ExceptionType_EXIT;
@@ -1454,6 +1458,10 @@ public final class Meta implements ContextAccess {
             InvalidBufferOffsetException = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_InvalidBufferOffsetException);
             InvalidBufferOffsetException_create_long_long = InvalidBufferOffsetException.requireDeclaredMethod(Name.create, Signature.InvalidBufferOffsetException_long_long);
             InvalidBufferOffsetException_create_long_long_Throwable = InvalidBufferOffsetException.requireDeclaredMethod(Name.create, Signature.InvalidBufferOffsetException_long_long_Throwable);
+
+            StopIterationException = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_StopIterationException);
+            StopIterationException_create = StopIterationException.requireDeclaredMethod(Name.create, Signature.StopIterationException);
+            StopIterationException_create_Throwable = StopIterationException.requireDeclaredMethod(Name.create, Signature.StopIterationException_Throwable);
 
             ForeignException = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_ForeignException);
             ExceptionType = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_ExceptionType);
