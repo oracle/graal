@@ -7,15 +7,16 @@ permalink: /getting-started/installation-linux/
 
 Follow these steps to install Oracle GraalVM Enterprise Edition on the Linux operating system:
 
-1. Navigate to [Oracle GraalVM Downloads](https://www.oracle.com/downloads/graalvm-downloads.html?selected_tab=21). Depending on the workload, select  **Oracle GraalVM Enterprise Edition based on JDK8 for Linux** or **Oracle GraalVM Enterprise Edition based on JDK11 for Linux**,
-2. Click on the **Oracle GraalVM Enterprise Edition Core** download link. Before you download a file, you must accept the [Oracle License Agreement](https://www.oracle.com/downloads/licenses/graalvm-otn-license.html) in the popup window.
-3. When the download button becomes active, press it to start downloading **graalvm-ee-java<version>-linux-amd64-<version>.tar.gz**.
-4. Change the directory to the location where you want to install GraalVM Enterprise, then move the _.tar.gz_ archive to it.
-5. Unzip the archive:
+1. Navigate to [Oracle GraalVM Downloads](https://www.oracle.com/downloads/graalvm-downloads.html?selected_tab=21).
+2. Select the preferable GraalVM Enterprise version in the Release Version dropdown, **8**, **11**, or **16** for the Java version, **Linux** for the operating system, and **amd64** for the architecture.
+3. Click on the **GraalVM Enterprise Core** download link. Before you download a file, you must accept the [Oracle License Agreement](https://www.oracle.com/downloads/licenses/graalvm-otn-license.html) in the popup window.
+4. When the download button becomes active, press it to start downloading **graalvm-ee-java<version>-linux-amd64-<version>.tar.gz**.
+5. Change the directory to the location where you want to install GraalVM Enterprise, then move the _.tar.gz_ archive to it.
+6. Unzip the archive:
  ```shell
  tar -xzf graalvm-ee-java<version>-linux-amd64-<version>.tar.gz
  ```
-6. There can be multiple JDKs installed on the machine. The next step is to configure the runtime environment:
+7. There can be multiple JDKs installed on the machine. The next step is to configure the runtime environment:
   - Point the `PATH` environment variable to the GraalVM Enterprise `bin` directory:
   ```shell
   export PATH=/path/to/<graalvm>/bin:$PATH
@@ -24,7 +25,8 @@ Follow these steps to install Oracle GraalVM Enterprise Edition on the Linux ope
   ```shell
   export JAVA_HOME=/path/to/<graalvm>
   ```
-7. To check whether the installation was successful, run the `java -version` command.
+8. To check whether the installation was successful, run the `java -version` command.
+
 Optionally, you can specify GraalVM Enterprise as the default JRE or JDK installation in your Java IDE.
 
 ## Supported Functionalities
@@ -40,7 +42,7 @@ Tools/Utilities:
 Runtimes:
 * [Node.js](/reference-manual/js/) -- Node.js 14.16.1 compatible
 * [Python](/reference-manual/python/) -- Python 3.8.5 compatible
-* [Ruby](/reference-manual/ruby/) -- Ruby 2.7.2 compatible
+* [Ruby](/reference-manual/ruby/) -- Ruby 2.7.3 compatible
 * [R](/reference-manual/r/) -- GNU R 4.0.3 compatible
 * [Wasm](/reference-manual/wasm/) -- WebAssembly (Wasm)
 ​

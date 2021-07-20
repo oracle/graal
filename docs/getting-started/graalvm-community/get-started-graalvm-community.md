@@ -42,15 +42,14 @@ GraalVM's `/bin` directory is similar to that of a standard JDK, but includes a 
 Check the versions of the runtimes provided by default:
 ```shell
 java -version
-openjdk version "11.0.11" 2021-04-20
-OpenJDK Runtime Environment GraalVM CE 21.1.0 (build 11.0.11+5-jvmci-21.1-b03)
-OpenJDK 64-Bit Server VM GraalVM CE 21.1.0 (build 11.0.11+5-jvmci-21.1-b03, mixed mode, sharing)
-
+openjdk version "11.0.12" 2021-07-20
+OpenJDK Runtime Environment GraalVM CE 21.2.0 (build 11.0.12+6-jvmci-21.2-b06)
+OpenJDK 64-Bit Server VM GraalVM CE 21.2.0 (build 11.0.12+6-jvmci-21.2-b06, mixed mode, sharing)
 js -version
-GraalVM JavaScript (GraalVM CE Native 21.1.0)
+GraalVM JavaScript (GraalVM CE Native 21.2.0)
 
 lli --version
-LLVM 10.0.0 (GraalVM CE Native 21.1.0)
+LLVM 10.0.0 (GraalVM CE Native 21.2.0)
 ```
 
 Further below you will find information on how to add other optionally available GraalVM runtimes including Node.js, Ruby, R, Python, and WebAssembly.

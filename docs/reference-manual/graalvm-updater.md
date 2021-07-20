@@ -38,8 +38,8 @@ Tools/Utilities:
 Runtimes:
 * [Node.js](/reference-manual/js/) -- Node.js 14.16.1 compatible
 * [Python](/python/README.md) -- Python 3.8.5-compatible
-* [Ruby](/ruby/README.md) -- Ruby 2.7.2-compatible
-* [R](/r/README.md) -- GNU R 3.6.1-compatible
+* [Ruby](/ruby/README.md) -- Ruby 2.7.3-compatible
+* [R](/r/README.md) -- GNU R 4.0.3-compatible
 * [Wasm](/wasm/README.md) -- WebAssembly (Wasm)
 
 GraalVM Updater verifies whether or not the version of a component is appropriate for the current GraalVM installation.
