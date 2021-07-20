@@ -131,27 +131,43 @@ class CPUSamplerCLI extends ProfilerCLI {
 
     static void handleOutput(TruffleInstrument.Env env, CPUSampler sampler) {
         try (PrintStream out = chooseOutputStream(env, OUTPUT_FILE)) {
-            if (sampler.hasStackOverflowed()) {
-                out.println("-------------------------------------------------------------------------------- ");
-                out.println("ERROR: Shadow stack has overflowed its capacity of " + env.getOptions().get(STACK_LIMIT) + " during execution!");
-                out.println("The gathered data is incomplete and incorrect!");
-                out.println("Use --" + CPUSamplerInstrument.ID + ".StackLimit=<" + STACK_LIMIT.getType().getName() + "> to set stack capacity.");
-                out.println("-------------------------------------------------------------------------------- ");
-                return;
-            }
             Boolean summariseThreads = env.getOptions().get(SUMMARISE_THREADS);
             Integer minSamples = env.getOptions().get(MIN_SAMPLES);
             switch (env.getOptions().get(OUTPUT)) {
                 case HISTOGRAM:
+                    printWarnings(sampler, out);
                     printSamplingHistogram(out, sampler, summariseThreads, minSamples);
                     break;
                 case CALLTREE:
+                    printWarnings(sampler, out);
                     printSamplingCallTree(out, sampler, summariseThreads, minSamples);
                     break;
                 case JSON:
                     printSamplingJson(out, sampler);
             }
         }
+    }
+
+    private static void printWarnings(CPUSampler sampler, PrintStream out) {
+        if (sampler.hasStackOverflowed()) {
+            printDiv(out);
+            out.println("Warning: Shadow stack has overflowed its capacity of " + sampler.getStackLimit() + " during execution!");
+            out.println("The gathered data is incomplete or incorrect!");
+            out.println("Use --" + CPUSamplerInstrument.ID + ".StackLimit=<" + STACK_LIMIT.getType().getName() + "> to set stack capacity.");
+            printDiv(out);
+        }
+        if (sampler.getSampleDuration().getAverage() > 0.2 * sampler.getPeriod()) {
+            printDiv(out);
+            out.println("Warning: Average sample duration took over 20% of the sampling period.");
+            out.println("The gathered data is incomplete or incorrect!");
+            out.println("Use --" + CPUSamplerInstrument.ID + ".StackLimit=<" + STACK_LIMIT.getType().getName() + "> to reduce the number of frames sampled,");
+            out.println("or use --" + CPUSamplerInstrument.ID + ".Period=<" + SAMPLE_PERIOD.getType().getName() + "> to increase the sampling period.");
+            printDiv(out);
+        }
+    }
+
+    private static void printDiv(PrintStream out) {
+        out.println("-------------------------------------------------------------------------------- ");
     }
 
     private static void printSamplingJson(PrintStream out, CPUSampler sampler) {
@@ -161,6 +177,7 @@ class CPUSamplerCLI extends ProfilerCLI {
         output.put("sample_count", sampler.getSampleCount());
         output.put("period", sampler.getPeriod());
         output.put("gathered_hit_times", sampler.isGatherSelfHitTimes());
+        output.put("average_sample_duration", sampler.getSampleDuration().getAverage());
         JSONArray profile = new JSONArray();
         Map<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> threadToNodesMap = sampler.getThreadToNodesMap();
         for (Map.Entry<Thread, Collection<ProfilerNode<CPUSampler.Payload>>> entry : threadToNodesMap.entrySet()) {
