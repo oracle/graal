@@ -398,14 +398,18 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     {
         int offset;
         try {
-            offset = getFieldOffset("JavaThread::_jvmci_reserved0", Integer.class, "jlong", -1, JVMCI ? jvmciGE(JVMCI_21_1_b02) : JDK >= 17);
+            offset = getFieldOffset("JavaThread::_jvmci_reserved0", Integer.class, "jlong", -1, hasJVMCIReservedFields());
         } catch (jdk.vm.ci.common.JVMCIError t) {
             // at some point the field was migrated to jlong
-            offset = getFieldOffset("JavaThread::_jvmci_reserved0", Integer.class, "intptr_t*", -1, JVMCI ? jvmciGE(JVMCI_21_1_b02) : JDK >= 17);
+            offset = getFieldOffset("JavaThread::_jvmci_reserved0", Integer.class, "intptr_t*", -1, hasJVMCIReservedFields());
         }
         jvmciReserved0Offset = offset;
     }
-    public final int jvmciReservedReference0Offset = getFieldOffset("JavaThread::_jvmci_reserved_oop0", Integer.class, "oop", -1, JVMCI ? jvmciGE(JVMCI_21_1_b02) : JDK >= 17);
+    public final int jvmciReservedReference0Offset = getFieldOffset("JavaThread::_jvmci_reserved_oop0", Integer.class, "oop", -1, hasJVMCIReservedFields());
+
+    private static boolean hasJVMCIReservedFields() {
+        return JVMCI ? jvmciGE(JVMCI_21_1_b02) : JDK >= 17 || (IS_OPENJDK && JDK == 11 && JDK_UPDATE >= 13);
+    }
 
     public final int doingUnsafeAccessOffset = getFieldOffset("JavaThread::_doing_unsafe_access", Integer.class, "bool", Integer.MAX_VALUE, JVMCI || JDK >= 14);
     // @formatter:off
@@ -800,7 +804,8 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long newMultiArrayOrNullAddress = getAddress("JVMCIRuntime::new_multi_array_or_null", 0L, JVMCI || JDK >= 12 || (!IS_OPENJDK && JDK == 11 && JDK_UPDATE >= 7));
     public final long dynamicNewInstanceOrNullAddress = getAddress("JVMCIRuntime::dynamic_new_instance_or_null", 0L, JVMCI || JDK >= 12 || (!IS_OPENJDK && JDK == 11 && JDK_UPDATE >= 7));
 
-    public final long invokeJavaMethodAddress = getAddress("JVMCIRuntime::invoke_static_method_one_arg", 0L, JVMCI ? jvmciGE(JVMCI_21_1_b02) : JDK >= 17);
+    public final long invokeJavaMethodAddress = getAddress("JVMCIRuntime::invoke_static_method_one_arg", 0L,
+                    JVMCI ? jvmciGE(JVMCI_21_1_b02) : (JDK >= 17 || (IS_OPENJDK && JDK == 11 && JDK_UPDATE >= 13)));
 
     public boolean areNullAllocationStubsAvailable() {
         return newInstanceOrNullAddress != 0L;
