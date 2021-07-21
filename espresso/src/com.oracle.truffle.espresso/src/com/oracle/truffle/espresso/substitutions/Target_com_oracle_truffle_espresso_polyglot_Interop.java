@@ -40,6 +40,7 @@ import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
 import com.oracle.truffle.api.interop.StopIterationException;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownKeyException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -3315,12 +3316,12 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         boolean doCached(
                         @JavaType(Object.class) StaticObject receiver,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @CachedLibrary(limit = "LIMIT") InteropLibrary iteratorInterop,
                         @CachedContext(EspressoLanguage.class) ContextReference<EspressoContext> contextRef,
                         @Cached BranchProfile exceptionProfile) {
             try {
                 return interop.hasIteratorNextElement(unwrap(receiver));
             } catch (InteropException e) {
+                exceptionProfile.enter();
                 throw throwInteropException(e, contextRef.get().getMeta());
             }
         }
@@ -3982,8 +3983,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
             int argsLength = Math.toIntExact(getArraySize.execute(arguments));
             Object[] hostArgs = new Object[argsLength];
             for (int i = 0; i < argsLength; ++i) {
-                Object elem = readArrayElement.execute(arguments, i);
-                hostArgs[i] = unwrapArguments ? unwrap((StaticObject) elem) : elem;
+                StaticObject elem = readArrayElement.execute(arguments, i);
+                hostArgs[i] = unwrapArguments ? unwrap(elem) : elem;
             }
             return hostArgs;
         }
