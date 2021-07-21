@@ -128,23 +128,16 @@ public final class GCImpl implements GC {
     }
 
     public void maybeCollectOnAllocation() {
-        boolean outOfMemory;
+        boolean outOfMemory = false;
         if (hasNeverCollectPolicy()) {
-            outOfMemory = HeapImpl.getHeapImpl().getAccounting().getEdenUsedBytes().aboveThan(getPolicy().getMaximumHeapSize());
-        } else {
-            outOfMemory = maybeCollectOnAllocation(getPolicy().getMaximumYoungGenerationSize());
+            UnsignedWord edenUsed = HeapImpl.getHeapImpl().getAccounting().getEdenUsedBytes();
+            outOfMemory = edenUsed.aboveThan(GCImpl.getPolicy().getMaximumHeapSize());
+        } else if (getPolicy().shouldCollectOnAllocation()) {
+            outOfMemory = collectWithoutAllocating(GenScavengeGCCause.OnAllocation, false);
         }
         if (outOfMemory) {
             throw OUT_OF_MEMORY_ERROR;
         }
-    }
-
-    @Uninterruptible(reason = "Avoid races with other threads that also try to trigger a GC")
-    private boolean maybeCollectOnAllocation(UnsignedWord maxYoungSize) {
-        if (HeapImpl.getHeapImpl().getAccounting().getYoungUsedBytes().aboveOrEqual(maxYoungSize)) {
-            return collectWithoutAllocating(GenScavengeGCCause.OnAllocation, false);
-        }
-        return false;
     }
 
     @SuppressWarnings("static-method")
@@ -201,7 +194,7 @@ public final class GCImpl implements GC {
         ThreadLocalAllocation.disableAndFlushForAllThreads();
 
         printGCBefore(cause.getName());
-        boolean outOfMemory = collectImpl(forceFullGC);
+        boolean outOfMemory = collectImpl(cause, forceFullGC);
         HeapImpl.getHeapImpl().getAccounting().setEdenAndYoungGenBytes(WordFactory.unsigned(0), accounting.getYoungChunkBytesAfter());
         printGCAfter(cause.getName());
 
@@ -211,7 +204,7 @@ public final class GCImpl implements GC {
         return outOfMemory;
     }
 
-    private boolean collectImpl(boolean forceFullGC) {
+    private boolean collectImpl(GCCause cause, boolean forceFullGC) {
         boolean outOfMemory;
 
         precondition();
@@ -219,12 +212,12 @@ public final class GCImpl implements GC {
 
         NoAllocationVerifier nav = noAllocationVerifier.open();
         try {
-            outOfMemory = doCollectImpl(forceFullGC);
+            outOfMemory = doCollectImpl(cause, forceFullGC);
             if (outOfMemory) {
                 // Avoid running out of memory with a full GC that reclaims softly reachable objects
                 ReferenceObjectProcessing.setSoftReferencesAreWeak(true);
                 try {
-                    outOfMemory = doCollectImpl(true);
+                    outOfMemory = doCollectImpl(cause, true);
                 } finally {
                     ReferenceObjectProcessing.setSoftReferencesAreWeak(false);
                 }
@@ -238,14 +231,26 @@ public final class GCImpl implements GC {
         return outOfMemory;
     }
 
-    private boolean doCollectImpl(boolean forceFullGC) {
+    private boolean doCollectImpl(GCCause cause, boolean forceFullGC) {
         CommittedMemoryProvider.get().beforeGarbageCollection();
 
+        completeCollection = forceFullGC || policy.shouldCollectCompletely(false);
+        boolean outOfMemory = doCollectOnce(cause);
+        if (!completeCollection && (outOfMemory || policy.shouldCollectCompletely(true))) {
+            completeCollection = true;
+            outOfMemory = doCollectOnce(cause);
+        }
+
+        CommittedMemoryProvider.get().afterGarbageCollection(completeCollection);
+        return outOfMemory;
+    }
+
+    private boolean doCollectOnce(GCCause cause) {
         accounting.beforeCollection();
+        policy.onCollectionBegin(completeCollection);
 
         Timer collectionTimer = timers.collection.open();
         try {
-            completeCollection = forceFullGC || policy.collectCompletely();
             if (completeCollection) {
                 if (HeapParameters.Options.CollectYoungGenerationSeparately.getValue()) {
                     scavenge(true);
@@ -257,16 +262,15 @@ public final class GCImpl implements GC {
         } finally {
             collectionTimer.close();
         }
-        CommittedMemoryProvider.get().afterGarbageCollection(completeCollection);
 
-        accounting.afterCollection(completeCollection, timers.collection);
-        UnsignedWord maxBytes = getPolicy().getMaximumHeapSize();
+        accounting.afterCollection(completeCollection, collectionTimer);
+        policy.onCollectionEnd(completeCollection, cause);
+
         UnsignedWord usedBytes = getChunkBytes();
-        boolean outOfMemory = usedBytes.aboveThan(maxBytes);
+        UnsignedWord freeBytes = policy.getCurrentHeapCapacity().subtract(usedBytes);
+        ReferenceObjectProcessing.afterCollection(freeBytes);
 
-        ReferenceObjectProcessing.afterCollection(usedBytes, maxBytes);
-
-        return outOfMemory;
+        return usedBytes.aboveThan(policy.getMaximumHeapSize()); // out of memory?
     }
 
     private void verifyBeforeGC() {
@@ -329,7 +333,6 @@ public final class GCImpl implements GC {
             verboseGCLog.string("[Heap policy parameters: ").newline();
             verboseGCLog.string("  YoungGenerationSize: ").unsigned(getPolicy().getMaximumYoungGenerationSize()).newline();
             verboseGCLog.string("      MaximumHeapSize: ").unsigned(getPolicy().getMaximumHeapSize()).newline();
-            verboseGCLog.string("      MinimumHeapSize: ").unsigned(getPolicy().getMinimumHeapSize()).newline();
             verboseGCLog.string("     AlignedChunkSize: ").unsigned(HeapParameters.getAlignedHeapChunkSize()).newline();
             verboseGCLog.string("  LargeArrayThreshold: ").unsigned(HeapParameters.getLargeArrayThreshold()).string("]").newline();
             if (HeapOptions.PrintHeapShape.getValue()) {
@@ -948,7 +951,7 @@ public final class GCImpl implements GC {
         Space originalSpace = HeapChunk.getSpace(originalChunk);
 
         Object result;
-        if (originalSpace.getAge() < HeapParameters.getMaxSurvivorSpaces()) {
+        if (originalSpace.getNextAgeForPromotion() < policy.getTenuringAge()) {
             if (isAligned) {
                 result = heap.getYoungGeneration().promoteAlignedObject(original, (AlignedHeader) originalChunk, originalSpace);
             } else {
@@ -959,6 +962,9 @@ public final class GCImpl implements GC {
                 result = heap.getOldGeneration().promoteAlignedObject(original, (AlignedHeader) originalChunk, originalSpace);
             } else {
                 result = heap.getOldGeneration().promoteUnalignedObject(original, (UnalignedHeader) originalChunk, originalSpace);
+            }
+            if (result != original) {
+                accounting.onObjectPromoted(result);
             }
         }
 
@@ -974,7 +980,7 @@ public final class GCImpl implements GC {
         return UnalignedHeapChunk.getEnclosingChunk(obj);
     }
 
-    private static void promotePinnedObject(PinnedObjectImpl pinned) {
+    private void promotePinnedObject(PinnedObjectImpl pinned) {
         HeapImpl heap = HeapImpl.getHeapImpl();
         Object referent = pinned.getObject();
         if (referent != null && !heap.isInImageHeap(referent)) {
@@ -982,7 +988,7 @@ public final class GCImpl implements GC {
             Header<?> originalChunk = getChunk(referent, isAligned);
             Space originalSpace = HeapChunk.getSpace(originalChunk);
 
-            if (originalSpace.getAge() < HeapParameters.getMaxSurvivorSpaces()) {
+            if (originalSpace.getNextAgeForPromotion() < policy.getTenuringAge()) {
                 heap.getYoungGeneration().promoteChunk(originalChunk, isAligned, originalSpace);
             } else {
                 heap.getOldGeneration().promoteChunk(originalChunk, isAligned, originalSpace);
@@ -1246,8 +1252,7 @@ public final class GCImpl implements GC {
         Log log = Log.log();
         final String prefix = "PrintGCSummary: ";
 
-        log.string(prefix).string("YoungGenerationSize: ").unsigned(getPolicy().getMaximumYoungGenerationSize()).newline();
-        log.string(prefix).string("MinimumHeapSize: ").unsigned(getPolicy().getMinimumHeapSize()).newline();
+        log.string(prefix).string("MaximumYoungGenerationSize: ").unsigned(getPolicy().getMaximumYoungGenerationSize()).newline();
         log.string(prefix).string("MaximumHeapSize: ").unsigned(getPolicy().getMaximumHeapSize()).newline();
         log.string(prefix).string("AlignedChunkSize: ").unsigned(HeapParameters.getAlignedHeapChunkSize()).newline();
 

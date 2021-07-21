@@ -36,7 +36,6 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.util.UserError;
@@ -50,9 +49,6 @@ public final class HeapParameters {
 
         @Option(help = "The maximum size of the young generation as a percentage of the maximum heap size") //
         public static final RuntimeOptionKey<Integer> MaximumYoungGenerationSizePercent = new RuntimeOptionKey<>(10);
-
-        @Option(help = "Bytes that can be allocated before (re-)querying the physical memory size") //
-        public static final HostedOptionKey<Long> AllocationBeforePhysicalMemorySize = new HostedOptionKey<>(1L * 1024L * 1024L);
 
         @Option(help = "The size of an aligned chunk.") //
         public static final HostedOptionKey<Long> AlignedHeapChunkSize = new HostedOptionKey<Long>(1L * 1024L * 1024L) {
@@ -83,7 +79,7 @@ public final class HeapParameters {
         public static final RuntimeOptionKey<Boolean> TraceHeapChunks = new RuntimeOptionKey<>(false);
 
         @Option(help = "Maximum number of survivor spaces.") //
-        public static final HostedOptionKey<Integer> MaxSurvivorSpaces = new HostedOptionKey<>(0);
+        public static final HostedOptionKey<Integer> MaxSurvivorSpaces = new HostedOptionKey<>(15);
 
         @Option(help = "Determines if a full GC collects the young generation separately or together with the old generation.") //
         public static final RuntimeOptionKey<Boolean> CollectYoungGenerationSeparately = new RuntimeOptionKey<>(false);
@@ -196,22 +192,6 @@ public final class HeapParameters {
         /** The size, in bytes, of what qualifies as a "large" array. */
         public static long getUnalignedObjectSize() {
             return HeapParameters.getLargeArrayThreshold().rawValue();
-        }
-    }
-
-    /*
-     * Periodic tasks
-     */
-
-    private static UnsignedWord getAllocationBeforePhysicalMemorySize() {
-        return WordFactory.unsigned(Options.AllocationBeforePhysicalMemorySize.getValue());
-    }
-
-    /** Sample the physical memory size, before the first collection but after some allocation. */
-    static void samplePhysicalMemorySize() {
-        if (HeapImpl.getHeapImpl().getGCImpl().getCollectionEpoch().equal(WordFactory.zero()) &&
-                        HeapImpl.getHeapImpl().getAccounting().getYoungUsedBytes().aboveThan(getAllocationBeforePhysicalMemorySize())) {
-            PhysicalMemory.tryInitialize();
         }
     }
 }

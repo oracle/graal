@@ -96,6 +96,7 @@ public final class UnsignedUtils {
      * @param y Another Unsigned.
      * @return The whichever Unsigned is larger.
      */
+    @Uninterruptible(reason = "Used in uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord max(UnsignedWord x, UnsignedWord y) {
         return (x.aboveOrEqual(y)) ? x : y;
     }
@@ -108,5 +109,55 @@ public final class UnsignedUtils {
         long l = w.rawValue();
         assert l >= 0 && l == (int) l;
         return (int) l;
+    }
+
+    @Uninterruptible(reason = "Used in uninterruptible code.", mayBeInlined = true)
+    public static UnsignedWord clamp(UnsignedWord value, UnsignedWord min, UnsignedWord max) {
+        return min(max(value, min), max);
+    }
+
+    public static float toFloat(UnsignedWord u) {
+        long l = u.rawValue();
+        if (l >= 0) {
+            return l;
+        }
+        /*
+         * The shift does not lose precision because the float's mantissa has fewer bits than long
+         * anyway. The bitwise and of the LSB rounds to nearest as required by JLS 5.1.2.
+         */
+        return ((l >>> 1) | (l & 1)) * 2.0f;
+    }
+
+    public static double toDouble(UnsignedWord u) {
+        long l = u.rawValue();
+        if (l >= 0) {
+            return l;
+        }
+        /*
+         * The shift does not lose precision because the double's mantissa has fewer bits than long
+         * anyway. The bitwise and of the LSB rounds to nearest as required by JLS 5.1.2.
+         */
+        return ((l >>> 1) | (l & 1)) * 2.0;
+    }
+
+    public static UnsignedWord fromDouble(double d) { // follows JLS 5.1.3
+        long l = (long) d;
+        if (Double.isNaN(d) || l <= 0) { // includes -inf
+            return WordFactory.zero();
+        }
+        if (l < Long.MAX_VALUE) {
+            return WordFactory.unsigned(l);
+        }
+        /*
+         * This division does not lose precision with these large numbers because the double's
+         * mantissa has fewer bits than long does. For the same reason, it also doesn't matter that
+         * we could not distinguish UnsignedUtils.MAX_VALUE - 1 from +inf or "too large to fit" --
+         * it simply does not have an exact representation as a double.
+         */
+        l = (long) (d / 2.0);
+        if (l == Long.MAX_VALUE) { // too large or +inf
+            return UnsignedUtils.MAX_VALUE;
+        }
+        return WordFactory.unsigned(l).shiftLeft(1);
     }
 }

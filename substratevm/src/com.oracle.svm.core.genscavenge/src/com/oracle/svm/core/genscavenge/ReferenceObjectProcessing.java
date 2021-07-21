@@ -177,10 +177,10 @@ final class ReferenceObjectProcessing {
         return pendingHead;
     }
 
-    static void afterCollection(UnsignedWord usedBytes, UnsignedWord maxBytes) {
+    static void afterCollection(UnsignedWord freeBytes) {
         assert rememberedRefsList == null;
-        UnsignedWord unusedMbytes = maxBytes.subtract(usedBytes).unsignedDivide(1024 * 1024 /* MB */);
-        maxSoftRefAccessIntervalMs = unusedMbytes.multiply(HeapOptions.SoftRefLRUPolicyMSPerMB.getValue());
+        UnsignedWord unused = freeBytes.unsignedDivide(1024 * 1024 /* MB */);
+        maxSoftRefAccessIntervalMs = unused.multiply(HeapOptions.SoftRefLRUPolicyMSPerMB.getValue());
         ReferenceInternals.updateSoftReferenceClock();
         if (initialSoftRefClock == 0) {
             initialSoftRefClock = ReferenceInternals.getSoftReferenceClock();

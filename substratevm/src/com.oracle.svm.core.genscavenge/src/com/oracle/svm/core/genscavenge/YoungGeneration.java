@@ -190,7 +190,7 @@ public final class YoungGeneration extends Generation {
         return getEden().getChunkBytes().add(getSurvivorChunkBytes());
     }
 
-    private UnsignedWord getSurvivorChunkBytes() {
+    UnsignedWord getSurvivorChunkBytes() {
         UnsignedWord chunkBytes = WordFactory.zero();
         for (int i = 0; i < maxSurvivorSpaces; i++) {
             chunkBytes = chunkBytes.add(this.survivorFromSpaces[i].getChunkBytes());

@@ -29,6 +29,8 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.annotate.AlwaysInline;
+import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
 
 /**
@@ -45,6 +47,7 @@ public final class GCAccounting {
     private long completeCollectionTotalNanos = 0;
     private UnsignedWord collectedTotalChunkBytes = WordFactory.zero();
     private UnsignedWord allocatedChunkBytes = WordFactory.zero();
+    private UnsignedWord promotedObjectBytes = WordFactory.zero();
 
     /* Before and after measures. */
     private UnsignedWord youngChunkBytesBefore = WordFactory.zero();
@@ -105,6 +108,10 @@ public final class GCAccounting {
         return youngChunkBytesAfter;
     }
 
+    UnsignedWord getPromotedObjectBytes() {
+        return promotedObjectBytes;
+    }
+
     void beforeCollection() {
         Log trace = Log.noopLog().string("[GCImpl.Accounting.beforeCollection:").newline();
         /* Gather some space statistics. */
@@ -122,9 +129,17 @@ public final class GCAccounting {
             oldObjectBytesBefore = oldSpace.computeObjectBytes();
             allocatedObjectBytes = allocatedObjectBytes.add(edenObjectBytesBefore);
         }
+        promotedObjectBytes = WordFactory.zero();
         trace.string("  youngChunkBytesBefore: ").unsigned(youngChunkBytesBefore)
                         .string("  oldChunkBytesBefore: ").unsigned(oldChunkBytesBefore);
         trace.string("]").newline();
+    }
+
+    /** Called after an object has been promoted from the young generation to the old generation. */
+    @AlwaysInline("GC performance")
+    void onObjectPromoted(Object result) {
+        UnsignedWord size = LayoutEncoding.getSizeFromObject(result);
+        promotedObjectBytes = promotedObjectBytes.add(size);
     }
 
     void afterCollection(boolean completeCollection, Timer collectionTimer) {

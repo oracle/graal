@@ -41,14 +41,22 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.util.VMError;
 
+/**
+ * Garbage collection policies. These are referenced by fully-qualified class names and should not
+ * be renamed or moved.
+ */
 public final class CollectionPolicy {
     public static class Options {
         @Option(help = "The initial garbage collection policy, as a fully-qualified class name (might require quotes or escaping).")//
-        public static final HostedOptionKey<String> InitialCollectionPolicy = new HostedOptionKey<>(BySpaceAndTime.class.getName());
+        public static final HostedOptionKey<String> InitialCollectionPolicy = new HostedOptionKey<>(Adaptive.class.getName());
 
         @Option(help = "Percentage of total collection time that should be spent on young generation collections.")//
         public static final RuntimeOptionKey<Integer> PercentTimeInIncrementalCollection = new RuntimeOptionKey<>(50);
+
+        @Option(help = "Bytes that can be allocated before (re-)querying the physical memory size") //
+        public static final HostedOptionKey<Long> AllocationBeforePhysicalMemorySize = new HostedOptionKey<>(1L * 1024L * 1024L);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -84,6 +92,12 @@ public final class CollectionPolicy {
     private CollectionPolicy() {
     }
 
+    /**
+     * @see AdaptiveCollectionPolicy subclassed to make it available the same way as other policies.
+     */
+    public static final class Adaptive extends AdaptiveCollectionPolicy {
+    }
+
     abstract static class BasicPolicy extends AbstractCollectionPolicy {
         protected static UnsignedWord m(long bytes) {
             assert 0 <= bytes;
@@ -91,7 +105,34 @@ public final class CollectionPolicy {
         }
 
         @Override
-        public UnsignedWord getMaximumHeapSize() {
+        public boolean shouldCollectOnAllocation() {
+            UnsignedWord youngUsed = HeapImpl.getHeapImpl().getAccounting().getYoungUsedBytes();
+            return youngUsed.aboveOrEqual(getMaximumYoungGenerationSize());
+        }
+
+        @Override
+        public UnsignedWord getCurrentHeapCapacity() {
+            return getMaximumHeapSize();
+        }
+
+        @Override
+        public void ensureSizeParametersInitialized() {
+            // Size parameters are recomputed from current values whenever they are queried
+        }
+
+        @Override
+        public void updateSizeParameters() {
+            // Sample the physical memory size, before the first GC but after some allocation.
+            UnsignedWord allocationBeforeUpdate = WordFactory.unsigned(Options.AllocationBeforePhysicalMemorySize.getValue());
+            if (GCImpl.getGCImpl().getCollectionEpoch().equal(WordFactory.zero()) &&
+                            HeapImpl.getHeapImpl().getAccounting().getYoungUsedBytes().aboveOrEqual(allocationBeforeUpdate)) {
+                PhysicalMemory.tryInitialize();
+            }
+            // Size parameters are recomputed from current values whenever they are queried
+        }
+
+        @Override
+        public final UnsignedWord getMaximumHeapSize() {
             long runtimeValue = SubstrateGCOptions.MaxHeapSize.getValue();
             if (runtimeValue != 0L) {
                 return WordFactory.unsigned(runtimeValue);
@@ -115,7 +156,7 @@ public final class CollectionPolicy {
         }
 
         @Override
-        public UnsignedWord getMaximumYoungGenerationSize() {
+        public final UnsignedWord getMaximumYoungGenerationSize() {
             long runtimeValue = SubstrateGCOptions.MaxNewSize.getValue();
             if (runtimeValue != 0L) {
                 return WordFactory.unsigned(runtimeValue);
@@ -131,8 +172,7 @@ public final class CollectionPolicy {
             return youngSize;
         }
 
-        @Override
-        public UnsignedWord getMinimumHeapSize() {
+        protected final UnsignedWord getMinimumHeapSize() {
             long runtimeValue = SubstrateGCOptions.MinHeapSize.getValue();
             if (runtimeValue != 0L) {
                 /* If `-Xms` has been parsed from the command line, use that value. */
@@ -150,17 +190,27 @@ public final class CollectionPolicy {
         }
 
         @Override
-        public UnsignedWord getMaximumFreeReservedSize() {
+        public UnsignedWord getSurvivorSpacesCapacity() {
+            return WordFactory.zero();
+        }
+
+        @Override
+        public final UnsignedWord getMaximumFreeReservedSize() {
             UnsignedWord usedBytes = GCImpl.getChunkBytes();
             UnsignedWord minHeap = getMinimumHeapSize();
             return minHeap.aboveThan(usedBytes) ? minHeap.subtract(usedBytes) : WordFactory.zero();
+        }
+
+        @Override
+        public int getTenuringAge() {
+            return 1;
         }
     }
 
     public static final class OnlyIncrementally extends BasicPolicy {
 
         @Override
-        public boolean collectCompletely() {
+        public boolean shouldCollectCompletely(boolean followingIncrementalCollection) {
             return false;
         }
 
@@ -173,7 +223,8 @@ public final class CollectionPolicy {
     public static final class OnlyCompletely extends BasicPolicy {
 
         @Override
-        public boolean collectCompletely() {
+        public boolean shouldCollectCompletely(boolean followingIncrementalCollection) {
+            assert !followingIncrementalCollection : "no incremental collections allowed";
             return true;
         }
 
@@ -186,8 +237,13 @@ public final class CollectionPolicy {
     public static final class NeverCollect extends BasicPolicy {
 
         @Override
-        public boolean collectCompletely() {
-            return false;
+        public boolean shouldCollectOnAllocation() {
+            throw VMError.shouldNotReachHere("Caller is supposed to be aware of never-collect policy");
+        }
+
+        @Override
+        public boolean shouldCollectCompletely(boolean followingIncrementalCollection) {
+            throw VMError.shouldNotReachHere("Collection must not be initiated in the first place");
         }
 
         @Override
@@ -203,7 +259,10 @@ public final class CollectionPolicy {
     public static final class BySpaceAndTime extends BasicPolicy {
 
         @Override
-        public boolean collectCompletely() {
+        public boolean shouldCollectCompletely(boolean followingIncrementalCollection) {
+            if (followingIncrementalCollection) {
+                return false;
+            }
             return estimateUsedHeapAtNextIncrementalCollection().aboveThan(getMaximumHeapSize()) ||
                             GCImpl.getChunkBytes().aboveThan(getMinimumHeapSize()) && enoughTimeSpentOnIncrementalGCs();
         }

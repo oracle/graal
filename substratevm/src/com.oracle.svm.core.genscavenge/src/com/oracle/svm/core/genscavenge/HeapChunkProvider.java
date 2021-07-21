@@ -147,6 +147,7 @@ final class HeapChunkProvider {
                 cur = next;
             }
         }
+        // TODO: release unused chunks if there's _more_ than space should be available
 
         freeAlignedChunkList(cur);
     }
