@@ -71,8 +71,8 @@ public final class Target_java_lang_Object {
     @Substitution(hasReceiver = true)
     @Throws(CloneNotSupportedException.class)
     public static @JavaType(Object.class) StaticObject clone(@JavaType(Object.class) StaticObject self,
-                    @InjectMeta Meta meta,
-                    @InjectProfile SubstitutionProfiler profiler) {
+                    @Inject Meta meta,
+                    @Inject SubstitutionProfiler profiler) {
         return VM.JVM_Clone(self, meta, profiler);
     }
 
@@ -80,22 +80,22 @@ public final class Target_java_lang_Object {
 
     @Substitution(hasReceiver = true)
     public static void wait(@JavaType(Object.class) StaticObject self, long time,
-                    @InjectMeta Meta meta,
-                    @InjectProfile SubstitutionProfiler profiler) {
+                    @Inject Meta meta,
+                    @Inject SubstitutionProfiler profiler) {
         meta.getVM().JVM_MonitorWait(self, time, meta, profiler);
     }
 
     @Substitution(hasReceiver = true)
     public static void notify(@JavaType(Object.class) StaticObject self,
-                    @InjectMeta Meta meta,
-                    @InjectProfile SubstitutionProfiler profiler) {
+                    @Inject Meta meta,
+                    @Inject SubstitutionProfiler profiler) {
         meta.getVM().JVM_MonitorNotify(self, profiler);
     }
 
     @Substitution(hasReceiver = true)
     public static void notifyAll(@JavaType(Object.class) StaticObject self,
-                    @InjectMeta Meta meta,
-                    @InjectProfile SubstitutionProfiler profiler) {
+                    @Inject Meta meta,
+                    @Inject SubstitutionProfiler profiler) {
         meta.getVM().JVM_MonitorNotifyAll(self, profiler);
     }
 }

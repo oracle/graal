@@ -99,7 +99,7 @@ import com.oracle.truffle.espresso.runtime.dispatch.EspressoInterop;
  * <li>Additionally, some substitutions may not be given a meta accessor as parameter, but may need
  * to get the meta from somewhere. Regular meta obtention can be done through
  * {@link EspressoContext#get(Node)}, but this is quite a slow access. As such, it is possible to
- * append the meta as an argument to the substitution, annotated with {@link InjectMeta} . Once
+ * append the meta as an argument to the substitution, annotated with {@link Inject} . Once
  * again, the processor will generate all that is needed to give the meta.
  * <p>
  * <p>

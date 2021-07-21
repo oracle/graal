@@ -46,7 +46,7 @@ public final class Target_java_lang_ref_Reference {
     @Substitution(hasReceiver = true, methodName = "<init>")
     public static void init(@JavaType(java.lang.ref.Reference.class) StaticObject self,
                     @JavaType(Object.class) StaticObject referent, @JavaType(ReferenceQueue.class) StaticObject queue,
-                    @InjectMeta Meta meta) {
+                    @Inject Meta meta) {
         // Guest referent field is ignored for weak/soft/final/phantom references.
         EspressoReference<StaticObject> ref = null;
         if (InterpreterToVM.instanceOf(self, meta.java_lang_ref_WeakReference)) {
@@ -77,7 +77,7 @@ public final class Target_java_lang_ref_Reference {
     @SuppressWarnings("rawtypes")
     @Substitution(hasReceiver = true)
     public static @JavaType(Object.class) StaticObject get(@JavaType(java.lang.ref.Reference.class) StaticObject self,
-                    @InjectMeta Meta meta) {
+                    @Inject Meta meta) {
         assert !InterpreterToVM.instanceOf(self, meta.java_lang_ref_PhantomReference) : "Cannot call Reference.get on PhantomReference";
         if (InterpreterToVM.instanceOf(self, meta.java_lang_ref_WeakReference) //
                         || InterpreterToVM.instanceOf(self, meta.java_lang_ref_SoftReference) //
@@ -98,7 +98,7 @@ public final class Target_java_lang_ref_Reference {
     @SuppressWarnings("rawtypes")
     @Substitution(hasReceiver = true)
     public static void clear(@JavaType(java.lang.ref.Reference.class) StaticObject self,
-                    @InjectMeta Meta meta) {
+                    @Inject Meta meta) {
         if (InterpreterToVM.instanceOf(self, meta.java_lang_ref_WeakReference) //
                         || InterpreterToVM.instanceOf(self, meta.java_lang_ref_SoftReference) //
                         || InterpreterToVM.instanceOf(self, meta.java_lang_ref_PhantomReference) //

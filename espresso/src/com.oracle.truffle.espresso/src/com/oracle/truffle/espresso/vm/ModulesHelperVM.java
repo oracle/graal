@@ -31,7 +31,6 @@ import com.oracle.truffle.espresso.impl.PackageTable;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
-import com.oracle.truffle.espresso.substitutions.InjectProfile;
 import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
 
 /**
@@ -112,7 +111,7 @@ public final class ModulesHelperVM {
         }
     }
 
-    public static void addModuleExportsToAllUnnamed(@JavaType(internalName = "Ljava/lang/Module") StaticObject from, String pkgName, @InjectProfile SubstitutionProfiler profiler,
+    public static void addModuleExportsToAllUnnamed(@JavaType(internalName = "Ljava/lang/Module") StaticObject from, String pkgName, SubstitutionProfiler profiler,
                     Meta meta) {
         ModuleTable.ModuleEntry fromModuleEntry = ModulesHelperVM.extractFromModuleEntry(from, meta, profiler);
         if (fromModuleEntry.isNamed()) { // No-op for unnamed module.

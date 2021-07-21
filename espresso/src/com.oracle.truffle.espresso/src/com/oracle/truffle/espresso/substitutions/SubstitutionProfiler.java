@@ -25,13 +25,26 @@ package com.oracle.truffle.espresso.substitutions;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 
 public class SubstitutionProfiler extends Node {
 
     @CompilationFinal //
     private long profiles = 0;
+
+    @CompilationFinal ContextReference<EspressoContext> contextRef;
+
+    protected final ContextReference<EspressoContext> getContextRef() {
+        if (contextRef == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            contextRef = lookupContextReference(EspressoLanguage.class);
+        }
+        return contextRef;
+    }
 
     /**
      * Profiles whether a branch was hit or not. Current implementation only allows 16 branches per
