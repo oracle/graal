@@ -58,8 +58,9 @@
 
 #define __thread __declspec(thread)
 
-#else
+#else // !_WIN32
 
+#include <stdint.h>
 #include <alloca.h>
 
 #endif
