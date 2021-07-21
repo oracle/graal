@@ -3376,6 +3376,560 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
 
     // endregion Iterator Messages
 
+    // region Hash(Dictionary) Messages
+
+    /**
+     * Returns {@code true} if the receiver may have hash entries. Therefore, at least one of
+     * {@link ReadHashValue}, {@link WriteHashEntry}, {@link RemoveHashEntry} must not throw
+     * {@link UnsupportedMessageException}. For example, the contents of a map data structure could
+     * be interpreted as hash elements. Invoking this message does not cause any observable
+     * side-effects. Returns {@code false} by default.
+     *
+     * @see GetHashEntriesIterator
+     * @see GetHashSize
+     * @see IsHashEntryReadable
+     * @see IsHashEntryWritable
+     * @see IsHashEntryInsertable
+     * @see IsHashEntryRemovable
+     * @see ReadHashValue
+     * @see ReadHashValueOrDefault
+     * @see WriteHashEntry
+     * @see RemoveHashEntry
+     * @since 21.1
+     */
+    @Substitution
+    abstract static class HasHashEntries extends InteropNode {
+        static final int LIMIT = 2;
+
+        abstract boolean execute(@JavaType(Object.class) StaticObject receiver);
+
+        @Specialization
+        boolean doCached(
+                        @JavaType(Object.class) StaticObject receiver,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
+            return interop.hasHashEntries(unwrap(receiver));
+        }
+    }
+
+    /**
+     * Returns the number of receiver entries.
+     *
+     * <p>
+     * Throws UnsupportedMessageException if and only if {@link HasHashEntries} returns
+     * {@code false}.
+     * 
+     * @since 21.1
+     */
+    @Substitution
+    @Throws(others = @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnsupportedMessageException;"))
+    abstract static class GetHashSize extends InteropNode {
+        static final int LIMIT = 2;
+
+        abstract long execute(@JavaType(Object.class) StaticObject receiver);
+
+        @Specialization
+        long doCached(
+                        @JavaType(Object.class) StaticObject receiver,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @CachedContext(EspressoLanguage.class) ContextReference<EspressoContext> contextRef,
+                        @Cached BranchProfile exceptionProfile) {
+            try {
+                return interop.getHashSize(unwrap(receiver));
+            } catch (InteropException e) {
+                exceptionProfile.enter();
+                throw throwInteropException(e, contextRef.get().getMeta());
+            }
+        }
+    }
+
+    /**
+     * Returns {@code true} if mapping for the specified key exists and is {@link ReadHashValue
+     * readable}. This method may only return {@code true} if {@link HasHashEntries} returns
+     * {@code true} as well and {@link IsHashEntryInsertable} returns {@code false}. Invoking this
+     * message does not cause any observable side-effects. Returns {@code false} by default.
+     *
+     * @see ReadHashValue
+     * @since 21.1
+     */
+    @Substitution
+    abstract static class IsHashEntryReadable extends InteropNode {
+        static final int LIMIT = 2;
+
+        abstract boolean execute(@JavaType(Object.class) StaticObject receiver, @JavaType(Object.class) StaticObject key);
+
+        @Specialization
+        boolean doCached(
+                        @JavaType(Object.class) StaticObject receiver,
+                        @JavaType(Object.class) StaticObject key,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Cached ConditionProfile isForeignProfile) {
+            if (isForeignProfile.profile(receiver.isForeignObject())) {
+                return interop.isHashEntryReadable(unwrap(receiver), unwrap(key));
+            } else {
+                // Preserve Java types.
+                return interop.isHashEntryReadable(receiver, key);
+            }
+        }
+    }
+
+    /**
+     * Reads the value for the specified key.
+     *
+     * <p>
+     * Throws UnsupportedMessageException if the receiver does not support reading at all. An empty
+     * receiver with no readable hash entries supports the read operation (even though there is
+     * nothing to read), therefore it throws {@link UnknownKeyException} for all arguments instead.
+     * <p>
+     * Throws UnknownKeyException if mapping for the specified key is not {@link IsHashEntryReadable
+     * readable}, e.g. when the hash does not contain specified key.
+     * 
+     * @see IsHashEntryReadable
+     * @see ReadHashValueOrDefault
+     * @since 21.1
+     */
+    @Substitution
+    @Throws(others = {
+                    @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnsupportedMessageException;"),
+                    @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnknownKeyException;")
+    })
+    abstract static class ReadHashValue extends InteropNode {
+        static final int LIMIT = 2;
+
+        abstract @JavaType(Object.class) StaticObject execute(@JavaType(Object.class) StaticObject receiver, @JavaType(Object.class) StaticObject key);
+
+        @Specialization
+        @JavaType(Object.class)
+        StaticObject doCached(
+                        @JavaType(Object.class) StaticObject receiver,
+                        @JavaType(Object.class) StaticObject key,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary resultInterop,
+                        @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @Cached BranchProfile exceptionProfile,
+                        @Cached ConditionProfile isForeignProfile) {
+            try {
+                Object result = null;
+                if (isForeignProfile.profile(receiver.isForeignObject())) {
+                    result = interop.readHashValue(unwrap(receiver), unwrap(key));
+                } else {
+                    result = interop.readHashValue(receiver, key);
+                }
+                return maybeWrapAsObject(result, resultInterop, context);
+            } catch (InteropException e) {
+                exceptionProfile.enter();
+                throw throwInteropException(e, context.getMeta());
+            }
+        }
+    }
+
+    /**
+     * Reads the value for the specified key or returns the {@code defaultValue} when the mapping
+     * for the specified key does not exist or is not readable.
+     *
+     * <p>
+     * Throws UnsupportedMessageException if the receiver does not support reading at all. An empty
+     * receiver with no readable hash entries supports the read operation (even though there is
+     * nothing to read), therefore it returns the {@code defaultValue} for all arguments instead.
+     * 
+     * @see IsHashEntryReadable
+     * @see ReadHashValue
+     * @since 21.1
+     */
+    @Substitution
+    @Throws(others = @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnsupportedMessageException;"))
+    abstract static class ReadHashValueOrDefault extends InteropNode {
+        static final int LIMIT = 2;
+
+        abstract @JavaType(Object.class) StaticObject execute(@JavaType(Object.class) StaticObject receiver, @JavaType(Object.class) StaticObject key,
+                        @JavaType(Object.class) StaticObject defaultValue);
+
+        @Specialization
+        @JavaType(Object.class)
+        StaticObject doCached(
+                        @JavaType(Object.class) StaticObject receiver,
+                        @JavaType(Object.class) StaticObject key,
+                        @JavaType(Object.class) StaticObject defaultValue,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary resultInterop,
+                        @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @Cached BranchProfile exceptionProfile,
+                        @Cached ConditionProfile isForeignProfile) {
+            try {
+                if (isForeignProfile.profile(receiver.isForeignObject())) {
+                    Object unwrappedDefaultValue = unwrap(defaultValue);
+                    Object result = interop.readHashValueOrDefault(unwrap(receiver), unwrap(key), unwrappedDefaultValue);
+                    // If the unwrapped default value was returned, preserve the original type.
+                    if (result == unwrappedDefaultValue) {
+                        return defaultValue;
+                    }
+                    return maybeWrapAsObject(result, resultInterop, context);
+                } else {
+                    Object result = interop.readHashValueOrDefault(receiver, key, defaultValue);
+                    // defaultValue is already a StaticObject, no need to re-wrap as Object.
+                    return maybeWrapAsObject(result, resultInterop, context);
+                }
+            } catch (InteropException e) {
+                exceptionProfile.enter();
+                throw throwInteropException(e, context.getMeta());
+            }
+        }
+    }
+
+    /**
+     * Returns {@code true} if mapping for the specified key exists and is {@link WriteHashEntry
+     * writable}. This method may only return {@code true} if {@link HasHashEntries} returns
+     * {@code true} as well and {@link IsHashEntryInsertable} returns {@code false}. Invoking this
+     * message does not cause any observable side-effects. Returns {@code false} by default.
+     *
+     * @see WriteHashEntry
+     * @since 21.1
+     */
+    @Substitution
+    abstract static class IsHashEntryModifiable extends InteropNode {
+        static final int LIMIT = 2;
+
+        abstract boolean execute(@JavaType(Object.class) StaticObject receiver, @JavaType(Object.class) StaticObject key);
+
+        @Specialization
+        boolean doCached(
+                        @JavaType(Object.class) StaticObject receiver,
+                        @JavaType(Object.class) StaticObject key,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Cached ConditionProfile isForeignProfile) {
+            if (isForeignProfile.profile(receiver.isForeignObject())) {
+                return interop.isHashEntryModifiable(unwrap(receiver), unwrap(key));
+            } else {
+                // Preserve Java types.
+                return interop.isHashEntryModifiable(receiver, key);
+            }
+        }
+    }
+
+    /**
+     * Returns {@code true} if mapping for the specified key does not exist and is
+     * {@link WriteHashEntry writable}. This method may only return {@code true} if
+     * {@link HasHashEntries} returns {@code true} as well and {@link IsHashEntryExisting} returns
+     * {@code false}. Invoking this message does not cause any observable side-effects. Returns
+     * {@code false} by default.
+     *
+     * @see WriteHashEntry
+     * @since 21.1
+     */
+    @Substitution
+    abstract static class IsHashEntryInsertable extends InteropNode {
+        static final int LIMIT = 2;
+
+        abstract boolean execute(@JavaType(Object.class) StaticObject receiver, @JavaType(Object.class) StaticObject key);
+
+        @Specialization
+        boolean doCached(
+                        @JavaType(Object.class) StaticObject receiver,
+                        @JavaType(Object.class) StaticObject key,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Cached ConditionProfile isForeignProfile) {
+            if (isForeignProfile.profile(receiver.isForeignObject())) {
+                return interop.isHashEntryInsertable(unwrap(receiver), unwrap(key));
+            } else {
+                // Preserve Java types.
+                return interop.isHashEntryInsertable(receiver, key);
+            }
+        }
+    }
+
+    /**
+     * Returns {@code true} if mapping for the specified key is {@link IsHashEntryModifiable
+     * modifiable} or {@link IsHashEntryInsertable insertable}.
+     *
+     * @since 21.1
+     */
+    @Substitution
+    abstract static class IsHashEntryWritable extends InteropNode {
+        static final int LIMIT = 2;
+
+        abstract boolean execute(@JavaType(Object.class) StaticObject receiver, @JavaType(Object.class) StaticObject key);
+
+        @Specialization
+        boolean doCached(
+                        @JavaType(Object.class) StaticObject receiver,
+                        @JavaType(Object.class) StaticObject key,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Cached ConditionProfile isForeignProfile) {
+            if (isForeignProfile.profile(receiver.isForeignObject())) {
+                return interop.isHashEntryWritable(unwrap(receiver), unwrap(key));
+            } else {
+                // Preserve Java types.
+                return interop.isHashEntryWritable(receiver, key);
+            }
+        }
+    }
+
+    /**
+     * Associates the specified value with the specified key in the receiver. Writing the entry is
+     * allowed if is existing and {@link IsHashEntryModifiable modifiable}, or not existing and
+     * {@link IsHashEntryInsertable insertable}.
+     *
+     * <p>
+     * Throws UnsupportedMessageException when the receiver does not support writing at all, e.g.
+     * when it is immutable.
+     * <p>
+     * Throws UnknownKeyException if mapping for the specified key is not
+     * {@link IsHashEntryModifiable modifiable} nor {@link IsHashEntryInsertable insertable}.
+     * <p>
+     * Throws UnsupportedTypeException if the provided key type or value type is not allowed to be
+     * written.
+     * 
+     * @since 21.1
+     */
+    @Throws(others = {
+                    @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnsupportedMessageException;"),
+                    @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnknownKeyException;"),
+                    @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnsupportedTypeException;")
+    })
+    abstract static class WriteHashEntry extends InteropNode {
+        static final int LIMIT = 2;
+
+        abstract void execute(@JavaType(Object.class) StaticObject receiver, @JavaType(Object.class) StaticObject key, @JavaType(Object.class) StaticObject value);
+
+        @Specialization
+        void doCached(
+                        @JavaType(Object.class) StaticObject receiver,
+                        @JavaType(Object.class) StaticObject key,
+                        @JavaType(Object.class) StaticObject value,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @Cached BranchProfile exceptionProfile,
+                        @Cached ConditionProfile isForeignProfile) {
+            try {
+                if (isForeignProfile.profile(receiver.isForeignObject())) {
+                    interop.writeHashEntry(unwrap(receiver), unwrap(key), unwrap(value));
+                } else {
+                    // Preserve Java types.
+                    interop.writeHashEntry(receiver, key, value);
+                }
+            } catch (InteropException e) {
+                exceptionProfile.enter();
+                throw throwInteropException(e, context.getMeta());
+            }
+        }
+    }
+
+    /**
+     * Returns {@code true} if mapping for the specified key exists and is removable. This method
+     * may only return {@code true} if {@link HasHashEntries} returns {@code true} as well and
+     * {@link IsHashEntryInsertable} returns {@code false}. Invoking this message does not cause any
+     * observable side-effects. Returns {@code false} by default.
+     *
+     * @see RemoveHashEntry
+     * @since 21.1
+     */
+    @Substitution
+    abstract static class IsHashEntryRemovable extends InteropNode {
+        static final int LIMIT = 2;
+
+        abstract boolean execute(@JavaType(Object.class) StaticObject receiver, @JavaType(Object.class) StaticObject key);
+
+        @Specialization
+        boolean doCached(
+                        @JavaType(Object.class) StaticObject receiver,
+                        @JavaType(Object.class) StaticObject key,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Cached ConditionProfile isForeignProfile) {
+            if (isForeignProfile.profile(receiver.isForeignObject())) {
+                return interop.isHashEntryRemovable(unwrap(receiver), unwrap(key));
+            } else {
+                // Preserve Java types.
+                return interop.isHashEntryRemovable(receiver, key);
+            }
+        }
+    }
+
+    /**
+     * Removes the mapping for a given key from the receiver. Mapping removing is allowed if it is
+     * {@link IsHashEntryRemovable removable}.
+     *
+     * <p>
+     * Throws UnsupportedMessageException when the receiver does not support removing at all, e.g.
+     * when it is immutable.
+     * <p>
+     * Throws UnknownKeyException if the given mapping is not {@link IsHashEntryRemovable
+     * removable}, e.g. the receiver does not have a mapping for given key.
+     * 
+     * @see IsHashEntryRemovable
+     * @since 21.1
+     */
+    @Throws(others = {
+                    @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnsupportedMessageException;"),
+                    @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnknownKeyException;")
+    })
+    abstract static class RemoveHashEntry extends InteropNode {
+        static final int LIMIT = 2;
+
+        abstract void execute(@JavaType(Object.class) StaticObject receiver, @JavaType(Object.class) StaticObject key);
+
+        @Specialization
+        void doCached(
+                        @JavaType(Object.class) StaticObject receiver,
+                        @JavaType(Object.class) StaticObject key,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @Cached BranchProfile exceptionProfile,
+                        @Cached ConditionProfile isForeignProfile) {
+            try {
+                if (isForeignProfile.profile(receiver.isForeignObject())) {
+                    interop.removeHashEntry(unwrap(receiver), unwrap(key));
+                } else {
+                    // Preserve Java types.
+                    interop.removeHashEntry(receiver, key);
+                }
+            } catch (InteropException e) {
+                exceptionProfile.enter();
+                throw throwInteropException(e, context.getMeta());
+            }
+        }
+    }
+
+    /**
+     * Returns {@code true} if mapping for a given key is existing. The mapping is existing if it is
+     * {@link IsHashEntryModifiable modifiable}, {@link IsHashEntryReadable readable} or
+     * {@link IsHashEntryRemovable removable}.
+     *
+     * @since 21.1
+     */
+    @Substitution
+    abstract static class IsHashEntryExisting extends InteropNode {
+        static final int LIMIT = 2;
+
+        abstract boolean execute(@JavaType(Object.class) StaticObject receiver, @JavaType(Object.class) StaticObject key);
+
+        @Specialization
+        boolean doCached(
+                        @JavaType(Object.class) StaticObject receiver,
+                        @JavaType(Object.class) StaticObject key,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Cached ConditionProfile isForeignProfile) {
+            if (isForeignProfile.profile(receiver.isForeignObject())) {
+                return interop.isHashEntryExisting(unwrap(receiver), unwrap(key));
+            } else {
+                // Preserve Java types.
+                return interop.isHashEntryExisting(receiver, key);
+            }
+        }
+    }
+
+    /**
+     * Returns the hash entries iterator for the receiver. The return value is always an
+     * {@link IsIterator iterator} of {@link HasArrayElements array} elements. The first array
+     * element is a key, the second array element is an associated value. Array returned by the
+     * iterator may be modifiable but detached from the hash, updating the array elements may not
+     * update the hash. So even if array elements are {@link IsArrayElementModifiable modifiable}
+     * always use {@link WriteHashEntry} to update the hash mapping.
+     *
+     * <p>
+     * Throws UnsupportedMessageException if and only if {@link HasHashEntries} returns
+     * {@code false} for the same receiver.
+     * 
+     * @since 21.1
+     */
+    @Substitution
+    @Throws(others = @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnsupportedMessageException;"))
+    abstract static class GetHashEntriesIterator extends InteropNode {
+        static final int LIMIT = 2;
+
+        abstract @JavaType(Object.class) StaticObject execute(@JavaType(Object.class) StaticObject receiver);
+
+        @Specialization
+        @JavaType(Object.class)
+        StaticObject doCached(
+                        @JavaType(Object.class) StaticObject receiver,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary iteratorInterop,
+                        @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @Cached BranchProfile exceptionProfile) {
+            try {
+                Object iterator = interop.getHashEntriesIterator(unwrap(receiver));
+                assert UNCACHED.isIterator(iterator);
+                return maybeWrapAsObject(iterator, iteratorInterop, context);
+            } catch (InteropException e) {
+                exceptionProfile.enter();
+                throw throwInteropException(e, context.getMeta());
+            }
+        }
+    }
+
+    /**
+     * Returns the hash keys iterator for the receiver. The return value is always an
+     * {@link IsIterator iterator}.
+     *
+     * <p>
+     * Throws UnsupportedMessageException if and only if {@link HasHashEntries} returns
+     * {@code false} for the same receiver.
+     * 
+     * @since 21.1
+     */
+    @Substitution
+    @Throws(others = @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnsupportedMessageException;"))
+    abstract static class GetHashKeysIterator extends InteropNode {
+        static final int LIMIT = 2;
+
+        abstract @JavaType(Object.class) StaticObject execute(@JavaType(Object.class) StaticObject receiver);
+
+        @Specialization
+        @JavaType(Object.class)
+        StaticObject doCached(
+                        @JavaType(Object.class) StaticObject receiver,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary iteratorInterop,
+                        @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @Cached BranchProfile exceptionProfile) {
+            try {
+                Object iterator = interop.getHashKeysIterator(unwrap(receiver));
+                assert UNCACHED.isIterator(iterator);
+                return maybeWrapAsObject(iterator, iteratorInterop, context);
+            } catch (InteropException e) {
+                exceptionProfile.enter();
+                throw throwInteropException(e, context.getMeta());
+            }
+        }
+    }
+
+    /**
+     * Returns the hash values iterator for the receiver. The return value is always an
+     * {@link IsIterator iterator}.
+     *
+     * <p>
+     * Throws UnsupportedMessageException if and only if {@link HasHashEntries} returns
+     * {@code false} for the same receiver.
+     * 
+     * @since 21.1
+     */
+    @Substitution
+    @Throws(others = @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/UnsupportedMessageException;"))
+    abstract static class GetHashValuesIterator extends InteropNode {
+        static final int LIMIT = 2;
+
+        abstract @JavaType(Object.class) StaticObject execute(@JavaType(Object.class) StaticObject receiver);
+
+        @Specialization
+        @JavaType(Object.class)
+        StaticObject doCached(
+                        @JavaType(Object.class) StaticObject receiver,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary iteratorInterop,
+                        @CachedContext(EspressoLanguage.class) EspressoContext context,
+                        @Cached BranchProfile exceptionProfile) {
+            try {
+                Object iterator = interop.getHashValuesIterator(unwrap(receiver));
+                assert UNCACHED.isIterator(iterator);
+                return maybeWrapAsObject(iterator, iteratorInterop, context);
+            } catch (InteropException e) {
+                exceptionProfile.enter();
+                throw throwInteropException(e, context.getMeta());
+            }
+        }
+    }
+
+    // endregion Hash(Dictionary) Messages
+
     /**
      * Converts a guest arguments array to a host Object[].
      *
