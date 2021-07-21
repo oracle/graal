@@ -466,7 +466,7 @@ public abstract class WasmMemory implements TruffleObject {
                     @CachedLibrary(limit = "3") InteropLibrary valueLib,
                     @Shared("errorBranch") @Cached BranchProfile errorBranch)
                     throws InvalidArrayIndexException, UnsupportedMessageException, UnsupportedTypeException {
-        if (!isArrayElementReadable(address)) {
+        if (!isArrayElementModifiable(address)) {
             errorBranch.enter();
             throw InvalidArrayIndexException.create(address);
         }
